@@ -1,35 +1,76 @@
-"""Trang chủ: tổng quan công việc (demo) và tình trạng cấu hình (thật)."""
+"""Bài viết: các bài đang viết, bài tiếp theo trong kế hoạch, bài đã gửi WordPress."""
+
+import html
 
 import streamlit as st
 
-from seo_app import demo
+from seo_app import demo, ui
 from seo_app.config import load_settings
 
 settings = load_settings()
 
-st.title("SEO App")
-st.caption(f"Giờ hiện tại: {settings.now():%H:%M %d/%m/%Y} ({settings.timezone_name})")
+top_left, top_right = st.columns([3, 1], vertical_alignment="bottom")
+with top_left:
+    ui.page_header(
+        "Bài viết",
+        f"{len(demo.ARTICLES_IN_PROGRESS)} bài đang viết · {ui.day_label(settings.now())}",
+        demo=True,
+    )
+with top_right, st.popover("✍️ Viết bài mới", type="primary", width="stretch"):
+    st.text_input("Từ khóa", placeholder="ví dụ: lan can cầu thang sắt")
+    st.caption("hoặc chọn từ kế hoạch")
+    st.selectbox(
+        "Từ kế hoạch",
+        [
+            r["Từ khóa"]
+            for r in demo.plan_rows(settings.now().date())
+            if r["Trạng thái"] == "Chưa viết"
+        ],
+        label_visibility="collapsed",
+    )
+    if st.button("Bắt đầu", type="primary", width="stretch"):
+        st.switch_page("views/write.py")
 
-st.subheader("Tổng quan")
-demo.banner(5, "Số liệu tổng quan (lấy từ WordPress, Google Sheets, Search Console)")
-cols = st.columns(4)
-cols[0].metric("Bài nháp", 2)
-cols[1].metric("Đã hẹn giờ", 2, help="Bài sẽ tự đăng trên WordPress đúng giờ đã chọn")
-cols[2].metric("Đã đăng tháng này", 5)
-cols[3].metric("Lượt click 28 ngày", "607", delta="+18%")
+st.subheader("Đang viết")
+cols = st.columns(3)
+for col, article in zip(cols, demo.ARTICLES_IN_PROGRESS, strict=False):
+    with col, st.container(border=True, height="stretch"):
+        step = article["step"]
+        st.markdown(
+            f'<div class="card-kw">{html.escape(article["keyword"])}</div>'
+            f'<div class="card-title">{html.escape(article["title"])}</div>'
+            + ui.progress_dots(len(demo.STEPS), step),
+            unsafe_allow_html=True,
+        )
+        badge = f":blue-badge[Bước {step}/{len(demo.STEPS)} · {demo.STEPS[step - 1]}]"
+        if article["score"]:
+            color = "green" if article["score"] >= 85 else "orange"
+            badge += f" :{color}-badge[Văn phong {article['score']}]"
+        st.markdown(badge)
+        st.markdown(
+            f'<div class="card-note">{html.escape(article["note"])} · {article["updated"]}</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Mở bài", key=f"open-{article['keyword']}", width="stretch"):
+            st.switch_page("views/write.py")
 
-st.markdown("**Việc cần làm**")
-st.markdown(
-    "- ✍️ Duyệt dàn ý bài **«So sánh inox 201 và 304»**\n"
-    "- 🔢 Bổ sung số liệu thật cho mục *Chi phí* trong bài đang viết\n"
-    "- 🖼️ 3 ảnh mới trong thư mục ảnh chưa có alt\n"
-    "- 📈 Bài **«Sơn tĩnh điện là gì?»** ở vị trí 14,7 — nên viết thêm phần hỏi đáp"
-)
-
-st.divider()
-st.subheader("Tình trạng cấu hình")
-st.write("Các mục chưa khai báo sẽ được dùng ở những giai đoạn sau, chưa cần điền ngay.")
-for label, configured in settings.status().items():
-    icon = "✅" if configured else "⚪"
-    note = "đã khai báo" if configured else "chưa khai báo"
-    st.markdown(f"{icon} **{label}**: {note}")
+left, right = st.columns([3, 2], gap="large")
+with left:
+    st.subheader("Tiếp theo trong kế hoạch")
+    upcoming = [r for r in demo.plan_rows(settings.now().date()) if r["Trạng thái"] == "Chưa viết"]
+    for row in upcoming[:3]:
+        with st.container(border=True):
+            a, b, c = st.columns([5, 2, 2], vertical_alignment="center")
+            a.markdown(f"**{row['Từ khóa']}**  \n:gray[{row['Ý định']}]")
+            b.markdown(f":gray[Dự kiến]  \n{row['Ngày dự kiến']:%d/%m}")
+            if c.button("Bắt đầu", key=f"start-{row['Từ khóa']}", width="stretch"):
+                st.switch_page("views/write.py")
+    st.page_link("views/plan.py", label="Xem cả kế hoạch", icon="🗂️")
+with right:
+    st.subheader("Đã gửi WordPress")
+    with st.container(border=True):
+        for row in demo.SENT_TO_WORDPRESS:
+            color = "green" if row["Trạng thái"] == "Đã đăng" else "violet"
+            st.markdown(
+                f"**{row['Bài']}**  \n:{color}-badge[{row['Trạng thái']}] :gray[{row['Ngày']}]"
+            )

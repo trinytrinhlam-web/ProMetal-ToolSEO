@@ -23,6 +23,11 @@ Người dùng là chủ dự án: hiểu khái niệm lập trình nhưng ít d
 - AI: một lớp provider chung, hỗ trợ Anthropic, OpenAI, Google Gemini. Mô hình cho từng việc (nghiên cứu, viết, rà soát, meta, alt ảnh, tạo ảnh) khai báo trong file cấu hình, đổi được mà không sửa code.
 - Google: dùng service account (file JSON nằm ngoài repo, đường dẫn khai báo trong `.env`).
 - Có màn hình đăng nhập bằng mật khẩu; `.env` chỉ lưu mã băm của mật khẩu, kèm script để người dùng tạo mã băm.
+- Phần mềm tập trung vào **viết bài** (người dùng chốt 2026-10-06). Menu trên cùng: Bài viết · Soạn bài · Kế hoạch · Cài đặt · Kết nối WordPress.
+  - Mọi phần nội dung do AI tạo (ý định, dàn ý từng mục, từng phần của bài, meta, prompt ảnh) đều có nút viết lại; viết lại một phần không đụng tới phần khác, và quay lại được bản trước.
+  - Có AI kiểm tra văn phong: thân thiện, tự nhiên (không máy móc), dễ đọc, cụ thể, chuẩn SEO; tô câu có vấn đề ngay trong bài, kèm gợi ý và nút Áp dụng / Bỏ qua.
+  - Bài đánh dấu chỗ cần ảnh ngay trong từng phần; mỗi chỗ chọn ảnh thật (từ thư mục) hoặc ảnh AI — ảnh AI luôn kèm prompt xem/sửa/sao chép được.
+  - Trang Kế hoạch nhận kế hoạch người dùng cung cấp (tải file, dán chữ, link Google Sheets); AI đề xuất thay đổi, người dùng tick duyệt rồi mới cập nhật. Có "thông tin nền doanh nghiệp" dùng cho mọi bài.
 
 ## Bí mật và bảo mật
 
@@ -81,11 +86,11 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 - [x] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
 - [x] Giai đoạn 1 — WordPress: kiểm tra kết nối, lấy chuyên mục/thẻ, tạo bài nháp, tải ảnh lên thư viện, đặt ảnh đại diện.
-- [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, màn hình thử mù (cùng một đề, nhiều mô hình, ẩn tên mô hình).
-- [ ] Giai đoạn 3 — Ảnh: chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, xóa vị trí GPS trong EXIF, viết alt bằng AI; tạo ảnh bằng AI.
+- [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, nút viết lại từng phần, AI kiểm tra văn phong, thử mù mô hình (trong Cài đặt).
+- [ ] Giai đoạn 3 — Ảnh: chỗ cần ảnh trong bài; chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, xóa vị trí GPS trong EXIF, viết alt bằng AI; ảnh AI kèm prompt, tạo ảnh bằng AI.
 - [ ] Giai đoạn 4 — Tối ưu on-page: meta, schema JSON-LD, liên kết nội bộ dựa trên danh sách bài trên WordPress.
-- [ ] Giai đoạn 5 — Kế hoạch & lịch: đồng bộ Google Sheets, hẹn giờ đăng.
-- [ ] Giai đoạn 6 — Theo dõi: Search Console (từ khóa, vị trí, lượt click) theo từng bài.
+- [ ] Giai đoạn 5 — Kế hoạch & lịch: nhận kế hoạch người dùng cung cấp (file / dán / Google Sheets), AI đề xuất cập nhật để duyệt, đồng bộ Google Sheets, hẹn giờ đăng.
+- [ ] Giai đoạn 6 — Theo dõi: Search Console (từ khóa, vị trí, lượt click) theo từng bài. *(Chờ người dùng xác nhận có giữ không — đã bỏ khỏi giao diện demo vì phần mềm tập trung vào viết bài.)*
 
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
@@ -100,12 +105,13 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 
-### Trang demo
+### Giao diện và trang demo
 
-App có sẵn giao diện demo cho mọi chức năng chưa làm (khung "BẢN DEMO", dữ liệu mẫu trong `seo_app/demo.py`, nút chỉ hiện thông báo). Người dùng đã xem và dùng nó làm hình dung chung cho phần mềm.
-
-- Khi làm thật một giai đoạn: thay trang demo tương ứng trong `app/views/` bằng chức năng thật, giữ bố cục đã thống nhất (muốn đổi nhiều thì hỏi người dùng), và xóa phần mẫu không còn dùng trong `seo_app/demo.py`.
-- Trang mới phải được thêm vào `PAGES` trong `app/main.py`; `tests/test_app_pages.py` tự mở mọi trang để bắt lỗi.
+- Giao diện: theme trong `.streamlit/config.toml` (font Be Vietnam Pro, màu chủ đạo xanh ngọc `#0F7B6C`, có chế độ tối), CSS chung trong `app/assets/style.css`, mảnh HTML dùng chung trong `seo_app/ui.py`. Menu đặt trên cùng (`st.navigation(position="top")`).
+- App có giao diện demo cho mọi chức năng chưa làm (nhãn "Bản demo", dữ liệu mẫu trong `seo_app/demo.py`; nút chạy thử trên dữ liệu mẫu, không gọi AI hay mạng). Người dùng đã duyệt bố cục này (lần 2, 2026-10-06).
+- Khi làm thật một giai đoạn: thay phần demo tương ứng bằng chức năng thật, giữ bố cục đã duyệt (muốn đổi nhiều thì hỏi người dùng), xóa phần mẫu không còn dùng trong `seo_app/demo.py`.
+- Trang mới phải được thêm vào `PAGES` trong `app/main.py`; `tests/test_app_pages.py` tự mở mọi trang và mọi bước soạn bài để bắt lỗi.
+- Lưu ý Streamlit: nhãn của `segmented_control`/`pills` phải cố định giữa các lần chạy (đừng để `format_func` phụ thuộc trạng thái), nếu không widget bị coi là mới và mất lựa chọn.
 
 ### Làm việc trên 2 máy (máy công ty và máy nhà), đồng bộ qua GitHub
 
@@ -122,3 +128,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-06: Xong Giai đoạn 0 — bộ khung uv + Streamlit, đăng nhập bằng mã băm PBKDF2 (`seo_app/auth.py`), cấu hình từ `.env` (`seo_app/config.py`), `run`/`set_password` (.bat/.command), SessionStart hook, pytest + ruff, README.
 - 2026-10-06: Xong Giai đoạn 1 (nhánh `claude/wizardly-brahmagupta-f0w8d8`) — `seo_app/wordpress/` (kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện; chỉ tạo `draft`), app nhiều trang (`app/views/`), trang WordPress, README mục Kết nối WordPress.
 - 2026-10-06: Thêm giao diện demo toàn bộ phần mềm (cùng nhánh, PR #2): menu nhóm Tổng quan / Nội dung / Theo dõi / Hệ thống; trang Kế hoạch từ khóa, Viết bài (7 bước), Thử mù, Ảnh, Lịch đăng, Thứ hạng, Cài đặt dùng dữ liệu mẫu.
+- 2026-10-06: Làm lại giao diện demo theo yêu cầu người dùng (cùng nhánh, PR #2): tập trung viết bài; menu trên cùng; Soạn bài 5 bước với nút viết lại từng phần, AI kiểm tra văn phong, chỗ cần ảnh (ảnh thật / ảnh AI + prompt); trang Kế hoạch nhận kế hoạch và đề xuất thay đổi; bỏ các trang Ảnh, Lịch đăng, Thứ hạng riêng (thử mù chuyển vào Cài đặt).

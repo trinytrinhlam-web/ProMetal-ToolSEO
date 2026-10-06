@@ -41,8 +41,9 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Mở app:** bấm đúp `run.bat` (Windows) hoặc `run.command` (Mac).
 - **Tắt app:** đóng cửa sổ đen / Terminal. Đóng tab trình duyệt thì app chưa tắt.
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
-- Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật.
-- **Menu bên trái** có đủ các chức năng của phần mềm. Trang nào có khung xanh **"BẢN DEMO"** thì đang dùng dữ liệu mẫu để bạn xem trước: các nút chưa gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng.
+- Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
+- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào), **Cài đặt**, **Kết nối WordPress**.
+- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, chưa gọi AI thật và không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng.
 
 ## 5. File cấu hình `.env`
 
@@ -73,7 +74,7 @@ App gửi bài sang WordPress bằng **Application Password**: một mật khẩ
    WORDPRESS_USERNAME=ten-dang-nhap-wordpress
    WORDPRESS_APP_PASSWORD=abcd efgh ijkl mnop qrst uvwx
    ```
-6. Tắt app rồi mở lại. Vào menu **WordPress** và bấm **Kiểm tra kết nối**.
+6. Tắt app rồi mở lại. Vào menu **Kết nối WordPress** và bấm **Kiểm tra kết nối**.
 
 Ở trang này bạn còn có thể:
 - bấm **Tải chuyên mục và thẻ** để xem danh sách đang có trên website;
@@ -124,8 +125,8 @@ uv run python scripts/hash_password.py --print   # tạo mã băm mật khẩu, 
 Cấu trúc thư mục:
 
 ```
-app/          giao diện Streamlit: main.py (đăng nhập, menu), views/ (từng trang)
-              seo_app/demo.py chứa dữ liệu mẫu cho các trang demo
+app/          giao diện Streamlit: main.py (đăng nhập, menu), views/ (từng trang),
+              assets/ (logo, style.css); dữ liệu mẫu demo nằm ở seo_app/demo.py
 seo_app/      phần logic: config.py (đọc .env), auth.py (mật khẩu), text.py (xử lý chữ),
               wordpress/ (client REST API)
 scripts/      script tiện ích (hash_password.py)
