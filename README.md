@@ -42,6 +42,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Tắt app:** đóng cửa sổ đen / Terminal. Đóng tab trình duyệt thì app chưa tắt.
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
 - Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật.
+- **Menu bên trái** có đủ các chức năng của phần mềm. Trang nào có khung xanh **"BẢN DEMO"** thì đang dùng dữ liệu mẫu để bạn xem trước: các nút chưa gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng.
 
 ## 5. File cấu hình `.env`
 
@@ -124,6 +125,7 @@ Cấu trúc thư mục:
 
 ```
 app/          giao diện Streamlit: main.py (đăng nhập, menu), views/ (từng trang)
+              seo_app/demo.py chứa dữ liệu mẫu cho các trang demo
 seo_app/      phần logic: config.py (đọc .env), auth.py (mật khẩu), text.py (xử lý chữ),
               wordpress/ (client REST API)
 scripts/      script tiện ích (hash_password.py)

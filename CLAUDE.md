@@ -100,6 +100,13 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 
+### Trang demo
+
+App có sẵn giao diện demo cho mọi chức năng chưa làm (khung "BẢN DEMO", dữ liệu mẫu trong `seo_app/demo.py`, nút chỉ hiện thông báo). Người dùng đã xem và dùng nó làm hình dung chung cho phần mềm.
+
+- Khi làm thật một giai đoạn: thay trang demo tương ứng trong `app/views/` bằng chức năng thật, giữ bố cục đã thống nhất (muốn đổi nhiều thì hỏi người dùng), và xóa phần mẫu không còn dùng trong `seo_app/demo.py`.
+- Trang mới phải được thêm vào `PAGES` trong `app/main.py`; `tests/test_app_pages.py` tự mở mọi trang để bắt lỗi.
+
 ### Làm việc trên 2 máy (máy công ty và máy nhà), đồng bộ qua GitHub
 
 Người dùng chạy Claude Code ngay trên máy của mình để vừa làm vừa xem app chạy thật. Claude tự chạy các lệnh git, người dùng không cần gõ lệnh.
@@ -114,3 +121,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-06: Khởi tạo dự án. Chưa có code.
 - 2026-10-06: Xong Giai đoạn 0 — bộ khung uv + Streamlit, đăng nhập bằng mã băm PBKDF2 (`seo_app/auth.py`), cấu hình từ `.env` (`seo_app/config.py`), `run`/`set_password` (.bat/.command), SessionStart hook, pytest + ruff, README.
 - 2026-10-06: Xong Giai đoạn 1 (nhánh `claude/wizardly-brahmagupta-f0w8d8`) — `seo_app/wordpress/` (kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện; chỉ tạo `draft`), app nhiều trang (`app/views/`), trang WordPress, README mục Kết nối WordPress.
+- 2026-10-06: Thêm giao diện demo toàn bộ phần mềm (cùng nhánh, PR #2): menu nhóm Tổng quan / Nội dung / Theo dõi / Hệ thống; trang Kế hoạch từ khóa, Viết bài (7 bước), Thử mù, Ảnh, Lịch đăng, Thứ hạng, Cài đặt dùng dữ liệu mẫu.

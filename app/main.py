@@ -17,10 +17,26 @@ from seo_app.config import ConfigError, Settings, load_settings
 # Chờ một chút sau mỗi lần nhập sai để việc đoán mật khẩu chậm lại.
 WRONG_PASSWORD_DELAY_SECONDS = 1.0
 
-PAGES = [
-    ("views/home.py", "Trang chủ", "🏠"),
-    ("views/wordpress.py", "WordPress", "📝"),
-]
+# Menu bên trái: nhóm -> các trang (file trong app/views/, tên trang, biểu tượng).
+PAGES = {
+    "Tổng quan": [
+        ("views/home.py", "Trang chủ", "🏠"),
+    ],
+    "Nội dung": [
+        ("views/keywords.py", "Kế hoạch từ khóa", "🗂️"),
+        ("views/write.py", "Viết bài", "✍️"),
+        ("views/blind_test.py", "Thử mù mô hình AI", "🎭"),
+        ("views/images.py", "Ảnh", "🖼️"),
+        ("views/schedule.py", "Lịch đăng", "📅"),
+    ],
+    "Theo dõi": [
+        ("views/rankings.py", "Thứ hạng", "📈"),
+    ],
+    "Hệ thống": [
+        ("views/wordpress.py", "WordPress", "📝"),
+        ("views/settings.py", "Cài đặt", "⚙️"),
+    ],
+}
 
 
 def login_page(settings: Settings) -> None:
@@ -61,7 +77,10 @@ def main() -> None:
         return
 
     navigation = st.navigation(
-        [st.Page(path, title=title, icon=icon) for path, title, icon in PAGES]
+        {
+            section: [st.Page(path, title=title, icon=icon) for path, title, icon in pages]
+            for section, pages in PAGES.items()
+        }
     )
     with st.sidebar:
         if st.button("Đăng xuất"):
