@@ -1,0 +1,11 @@
+# Cấu hình Streamlit (không chứa bí mật).
+
+[server]
+# Chỉ mở app trên chính máy này, máy khác trong mạng không truy cập được.
+address = "localhost"
+# Không hỏi email ở lần chạy đầu tiên.
+showEmailPrompt = false
+
+[browser]
+# Không gửi số liệu sử dụng cho Streamlit.
+gatherUsageStats = false

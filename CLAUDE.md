@@ -79,7 +79,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 ## Lộ trình
 
-- [ ] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
+- [x] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
 - [ ] Giai đoạn 1 — WordPress: kiểm tra kết nối, lấy chuyên mục/thẻ, tạo bài nháp, tải ảnh lên thư viện, đặt ảnh đại diện.
 - [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, màn hình thử mù (cùng một đề, nhiều mô hình, ẩn tên mô hình).
 - [ ] Giai đoạn 3 — Ảnh: chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, xóa vị trí GPS trong EXIF, viết alt bằng AI; tạo ảnh bằng AI.
@@ -103,3 +103,4 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 ## Trạng thái
 
 - 2026-10-06: Khởi tạo dự án. Chưa có code.
+- 2026-10-06: Xong Giai đoạn 0 — bộ khung uv + Streamlit, đăng nhập bằng mã băm PBKDF2 (`seo_app/auth.py`), cấu hình từ `.env` (`seo_app/config.py`), `run`/`set_password` (.bat/.command), SessionStart hook, pytest + ruff, README.

@@ -1,0 +1,29 @@
+# Bí mật — không bao giờ commit
+.env
+.env.*
+!.env.example
+*service-account*.json
+secrets/
+.streamlit/secrets.toml
+
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Công cụ
+.pytest_cache/
+.ruff_cache/
+
+# Cache cục bộ (xóa đi vẫn tạo lại được)
+data/
+*.sqlite
+*.sqlite3
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+desktop.ini

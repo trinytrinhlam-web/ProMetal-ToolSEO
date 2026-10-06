@@ -1,0 +1,10 @@
+#!/bin/bash
+# Cài thư viện khi phiên Claude Code chạy trên cloud, để chạy được pytest và ruff.
+set -euo pipefail
+
+if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
+  exit 0
+fi
+
+cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
+uv sync
