@@ -9,3 +9,7 @@ showEmailPrompt = false
 [browser]
 # Không gửi số liệu sử dụng cho Streamlit.
 gatherUsageStats = false
+
+[client]
+# Ẩn nút "Deploy" và menu dành cho lập trình viên trên thanh công cụ.
+toolbarMode = "minimal"

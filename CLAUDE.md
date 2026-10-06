@@ -100,6 +100,15 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 
+### Làm việc trên 2 máy (máy công ty và máy nhà), đồng bộ qua GitHub
+
+Người dùng chạy Claude Code ngay trên máy của mình để vừa làm vừa xem app chạy thật. Claude tự chạy các lệnh git, người dùng không cần gõ lệnh.
+
+- Đầu buổi: chạy `git status` và `git pull` để lấy code mới nhất từ máy kia trước khi sửa. Nếu còn thay đổi chưa commit thì hỏi người dùng trước.
+- Trong buổi: sau mỗi thay đổi xem được trên giao diện, nhắc người dùng mở app (`run.bat` / `run.command`, hoặc Claude chạy `uv run streamlit run app/main.py`) để tự kiểm tra.
+- Cuối buổi (hoặc khi người dùng nói sắp nghỉ): tóm tắt việc đã làm, chạy `uv run pytest` và `uv run ruff check .`, rồi **đề nghị** commit và push lên GitHub. Chỉ commit/push khi người dùng đồng ý.
+- Mỗi giai đoạn làm trên một nhánh riêng, xong thì mở PR. Ghi tên nhánh đang làm vào mục Trạng thái để máy kia biết chuyển sang đúng nhánh.
+
 ## Trạng thái
 
 - 2026-10-06: Khởi tạo dự án. Chưa có code.
