@@ -79,7 +79,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 ## Lộ trình
 
-- [ ] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
+- [x] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
 - [ ] Giai đoạn 1 — WordPress: kiểm tra kết nối, lấy chuyên mục/thẻ, tạo bài nháp, tải ảnh lên thư viện, đặt ảnh đại diện.
 - [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, màn hình thử mù (cùng một đề, nhiều mô hình, ẩn tên mô hình).
 - [ ] Giai đoạn 3 — Ảnh: chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, xóa vị trí GPS trong EXIF, viết alt bằng AI; tạo ảnh bằng AI.
@@ -100,6 +100,16 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 
+### Làm việc trên 2 máy (máy công ty và máy nhà), đồng bộ qua GitHub
+
+Người dùng chạy Claude Code ngay trên máy của mình để vừa làm vừa xem app chạy thật. Claude tự chạy các lệnh git, người dùng không cần gõ lệnh.
+
+- Đầu buổi: chạy `git status` và `git pull` để lấy code mới nhất từ máy kia trước khi sửa. Nếu còn thay đổi chưa commit thì hỏi người dùng trước.
+- Trong buổi: sau mỗi thay đổi xem được trên giao diện, nhắc người dùng mở app (`run.bat` / `run.command`, hoặc Claude chạy `uv run streamlit run app/main.py`) để tự kiểm tra.
+- Cuối buổi (hoặc khi người dùng nói sắp nghỉ): tóm tắt việc đã làm, chạy `uv run pytest` và `uv run ruff check .`, rồi **đề nghị** commit và push lên GitHub. Chỉ commit/push khi người dùng đồng ý.
+- Mỗi giai đoạn làm trên một nhánh riêng, xong thì mở PR. Ghi tên nhánh đang làm vào mục Trạng thái để máy kia biết chuyển sang đúng nhánh.
+
 ## Trạng thái
 
 - 2026-10-06: Khởi tạo dự án. Chưa có code.
+- 2026-10-06: Xong Giai đoạn 0 — bộ khung uv + Streamlit, đăng nhập bằng mã băm PBKDF2 (`seo_app/auth.py`), cấu hình từ `.env` (`seo_app/config.py`), `run`/`set_password` (.bat/.command), SessionStart hook, pytest + ruff, README.
