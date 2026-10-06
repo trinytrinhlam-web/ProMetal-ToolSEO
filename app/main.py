@@ -1,6 +1,8 @@
 """Giao diện Streamlit của SEO App.
 
 Chạy: uv run streamlit run app/main.py  (hoặc bấm đúp run.bat / run.command)
+
+File này lo đăng nhập. Chỉ khi đăng nhập xong mới hiện menu và các trang trong app/views/.
 """
 
 from __future__ import annotations
@@ -14,6 +16,11 @@ from seo_app.config import ConfigError, Settings, load_settings
 
 # Chờ một chút sau mỗi lần nhập sai để việc đoán mật khẩu chậm lại.
 WRONG_PASSWORD_DELAY_SECONDS = 1.0
+
+PAGES = [
+    ("views/home.py", "Trang chủ", "🏠"),
+    ("views/wordpress.py", "WordPress", "📝"),
+]
 
 
 def login_page(settings: Settings) -> None:
@@ -40,26 +47,6 @@ def login_page(settings: Settings) -> None:
             st.error("Mật khẩu không đúng.")
 
 
-def home_page(settings: Settings) -> None:
-    with st.sidebar:
-        if st.button("Đăng xuất"):
-            st.session_state["authenticated"] = False
-            st.rerun()
-
-    st.title("SEO App")
-    now = settings.now()
-    st.caption(f"Giờ hiện tại: {now:%H:%M %d/%m/%Y} ({settings.timezone_name})")
-
-    st.subheader("Tình trạng cấu hình")
-    st.write("Các mục chưa khai báo sẽ được dùng ở những giai đoạn sau, chưa cần điền ngay.")
-    for label, configured in settings.status().items():
-        icon = "✅" if configured else "⚪"
-        note = "đã khai báo" if configured else "chưa khai báo"
-        st.markdown(f"{icon} **{label}**: {note}")
-
-    st.info("Các chức năng (WordPress, viết bài bằng AI, ảnh, …) sẽ lần lượt được thêm vào đây.")
-
-
 def main() -> None:
     st.set_page_config(page_title="SEO App", page_icon="🔎", layout="wide")
 
@@ -69,10 +56,18 @@ def main() -> None:
         st.error(str(exc))
         return
 
-    if st.session_state.get("authenticated"):
-        home_page(settings)
-    else:
+    if not st.session_state.get("authenticated"):
         login_page(settings)
+        return
+
+    navigation = st.navigation(
+        [st.Page(path, title=title, icon=icon) for path, title, icon in PAGES]
+    )
+    with st.sidebar:
+        if st.button("Đăng xuất"):
+            st.session_state.clear()
+            st.rerun()
+    navigation.run()
 
 
 main()
