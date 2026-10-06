@@ -18,7 +18,7 @@ def app(project_root, monkeypatch):
 
 
 def test_shows_login_form_first(app):
-    assert app.title[0].value == "Đăng nhập SEO App"
+    assert app.title[0].value == "Đăng nhập"
     assert len(app.text_input) == 1
     assert not app.exception
 
@@ -27,17 +27,18 @@ def test_wrong_password_shows_error(app, monkeypatch):
     app.text_input[0].input("sai-roi")
     app.button[0].click().run()
     assert app.error[0].value == "Mật khẩu không đúng."
-    assert app.title[0].value == "Đăng nhập SEO App"
+    assert app.title[0].value == "Đăng nhập"
 
 
 def test_correct_password_opens_home_and_logout_works(app):
     app.text_input[0].input(PASSWORD)
     app.button[0].click().run()
-    assert app.title[0].value == "SEO App"
+    assert app.title[0].value == "Bài viết"
     assert app.session_state["authenticated"] is True
 
-    app.sidebar.button[0].click().run()
-    assert app.title[0].value == "Đăng nhập SEO App"
+    app.switch_page("views/settings.py").run()
+    next(b for b in app.button if b.label == "Đăng xuất").click().run()
+    assert app.title[0].value == "Đăng nhập"
 
 
 def test_without_password_hash_login_is_impossible(project_root, monkeypatch):
