@@ -90,7 +90,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
 - Website dùng plugin SEO nào (Rank Math, Yoast, khác)? Quyết định cách ghi meta/schema.
-- Tên miền website; có site thử nghiệm (staging) hay không.
+- Tên miền: suachuacuasat.com. Có site thử nghiệm (staging) hay không: chưa rõ.
 
 ## Cách làm việc
 
@@ -113,3 +113,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 
 - 2026-10-06: Khởi tạo dự án. Chưa có code.
 - 2026-10-06: Xong Giai đoạn 0 — bộ khung uv + Streamlit, đăng nhập bằng mã băm PBKDF2 (`seo_app/auth.py`), cấu hình từ `.env` (`seo_app/config.py`), `run`/`set_password` (.bat/.command), SessionStart hook, pytest + ruff, README.
+- 2026-10-14: Thêm `config/business_profile.md` (hồ sơ doanh nghiệp để AI dùng khi viết bài), soạn từ website; còn các mục `[CẦN XÁC NHẬN]` chờ người dùng điền. Nhánh `claude/project-thread-bcuk2m`.
