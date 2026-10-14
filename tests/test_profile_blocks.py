@@ -154,3 +154,12 @@ def test_real_profile_only_drops_what_old_filter_leaked():
     assert all(line in old for line in new)
     assert all("[CẦN XÁC NHẬN" not in line.upper() for line in new)
     assert all(not line.lstrip().startswith(">") for line in new)
+
+
+@pytest.mark.parametrize("space", [" ", " ", " ", "　", "\t", "   ", "   "])
+def test_tag_with_any_unicode_whitespace_between_words(space):
+    # SL-022-6: NBSP hay khoảng trắng Unicode khác ở mọi chỗ trong nhãn vẫn được nhận.
+    tag = f"[{space}CẦN{space}XÁC{space}NHẬN{space}— lý do]"
+    assert confirmed_profile(f"- Email: abc {tag}\n- Hotline: 0909") == "- Hotline: 0909"
+    nfd = unicodedata.normalize("NFD", tag)
+    assert confirmed_profile(f"- Email: abc\n  {nfd}\n- Hotline: 0909") == "- Hotline: 0909"
