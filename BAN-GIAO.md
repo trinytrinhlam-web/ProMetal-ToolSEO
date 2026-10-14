@@ -98,7 +98,7 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 ### 7.2 Repo, Git, máy tính
 
 - Repo: `https://github.com/trinytrinhlam-web/ProMetal-ToolSEO` (tài khoản GitHub `trinytrinhlam-web`, chủ dự án An Manu).
-- **Push thẳng lên `main`, không tạo nhánh mới, không mở PR mới.** Thay cho dòng "mỗi giai đoạn một nhánh / PR" trong `CLAUDE.md`. Luôn `git pull` trước khi sửa vì có thể có phiên khác cùng đẩy lên.
+- **Push thẳng lên `main`, không tạo nhánh mới, không mở PR mới.** Ngoại lệ chủ dự án chốt 2026-10-14: agent chạy ở phiên con dùng nhánh tạm `team/T-xxx`, Chỉ Huy gộp vào `main` sau khi Lá Chắn ĐẠT rồi xóa nhánh (`docs/team/README.md`, mục "Cách Chỉ Huy giao việc"). Thay cho dòng "mỗi giai đoạn một nhánh / PR" trong `CLAUDE.md`. Luôn `git pull` trước khi sửa vì có thể có phiên khác cùng đẩy lên.
 - **Repo phải gọn, sạch, tự đủ**: xóa file phần mềm không cần; đưa lên đủ mọi file để AI khác (Claude, ChatGPT, Gemini…) mở ra là làm tiếp được.
 - Máy anh là Windows, thư mục dự án `C:\Projects\ProMetal-ToolSEO`. Anh dùng **GitHub Desktop** (Fetch → Pull để lấy bản mới). Máy cũ ban đầu chưa có Git; cài bằng `winget install --id Git.Git -e` hoặc tải ở git-scm.com.
 - Phần mềm **cài và chạy trên máy** (không phải web): bấm đúp `run.bat`, mở trong trình duyệt ở localhost, có mật khẩu. Cần Internet để gọi AI và gửi bài nháp sang WordPress.

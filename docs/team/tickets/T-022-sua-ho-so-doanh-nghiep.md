@@ -61,4 +61,4 @@
 ## Ghi chú của Chỉ Huy
 
 - 2026-10-14: Chỉ Huy đã gộp nhánh `claude/project-thread-bcuk2m` (PR #3) vào `main`. Xung đột ở `CLAUDE.md` đã sửa bằng cách giữ cả hai bên.
-- Không commit, không chạy lệnh git làm đổi thư mục làm việc (R11): Thợ Máy đang làm T-018 song song.
+- Làm trong phiên con **"Ngòi Bút · T-022 Hồ sơ doanh nghiệp"**, trên nhánh tạm `team/T-022`. Commit và đẩy lên `team/T-022`; không đẩy `main`. Chỉ Huy gộp vào `main` sau khi Lá Chắn ĐẠT.

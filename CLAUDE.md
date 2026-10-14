@@ -109,7 +109,8 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Dự án làm theo đội agent do **Chỉ Huy** (Claude) điều phối: Thợ Máy (logic), Họa Sĩ (giao diện), Ngòi Bút (nội dung, prompt), Soi Lỗi (kiểm thử), **Lá Chắn** (bảo mật, có quyền chặn), Thư Ký (tài liệu).
 - Điểm bắt đầu cho mọi AI: `AGENTS.md`. Quy tắc, chính sách bảo mật, mẫu phiếu và báo cáo, bảng việc: `docs/team/`. Hồ sơ và model từng agent: `.claude/agents/`.
 - Mọi việc đi qua phiếu (`docs/team/tickets/`) và báo cáo (`docs/team/reports/`). Phiếu có sửa code phải qua Soi Lỗi và Lá Chắn trước khi đóng.
-- Chủ dự án chốt: agent điều phối tự gọi agent phụ; ưu tiên chất lượng, không cần tiết kiệm chi phí model; push thẳng lên `main`, không tạo nhánh mới.
+- Chủ dự án chốt: agent điều phối tự gọi agent phụ; ưu tiên chất lượng, không cần tiết kiệm chi phí model; push thẳng lên `main`, không tạo nhánh mới, không mở PR.
+- Từ 2026-10-14 (chủ dự án chốt): mỗi agent chạy ở **một phiên con riêng** dưới phiên "Điều phối", tên phiên ghi rõ vai và phiếu (ví dụ "Thợ Máy · T-018 …"). Mỗi phiếu dùng **một nhánh tạm** `team/T-xxx`; Soi Lỗi và Lá Chắn kiểm trên nhánh đó; Lá Chắn ĐẠT thì Chỉ Huy gộp vào `main` và xóa nhánh. `main` chỉ chứa code đã qua kiểm định.
 
 ### Giao diện và trang demo
 

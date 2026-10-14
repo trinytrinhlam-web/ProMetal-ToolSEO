@@ -59,4 +59,4 @@ S1, S2 (khóa không lọt vào lỗi, log, `repr` của provider), A1, A2 (AI k
 
 ## Ghi chú của Chỉ Huy
 
-- Không commit, không chạy lệnh git làm đổi thư mục làm việc (R11): Ngòi Bút đang làm T-022 song song. Chỉ Huy commit sau khi qua Soi Lỗi và Lá Chắn.
+- Làm trong phiên con **"Thợ Máy · T-018 ChatGPT/Gemini"**, trên nhánh tạm `team/T-018`. Commit và đẩy lên `team/T-018`; không đẩy `main`. Chỉ Huy gộp vào `main` sau khi Lá Chắn ĐẠT.

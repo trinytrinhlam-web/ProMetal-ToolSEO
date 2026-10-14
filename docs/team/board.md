@@ -6,10 +6,12 @@ _Cập nhật: 2026-10-14_
 
 ## Đang làm
 
-| Phiếu | Việc | Agent | Trạng thái | Báo cáo |
-|---|---|---|---|---|
-| [T-018](tickets/T-018-them-openai-gemini.md) | Thêm AI ChatGPT (OpenAI) và Gemini, thư viện chính hãng (chủ dự án duyệt 2026-10-14) | Thợ Máy | Đang làm | |
-| [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp (PR #3 đã gộp vào `main`) | Ngòi Bút | Đang làm | |
+Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (thanh bên app Claude), tên phiên = tên agent + số phiếu. Mỗi phiếu làm trên nhánh tạm `team/T-xxx`, gộp vào `main` khi Lá Chắn ĐẠT.
+
+| Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
+|---|---|---|---|---|---|
+| [T-018](tickets/T-018-them-openai-gemini.md) | Thêm AI ChatGPT (OpenAI) và Gemini, thư viện chính hãng (chủ dự án duyệt 2026-10-14) | Thợ Máy (`Thợ Máy · T-018 ChatGPT/Gemini`) | `team/T-018` | Đang làm | |
+| [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp (PR #3 đã gộp vào `main`) | Ngòi Bút (`Ngòi Bút · T-022 Hồ sơ doanh nghiệp`) | `team/T-022` | Đang làm | |
 
 ## Chờ
 

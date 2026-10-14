@@ -56,7 +56,12 @@ Phiếu chỉ sửa tài liệu thì bỏ qua bước 4; bước 5 vẫn chạy 
 
 ## Cách Chỉ Huy giao việc
 
-- **Trong Claude Code** (cách mặc định): Chỉ Huy gọi agent phụ bằng tên trong `.claude/agents/`, kèm đường dẫn phiếu. Agent phụ không nói chuyện trực tiếp với chủ dự án; Chỉ Huy tổng hợp kết quả và báo lại.
+- **Trên Claude Code cloud** (cách mặc định từ 2026-10-14, chủ dự án chọn để theo dõi được): Chỉ Huy chạy ở phiên **"Điều phối"** và mở mỗi agent thành **một phiên con** (hiện lồng dưới "Điều phối" ở thanh bên của app Claude). Tên phiên: `<Tên agent> · T-xxx <việc ngắn>`, ví dụ `Thợ Máy · T-018 ChatGPT/Gemini`. Phiên con dùng đúng model của vai trong `roster.md`.
+  - Mỗi phiếu có **một nhánh tạm** `team/T-xxx`, tạo từ `main`. Agent làm phiếu commit và đẩy lên nhánh đó (không đẩy `main`, không `rebase`, không `push --force`).
+  - Soi Lỗi rồi Lá Chắn mở phiên con riêng, làm trên **cùng nhánh** đó. Soi Lỗi được thêm test; Lá Chắn chỉ thêm biên bản.
+  - Lá Chắn ĐẠT: Chỉ Huy gộp nhánh vào `main` (merge, không rebase), chạy lại `uv run pytest` và `uv run ruff check .`, đẩy `main`, rồi **xóa nhánh tạm** để repo gọn.
+  - Xong việc, phiên con gửi Chỉ Huy một tin ngắn (công cụ `send_message`); Chỉ Huy cũng tự kiểm tra định kỳ.
+- **Trong Claude Code trên máy** (một thư mục làm việc): Chỉ Huy gọi agent phụ bằng tên trong `.claude/agents/`, kèm đường dẫn phiếu. Agent phụ không nói chuyện trực tiếp với chủ dự án; Chỉ Huy tổng hợp kết quả và báo lại.
 - **Với AI khác**: mở một phiên mới, đưa cho AI đó nội dung `AGENTS.md`, hồ sơ vai trò và phiếu. Yêu cầu AI nộp báo cáo đúng mẫu.
 
 Chủ dự án luôn theo dõi được qua `board.md`: mỗi dòng ghi tên agent, phiếu và trạng thái.
