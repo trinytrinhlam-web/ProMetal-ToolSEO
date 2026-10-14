@@ -1,11 +1,13 @@
-"""Mở lần lượt mọi trang trong menu, và bấm thử các nút chính của bản demo."""
+"""Mở lần lượt mọi trang trong menu, và bấm thử các nút chính (AI giả, không gọi mạng)."""
 
 from pathlib import Path
 
 import pytest
+from fake_ai import DRAFT, OUTLINE, RESEARCH, STIFF, VAGUE_FIX, FakeProvider
 from streamlit.testing.v1 import AppTest
 
 from seo_app import demo
+from seo_app.ai import registry as ai_registry
 from seo_app.auth import hash_password
 
 PASSWORD = "mat-khau-thu-123"
@@ -16,6 +18,14 @@ VIEWS = sorted(p.name for p in (Path(__file__).parent.parent / "app" / "views").
 def env(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD_HASH", hash_password(PASSWORD, iterations=1_000))
     monkeypatch.setenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+
+@pytest.fixture
+def fake_ai(monkeypatch):
+    provider = FakeProvider()
+    monkeypatch.setattr(ai_registry, "make_provider", lambda name, settings: provider)
+    return provider
 
 
 def open_page(project_root, view: str) -> AppTest:
@@ -55,34 +65,6 @@ def test_every_writing_step_renders(project_root, step):
     assert not at.exception, at.exception
 
 
-def test_rewrite_section_switches_version_and_undo(project_root):
-    at = open_page(project_root, "write.py")
-    first, second = demo.SECTIONS[0]["versions"]
-    assert any(first[:40] in m.value for m in at.markdown)
-
-    button(at, "Viết lại phần này", key="do-rw-mo-bai").click().run()
-    assert any(second[:40] in m.value for m in at.markdown)
-    assert at.session_state["ver-mo-bai"] == 1
-
-    button(at, "↶", key="undo-mo-bai").click().run()
-    assert at.session_state["ver-mo-bai"] == 0
-
-
-def test_applying_tone_fix_removes_sentence_and_raises_score(project_root):
-    at = open_page(project_root, "write.py")
-    sid, sentence, _reason, replacement = demo.TONE_FLAGS[0]
-    before = demo.NATURAL_MAX - demo.NATURAL_PENALTY * len(demo.TONE_FLAGS)
-    assert any(f"<b>{before}</b>" in m.value for m in at.markdown)
-
-    button(at, "Áp dụng", key=f"fix-{sentence[:20]}").click().run()
-
-    text = at.session_state[f"texts-{sid}"][0]
-    assert sentence not in text
-    assert replacement in text
-    after = before + demo.NATURAL_PENALTY
-    assert any(f"<b>{after}</b>" in m.value for m in at.markdown)
-
-
 def test_plan_reading_shows_proposed_changes(project_root):
     at = open_page(project_root, "plan.py")
     assert "plan_changes" not in at.session_state
@@ -98,3 +80,90 @@ def test_blind_test_reveals_models_only_after_scoring(project_root):
     button(at, "Chấm xong — hiện tên mô hình").click().run()
     revealed = at.dataframe[-1].value
     assert list(revealed["Bài"])[0] == "C"
+
+
+# ------------------------------------------------------------ Soạn bài với AI
+
+
+def write_page(project_root) -> AppTest:
+    return open_page(project_root, "write.py")
+
+
+def test_without_api_key_ai_buttons_are_locked(project_root):
+    at = write_page(project_root)
+    assert any("ANTHROPIC_API_KEY" in w.value for w in at.warning)
+    at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
+    assert button(at, "🔎 Phân tích từ khóa").disabled
+
+
+def go_to_article(at: AppTest) -> AppTest:
+    at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
+    button(at, "🔎 Phân tích từ khóa").click().run()
+    assert not at.exception, at.exception
+    button(at, "Tiếp: tạo dàn ý →").click().run()
+    assert at.session_state["step"] == 1
+    button(at, "✅ Duyệt dàn ý, viết toàn bài →").click().run()
+    assert not at.exception, at.exception
+    assert at.session_state["step"] == 2
+    return at
+
+
+def test_full_flow_research_outline_write(project_root, fake_ai):
+    at = write_page(project_root)
+    at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
+    button(at, "🔎 Phân tích từ khóa").click().run()
+    assert any(RESEARCH.competitors[0].missing in m.value for m in at.markdown)
+
+    at.text_area(key="real-Kinh nghiệm của xưởng").input("Cổng 201 gần biển hay gỉ").run()
+    button(at, "Tiếp: tạo dàn ý →").click().run()
+    headings = [at.session_state[f"h-{uid}"] for uid in at.session_state["outline_ids"]]
+    assert headings == [item.heading for item in OUTLINE.items]
+
+    # Người dùng xóa mục cuối và sửa tiêu đề mục đầu trước khi duyệt.
+    first, *_, last = at.session_state["outline_ids"]
+    button(at, "🗑️", key=f"rm-{last}").click().run()
+    at.text_input(key=f"h-{first}").input("Inox 201 và 304 khác nhau ở đâu?").run()
+    button(at, "✅ Duyệt dàn ý, viết toàn bài →").click().run()
+    assert not at.exception, at.exception
+
+    assert fake_ai.tasks() == ["research", "outline", "write", "review", "review"]
+    _, _, outline_prompt = fake_ai.calls[1]
+    assert "Cổng 201 gần biển hay gỉ" in outline_prompt
+    _, _, write_prompt = fake_ai.calls[2]
+    assert "Inox 201 và 304 khác nhau ở đâu?" in write_prompt
+    assert OUTLINE.items[-1].heading not in write_prompt
+
+    assert at.session_state["step"] == 2
+    assert at.session_state["auto_fixed"] == 1
+    assert any(VAGUE_FIX in m.value for m in at.markdown)
+    assert any(f'<mark class="tone">{STIFF}</mark>' in m.value for m in at.markdown)
+    assert any('<mark class="missing">' in m.value for m in at.markdown)
+
+
+def test_rewrite_section_adds_version_and_undo(project_root, fake_ai):
+    at = go_to_article(write_page(project_root))
+    pid = at.session_state["part_ids"][1]
+    button(at, "Viết lại phần này", key=f"do-rw-{pid}").click().run()
+    assert not at.exception, at.exception
+    assert at.session_state[f"ver-{pid}"] == 1
+    assert any("Bản viết lại số 1." in m.value for m in at.markdown)
+
+    button(at, "↶", key=f"undo-{pid}").click().run()
+    assert at.session_state[f"ver-{pid}"] == 0
+    assert at.session_state[f"texts-{pid}"][0] == DRAFT.sections[0].body
+
+
+def test_applying_fix_removes_the_flag(project_root, fake_ai):
+    at = go_to_article(write_page(project_root))
+    pid = at.session_state["part_ids"][1]
+    fix = next(b for b in at.button if b.label == "Áp dụng")
+    fix.click().run()
+    assert STIFF not in at.session_state[f"texts-{pid}"][0]
+    assert not any(b.label == "Áp dụng" for b in at.button)
+
+
+def test_recheck_replaces_review(project_root, fake_ai):
+    at = go_to_article(write_page(project_root))
+    button(at, "Kiểm tra lại toàn bài").click().run()
+    assert fake_ai.tasks()[-1] == "review"
+    assert not at.exception, at.exception

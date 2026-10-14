@@ -17,9 +17,9 @@ with top_left:
         demo=True,
     )
 with top_right, st.popover("✍️ Viết bài mới", type="primary", width="stretch"):
-    st.text_input("Từ khóa", placeholder="ví dụ: lan can cầu thang sắt")
+    typed = st.text_input("Từ khóa", placeholder="ví dụ: lan can cầu thang sắt")
     st.caption("hoặc chọn từ kế hoạch")
-    st.selectbox(
+    picked = st.selectbox(
         "Từ kế hoạch",
         [
             r["Từ khóa"]
@@ -29,6 +29,8 @@ with top_right, st.popover("✍️ Viết bài mới", type="primary", width="st
         label_visibility="collapsed",
     )
     if st.button("Bắt đầu", type="primary", width="stretch"):
+        # Trang Soạn bài đọc khóa này để mở bài mới với từ khóa đã chọn.
+        st.session_state["_start_keyword"] = (typed or picked or "").strip()
         st.switch_page("views/write.py")
 
 st.subheader("Đang viết")

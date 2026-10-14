@@ -43,7 +43,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
 - Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
 - **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào), **Cài đặt**, **Kết nối WordPress**.
-- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, chưa gọi AI thật và không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng.
+- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng. Ba bước đầu của **Soạn bài** đã dùng AI thật (xem mục 7).
 
 ## 5. File cấu hình `.env`
 
@@ -91,13 +91,37 @@ App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn t�
 | "không đủ quyền" | Tài khoản cần vai trò Biên tập viên hoặc Quản trị viên. |
 | "Lỗi chứng chỉ bảo mật (SSL)" | Website chưa có https hợp lệ. Kiểm tra bằng cách mở website trên trình duyệt. |
 
-## 7. Cập nhật phiên bản mới
+## 7. Viết bài bằng AI
+
+Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Bước **SEO** và **Xuất bản** vẫn là bản demo.
+
+1. Tạo khóa API ở https://console.anthropic.com (mục **API Keys**) và nạp tiền (credit) cho tài khoản.
+2. Mở file `.env`, điền `ANTHROPIC_API_KEY=...`, rồi tắt app và mở lại.
+3. Vào **Soạn bài**, nhập từ khóa, bấm **Phân tích từ khóa**. Điền phần **Chất liệu thật** (kinh nghiệm, số liệu, câu hỏi khách hay hỏi): AI không tự bịa phần này.
+4. Bấm **Tiếp: tạo dàn ý**, sửa / xóa / sắp xếp lại các mục, rồi bấm **Duyệt dàn ý**. AI viết toàn bài, tự rà soát theo checklist và sửa một lượt trước khi đưa bạn xem.
+5. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
+
+Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn chỉ nằm trong cửa sổ trình duyệt: **tải lại trang (F5) sẽ mất bài**, nên làm xong một bài trong một lần mở.
+
+**Tùy chỉnh (không cần sửa code)**, mở bằng Notepad / TextEdit:
+- `config/ai.toml`: mô hình AI và mức "suy nghĩ" (effort) cho từng việc. Effort cao hơn thì bài kỹ hơn nhưng chậm và tốn tiền hơn.
+- `config/content.toml`: cách xưng hô, giọng văn, cụm từ cấm, checklist rà soát.
+- `config/business_profile.md`: hồ sơ doanh nghiệp AI được phép dùng. Dòng có nhãn `[CẦN XÁC NHẬN]` bị bỏ qua.
+
+| App báo | Cách xử lý |
+|---|---|
+| "Chưa có ANTHROPIC_API_KEY" | Điền khóa vào `.env` rồi mở lại app. |
+| "Khóa ANTHROPIC_API_KEY … không đúng" | Tạo khóa mới ở console.anthropic.com và thay vào `.env`. |
+| "đã hết tiền (credit)" | Nạp thêm credit ở console.anthropic.com → Billing. |
+| "Bài dài quá giới hạn" | Tăng `max_tokens` của việc đó trong `config/ai.toml`. |
+
+## 8. Cập nhật phiên bản mới
 
 - Với GitHub Desktop: mở dự án, bấm **Fetch origin**, rồi bấm **Pull origin** nếu có.
 - Sau đó chạy `run.bat` / `run.command` như bình thường. Thư viện mới (nếu có) sẽ được cài tự động.
 - File `.env` của bạn không bị ghi đè.
 
-## 8. Xử lý sự cố
+## 9. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|

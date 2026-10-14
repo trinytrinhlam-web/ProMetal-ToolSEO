@@ -1,68 +1,179 @@
-"""Soạn bài (DEMO): 5 bước, mỗi phần do AI viết đều có nút viết lại.
+"""Soạn bài: 5 bước. Bước 1–3 do AI làm thật; bước 4 (SEO) và 5 (Xuất bản) còn là bản demo.
 
-Bản demo chạy trên dữ liệu mẫu (seo_app/demo.py): «viết lại» đổi sang phiên bản khác có sẵn,
-«áp dụng» sửa câu ngay trong bài. Chưa gọi AI thật.
+Bài đang soạn nằm trong session_state:
+- ``research``: kết quả nghiên cứu từ khóa (``Research``)
+- dàn ý: ``outline_ids`` + ``h-<id>`` (tiêu đề mục), ``pts-<id>`` (ý chính), ``img-<id>`` (ảnh)
+- bài viết: ``part_ids`` + ``heading-<id>``, ``texts-<id>`` (các phiên bản), ``ver-<id>``
+- ``review``: lần rà soát gần nhất (``Review``)
 """
 
 import html
+import tomllib
 
 import streamlit as st
 
 from seo_app import demo, ui
+from seo_app.ai import AIError, AIRouter, load_ai_config
+from seo_app.config import load_settings
+from seo_app.content import ContentWriter, Outline, OutlineItem, Research, Section, load_rules
+from seo_app.content.models import SCORE_LABELS
+from seo_app.content.rules import find_missing
+from seo_app.content.workflow import apply_flag
+from seo_app.text import slugify
 
 S = st.session_state
-SECTION_BY_ID = {sec["id"]: sec for sec in demo.SECTIONS}
 REWRITE_STYLES = ["Ngắn hơn", "Thân thiện hơn", "Thêm ví dụ", "Bớt thuật ngữ", "Trang trọng hơn"]
+MATERIAL = {
+    "Kinh nghiệm của xưởng": "ví dụ: khách gần biển làm cổng 201, 1–2 năm đã gỉ mối hàn",
+    "Số liệu của bạn": "ví dụ: chênh lệch giá thật từ báo giá của xưởng",
+    "Câu hỏi khách hay hỏi": "ví dụ: Inox 304 có bị gỉ không? Làm sao biết thợ dùng đúng 304?",
+}
+COMPOSE_PREFIXES = ("h-", "pts-", "img-", "heading-", "texts-", "ver-", "editing-", "manual-")
 
 
 # ------------------------------------------------------------------ trạng thái
 
 
 def init_state() -> None:
-    S.setdefault("step", 2)  # mở sẵn ở bước «Viết & kiểm tra» cho dễ xem
-    S.setdefault("intent_v", 0)
+    if "_start_keyword" in S:  # bấm «Viết bài mới» ở trang Bài viết
+        reset_compose()
+        S.keyword = S.pop("_start_keyword")
+    S.setdefault("step", 0)
+    S.setdefault("keyword", "")
+    S.setdefault("research", None)
+    S.setdefault("research_keyword", "")
+    S.setdefault("outline_title", "")
+    S.setdefault("outline_ids", [])
+    S.setdefault("next_id", 0)
+    S.setdefault("article_title", "")
+    S.setdefault("part_ids", [])
+    S.setdefault("review", None)
+    S.setdefault("auto_fixed", 0)
     S.setdefault("ignored_flags", set())
     S.setdefault("title_v", 0)
     S.setdefault("desc_v", 0)
     S.setdefault("meta_title", demo.META_TITLES[0])
     S.setdefault("meta_desc", demo.META_DESCRIPTIONS[0])
-    for sec in demo.SECTIONS:
-        S.setdefault(f"texts-{sec['id']}", list(sec["versions"]))
-        S.setdefault(f"ver-{sec['id']}", 0)
-    for i, item in enumerate(demo.OUTLINE):
-        S.setdefault(f"h-{i}", item["heading"])
-    for slot in demo.IMAGE_SLOTS:
-        S.setdefault(f"kind-{slot['id']}", slot["kind"])
-        S.setdefault(f"prompt-{slot['id']}", slot["prompt"])
+    if "_goto" in S:  # đổi bước sau khi AI chạy xong (phải đặt trước khi vẽ thanh bước)
+        S.step = S.pop("_goto")
 
 
-def current_text(sid: str) -> str:
-    return S[f"texts-{sid}"][S[f"ver-{sid}"]]
+def reset_compose() -> None:
+    for key in list(S.keys()):
+        if key.startswith(COMPOSE_PREFIXES) or key in {
+            "research",
+            "research_keyword",
+            "outline_title",
+            "outline_ids",
+            "article_title",
+            "part_ids",
+            "review",
+            "auto_fixed",
+            "ignored_flags",
+        }:
+            del S[key]
+    S.step = 0
 
 
-def open_tone_flags() -> list[tuple[str, str, str, str]]:
-    return [
-        flag
-        for flag in demo.TONE_FLAGS
-        if flag[1] in current_text(flag[0]) and flag[1] not in S.ignored_flags
+def new_id() -> int:
+    S.next_id += 1
+    return S.next_id
+
+
+def keyword() -> str:
+    return S.keyword.strip()
+
+
+def material() -> dict[str, str]:
+    return {label: S.get(f"real-{label}", "") for label in MATERIAL}
+
+
+def current_text(pid: int) -> str:
+    return S[f"texts-{pid}"][S[f"ver-{pid}"]]
+
+
+def current_parts() -> list[Section]:
+    return [Section(heading=S[f"heading-{pid}"], body=current_text(pid)) for pid in S.part_ids]
+
+
+def current_outline() -> Outline:
+    items = [
+        OutlineItem(heading=S[f"h-{uid}"].strip(), points=S[f"pts-{uid}"], image=S[f"img-{uid}"])
+        for uid in S.outline_ids
+        if S[f"h-{uid}"].strip()
     ]
+    return Outline(title=S.outline_title.strip() or keyword(), items=items)
 
 
-def quality_scores() -> dict[str, int]:
-    natural = demo.NATURAL_MAX - demo.NATURAL_PENALTY * len(open_tone_flags())
-    base = dict(demo.QUALITY_BASE)
-    return {
-        "Thân thiện": base["Thân thiện"],
-        "Tự nhiên, không máy móc": natural,
-        "Dễ đọc": base["Dễ đọc"],
-        "Cụ thể, có ích": base["Cụ thể, có ích"],
-        "Chuẩn SEO": base["Chuẩn SEO"],
-    }
+def set_outline(outline: Outline) -> None:
+    S.outline_title = outline.title
+    S.outline_ids = []
+    for item in outline.items:
+        uid = new_id()
+        S[f"h-{uid}"] = item.heading
+        S[f"pts-{uid}"] = list(item.points)
+        S[f"img-{uid}"] = item.image.strip()
+        S.outline_ids.append(uid)
 
 
-def overall_score() -> int:
-    scores = quality_scores()
-    return round(sum(scores.values()) / len(scores))
+def set_article(title: str, parts: list[Section], outline: Outline) -> None:
+    images = {item.heading: item.image.strip() for item in outline.items}
+    S.article_title = title
+    S.part_ids = []
+    for part in parts:
+        pid = new_id()
+        S[f"heading-{pid}"] = part.heading
+        S[f"texts-{pid}"] = [part.body]
+        S[f"ver-{pid}"] = 0
+        S[f"img-{pid}"] = images.get(part.heading, "")
+        S.part_ids.append(pid)
+
+
+def open_flags() -> list[tuple[int, str, str, str]]:
+    """Gợi ý sửa còn hiệu lực: (id phần, câu, lý do, câu thay thế)."""
+    if S.review is None:
+        return []
+    result = []
+    for flag in S.review.flags:
+        if flag.section >= len(S.part_ids) or flag.sentence in S.ignored_flags:
+            continue
+        pid = S.part_ids[flag.section]
+        if flag.sentence in current_text(pid):
+            result.append((pid, flag.sentence, flag.reason, flag.replacement))
+    return result
+
+
+def missing_spots() -> list[tuple[int, str]]:
+    return [(pid, spot) for pid in S.part_ids for spot in find_missing(current_text(pid))]
+
+
+def overall_score() -> int | None:
+    if S.review is None:
+        return None
+    scores = S.review.scores.model_dump().values()
+    return round(sum(scores) / len(scores))
+
+
+# -------------------------------------------------------------------------- AI
+
+
+def build_writer() -> ContentWriter:
+    return ContentWriter(AIRouter(load_ai_config(), load_settings()), load_rules())
+
+
+def ai_call(spinner: str, fn, *args, **kwargs):
+    """Chạy một bước AI, hiện vòng quay; lỗi thì báo bằng tiếng Việt và trả về None."""
+    try:
+        with st.spinner(spinner, show_time=True):
+            return fn(*args, **kwargs)
+    except AIError as exc:
+        st.error(str(exc))
+        return None
+
+
+def goto(step: int) -> None:
+    S._goto = step
+    st.rerun()
 
 
 # -------------------------------------------------------------------- hành động
@@ -72,37 +183,29 @@ def go(step: int) -> None:
     S.step = step
 
 
-def rewrite(sid: str) -> None:
-    S[f"ver-{sid}"] = (S[f"ver-{sid}"] + 1) % len(S[f"texts-{sid}"])
-    styles = S.get(f"style-{sid}") or []
-    note = S.get(f"note-{sid}", "").strip()
-    wish = ", ".join([*styles, note] if note else styles)
-    heading = SECTION_BY_ID[sid]["heading"]
-    st.toast(f"Đã viết lại «{heading}»" + (f" — {wish}" if wish else ""), icon="🔄")
+def undo(pid: int) -> None:
+    S[f"ver-{pid}"] = max(0, S[f"ver-{pid}"] - 1)
 
 
-def undo(sid: str) -> None:
-    S[f"ver-{sid}"] = (S[f"ver-{sid}"] - 1) % len(S[f"texts-{sid}"])
+def redo(pid: int) -> None:
+    S[f"ver-{pid}"] = min(len(S[f"texts-{pid}"]) - 1, S[f"ver-{pid}"] + 1)
 
 
-def toggle_edit(sid: str) -> None:
-    S[f"editing-{sid}"] = not S.get(f"editing-{sid}", False)
+def toggle_edit(pid: int) -> None:
+    S[f"editing-{pid}"] = not S.get(f"editing-{pid}", False)
 
 
-def save_manual(sid: str) -> None:
-    S[f"texts-{sid}"][S[f"ver-{sid}"]] = S[f"manual-{sid}"]
-    S[f"editing-{sid}"] = False
-    del S[f"manual-{sid}"]
+def save_manual(pid: int) -> None:
+    S[f"texts-{pid}"][S[f"ver-{pid}"]] = S[f"manual-{pid}"]
+    S[f"editing-{pid}"] = False
+    del S[f"manual-{pid}"]
     st.toast("Đã lưu phần bạn sửa", icon="✏️")
 
 
-def apply_fix(sid: str, sentence: str, replacement: str) -> None:
-    texts = S[f"texts-{sid}"]
-    i = S[f"ver-{sid}"]
-    if replacement:
-        texts[i] = texts[i].replace(sentence, replacement)
-    else:
-        texts[i] = texts[i].replace(sentence + " ", "").replace(sentence, "")
+def apply_fix(pid: int, sentence: str, replacement: str) -> None:
+    texts = S[f"texts-{pid}"]
+    i = S[f"ver-{pid}"]
+    texts[i] = apply_flag(texts[i], sentence, replacement)
     st.toast("Đã sửa câu", icon="✅")
 
 
@@ -110,14 +213,25 @@ def ignore_fix(sentence: str) -> None:
     S.ignored_flags = S.ignored_flags | {sentence}
 
 
-def next_intent() -> None:
-    S.intent_v = 1 - S.intent_v
-    st.toast("Đã phân tích lại ý định tìm kiếm", icon="🔄")
+def add_item() -> None:
+    uid = new_id()
+    S[f"h-{uid}"] = ""
+    S[f"pts-{uid}"] = []
+    S[f"img-{uid}"] = ""
+    S.outline_ids = [*S.outline_ids, uid]
 
 
-def next_heading(i: int) -> None:
-    item = demo.OUTLINE[i]
-    S[f"h-{i}"] = item["alt"] if S[f"h-{i}"] == item["heading"] else item["heading"]
+def remove_item(uid: int) -> None:
+    S.outline_ids = [i for i in S.outline_ids if i != uid]
+
+
+def move_item(uid: int, delta: int) -> None:
+    ids = list(S.outline_ids)
+    i = ids.index(uid)
+    j = i + delta
+    if 0 <= j < len(ids):
+        ids[i], ids[j] = ids[j], ids[i]
+        S.outline_ids = ids
 
 
 def next_meta(kind: str) -> None:
@@ -130,34 +244,66 @@ def demo_toast(message: str) -> None:
     st.toast(f"Bản demo: {message}", icon="🧪")
 
 
+def demo_note(text: str) -> None:
+    st.caption(f":orange-badge[🧪 Bản demo] {text}")
+
+
 # ------------------------------------------------------------------- các bước
 
 
-def step_prepare() -> None:
-    left, right = st.columns(2, gap="medium")
-    with left, st.container(border=True, height="stretch"):
-        head, btn = st.columns([5, 1], vertical_alignment="center")
-        head.markdown("#### 🎯 Người tìm từ khóa này muốn gì?")
-        btn.button("🔄", key="re-intent", on_click=next_intent, help="Phân tích lại")
-        for line in demo.INTENT if S.intent_v == 0 else demo.INTENT_ALT:
-            st.markdown(f"- {line}")
-    with right, st.container(border=True, height="stretch"):
-        head, btn = st.columns([5, 1], vertical_alignment="center")
-        head.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
-        btn.button(
-            "🔄",
-            key="re-competitors",
-            help="Nghiên cứu lại",
-            on_click=demo_toast,
-            args=("nghiên cứu lại đối thủ",),
-        )
-        for title, gap in demo.COMPETITOR_GAPS:
-            st.markdown(f"**{title}**  \n:gray[Thiếu: {gap}]")
+def run_outline(writer: ContentWriter) -> None:
+    outline = ai_call("AI đang lập dàn ý…", writer.outline, keyword(), S.research, material())
+    if outline is not None:
+        set_outline(outline)
+        goto(1)
 
-    with st.container(border=True):
-        st.markdown("#### ✨ Bài của mình phải có thêm")
-        for angle in demo.NEW_ANGLES:
-            st.markdown(f"- {angle}")
+
+def step_prepare(writer: ContentWriter | None) -> None:
+    kw_col, btn_col = st.columns([4, 1.4], vertical_alignment="bottom")
+    kw_col.text_input("Từ khóa chính", key="keyword", placeholder="ví dụ: so sánh inox 201 và 304")
+    research: Research | None = S.research
+    label = "🔄 Phân tích lại" if research else "🔎 Phân tích từ khóa"
+    if btn_col.button(
+        label, type="primary", width="stretch", disabled=writer is None or not keyword()
+    ):
+        result = ai_call(
+            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)",
+            writer.research,
+            keyword(),
+        )
+        if result is not None:
+            S.research = result
+            S.research_keyword = keyword()
+            st.rerun()
+
+    if research is None:
+        st.info(
+            "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì và đọc các "
+            "bài đứng đầu Google để tìm chỗ họ còn thiếu."
+        )
+    else:
+        if S.research_keyword != keyword():
+            st.warning(
+                f"Kết quả dưới đây là của từ khóa «{S.research_keyword}». "
+                "Bấm Phân tích lại cho từ khóa mới."
+            )
+        left, right = st.columns(2, gap="medium")
+        with left, st.container(border=True, height="stretch"):
+            st.markdown("#### 🎯 Người tìm từ khóa này muốn gì?")
+            for line in research.intent:
+                st.markdown(f"- {line}")
+            st.markdown(f"**Dạng bài hợp nhất:** {research.article_type}")
+        with right, st.container(border=True, height="stretch"):
+            st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
+            for c in research.competitors:
+                title = f"[{c.title}]({c.url})" if c.url.startswith("http") else c.title
+                st.markdown(f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]")
+        with st.container(border=True):
+            st.markdown("#### ✨ Bài của mình phải có thêm")
+            for angle in research.new_angles:
+                st.markdown(f"- {angle}")
+            if research.questions:
+                st.markdown("**Người đọc hay hỏi thêm:** " + " · ".join(research.questions))
 
     with st.container(border=True):
         st.markdown("#### 🧱 Chất liệu thật — phần chỉ bạn có")
@@ -165,204 +311,230 @@ def step_prepare() -> None:
             "AI không được bịa phần này. Ô nào để trống, bài sẽ đánh dấu chỗ cần bổ sung "
             "thay vì tự điền."
         )
-        cols = st.columns(3)
-        for col, (label, value) in zip(cols, demo.REAL_MATERIAL.items(), strict=True):
-            col.text_area(
-                label,
-                value,
-                height=130,
-                key=f"real-{label}",
-                placeholder="ví dụ: chênh lệch giá thật từ báo giá của xưởng",
-            )
+        cols = st.columns(len(MATERIAL))
+        for col, (label, hint) in zip(cols, MATERIAL.items(), strict=True):
+            col.text_area(label, height=130, key=f"real-{label}", placeholder=hint)
 
-    st.button("Tiếp: tạo dàn ý →", type="primary", on_click=go, args=(1,))
+    has_outline = bool(S.outline_ids)
+    if st.button(
+        "Tiếp: dàn ý →" if has_outline else "Tiếp: tạo dàn ý →",
+        type="primary",
+        disabled=writer is None or research is None,
+    ):
+        if has_outline:
+            goto(1)
+        run_outline(writer)
 
 
-def step_outline() -> None:
+def step_outline(writer: ContentWriter | None) -> None:
+    if S.research is None:
+        st.info("Làm bước **Chuẩn bị** trước: nhập từ khóa và bấm Phân tích.")
+        return
+    if not S.outline_ids:
+        st.info("Chưa có dàn ý.")
+        if st.button("🧠 Tạo dàn ý", type="primary", disabled=writer is None):
+            run_outline(writer)
+        return
+
     st.caption("Duyệt dàn ý trước. AI chỉ viết toàn bài sau khi bạn bấm Duyệt.")
-    for i, item in enumerate(demo.OUTLINE):
+    st.text_input("Tiêu đề bài (H1)", key="outline_title")
+    for n, uid in enumerate(S.outline_ids, start=1):
         with st.container(border=True):
-            num, text, tag, rw, rm = st.columns(
-                [0.5, 7, 1.6, 0.7, 0.7], vertical_alignment="center"
+            num, text, tag, up, down, rm = st.columns(
+                [0.5, 7, 1.6, 0.6, 0.6, 0.6], vertical_alignment="center"
             )
-            num.markdown(f"**{i + 1}**")
-            text.text_input("Mục", key=f"h-{i}", label_visibility="collapsed")
-            if item["image"]:
-                tag.markdown(":violet-badge[📷 cần ảnh]")
-            rw.button(
-                "🔄", key=f"rw-h-{i}", on_click=next_heading, args=(i,), help="Viết lại mục này"
-            )
-            rm.button("🗑️", key=f"rm-h-{i}", on_click=demo_toast, args=("xóa mục",), help="Xóa mục")
+            num.markdown(f"**{n}**")
+            text.text_input("Mục", key=f"h-{uid}", label_visibility="collapsed")
+            if S[f"img-{uid}"]:
+                tag.markdown(":violet-badge[📷 cần ảnh]", help=S[f"img-{uid}"])
+            up.button("↑", key=f"up-{uid}", on_click=move_item, args=(uid, -1), help="Lên")
+            down.button("↓", key=f"dn-{uid}", on_click=move_item, args=(uid, 1), help="Xuống")
+            rm.button("🗑️", key=f"rm-{uid}", on_click=remove_item, args=(uid,), help="Xóa mục")
+            if S[f"pts-{uid}"]:
+                st.caption(" · ".join(S[f"pts-{uid}"]))
     a, b, _ = st.columns([1.3, 1.6, 3])
-    a.button("➕ Thêm mục", on_click=demo_toast, args=("thêm mục",), width="stretch")
-    b.button("🔄 Tạo lại cả dàn ý", on_click=demo_toast, args=("tạo lại dàn ý",), width="stretch")
+    a.button("➕ Thêm mục", on_click=add_item, width="stretch")
+    if b.button("🔄 Tạo lại cả dàn ý", width="stretch", disabled=writer is None):
+        run_outline(writer)
     st.divider()
+    if S.part_ids:
+        st.caption("⚠️ Đã có bài viết. Duyệt lại dàn ý sẽ viết lại toàn bài, thay bài hiện tại.")
     left, right = st.columns([1, 4])
     left.button("← Chuẩn bị", on_click=go, args=(0,))
-    right.button("✅ Duyệt dàn ý, viết toàn bài →", type="primary", on_click=go, args=(2,))
-
-
-def image_slot(slot: dict) -> None:
-    sid = slot["id"]
-    with st.container(border=True, key=f"img-{sid}"):
-        st.markdown(f"**📷 Chỗ cần ảnh** — {slot['purpose']}")
-        kind = st.segmented_control(
-            "Loại ảnh",
-            ["Ảnh thật", "Ảnh AI"],
-            key=f"kind-{sid}",
-            required=True,
-            label_visibility="collapsed",
+    if right.button("✅ Duyệt dàn ý, viết toàn bài →", type="primary", disabled=writer is None):
+        outline = current_outline()
+        if not outline.items:
+            st.error("Dàn ý đang trống.")
+            return
+        result = ai_call(
+            "AI đang viết toàn bài rồi tự rà soát theo checklist… (thường mất 2–4 phút)",
+            writer.write_and_review,
+            keyword(),
+            S.research,
+            material(),
+            outline,
         )
-        preview, detail = st.columns([1, 2], gap="medium")
-        if kind == "Ảnh thật":
-            choice = detail.selectbox(
-                "Ảnh trong thư mục",
-                demo.FOLDER_IMAGES,
-                index=demo.FOLDER_IMAGES.index(slot["file"]) if slot["file"] else 0,
-                key=f"file-{sid}",
-            )
-            preview.markdown(
-                f'<div class="img-ph">🖼️<br>{html.escape(choice)}</div>', unsafe_allow_html=True
-            )
-            detail.caption("Ảnh được nén WebP, đổi tên không dấu và xóa vị trí GPS khi tải lên.")
-        else:
-            preview.markdown(
-                '<div class="img-ph">✨<br>Ảnh AI sẽ hiện ở đây</div>', unsafe_allow_html=True
-            )
-            with detail:
-                st.caption(
-                    "Prompt tạo ảnh (tiếng Anh cho mô hình hiểu tốt hơn) — bấm biểu "
-                    "tượng ở góc khung để sao chép."
-                )
-                st.code(S[f"prompt-{sid}"], language=None, wrap_lines=True)
-                a, b, c = st.columns(3)
-                a.button(
-                    "🎨 Tạo ảnh",
-                    key=f"gen-{sid}",
-                    type="primary",
-                    width="stretch",
-                    on_click=demo_toast,
-                    args=("tạo ảnh bằng AI",),
-                )
-                b.button(
-                    "🔄 Prompt khác",
-                    key=f"rp-{sid}",
-                    width="stretch",
-                    on_click=demo_toast,
-                    args=("viết prompt khác",),
-                )
-                with c.popover("✏️ Sửa", width="stretch"):
-                    st.text_area("Prompt", key=f"prompt-{sid}", height=150)
-        detail.text_input(
-            "Alt (mô tả ảnh cho Google và người khiếm thị)", slot["alt"], key=f"alt-{sid}"
-        )
+        if result is not None:
+            title, parts, review, fixed = result
+            set_article(title, parts, outline)
+            S.review = review
+            S.auto_fixed = fixed
+            S.ignored_flags = set()
+            goto(2)
 
 
-def section_card(sec: dict, flags: list[tuple[str, str, str, str]]) -> None:
-    sid = sec["id"]
-    versions = len(S[f"texts-{sid}"])
-    with st.container(border=True, key=f"sec-{sid}"):
+def image_slot(pid: int) -> None:
+    with st.container(border=True):
+        st.markdown(f"**📷 Chỗ cần ảnh** — {S[f'img-{pid}']}")
+        demo_note("chọn ảnh thật từ thư mục hoặc tạo ảnh AI sẽ làm ở Giai đoạn 3.")
+
+
+def section_card(writer: ContentWriter | None, index: int, pid: int, tone: list[str]) -> None:
+    versions = len(S[f"texts-{pid}"])
+    with st.container(border=True, key=f"sec-{pid}"):
         title, tools = st.columns([3, 2], vertical_alignment="center")
-        label = "Đoạn mở đầu" if sid == "mo-bai" else "Mục"
+        label = "Đoạn mở đầu" if index == 0 else "Mục"
         title.markdown(
-            f'<div class="sec-label">{label} · bản {S[f"ver-{sid}"] + 1}/{versions}</div>'
-            f'<div class="sec-title">{html.escape(sec["heading"])}</div>',
+            f'<div class="sec-label">{label} · bản {S[f"ver-{pid}"] + 1}/{versions}</div>'
+            f'<div class="sec-title">{html.escape(S[f"heading-{pid}"])}</div>',
             unsafe_allow_html=True,
         )
         with tools, st.container(horizontal=True, horizontal_alignment="right", gap="small"):
-            with st.popover("🔄 Viết lại"):
-                st.pills(
+            with st.popover("🔄 Viết lại", disabled=writer is None):
+                styles = st.pills(
                     "Viết lại theo kiểu",
                     REWRITE_STYLES,
                     selection_mode="multi",
-                    key=f"style-{sid}",
+                    key=f"style-{pid}",
                 )
-                st.text_input(
+                note = st.text_input(
                     "Hoặc ghi yêu cầu",
-                    key=f"note-{sid}",
+                    key=f"note-{pid}",
                     placeholder="ví dụ: nhắc tới khách ở Hội An",
                 )
+                if st.button(
+                    "Viết lại phần này", key=f"do-rw-{pid}", type="primary", width="stretch"
+                ):
+                    body = ai_call(
+                        "AI đang viết lại…",
+                        writer.rewrite_section,
+                        keyword(),
+                        S.article_title,
+                        current_parts(),
+                        index,
+                        styles or [],
+                        note or "",
+                    )
+                    if body:
+                        S[f"texts-{pid}"] = [*S[f"texts-{pid}"], body]
+                        S[f"ver-{pid}"] = len(S[f"texts-{pid}"]) - 1
+                        st.rerun()
+            st.button("✏️ Sửa", key=f"edit-{pid}", on_click=toggle_edit, args=(pid,))
+            st.button(
+                "↶",
+                key=f"undo-{pid}",
+                on_click=undo,
+                args=(pid,),
+                help="Về bản trước",
+                disabled=S[f"ver-{pid}"] == 0,
+            )
+            if versions > 1:
                 st.button(
-                    "Viết lại phần này",
-                    key=f"do-rw-{sid}",
-                    type="primary",
-                    width="stretch",
-                    on_click=rewrite,
-                    args=(sid,),
+                    "↷",
+                    key=f"redo-{pid}",
+                    on_click=redo,
+                    args=(pid,),
+                    help="Tới bản sau",
+                    disabled=S[f"ver-{pid}"] == versions - 1,
                 )
-            st.button("✏️ Sửa", key=f"edit-{sid}", on_click=toggle_edit, args=(sid,))
-            st.button("↶", key=f"undo-{sid}", on_click=undo, args=(sid,), help="Về bản trước")
 
-        if S.get(f"editing-{sid}"):
+        if S.get(f"editing-{pid}"):
             st.text_area(
                 "Sửa trực tiếp",
-                current_text(sid),
-                height=180,
-                key=f"manual-{sid}",
+                current_text(pid),
+                height=220,
+                key=f"manual-{pid}",
                 label_visibility="collapsed",
             )
-            st.button("Lưu", key=f"save-{sid}", on_click=save_manual, args=(sid,))
+            st.button("Lưu", key=f"save-{pid}", on_click=save_manual, args=(pid,))
         else:
-            tone = [f[1] for f in flags if f[0] == sid]
-            missing = ["[số liệu của xưởng]"] if sid == demo.MISSING_DATA[0] else []
-            st.markdown(ui.highlight(current_text(sid), tone, missing), unsafe_allow_html=True)
+            text = current_text(pid)
+            st.markdown(ui.highlight(text, tone, find_missing(text)), unsafe_allow_html=True)
 
-        for slot in demo.IMAGE_SLOTS:
-            if slot["section"] == sid:
-                image_slot(slot)
+        if S.get(f"img-{pid}"):
+            image_slot(pid)
 
 
-def quality_panel(flags: list[tuple[str, str, str, str]]) -> None:
+def quality_panel(writer: ContentWriter | None, flags: list[tuple[int, str, str, str]]) -> None:
     with st.container(border=True):
         st.markdown("#### 🔍 Văn phong")
-        st.caption("AI đọc lại cả bài như một người đọc thật: có thân thiện, tự nhiên không?")
-        st.markdown(ui.score_panel(overall_score(), quality_scores()), unsafe_allow_html=True)
-        st.button(
-            "Kiểm tra lại toàn bài",
-            width="stretch",
-            on_click=demo_toast,
-            args=("kiểm tra lại văn phong",),
-        )
+        st.caption("AI đọc lại cả bài như một người đọc thật, theo checklist trong config/.")
+        if S.review is not None:
+            scores = {SCORE_LABELS[k]: v for k, v in S.review.scores.model_dump().items()}
+            st.markdown(ui.score_panel(overall_score(), scores), unsafe_allow_html=True)
+            if S.review.summary:
+                st.caption(S.review.summary)
+        if st.button("Kiểm tra lại toàn bài", width="stretch", disabled=writer is None):
+            review = ai_call(
+                "AI đang đọc lại toàn bài…",
+                writer.review,
+                keyword(),
+                S.article_title,
+                current_parts(),
+            )
+            if review is not None:
+                S.review = review
+                S.ignored_flags = set()
+                st.rerun()
+        if S.auto_fixed:
+            st.caption(f"✅ AI đã tự sửa {S.auto_fixed} câu trước khi đưa bạn xem.")
 
-    st.markdown(f"**Cần xem lại ({len(flags) + 1})**")
-    for sid, sentence, reason, replacement in flags:
+    missing = missing_spots()
+    st.markdown(f"**Cần xem lại ({len(flags) + len(missing)})**")
+    for pid, sentence, reason, replacement in flags:
         with st.container(border=True):
-            st.markdown(f":orange-badge[Nghe máy móc] :gray[{SECTION_BY_ID[sid]['heading']}]")
+            st.markdown(f":orange-badge[Nghe máy móc] :gray[{S[f'heading-{pid}']}]")
             st.markdown(f"> {sentence}")
             st.caption(reason)
             st.markdown(f"**Gợi ý:** {replacement}" if replacement else "**Gợi ý:** bỏ câu này.")
             a, b = st.columns(2)
+            key = f"{pid}-{abs(hash(sentence))}"
             a.button(
                 "Áp dụng",
-                key=f"fix-{sentence[:20]}",
+                key=f"fix-{key}",
                 type="primary",
                 width="stretch",
                 on_click=apply_fix,
-                args=(sid, sentence, replacement),
+                args=(pid, sentence, replacement),
             )
             b.button(
                 "Bỏ qua",
-                key=f"skip-{sentence[:20]}",
+                key=f"skip-{key}",
                 width="stretch",
                 on_click=ignore_fix,
                 args=(sentence,),
             )
-    with st.container(border=True):
-        sid, note = demo.MISSING_DATA
-        st.markdown(f":red-badge[Thiếu số liệu] :gray[{SECTION_BY_ID[sid]['heading']}]")
-        st.caption(note)
-    if not flags:
-        st.success("Không còn câu nào nghe máy móc.")
+    for pid, spot in missing:
+        with st.container(border=True):
+            st.markdown(f":red-badge[Thiếu số liệu] :gray[{S[f'heading-{pid}']}]")
+            st.caption(f"{spot} — điền số liệu thật bằng nút ✏️ Sửa. AI không tự điền.")
+    if not flags and not missing:
+        st.success("Không còn câu nào cần xem lại.")
 
 
-def step_write() -> None:
-    flags = open_tone_flags()
+def step_write(writer: ContentWriter | None) -> None:
+    if not S.part_ids:
+        st.info("Chưa có bài. Duyệt dàn ý ở bước **Dàn ý** để AI viết toàn bài.")
+        return
+    flags = open_flags()
+    st.markdown(f"## {html.escape(S.article_title)}", unsafe_allow_html=True)
     article, panel = st.columns([2.3, 1], gap="large")
     with article:
-        for sec in demo.SECTIONS:
-            section_card(sec, flags)
+        for index, pid in enumerate(S.part_ids):
+            tone = [f[1] for f in flags if f[0] == pid]
+            section_card(writer, index, pid, tone)
     with panel:
-        quality_panel(flags)
+        quality_panel(writer, flags)
     st.divider()
     left, right = st.columns([1, 4])
     left.button("← Dàn ý", on_click=go, args=(1,))
@@ -375,6 +547,8 @@ def count_badge(n: int, low: int, high: int) -> str:
 
 
 def step_seo() -> None:
+    demo_note("meta, schema và liên kết nội bộ thật sẽ làm ở Giai đoạn 4.")
+    slug = slugify(keyword()) or demo.SLUG
     left, right = st.columns([3, 2], gap="large")
     with left:
         a, b = st.columns([6, 1], vertical_alignment="bottom")
@@ -385,11 +559,11 @@ def step_seo() -> None:
         a.text_area("Meta description", key="meta_desc", height=90)
         b.button("🔄", key="re-desc", on_click=next_meta, args=("desc",), help="Gợi ý khác")
         st.markdown(count_badge(len(S.meta_desc), 120, 155))
-        st.text_input("Đường dẫn (slug)", demo.SLUG)
+        st.text_input("Đường dẫn (slug)", slug)
     with right:
         st.markdown("**Xem trước trên Google**")
         st.markdown(
-            ui.serp_preview(S.meta_title, f"prometal.vn › {demo.SLUG}", S.meta_desc),
+            ui.serp_preview(S.meta_title, f"suachuacuasat.com › {slug}", S.meta_desc),
             unsafe_allow_html=True,
         )
     st.markdown("**Liên kết nội bộ** — gợi ý từ các bài đã có trên website")
@@ -405,20 +579,23 @@ def step_seo() -> None:
 
 
 def step_publish() -> None:
-    flags = open_tone_flags()
+    demo_note("gửi bài thật sang WordPress từ trang này sẽ nối ở Giai đoạn 5.")
+    flags = open_flags()
+    missing = missing_spots()
     score = overall_score()
-    ready_images = sum(1 for s in demo.IMAGE_SLOTS if S[f"kind-{s['id']}"] == "Ảnh thật")
+    images = sum(1 for pid in S.part_ids if S.get(f"img-{pid}"))
     left, right = st.columns([1, 1], gap="large")
     with left, st.container(border=True):
         st.markdown("#### Kiểm tra trước khi gửi")
         checks = [
-            (score >= 80, f"Điểm văn phong {score}/100"),
-            (not flags, f"Câu nghe máy móc còn lại: {len(flags)}"),
-            (False, "Còn 1 chỗ thiếu số liệu thật (mục Chi phí)"),
+            (bool(S.part_ids), "Đã có bài viết" if S.part_ids else "Chưa có bài viết"),
             (
-                ready_images == len(demo.IMAGE_SLOTS),
-                f"Ảnh: {ready_images}/{len(demo.IMAGE_SLOTS)} đã có (ảnh AI chưa tạo)",
+                score is not None and score >= 80,
+                f"Điểm văn phong {score}/100" if score is not None else "Chưa chấm văn phong",
             ),
+            (not flags, f"Câu cần xem lại còn: {len(flags)}"),
+            (not missing, f"Chỗ thiếu số liệu thật còn: {len(missing)}"),
+            (images == 0, f"Chỗ cần ảnh: {images} (chọn ảnh ở Giai đoạn 3)"),
             (True, "Meta title, description, slug"),
         ]
         for ok, text in checks:
@@ -451,7 +628,15 @@ def step_publish() -> None:
 # ----------------------------------------------------------------------- trang
 
 init_state()
-ui.page_header("Soạn bài", f"Từ khóa: {demo.KEYWORD}", demo=True)
+ui.page_header("Soạn bài", f"Từ khóa: {keyword()}" if keyword() else "Bắt đầu bằng một từ khóa")
+
+writer: ContentWriter | None = None
+try:
+    writer = build_writer()
+except AIError as exc:
+    st.warning(f"{exc} Các bước dùng AI tạm khóa cho tới khi sửa xong.")
+except tomllib.TOMLDecodeError as exc:
+    st.warning(f"File config/content.toml viết sai cú pháp: {exc}")
 
 st.segmented_control(
     "Bước",
@@ -463,4 +648,13 @@ st.segmented_control(
     width="stretch",
 )
 
-[step_prepare, step_outline, step_write, step_seo, step_publish][S.step]()
+if S.step == 0:
+    step_prepare(writer)
+elif S.step == 1:
+    step_outline(writer)
+elif S.step == 2:
+    step_write(writer)
+elif S.step == 3:
+    step_seo()
+else:
+    step_publish()

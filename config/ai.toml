@@ -1,0 +1,39 @@
+# Mô hình AI cho từng việc. Sửa file này rồi tải lại trang là có hiệu lực, không cần sửa code.
+#
+# provider   : hãng AI. Hiện có "anthropic". "openai" và "gemini" sẽ thêm sau.
+# model      : tên mô hình của hãng đó, ví dụ "claude-opus-5-5", "claude-sonnet-5-5".
+# effort     : AI nghĩ kỹ tới đâu: "low" | "medium" | "high" | "xhigh" | "max".
+#              Càng cao càng kỹ, nhưng chậm hơn và tốn tiền hơn.
+# web_search : true = cho AI tự tìm trên Google/web (dùng cho bước nghiên cứu đối thủ).
+# max_tokens : độ dài tối đa AI được trả về (1 token ≈ 1 chữ tiếng Việt ngắn).
+
+[tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "medium"
+web_search = true
+max_tokens = 16000
+
+[tasks.outline]  # tạo dàn ý
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "medium"
+max_tokens = 8000
+
+[tasks.write]  # viết toàn bài
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "high"
+max_tokens = 32000
+
+[tasks.rewrite]  # viết lại một phần theo yêu cầu
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "medium"
+max_tokens = 8000
+
+[tasks.review]  # rà soát văn phong theo checklist
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "medium"
+max_tokens = 16000

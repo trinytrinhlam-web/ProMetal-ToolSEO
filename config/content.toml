@@ -1,0 +1,33 @@
+# Quy tắc nội dung. AI đọc file này mỗi lần viết và rà soát bài.
+# Sửa thoải mái bằng Notepad / TextEdit (giữ nguyên dấu ngoặc kép và dấu phẩy).
+
+# Thông tin doanh nghiệp (địa chỉ, dịch vụ, cam kết…) nằm trong config/business_profile.md.
+# AI đọc file đó mỗi lần viết; dòng nào có nhãn [CẦN XÁC NHẬN] sẽ bị bỏ qua.
+
+[voice]
+# Cách xưng hô và giọng văn của cả bài.
+address = "Xưng «Pro-Metal» hoặc «chúng tôi», gọi người đọc là «bạn»"
+tone = "Thân thiện, nói thẳng vào việc như thợ lành nghề tư vấn cho khách, không văn hoa"
+
+# Cụm từ cấm. Câu nào chứa các cụm này sẽ bị đánh dấu (không phân biệt hoa thường).
+banned = [
+  "Trong thời đại",
+  "Hãy cùng tìm hiểu",
+  "Có thể thấy rằng",
+  "vô cùng quan trọng",
+  "quý khách hàng",
+  "Không thể phủ nhận",
+]
+
+[review]
+# Checklist AI dùng để tự rà soát bài trước khi đưa bạn xem.
+checklist = [
+  "Mở bài trả lời ngay điều người tìm cần, không rào đón",
+  "Mỗi ý chung đều có ví dụ, tình huống hoặc con số cụ thể đi kèm",
+  "Không bịa số liệu, giá, nguồn; chỗ thiếu dữ liệu thật phải để dấu [cần bổ sung: ...]",
+  "Dùng chất liệu thật của xưởng (kinh nghiệm, câu hỏi khách) ở đúng chỗ",
+  "Có điều mới mà các bài đứng đầu Google còn thiếu",
+  "Từ khóa chính xuất hiện tự nhiên trong mở bài và ít nhất một tiêu đề mục, không nhồi nhét",
+  "Câu ngắn, đoạn ngắn, dễ đọc trên điện thoại",
+  "Giọng văn đúng cách xưng hô, không lẫn giọng văn bản hành chính",
+]
