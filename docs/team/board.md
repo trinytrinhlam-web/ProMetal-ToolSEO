@@ -8,13 +8,16 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
+| [T-018](tickets/T-018-them-openai-gemini.md) | Thêm AI ChatGPT (OpenAI) và Gemini, thư viện chính hãng (chủ dự án duyệt 2026-10-14) | Thợ Máy | Đang làm | |
+| [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp (PR #3 đã gộp vào `main`) | Ngòi Bút | Đang làm | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| T-018 | Thêm AI OpenAI và Gemini | Thợ Máy | Chủ dự án duyệt cách kết nối (thư viện mới hay không) |
+| T-023 | Bật nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt → Kết nối | Họa Sĩ | T-018 |
 | T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | T-018 |
+| Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
 
@@ -22,7 +25,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Việc | Ở đâu |
 |---|---|
-| Hồ sơ doanh nghiệp `config/business_profile.md` | PR #3 trên GitHub, chờ gộp |
+| _(không còn)_ | Hồ sơ doanh nghiệp (PR #3) đã gộp vào `main` 2026-10-14, kiểm định qua T-022 |
 
 ## Xong
 
@@ -59,4 +62,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-022
+## Số phiếu tiếp theo: T-024
