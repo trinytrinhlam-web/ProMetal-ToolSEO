@@ -35,10 +35,12 @@
 
 ## 3. Khu vực phục vụ
 
-- Phục vụ toàn bộ các quận, huyện, thành phố trực thuộc TP.HCM; có chi nhánh
-  ở tất cả các khu vực (chủ dự án xác nhận 2026-10-14). Bài viết nói "có thợ ở
-  mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ/chi nhánh gần
+- Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ
+  (sáp nhập vào TP.HCM từ 1/7/2025) (chủ dự án xác nhận 2026-10-14). Bài viết nói
+  "có thợ ở mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ gần
   khu vực này".
+- Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập (chủ dự án xác
+  nhận 2026-10-14); bài viết về các khu vực này được nói "có chi nhánh gần khu vực này".
 - Địa chỉ cụ thể dùng được (trong bài và schema): trụ sở 728/1 Lê Trọng Tấn,
   Sơn Kỳ, Bình Tân, cùng các địa chỉ ở trang Liên hệ:
   1686 Tỉnh Lộ 10, P. Bình Tân; Lầu 4, 249 Cộng Hòa, P.13, Tân Bình;
@@ -72,15 +74,14 @@
 ## 5. Giá và cam kết
 
 - Không niêm yết một giá chung; giá theo hạng mục, mức hư hỏng, vật tư
-- Báo giá nhanh: gửi 2–3 ảnh hoặc clip ngắn qua Zalo để nhận khoảng giá, miễn phí
-- Thời gian trả báo giá qua Zalo: [CẦN XÁC NHẬN — hồ sơ cũ ghi "khoảng 15 phút", trang Bảng giá ghi "30 phút"]
+- Báo giá nhanh: gửi 2–3 ảnh hoặc clip ngắn qua Zalo để được báo khoảng giá miễn phí
+> Chủ dự án chốt 2026-10-14: không nêu thời gian trả báo giá (hồ sơ cũ ghi 15 phút, trang Bảng giá ghi 30 phút).
 - Giá qua điện thoại chỉ để tham khảo; giá chốt sau khi đo đạc tại chỗ
 - Khảo sát, đo đạc miễn phí trong nội thành, kể cả khi khách không làm
 - Báo giá trước khi làm, thu tiền sau khi xong, không phát sinh mập mờ
 - Bảo hành 2 năm công thợ và mối hàn, có phiếu ghi hạng mục và ngày làm;
   vật tư thay mới bảo hành theo nhà sản xuất
-- Giá tham khảo theo vật liệu (tương đối, chưa có số): sơn dầu thấp,
-  sơn tĩnh điện trung bình, mạ kẽm trung bình–cao, giả gỗ và sắt đặc/hoa văn cao
+> Chủ dự án chốt 2026-10-14: không dùng "giá tham khảo theo vật liệu" (so sánh rẻ/đắt) trong bài.
 - Không đưa giá cụ thể (VND) hay bảng giá vào bài; hướng khách gửi ảnh/clip qua Zalo để báo giá
 
 ## 6. Kiến thức nghề đã có trên website (dùng được trong bài)
@@ -124,6 +125,11 @@
 - Không bịa số năm kinh nghiệm, số công trình, giá, tên khách hàng, đánh giá;
   không nêu năm thành lập, tên người phụ trách hay tác giả, bảng giá, giá cụ thể
 - Không hứa thời gian có mặt nhanh hơn "30–60 phút"
-- Chỉ nêu địa chỉ đã ghi ở mục 3. Thông tin nào không có trong hồ sơ này (email,
-  mạng xã hội, số khách đã phục vụ, thời gian trả báo giá…) thì không nêu và không đoán
+- Không so sánh rẻ, đắt hay trung bình giữa các vật liệu hoặc cách làm; không nêu
+  bất kỳ con số giá nào
+- Không nêu hay hứa báo giá xong trong bao lâu; chỉ viết "gửi ảnh/clip qua Zalo để
+  được báo khoảng giá miễn phí"
+- Chỉ nêu địa chỉ đã ghi ở mục 3; không đặt ra địa chỉ ở Bình Dương, Vũng Tàu hay
+  khu vực nào khác. Thông tin nào không có trong hồ sơ này (email, mạng xã hội,
+  số khách đã phục vụ…) thì không nêu và không đoán
 - Lời kêu gọi liên hệ: gửi ảnh/clip qua Zalo 03.4444.07.17 để được báo khoảng giá miễn phí
