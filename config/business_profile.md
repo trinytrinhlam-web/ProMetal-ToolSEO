@@ -15,8 +15,8 @@
 - Email: [CẦN XÁC NHẬN — website chưa có]
 - Trụ sở chính / xưởng: 728/1 Lê Trọng Tấn, Sơn Kỳ, Bình Tân, TP.HCM
 - Giờ phục vụ: 6h–21h mỗi ngày; buổi tối và Chủ nhật cần hẹn trước
-- Năm thành lập / số năm kinh nghiệm: [CẦN XÁC NHẬN — website chỉ ghi "nhiều năm"]
-- Người phụ trách chuyên môn (để ghi tên tác giả, tăng độ tin cậy): [CẦN XÁC NHẬN]
+- Năm thành lập, số năm kinh nghiệm, tên người phụ trách: không dùng trong bài
+  (chủ dự án quyết định 2026-10-14). Chỉ được nói "nhiều năm kinh nghiệm".
 - Mạng xã hội, Google Business Profile: [CẦN XÁC NHẬN — website chưa có liên kết]
 
 ## 2. Năng lực
@@ -30,13 +30,17 @@
 
 ## 3. Khu vực phục vụ
 
-Đang ghi trên website: Bình Tân, Tân Phú, Gò Vấp, Bình Thạnh, Thủ Đức, Quận 12,
-Hóc Môn, Bình Chánh.
-
-[CẦN XÁC NHẬN] Chi nhánh: website đang ghi 3 con số khác nhau
-(trang chủ "8 chi nhánh khác", Giới thiệu "3 chi nhánh: Gò Vấp, Hóc Môn, Thủ Đức",
-Liên hệ liệt kê 9 địa chỉ, trong đó có Quận 1, Quận 3, Tân Bình — không nằm trong
-danh sách khu vực ở trên). AI chỉ dùng trụ sở Bình Tân cho tới khi chốt danh sách.
+- Phục vụ toàn bộ các quận, huyện, thành phố trực thuộc TP.HCM; có chi nhánh
+  ở tất cả các khu vực (chủ dự án xác nhận 2026-10-14). Bài viết theo khu vực
+  được phép nói "có thợ/chi nhánh gần khu vực này".
+- Địa chỉ cụ thể dùng được (trong bài và schema): trụ sở 728/1 Lê Trọng Tấn,
+  Sơn Kỳ, Bình Tân, cùng các địa chỉ ở trang Liên hệ:
+  1686 Tỉnh Lộ 10, P. Bình Tân; Lầu 4, 249 Cộng Hòa, P.13, Tân Bình;
+  64 Vườn Chuối, Quận 3; 216 Lý Chính Thắng, P.9, Quận 3;
+  44 Đinh Công Tráng, Tân Định, Quận 1; 412 Nguyễn Thị Minh Khai, P.5, Quận 3;
+  202 Lê Lai, P. Phạm Ngũ Lão, Quận 1; 11A Hồng Hà, P.2, Tân Bình.
+  Không tự đặt ra địa chỉ cho khu vực chưa có trong danh sách này.
+- Website sẽ được bổ sung đủ địa chỉ chi nhánh sau; khi có thì thêm vào đây.
 
 ## 4. Dịch vụ
 
@@ -71,7 +75,7 @@ danh sách khu vực ở trên). AI chỉ dùng trụ sở Bình Tân cho tới 
   vật tư thay mới bảo hành theo nhà sản xuất
 - Giá tham khảo theo vật liệu (tương đối, chưa có số): sơn dầu thấp,
   sơn tĩnh điện trung bình, mạ kẽm trung bình–cao, giả gỗ và sắt đặc/hoa văn cao
-- Khoảng giá thực tế cho từng việc phổ biến: [CẦN XÁC NHẬN — xem mục 7]
+- Không đưa giá cụ thể (VND) vào bài; hướng khách gửi ảnh/clip qua Zalo để báo giá
 
 ## 6. Kiến thức nghề đã có trên website (dùng được trong bài)
 
@@ -89,9 +93,8 @@ danh sách khu vực ở trên). AI chỉ dùng trụ sở Bình Tân cho tới 
 ## 7. Chất liệu thật cần bổ sung (chủ dự án điền)
 
 Đây là phần làm bài viết khác bài của đối thủ. Mỗi mục vài dòng là đủ.
+Chủ dự án sẽ điền sau; khi chưa có, AI hỏi chất liệu thật theo từng bài (bước 3 quy trình).
 
-- Khoảng giá thực tế (VND) cho 5–10 việc hay gặp, ví dụ: thay bánh xe cửa kéo,
-  hàn lại bản lề cửa sắt, sơn lại cổng, làm mới cửa kéo theo m²:
 - Độ dày sắt / inox (ly) thường dùng, thương hiệu vật tư hay dùng
   (bánh xe, khóa, sơn, inox 201/304…):
 - 3–5 ca sửa thật đáng nhớ (khu vực, tình trạng, cách xử lý, mất bao lâu):
@@ -103,7 +106,8 @@ danh sách khu vực ở trên). AI chỉ dùng trụ sở Bình Tân cho tới 
 ## 8. Quy tắc khi AI viết về doanh nghiệp
 
 - Xưng "Pro-Metal" hoặc "chúng tôi"; giọng thợ có nghề, nói thẳng, có ví dụ
-- Không bịa số năm kinh nghiệm, số công trình, giá, tên khách hàng, đánh giá
+- Không bịa số năm kinh nghiệm, số công trình, giá, tên khách hàng, đánh giá;
+  không nêu năm thành lập, tên người phụ trách, giá cụ thể
 - Không hứa thời gian có mặt nhanh hơn "30–60 phút"
-- Chỉ nêu địa chỉ, chi nhánh, khu vực đã ghi ở trên và không mang nhãn [CẦN XÁC NHẬN]
+- Chỉ nêu địa chỉ đã ghi ở mục 3; không dùng dòng nào mang nhãn [CẦN XÁC NHẬN]
 - Lời kêu gọi liên hệ: gửi ảnh/clip qua Zalo 03.4444.07.17 để được báo khoảng giá miễn phí
