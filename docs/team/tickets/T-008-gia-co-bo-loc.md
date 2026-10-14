@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (bắt buộc trước Giai đoạn 5) |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-004 (đã xong) |
-| Trạng thái | Trả lại lần 2: đổi cách chặn link tận gốc (xem Ghi chú) |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 

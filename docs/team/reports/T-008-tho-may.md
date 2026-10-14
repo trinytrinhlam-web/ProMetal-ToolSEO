@@ -106,3 +106,95 @@ All checks passed!
 - Bắt rộng ở SL-1 có thể xóa thừa chữ tới dấu ")" cuối đoạn, nhưng chỉ khi có `](` mà ngoặc lệch (bất thường trong bài thật).
 - Ở bước dự phòng, địa chỉ còn lại hiện thành chữ trần. Streamlit tự biến địa chỉ trần thành link bấm được: đây là rủi ro Lá Chắn #2 đã chấp nhận (người dùng nhìn thấy địa chỉ). Giai đoạn 5 phải liệt kê mọi URL trước khi gửi.
 - Nội dung trong `<form>`/`<svg>`… giờ được giữ thành chữ (trước đây bị bỏ cả ruột).
+
+## Làm lại lần 2 (2026-10-14, sau [Soi Lỗi R3](T-008r-010-011-soi-loi.md) và [Lá Chắn](T-008r-010-011-la-chan.md))
+
+**Đổi cách làm.** Ba vòng trước đều cố *nhận ra* link để xóa, và lần nào cũng còn một dạng CommonMark ít gặp lọt qua. Lần này an toàn không còn phụ thuộc việc nhận ra link nữa.
+
+Mọi link Markdown đều cần một dấu `]` (không escape) đứng **sát ngay trước** một trong ba ký tự:
+- `(`: link hoặc ảnh nội dòng;
+- `[`: link tham chiếu `[chữ][nhãn]` hoặc `[chữ][]`;
+- `:`: dòng khai báo `[nhãn]: địa chỉ`. Link kiểu `[nhãn]` trơn chỉ thành link khi có dòng khai báo.
+
+Hàm mới `escape_link_syntax` (`seo_app/sanitize.py`) thêm dấu `\` trước ký tự đó. Markdown vẫn hiện `](`, `][`, `]:` y như cũ, nhưng không còn là link.
+
+### Cách làm
+
+1. Đầu `clean_ai_text`, đổi `\r\n` và `\r` thành `\n` (Lá Chắn #2).
+2. Vòng "bỏ thẻ → bỏ link" cũ vẫn giữ, nhưng **chỉ để chữ gọn** (bỏ địa chỉ thừa). Đã bỏ `_LINK_JOIN`; bước dự phòng chỉ còn tách `<`.
+3. Cuối `clean_ai_text`, gọi `escape_link_syntax`. Đây là bước quyết định an toàn.
+   - Chạy một lượt, tuyến tính. Chạy lại không đổi gì.
+   - Chỉ **thêm** dấu `\`, không xóa hay đổi ký tự nào. Vì vậy không thể tạo ra thẻ hay link mới.
+   - Dấu `:` chỉ được escape khi `[` mở nhãn đứng đầu dòng, sau thụt lề, `>`, `-`, `*`, `+` hoặc `1.`. Khai báo link chỉ có thể nằm ở đó. Nhờ vậy câu thường kiểu `Mục [1] và [2]: …` giữ nguyên.
+4. **Vì sao escape khi lọc (lúc nhận kết quả AI), không escape lúc hiển thị:**
+   - Kết quả AI được lọc ở **một** chỗ (`workflow.py`). Còn chỗ hiển thị thì nhiều (`write.py` có hơn 10 chỗ), và Giai đoạn 4–5 sẽ thêm chỗ xuất lên WordPress. Escape lúc hiển thị thì mỗi chỗ mới đều phải nhớ gọi, dễ sót.
+   - Dấu `[` và `]` giữ nguyên, nên `find_missing` vẫn nhận ra `[cần bổ sung: …]` mà không cần sửa chỗ dò.
+5. R3-4: nhãn `[cần bổ sung: …]` không bao giờ bị coi là link, nên phần `(…)` phía sau được giữ. Dấu `(` ngay sau `]` vẫn được escape.
+
+### Từng lỗi
+
+| Lỗi | Sửa |
+|---|---|
+| R3-1 (Cao), lồng 4 tầng | Đạt nhờ bước escape: link còn sót sau 4 lượt lọc bị vô hiệu. |
+| R3-2 (Cao) / Lá Chắn #1, #2: khai báo có tiêu đề escape, `\r\n`, `\r`, NBSP | Chuẩn hóa xuống dòng, rồi escape `]:` đầu dòng. `[Gọi thợ][foo]` cũng thành `[Gọi thợ]\[foo]`, nên không còn là link dù khai báo có lọt. |
+| R3-3 (Trung bình): tiêu đề bài, tiêu đề mục, reason, summary chỉ qua `strip_tags` | `workflow.py` dùng `clean_ai_text` cho reason và summary. Tiêu đề bài/mục (bài viết và dàn ý) và tiêu đề dự phòng lấy từ dàn ý dùng hàm mới `clean_ai_line`, tức `clean_ai_text` rồi gộp thành một dòng. Tên bài đối thủ vẫn chỉ `strip_tags`, vì `write.py` hiển thị nó qua `markdown_link`, hàm này đã escape mọi ký tự Markdown. Escape thêm ở đây thì dấu `\` sẽ hiện ra. Địa chỉ đối thủ vẫn qua `_clean_url`. **Không sửa `app/`.** |
+| (thêm) Áp gợi ý sửa câu ghép ra link | Khi thay hoặc xóa một câu, chỗ nối có thể ghép `[thợ]` với `(https://…)` thành link mới. `apply_flag` nay escape lại kết quả. |
+| R3-4 (Thấp) | Như mục 5 ở trên. |
+| R3-5 (Thấp) | `_phrase_pattern` (`rules.py`) chỉ đòi ranh giới từ ở đầu hoặc cuối cụm khi đầu hoặc cuối cụm là chữ hay số. |
+| R3-6 / Lá Chắn #3 | `redact_secrets` (`ai/base.py`) nhận thêm `apiKey`/`api-key`, `secret` (gồm `client_secret`), `private_key`, `passwd`, `user:pass@` trong địa chỉ, `Bearer:xyz` và `Basic` + xuống dòng. |
+| R3-7 / Lá Chắn #4 | `_neutralize` (`prompts.py`) chạy NFKC trước (vì NFKC biến U+FFA0 thành U+1160), rồi bỏ ký tự loại Cf và các ký tự "mặc định bỏ qua" khác: U+034F, U+115F, U+1160, U+17B4–5, U+180B–D, U+180F, U+2065, U+3164, U+FE00–FE0F, U+FFA0, U+FFF0–8 và U+E0100–E01EF. |
+| Lá Chắn #5 | Trong `rewrite_prompt`, dấu `«` và `»` trong tiêu đề mục đổi thành `‹` và `›`. |
+
+### Test
+
+- Gỡ 8 dấu `xfail` (20 trường hợp) trong `tests/test_soi_loi_round3.py`. Chỉ còn SL-7 (để Giai đoạn 5).
+- Thêm `tests/test_link_escape.py` (82 trường hợp):
+  - 21 kiểu tấn công, gồm các dạng của Lá Chắn #1 và #2 và lồng 10 tầng: không còn `](`, `][` hay `[nhãn]:` đầu dòng chưa escape, không còn `\r`.
+  - Lọc và escape chạy lại không đổi gì; escape chỉ thêm `\`.
+  - Chữ thường giữ nguyên; `[cần bổ sung]` vẫn được nhận ra.
+  - Chuỗi 300 KB xong dưới 1 giây.
+  - Mọi trường của nghiên cứu và dàn ý; tiêu đề thành một dòng.
+  - Áp gợi ý không ghép được link.
+  - Các lỗi Thấp.
+- **Đã sửa test của chính Thợ Máy** cho hợp với cách mới. Ý đồ an toàn không đổi, chỉ đổi đầu ra mong đợi từ `][` thành `]\[`, `](` thành `]\(`, `]:` thành `]\:`:
+  - `tests/test_sanitize.py::test_clean_ai_text_strips_markdown_links` (1 trường hợp);
+  - `tests/test_sanitize_hardening.py::test_markdown_link_variants_lose_their_target` (2 trường hợp);
+  - `tests/test_sanitize_hardening.py::test_label_colon_sentences_are_kept_whole` (4 trường hợp);
+  - trường hợp `Cửa [loại A](chưa chốt\n\nđoạn sau)` tách khỏi `test_normal_brackets_are_kept` thành test riêng `test_paren_after_bracket_across_blank_line_is_kept_but_escaped`.
+
+### Test của Soi Lỗi KHÔNG sửa, đang đỏ (để Chỉ Huy và Soi Lỗi quyết)
+
+`tests/test_soi_loi_round3.py::test_normal_vietnamese_with_brackets_is_untouched` đòi `clean_ai_text(text) == text`. 5 trường hợp đỏ vì dòng bắt đầu bằng `[nhãn]:` nay có thêm một dấu `\`:
+
+| Đầu vào | Đầu ra |
+|---|---|
+| `[Lưu ý]: cần đo khe ray trước khi đặt cửa.` | `[Lưu ý]\: …` |
+| `1. [Bước 1]: Tắt cầu dao (CB) …` | `1. [Bước 1]\: …` |
+| `**[Mẹo]:** tra dầu vào ray …` | `**[Mẹo]\:** …` |
+| `> [Lưu ý]: lò xo xoắn …` | `> [Lưu ý]\: …` |
+| `[cần bổ sung: giá thay lò xo]: hỏi lại xưởng` | `[cần bổ sung: giá thay lò xo]\: …` |
+
+Khi hiển thị bằng Markdown, chữ trên màn hình y hệt bản gốc, không mất chữ nào, và `[cần bổ sung]` vẫn được nhận ra. Nếu muốn các dòng này giữ nguyên từng ký tự thì phải đoán dòng nào là khai báo link thật, tức là quay lại cách "nhận ra link" mà phiếu yêu cầu bỏ. Đề xuất: Soi Lỗi đổi kỳ vọng thành "hiện ra giống bản gốc", tức là `out.replace("\\", "") == text`, kèm "không còn link".
+
+### Bằng chứng
+
+```
+$ uv run pytest
+5 failed, 822 passed, 1 xfailed in 26.59s
+# 5 failed = test_normal_vietnamese_with_brackets_is_untouched (5 trường hợp ở bảng trên)
+# 1 xfailed = SL-7 (Giai đoạn 5)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Rủi ro
+
+- **Dấu `\` hiện ra ở chỗ không dùng Markdown:**
+  - Ô "Sửa trực tiếp" (`st.text_area`) và ô sửa tiêu đề dàn ý hiện `[Lưu ý]\:` hoặc `]\(` khi AI viết kiểu đó.
+  - Lời dặn gửi lại AI (viết lại, rà soát) cũng mang dấu `\`.
+  - Không mất chữ và không hại gì, chỉ hơi lạ mắt.
+  - Khi làm phần xuất lên WordPress (Giai đoạn 4–5), phải chuyển Markdown sang HTML bằng bộ chuyển chuẩn: dấu `\` sẽ biến mất đúng như khi hiển thị.
+- Chữ trong đoạn code (`` `…` ``) có `](` sẽ hiện thêm dấu `\`, vì Markdown không xử lý escape trong code. Bài sửa cửa hiếm khi có đoạn code.
+- Nếu người dùng tự gõ link trong ô "Sửa trực tiếp" rồi bấm "Áp dụng" một gợi ý ở cùng phần, link đó cũng bị escape (`apply_flag` escape lại cả phần). Đây là đánh đổi để chỗ nối không ghép ra link.
+- Địa chỉ viết trần (`https://…`, không ngoặc) vẫn được Streamlit/GFM tự biến thành link. Đây là rủi ro đã ghi ở lần trước, ngoài phạm vi phiếu này.

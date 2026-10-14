@@ -23,18 +23,27 @@ from seo_app.content.models import (
     SectionText,
 )
 from seo_app.content.rules import ContentRules, find_banned
-from seo_app.sanitize import clean_ai_text, strip_tags
+from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags
 
 INTRO_HEADING = "Mở bài"
+
+
+def clean_ai_line(text: str) -> str:
+    """Chữ một dòng do AI tạo (tiêu đề bài, tiêu đề mục): lọc như thân bài rồi gộp thành một dòng.
+
+    Tiêu đề cũng được hiển thị bằng Markdown (``## tiêu đề``, ``:gray[tiêu đề]``) nên cũng phải
+    không thể thành link (Soi Lỗi R3-3).
+    """
+    return " ".join(clean_ai_text(text).split())
 
 
 def clean_draft(draft: Draft) -> Draft:
     """Kết quả AI là dữ liệu chưa tin cậy: bỏ thẻ HTML và link ẩn trước khi dùng."""
     return Draft(
-        title=strip_tags(draft.title).strip(),
+        title=clean_ai_line(draft.title),
         intro=clean_ai_text(draft.intro),
         sections=[
-            Section(heading=strip_tags(s.heading).strip(), body=clean_ai_text(s.body))
+            Section(heading=clean_ai_line(s.heading), body=clean_ai_text(s.body))
             for s in draft.sections
         ],
     )
@@ -55,7 +64,11 @@ def _clean_url(url: str) -> str:
 
 
 def clean_research(research: Research) -> Research:
-    """Kết quả nghiên cứu (có cả chữ chép từ trang đối thủ) cũng là dữ liệu chưa tin cậy."""
+    """Kết quả nghiên cứu (có cả chữ chép từ trang đối thủ) cũng là dữ liệu chưa tin cậy.
+
+    Tên bài đối thủ chỉ bỏ thẻ: trang Soạn bài hiển thị nó qua ``markdown_link`` (escape mọi ký
+    tự Markdown), nếu escape thêm ở đây thì dấu "\\" sẽ hiện ra.
+    """
     return Research(
         intent=_clean_list(research.intent),
         article_type=clean_ai_text(research.article_type),
@@ -75,10 +88,10 @@ def clean_research(research: Research) -> Research:
 
 def clean_outline(outline: Outline) -> Outline:
     return Outline(
-        title=strip_tags(outline.title).strip(),
+        title=clean_ai_line(outline.title),
         items=[
             OutlineItem(
-                heading=strip_tags(item.heading).strip(),
+                heading=clean_ai_line(item.heading),
                 points=_clean_list(item.points),
                 image=clean_ai_text(item.image),
             )
@@ -93,12 +106,12 @@ def clean_review(review: Review) -> Review:
         flag.model_copy(
             update={
                 "replacement": clean_ai_text(flag.replacement),
-                "reason": strip_tags(flag.reason).strip(),
+                "reason": clean_ai_text(flag.reason),
             }
         )
         for flag in review.flags
     ]
-    return Review(scores=review.scores, flags=flags, summary=strip_tags(review.summary).strip())
+    return Review(scores=review.scores, flags=flags, summary=clean_ai_text(review.summary))
 
 
 def draft_to_parts(draft: Draft) -> list[Section]:
@@ -139,9 +152,11 @@ def clean_flags(parts: Sequence[Section], flags: Sequence[Flag]) -> list[Flag]:
 
 
 def apply_flag(body: str, sentence: str, replacement: str) -> str:
+    """Thay (hoặc bỏ) một câu. Chỗ nối có thể ghép "[chữ]" với "(địa chỉ)" phía sau thành link
+    mới, nên escape cú pháp link trên kết quả (không đổi gì ở chữ đã lọc)."""
     if replacement:
-        return body.replace(sentence, replacement)
-    return body.replace(sentence + " ", "").replace(sentence, "").strip()
+        return escape_link_syntax(body.replace(sentence, replacement))
+    return escape_link_syntax(body.replace(sentence + " ", "").replace(sentence, "").strip())
 
 
 def apply_replacements(
@@ -192,7 +207,7 @@ class ContentWriter:
         if not draft.intro and not any(s.body for s in draft.sections):
             raise AIError("AI trả về bài rỗng (không có mở bài, không có nội dung). Bấm thử lại.")
         # Tiêu đề dàn ý có thể do người dùng sửa tay, nên vẫn lọc lại khi dùng làm tiêu đề bài.
-        return draft.title or strip_tags(outline.title).strip(), draft_to_parts(draft)
+        return draft.title or clean_ai_line(outline.title), draft_to_parts(draft)
 
     # 5. Rà soát theo checklist
     def review(self, keyword: str, title: str, parts: Sequence[Section]) -> Review:

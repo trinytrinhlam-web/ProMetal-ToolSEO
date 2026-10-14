@@ -73,7 +73,8 @@ def test_clean_ai_text_keeps_harmless_angle_brackets():
         ("Xem [bảng giá](https://evil.example) nhé.", "Xem bảng giá nhé."),
         ("Bấm [đây](javascript:alert(1)).", "Bấm đây."),
         ("Ảnh ![cổng](https://evil.example/x.png) đẹp.", "Ảnh cổng đẹp."),
-        ("Xem [đây][1].\n\n[1]: https://evil.example", "Xem [đây][1]."),
+        # Làm lại lần 2: "][" được escape thành "]\\[" (hiện y như cũ, không còn là link)
+        ("Xem [đây][1].\n\n[1]: https://evil.example", "Xem [đây]\\[1]."),
         ("Giá [cần bổ sung: giá cổng 2 cánh]", "Giá [cần bổ sung: giá cổng 2 cánh]"),
     ],
 )

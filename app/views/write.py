@@ -19,6 +19,7 @@ from seo_app.content import ContentWriter, Outline, OutlineItem, Research, Secti
 from seo_app.content.models import SCORE_LABELS
 from seo_app.content.rules import find_missing
 from seo_app.content.workflow import apply_flag
+from seo_app.sanitize import escape_link_syntax, unescape_link_syntax
 from seo_app.text import markdown_link, slugify
 
 S = st.session_state
@@ -97,20 +98,27 @@ def current_parts() -> list[Section]:
 
 
 def current_outline() -> Outline:
+    """Dàn ý theo các ô người dùng đã sửa; escape lại cú pháp link (ô sửa hiện bản chưa escape)."""
     items = [
-        OutlineItem(heading=S[f"h-{uid}"].strip(), points=S[f"pts-{uid}"], image=S[f"img-{uid}"])
+        OutlineItem(
+            heading=escape_link_syntax(S[f"h-{uid}"].strip()),
+            points=S[f"pts-{uid}"],
+            image=S[f"img-{uid}"],
+        )
         for uid in S.outline_ids
         if S[f"h-{uid}"].strip()
     ]
-    return Outline(title=S.outline_title.strip() or keyword(), items=items)
+    title = escape_link_syntax(S.outline_title.strip()) or keyword()
+    return Outline(title=title, items=items)
 
 
 def set_outline(outline: Outline) -> None:
-    S.outline_title = outline.title
+    # Ô sửa hiện chữ thật, không có dấu "\" do escape_link_syntax thêm; current_outline escape lại.
+    S.outline_title = unescape_link_syntax(outline.title)
     S.outline_ids = []
     for item in outline.items:
         uid = new_id()
-        S[f"h-{uid}"] = item.heading
+        S[f"h-{uid}"] = unescape_link_syntax(item.heading)
         S[f"pts-{uid}"] = list(item.points)
         S[f"img-{uid}"] = item.image.strip()
         S.outline_ids.append(uid)
@@ -196,7 +204,8 @@ def toggle_edit(pid: int) -> None:
 
 
 def save_manual(pid: int) -> None:
-    S[f"texts-{pid}"][S[f"ver-{pid}"]] = S[f"manual-{pid}"]
+    # Ô sửa hiện bản chưa escape; lưu thì escape lại để chữ không thành link Markdown.
+    S[f"texts-{pid}"][S[f"ver-{pid}"]] = escape_link_syntax(S[f"manual-{pid}"])
     S[f"editing-{pid}"] = False
     del S[f"manual-{pid}"]
     st.toast("Đã lưu phần bạn sửa", icon="✏️")
@@ -451,7 +460,7 @@ def section_card(writer: ContentWriter | None, index: int, pid: int, tone: list[
         if S.get(f"editing-{pid}"):
             st.text_area(
                 "Sửa trực tiếp",
-                current_text(pid),
+                unescape_link_syntax(current_text(pid)),
                 height=220,
                 key=f"manual-{pid}",
                 label_visibility="collapsed",

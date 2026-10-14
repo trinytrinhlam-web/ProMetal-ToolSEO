@@ -8,7 +8,8 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-| [T-008](tickets/T-008-gia-co-bo-loc.md) | Chặn link Markdown tận gốc (lần 3) | Thợ Máy | Trả lại lần 2, đang làm | [Soi Lỗi](reports/T-008r-010-011-soi-loi.md) · [Lá Chắn](reports/T-008r-010-011-la-chan.md) |
+| [T-013](tickets/T-013-escape-cau-can-xem-lai.md) | Hiển thị an toàn câu «Cần xem lại» | Họa Sĩ | Đang làm | |
+| [T-014](tickets/T-014-loi-thap-escape.md) | Lỗi Thấp của bộ escape link | Thợ Máy | Đang làm | |
 
 ## Chờ
 
@@ -28,6 +29,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-012](tickets/T-012-an-dau-escape-o-o-sua.md) | Ô sửa chữ không hiện dấu `\` | Họa Sĩ | 2026-10-14 | [Báo cáo](reports/T-012-hoa-si.md) · Lá Chắn: [**ĐẠT**](reports/T-008r3-012-la-chan.md) |
+| [T-008](tickets/T-008-gia-co-bo-loc.md) | Chặn link Markdown tận gốc (3 lần) | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-008-tho-may.md) · Lá Chắn: **ĐẠT** · [Soi Lỗi](reports/T-008r3-012-soi-loi.md): đạt, còn R4-1 → T-013 |
 | [T-011](tickets/T-011-sua-cum-cam-bat-nham.md) | Sửa cụm từ cấm bắt nhầm | Ngòi Bút | 2026-10-14 | Lá Chắn: [**ĐẠT**](reports/T-008r-010-011-la-chan.md) |
 | [T-010](tickets/T-010-cau-hinh-chiu-loi-va-loi-thap.md) | File cấu hình chịu lỗi, lỗi Thấp | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-010-tho-may.md) · Lá Chắn: **ĐẠT** |
 | [T-009](tickets/T-009-dua-loi-dan-moi-vao-code.md) | Đưa lời dặn AI mới vào code | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-009-tho-may.md) · Lá Chắn: [**ĐẠT**](reports/T-003-006-008-009-la-chan.md) |
@@ -39,4 +42,14 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 | [T-007](tickets/T-007-xoa-gps-anh-dai-dien.md) | Xóa GPS trong ảnh | Thợ Máy | 2026-10-14 | **Hủy**: chủ dự án muốn giữ vị trí trong ảnh (sổ rủi ro, `security.md` mục 6) |
 | [T-002](tickets/T-002-kiem-thu-giai-doan-2.md) | Kiểm thử Giai đoạn 2 phần 1 | Soi Lỗi | 2026-10-14 | [Báo cáo](reports/T-002-soi-loi.md): 69 test mới, 8 lỗi (đánh dấu `xfail`), test chặn mạng thật. Chỉ Huy soát: test chỉ dùng khóa giả. |
 
-## Số phiếu tiếp theo: T-012
+## Việc bắt buộc khi làm Giai đoạn 5 (đăng lên WordPress)
+
+Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
+
+- Chuyển Markdown sang HTML bằng code có escape, hiểu dấu `\` escape, chuẩn hóa xuống dòng, không xử lý link kiểu tham chiếu.
+- `sanitize_html` áp cho toàn bộ HTML cuối, kể cả phần người dùng tự gõ.
+- Màn hình xác nhận liệt kê mọi link (`href`), đánh dấu địa chỉ lạ hoặc có `@` ở phần tên máy.
+- Đúng một đường đi tới `publish`/`future`, có bước xác nhận và có test.
+- Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
+
+## Số phiếu tiếp theo: T-015

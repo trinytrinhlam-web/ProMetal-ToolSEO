@@ -67,8 +67,9 @@ def test_strip_tags_still_drops_dangerous_blocks_case_insensitively():
         ("[Xem bảng\ngiá](\nhttps://evil.example\n'tiêu đề')", "Xem bảng\ngiá"),
         ("[a [b](javascript:1)](javascript:2)", "a b"),
         ("Ảnh ![cổng\nsắt](https://evil.example/x.png) đẹp", "Ảnh cổng\nsắt đẹp"),
-        ("> [r]: https://evil.example\n\n[x][r]", "[x][r]"),
-        ("- [r]:\n  https://evil.example\n\n[x][r]", "[x][r]"),
+        # Làm lại lần 2: "][" còn lại được escape thành "]\\[" (hiện y như cũ, không là link)
+        ("> [r]: https://evil.example\n\n[x][r]", "[x]\\[r]"),
+        ("- [r]:\n  https://evil.example\n\n[x][r]", "[x]\\[r]"),
         ("[nhãn\nhai dòng]:\n https://evil.example\n\n[nhãn hai dòng]", "[nhãn hai dòng]"),
     ],
 )
@@ -82,12 +83,17 @@ def test_markdown_link_variants_lose_their_target(text, expected):
         "Giá (đã gồm VAT) là [cần bổ sung: giá] (chưa có số liệu).",  # "] (" không phải link
         "Mục [1] và [2]: xem bên dưới.",
         "Ngoặc chưa đóng (ví dụ",
-        "Cửa [loại A](chưa chốt\n\nđoạn sau) vẫn còn",  # link không vượt dòng trống
         "Escape \\[không phải link\\](x)",
     ],
 )
 def test_normal_brackets_are_kept(text):
     assert clean_ai_text(text) == text
+
+
+def test_paren_after_bracket_across_blank_line_is_kept_but_escaped():
+    # Link không vượt dòng trống nên chữ giữ nguyên; "](" vẫn được escape (Làm lại lần 2).
+    text = "Cửa [loại A](chưa chốt\n\nđoạn sau) vẫn còn"
+    assert clean_ai_text(text) == text.replace("](", "]\\(")
 
 
 # ------------------------------------------ is_safe_url (Lá Chắn #2)
@@ -266,7 +272,8 @@ def test_link_with_unbalanced_title_paren_keeps_label():
     ],
 )
 def test_label_colon_sentences_are_kept_whole(text):
-    assert clean_ai_text(text) == text
+    # Làm lại lần 2: chữ giữ trọn, chỉ "]:" ở đầu dòng thành "]\\:" (hiện y như cũ).
+    assert clean_ai_text(text) == text.replace("]:", "]\\:")
 
 
 @pytest.mark.parametrize(

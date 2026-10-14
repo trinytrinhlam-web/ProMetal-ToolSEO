@@ -104,8 +104,13 @@ _MD_LINK_DEF = re.compile(
     r"(?:(?:\n[ \t>]*)?(?:\"[^\"]*\"|'[^']*'|\([^()]*\))[ \t]*)?$",
     re.MULTILINE,
 )
-# Dấu "]" (không escape) ngay trước "(": dấu hiệu link nội dòng. Dùng ở bước dự phòng.
-_LINK_JOIN = re.compile(r"(?<!\\)\](?=\()")
+# Chỗ AI đánh dấu thiếu số liệu: "[cần bổ sung: …]" không bao giờ là nhãn link, kể cả khi
+# ngay sau là "(…)" (Soi Lỗi R3-4). Phải khớp ``MISSING_PATTERN`` trong content/rules.py.
+_MISSING_LABEL = re.compile(r"cần bổ sung:", re.IGNORECASE)
+# Ký tự có thể đứng trước "[" của một dòng khai báo link "[nhãn]: địa chỉ": thụt lề, dấu trích
+# dẫn ">", dấu danh sách "-", "*", "+", "1.", "1)". Lấy rộng (mọi khoảng trắng Unicode, mọi chữ
+# số) cho chắc: escape thừa chỉ thêm một "\" không hiện ra.
+_DEF_PREFIX_CHARS = frozenset(">*+-.)")
 # Số lượt lọc (bỏ thẻ + bỏ link) tối đa. Bỏ một link có thể ghép phần còn lại thành link hoặc
 # thẻ mới (SL-2, SL-3), nên lặp tới khi chữ không đổi; quá số lượt thì dùng bước dự phòng.
 _MAX_CLEAN_PASSES = 4
@@ -178,6 +183,9 @@ def strip_markdown_links(text: str) -> str:
             openers.clear()
         elif char == "]":
             opener = openers.pop() if openers else None
+            if opener is not None and _MISSING_LABEL.match(text, opener + 1):
+                i += 1  # "[cần bổ sung: …](…)": giữ cả hai, bước escape làm "(" thành chữ
+                continue
             close = pairs.get(i + 1)
             if close is None and i + 1 < n and text[i + 1] == "(":
                 # "(" không có ")" khớp, ví dụ tiêu đề link chứa "(" lẻ: [x](url "(") (SL-1).
@@ -199,24 +207,122 @@ def strip_markdown_links(text: str) -> str:
     return _MD_LINK_DEF.sub("", text)
 
 
-def clean_ai_text(text: str) -> str:
-    """Làm sạch một đoạn Markdown do AI viết: không còn thẻ HTML, không còn link ẩn.
+def escape_link_syntax(text: str) -> str:
+    """Làm cho chữ KHÔNG THỂ thành link Markdown, dù link viết theo kiểu nào.
 
-    Lặp "bỏ thẻ → bỏ link" tới khi chữ không đổi, vì bỏ một phần có thể ghép phần còn lại
-    thành link hay thẻ mới (``[a][](x)(url)``, ``<[](x)script>``). Chữ cố tình lồng sâu hơn số
-    lượt cho phép thì dùng bước dự phòng: bỏ dấu "]" đứng trước "(" (không còn là link, địa
-    chỉ hiện ra thành chữ) và tách "<" khỏi chữ cái (không còn là thẻ). Hai bước này chỉ xóa
-    "]" hoặc thêm dấu cách nên không tạo ra link hay thẻ mới.
+    Mọi link CommonMark/GFM đều cần dấu "]" (không escape) đứng sát ngay trước một trong ba
+    ký tự: "(" (link/ảnh nội dòng), "[" (link tham chiếu đầy đủ/rút gọn) hoặc ":" (dòng khai báo
+    "[nhãn]: địa chỉ"; link kiểu "[nhãn]" trơn chỉ thành link khi có dòng khai báo). Hàm này
+    thêm "\\" trước ký tự đó: Markdown hiện ra y như cũ ("](", "][", "]:") nhưng không còn
+    là link. Vì không cần nhận ra link, các dạng lạ (ngoặc lồng, tiêu đề có escape, xuống dòng
+    "\\r") cũng không lọt.
+
+    Dấu ":" chỉ escape khi "[" mở nhãn đứng đầu dòng (sau thụt lề, ">", "-", "1."…), vì khai
+    báo link chỉ có ở đầu khối; nhờ vậy câu thường kiểu "Giá [cần bổ sung: giá]: …" giữ nguyên.
+    Chạy một lượt (tuyến tính), chạy lại không đổi gì (idempotent). Dấu "[" và "]" giữ nguyên
+    nên chỗ "[cần bổ sung: …]" vẫn nhận diện được.
     """
+    out: list[str] = []
+    start = 0  # đầu đoạn chưa chép sang ``out``
+    at_line_prefix = True  # từ đầu dòng tới đây chỉ có thụt lề / dấu trích dẫn / dấu danh sách
+    label_at_line_start = False  # "[" đang mở gần nhất đứng ở đầu dòng
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            at_line_prefix = False
+            i += 2
+            continue
+        if char == "\n":
+            at_line_prefix = True
+        elif char == "[":
+            label_at_line_start = at_line_prefix
+            at_line_prefix = False
+        elif char == "]":
+            nxt = text[i + 1] if i + 1 < n else ""
+            if nxt in ("(", "[") or (nxt == ":" and label_at_line_start):
+                out.append(text[start : i + 1])
+                out.append("\\")
+                start = i + 1
+            label_at_line_start = False
+            at_line_prefix = False
+        elif at_line_prefix and not (
+            char.isspace() or char.isdigit() or char in _DEF_PREFIX_CHARS
+        ):
+            at_line_prefix = False
+        i += 1
+    if not out:
+        return text
+    out.append(text[start:])
+    return "".join(out)
+
+
+def unescape_link_syntax(text: str) -> str:
+    """Nghịch đảo của ``escape_link_syntax``: bỏ đúng những dấu "\\" mà hàm đó đã thêm.
+
+    Dùng khi đưa chữ vào ô cho người dùng sửa (ô «Sửa trực tiếp», tiêu đề dàn ý), để không
+    hiện dấu "\\" lạ. Khi lưu lại PHẢI gọi ``escape_link_syntax`` lần nữa. Quét cùng một
+    cách với ``escape_link_syntax``: bỏ "\\" nằm giữa "]" (không escape) và "(" hoặc "[",
+    hoặc ":" khi "[" mở nhãn đứng đầu dòng. Bảo đảm
+    ``escape_link_syntax(unescape_link_syntax(t)) == t`` với mọi ``t`` đã escape.
+    """
+    out: list[str] = []
+    start = 0
+    at_line_prefix = True
+    label_at_line_start = False
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            at_line_prefix = False
+            i += 2
+            continue
+        if char == "\n":
+            at_line_prefix = True
+        elif char == "[":
+            label_at_line_start = at_line_prefix
+            at_line_prefix = False
+        elif char == "]":
+            if text.startswith("\\", i + 1) and i + 2 < n:
+                nxt = text[i + 2]
+                if nxt in ("(", "[") or (nxt == ":" and label_at_line_start):
+                    out.append(text[start : i + 1])
+                    start = i + 2  # bỏ dấu "\\"; ký tự sau được xét ở vòng tiếp theo
+                    i += 2
+                    label_at_line_start = False
+                    at_line_prefix = False
+                    continue
+            label_at_line_start = False
+            at_line_prefix = False
+        elif at_line_prefix and not (
+            char.isspace() or char.isdigit() or char in _DEF_PREFIX_CHARS
+        ):
+            at_line_prefix = False
+        i += 1
+    if not out:
+        return text
+    out.append(text[start:])
+    return "".join(out)
+
+def clean_ai_text(text: str) -> str:
+    """Làm sạch một đoạn Markdown do AI viết: không còn thẻ HTML, không còn link.
+
+    1. Đổi xuống dòng "\\r\\n" và "\\r" thành "\\n" (Markdown coi cả ba là xuống dòng).
+    2. Lặp "bỏ thẻ → bỏ link" tới khi chữ không đổi, vì bỏ một phần có thể ghép phần còn lại
+       thành thẻ mới (``<[](x)script>``). Bước này chỉ để chữ gọn (bỏ địa chỉ thừa); chữ cố
+       tình lồng sâu hơn số lượt cho phép thì tách "<" khỏi chữ cái (không còn là thẻ).
+    3. ``escape_link_syntax``: bước quyết định an toàn. Link nào còn sót (bộ đọc ở bước 2
+       không nhận ra) cũng bị vô hiệu hóa, không phụ thuộc việc nhận ra link.
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     for _ in range(_MAX_CLEAN_PASSES):
         previous = text
         text = strip_markdown_links(strip_tags(text))
         if text == previous:
             break
     else:
-        text = _MD_LINK_DEF.sub("", _LINK_JOIN.sub("", text))
         text = _TAG_OPEN.sub("< ", text)
-    return text.strip()
+    return escape_link_syntax(text.strip())
 
 
 # --------------------------------------------------------------- HTML gửi WordPress

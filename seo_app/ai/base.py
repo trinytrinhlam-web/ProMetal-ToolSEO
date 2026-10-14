@@ -15,14 +15,21 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 # Chuỗi trông giống khóa/mật khẩu:
 # - khóa Anthropic/OpenAI (sk-…), Google (AIza…), kể cả khi dính sau "_" (x_sk-…);
-# - token sau "Bearer"/"Basic" (có hoặc không có dấu ":");
-# - giá trị sau "x-api-key", "api_key", "authorization", "password", "token" kèm ":" hoặc "=":
-#   che tới hết dòng (hoặc tới dấu nháy đóng), vì mật khẩu có thể chứa dấu cách.
+# - token sau "Bearer"/"Basic" (cách bằng dấu cách, xuống dòng hoặc ":", kể cả "Bearer:xyz");
+# - giá trị sau "x-api-key", "api_key"/"apiKey", "authorization", "password"/"passwd",
+#   "token", "secret" (cả "client_secret"), "private_key" kèm ":" hoặc "=": che tới hết dòng
+#   (hoặc tới dấu nháy đóng), vì mật khẩu có thể chứa dấu cách;
+# - "người-dùng:mật-khẩu@" trong địa chỉ (https://admin:matkhau@site…).
+_SECRET_NAMES = (
+    "x-api-key", "api_key", "api-key", "apikey", "authorization", "password", "passwd",
+    "token", "secret", "private_key", "private-key", "privatekey",
+)  # fmt: skip
 _SECRET_LIKE = re.compile(
     r"(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{16,})"
-    r"|(?:(?<=bearer)|(?<=basic))[ \t]*:?[ \t]+[A-Za-z0-9._~+/=\-]{6,}"
-    r"|(?:(?<=x-api-key)|(?<=api[_-]key)|(?<=authorization)|(?<=password)|(?<=token))"
-    r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}",
+    r"|(?:(?<=bearer)|(?<=basic))(?:\s*:\s*|\s+)[A-Za-z0-9._~+/=\-]{6,}"
+    r"|(?:" + "|".join(f"(?<={re.escape(name)})" for name in _SECRET_NAMES) + r")"
+    r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}"
+    r"|(?<=://)[^/\s:@]+:[^/\s@]+(?=@)",
     re.IGNORECASE,
 )
 

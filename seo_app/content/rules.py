@@ -136,8 +136,15 @@ def _normalize(text: str) -> str:
 
 
 def _phrase_pattern(phrase: str) -> re.Pattern[str]:
-    """Cụm từ đứng trọn từ: không dính chữ cái/chữ số ngay trước hoặc ngay sau."""
-    return re.compile(r"(?<!\w)" + re.escape(_normalize(phrase)) + r"(?!\w)")
+    """Cụm từ đứng trọn từ: không dính chữ cái/chữ số ngay trước hoặc ngay sau.
+
+    Chỉ đòi ranh giới ở đầu (cuối) cụm khi cụm bắt đầu (kết thúc) bằng chữ cái/chữ số: cụm
+    «Nhìn chung,» vẫn khớp «Nhìn chung,cửa…» (thiếu dấu cách sau dấu phẩy, Soi Lỗi R3-5).
+    """
+    normalized = _normalize(phrase)
+    before = r"(?<!\w)" if re.match(r"\w", normalized) else ""
+    after = r"(?!\w)" if re.search(r"\w$", normalized) else ""
+    return re.compile(before + re.escape(normalized) + after)
 
 
 def find_missing(text: str) -> list[str]:
