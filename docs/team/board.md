@@ -8,7 +8,6 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-
 | [T-008](tickets/T-008-gia-co-bo-loc.md) | Gia cố bộ lọc HTML/link | Thợ Máy | Đang làm | |
 | [T-003](tickets/T-003-ra-soat-prompt-noi-dung.md) | Rà soát prompt, tách dữ liệu ngoài khỏi chỉ thị | Ngòi Bút | Đang làm | |
 
