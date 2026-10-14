@@ -16,7 +16,7 @@ PROVIDERS = {
     "openai": ("OpenAI", "OPENAI_API_KEY"),
     "gemini": ("Google Gemini", "GEMINI_API_KEY"),
 }
-SUPPORTED = {"anthropic"}
+SUPPORTED = {"anthropic", "openai", "gemini"}
 
 
 def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
@@ -84,13 +84,25 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
     label, key_name = PROVIDERS[provider]
     if provider not in SUPPORTED:
         raise AIError(f'{label} chưa được hỗ trợ. Tạm thời đổi provider = "anthropic".')
+    api_key = {
+        "anthropic": settings.anthropic_api_key,
+        "openai": settings.openai_api_key,
+        "gemini": settings.gemini_api_key,
+    }[provider]
+    if not api_key:
+        raise AIError(f"Chưa có khóa {label} ({key_name}). Vào Cài đặt → 🔌 Kết nối để nhập khóa.")
+    # Nhập thư viện của hãng khi cần, để app mở nhanh và hãng không dùng thì không phải tải.
     if provider == "anthropic":
-        if not settings.anthropic_api_key:
-            raise AIError(f"Chưa có {key_name} trong file .env.")
         from seo_app.ai.anthropic_provider import AnthropicProvider
 
-        return AnthropicProvider(settings.anthropic_api_key)
-    raise AIError(f"{label} chưa được hỗ trợ.")  # pragma: no cover
+        return AnthropicProvider(api_key)
+    if provider == "openai":
+        from seo_app.ai.openai_provider import OpenAIProvider
+
+        return OpenAIProvider(api_key)
+    from seo_app.ai.gemini_provider import GeminiProvider
+
+    return GeminiProvider(api_key)
 
 
 class AIRouter:

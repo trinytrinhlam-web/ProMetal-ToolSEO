@@ -456,10 +456,13 @@ def test_check_bad_config_does_not_crash(env_path, monkeypatch):
 
 
 @pytest.mark.parametrize("name", ["OPENAI_API_KEY", "GEMINI_API_KEY"])
-def test_check_other_providers_unsupported(name):
-    result = check_api_key(name, api_key=KEY, client=FakeClient(RuntimeError("khong goi")))
-    assert result.status == "unsupported"
-    assert "Chưa hỗ trợ" in result.message
+def test_check_other_providers_now_supported(name):
+    # T-018: trước đây ChatGPT/Gemini trả "unsupported"; nay kiểm tra bằng client của hãng
+    # (chi tiết từng lỗi ở tests/test_ai_openai_gemini.py).
+    client = FakeClient()
+    result = check_api_key(name, api_key=KEY, client=client)
+    assert result.status == "ok"
+    assert len(client.models.calls) == 1
 
 
 def test_check_rejects_unknown_name():

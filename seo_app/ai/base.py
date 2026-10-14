@@ -19,7 +19,9 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 # - giá trị sau "x-api-key", "api_key"/"apiKey", "authorization", "password"/"passwd",
 #   "token", "secret" (cả "client_secret"), "private_key" kèm ":" hoặc "=": che tới hết dòng
 #   (hoặc tới dấu nháy đóng), vì mật khẩu có thể chứa dấu cách;
-# - "người-dùng:mật-khẩu@" trong địa chỉ (https://admin:matkhau@site…).
+# - "người-dùng:mật-khẩu@" trong địa chỉ (https://admin:matkhau@site…);
+# - tham số "key=" trong địa chỉ (Google hay để khóa ở "…?key=…"): che tới "&", dấu cách
+#   hoặc dấu nháy.
 _SECRET_NAMES = (
     "x-api-key", "api_key", "api-key", "apikey", "authorization", "password", "passwd",
     "token", "secret", "private_key", "private-key", "privatekey",
@@ -29,7 +31,8 @@ _SECRET_LIKE = re.compile(
     r"|(?:(?<=bearer)|(?<=basic))(?:\s*:\s*|\s+)[A-Za-z0-9._~+/=\-]{6,}"
     r"|(?:" + "|".join(f"(?<={re.escape(name)})" for name in _SECRET_NAMES) + r")"
     r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}"
-    r"|(?<=://)[^/\s:@]+:[^/\s@]+(?=@)",
+    r"|(?<=://)[^/\s:@]+:[^/\s@]+(?=@)"
+    r"|(?<=[?&]key=)[^&\s\"'#]+",
     re.IGNORECASE,
 )
 
