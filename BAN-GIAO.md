@@ -117,6 +117,7 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 - **Không có site thử nghiệm (staging)**: làm thẳng trên site thật, nên mọi bài chỉ tạo **nháp**; đăng thật phải có anh bấm xác nhận.
 - Chi nhánh có ở **mọi quận huyện TP.HCM**, website chưa cập nhật đủ. Bài viết nói "có thợ ở mọi khu vực TP.HCM"; địa chỉ cụ thể chỉ dùng 9 địa chỉ trên trang Liên hệ cho tới khi anh bổ sung.
 - **Không dùng** năm thành lập, tên người phụ trách/tác giả, bảng giá trong bài. Hướng khách gửi ảnh qua Zalo để báo giá.
+- Chốt thêm 2026-10-14 (phiếu T-022): bài **không nêu thời gian trả báo giá** qua Zalo; **không nói giá dưới bất kỳ dạng nào** (kể cả so sánh rẻ/đắt giữa vật liệu); khu vực phục vụ **gồm cả Bình Dương và Bà Rịa–Vũng Tàu cũ** (sáp nhập vào TP.HCM từ 1/7/2025), địa chỉ cụ thể vẫn chỉ 9 địa chỉ trên trang Liên hệ.
 - **Ca sửa thật đáng nhớ, câu khách hay hỏi qua Zalo: để sau.** Khi viết từng bài, app hỏi anh "chất liệu thật" (bước 3 quy trình).
 - Thông tin doanh nghiệp đã soạn (từ website) nằm trong `config/business_profile.md` của **PR #3** (chưa gộp vào `main`): hotline 03.4444.07.17, trụ sở 728/1 Lê Trọng Tấn, Bình Tân, bảo hành 2 năm, gần 30 thợ, dịch vụ và kiến thức nghề. Dòng nào đánh dấu `[CẦN XÁC NHẬN]` thì AI không dùng.
 - PR #3 đang xung đột nhỏ với `main` ở `CLAUDE.md` (hai bên cùng thêm dòng Trạng thái, cách sửa là giữ cả hai). Có thẻ hỏi "gộp bản mới nhất vào PR #3" chưa được trả lời.
