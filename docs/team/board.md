@@ -8,10 +8,6 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-| [T-016](tickets/T-016-luu-nhap-bai-dang-soan.md) | Lưu nháp bài đang soạn (logic) | Thợ Máy | Làm xong; Soi Lỗi, Lá Chắn: đạt có điều kiện → T-021 | [Thợ Máy](reports/T-016-tho-may.md) · [Soi Lỗi](reports/T-016-020-soi-loi.md) · [Lá Chắn](reports/T-016-020-la-chan.md) |
-| [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong app | Thợ Máy (lượt 2), rồi Họa Sĩ | Làm xong; Soi Lỗi, Lá Chắn: đạt có điều kiện → T-021 | [Thợ Máy](reports/T-020-tho-may.md) · [Họa Sĩ](reports/T-020-hoa-si.md) |
-| [T-021](tickets/T-021-sua-loi-kho-nhap-va-env.md) | Sửa lỗi kho nháp và ghi `.env` | Thợ Máy (2 lượt) | Đang làm | |
-| [T-017](tickets/T-017-giao-dien-luu-nhap.md) | Tự lưu nháp, mở lại bài đang soạn (giao diện) | Họa Sĩ | Làm xong; chờ kiểm sau T-021 | [Họa Sĩ](reports/T-017-hoa-si.md) |
 
 ## Chờ
 
@@ -32,6 +28,10 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-021](tickets/T-021-sua-loi-kho-nhap-va-env.md) | Sửa lỗi kho nháp và ghi `.env` (2 lượt Thợ Máy) | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-021-tho-may.md) · [Soi Lỗi](reports/T-016-020-soi-loi.md) lần 2: đạt · Lá Chắn: [**ĐẠT**](reports/T-016-020-la-chan.md) lần 2 (chạy tạm Opus) |
+| [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong Cài đặt | Thợ Máy, Họa Sĩ | 2026-10-14 | [Thợ Máy](reports/T-020-tho-may.md) · [Họa Sĩ](reports/T-020-hoa-si.md) · Lá Chắn: **ĐẠT** |
+| [T-017](tickets/T-017-giao-dien-luu-nhap.md) | Tự lưu, mở lại, xóa bài đang soạn | Họa Sĩ | 2026-10-14 | [Báo cáo](reports/T-017-hoa-si.md) · Soi Lỗi: đạt · Lá Chắn: **ĐẠT** |
+| [T-016](tickets/T-016-luu-nhap-bai-dang-soan.md) | Kho lưu nháp bài đang soạn | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-016-tho-may.md) · Soi Lỗi: đạt · Lá Chắn: **ĐẠT** |
 | [T-015](tickets/T-015-loi-thap-con-lai.md) | Lỗi Thấp còn lại, test tốc độ ổn định (2 lần) | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-015-tho-may.md) · [Soi Lỗi](reports/T-015-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-015-la-chan.md) lần 2 (chạy tạm bằng Opus) |
 | [T-014](tickets/T-014-loi-thap-escape.md) | Lỗi Thấp của bộ escape link | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-014-tho-may.md) · [Soi Lỗi](reports/T-013-014-soi-loi.md): đạt, còn R5-1 → T-015 · Lá Chắn: [**ĐẠT**](reports/T-013-014-la-chan.md) (chạy tạm bằng Opus, kiểm lại bằng Fable sau 01/11) |
 | [T-013](tickets/T-013-escape-cau-can-xem-lai.md) | Hiển thị an toàn câu «Cần xem lại» | Họa Sĩ | 2026-10-14 | [Báo cáo](reports/T-012-hoa-si.md) · Soi Lỗi: đạt · Lá Chắn: [**ĐẠT**](reports/T-013-014-la-chan.md) |

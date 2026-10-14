@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | T-016 |
-| Trạng thái | Chờ T-016 |
+| Trạng thái | Xong (2026-10-14) |
 
 ## Yêu cầu
 

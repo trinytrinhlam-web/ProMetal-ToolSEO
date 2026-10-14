@@ -5,10 +5,12 @@ Bài đang soạn nằm trong session_state:
 - dàn ý: ``outline_ids`` + ``h-<id>`` (tiêu đề mục), ``pts-<id>`` (ý chính), ``img-<id>`` (ảnh)
 - bài viết: ``part_ids`` + ``heading-<id>``, ``texts-<id>`` (các phiên bản), ``ver-<id>``
 - ``review``: lần rà soát gần nhất (``Review``)
+- ``draft_id``: mã nháp đang mở; trang tự lưu nháp vào ``seo_app.storage`` sau mỗi lần chạy
 """
 
 import html
 import tomllib
+from pathlib import Path
 
 import streamlit as st
 
@@ -20,6 +22,8 @@ from seo_app.content.models import SCORE_LABELS
 from seo_app.content.rules import find_missing
 from seo_app.content.workflow import apply_flag
 from seo_app.sanitize import escape_link_syntax, unescape_link_syntax
+from seo_app.storage import DraftError, DraftPart, DraftSnapshot, DraftStore, new_draft_id
+from seo_app.storage import drafts as draft_storage
 from seo_app.text import markdown_link, slugify
 
 S = st.session_state
@@ -30,6 +34,11 @@ MATERIAL = {
     "Câu hỏi khách hay hỏi": "ví dụ: Inox 304 có bị gỉ không? Làm sao biết thợ dùng đúng 304?",
 }
 COMPOSE_PREFIXES = ("h-", "pts-", "img-", "heading-", "texts-", "ver-", "editing-", "manual-")
+# Ô nhập chỉ hiện ở một bước. Streamlit tự xóa giá trị của ô không được vẽ, nên mỗi lần chạy
+# gán lại để chuyển bước không mất từ khóa, chất liệu thật, tiêu đề mục (và nháp không lưu thiếu).
+KEEP_PREFIXES = ("real-", "h-")
+KEEP_KEYS = ("keyword", "outline_title")
+DRAFT_FLAGS = ("draft_id", "_draft_saved_json", "_draft_saved_at", "_draft_baseline")
 
 
 # ------------------------------------------------------------------ trạng thái
@@ -37,8 +46,13 @@ COMPOSE_PREFIXES = ("h-", "pts-", "img-", "heading-", "texts-", "ver-", "editing
 
 def init_state() -> None:
     if "_start_keyword" in S:  # bấm «Viết bài mới» ở trang Bài viết
-        reset_compose()
+        clear_compose()  # bài mới: xóa cả chất liệu thật của bài cũ (bài cũ vẫn còn trong nháp)
+        forget_draft()  # lần tự lưu sau tạo nháp mới, không ghi đè nháp đang mở
         S.keyword = S.pop("_start_keyword")
+    if "_open_draft" in S:  # bấm «Mở» ở khung Bài đang soạn dở (phải chạy trước khi vẽ ô nhập)
+        open_draft(S.pop("_open_draft"))
+    for key in [k for k in S if k in KEEP_KEYS or str(k).startswith(KEEP_PREFIXES)]:
+        S[key] = S[key]
     S.setdefault("step", 0)
     S.setdefault("keyword", "")
     S.setdefault("research", None)
@@ -76,8 +90,21 @@ def reset_compose() -> None:
     S.step = 0
 
 
+def clear_compose() -> None:
+    """Xóa trắng bài đang soạn, kể cả từ khóa và chất liệu thật (reset_compose giữ hai thứ này)."""
+    reset_compose()
+    for key in [k for k in S if str(k).startswith("real-")]:
+        del S[key]
+    S.keyword = ""
+
+
+def forget_draft() -> None:
+    for key in DRAFT_FLAGS:
+        S.pop(key, None)
+
+
 def new_id() -> int:
-    S.next_id += 1
+    S.next_id = S.get("next_id", 0) + 1
     return S.next_id
 
 
@@ -160,6 +187,181 @@ def overall_score() -> int | None:
         return None
     scores = S.review.scores.model_dump().values()
     return round(sum(scores) / len(scores))
+
+
+# ----------------------------------------------------------------------- nháp
+
+
+@st.cache_resource(show_spinner=False)
+def _store_at(path: str) -> DraftStore:
+    return DraftStore(Path(path))
+
+
+def draft_store() -> DraftStore:
+    # Đọc đường dẫn lúc chạy (không lúc import) để test trỏ được kho sang thư mục tạm.
+    return _store_at(str(draft_storage.DEFAULT_DRAFTS_FILE))
+
+
+def snapshot() -> DraftSnapshot:
+    """Bài đang soạn trong session → nháp. Giữ nguyên chữ như trong session (xem T-016)."""
+    return DraftSnapshot(
+        id=S.setdefault("draft_id", new_draft_id()),
+        step=S.step,
+        keyword=S.keyword,
+        material={label: text for label, text in material().items() if text},
+        research=S.research,
+        research_keyword=S.research_keyword,
+        outline_title=S.outline_title,
+        outline=[
+            OutlineItem(heading=S[f"h-{u}"], points=list(S[f"pts-{u}"]), image=S[f"img-{u}"])
+            for u in S.outline_ids
+        ],
+        article_title=S.article_title,
+        parts=[
+            DraftPart(
+                heading=S[f"heading-{p}"],
+                versions=list(S[f"texts-{p}"]),
+                current=S[f"ver-{p}"],
+                image=S.get(f"img-{p}", ""),
+            )
+            for p in S.part_ids
+        ],
+        review=S.review,
+        auto_fixed=S.auto_fixed,
+        ignored_flags=S.ignored_flags,
+    )
+
+
+def open_draft(draft_id: str) -> None:
+    """Nháp → session. Gọi trong init_state, trước khi vẽ ô nhập nào."""
+    try:
+        snap = draft_store().load(draft_id)
+    except DraftError as exc:
+        S._draft_error = str(exc)
+        return
+    clear_compose()
+    forget_draft()
+    S.draft_id = snap.id
+    S.keyword = snap.keyword
+    for label, text in snap.material.items():
+        if label in MATERIAL:  # chỉ nhận nhãn đang có trên trang
+            S[f"real-{label}"] = text
+    S.research = snap.research
+    S.research_keyword = snap.research_keyword
+    # Không dùng set_outline: dàn ý trong nháp đã ở dạng ô sửa (chưa escape), không unescape nữa.
+    S.outline_title = snap.outline_title
+    S.outline_ids = []
+    for item in snap.outline:
+        uid = new_id()
+        S[f"h-{uid}"] = item.heading
+        S[f"pts-{uid}"] = list(item.points)
+        S[f"img-{uid}"] = item.image
+        S.outline_ids.append(uid)
+    S.article_title = snap.article_title
+    S.part_ids = []
+    for part in snap.parts:
+        pid = new_id()
+        S[f"heading-{pid}"] = part.heading
+        S[f"texts-{pid}"] = list(part.versions)
+        S[f"ver-{pid}"] = part.current
+        S[f"img-{pid}"] = part.image
+        S.part_ids.append(pid)
+    S.review = snap.review
+    S.auto_fixed = snap.auto_fixed
+    S.ignored_flags = set(snap.ignored_flags)
+    S.step = snap.step
+    S._draft_saved_at = snap.saved_at
+    S._draft_baseline = True  # lần chạy này chỉ ghi nhận, không lưu lại (giờ lưu giữ nguyên)
+    st.toast("Đã mở bài đang soạn dở", icon="📂")
+
+
+def ask_open(draft_id: str) -> None:
+    S._open_draft = draft_id
+
+
+def delete_draft(draft_id: str) -> None:
+    try:
+        draft_store().delete(draft_id)
+    except DraftError as exc:
+        S._draft_error = str(exc)
+        return
+    if S.get("draft_id") == draft_id:
+        # Xóa đúng bài đang mở: xóa trắng trang, nếu không lần tự lưu sau sẽ tạo lại nháp.
+        clear_compose()
+        forget_draft()
+    st.toast("Đã xóa nháp", icon="🗑️")
+
+
+def autosave(slot) -> None:
+    """Cuối mỗi lần chạy: bài khác bản đã lưu thì lưu. Không bao giờ làm sập trang."""
+    if "draft_id" not in S and not (keyword() or S.research is not None):
+        return  # trang còn trống, chưa có gì để lưu
+    try:
+        snap = snapshot()
+        current = snap.model_dump_json(exclude={"saved_at"})
+        if S.pop("_draft_baseline", False):
+            S._draft_saved_json = current
+        elif current != S.get("_draft_saved_json"):
+            saved = draft_store().save(snap)
+            S._draft_saved_json = current
+            S._draft_saved_at = saved.saved_at
+    except (DraftError, ValueError, KeyError) as exc:  # ValidationError là một dạng ValueError
+        message = str(exc) if isinstance(exc, DraftError) else "dữ liệu bài chưa đầy đủ."
+        slot.caption(f"⚠️ Chưa lưu được nháp: {message}")
+        return
+    if S.get("_draft_saved_at") is not None:
+        slot.caption(f"💾 Đã lưu lúc {S._draft_saved_at.strftime('%H:%M')}")
+
+
+def format_saved(summary_time) -> str:
+    return summary_time.strftime("%H:%M · %d/%m/%Y")
+
+
+def drafts_panel() -> None:
+    """Khung «Bài đang soạn dở» ở bước Chuẩn bị. Chữ từ nháp chỉ hiện bằng st.text."""
+    try:
+        listing = draft_store().list_drafts()
+    except DraftError as exc:
+        st.warning(str(exc))
+        return
+    if not listing.drafts and not listing.skipped:
+        return
+    current = S.get("draft_id")
+    others = [d for d in listing.drafts if d.id != current]
+    with st.expander(
+        f"📂 Bài đang soạn dở ({len(listing.drafts)})",
+        expanded=not keyword() and S.research is None and bool(others),
+    ):
+        if listing.skipped:
+            st.caption(f"Có {listing.skipped} nháp bị hỏng nên không hiện.")
+        for d in listing.drafts:
+            with st.container(border=True):
+                info, open_col, del_col = st.columns([6, 1.2, 1.2], vertical_alignment="center")
+                info.text(d.title)
+                meta = f"Lưu lúc {format_saved(d.saved_at)}"
+                if d.keyword.strip() and d.keyword.strip() != d.title:
+                    meta = f"Từ khóa: {d.keyword.strip()} · {meta}"
+                info.text(meta)
+                if d.id == current:
+                    open_col.button("Đang mở", key=f"open-{d.id}", disabled=True, width="stretch")
+                else:
+                    open_col.button(
+                        "Mở",
+                        key=f"open-{d.id}",
+                        on_click=ask_open,
+                        args=(d.id,),
+                        width="stretch",
+                    )
+                with del_col.popover("🗑️ Xóa", width="stretch"):
+                    st.markdown("Xóa hẳn nháp này? Không lấy lại được.")
+                    st.button(
+                        "Xóa hẳn",
+                        key=f"del-{d.id}",
+                        type="primary",
+                        on_click=delete_draft,
+                        args=(d.id,),
+                        width="stretch",
+                    )
 
 
 # -------------------------------------------------------------------------- AI
@@ -268,6 +470,7 @@ def run_outline(writer: ContentWriter) -> None:
 
 
 def step_prepare(writer: ContentWriter | None) -> None:
+    drafts_panel()
     kw_col, btn_col = st.columns([4, 1.4], vertical_alignment="bottom")
     kw_col.text_input("Từ khóa chính", key="keyword", placeholder="ví dụ: so sánh inox 201 và 304")
     research: Research | None = S.research
@@ -650,6 +853,22 @@ def step_publish() -> None:
 
 init_state()
 ui.page_header("Soạn bài", f"Từ khóa: {keyword()}" if keyword() else "Bắt đầu bằng một từ khóa")
+saved_note = st.empty()  # «Đã lưu lúc HH:MM», điền ở cuối trang sau khi tự lưu
+
+store = None
+try:
+    store = draft_store()
+    store.list_drafts(limit=0)  # lần đầu: kiểm file nháp (file hỏng được cất sang một bên)
+except DraftError as exc:
+    st.warning(str(exc))
+if store is not None and store.recovered_from is not None and not S.get("_recovered_noted"):
+    S._recovered_noted = True
+    st.warning(
+        "File nháp cũ bị hỏng nên đã được cất sang một bên "
+        f"(tên «{store.recovered_from.name}», cùng thư mục). App bắt đầu file nháp mới."
+    )
+if "_draft_error" in S:
+    st.error(S.pop("_draft_error"))
 
 writer: ContentWriter | None = None
 try:
@@ -679,3 +898,5 @@ elif S.step == 3:
     step_seo()
 else:
     step_publish()
+
+autosave(saved_note)

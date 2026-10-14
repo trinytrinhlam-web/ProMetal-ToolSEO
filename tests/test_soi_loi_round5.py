@@ -13,11 +13,11 @@ from __future__ import annotations
 import ast
 import random
 import re
-import time
 
 import pytest
 from fake_ai import DRAFT, SCORES, FakeProvider
 from streamlit.testing.v1 import AppTest
+from timing import assert_scales_linearly
 
 from seo_app.ai import registry as ai_registry
 from seo_app.auth import hash_password
@@ -298,23 +298,14 @@ def test_strip_never_crashes_on_whitespace_and_backticks():
 # ==================================== Tốc độ: đo TỈ LỆ thay vì mốc giây (ít chập chờn)
 
 
-def _best_time(fn, text: str, repeat: int = 3) -> float:
-    best = float("inf")
-    for _ in range(repeat):
-        start = time.perf_counter()
-        fn(text)
-        best = min(best, time.perf_counter() - start)
-    return best
-
-
 @pytest.mark.parametrize("unit", ["[a]( ", "[]( ", "[](\n", "`a`[b](c d)"])
 def test_clean_grows_linearly_on_nested_parentheses(unit):
     """Gấp 4 độ dài thì thời gian tăng xa dưới 16 lần (bình phương).
 
-    Máy chậm làm chậm cả hai lần đo nên tỉ lệ gần như không đổi.
+    Đo bằng ``tests/timing.py`` (thời gian CPU, không dùng đồng hồ thường) để máy bận không
+    làm test đỏ oan (Soi Lỗi lần 2 của T-016/T-020).
     """
     size = 4_000
-    small = unit * size + ")" * size
-    large = unit * (4 * size) + ")" * (4 * size)
-    ratio = _best_time(clean_ai_text, large) / max(_best_time(clean_ai_text, small), 1e-4)
-    assert ratio < 9, ratio
+    assert_scales_linearly(
+        clean_ai_text, lambda k: unit * (size * k) + ")" * (size * k), label=unit
+    )

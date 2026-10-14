@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Cao (chặn đóng T-016, T-017, T-020) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-10-14) |
 
 Nguồn: [T-016-020-la-chan.md](../reports/T-016-020-la-chan.md) và [T-016-020-soi-loi.md](../reports/T-016-020-soi-loi.md). Test `xfail` R8-x nằm trong `tests/test_soi_loi_t016_t020.py`.
 

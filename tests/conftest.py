@@ -49,6 +49,18 @@ def _never_read_real_env(monkeypatch, tmp_path_factory):
         monkeypatch.delenv(name, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_real_drafts(monkeypatch, tmp_path_factory):
+    """Test không bao giờ đọc/ghi kho nháp thật ``data/drafts.sqlite``: trang Soạn bài đọc
+    ``seo_app.storage.drafts.DEFAULT_DRAFTS_FILE`` lúc chạy, nên trỏ nó sang thư mục tạm riêng
+    cho từng test. Test cần kho nháp thì đọc ``seo_app.storage.drafts.DEFAULT_DRAFTS_FILE``.
+    """
+    import seo_app.storage.drafts as drafts
+
+    folder = tmp_path_factory.mktemp("nhap")
+    monkeypatch.setattr(drafts, "DEFAULT_DRAFTS_FILE", folder / "drafts.sqlite")
+
+
 @pytest.fixture
 def project_root() -> Path:
     return PROJECT_ROOT

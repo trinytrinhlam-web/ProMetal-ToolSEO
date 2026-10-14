@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Cao (hiện bấm F5 là mất bài) |
 | Phụ thuộc | Không. T-017 (giao diện) làm sau phiếu này |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-10-14) |
 
 ## Mục tiêu
 

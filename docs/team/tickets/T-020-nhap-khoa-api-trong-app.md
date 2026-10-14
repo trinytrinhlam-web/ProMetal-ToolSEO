@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Cao (chủ dự án yêu cầu 2026-10-14) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-10-14) |
 
 ## Mục tiêu
 
