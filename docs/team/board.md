@@ -9,6 +9,7 @@ _Cập nhật: 2026-10-14_
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
 | [T-016](tickets/T-016-luu-nhap-bai-dang-soan.md) | Lưu nháp bài đang soạn (logic) | Thợ Máy | Đang làm | |
+| [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong app | Thợ Máy (lượt 2), rồi Họa Sĩ | Đang làm | |
 
 ## Chờ
 
@@ -57,4 +58,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-020
+## Số phiếu tiếp theo: T-021
