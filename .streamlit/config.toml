@@ -13,3 +13,27 @@ gatherUsageStats = false
 [client]
 # Ẩn nút "Deploy" và menu dành cho lập trình viên trên thanh công cụ.
 toolbarMode = "minimal"
+
+[theme]
+# Font tiếng Việt Be Vietnam Pro (tải từ Google Fonts; mất mạng thì dùng font hệ thống).
+font = "Be Vietnam Pro:https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap, sans-serif"
+baseRadius = "10px"
+buttonRadius = "8px"
+showWidgetBorder = true
+headingFontWeights = [700, 650, 600, 600, 600, 600]
+
+[theme.light]
+primaryColor = "#0F7B6C"
+backgroundColor = "#FBFBF8"
+secondaryBackgroundColor = "#F1F3EE"
+textColor = "#1C2421"
+borderColor = "#E2E5DE"
+linkColor = "#0F7B6C"
+
+[theme.dark]
+primaryColor = "#3CC4A8"
+backgroundColor = "#131719"
+secondaryBackgroundColor = "#1C2225"
+textColor = "#E5E9E7"
+borderColor = "#2B3336"
+linkColor = "#3CC4A8"

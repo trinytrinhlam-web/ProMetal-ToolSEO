@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có bộ khung (đăng nhập, đọc cấu hình). Các chức năng sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập và kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -41,7 +41,9 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Mở app:** bấm đúp `run.bat` (Windows) hoặc `run.command` (Mac).
 - **Tắt app:** đóng cửa sổ đen / Terminal. Đóng tab trình duyệt thì app chưa tắt.
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
-- Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật.
+- Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
+- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào), **Cài đặt**, **Kết nối WordPress**.
+- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, chưa gọi AI thật và không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng.
 
 ## 5. File cấu hình `.env`
 
@@ -57,13 +59,45 @@ Khóa API, mật khẩu WordPress, đường dẫn thư mục ảnh… đều n�
   - Mỗi máy cần một file `.env` riêng. Có thể chép bằng USB.
   - Bài viết, kế hoạch và thứ hạng nằm trên WordPress / Google, nên hai máy luôn thấy cùng dữ liệu.
 
-## 6. Cập nhật phiên bản mới
+## 6. Kết nối WordPress
+
+App gửi bài sang WordPress bằng **Application Password**: một mật khẩu riêng cho app, khác mật khẩu đăng nhập thường. Bạn có thể thu hồi nó bất cứ lúc nào mà không ảnh hưởng tài khoản.
+
+1. Đăng nhập trang quản trị WordPress (`https://ten-mien-cua-ban/wp-admin`).
+   - Nên tạo một tài khoản riêng cho app, vai trò **Biên tập viên (Editor)**.
+2. Vào **Người dùng → Hồ sơ** (Users → Profile), kéo xuống mục **Application Passwords**.
+3. Gõ tên, ví dụ `SEO App - may cong ty`, rồi bấm **Thêm Application Password mới**.
+4. WordPress hiện một dãy dạng `abcd efgh ijkl mnop qrst uvwx`. **Chép ngay**: dãy này chỉ hiện một lần.
+5. Mở file `.env`, điền:
+   ```
+   WORDPRESS_URL=https://ten-mien-cua-ban
+   WORDPRESS_USERNAME=ten-dang-nhap-wordpress
+   WORDPRESS_APP_PASSWORD=abcd efgh ijkl mnop qrst uvwx
+   ```
+6. Tắt app rồi mở lại. Vào menu **Kết nối WordPress** và bấm **Kiểm tra kết nối**.
+
+Ở trang này bạn còn có thể:
+- bấm **Tải chuyên mục và thẻ** để xem danh sách đang có trên website;
+- **tạo thử một bài nháp** có ảnh đại diện.
+
+App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn tự bấm Đăng trong WordPress. Bài thử có thể xóa trong WordPress sau khi kiểm tra.
+
+**Lỗi thường gặp**
+
+| App báo | Cách xử lý |
+|---|---|
+| "WordPress từ chối đăng nhập" | Kiểm tra lại tên đăng nhập và Application Password trong `.env`. Nếu đã đúng, có thể plugin bảo mật (Wordfence, iThemes…) đang tắt Application Passwords, hoặc hosting chặn header `Authorization`. Nhờ người quản lý website kiểm tra. |
+| "Không tìm thấy REST API" | Kiểm tra `WORDPRESS_URL`. Trong WordPress vào **Cài đặt → Đường dẫn tĩnh** (Settings → Permalinks), bấm **Lưu thay đổi** một lần. |
+| "không đủ quyền" | Tài khoản cần vai trò Biên tập viên hoặc Quản trị viên. |
+| "Lỗi chứng chỉ bảo mật (SSL)" | Website chưa có https hợp lệ. Kiểm tra bằng cách mở website trên trình duyệt. |
+
+## 7. Cập nhật phiên bản mới
 
 - Với GitHub Desktop: mở dự án, bấm **Fetch origin**, rồi bấm **Pull origin** nếu có.
 - Sau đó chạy `run.bat` / `run.command` như bình thường. Thư viện mới (nếu có) sẽ được cài tự động.
 - File `.env` của bạn không bị ghi đè.
 
-## 7. Xử lý sự cố
+## 8. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
@@ -91,8 +125,10 @@ uv run python scripts/hash_password.py --print   # tạo mã băm mật khẩu, 
 Cấu trúc thư mục:
 
 ```
-app/          giao diện Streamlit (main.py)
-seo_app/      phần logic: config.py (đọc .env), auth.py (mật khẩu)
+app/          giao diện Streamlit: main.py (đăng nhập, menu), views/ (từng trang),
+              assets/ (logo, style.css); dữ liệu mẫu demo nằm ở seo_app/demo.py
+seo_app/      phần logic: config.py (đọc .env), auth.py (mật khẩu), text.py (xử lý chữ),
+              wordpress/ (client REST API)
 scripts/      script tiện ích (hash_password.py)
 tests/        kiểm thử pytest
 .streamlit/   cấu hình Streamlit (chỉ mở ở localhost, không thu thập số liệu)
