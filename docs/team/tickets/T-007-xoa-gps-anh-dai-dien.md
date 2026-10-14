@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 1 (lỗi tồn tại từ trước), liên quan Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | Quyết định của chủ dự án |
-| Trạng thái | Chờ chủ dự án chọn cách |
+| Trạng thái | **Hủy** (2026-10-14) |
 
 ## Mục tiêu
 
@@ -32,3 +32,7 @@ Lỗi #3 trong [T-001-la-chan.md](../reports/T-001-la-chan.md): ô tải ảnh �
 
 - Soi Lỗi: Có
 - Lá Chắn: Có
+
+## Ghi chú của Chỉ Huy
+
+2026-10-14: Hủy phiếu. Chủ dự án: "Không cần xóa vị trí trong ảnh, cứ để nguyên, nhiều khi đó là mục đích cố ý." Đã ghi vào sổ rủi ro (`security.md` mục 6) và sửa Lộ trình Giai đoạn 3 trong `CLAUDE.md`.

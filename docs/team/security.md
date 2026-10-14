@@ -11,7 +11,7 @@ Chủ dự án yêu cầu **mức bảo mật cao nhất**. Tài liệu này là
 | File JSON service account Google | Truy cập Sheets, Search Console |
 | Mã băm mật khẩu đăng nhập app | Bảo vệ app trên máy dùng chung |
 | Uy tín và thứ hạng website | Bài lỗi, bài bị chèn link độc hoặc lỡ đăng công khai sẽ hại SEO và khách hàng |
-| Ảnh thật của doanh nghiệp | Có thể chứa vị trí GPS, thông tin khách |
+| Ảnh thật của doanh nghiệp | Có thể chứa thông tin khách (vị trí GPS được giữ có chủ đích, xem mục 6) |
 
 ## 2. Mối đe dọa và biện pháp bắt buộc
 
@@ -45,7 +45,7 @@ Nguồn rủi ro: nội dung trang đối thủ khi nghiên cứu, kết quả t
 
 ### 2.6 Ảnh và file trên máy
 - Chỉ đọc ảnh trong các thư mục người dùng khai báo (`IMAGE_FOLDERS`). Chặn `..`, đường dẫn tuyệt đối lạ, và liên kết tắt (symlink) trỏ ra ngoài.
-- Xóa toàn bộ EXIF có vị trí GPS trước khi tải ảnh lên.
+- **Giữ nguyên** vị trí GPS trong ảnh (quyết định của chủ dự án, mục 6). Không tự xóa; khi nén hay đổi định dạng thì phải giữ lại EXIF.
 - Giới hạn kích thước và số điểm ảnh (chống "bom giải nén"); chỉ nhận định dạng ảnh đã biết.
 - Tên file tải lên được làm sạch (không ký tự lạ, không đường dẫn).
 
@@ -114,7 +114,7 @@ Biên bản bảo mật phải đi qua đủ các dòng này.
 
 **File và ảnh**
 - [ ] F1. Không đọc/ghi ra ngoài thư mục được phép; chặn `..` và symlink.
-- [ ] F2. Xóa GPS trong EXIF; giới hạn kích thước ảnh.
+- [ ] F2. Giới hạn kích thước ảnh; EXIF/GPS được giữ nguyên theo quyết định ở mục 6.
 - [ ] F3. Đọc/ghi file với `encoding="utf-8"`, không chạy nội dung file như code (`eval`, `pickle`, `yaml.load` không an toàn).
 
 **Thư viện và kho mã**
@@ -142,7 +142,7 @@ Rủi ro chủ dự án đã quyết định chấp nhận thay vì sửa. Mỗi
 
 | Ngày | Rủi ro | Lý do chấp nhận | Người quyết định |
 |---|---|---|---|
-| _(chưa có)_ | | | |
+| 2026-10-14 | Ảnh tải lên WordPress giữ nguyên vị trí GPS (EXIF) | Có chủ đích: chủ dự án muốn giữ vị trí trong ảnh | An Manu |
 
 ## 7. Khi có sự cố
 
