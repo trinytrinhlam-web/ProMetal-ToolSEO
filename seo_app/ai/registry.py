@@ -28,8 +28,16 @@ def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
     except tomllib.TOMLDecodeError as exc:
         raise AIError(f"File {path.name} viết sai cú pháp: {exc}") from exc
 
+    raw_tasks = data.get("tasks", {})
+    if not isinstance(raw_tasks, dict):
+        raise AIError(f"File {path.name}: mục [tasks] viết sai dạng.")
     tasks: dict[str, TaskConfig] = {}
-    for name, raw in data.get("tasks", {}).items():
+    for name, raw in raw_tasks.items():
+        if not isinstance(raw, dict):
+            raise AIError(
+                f"File {path.name}: việc «{name}» phải là một mục [tasks.{name}] có provider, "
+                "model…"
+            )
         provider = str(raw.get("provider", "")).strip().lower()
         if provider not in PROVIDERS:
             raise AIError(f"Việc «{name}»: không biết hãng AI «{provider}».")
@@ -44,10 +52,23 @@ def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
             provider=provider,
             model=model,
             effort=effort,
-            web_search=bool(raw.get("web_search", False)),
-            max_tokens=int(raw.get("max_tokens", 16000)),
+            web_search=_bool_value(name, "web_search", raw.get("web_search", False)),
+            max_tokens=_positive_int(name, "max_tokens", raw.get("max_tokens", 16000)),
         )
     return tasks
+
+
+def _bool_value(task: str, key: str, value: object) -> bool:
+    # Chỉ nhận true/false thật của TOML: "false" trong ngoặc kép là chữ, bool("false") lại là True.
+    if not isinstance(value, bool):
+        raise AIError(f"Việc «{task}»: {key} phải là true hoặc false (không để trong ngoặc kép).")
+    return value
+
+
+def _positive_int(task: str, key: str, value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise AIError(f"Việc «{task}»: {key} phải là số nguyên dương, ví dụ 16000.")
+    return value
 
 
 def make_provider(provider: str, settings: Settings) -> AIProvider:

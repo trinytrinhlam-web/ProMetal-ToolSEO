@@ -7,27 +7,67 @@
 [voice]
 # Cách xưng hô và giọng văn của cả bài.
 address = "Xưng «Pro-Metal» hoặc «chúng tôi», gọi người đọc là «bạn»"
-tone = "Thân thiện, nói thẳng vào việc như thợ lành nghề tư vấn cho khách, không văn hoa"
+tone = "Thân thiện, nói thẳng vào việc như thợ lành nghề đứng trước cửa nhà khách tư vấn: chỉ ra dấu hiệu, nguyên nhân, cách xử lý, khi nào tự làm được và khi nào nên gọi thợ; không văn hoa, không quảng cáo dồn dập"
 
 # Cụm từ cấm. Câu nào chứa các cụm này sẽ bị đánh dấu (không phân biệt hoa thường).
+# Máy dò theo kiểu "có chứa cụm này", nên chỉ ghi cụm đủ dài để không bắt nhầm câu bình thường.
 banned = [
+  # Mở bài rào đón
   "Trong thời đại",
   "Hãy cùng tìm hiểu",
+  "Cùng tìm hiểu",
+  "Hãy cùng",
+  "Trong bài viết này",
+  "Bạn đã bao giờ",
+  "Như chúng ta đã biết",
+  "Trong cuộc sống hiện đại",
+  # Câu đệm, không thêm thông tin
   "Có thể thấy rằng",
-  "vô cùng quan trọng",
-  "quý khách hàng",
   "Không thể phủ nhận",
+  "Không còn nghi ngờ gì",
+  "vô cùng quan trọng",
+  "đóng vai trò quan trọng",
+  "Nhìn chung",
+  "Tóm lại",
+  # Kết bài sáo
+  "Hy vọng bài viết",
+  "Hi vọng bài viết",
+  "Mong rằng bài viết",
+  # Giọng hành chính, quảng cáo không kiểm chứng được
+  "quý khách hàng",
+  "uy tín hàng đầu",
+  "chất lượng hàng đầu",
+  "uy tín số 1",
+  "giá rẻ nhất",
+  "tốt nhất thị trường",
 ]
 
 [review]
 # Checklist AI dùng để tự rà soát bài trước khi đưa bạn xem.
+# Mỗi dòng bắt đầu bằng tên tiêu chí mà AI chấm điểm (Thân thiện, Tự nhiên, Dễ đọc, Cụ thể, Chuẩn SEO),
+# thêm nhóm Trung thực và An toàn.
 checklist = [
-  "Mở bài trả lời ngay điều người tìm cần, không rào đón",
-  "Mỗi ý chung đều có ví dụ, tình huống hoặc con số cụ thể đi kèm",
-  "Không bịa số liệu, giá, nguồn; chỗ thiếu dữ liệu thật phải để dấu [cần bổ sung: ...]",
-  "Dùng chất liệu thật của xưởng (kinh nghiệm, câu hỏi khách) ở đúng chỗ",
-  "Có điều mới mà các bài đứng đầu Google còn thiếu",
-  "Từ khóa chính xuất hiện tự nhiên trong mở bài và ít nhất một tiêu đề mục, không nhồi nhét",
-  "Câu ngắn, đoạn ngắn, dễ đọc trên điện thoại",
-  "Giọng văn đúng cách xưng hô, không lẫn giọng văn bản hành chính",
+  # Cụ thể, có ích
+  "Cụ thể: mở bài trả lời ngay điều người tìm cần (dấu hiệu, nguyên nhân hay cách xử lý), không rào đón",
+  "Cụ thể: mỗi ý chung đều có ví dụ, tình huống hoặc con số thật đi kèm (ví dụ: cửa cuốn kéo lên nửa chừng thì tụt xuống → nói rõ nguyên nhân hay gặp)",
+  "Cụ thể: dùng chất liệu thật của xưởng (ca sửa, câu hỏi khách, lỗi hay gặp) ở đúng mục cần nó",
+  "Cụ thể: có ít nhất một điều mới mà các bài đứng đầu Google còn thiếu",
+  "Cụ thể: nói rõ việc nào người đọc tự làm được, việc nào nên gọi thợ và vì sao",
+  # Thân thiện
+  "Thân thiện: xưng hô đúng quy định, nói với «bạn» như thợ tư vấn tận nhà; không lẫn giọng văn bản hành chính, không dọa khách",
+  "Thân thiện: kết bài có một bước tiếp theo rõ ràng, lấy đúng cách liên hệ trong hồ sơ doanh nghiệp, chỉ nhắc một lần",
+  # Tự nhiên
+  "Tự nhiên: không lặp một kiểu câu hay một cách mở đoạn liên tiếp; không câu đệm chỉ để kéo dài bài",
+  "Tự nhiên: dùng từ thợ và khách hay nói (xệ, kẹt, trật ray, rơ), giải thích ngắn khi từ đó khó hiểu",
+  # Dễ đọc
+  "Dễ đọc: câu ngắn, đoạn 2-4 câu, đọc thoải mái trên điện thoại",
+  "Dễ đọc: tiêu đề mục nói rõ mục đó trả lời gì; dùng danh sách hoặc bảng khi so sánh hay liệt kê bước",
+  # Chuẩn SEO
+  "Chuẩn SEO: từ khóa chính có trong tiêu đề bài, mở bài và ít nhất một tiêu đề mục, đọc lên vẫn tự nhiên, không nhồi nhét",
+  "Chuẩn SEO: từ khóa có tên khu vực thì nội dung phải nói được điều riêng của khu vực đó, không chỉ thay tên quận",
+  "Chuẩn SEO: không chèn link hay mã HTML vào thân bài (liên kết nội bộ do app gắn ở bước sau)",
+  # Trung thực và an toàn
+  "Trung thực: không bịa số liệu, giá, thời gian, bảo hành, địa chỉ, tên khách hàng hay nguồn; chỗ thiếu dữ liệu thật để dấu [cần bổ sung: ...]",
+  "Trung thực: thông tin về Pro-Metal chỉ lấy từ hồ sơ doanh nghiệp, không hứa thêm điều hồ sơ không ghi",
+  "An toàn: hướng dẫn tự làm phải cảnh báo chỗ nguy hiểm (điện, lò xo, cửa nặng rơi) và dừng ở mức người không chuyên làm được",
 ]

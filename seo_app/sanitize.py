@@ -26,21 +26,52 @@ DANGEROUS_TAGS = frozenset(
 )  # fmt: skip
 
 # ---------------------------------------------------------------- chữ Markdown từ AI
+#
+# Mọi hàm ở đây chạy trong thời gian tuyến tính theo độ dài chữ: AI có thể bị trang đối thủ
+# dụ trả về bài rất dài toàn "<script>" hoặc "[" để làm treo app (Lá Chắn T-004 #1).
 
-_DANGEROUS_BLOCK = re.compile(
-    r"<\s*(" + "|".join(sorted(DANGEROUS_TAGS)) + r")\b[^>]*>.*?<\s*/\s*\1\s*>",
-    re.IGNORECASE | re.DOTALL,
-)
+_DANGEROUS_OPEN = re.compile(r"<\s*(" + "|".join(sorted(DANGEROUS_TAGS)) + r")\b", re.IGNORECASE)
+_DANGEROUS_CLOSE = {
+    tag: re.compile(r"<\s*/\s*" + tag + r"\s*>", re.IGNORECASE) for tag in DANGEROUS_TAGS
+}
 _COMMENT = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
 _TAG = re.compile(r"<[A-Za-z/!?][^<>]*>")
 # "<" ngay trước chữ cái, "/", "!" hoặc "?" là chỗ trình duyệt bắt đầu một thẻ.
 _TAG_OPEN = re.compile(r"<(?=[A-Za-z/!?])")
-# ![chữ](địa chỉ) và [chữ](địa chỉ); không đụng tới [cần bổ sung: ...] vì không có "(".
-_MD_URL = r"\((?:[^()\n]|\([^()\n]*\))*\)"  # cho phép một cặp ngoặc trong địa chỉ
-_MD_IMAGE = re.compile(r"!\[([^\]\n]*)\]" + _MD_URL)
-_MD_LINK = re.compile(r"\[([^\]\n]*)\]" + _MD_URL)
-# [nhãn]: https://... (link kiểu tham chiếu)
-_MD_LINK_DEF = re.compile(r"^[ \t]*\[[^\]\n]+\]:[ \t]*\S+.*$", re.MULTILINE)
+# Số lượt bóc thẻ lồng nhau (``<scr<script>ipt>`` cần 2 lượt). Lồng sâu hơn thì phần "<" còn
+# sót vẫn bị ``_TAG_OPEN`` vô hiệu hóa, nên giới hạn này chỉ ảnh hưởng tới chữ thừa, không
+# ảnh hưởng an toàn.
+_MAX_PASSES = 8
+
+
+def _drop_dangerous_blocks(text: str) -> str:
+    """Bỏ ``<script …>…</script>`` (và các thẻ nguy hiểm khác) cùng nội dung bên trong.
+
+    Thẻ mở không có thẻ đóng thì giữ lại để ``_TAG`` bỏ riêng thẻ. Chạy một lượt từ trái sang
+    phải: mỗi đoạn chữ chỉ được quét một lần.
+    """
+    out: list[str] = []
+    pos = 0
+    next_gt = -1  # vị trí ">" gần nhất đã tìm (dùng lại, tránh quét lại cùng một đoạn)
+    no_close: set[str] = set()  # thẻ đã biết là không còn thẻ đóng nào phía sau
+    while (match := _DANGEROUS_OPEN.search(text, pos)) is not None:
+        if next_gt < match.end():
+            next_gt = text.find(">", match.end())
+            if next_gt == -1:
+                break  # không còn ">" nào: không còn thẻ mở hoàn chỉnh
+        tag = match.group(1).lower()
+        close = None
+        if tag not in no_close:
+            close = _DANGEROUS_CLOSE[tag].search(text, next_gt + 1)
+        if close is None:
+            no_close.add(tag)
+            out.append(text[pos : match.end()])
+            pos = match.end()
+            continue
+        out.append(text[pos : match.start()])
+        pos = next_gt = close.end()
+    out.append(text[pos:])
+    return "".join(out)
 
 
 def strip_tags(text: str) -> str:
@@ -49,13 +80,50 @@ def strip_tags(text: str) -> str:
     Dấu "<" còn sót mà trình duyệt có thể hiểu là mở thẻ được tách bằng một dấu cách
     ("<img" thành "< img"), nên không bao giờ thành thẻ thật.
     """
-    previous = None
-    while previous != text:
+    for _ in range(_MAX_PASSES):
         previous = text
-        text = _DANGEROUS_BLOCK.sub("", text)
+        text = _drop_dangerous_blocks(text)
         text = _COMMENT.sub("", text)
         text = _TAG.sub("", text)
+        if text == previous:
+            break
     return _TAG_OPEN.sub("< ", text)
+
+
+# Ký tự Markdown cho phép escape bằng "\" (CommonMark: mọi dấu câu ASCII).
+_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+# Dòng trống: kết thúc đoạn văn, link Markdown không bao giờ vượt qua.
+_BLANK_LINE_AFTER = re.compile(r"[ \t]*\n")
+# [nhãn]: địa chỉ (link kiểu tham chiếu). Rộng hơn CommonMark cho chắc: nhãn nhiều dòng, địa
+# chỉ ở dòng sau, nằm trong trích dẫn (">") hoặc danh sách ("-", "1.").
+_MD_LINK_DEF = re.compile(
+    r"^[ \t>*+\-\d.)]*\[(?:[^\[\]\\]|\\.)+\]:[ \t]*\n?[ \t]*\S.*$", re.MULTILINE
+)
+
+
+def _is_blank_line_start(text: str, newline: int) -> bool:
+    """Ký tự ``text[newline]`` là "\n" và dòng ngay sau nó là dòng trống."""
+    return _BLANK_LINE_AFTER.match(text, newline + 1) is not None
+
+
+def _matching_parens(text: str) -> dict[int, int]:
+    """Vị trí "(" → vị trí ")" khớp với nó (bỏ qua ngoặc escape, không vượt dòng trống)."""
+    pairs: dict[int, int] = {}
+    stack: list[int] = []
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            i += 2
+            continue
+        if char == "(":
+            stack.append(i)
+        elif char == ")" and stack:
+            pairs[stack.pop()] = i
+        elif char == "\n" and stack and _is_blank_line_start(text, i):
+            stack.clear()
+        i += 1
+    return pairs
 
 
 def strip_markdown_links(text: str) -> str:
@@ -63,12 +131,42 @@ def strip_markdown_links(text: str) -> str:
 
     AI không được tự chèn link: link nội bộ do app gắn ở bước sau, link ra ngoài phải được
     người dùng thêm và nhìn thấy (security.md 2.3).
+
+    Không đoán link bằng một biểu thức chính quy (dễ sót các dạng CommonMark ít gặp: ngoặc
+    lồng nhiều tầng, nhãn có "[ ]", nhãn hoặc địa chỉ xuống dòng). Thay vào đó đọc một lượt:
+    hễ có ``](`` mà dấu "(" có ")" khớp (cùng đoạn văn) thì bỏ cả phần ``](…)``, cùng "[" mở
+    nhãn và "!" của ảnh. Cách này bắt rộng hơn CommonMark: có thể bỏ thừa một địa chỉ vốn
+    hiện thành chữ, nhưng không để sót link nào.
     """
-    previous = None
-    while previous != text:
-        previous = text
-        text = _MD_IMAGE.sub(r"\1", text)
-        text = _MD_LINK.sub(r"\1", text)
+    pairs = _matching_parens(text)
+    n = len(text)
+    drop = bytearray(n)  # 1 = bỏ ký tự này
+    openers: list[int] = []  # vị trí các "[" chưa đóng
+    i = 0
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            i += 2
+            continue
+        if char == "[":
+            openers.append(i)
+        elif char == "\n" and openers and _is_blank_line_start(text, i):
+            openers.clear()
+        elif char == "]":
+            opener = openers.pop() if openers else None
+            close = pairs.get(i + 1)
+            if close is not None:
+                drop[i : close + 1] = b"\x01" * (close + 1 - i)
+                if opener is not None:
+                    drop[opener] = 1
+                    bang = opener - 1  # "!" của ảnh, trừ khi đã escape "\\!"
+                    if bang >= 0 and text[bang] == "!" and text[max(bang - 1, 0) : bang] != "\\":
+                        drop[bang] = 1
+                i = close + 1
+                continue
+        i += 1
+    if any(drop):
+        text = "".join(char for char, dropped in zip(text, drop, strict=True) if not dropped)
     return _MD_LINK_DEF.sub("", text)
 
 
@@ -88,6 +186,9 @@ ALLOWED_TAGS = frozenset(
     }
 )  # fmt: skip
 VOID_TAGS = frozenset({"br", "hr", "img"})
+# Thẻ nguy hiểm theo chuẩn HTML không bao giờ có thẻ đóng: chỉ bỏ thẻ, không chờ thẻ đóng
+# (nếu chờ thì mất toàn bộ phần bài phía sau, Soi Lỗi T-004 #3).
+DANGEROUS_VOID_TAGS = frozenset({"input", "base", "link", "meta", "embed", "frame"})
 GLOBAL_ATTRS = frozenset({"class", "id", "title", "lang", "dir"})
 TAG_ATTRS = {
     "a": frozenset({"href", "rel"}),
@@ -111,8 +212,10 @@ def is_safe_url(url: str) -> bool:
     compact = _IGNORED_IN_URL.sub("", html.unescape(url)).lower()
     match = _SCHEME.match(compact)
     if match is None:
-        # Không có "tên:" ở đầu → tương đối. Chặn thêm "\\evil" (trình duyệt hiểu là //evil).
-        return not compact.startswith("\\")
+        # Không có "tên:" ở đầu → tương đối. Trình duyệt coi dấu \ như "/", nên //evil,
+        # /\evil, \/evil, \\evil đều là link ra ngoài tới evil (cùng giao thức), dù
+        # nhìn giống link nội bộ: chặn hết, chỉ cho "/đường-dẫn", "#mục", "?q=", "tên-file".
+        return not compact.startswith(("//", "/\\", "\\"))
     return match.group(1) in SAFE_SCHEMES
 
 
@@ -151,7 +254,7 @@ class _Sanitizer(HTMLParser):
                 self.skip_depth += 1
             return
         if tag in DANGEROUS_TAGS:
-            if not closed and tag not in VOID_TAGS:
+            if not closed and tag not in DANGEROUS_VOID_TAGS:
                 self.skip_tag, self.skip_depth = tag, 1
             return
         if tag not in ALLOWED_TAGS:

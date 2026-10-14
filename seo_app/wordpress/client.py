@@ -1,6 +1,7 @@
 """Client WordPress REST API, xác thực bằng Application Password.
 
-Chỉ làm những việc an toàn: đọc thông tin, tạo bài NHÁP, tải ảnh, đặt ảnh đại diện.
+Chỉ làm những việc an toàn: đọc thông tin, tạo bài NHÁP, tải ảnh, đặt ảnh đại diện cho bài
+nháp vừa tạo. Chỉ nói chuyện qua https.
 Không có hàm nào đăng bài công khai. Mật khẩu không bao giờ xuất hiện trong thông báo lỗi.
 """
 
@@ -91,9 +92,15 @@ class WordPressClient:
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
         base_url = base_url.strip().rstrip("/")
-        if not re.match(r"^https?://[^/\s]+", base_url):
+        if not re.match(r"^https?://[^/\s]+", base_url, re.IGNORECASE):
             raise WordPressError(
                 f"Địa chỉ website '{base_url}' không hợp lệ. Ví dụ đúng: https://example.com"
+            )
+        if not base_url.lower().startswith("https://"):
+            # Qua http, Application Password đi trên mạng không mã hóa (security.md 2.7).
+            raise WordPressError(
+                "WORDPRESS_URL phải bắt đầu bằng https:// để mật khẩu không bị gửi qua mạng "
+                "dưới dạng không mã hóa. Sửa trong file .env, ví dụ: https://example.com"
             )
         if not username or not app_password:
             raise WordPressError("Thiếu tên đăng nhập hoặc Application Password của WordPress.")
@@ -103,6 +110,9 @@ class WordPressClient:
         # WordPress bỏ qua dấu cách trong Application Password, nên xóa cho gọn.
         self._session.auth = (username, app_password.replace(" ", ""))
         self._session.headers.update({"Accept": "application/json", "User-Agent": "SEO-App/0.1"})
+        # Bài do chính client này tạo: chỉ những bài này mới được sửa (ảnh đại diện), để không
+        # bao giờ đụng tới bài đã có trên website (R3).
+        self._created_post_ids: set[int] = set()
 
     @classmethod
     def from_settings(cls, settings: Settings, **kwargs: Any) -> WordPressClient:
@@ -127,7 +137,8 @@ class WordPressClient:
 
     @property
     def uses_https(self) -> bool:
-        return self.base_url.startswith("https://")
+        """Luôn đúng: client từ chối địa chỉ không phải https ngay khi tạo."""
+        return self.base_url.lower().startswith("https://")
 
     # ------------------------------------------------------------------ đọc
 
@@ -230,9 +241,20 @@ class WordPressClient:
         if featured_media:
             payload["featured_media"] = featured_media
         data = self._json(self._request("POST", "/wp/v2/posts", json=payload))
-        return self._post_from(data)
+        post = self._post_from(data)
+        self._created_post_ids.add(post.id)
+        return post
 
     def set_featured_image(self, post_id: int, media_id: int) -> Post:
+        """Đặt ảnh đại diện, CHỈ cho bài nháp mà client này vừa tạo bằng ``create_draft``.
+
+        Bài đã có sẵn trên website không bao giờ bị sửa (R3, security.md 2.2).
+        """
+        if post_id not in self._created_post_ids:
+            raise WordPressError(
+                "Chỉ được đặt ảnh đại diện cho bài nháp app vừa tạo, không sửa bài đã có trên "
+                "website."
+            )
         data = self._json(
             self._request("POST", f"/wp/v2/posts/{post_id}", json={"featured_media": media_id})
         )
@@ -321,6 +343,13 @@ class WordPressClient:
         except requests.exceptions.ConnectionError as exc:
             raise WordPressError(
                 f"Không kết nối được tới {self.base_url}. Kiểm tra mạng và WORDPRESS_URL."
+            ) from exc
+        except requests.exceptions.RequestException as exc:
+            # Lỗi mạng khác (địa chỉ sai dạng, chuyển hướng vòng…): chỉ nêu tên lỗi, không chép
+            # thông điệp thô (có thể chứa URL, header).
+            raise WordPressError(
+                f"Lỗi mạng khi gọi WordPress ({type(exc).__name__}). Kiểm tra WORDPRESS_URL "
+                "rồi thử lại."
             ) from exc
         if response.status_code >= 400:
             raise self._error_from(response)

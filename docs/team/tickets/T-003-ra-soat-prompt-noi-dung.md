@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | Không (T-001 đã xong, xem lỗi #2 trong biên bản) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 

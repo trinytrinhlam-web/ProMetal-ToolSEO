@@ -6,7 +6,7 @@ from typing import Any
 
 import anthropic
 
-from seo_app.ai.base import AIError, T, TaskConfig
+from seo_app.ai.base import AIError, T, TaskConfig, redact_secrets
 
 # Khi Claude từ chối một yêu cầu (hiếm, do bộ lọc an toàn), máy chủ tự chạy lại bằng mô hình
 # dự phòng phù hợp, không phải tự viết logic thử lại.
@@ -57,8 +57,14 @@ class AnthropicProvider:
             if "credit" in str(exc.message).lower():
                 raise AIError("Tài khoản Anthropic đã hết tiền (credit).") from exc
             if exc.status_code == 400:
-                raise AIError(f"Anthropic không nhận yêu cầu: {exc.message}") from exc
+                # Thông điệp do máy chủ gửi về: che chuỗi giống khóa trước khi hiện lên màn hình.
+                detail = redact_secrets(str(exc.message))
+                raise AIError(f"Anthropic không nhận yêu cầu: {detail}") from exc
             raise AIError(f"Anthropic báo lỗi {exc.status_code}. Thử lại sau ít phút.") from exc
+        except anthropic.APIError as exc:
+            # Các lỗi còn lại của thư viện (dữ liệu trả về sai dạng…): chỉ nêu tên lỗi, không
+            # chép thông điệp thô (có thể chứa header/URL).
+            raise AIError(f"Lỗi khi gọi Anthropic ({type(exc).__name__}). Bấm thử lại.") from exc
 
         if message.stop_reason == "refusal":
             raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")

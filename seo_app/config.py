@@ -84,14 +84,29 @@ class Settings:
         }
 
 
+class _DefaultEnvFile:
+    """Dấu hiệu "dùng file .env mặc định", được tra ``DEFAULT_ENV_FILE`` lúc gọi hàm."""
+
+    def __repr__(self) -> str:
+        return "DEFAULT_ENV_FILE"
+
+
+_DEFAULT = _DefaultEnvFile()
+
+
 def load_settings(
-    env_file: Path | None = DEFAULT_ENV_FILE,
+    env_file: Path | None | _DefaultEnvFile = _DEFAULT,
     environ: Mapping[str, str] | None = None,
 ) -> Settings:
     """Tạo ``Settings`` từ ``.env`` (nếu có) và biến môi trường.
 
-    ``env_file=None`` bỏ qua file; ``environ`` mặc định là ``os.environ``.
+    Mặc định đọc ``DEFAULT_ENV_FILE``; giá trị này được tra **lúc gọi** (không cố định lúc
+    nạp module), nên test có thể trỏ sang file khác để không bao giờ đọc ``.env`` thật trên
+    máy (``tests/conftest.py``). ``env_file=None`` bỏ qua file; ``environ`` mặc định là
+    ``os.environ``.
     """
+    if isinstance(env_file, _DefaultEnvFile):
+        env_file = DEFAULT_ENV_FILE
     values: dict[str, str] = {}
     if env_file is not None and env_file.is_file():
         file_values = dotenv_values(env_file, encoding="utf-8")

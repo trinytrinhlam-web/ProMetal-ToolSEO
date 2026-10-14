@@ -35,6 +35,20 @@ def _block_real_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
 
 
+@pytest.fixture(autouse=True)
+def _never_read_real_env(monkeypatch, tmp_path_factory):
+    """Test không bao giờ đọc file ``.env`` thật hay khóa thật trong biến môi trường máy
+    (Lá Chắn T-001 #5): ``load_settings()`` trỏ sang một file không tồn tại, các biến của app
+    bị xóa khỏi môi trường. Test cần giá trị thì tự đặt bằng ``monkeypatch.setenv``.
+    """
+    import seo_app.config as config
+
+    missing = tmp_path_factory.getbasetemp() / "khong-co-env-that.env"
+    monkeypatch.setattr(config, "DEFAULT_ENV_FILE", missing)
+    for name in config.ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def project_root() -> Path:
     return PROJECT_ROOT

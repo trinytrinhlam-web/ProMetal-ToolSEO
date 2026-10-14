@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
@@ -10,6 +11,22 @@ from pydantic import BaseModel
 T = TypeVar("T", bound=BaseModel)
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+
+# Chuỗi trông giống khóa/mật khẩu: khóa Anthropic/OpenAI (sk-…), Google (AIza…), token sau
+# "Bearer", giá trị sau "x-api-key"/"api_key"/"authorization"…
+_SECRET_LIKE = re.compile(
+    r"\b(?:sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{16,})"
+    r"|(?<=bearer )[A-Za-z0-9._~+/=\-]{8,}"
+    r"|(?:(?<=x-api-key)|(?<=api[_-]key)|(?<=authorization)|(?<=password)|(?<=token))"
+    r"[\"']?\s*[:=]\s*[\"']?[^\s\"',;]{4,}",
+    re.IGNORECASE,
+)
+
+
+def redact_secrets(text: str) -> str:
+    """Che các chuỗi giống khóa trong thông báo lỗi lấy từ máy chủ/thư viện (security.md 2.1)."""
+    return _SECRET_LIKE.sub("[đã ẩn]", text)
 
 
 class AIError(RuntimeError):

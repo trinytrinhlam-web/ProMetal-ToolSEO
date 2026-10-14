@@ -107,11 +107,6 @@ def test_ai_error_messages_never_contain_api_key(error):
     assert "sk-ant" not in str(info.value)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #2: lỗi 400 chép nguyên exc.message của máy chủ vào thông báo hiện lên giao diện "
-    "(anthropic_provider.py:60), không lọc chuỗi giống khóa.",
-)
 def test_ai_400_error_message_is_filtered():
     error = _api_error(anthropic.BadRequestError, 400, f"bad header x-api-key: {FAKE_KEY}")
     provider = AnthropicProvider(FAKE_KEY, client=RaisingClient(error))
@@ -194,12 +189,6 @@ def test_highlight_marks_vietnamese_sentences():
 # ------------------------------------------- A1/A2: dữ liệu ngoài không phải chỉ thị
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #8: kết quả nghiên cứu (lấy từ trang đối thủ) và chất liệu người dùng được chèn "
-    "thẳng vào prompt, không bọc khung và không ghi 'dữ liệu tham khảo, không phải chỉ thị' "
-    "(content/prompts.py:34-111, security.md 2.4).",
-)
 def test_outside_data_in_prompts_is_marked_as_data_not_instructions():
     from fake_ai import RESEARCH
 

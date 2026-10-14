@@ -7,12 +7,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from seo_app.ai import AIRouter
+from seo_app.ai import AIError, AIRouter
 from seo_app.content import prompts
 from seo_app.content.models import (
+    Competitor,
     Draft,
     Flag,
     Outline,
+    OutlineItem,
     Research,
     Review,
     Scores,
@@ -33,6 +35,43 @@ def clean_draft(draft: Draft) -> Draft:
         sections=[
             Section(heading=strip_tags(s.heading).strip(), body=clean_ai_text(s.body))
             for s in draft.sections
+        ],
+    )
+
+
+def _clean_list(items: Sequence[str]) -> list[str]:
+    return [clean_ai_text(item) for item in items]
+
+
+def clean_research(research: Research) -> Research:
+    """Kết quả nghiên cứu (có cả chữ chép từ trang đối thủ) cũng là dữ liệu chưa tin cậy."""
+    return Research(
+        intent=_clean_list(research.intent),
+        article_type=clean_ai_text(research.article_type),
+        competitors=[
+            Competitor(
+                title=strip_tags(c.title).strip(),
+                url=strip_tags(c.url).strip(),
+                covers=clean_ai_text(c.covers),
+                missing=clean_ai_text(c.missing),
+            )
+            for c in research.competitors
+        ],
+        new_angles=_clean_list(research.new_angles),
+        questions=_clean_list(research.questions),
+    )
+
+
+def clean_outline(outline: Outline) -> Outline:
+    return Outline(
+        title=strip_tags(outline.title).strip(),
+        items=[
+            OutlineItem(
+                heading=strip_tags(item.heading).strip(),
+                points=_clean_list(item.points),
+                image=clean_ai_text(item.image),
+            )
+            for item in outline.items
         ],
     )
 
@@ -125,11 +164,12 @@ class ContentWriter:
 
     # 1-2. Ý định tìm kiếm + đối thủ
     def research(self, keyword: str) -> Research:
-        return self._run("research", prompts.research_prompt(keyword), Research)
+        return clean_research(self._run("research", prompts.research_prompt(keyword), Research))
 
     # 4. Dàn ý
     def outline(self, keyword: str, research: Research, material: Mapping[str, str]) -> Outline:
-        return self._run("outline", prompts.outline_prompt(keyword, research, material), Outline)
+        prompt = prompts.outline_prompt(keyword, research, material)
+        return clean_outline(self._run("outline", prompt, Outline))
 
     # 4. Viết toàn bài (sau khi người dùng duyệt dàn ý)
     def write(
@@ -138,7 +178,10 @@ class ContentWriter:
         draft = clean_draft(
             self._run("write", prompts.write_prompt(keyword, research, material, outline), Draft)
         )
-        return draft.title or outline.title, draft_to_parts(draft)
+        if not draft.intro and not any(s.body for s in draft.sections):
+            raise AIError("AI trả về bài rỗng (không có mở bài, không có nội dung). Bấm thử lại.")
+        # Tiêu đề dàn ý có thể do người dùng sửa tay, nên vẫn lọc lại khi dùng làm tiêu đề bài.
+        return draft.title or strip_tags(outline.title).strip(), draft_to_parts(draft)
 
     # 5. Rà soát theo checklist
     def review(self, keyword: str, title: str, parts: Sequence[Section]) -> Review:
@@ -174,4 +217,7 @@ class ContentWriter:
         note: str = "",
     ) -> str:
         prompt = prompts.rewrite_prompt(keyword, title, parts, index, styles, note)
-        return clean_ai_text(self._run("rewrite", prompt, SectionText).body)
+        body = clean_ai_text(self._run("rewrite", prompt, SectionText).body)
+        if not body:
+            raise AIError("AI trả về bản viết lại rỗng. Bấm thử lại hoặc đổi yêu cầu.")
+        return body

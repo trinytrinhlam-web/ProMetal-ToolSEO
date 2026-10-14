@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (bắt buộc trước Giai đoạn 5) |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-004 (đã xong) |
-| Trạng thái | Đang làm |
+| Trạng thái | Trả lại (Soi Lỗi tìm thêm SL-1..SL-5, xem T-003-006-008-009-soi-loi.md) |
 
 ## Mục tiêu
 

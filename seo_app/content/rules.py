@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import tomllib
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,15 +63,23 @@ def sentences(text: str) -> list[str]:
 
 
 def find_banned(text: str, banned: tuple[str, ...] | list[str]) -> list[tuple[str, str]]:
-    """Các câu chứa cụm từ cấm: [(câu, cụm từ)]. Không phân biệt hoa thường."""
+    """Các câu chứa cụm từ cấm: [(câu, cụm từ)]. Không phân biệt hoa thường.
+
+    So khớp sau khi chuẩn hóa Unicode (NFC): chữ Việt dán từ máy Mac hay ở dạng tổ hợp (NFD),
+    nhìn giống hệt nhưng khác mã. Câu trả về giữ nguyên như trong bài.
+    """
     found = []
     for sentence in sentences(text):
-        lower = sentence.lower()
+        lower = _normalize(sentence)
         for phrase in banned:
-            if phrase.lower() in lower:
+            if _normalize(phrase) in lower:
                 found.append((sentence, phrase))
                 break
     return found
+
+
+def _normalize(text: str) -> str:
+    return unicodedata.normalize("NFC", text).lower()
 
 
 def find_missing(text: str) -> list[str]:

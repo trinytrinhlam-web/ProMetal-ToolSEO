@@ -158,11 +158,6 @@ def test_empty_draft_title_falls_back_to_outline_title(monkeypatch):
 # ------------------------------------------------------------------- AI trả rỗng
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #6: AI trả bài rỗng (không mở bài, không mục) vẫn được nhận như bài bình thường "
-    "(workflow.py:108-114), không báo người dùng.",
-)
 def test_empty_draft_is_reported(monkeypatch):
     writer = make_writer(
         monkeypatch, ScriptedProvider(Draft=Draft(title="", intro="", sections=[]))
@@ -171,11 +166,6 @@ def test_empty_draft_is_reported(monkeypatch):
         writer.write("kw", RESEARCH, {}, OUTLINE)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #6: AI viết lại trả chuỗi rỗng thì rewrite_section trả '' (workflow.py:150), "
-    "giao diện im lặng không làm gì (write.py:428).",
-)
 def test_empty_rewrite_is_reported(monkeypatch):
     writer = make_writer(monkeypatch, ScriptedProvider(SectionText=SectionText(body="  \n ")))
     with pytest.raises(AIError):
@@ -208,11 +198,6 @@ def test_find_banned_is_case_insensitive_with_vietnamese_capitals():
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #7: so khớp cụm từ cấm không chuẩn hóa Unicode (rules.py:64-72); chữ tiếng "
-    "Việt dạng tổ hợp (NFD, hay gặp khi dán từ máy Mac) lọt qua.",
-)
 def test_find_banned_handles_decomposed_vietnamese():
     text = unicodedata.normalize("NFD", "Trong thời đại số, cổng inox rất phổ biến.")
     assert find_banned(text, list(RULES.banned))
@@ -267,12 +252,6 @@ def _write_toml(tmp_path, body: str):
     return path
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #4: max_tokens không phải số hoặc mục [tasks] viết sai dạng làm load_ai_config "
-    "ném ValueError/AttributeError thay vì AIError (registry.py:32-48); trang Soạn bài "
-    "chỉ bắt AIError nên sập.",
-)
 @pytest.mark.parametrize(
     "body",
     [
@@ -285,11 +264,6 @@ def test_bad_value_types_in_ai_config_give_ai_error(tmp_path, body):
         load_ai_config(_write_toml(tmp_path, body))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason='Lỗi #5: web_search = "false" (chuỗi) bị hiểu là True vì bool("false") '
-    '(registry.py:47).',
-)
 def test_web_search_string_false_is_not_true(tmp_path):
     body = '[tasks.write]\nprovider = "anthropic"\nmodel = "m"\nweb_search = "false"'
     try:
@@ -426,14 +400,13 @@ def test_publish_now_requires_confirmation(project_root, monkeypatch, app_env):
 
 
 def test_page_opens_with_minimal_ai_config(project_root, monkeypatch, app_env, tmp_path):
-    """Đối chứng cho test xfail bên dưới: cách thay file cấu hình hoạt động đúng."""
+    """Đối chứng cho test bên dưới: cách thay file cấu hình hoạt động đúng."""
     path = _write_toml(tmp_path, '[tasks.write]\nprovider = "anthropic"\nmodel = "m"')
     monkeypatch.setattr(load_ai_config, "__defaults__", (path,))
     at = open_write(project_root, monkeypatch, FakeProvider())
     assert not at.exception
 
 
-@pytest.mark.xfail(strict=True, reason="Lỗi #4: trang Soạn bài sập khi max_tokens không phải số.")
 def test_non_numeric_max_tokens_shows_warning(project_root, monkeypatch, app_env, tmp_path):
     path = _write_toml(
         tmp_path, '[tasks.write]\nprovider = "anthropic"\nmodel = "m"\nmax_tokens = "nhiều"'

@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=1.13.0",
+    # Khuôn dữ liệu kết quả AI (seo_app/content/models.py). Đã cài sẵn nhờ anthropic, ghi tên
+    # ra đây vì app dùng trực tiếp (chủ dự án duyệt 2026-10-14, T-006).
+    "pydantic>=2",
     "python-dotenv>=1.0",
     # Gọi WordPress REST API (Streamlit vốn đã cài sẵn thư viện này).
     "requests>=2.31",

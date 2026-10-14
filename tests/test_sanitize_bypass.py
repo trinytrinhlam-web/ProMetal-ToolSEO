@@ -144,12 +144,8 @@ def test_sanitize_html_keeps_normal_vietnamese_article():
     _assert_harmless_html(out)
 
 
-# Thẻ "rỗng" (không có thẻ đóng) nằm trong danh sách nguy hiểm nhưng thiếu trong VOID_TAGS
-# (seo_app/sanitize.py:90, :154) → bộ lọc chờ thẻ đóng không bao giờ tới và nuốt hết phần sau.
-@pytest.mark.xfail(
-    strict=True,
-    reason="Soi Lỗi T-004 #3: <embed>/<input>/<link>/<meta>/<base> làm mất toàn bộ nội dung sau",
-)
+# Thẻ "rỗng" (không có thẻ đóng) nằm trong danh sách nguy hiểm: trước T-008 bộ lọc chờ thẻ đóng
+# không bao giờ tới và nuốt hết phần sau (Soi Lỗi T-004 #3).
 @pytest.mark.parametrize(
     "void",
     [
@@ -211,7 +207,7 @@ def test_clean_ai_text_drops_markdown_link_targets(payload):
 
 
 # Các dạng link hợp lệ theo CommonMark (Streamlit và hầu hết bộ chuyển Markdown → HTML đều
-# dựng thành link) nhưng regex ở seo_app/sanitize.py:39-43 không nhận ra → link ẩn lọt qua.
+# dựng thành link); trước T-008 regex cũ không nhận ra → link ẩn lọt qua (Soi Lỗi T-004 #1, #2).
 MARKDOWN_LINK_BYPASS = [
     pytest.param("[x](https://evil.example/a(b(c)))", id="ngoac-long-2-cap"),
     pytest.param("[a [b] c](https://evil.example)", id="nhan-co-ngoac-vuong"),
@@ -225,10 +221,6 @@ MARKDOWN_LINK_BYPASS = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Soi Lỗi T-004 #1, #2: link Markdown hợp lệ CommonMark lọt qua strip_markdown_links",
-)
 @pytest.mark.parametrize("payload", MARKDOWN_LINK_BYPASS)
 def test_clean_ai_text_drops_commonmark_link_variants(payload):
     out = clean_ai_text(payload)
