@@ -203,7 +203,7 @@ Chỉ Huy chuyển trả lời của chủ dự án (2026-10-14) cho 3 câu hỏ
    - Mục 8 thêm quy tắc: "Không so sánh rẻ, đắt hay trung bình giữa các vật liệu hoặc cách làm; không nêu bất kỳ con số giá nào".
    - Giữ nguyên các cam kết không phải giá: báo giá miễn phí, khảo sát miễn phí, báo giá trước khi làm, thu tiền sau, bảo hành 2 năm.
 3. **Khu vực: có gồm Bình Dương và Bà Rịa – Vũng Tàu cũ.**
-   - Mục 3, gạch đầu dòng 1: "Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ (sáp nhập vào TP.HCM từ 1/7/2025)". Bài theo khu vực được nói "có thợ gần khu vực này".
+   - Mục 3, gạch đầu dòng 1: "Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ (nay đã sáp nhập vào TP.HCM…)". Không ghi ngày sáp nhập: cụm "từ 1/7/2025" làm test của Soi Lỗi (`test_no_vnd_price_in_visible_profile`, `test_no_founding_year_in_visible_profile`) báo nhầm là giá và năm thành lập; sửa câu chữ thay vì sửa test. Bài theo khu vực được nói "có thợ gần khu vực này".
    - Tách riêng gạch đầu dòng 2 về chi nhánh: "Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập". Lý do: trả lời của chủ dự án nói **có thợ** ở hai khu vực mới, còn xác nhận **có chi nhánh** trước đó là cho các quận huyện TP.HCM cũ. Ngòi Bút không mở rộng chữ "chi nhánh" sang Bình Dương, Vũng Tàu khi chưa có xác nhận. Nếu chủ dự án muốn AI nói "có chi nhánh" ở cả hai khu vực này, chỉ cần sửa dòng này.
    - Địa chỉ cụ thể giữ đúng 9 địa chỉ. Mục 8 thêm: "không đặt ra địa chỉ ở Bình Dương, Vũng Tàu hay khu vực nào khác".
 
@@ -237,7 +237,7 @@ Kết quả nguyên văn của `uv run python -c "from seo_app.content.rules imp
 ## 3. Khu vực phục vụ
 
 - Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ
-  (sáp nhập vào TP.HCM từ 1/7/2025) (chủ dự án xác nhận 2026-10-14). Bài viết nói
+  (nay đã sáp nhập vào TP.HCM; chủ dự án xác nhận 2026-10-14). Bài viết nói
   "có thợ ở mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ gần
   khu vực này".
 - Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập (chủ dự án xác
@@ -322,7 +322,7 @@ Kết quả nguyên văn của `uv run python -c "from seo_app.content.rules imp
 
 ```
 $ uv run pytest -q
-1871 passed, 3 xfailed in 120.05s (0:02:00)
+1889 passed, 9 xfailed in 108.86s (0:01:48)   # sau khi gộp test của Soi Lỗi (tests/test_business_profile.py)
 
 $ uv run ruff check .
 All checks passed!

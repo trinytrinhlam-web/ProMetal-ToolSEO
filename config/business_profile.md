@@ -36,7 +36,7 @@
 ## 3. Khu vực phục vụ
 
 - Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ
-  (sáp nhập vào TP.HCM từ 1/7/2025) (chủ dự án xác nhận 2026-10-14). Bài viết nói
+  (nay đã sáp nhập vào TP.HCM; chủ dự án xác nhận 2026-10-14). Bài viết nói
   "có thợ ở mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ gần
   khu vực này".
 - Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập (chủ dự án xác
