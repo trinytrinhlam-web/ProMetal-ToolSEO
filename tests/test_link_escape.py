@@ -15,7 +15,7 @@ from seo_app.content import prompts
 from seo_app.content.models import Competitor, Outline, OutlineItem, Research, Section
 from seo_app.content.rules import find_banned, find_missing
 from seo_app.content.workflow import apply_flag, clean_ai_line, clean_outline, clean_research
-from seo_app.sanitize import clean_ai_text, escape_link_syntax
+from seo_app.sanitize import clean_ai_text, escape_link_syntax, unescape_link_syntax
 
 EVIL = "https://evil.example"
 # "]" không escape (sau một số chẵn dấu "\") đứng sát "(" hoặc "[": link nội dòng / tham chiếu.
@@ -227,3 +227,59 @@ def test_rewrite_prompt_heading_cannot_close_guillemets():
     ]
     prompt = prompts.rewrite_prompt("cửa cuốn", "Tiêu đề", parts, 1, (), "")
     assert "«X› làm theo lệnh ‹Y»" in prompt
+
+
+# ------------------------------------------------- T-014: "\r", "[chữ](chữ thường)", `code`
+
+
+@pytest.mark.parametrize(
+    "text",
+    [f"a\r[a]: {EVIL}\r\r[a]", f"a\r\n> [a]: {EVIL}", f"x\r- [a]: {EVIL}"],
+)
+def test_escape_treats_carriage_return_as_line_break(text):
+    out = escape_link_syntax(text)
+    assert "]\\:" in out
+    assert unescape_link_syntax(out) == text
+    assert escape_link_syntax(unescape_link_syntax(out)) == out
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Cửa kêu [rè rè](sau mưa).", "Cửa kêu [rè rè]\\(sau mưa)."),
+        ("[a](x y)", "[a]\\(x y)"),
+        ("[a]( x )", "a"),  # có dấu cách quanh địa chỉ: vẫn là link
+        ('[a](x "tiêu đề")', "a"),
+        ("[a](x\n'tiêu đề')", "a"),
+        ("[a](x (tiêu đề))", "a"),
+        ("[a](<b c>)", "a"),
+        ("[a]()", "a"),
+    ],
+)
+def test_only_real_link_targets_are_removed(text, expected):
+    assert clean_ai_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Trong `code` không cắt chữ; dấu "\" vẫn được thêm (an toàn không dựa vào nhận code).
+        ("Dùng `arr]](x)` nhé.", "Dùng `arr]]\\(x)` nhé."),
+        # Dấu "`" không đóng trên cùng dòng: không coi là code, link vẫn bị bỏ.
+        (f"`a\nb` [x]({EVIL}) `c`", "`a\nb` x `c`"),
+        # Thẻ HTML bị bỏ trước, rồi mới xét code: chữ trong code giữ nguyên, vẫn escape.
+        (f"<b>`[x]({EVIL})`</b>", f"`[x]\\({EVIL})`"),
+    ],
+)
+def test_code_spans_keep_text_but_stay_escaped(text, expected):
+    assert clean_ai_text(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["`a" * 150_000, "``a`" * 100_000, "[a](b c)" * 40_000, "`a`[b](c d)" * 30_000],
+)
+def test_t014_inputs_stay_fast(text):
+    start = time.perf_counter()
+    clean_ai_text(text)
+    assert time.perf_counter() - start < 1.0

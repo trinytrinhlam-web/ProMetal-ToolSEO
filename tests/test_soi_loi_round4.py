@@ -244,12 +244,6 @@ class _EvilProvider(FakeProvider):
         return super().generate(task, system=system, prompt=prompt, schema=schema)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="R4-1 (Trung bình): câu AI chỉ ra (flag.sentence) chỉ cần là một đoạn con của bài. "
-    "write.py:506 hiện nó bằng st.markdown(f'> {sentence}') mà không escape lại, nên '[nhãn]:' "
-    "giữa dòng trong bài thành đầu dòng → khai báo link + '[nhãn]' thành link bấm được.",
-)
 def test_r4_1_flag_sentence_shown_in_review_has_no_link(project_root, monkeypatch):
     monkeypatch.setenv("APP_PASSWORD_HASH", hash_password(PASSWORD, iterations=1_000))
     monkeypatch.setenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
@@ -274,12 +268,6 @@ def test_r4_1_flag_sentence_shown_in_review_has_no_link(project_root, monkeypatc
 # ============================ R4-4 · Thấp · "[chữ](có dấu cách)" không phải link vẫn bị cắt
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="R4-4 (Thấp): '](…có dấu cách…)' không phải link theo CommonMark nhưng "
-    "strip_markdown_links vẫn bỏ phần '(…)' (R3-4 chỉ sửa cho '[cần bổ sung: …]'). Nay "
-    "escape_link_syntax đã chặn link, bước bỏ này chỉ làm mất chữ của người đọc.",
-)
 @pytest.mark.parametrize(
     "text",
     ["Khách hỏi: «Cửa kêu [rè rè](sau mưa) là sao?»", "Xem [Bảng 1](đơn vị triệu đồng) dưới."],
@@ -291,13 +279,6 @@ def test_r4_4_bracket_then_parenthesis_with_spaces_keeps_text(text):
 # ================================== R4-2 · Thấp · escape_link_syntax không tự hiểu "\r"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="R4-2 (Thấp): escape_link_syntax chỉ coi '\\n' là xuống dòng; '\\r' đứng riêng "
-    "(Markdown coi là xuống dòng) thì '[a]:' đầu dòng không bị escape. clean_ai_text đã đổi "
-    "'\\r' trước, nhưng save_manual và apply_flag gọi escape_link_syntax trực tiếp "
-    "(sanitize.py:210-257, write.py:208, workflow.py:157-159).",
-)
 @pytest.mark.parametrize("text", [f"a\r\r[a]: {E}\r\r[a]", f"Đoạn.\r\r> [a]: {E}\r\r[a]"])
 def test_r4_2_escape_handles_lone_carriage_return(text):
     assert "]\\:" in escape_link_syntax(text)

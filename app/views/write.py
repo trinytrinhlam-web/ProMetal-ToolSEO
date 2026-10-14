@@ -474,6 +474,18 @@ def section_card(writer: ContentWriter | None, index: int, pid: int, tone: list[
             image_slot(pid)
 
 
+def quote_ai_text(text: str) -> str:
+    """Hiện chữ AI dạng trích dẫn Markdown mà không tạo được link.
+
+    Câu AI chỉ ra là một đoạn con của bài, có thể bắt đầu giữa dòng (vd. "[nhãn]: …"); thêm
+    "> " đưa nó về đầu dòng nên phải escape lại cú pháp link SAU khi thêm "> " (Soi Lỗi R4-1).
+    Mỗi dòng của câu nhiều dòng đều nằm trong trích dẫn. Chỉ dùng để hiển thị: khi Áp dụng /
+    Bỏ qua vẫn dùng câu gốc để khớp với bài.
+    """
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    return escape_link_syntax("\n".join(f"> {line}" if line else ">" for line in lines))
+
+
 def quality_panel(writer: ContentWriter | None, flags: list[tuple[int, str, str, str]]) -> None:
     with st.container(border=True):
         st.markdown("#### 🔍 Văn phong")
@@ -503,7 +515,7 @@ def quality_panel(writer: ContentWriter | None, flags: list[tuple[int, str, str,
     for pid, sentence, reason, replacement in flags:
         with st.container(border=True):
             st.markdown(f":orange-badge[Nghe máy móc] :gray[{S[f'heading-{pid}']}]")
-            st.markdown(f"> {sentence}")
+            st.markdown(quote_ai_text(sentence))
             st.caption(reason)
             st.markdown(f"**Gợi ý:** {replacement}" if replacement else "**Gợi ý:** bỏ câu này.")
             a, b = st.columns(2)

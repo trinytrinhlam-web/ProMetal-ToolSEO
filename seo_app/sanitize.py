@@ -155,6 +155,56 @@ def _matching_parens(text: str) -> tuple[dict[int, int], list[int], list[int]]:
     return pairs, para_ends, para_last_close
 
 
+# Khoảng trắng tách địa chỉ link với tiêu đề (CommonMark: dấu cách, tab, xuống dòng).
+_ASCII_SPACE_CHARS = " \t\n\r\f\v"
+_ASCII_SPACE = re.compile(r"[ \t\n\r\f\v]+")
+
+
+class _Whitespace:
+    """Tra nhanh các dãy khoảng trắng ASCII (lập một lần, tra bằng ``bisect``)."""
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+        self._starts: list[int] | None = None
+        self._ends: list[int] = []
+
+    def _build(self) -> None:
+        runs = [(m.start(), m.end()) for m in _ASCII_SPACE.finditer(self._text)]
+        self._starts = [a for a, _ in runs]
+        self._ends = [b for _, b in runs]
+
+    def _run_at_or_after(self, pos: int) -> tuple[int, int]:
+        """(đầu, cuối) của dãy khoảng trắng chứa ``pos`` hoặc đứng sau nó; hết thì (n, n)."""
+        if self._starts is None:
+            self._build()
+        k = bisect_right(self._starts, pos) - 1
+        if k >= 0 and self._ends[k] > pos:
+            return self._starts[k], self._ends[k]
+        k += 1
+        if k < len(self._starts):
+            return self._starts[k], self._ends[k]
+        n = len(self._text)
+        return n, n
+
+    def looks_like_destination(self, open_paren: int, close_paren: int) -> bool:
+        """Phần trong ``(…)`` có dạng "địa chỉ [tiêu đề]" của CommonMark không.
+
+        Địa chỉ không có dấu cách (trừ dạng ``<…>``); sau địa chỉ chỉ được có tiêu đề mở bằng
+        dấu nháy hoặc ngoặc. ``(sau mưa)`` thì không: đó là chữ thường, giữ lại. Chỉ để chữ gọn;
+        an toàn đã do ``escape_link_syntax`` lo.
+        """
+        text = self._text
+        dest = open_paren + 1
+        if text[dest] in _ASCII_SPACE_CHARS:
+            dest = self._run_at_or_after(dest)[1]
+        if dest >= close_paren or text[dest] == "<":
+            return True
+        gap_start, title = self._run_at_or_after(dest)
+        if gap_start >= close_paren or title >= close_paren:
+            return True
+        return text[title] in "\"'("
+
+
 def strip_markdown_links(text: str) -> str:
     """``[chữ](url)`` thành ``chữ``; ảnh Markdown và dòng khai báo link bị bỏ.
 
@@ -168,6 +218,8 @@ def strip_markdown_links(text: str) -> str:
     hiện thành chữ, nhưng không để sót link nào.
     """
     pairs, para_ends, para_last_close = _matching_parens(text)
+    code = _CodeSpanLookup(text)
+    blanks = _Whitespace(text)
     n = len(text)
     drop = bytearray(n)  # 1 = bỏ ký tự này
     openers: list[int] = []  # vị trí các "[" chưa đóng
@@ -183,10 +235,14 @@ def strip_markdown_links(text: str) -> str:
             openers.clear()
         elif char == "]":
             opener = openers.pop() if openers else None
-            if opener is not None and _MISSING_LABEL.match(text, opener + 1):
-                i += 1  # "[cần bổ sung: …](…)": giữ cả hai, bước escape làm "(" thành chữ
+            if (opener is not None and _MISSING_LABEL.match(text, opener + 1)) or code.contains(i):
+                # "[cần bổ sung: …](…)" (R3-4) hoặc nằm trong `code` (R4-3): giữ nguyên chữ.
+                i += 1
                 continue
             close = pairs.get(i + 1)
+            if close is not None and not blanks.looks_like_destination(i + 1, close):
+                i += 1  # "[chữ](chữ có dấu cách)" không phải link: giữ chữ (R4-4)
+                continue
             if close is None and i + 1 < n and text[i + 1] == "(":
                 # "(" không có ")" khớp, ví dụ tiêu đề link chứa "(" lẻ: [x](url "(") (SL-1).
                 # Bắt rộng: bỏ tới ")" cuối cùng của đoạn văn. Không có ")" thì không phải link.
@@ -207,6 +263,68 @@ def strip_markdown_links(text: str) -> str:
     return _MD_LINK_DEF.sub("", text)
 
 
+_BACKTICK_RUN = re.compile(r"`+")
+_LINE_BREAK = re.compile(r"[\r\n]")
+
+
+def _code_spans(text: str) -> list[tuple[int, int]]:
+    """Các đoạn ``code`` nằm trọn trên một dòng (dùng cho ``strip_markdown_links``).
+
+    Trong code Markdown không có link, nên bước bỏ link không cắt chữ ở đó (Soi Lỗi R4-3).
+    Chỉ để chữ gọn: ``escape_link_syntax`` KHÔNG dùng hàm này (vẫn escape cả trong code), để
+    an toàn không phụ thuộc việc nhận ra đoạn code. Nhận thận trọng:
+
+    - Dấu "`" mở được ghép với dãy "`" cùng độ dài gần nhất phía sau, trên CÙNG dòng.
+    - Gặp một dãy "`" không ghép được trên dòng của nó thì từ đó về sau không nhận đoạn nào.
+    - Chữ có thẻ HTML hoặc "<địa chỉ>": không nhận đoạn nào.
+
+    Tuyến tính: mỗi ký tự được quét tối đa một lần.
+    """
+    if "`" not in text or _TAG_OPEN.search(text):
+        return []
+    spans: list[tuple[int, int]] = []
+    i, n = 0, len(text)
+    line_end = -1
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            i += 2
+            continue
+        if char != "`":
+            i += 1
+            continue
+        run = _BACKTICK_RUN.match(text, i)
+        width = run.end() - i
+        j = run.end()
+        if line_end < j:  # tìm cuối dòng một lần cho mỗi dòng (giữ tuyến tính)
+            line_break = _LINE_BREAK.search(text, j)
+            line_end = line_break.start() if line_break else n
+        while True:
+            closer = _BACKTICK_RUN.search(text, j, line_end)
+            if closer is None:
+                return spans  # không đóng trên cùng dòng: dừng nhận đoạn code
+            if closer.end() - closer.start() == width:
+                spans.append((i, closer.end()))
+                i = closer.end()
+                break
+            j = closer.end()
+    return spans
+
+
+class _CodeSpanLookup:
+    """Hỏi "vị trí i có nằm trong đoạn code không" với i tăng dần (con trỏ, tuyến tính)."""
+
+    def __init__(self, text: str) -> None:
+        self._spans = _code_spans(text)
+        self._k = 0
+
+    def contains(self, i: int) -> bool:
+        spans = self._spans
+        while self._k < len(spans) and spans[self._k][1] <= i:
+            self._k += 1
+        return self._k < len(spans) and spans[self._k][0] <= i
+
+
 def escape_link_syntax(text: str) -> str:
     """Làm cho chữ KHÔNG THỂ thành link Markdown, dù link viết theo kiểu nào.
 
@@ -220,7 +338,9 @@ def escape_link_syntax(text: str) -> str:
     Dấu ":" chỉ escape khi "[" mở nhãn đứng đầu dòng (sau thụt lề, ">", "-", "1."…), vì khai
     báo link chỉ có ở đầu khối; nhờ vậy câu thường kiểu "Giá [cần bổ sung: giá]: …" giữ nguyên.
     Chạy một lượt (tuyến tính), chạy lại không đổi gì (idempotent). Dấu "[" và "]" giữ nguyên
-    nên chỗ "[cần bổ sung: …]" vẫn nhận diện được.
+    nên chỗ "[cần bổ sung: …]" vẫn nhận diện được. "\\r" đứng riêng cũng là xuống dòng (R4-2).
+    Cố ý escape cả trong đoạn `code` (dấu "\\" hiện ra ở đó): bỏ qua code thì an toàn lại phụ
+    thuộc việc nhận đúng đoạn code như bộ hiển thị (Soi Lỗi R4-3, xem báo cáo T-014).
     """
     out: list[str] = []
     start = 0  # đầu đoạn chưa chép sang ``out``
@@ -233,7 +353,7 @@ def escape_link_syntax(text: str) -> str:
             at_line_prefix = False
             i += 2
             continue
-        if char == "\n":
+        if char in "\r\n":  # Markdown coi cả "\r" đứng riêng là xuống dòng (R4-2)
             at_line_prefix = True
         elif char == "[":
             label_at_line_start = at_line_prefix
@@ -277,7 +397,7 @@ def unescape_link_syntax(text: str) -> str:
             at_line_prefix = False
             i += 2
             continue
-        if char == "\n":
+        if char in "\r\n":
             at_line_prefix = True
         elif char == "[":
             label_at_line_start = at_line_prefix

@@ -7,12 +7,12 @@
 import random
 
 import pytest
-from fake_ai import DRAFT, OUTLINE, FakeProvider
+from fake_ai import DRAFT, OUTLINE, SCORES, FakeProvider
 from streamlit.testing.v1 import AppTest
 
 from seo_app.ai import registry as ai_registry
 from seo_app.auth import hash_password
-from seo_app.content.models import Outline, OutlineItem
+from seo_app.content.models import Draft, Flag, Outline, OutlineItem, Review
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, unescape_link_syntax
 
 PASSWORD = "mat-khau-thu-123"
@@ -187,3 +187,66 @@ def test_draft_text_from_ai_is_unchanged_without_editing(project_root, monkeypat
     at = _to_article(project_root, monkeypatch)
     pid = at.session_state["part_ids"][-1]
     assert at.session_state[f"texts-{pid}"][0] == clean_ai_text(DRAFT.sections[-1].body)
+
+
+# ------------------------------------------------- T-013: khung «Cần xem lại»
+
+EVIL = "https://evil.example"
+EVIL_BODY = f"Gọi ngay [thợ]: {EVIL}\n[thợ] nhé.\n\nĐoạn sau."
+EVIL_SENTENCE = f"[thợ]: {EVIL}\n[thợ] nhé."
+
+
+class _FlagProvider(FakeProvider):
+    """Bài có "[thợ]:" giữa dòng; AI chỉ ra đoạn con bắt đầu bằng "[thợ]:" (Soi Lỗi R4-1)."""
+
+    def generate(self, task, *, system, prompt, schema):
+        if schema is Draft:
+            self.calls.append((task.name, system, prompt))
+            return Draft(title=DRAFT.title, intro=EVIL_BODY, sections=DRAFT.sections)
+        if schema is Review:
+            self.calls.append((task.name, system, prompt))
+            flag = Flag(section=0, sentence=EVIL_SENTENCE, reason="Nghe máy móc", replacement="")
+            return Review(scores=SCORES, flags=[flag], summary="Khá ổn.")
+        return super().generate(task, system=system, prompt=prompt, schema=schema)
+
+
+def _to_review(project_root, monkeypatch) -> AppTest:
+    at = _to_outline(project_root, monkeypatch, _FlagProvider())
+    _click(at, "✅ Duyệt dàn ý, viết toàn bài →")
+    return at
+
+
+def _quoted(at: AppTest) -> list[str]:
+    return [m.value for m in at.markdown if m.value.startswith(">")]
+
+
+def test_flagged_sentence_is_quoted_line_by_line_without_link(project_root, monkeypatch, app_env):
+    at = _to_review(project_root, monkeypatch)
+    quoted = _quoted(at)
+    assert quoted
+    for value in quoted:
+        assert escape_link_syntax(value) == value  # không còn "](", "][", "[nhãn]:" chưa escape
+        assert all(line.startswith(">") for line in value.split("\n"))
+    assert f"> [thợ]\\: {EVIL}\n> [thợ] nhé." in quoted
+
+
+def _button(at: AppTest, prefix: str):
+    return next(b for b in at.button if (b.key or "").startswith(prefix))
+
+
+def test_apply_and_ignore_still_use_original_sentence(project_root, monkeypatch, app_env):
+    shown = f"> [thợ]\\: {EVIL}\n> [thợ] nhé."
+    at = _to_review(project_root, monkeypatch)
+    pid = at.session_state["part_ids"][0]
+    assert shown in _quoted(at)
+    _button(at, f"fix-{pid}-").click().run()
+    assert not at.exception, at.exception
+    text = at.session_state[f"texts-{pid}"][at.session_state[f"ver-{pid}"]]
+    assert "[thợ] nhé." not in text and "Đoạn sau." in text
+    assert shown not in _quoted(at)
+
+    at = _to_review(project_root, monkeypatch)
+    pid = at.session_state["part_ids"][0]
+    _button(at, f"skip-{pid}-").click().run()
+    assert EVIL_SENTENCE in at.session_state["ignored_flags"]
+    assert shown not in _quoted(at)

@@ -75,3 +75,43 @@ Tự kiểm tra trên giao diện: mở app, vào Soạn bài, viết bài. Ở 
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## T-013 · Hiển thị an toàn câu trong khung «Cần xem lại»
+
+Phiếu: [T-013](../tickets/T-013-escape-cau-can-xem-lai.md) · Ngày nộp: 2026-10-14 · Kết quả: **Hoàn thành**
+
+**Tóm tắt (cho chủ dự án).** Khung «Cần xem lại» hiện câu AI chỉ ra dưới dạng trích dẫn. Nếu câu bắt đầu bằng `[nhãn]:` thì khung đó có thể thành link (lỗi R4-1 của Soi Lỗi). Bản sửa đã chặn chuyện này. Câu vẫn hiện y như cũ, và hai nút Áp dụng / Bỏ qua vẫn hoạt động như trước.
+
+**Đã thay đổi**
+
+| File | Thay đổi |
+|---|---|
+| `app/views/write.py` | Thêm hàm `quote_ai_text(text)`. Mỗi dòng của câu đều được đặt trong trích dẫn: dòng có chữ thành `> dòng`, dòng trống thành `>`. Sau khi thêm `> ` mới chạy `escape_link_syntax` lên cả khối, vì chính `> ` đưa `[nhãn]:` lên đầu dòng. `quality_panel` dùng hàm này thay cho `st.markdown(f"> {sentence}")`. `apply_fix` và `ignore_fix` vẫn nhận **câu gốc** nên còn khớp với bài. |
+| `tests/test_soi_loi_round4.py` | Chỉ gỡ dấu `xfail` của `test_r4_1_flag_sentence_shown_in_review_has_no_link`, vì test đã qua. Không sửa nội dung test. |
+| `tests/test_edit_unescape.py` | Thêm 2 test AppTest. `test_flagged_sentence_is_quoted_line_by_line_without_link`: mọi dòng đều nằm trong trích dẫn, không còn cú pháp link chưa escape, và trang hiện đúng `> [thợ]\: …\n> [thợ] nhé.`. `test_apply_and_ignore_still_use_original_sentence`: Áp dụng bỏ được câu khỏi bài; Bỏ qua ghi câu gốc vào `ignored_flags`; sau đó khung không còn hiện câu đó. |
+
+Không sửa `seo_app/sanitize.py` (Thợ Máy đang sửa), không sửa `config/`, không commit.
+
+**Bằng chứng**
+
+```
+$ uv run pytest
+======================= 1370 passed, 7 xfailed in 32.61s =======================
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Đối chứng: đặt lại dòng cũ `st.markdown(f"> {sentence}")` thì 3 test đỏ (`test_r4_1_…` cùng 2 test mới). Đặt lại bản sửa thì cả 3 xanh.
+
+**Đối chiếu tiêu chí xong**
+- [x] `test_r4_1_flag_sentence_shown_in_review_has_no_link` chuyển thành `passed`
+- [x] Mục "T-013" trong báo cáo này
+
+**Rủi ro.** Các chỗ khác trong khung vẫn hiện chữ AI mà không thêm `> `:
+- `:gray[tiêu đề mục]`: tiêu đề chỉ có một dòng và đã qua `clean_ai_line`.
+- `st.caption(reason)` và `**Gợi ý:** {replacement}`: cả hai đã qua `clean_ai_text`.
+
+Tiền tố `**Gợi ý:** ` chỉ đứng trước dòng đầu tiên. Dòng đầu đã được escape như đầu dòng nên không mở ra đường tạo link mới; đây là suy luận, chưa có test riêng.
