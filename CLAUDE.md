@@ -94,8 +94,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
-- Website dùng plugin SEO nào (Rank Math, Yoast, khác)? Quyết định cách ghi meta/schema.
-- Tên miền website; có site thử nghiệm (staging) hay không.
+- Đã chốt 2026-10-14: plugin SEO là **SiteSEO** (ghi meta/schema theo SiteSEO). Tên miền suachuacuasat.com. **Không có staging**: làm việc trực tiếp trên site chính thức, nên mọi bài thử phải là nháp.
 
 ## Cách làm việc
 
@@ -138,3 +137,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-06: Làm lại giao diện demo theo yêu cầu người dùng (cùng nhánh, PR #2): tập trung viết bài; menu trên cùng; Soạn bài 5 bước với nút viết lại từng phần, AI kiểm tra văn phong, chỗ cần ảnh (ảnh thật / ảnh AI + prompt); trang Kế hoạch nhận kế hoạch và đề xuất thay đổi; bỏ các trang Ảnh, Lịch đăng, Thứ hạng riêng (thử mù chuyển vào Cài đặt).
 - 2026-10-14: Giai đoạn 2, phần 1 (đã push thẳng lên `main`): `seo_app/ai/` (lớp provider chung, Anthropic qua thư viện `anthropic`, mô hình theo việc trong `config/ai.toml`), `seo_app/content/` (nghiên cứu có tìm web → dàn ý → viết → tự rà soát và sửa một lượt → viết lại từng phần; quy tắc trong `config/content.toml`, hồ sơ doanh nghiệp `config/business_profile.md` bỏ dòng `[CẦN XÁC NHẬN]`). Trang Soạn bài bước 1–3 chạy AI thật; SEO và Xuất bản vẫn demo. Bài đang soạn chỉ nằm trong session (F5 là mất).
 - 2026-10-14: Lập đội agent (`AGENTS.md`, `docs/team/`, `.claude/agents/`): 7 agent, quy tắc, chính sách bảo mật, mẫu phiếu/báo cáo/biên bản bảo mật, bảng việc. Giao T-001 (Lá Chắn: kiểm định bảo mật toàn repo) và T-002 (Soi Lỗi: kiểm thử Giai đoạn 2 phần 1).
+- 2026-10-14: Thêm `config/business_profile.md` (hồ sơ doanh nghiệp để AI dùng khi viết bài), soạn từ website; người dùng đã trả lời các câu hỏi chính; mục 7 (chất liệu thật) điền sau. Nhánh `claude/project-thread-bcuk2m` (PR #3), gộp vào `main` ngày 2026-10-14 kèm phiếu T-022.
