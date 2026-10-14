@@ -10,12 +10,12 @@ _Cập nhật: 2026-10-14_
 |---|---|---|---|---|
 
 | [T-008](tickets/T-008-gia-co-bo-loc.md) | Gia cố bộ lọc HTML/link | Thợ Máy | Đang làm | |
+| [T-003](tickets/T-003-ra-soat-prompt-noi-dung.md) | Rà soát prompt, tách dữ liệu ngoài khỏi chỉ thị | Ngòi Bút | Đang làm | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-003](tickets/T-003-ra-soat-prompt-noi-dung.md) | Rà soát prompt, tách dữ liệu ngoài khỏi chỉ thị | Ngòi Bút | Sẵn sàng giao |
 | [T-006](tickets/T-006-sua-loi-nho-giai-doan-2.md) | Sửa các lỗi Trung bình/Thấp của Giai đoạn 2 | Thợ Máy | T-008 xong (mục 5, 6 đã được duyệt) |
 
 ## Việc đang làm ngoài hệ thống phiếu
