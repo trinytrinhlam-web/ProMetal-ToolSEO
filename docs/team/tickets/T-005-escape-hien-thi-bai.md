@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | **Cao** |
 | Phụ thuộc | Không (làm song song T-004, khác file) |
-| Trạng thái | Mới (chờ chủ dự án cho phép sửa code) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 

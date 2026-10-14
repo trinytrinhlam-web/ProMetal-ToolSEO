@@ -8,16 +8,15 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-| _(không có)_ | | | | |
+| [T-004](tickets/T-004-loc-html-ket-qua-ai.md) | **Cao:** lọc HTML/link trong kết quả AI, bộ lọc trước WordPress | Thợ Máy | Đang làm | |
+| [T-005](tickets/T-005-escape-hien-thi-bai.md) | **Cao:** hiển thị bài AI an toàn trên trang Soạn bài | Họa Sĩ | Đang làm | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-004](tickets/T-004-loc-html-ket-qua-ai.md) | **Cao:** lọc HTML/link trong kết quả AI, bộ lọc trước WordPress | Thợ Máy | Chủ dự án cho phép sửa code |
-| [T-005](tickets/T-005-escape-hien-thi-bai.md) | **Cao:** hiển thị bài AI an toàn trên trang Soạn bài | Họa Sĩ | Chủ dự án cho phép sửa code |
 | [T-003](tickets/T-003-ra-soat-prompt-noi-dung.md) | Rà soát prompt, tách dữ liệu ngoài khỏi chỉ thị | Ngòi Bút | Sẵn sàng giao |
-| [T-006](tickets/T-006-sua-loi-nho-giai-doan-2.md) | Sửa các lỗi Trung bình/Thấp của Giai đoạn 2 | Thợ Máy | T-004 xong; mục 5, 6 cần duyệt |
+| [T-006](tickets/T-006-sua-loi-nho-giai-doan-2.md) | Sửa các lỗi Trung bình/Thấp của Giai đoạn 2 | Thợ Máy | T-004 xong (mục 5, 6 đã được duyệt) |
 | [T-007](tickets/T-007-xoa-gps-anh-dai-dien.md) | Xóa GPS trong ảnh trước khi tải lên | Thợ Máy | Chủ dự án chọn cách (a) hoặc (b) |
 
 ## Việc đang làm ngoài hệ thống phiếu

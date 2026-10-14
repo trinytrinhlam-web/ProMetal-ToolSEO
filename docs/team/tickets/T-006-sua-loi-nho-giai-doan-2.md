@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (phải xong trước khi đóng giai đoạn) |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-004 (cùng file) |
-| Trạng thái | Mới (chờ chủ dự án cho phép sửa code; mục 5 và 6 cần duyệt riêng) |
+| Trạng thái | Mới (chủ dự án đã duyệt cả mục 5 và 6 ngày 2026-10-14) |
 
 ## Mục tiêu
 
