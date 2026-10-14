@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 phần 1 (và các test an toàn của Giai đoạn 1) |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | Không |
-| Trạng thái | Đã giao |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 

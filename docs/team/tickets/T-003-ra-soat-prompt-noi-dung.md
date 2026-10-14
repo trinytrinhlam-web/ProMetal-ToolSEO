@@ -7,7 +7,7 @@
 | Ngày giao | 2026-10-14 |
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Trung bình |
-| Phụ thuộc | T-001 (để gộp đề xuất về prompt injection) |
+| Phụ thuộc | Không (T-001 đã xong, xem lỗi #2 trong biên bản) |
 | Trạng thái | Mới |
 
 ## Mục tiêu

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 0, 1 và Giai đoạn 2 phần 1 |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | Không |
-| Trạng thái | Đã giao |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
