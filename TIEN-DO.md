@@ -1,15 +1,15 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-14, 21:20 giờ Việt Nam. Người ghi: Chỉ Huy (Claude)._
+_Cập nhật: 2026-10-14, 21:40 giờ Việt Nam. Người ghi: Chỉ Huy (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
 ## 1. Tóm tắt nhanh
 
 - Đã xong: bộ khung app, kết nối WordPress (chỉ tạo bản nháp), AI viết bài bằng Claude (bước 1–3 của trang Soạn bài), đội agent và quy trình kiểm tra bảo mật.
-- Gần xong, chờ đưa lên GitHub: tự lưu bài đang soạn (F5 không mất bài) và ô nhập khóa API trong Cài đặt.
+- Mới xong, đã lên GitHub: tự lưu bài đang soạn (F5 không mất bài) và ô nhập khóa API trong Cài đặt.
 - Còn lại: thêm AI ChatGPT/Gemini, thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động: khoảng 1.870 bài kiểm tra, đều qua.
+- Bộ kiểm tra tự động: 1.871 bài kiểm tra, đều qua.
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -32,8 +32,8 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Viết lại từng phần, quay lại bản trước | ✅ Xong |
 | AI kiểm tra văn phong, tô câu có vấn đề, nút Áp dụng / Bỏ qua | ✅ Xong |
 | Gia cố bảo mật: lọc HTML/link độc trong chữ AI, hiển thị an toàn (T-001 → T-015) | ✅ Xong, đã lên GitHub |
-| Tự lưu bài đang soạn, mở lại / xóa bài dở (T-016, T-017, T-021) | 🟡 Làm xong, đã qua kiểm tra; đang sửa 1 lỗi nhỏ cuối rồi đưa lên GitHub |
-| Ô nhập khóa API Claude / ChatGPT / Gemini trong Cài đặt → Kết nối (T-020, T-021) | 🟡 Làm xong, đã qua kiểm tra; đưa lên GitHub cùng lượt trên |
+| Tự lưu bài đang soạn, mở lại / xóa bài dở (T-016, T-017, T-021) | ✅ Xong, đã lên GitHub |
+| Ô nhập khóa API Claude / ChatGPT / Gemini trong Cài đặt → Kết nối (T-020, T-021) | ✅ Xong, đã lên GitHub |
 | Thêm AI ChatGPT (OpenAI) và Gemini (T-018) | ⏳ **Chờ anh chọn** cách kết nối (thẻ hỏi trong chat) |
 | Thử mù mô hình trong Cài đặt (T-019) | ⏳ Làm sau T-018 |
 

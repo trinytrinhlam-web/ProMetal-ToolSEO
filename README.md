@@ -50,6 +50,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 Khóa API, mật khẩu WordPress, đường dẫn thư mục ảnh… đều nằm trong file **`.env`** ở thư mục dự án. File này được tạo tự động khi bạn đặt mật khẩu, dựa trên file mẫu `.env.example`. Mỗi dòng trong file mẫu đều có chú thích tiếng Việt.
 
 - **Mở file:** dùng Notepad (Windows) hoặc TextEdit (Mac). Trên Mac, file bắt đầu bằng dấu chấm bị ẩn; trong Finder nhấn `Command + Shift + .` để hiện.
+- **Khóa API AI (Claude, ChatGPT, Gemini)** nhập ngay trong app: **Cài đặt → 🔌 Kết nối**, dán khóa rồi bấm Lưu. App ghi vào `.env` và không bao giờ hiện lại khóa.
 - **Chỉ điền mục cần dùng.** Trang chủ của app cho biết mục nào đã khai báo, mục nào chưa (không hiện giá trị).
 - Sửa `.env` xong thì tắt app rồi mở lại.
 - **Bảo mật:**
@@ -101,7 +102,7 @@ Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (ng
 4. Bấm **Tiếp: tạo dàn ý**, sửa / xóa / sắp xếp lại các mục, rồi bấm **Duyệt dàn ý**. AI viết toàn bài, tự rà soát theo checklist và sửa một lượt trước khi đưa bạn xem.
 5. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
 
-Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn chỉ nằm trong cửa sổ trình duyệt: **tải lại trang (F5) sẽ mất bài**, nên làm xong một bài trong một lần mở.
+Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn được **tự lưu** sau mỗi thay đổi (vào `data/drafts.sqlite` trên máy, không lên GitHub). Tải lại trang hay tắt app vẫn không mất bài: vào **Soạn bài**, khung **Bài đang soạn dở** ở bước 1 có nút Mở và Xóa.
 
 **Tùy chỉnh (không cần sửa code)**, mở bằng Notepad / TextEdit:
 - `config/ai.toml`: mô hình AI và mức "suy nghĩ" (effort) cho từng việc. Effort cao hơn thì bài kỹ hơn nhưng chậm và tốn tiền hơn.
