@@ -15,6 +15,7 @@ from typing import Any
 import requests
 
 from seo_app.config import Settings
+from seo_app.sanitize import sanitize_html, strip_tags
 from seo_app.text import slugify
 
 DEFAULT_TIMEOUT = 30
@@ -206,20 +207,24 @@ class WordPressClient:
         slug: str = "",
         featured_media: int | None = None,
     ) -> Post:
-        """Tạo bài ở trạng thái NHÁP (draft). Không bao giờ đăng công khai."""
-        if not title.strip():
+        """Tạo bài ở trạng thái NHÁP (draft). Không bao giờ đăng công khai.
+
+        Nội dung và đoạn trích luôn qua bộ lọc HTML (security.md 2.3); tiêu đề bỏ mọi thẻ.
+        """
+        title = strip_tags(title).strip()
+        if not title:
             raise WordPressError("Tiêu đề bài viết không được để trống.")
         payload: dict[str, Any] = {
             "status": "draft",
-            "title": title.strip(),
-            "content": content,
+            "title": title,
+            "content": sanitize_html(content),
         }
         if categories:
             payload["categories"] = list(categories)
         if tags:
             payload["tags"] = list(tags)
         if excerpt:
-            payload["excerpt"] = excerpt
+            payload["excerpt"] = sanitize_html(excerpt)
         if slug:
             payload["slug"] = slug
         if featured_media:

@@ -20,8 +20,35 @@ from seo_app.content.models import (
     SectionText,
 )
 from seo_app.content.rules import ContentRules, find_banned
+from seo_app.sanitize import clean_ai_text, strip_tags
 
 INTRO_HEADING = "Mở bài"
+
+
+def clean_draft(draft: Draft) -> Draft:
+    """Kết quả AI là dữ liệu chưa tin cậy: bỏ thẻ HTML và link ẩn trước khi dùng."""
+    return Draft(
+        title=strip_tags(draft.title).strip(),
+        intro=clean_ai_text(draft.intro),
+        sections=[
+            Section(heading=strip_tags(s.heading).strip(), body=clean_ai_text(s.body))
+            for s in draft.sections
+        ],
+    )
+
+
+def clean_review(review: Review) -> Review:
+    """Câu thay thế và lời nhận xét AI đề xuất cũng được lọc như thân bài."""
+    flags = [
+        flag.model_copy(
+            update={
+                "replacement": clean_ai_text(flag.replacement),
+                "reason": strip_tags(flag.reason).strip(),
+            }
+        )
+        for flag in review.flags
+    ]
+    return Review(scores=review.scores, flags=flags, summary=strip_tags(review.summary).strip())
 
 
 def draft_to_parts(draft: Draft) -> list[Section]:
@@ -108,15 +135,15 @@ class ContentWriter:
     def write(
         self, keyword: str, research: Research, material: Mapping[str, str], outline: Outline
     ) -> tuple[str, list[Section]]:
-        draft = self._run(
-            "write", prompts.write_prompt(keyword, research, material, outline), Draft
+        draft = clean_draft(
+            self._run("write", prompts.write_prompt(keyword, research, material, outline), Draft)
         )
         return draft.title or outline.title, draft_to_parts(draft)
 
     # 5. Rà soát theo checklist
     def review(self, keyword: str, title: str, parts: Sequence[Section]) -> Review:
-        review = self._run(
-            "review", prompts.review_prompt(keyword, title, parts, self.rules), Review
+        review = clean_review(
+            self._run("review", prompts.review_prompt(keyword, title, parts, self.rules), Review)
         )
         flags = clean_flags(parts, [*banned_flags(parts, self.rules), *review.flags])
         return Review(scores=clamp_scores(review.scores), flags=flags, summary=review.summary)
@@ -147,4 +174,4 @@ class ContentWriter:
         note: str = "",
     ) -> str:
         prompt = prompts.rewrite_prompt(keyword, title, parts, index, styles, note)
-        return self._run("rewrite", prompt, SectionText).body.strip()
+        return clean_ai_text(self._run("rewrite", prompt, SectionText).body)

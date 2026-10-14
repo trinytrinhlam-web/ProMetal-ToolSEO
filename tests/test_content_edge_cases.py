@@ -398,11 +398,6 @@ def test_competitor_javascript_link_is_not_rendered(project_root, monkeypatch, a
     assert not any("javascript:" in m.value for m in at.markdown)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #1: HTML trong bài AI viết được vẽ thẳng ra trang bằng unsafe_allow_html "
-    "(write.py:462, ui.py:49-55).",
-)
 def test_html_in_ai_article_is_not_rendered_as_html(project_root, monkeypatch, app_env):
     draft = Draft(
         title="Bài có mã độc",

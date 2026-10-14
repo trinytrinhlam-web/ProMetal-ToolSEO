@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (bắt buộc trước khi nối bài AI sang WordPress) |
 | Mức ưu tiên | **Cao** |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 

@@ -162,11 +162,6 @@ def test_wordpress_form_content_is_escaped(payload):
     assert "<a " not in html
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #3: chưa có bộ lọc HTML trước khi gửi WordPress (security.md 2.3); "
-    "create_draft gửi nguyên nội dung (wordpress/client.py:212-216).",
-)
 @pytest.mark.parametrize("payload", MALICIOUS)
 def test_html_sent_to_wordpress_is_sanitized(fake_wp, wp_client, payload):
     import json
@@ -178,11 +173,6 @@ def test_html_sent_to_wordpress_is_sanitized(fake_wp, wp_client, payload):
         assert bad not in sent
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi #1: ui.highlight không escape văn bản AI nhưng write.py:462 hiển thị bằng "
-    "unsafe_allow_html=True (XSS trong app).",
-)
 @pytest.mark.parametrize("payload", MALICIOUS)
 def test_highlight_escapes_ai_text(payload):
     out = highlight(f"Câu đầu. {payload}", tone=["Câu đầu."]).lower()
