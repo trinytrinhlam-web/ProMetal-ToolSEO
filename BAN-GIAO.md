@@ -83,13 +83,55 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 - Thư Ký cập nhật `README.md`: nhập khóa API trong Cài đặt → Kết nối; bài đang soạn được tự lưu.
 - Meta title/description chưa được lưu vào nháp (làm ở Giai đoạn 4).
 
-## 7. Quyết định anh đã chốt (AI mới phải giữ)
+## 7. Mọi trao đổi và quyết định của chủ dự án (không được bỏ sót)
 
-- Push thẳng lên `main`, không tạo nhánh mới, không mở PR mới; giữ repo gọn. (Điều này thay cho dòng "mỗi giai đoạn một nhánh" trong `CLAUDE.md`.)
-- Không cần tiết kiệm chi phí mô hình AI; ưu tiên chất lượng.
-- Chỉ Huy tự gọi agent phụ, nhưng mỗi agent phải có tên cụ thể để anh theo dõi.
-- Giữ nguyên vị trí GPS trong ảnh (cố ý, cho SEO địa phương). Đã ghi vào sổ rủi ro `docs/team/security.md` mục 6.
-- Website suachuacuasat.com dùng plugin SEO **SiteSEO**, **không có** site thử nghiệm: chỉ tạo bản nháp, đăng thật phải có anh bấm xác nhận.
-- Không dùng năm thành lập, tên tác giả, bảng giá trong bài. Chi nhánh có ở mọi quận TP.HCM.
-- Khóa API nhập trong app nhưng chỉ lưu trong `.env` trên máy, không bao giờ lên GitHub.
-- Anh dùng GitHub Desktop; mọi giải thích bằng tiếng Việt, đơn giản, giải thích thuật ngữ trước khi hỏi quyết định.
+Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, Duyệt và merge WordPress, Soạn thông tin nền doanh nghiệp, Xây Giai đoạn 2, Hệ thống agent và phiếu giao việc). Quyết định có từ trước nữa (06/10) nằm trong `CLAUDE.md` mục "Quyết định đã chốt".
+
+### 7.1 Cách làm việc với anh
+
+- Trả lời và viết tài liệu **bằng tiếng Việt**, ngắn, dễ hiểu. Anh hiểu khái niệm lập trình nhưng ít dùng Git và dòng lệnh: **giải thích thuật ngữ trước khi hỏi quyết định** (ví dụ anh đã hỏi lại "GPS trong ảnh là gì, T-007 là gì").
+- Câu hỏi cần anh quyết: mỗi câu trả lời được bằng một từ, có đề xuất của Claude.
+- **Làm liên tục, hết việc này sang việc khác, không chờ ngày** (anh nói 14/10: "Hết việc tới việc, không chờ ngày"). Việc gì đổi được, sửa lại được thì cứ làm; chỉ hỏi khi cần anh quyết.
+- Trước khi trả lời phải nắm rõ từng agent làm gì (anh yêu cầu 14/10).
+- Anh muốn **kiểm soát và theo dõi được mọi agent**: agent nào cũng có tên cụ thể, việc ghi trên `docs/team/board.md`.
+
+### 7.2 Repo, Git, máy tính
+
+- Repo: `https://github.com/trinytrinhlam-web/ProMetal-ToolSEO` (tài khoản GitHub `trinytrinhlam-web`, chủ dự án An Manu).
+- **Push thẳng lên `main`, không tạo nhánh mới, không mở PR mới.** Thay cho dòng "mỗi giai đoạn một nhánh / PR" trong `CLAUDE.md`. Luôn `git pull` trước khi sửa vì có thể có phiên khác cùng đẩy lên.
+- **Repo phải gọn, sạch, tự đủ**: xóa file phần mềm không cần; đưa lên đủ mọi file để AI khác (Claude, ChatGPT, Gemini…) mở ra là làm tiếp được.
+- Máy anh là Windows, thư mục dự án `C:\Projects\ProMetal-ToolSEO`. Anh dùng **GitHub Desktop** (Fetch → Pull để lấy bản mới). Máy cũ ban đầu chưa có Git; cài bằng `winget install --id Git.Git -e` hoặc tải ở git-scm.com.
+- Phần mềm **cài và chạy trên máy** (không phải web): bấm đúp `run.bat`, mở trong trình duyệt ở localhost, có mật khẩu. Cần Internet để gọi AI và gửi bài nháp sang WordPress.
+- Anh từng từ chối cho Claude điều khiển máy từ xa ở các luồng khác; chỉ duyệt riêng thư mục `C:\Projects\ProMetal-ToolSEO` cho luồng hệ thống agent. Muốn chạy lệnh trên máy mới phải xin anh duyệt lại thư mục.
+
+### 7.3 Đội agent và chi phí
+
+- Chỉ Huy **tự gọi agent phụ**, nhưng **mỗi agent phải có tên cụ thể** để anh theo dõi.
+- Bắt buộc có phiếu giao việc và báo cáo; có quy tắc, nguyên tắc, ràng buộc; **agent kiểm thử và bảo mật phải đảm bảo mức an toàn cao nhất**; ghi rõ model từng agent.
+- **Không cần tiết kiệm chi phí model**, ưu tiên chất lượng: Lá Chắn Fable 5.1 (không bao giờ hạ cấp; tạm Opus 5.5 tới 01/11 vì Fable bị giới hạn), Thư Ký Sonnet 5.5, còn lại Opus 5.5.
+- Đã duyệt: sửa code ngay cho các lỗi bảo mật; sửa `seo_app/config.py` để test không bao giờ đọc `.env` thật; khai báo `pydantic` trong `pyproject.toml`.
+
+### 7.4 Website và doanh nghiệp
+
+- Website **suachuacuasat.com** (Cơ khí Pro-Metal, sửa và làm cửa sắt). Plugin SEO là **SiteSEO** (không phải Rank Math/Yoast). Trang chủ có Site Kit by Google.
+- **Không có site thử nghiệm (staging)**: làm thẳng trên site thật, nên mọi bài chỉ tạo **nháp**; đăng thật phải có anh bấm xác nhận.
+- Chi nhánh có ở **mọi quận huyện TP.HCM**, website chưa cập nhật đủ. Bài viết nói "có thợ ở mọi khu vực TP.HCM"; địa chỉ cụ thể chỉ dùng 9 địa chỉ trên trang Liên hệ cho tới khi anh bổ sung.
+- **Không dùng** năm thành lập, tên người phụ trách/tác giả, bảng giá trong bài. Hướng khách gửi ảnh qua Zalo để báo giá.
+- **Ca sửa thật đáng nhớ, câu khách hay hỏi qua Zalo: để sau.** Khi viết từng bài, app hỏi anh "chất liệu thật" (bước 3 quy trình).
+- Thông tin doanh nghiệp đã soạn (từ website) nằm trong `config/business_profile.md` của **PR #3** (chưa gộp vào `main`): hotline 03.4444.07.17, trụ sở 728/1 Lê Trọng Tấn, Bình Tân, bảo hành 2 năm, gần 30 thợ, dịch vụ và kiến thức nghề. Dòng nào đánh dấu `[CẦN XÁC NHẬN]` thì AI không dùng.
+- PR #3 đang xung đột nhỏ với `main` ở `CLAUDE.md` (hai bên cùng thêm dòng Trạng thái, cách sửa là giữ cả hai). Có thẻ hỏi "gộp bản mới nhất vào PR #3" chưa được trả lời.
+
+### 7.5 Tính năng và nội dung
+
+- **Giữ nguyên vị trí GPS trong ảnh** ("nhiều khi đó là mục đích cố ý"). Phiếu T-007 xóa GPS đã hủy; ghi trong sổ rủi ro `docs/team/security.md` mục 6. Khi nén WebP phải chép lại EXIF.
+- Anh muốn **tự nhập khóa API trong phần mềm** (Gemini, ChatGPT, Claude): đã làm ở Cài đặt → 🔌 Kết nối; khóa lưu trong `.env`, không bao giờ hiện lại.
+- Anh sẽ dùng **Gemini** (và có thể ChatGPT, Claude). Cách nối ChatGPT/Gemini vào phần viết bài (T-018) đang chờ anh chọn (mục 6).
+- AI viết bài có bật **mô hình dự phòng**: nếu Claude từ chối một yêu cầu thì tự chạy lại bằng mô hình khác.
+- Giai đoạn 6 (theo dõi thứ hạng) đã bỏ khỏi giao diện demo; chờ anh xác nhận có giữ không.
+
+### 7.6 Lịch sử ngắn
+
+- 06/10: khởi tạo; xong Giai đoạn 0, Giai đoạn 1 và giao diện demo (PR #2). Anh duyệt bố cục demo lần 2, chốt phần mềm tập trung vào viết bài.
+- 14/10 sáng: PR #2 gộp vào `main`; soạn hồ sơ doanh nghiệp (PR #3); Giai đoạn 2 phần 1 (Claude viết bài) đẩy lên `main`.
+- 14/10 chiều tối: lập đội agent; T-001 → T-021 xong (kiểm định bảo mật, gia cố lọc nội dung AI, tự lưu bài, nhập khóa API).
+- 14/10 tối: anh chuyển sang máy mới và project mới; viết file này.
