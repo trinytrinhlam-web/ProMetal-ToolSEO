@@ -160,18 +160,42 @@ _ASCII_SPACE_CHARS = " \t\n\r\f\v"
 _ASCII_SPACE = re.compile(r"[ \t\n\r\f\v]+")
 
 
-class _Whitespace:
-    """Tra nhanh các dãy khoảng trắng ASCII (lập một lần, tra bằng ``bisect``)."""
+# Ký tự KHÔNG escape (ký tự sau "\\" thì bỏ qua) cần tra: dấu nháy đóng tiêu đề link "…" / '…',
+# và "<", ">", xuống dòng để kiểm tra địa chỉ dạng "<…>" (R6-1).
+_UNESCAPED_MARK = re.compile(r"\\[\s\S]|([\"'<>\n])")
 
-    def __init__(self, text: str) -> None:
+
+class _Whitespace:
+    """Tra nhanh dãy khoảng trắng ASCII và dấu nháy chưa escape (lập một lần, tra bằng ``bisect``).
+
+    Dùng để quyết định phần trong ``(…)`` có phải địa chỉ link thật không, trong thời gian
+    tuyến tính kể cả khi chữ có hàng chục nghìn ngoặc lồng nhau.
+    """
+
+    def __init__(self, text: str, pairs: dict[int, int]) -> None:
         self._text = text
+        self._pairs = pairs
         self._starts: list[int] | None = None
         self._ends: list[int] = []
+        self._marks: dict[str, list[int]] = {}
 
     def _build(self) -> None:
         runs = [(m.start(), m.end()) for m in _ASCII_SPACE.finditer(self._text)]
         self._starts = [a for a, _ in runs]
         self._ends = [b for _, b in runs]
+        marks: dict[str, list[int]] = {char: [] for char in "\"'<>\n"}
+        for m in _UNESCAPED_MARK.finditer(self._text):
+            if m.group(1):
+                marks[m.group(1)].append(m.start())
+        self._marks = marks
+
+    def _next_mark(self, char: str, pos: int) -> int:
+        """Vị trí ``char`` (không escape) đầu tiên SAU ``pos``; không có thì độ dài chữ."""
+        if self._starts is None:
+            self._build()
+        positions = self._marks[char]
+        k = bisect_right(positions, pos)
+        return positions[k] if k < len(positions) else len(self._text)
 
     def _run_at_or_after(self, pos: int) -> tuple[int, int]:
         """(đầu, cuối) của dãy khoảng trắng chứa ``pos`` hoặc đứng sau nó; hết thì (n, n)."""
@@ -186,23 +210,62 @@ class _Whitespace:
         n = len(self._text)
         return n, n
 
+    def _title_end(self, title: int) -> int | None:
+        """Vị trí ký tự đóng tiêu đề mở ở ``title`` ("…", '…' hoặc (…)); không có thì None."""
+        char = self._text[title]
+        if char == "(":
+            return self._pairs.get(title)
+        end = self._next_mark(char, title)
+        return end if end < len(self._text) else None
+
+    def _angle_destination_end(self, dest: int) -> int | None:
+        """Vị trí ">" đóng địa chỉ ``<…>`` mở ở ``dest``: không có "<" hay xuống dòng ở giữa."""
+        end = self._next_mark(">", dest)
+        if end >= len(self._text):
+            return None
+        if self._next_mark("<", dest) < end or self._next_mark("\n", dest) < end:
+            return None
+        return end
+
     def looks_like_destination(self, open_paren: int, close_paren: int) -> bool:
         """Phần trong ``(…)`` có dạng "địa chỉ [tiêu đề]" của CommonMark không.
 
-        Địa chỉ không có dấu cách (trừ dạng ``<…>``); sau địa chỉ chỉ được có tiêu đề mở bằng
-        dấu nháy hoặc ngoặc. ``(sau mưa)`` thì không: đó là chữ thường, giữ lại. Chỉ để chữ gọn;
-        an toàn đã do ``escape_link_syntax`` lo.
+        Địa chỉ không có dấu cách (trừ dạng ``<…>``); sau địa chỉ chỉ được có MỘT tiêu đề
+        ("…", '…' hoặc (…)) rồi tới ngay ")" (chỉ còn khoảng trắng). ``(sau mưa)`` và
+        ``(dày "mỏng" 1mm)`` thì không: đó là chữ thường, giữ lại (R4-4, R5-1). Địa chỉ
+        ``<…>`` phải có ">" đóng, không có "<" hay xuống dòng ở giữa (``(<0,5 mm)`` là chữ
+        thường, R6-1). Chỉ để chữ gọn; an toàn đã do ``escape_link_syntax`` lo.
         """
         text = self._text
         dest = open_paren + 1
         if text[dest] in _ASCII_SPACE_CHARS:
             dest = self._run_at_or_after(dest)[1]
-        if dest >= close_paren or text[dest] == "<":
+        if dest >= close_paren:
+            return True  # "[a]()": địa chỉ rỗng
+        if text[dest] == "<":
+            angle_end = self._angle_destination_end(dest)
+            if angle_end is None or angle_end >= close_paren:
+                return False  # "<" không có ">" đóng hợp lệ: chữ thường (R6-1)
+            dest_end = angle_end + 1
+        else:
+            dest_end = self._run_at_or_after(dest)[0]
+        if dest_end >= close_paren:
             return True
-        gap_start, title = self._run_at_or_after(dest)
-        if gap_start >= close_paren or title >= close_paren:
+        gap_start, title = self._run_at_or_after(dest_end)
+        if gap_start != dest_end:
+            return False  # sau "<…>" phải là khoảng trắng hoặc ")"
+        if title >= close_paren:
             return True
-        return text[title] in "\"'("
+        if text[title] not in "\"'(":
+            return False
+        title_end = self._title_end(title)
+        if title_end is None or title_end >= close_paren:
+            return False
+        after = title_end + 1
+        if after == close_paren:
+            return True
+        run_start, run_end = self._run_at_or_after(after)
+        return run_start == after and run_end == close_paren
 
 
 def strip_markdown_links(text: str) -> str:
@@ -219,7 +282,7 @@ def strip_markdown_links(text: str) -> str:
     """
     pairs, para_ends, para_last_close = _matching_parens(text)
     code = _CodeSpanLookup(text)
-    blanks = _Whitespace(text)
+    blanks = _Whitespace(text, pairs)
     n = len(text)
     drop = bytearray(n)  # 1 = bỏ ký tự này
     openers: list[int] = []  # vị trí các "[" chưa đóng
@@ -423,6 +486,7 @@ def unescape_link_syntax(text: str) -> str:
         return text
     out.append(text[start:])
     return "".join(out)
+
 
 def clean_ai_text(text: str) -> str:
     """Làm sạch một đoạn Markdown do AI viết: không còn thẻ HTML, không còn link.

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Thấp (mục 1 phải xong trước Giai đoạn 5, nếu không thành Cao) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-10-14) |
 
 ## Yêu cầu
 

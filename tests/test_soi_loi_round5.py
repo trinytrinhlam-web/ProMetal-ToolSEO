@@ -274,12 +274,6 @@ def test_not_links_keep_their_text_and_stay_safe(text):
     assert no_link_left(out)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="R5-1 (Thấp, chỉ mất chữ): looks_like_destination chỉ xét ký tự ĐẦU của phần sau "
-    "địa chỉ; '(dày \"mỏng\" 1mm)' có chữ sau tiêu đề nên CommonMark không coi là link, nhưng "
-    "strip_markdown_links vẫn bỏ cả ngoặc (sanitize.py:205). Không ảnh hưởng an toàn.",
-)
 @pytest.mark.parametrize(
     "text",
     [

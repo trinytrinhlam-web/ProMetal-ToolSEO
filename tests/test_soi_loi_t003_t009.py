@@ -7,13 +7,13 @@ Ngòi Bút sửa xong, test sẽ báo XPASS và phải gỡ dấu ``xfail``. Kh�
 from __future__ import annotations
 
 import re
-import time
 import unicodedata
 from pathlib import Path
 
 import pytest
 from fake_ai import RESEARCH, FakeProvider
 from streamlit.testing.v1 import AppTest
+from timing import assert_scales_linearly
 
 import seo_app.config as config
 from seo_app.ai import AIError
@@ -124,27 +124,27 @@ def test_angle_destination_with_unbalanced_paren_is_removed(text):
     assert not LINK_LEFT.search(out), out
 
 
+# T-015 (Thợ Máy, theo phiếu của Chỉ Huy): đo TỈ LỆ thời gian giữa cỡ 1/4 và cỡ đầy đủ thay vì
+# mốc "dưới 1 giây". Đầu vào giữ nguyên, nay viết thành hàm theo cỡ k (k = 4 là cỡ cũ).
 ADVERSARIAL = {
-    "dong-khai-bao": "[a]:\n" * 40_000,
-    "ngoac-vuong-xuong-dong": "[\n" * 100_000,
-    "lt-ngoac": "<[](x)" * 33_000,
-    "chi-thi-xu-ly": "<?" * 100_000,
-    "the-dong-do-dang": "</a" * 66_000,
-    "ngoac-tron-dong-trong": "(\n\n" * 66_000,
-    "ngoac-vuong-roi-dong": "[" * 100_000 + "](" * 50_000,
-    "cr-lf": "(\r\n\r\n" * 40_000,
-    "nhan-dai-nhieu-dong": ("[" + "a\n" * 10_000 + "]:x\n") * 10,
+    "dong-khai-bao": lambda k: "[a]:\n" * (40_000 * k // 4),
+    "ngoac-vuong-xuong-dong": lambda k: "[\n" * (100_000 * k // 4),
+    "lt-ngoac": lambda k: "<[](x)" * (33_000 * k // 4),
+    "chi-thi-xu-ly": lambda k: "<?" * (100_000 * k // 4),
+    "the-dong-do-dang": lambda k: "</a" * (66_000 * k // 4),
+    "ngoac-tron-dong-trong": lambda k: "(\n\n" * (66_000 * k // 4),
+    "ngoac-vuong-roi-dong": lambda k: "[" * (100_000 * k // 4) + "](" * (50_000 * k // 4),
+    "cr-lf": lambda k: "(\r\n\r\n" * (40_000 * k // 4),
+    "nhan-dai-nhieu-dong": lambda k: ("[" + "a\n" * (10_000 * k // 4) + "]:x\n") * 10,
 }
 
 
 @pytest.mark.parametrize("name", list(ADVERSARIAL))
 def test_filters_stay_fast_on_more_adversarial_inputs(name):
-    text = ADVERSARIAL[name]
-    assert len(text) >= 190_000
+    make = ADVERSARIAL[name]
+    assert len(make(4)) >= 190_000
     for fn in (clean_ai_text, sanitize_html):
-        start = time.perf_counter()
-        fn(text)
-        assert time.perf_counter() - start < 1.0, (name, fn.__name__)
+        assert_scales_linearly(fn, make, label=(name, fn.__name__))
 
 
 @pytest.mark.parametrize("tag", ["button", "form", "select", "svg"])

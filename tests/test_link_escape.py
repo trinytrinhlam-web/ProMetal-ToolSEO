@@ -6,9 +6,9 @@ Không gọi mạng, không cần .env.
 from __future__ import annotations
 
 import re
-import time
 
 import pytest
+from timing import assert_scales_linearly
 
 from seo_app.ai.base import redact_secrets
 from seo_app.content import prompts
@@ -106,22 +106,24 @@ def test_missing_marker_survives_and_is_not_a_link(text):
     assert len(find_missing(out)) == 1
 
 
+# (đơn vị lặp, số lần lặp ở cỡ đầy đủ); cỡ nhỏ = 1/4 số lần (T-015: đo tỉ lệ, không đo giây)
 @pytest.mark.parametrize(
-    "text",
+    ("unit", "count"),
     [
-        "](" * 150_000,
-        "[" * 300_000,
-        "]:" * 150_000,
-        "\n[a]:" * 60_000,
-        "\\]" * 150_000,
-        "[a]\r" * 60_000,
+        ("](", 150_000),
+        ("[", 300_000),
+        ("]:", 150_000),
+        ("\n[a]:", 60_000),
+        ("\\]", 150_000),
+        ("[a]\r", 60_000),
     ],
 )
-def test_escape_step_is_fast(text):
-    start = time.perf_counter()
-    escape_link_syntax(text)
-    clean_ai_text(text)
-    assert time.perf_counter() - start < 1.0
+def test_escape_step_is_fast(unit, count):
+    def run(text):
+        escape_link_syntax(text)
+        clean_ai_text(text)
+
+    assert_scales_linearly(run, lambda k: unit * (count * k // 4), label=unit)
 
 
 # ---------------------------------------------------------------- R3-3: mọi trường AI
@@ -276,10 +278,92 @@ def test_code_spans_keep_text_but_stay_escaped(text, expected):
 
 
 @pytest.mark.parametrize(
-    "text",
-    ["`a" * 150_000, "``a`" * 100_000, "[a](b c)" * 40_000, "`a`[b](c d)" * 30_000],
+    ("unit", "count"),
+    [("`a", 150_000), ("``a`", 100_000), ("[a](b c)", 40_000), ("`a`[b](c d)", 30_000)],
 )
-def test_t014_inputs_stay_fast(text):
-    start = time.perf_counter()
-    clean_ai_text(text)
-    assert time.perf_counter() - start < 1.0
+def test_t014_inputs_stay_fast(unit, count):
+    assert_scales_linearly(clean_ai_text, lambda k: unit * (count * k // 4), label=unit)
+
+
+# ---------------------------------------------------- T-015: apply_flag bỏ thẻ, R5-1
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        "<script>alert(1)</script>Câu mới.",
+        '<img src=x onerror="alert(1)">Câu mới.',
+        "Câu <b>mới</b>.",
+        f"<a href='{EVIL}'>Câu mới.</a>",
+    ],
+)
+def test_apply_flag_strips_tags_from_replacement(replacement):
+    out = apply_flag("Câu cũ. Câu sau.", "Câu cũ.", replacement)
+    assert not re.search(r"<[A-Za-z/!?]", out), out
+    assert "alert" not in out
+    assert out.endswith(" Câu sau.")
+    assert_no_link(out)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Có chữ sau tiêu đề: không phải link, giữ chữ (R5-1)
+        ('Cửa [A](dày "mỏng" 1mm) nhé.', 'Cửa [A]\\(dày "mỏng" 1mm) nhé.'),
+        ("[a](x 't' y)", "[a]\\(x 't' y)"),
+        ("[a](x (t) y)", "[a]\\(x (t) y)"),
+        ('[a](x "t)', '[a]\\(x "t)'),  # tiêu đề không đóng: không phải link
+        # Tiêu đề đóng rồi tới ")" (có thể cách bằng khoảng trắng): link thật, bỏ địa chỉ
+        ('[a](x "t" )', "a"),
+        ('[a](x "a\\"b")', "a"),
+        ("[a](x\n(t)\n)", "a"),
+    ],
+)
+def test_title_must_close_right_before_parenthesis(text, expected):
+    assert clean_ai_text(text) == expected
+
+
+def test_title_lookup_stays_linear():
+    assert_scales_linearly(
+        clean_ai_text, lambda k: '[a](x "' * (20_000 * k // 4) + ")" * (20_000 * k // 4)
+    )
+    assert_scales_linearly(
+        clean_ai_text, lambda k: "[a](x (" * (20_000 * k // 4) + ")" * (40_000 * k // 4)
+    )
+
+
+# --------------------------------------- T-015 lần 2: lọc thẻ trên kết quả SAU khi ghép (LC #1)
+
+
+@pytest.mark.parametrize(
+    ("body", "sentence", "replacement"),
+    [
+        # (a) câu thay thế kết thúc bằng "<", nối với chữ phía sau thành thẻ
+        (f'Gọi ngay fooa href="{EVIL}">thợ giỏi nhất', "foo", "bên mình <"),
+        # (b) chỗ nối trái: "<" của thân bài + câu thay thế
+        ('Gọi ngay <"foo" nhé', '"foo"', f'a href="{EVIL}">thợ giỏi'),
+        ("Nhiệt độ <5 độ là tốt.", "5 độ là tốt.", f'a href="{EVIL}">thợ'),
+        # (c) nhánh bỏ câu
+        (f'Gọi ngay <"x" a href="{EVIL}">thợ giỏi', '"x"', ""),
+        # (d) autolink <https://…>
+        (f'Gọi <"x"{EVIL}> nhé', '"x"', ""),
+        (f'Gọi <"x" nhé {EVIL[8:]}>', '"x" nhé', f"{EVIL[:8]}"),
+    ],
+    ids=["noi-phai", "noi-trai", "noi-trai-so", "bo-cau", "autolink", "autolink-thay"],
+)
+def test_apply_flag_seam_cannot_make_tag_or_autolink(body, sentence, replacement):
+    body = clean_ai_text(body)
+    assert sentence in body, body
+    out = apply_flag(body, sentence, replacement)
+    assert not re.search(r"<[A-Za-z/!?]", out), out
+    assert "href" not in out or "<" not in out, out
+    assert_no_link(out)
+
+
+def test_timing_helper_has_absolute_limit(monkeypatch):
+    # Lá Chắn T-015 #2: hàm tuyến tính nhưng chậm quá mốc tuyệt đối vẫn bị bắt.
+    import timing
+
+    monkeypatch.setattr(timing, "MAX_SECONDS", 1e-6)
+    with pytest.raises(AssertionError, match="giây CPU"):
+        assert_scales_linearly(clean_ai_text, lambda k: "Câu [a](b). " * (2_000 * k))

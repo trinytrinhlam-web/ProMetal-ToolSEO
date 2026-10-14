@@ -152,11 +152,19 @@ def clean_flags(parts: Sequence[Section], flags: Sequence[Flag]) -> list[Flag]:
 
 
 def apply_flag(body: str, sentence: str, replacement: str) -> str:
-    """Thay (hoặc bỏ) một câu. Chỗ nối có thể ghép "[chữ]" với "(địa chỉ)" phía sau thành link
-    mới, nên escape cú pháp link trên kết quả (không đổi gì ở chữ đã lọc)."""
+    """Thay (hoặc bỏ) một câu trong một phần của bài.
+
+    Chỗ nối có thể ghép hai mảnh "sạch" thành thứ nguy hiểm: "<" cuối phần trước với
+    "a href=…>" của câu thay thế thành thẻ HTML, "[chữ]" với "(địa chỉ)" thành link. Vì vậy lọc
+    trên KẾT QUẢ SAU KHI GHÉP, ở cả hai nhánh: bỏ thẻ (``strip_tags``, Lá Chắn T-015 #1) rồi
+    escape cú pháp link. Câu thay thế cũng được bỏ thẻ trước khi ghép. Cái giá: HTML người
+    dùng tự gõ trong phần này cũng bị bỏ khi áp gợi ý (thân bài là Markdown).
+    """
     if replacement:
-        return escape_link_syntax(body.replace(sentence, replacement))
-    return escape_link_syntax(body.replace(sentence + " ", "").replace(sentence, "").strip())
+        joined = body.replace(sentence, strip_tags(replacement))
+    else:
+        joined = body.replace(sentence + " ", "").replace(sentence, "").strip()
+    return escape_link_syntax(strip_tags(joined))
 
 
 def apply_replacements(

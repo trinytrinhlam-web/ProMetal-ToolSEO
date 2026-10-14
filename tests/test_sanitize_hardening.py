@@ -1,10 +1,10 @@
 """T-008: gia cố bộ lọc sau T-004 (Soi Lỗi #1–#3, Lá Chắn #1–#4). Không gọi mạng."""
 
 import re
-import time
 
 import pytest
 from fake_ai import OUTLINE, RESEARCH, FakeProvider
+from timing import assert_scales_linearly
 
 from seo_app.ai import AIRouter, TaskConfig
 from seo_app.ai import registry as ai_registry
@@ -18,30 +18,34 @@ from seo_app.sanitize import clean_ai_text, is_safe_url, sanitize_html, strip_ta
 # ------------------------------------------------ không thể làm treo app (Lá Chắn #1)
 
 SIZE = 200_000  # ≈ 200 KB, lớn hơn bài dài nhất AI được phép trả (≈ 100 KB)
+# Mỗi mục: hàm tạo đầu vào theo cỡ k (k = 4 là cỡ đầy đủ ≈ SIZE, k = 1 là 1/4). T-015: đo tỉ
+# lệ thời gian giữa hai cỡ thay vì mốc giây cố định.
 SLOW_INPUTS = {
-    "script": "<script>" * (SIZE // 8),
-    "ngoac-vuong": "[" * SIZE,
-    "the-long-nhau": "<" * (SIZE // 3) + "a>" * (SIZE // 3),
-    "script-khong-dong-ngoac": "<script" * (SIZE // 7),
-    "comment-khong-dong": "<!--" * (SIZE // 4),
-    "link-mo": "[x](" * (SIZE // 4),
-    "dau-link": "](" * (SIZE // 2),
-    "ngoac-tron": "(" * SIZE,
-    "nhan-nhieu-dong": "[a\n" * (SIZE // 3),
-    "khai-bao-link": "[a]:\n" * (SIZE // 5),
-    "ngoac-long-sau": "[" * (SIZE // 2) + "](x)" * (SIZE // 8),
-    "tron-lan": "<script><style>[x](<iframe>" * (SIZE // 30),
-    "the-dong-le": "</script>" * (SIZE // 9),
+    "script": lambda k: "<script>" * (SIZE * k // 32),
+    "ngoac-vuong": lambda k: "[" * (SIZE * k // 4),
+    "the-long-nhau": lambda k: "<" * (SIZE * k // 12) + "a>" * (SIZE * k // 12),
+    "script-khong-dong-ngoac": lambda k: "<script" * (SIZE * k // 28),
+    "comment-khong-dong": lambda k: "<!--" * (SIZE * k // 16),
+    "link-mo": lambda k: "[x](" * (SIZE * k // 16),
+    "dau-link": lambda k: "](" * (SIZE * k // 8),
+    "ngoac-tron": lambda k: "(" * (SIZE * k // 4),
+    "nhan-nhieu-dong": lambda k: "[a\n" * (SIZE * k // 12),
+    "khai-bao-link": lambda k: "[a]:\n" * (SIZE * k // 20),
+    "ngoac-long-sau": lambda k: "[" * (SIZE * k // 8) + "](x)" * (SIZE * k // 32),
+    "tron-lan": lambda k: "<script><style>[x](<iframe>" * (SIZE * k // 120),
+    "the-dong-le": lambda k: "</script>" * (SIZE * k // 36),
 }
 
 
-@pytest.mark.parametrize("text", SLOW_INPUTS.values(), ids=SLOW_INPUTS.keys())
-def test_filters_run_fast_on_huge_malicious_input(text):
-    start = time.perf_counter()
-    out = clean_ai_text(text)
+def _clean_and_sanitize(text: str) -> None:
+    clean_ai_text(text)
     sanitize_html(text)
-    assert time.perf_counter() - start < 1.0
-    assert not re.search(r"<[A-Za-z/!?]", out)
+
+
+@pytest.mark.parametrize("make", SLOW_INPUTS.values(), ids=SLOW_INPUTS.keys())
+def test_filters_run_fast_on_huge_malicious_input(make):
+    assert_scales_linearly(_clean_and_sanitize, make)
+    assert not re.search(r"<[A-Za-z/!?]", clean_ai_text(make(4)))
 
 
 def test_deeply_nested_tags_leave_no_real_tag():
@@ -240,20 +244,22 @@ LINK_LEFT = re.compile(r"\]\s*\(")
 
 
 @pytest.mark.parametrize(
-    "text",
+    "make",
     [
-        "[Gọi thợ]" + "[]" * 30 + "(x)" * 30 + "(https://evil.example)",  # lồng sâu hơn số lượt
-        "[a][](x)" * 20_000,
-        "<" * 20_000 + "[](x)" * 20_000 + "script>",
-        '[a](u "(")' * 20_000,
-        "[a]" + "[]" * 20_000 + "(x)" * 20_000 + "(https://evil.example)",
+        # hàm tạo đầu vào theo cỡ k (k = 4 là cỡ đầy đủ; T-015: đo tỉ lệ thời gian)
+        lambda k: "[Gọi thợ]" + "[]" * (30 * k // 4) + "(x)" * (30 * k // 4)
+        + "(https://evil.example)",
+        lambda k: "[a][](x)" * (20_000 * k // 4),
+        lambda k: "<" * (20_000 * k // 4) + "[](x)" * (20_000 * k // 4) + "script>",
+        lambda k: '[a](u "(")' * (20_000 * k // 4),
+        lambda k: "[a]" + "[]" * (20_000 * k // 4) + "(x)" * (20_000 * k // 4)
+        + "(https://evil.example)",
     ],
     ids=["long-sau", "chuoi-lien-tiep", "the-sau-link", "tieu-de-ngoac-le", "long-rat-sau"],
 )
-def test_nested_link_tricks_leave_no_link_or_tag_and_run_fast(text):
-    start = time.perf_counter()
-    out = clean_ai_text(text)
-    assert time.perf_counter() - start < 1.0
+def test_nested_link_tricks_leave_no_link_or_tag_and_run_fast(make):
+    assert_scales_linearly(clean_ai_text, make)
+    out = clean_ai_text(make(4))
     assert not LINK_LEFT.search(out)
     assert not re.search(r"<[A-Za-z/!?]", out)
 

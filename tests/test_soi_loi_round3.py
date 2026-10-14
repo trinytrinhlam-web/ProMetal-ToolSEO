@@ -7,11 +7,11 @@ sửa xong, test báo XPASS và phải gỡ dấu ``xfail``. Không gọi mạng
 from __future__ import annotations
 
 import re
-import time
 
 import pytest
 from fake_ai import FakeProvider
 from streamlit.testing.v1 import AppTest
+from timing import assert_scales_linearly
 
 from seo_app.ai import AIError
 from seo_app.ai import registry as ai_registry
@@ -86,27 +86,31 @@ def test_normal_vietnamese_with_brackets_is_untouched(text):
     assert not INLINE_LINK.search(out), out
 
 
+# T-015 (Thợ Máy, theo phiếu của Chỉ Huy): đo TỈ LỆ thời gian giữa cỡ 1/4 và cỡ đầy đủ thay vì
+# mốc "dưới 1 giây". Đầu vào giữ nguyên, nay viết thành hàm theo cỡ k (k = 4 là cỡ cũ).
+def _q(n: int, k: int) -> int:
+    return n * k // 4
+
+
 @pytest.mark.parametrize(
-    "text",
+    "make",
     [
-        _nest("[a]]", 20_000),
-        _nest("[a\\\\]", 20_000),
-        "[a](" * 50_000 + ")",
-        "](" * 100_000 + ")",
-        '[a]: u "\\"x\n' * 30_000,
-        "[a]: u\u00a0x\n" * 30_000,
-        ("[" + "a\n") * 60_000,
-        '[a]: u "\n' * 30_000,
-        (">" * 50 + "1.)" * 50 + "[a]: u x\n") * 1_000,
-        "\\" * 200_000,
-        '[a](b "(")<[](x)script>' * 8_000,
-        "[a]: u\r" * 30_000,
+        lambda k: _nest("[a]]", _q(20_000, k)),
+        lambda k: _nest("[a\\\\]", _q(20_000, k)),
+        lambda k: "[a](" * _q(50_000, k) + ")",
+        lambda k: "](" * _q(100_000, k) + ")",
+        lambda k: '[a]: u "\\"x\n' * _q(30_000, k),
+        lambda k: "[a]: u\u00a0x\n" * _q(30_000, k),
+        lambda k: ("[" + "a\n") * _q(60_000, k),
+        lambda k: '[a]: u "\n' * _q(30_000, k),
+        lambda k: (">" * 50 + "1.)" * 50 + "[a]: u x\n") * _q(1_000, k),
+        lambda k: "\\" * _q(200_000, k),
+        lambda k: '[a](b "(")<[](x)script>' * _q(8_000, k),
+        lambda k: "[a]: u\r" * _q(30_000, k),
     ],
 )
-def test_filter_stays_fast_on_round3_inputs(text):
-    start = time.perf_counter()
-    clean_ai_text(text)
-    assert time.perf_counter() - start < 1.0
+def test_filter_stays_fast_on_round3_inputs(make):
+    assert_scales_linearly(clean_ai_text, make)
 
 
 # ===================================== R3-1 · Cao · bước dự phòng tạo/giữ lại link (4 tầng)
