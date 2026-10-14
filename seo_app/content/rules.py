@@ -13,8 +13,12 @@ from seo_app.config import PROJECT_ROOT
 
 CONTENT_CONFIG_FILE = PROJECT_ROOT / "config" / "content.toml"
 BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
-# Dòng mang nhãn này trong hồ sơ doanh nghiệp chưa được chủ dự án xác nhận: AI không được dùng.
-UNCONFIRMED_TAG = "[CẦN XÁC NHẬN"
+# Ý mang nhãn «[CẦN XÁC NHẬN» (có hay không có lý do phía sau) trong hồ sơ doanh nghiệp chưa
+# được chủ dự án xác nhận: AI không được thấy. So trên chữ đã chuẩn hóa NFC và viết hoa; chịu
+# được dấu cách thừa, tab, dấu cách không ngắt.
+_UNCONFIRMED_PATTERN = re.compile(r"\[\s*CẦN\s+XÁC\s+NHẬN")
+# Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
+_BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
 
 # Chỗ AI để trống vì thiếu dữ liệu thật, ví dụ: [cần bổ sung: giá cổng 4 m của xưởng]
 MISSING_PATTERN = re.compile(r"\[cần bổ sung:[^\]]*\]", re.IGNORECASE)
@@ -39,13 +43,52 @@ class ContentRules:
 
 
 def confirmed_profile(text: str) -> str:
-    """Hồ sơ doanh nghiệp đã bỏ các dòng còn nhãn [CẦN XÁC NHẬN] và phần chú thích đầu file."""
-    lines = [
-        line
-        for line in text.splitlines()
-        if UNCONFIRMED_TAG not in line.upper() and not line.startswith(">")
-    ]
-    return "\n".join(lines).strip()
+    """Hồ sơ doanh nghiệp đã bỏ các ý còn nhãn [CẦN XÁC NHẬN] và mọi dòng ghi chú ``>``.
+
+    Lọc theo **khối**, không theo từng dòng, để một ý viết trên nhiều dòng không lọt nửa nào:
+
+    - Gạch đầu dòng (``- …``, ``* …``, ``1. …``) không thụt lề mở một khối; các dòng sau nó
+      cho tới dòng trống, tiêu đề hoặc gạch đầu dòng không thụt lề kế tiếp đều thuộc khối đó
+      (dòng thụt vào, gạch đầu dòng lồng nhau, cả dòng quên thụt lề khi gõ Notepad).
+    - Đoạn văn thường: khối là cả đoạn, ngăn bằng dòng trống.
+    - Tiêu đề ``#`` (không thụt lề) luôn đứng riêng một khối.
+
+    Khối có nhãn ở bất kỳ dòng nào thì bỏ cả khối. Dòng ghi chú (ký tự đầu tiên không phải
+    khoảng trắng là ``>``) luôn bị bỏ và không cắt khối. Các dòng giữ lại y nguyên như trong
+    file.
+    """
+    kept: list[str] = []
+    block: list[str] = []
+    block_unconfirmed = False
+
+    def close_block() -> None:
+        nonlocal block_unconfirmed
+        if not block_unconfirmed:
+            kept.extend(block)
+        block.clear()
+        block_unconfirmed = False
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            continue
+        if not stripped:
+            close_block()
+            kept.append(line)
+            continue
+        indented = line[0].isspace()
+        if not indented and (stripped.startswith("#") or _BULLET.match(stripped)):
+            close_block()
+        block.append(line)
+        block_unconfirmed = block_unconfirmed or _is_unconfirmed(line)
+        if not indented and stripped.startswith("#"):
+            close_block()
+    close_block()
+    return "\n".join(kept).strip()
+
+
+def _is_unconfirmed(line: str) -> bool:
+    return bool(_UNCONFIRMED_PATTERN.search(unicodedata.normalize("NFC", line).upper()))
 
 
 def _read_text(path: Path) -> str:
