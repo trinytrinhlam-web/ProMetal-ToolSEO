@@ -8,6 +8,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
+from seo_app.ai.base import AIError
 from seo_app.config import PROJECT_ROOT
 
 CONTENT_CONFIG_FILE = PROJECT_ROOT / "config" / "content.toml"
@@ -18,6 +19,14 @@ UNCONFIRMED_TAG = "[CẦN XÁC NHẬN"
 # Chỗ AI để trống vì thiếu dữ liệu thật, ví dụ: [cần bổ sung: giá cổng 4 m của xưởng]
 MISSING_PATTERN = re.compile(r"\[cần bổ sung:[^\]]*\]", re.IGNORECASE)
 _SENTENCE_END = re.compile(r"(?<=[.!?…])\s+|\n+")
+
+
+class ContentRulesError(AIError):
+    """``config/content.toml`` hoặc hồ sơ doanh nghiệp đọc không được / viết sai dạng.
+
+    Là một loại ``AIError`` để trang Soạn bài báo lỗi tiếng Việt và khóa các bước AI, thay vì
+    hiện lỗi Python.
+    """
 
 
 @dataclass(frozen=True)
@@ -39,22 +48,64 @@ def confirmed_profile(text: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _read_text(path: Path) -> str:
+    try:
+        # "utf-8-sig": nhận cả file UTF-8 có BOM (Notepad đời cũ lưu kiểu này).
+        return path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ContentRulesError(
+            f"File config/{path.name} không lưu ở dạng UTF-8. Mở lại bằng Notepad, chọn "
+            "Lưu thành (Save As) → Mã hóa (Encoding): UTF-8, rồi lưu."
+        ) from exc
+    except OSError as exc:
+        raise ContentRulesError(f"Không đọc được file config/{path.name}.") from exc
+
+
+def _table(data: dict, key: str, path: Path) -> dict:
+    value = data.get(key, {})
+    if not isinstance(value, dict):
+        raise ContentRulesError(
+            f"File config/{path.name}: «{key}» phải là một mục [{key}], không phải một giá trị."
+        )
+    return value
+
+
+def _text(table: dict, key: str, path: Path) -> str:
+    value = table.get(key, "")
+    if not isinstance(value, str):
+        raise ContentRulesError(f"File config/{path.name}: «{key}» phải là chữ trong ngoặc kép.")
+    return value
+
+
+def _text_list(table: dict, key: str, path: Path) -> tuple[str, ...]:
+    value = table.get(key, [])
+    if isinstance(value, str):
+        # Viết nhầm một chuỗi thay vì danh sách: coi là danh sách một dòng, không tách từng chữ.
+        value = [value]
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise ContentRulesError(
+            f'File config/{path.name}: «{key}» phải là danh sách chữ, ví dụ ["dòng 1", "dòng 2"].'
+        )
+    return tuple(v for v in value if v.strip())
+
+
 def load_rules(
     path: Path = CONTENT_CONFIG_FILE, profile_path: Path = BUSINESS_PROFILE_FILE
 ) -> ContentRules:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    voice = data.get("voice", {})
-    profile = (
-        confirmed_profile(profile_path.read_text(encoding="utf-8"))
-        if profile_path.is_file()
-        else ""
-    )
+    """Đọc quy tắc nội dung. File sai bảng mã hoặc sai dạng thì báo ``ContentRulesError``."""
+    try:
+        data = tomllib.loads(_read_text(path))
+    except tomllib.TOMLDecodeError as exc:
+        raise ContentRulesError(f"File config/{path.name} viết sai cú pháp: {exc}") from exc
+    voice = _table(data, "voice", path)
+    review = _table(data, "review", path)
+    profile = confirmed_profile(_read_text(profile_path)) if profile_path.is_file() else ""
     return ContentRules(
         business_profile=profile,
-        address=str(voice.get("address", "")),
-        tone=str(voice.get("tone", "")),
-        banned=tuple(str(p) for p in voice.get("banned", [])),
-        checklist=tuple(str(c) for c in data.get("review", {}).get("checklist", [])),
+        address=_text(voice, "address", path),
+        tone=_text(voice, "tone", path),
+        banned=_text_list(voice, "banned", path),
+        checklist=_text_list(review, "checklist", path),
     )
 
 
@@ -65,21 +116,28 @@ def sentences(text: str) -> list[str]:
 def find_banned(text: str, banned: tuple[str, ...] | list[str]) -> list[tuple[str, str]]:
     """Các câu chứa cụm từ cấm: [(câu, cụm từ)]. Không phân biệt hoa thường.
 
-    So khớp sau khi chuẩn hóa Unicode (NFC): chữ Việt dán từ máy Mac hay ở dạng tổ hợp (NFD),
-    nhìn giống hệt nhưng khác mã. Câu trả về giữ nguyên như trong bài.
+    So khớp sau khi chuẩn hóa Unicode (NFC; chữ Việt dán từ máy Mac hay ở dạng tổ hợp NFD) và
+    gộp mọi khoảng trắng (dấu cách không ngắt, nhiều dấu cách) thành một dấu cách. Cụm từ phải
+    đứng trọn từ: «Tóm lại» không khớp «Tóm lạii». Câu trả về giữ nguyên như trong bài.
     """
+    patterns = [(phrase, _phrase_pattern(phrase)) for phrase in banned if phrase.strip()]
     found = []
     for sentence in sentences(text):
-        lower = _normalize(sentence)
-        for phrase in banned:
-            if _normalize(phrase) in lower:
+        normalized = _normalize(sentence)
+        for phrase, pattern in patterns:
+            if pattern.search(normalized):
                 found.append((sentence, phrase))
                 break
     return found
 
 
 def _normalize(text: str) -> str:
-    return unicodedata.normalize("NFC", text).lower()
+    return " ".join(unicodedata.normalize("NFC", text).lower().split())
+
+
+def _phrase_pattern(phrase: str) -> re.Pattern[str]:
+    """Cụm từ đứng trọn từ: không dính chữ cái/chữ số ngay trước hoặc ngay sau."""
+    return re.compile(r"(?<!\w)" + re.escape(_normalize(phrase)) + r"(?!\w)")
 
 
 def find_missing(text: str) -> list[str]:

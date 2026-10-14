@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-008 làm lại xong (cùng file `sanitize.py`) |
-| Trạng thái | Mới |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 

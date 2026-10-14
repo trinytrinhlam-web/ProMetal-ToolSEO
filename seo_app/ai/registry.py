@@ -22,9 +22,17 @@ SUPPORTED = {"anthropic"}
 def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
     """Mô hình cho từng việc. Báo ``AIError`` (tiếng Việt) nếu file viết sai."""
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        # "utf-8-sig": nhận cả file UTF-8 có BOM (Notepad đời cũ lưu kiểu này).
+        data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError as exc:
         raise AIError(f"Không thấy file cấu hình AI: {path}") from exc
+    except UnicodeDecodeError as exc:
+        raise AIError(
+            f"File config/{path.name} không lưu ở dạng UTF-8. Mở lại bằng Notepad, chọn "
+            "Lưu thành (Save As) → Mã hóa (Encoding): UTF-8, rồi lưu."
+        ) from exc
+    except OSError as exc:
+        raise AIError(f"Không đọc được file config/{path.name}.") from exc
     except tomllib.TOMLDecodeError as exc:
         raise AIError(f"File {path.name} viết sai cú pháp: {exc}") from exc
 

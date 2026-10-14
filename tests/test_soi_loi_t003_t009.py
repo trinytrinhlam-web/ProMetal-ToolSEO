@@ -31,10 +31,6 @@ from seo_app.sanitize import clean_ai_text, sanitize_html
 LINK_LEFT = re.compile(r"\]\s*\(")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-1 (Cao): tiêu đề link trong ngoặc kép chứa '(' làm bộ ghép ngoặc lệch, link lọt",
-)
 @pytest.mark.parametrize(
     "text",
     [
@@ -50,10 +46,6 @@ def test_link_title_with_unbalanced_paren_is_still_removed(text):
     assert "evil.example" not in out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-2 (Cao): bỏ '[](x)' ở giữa ghép phần còn lại thành link mới (lọc một lượt)",
-)
 @pytest.mark.parametrize(
     "text",
     [
@@ -66,10 +58,6 @@ def test_removing_a_link_does_not_create_a_new_link(text):
     assert not LINK_LEFT.search(out), out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-3 (Trung bình): bỏ link sau khi bỏ thẻ nên '<[](x)script>' thành '<script>' thật",
-)
 @pytest.mark.parametrize(
     "text",
     [
@@ -83,10 +71,6 @@ def test_removing_a_link_does_not_create_an_html_tag(text):
     assert not re.search(r"<\s*[A-Za-z/!?]", out), out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-4 (Thấp): dòng '[nhãn]: chữ' bị coi là khai báo link, mất cả dòng chữ thường",
-)
 @pytest.mark.parametrize(
     ("text", "keep"),
     [
@@ -131,10 +115,6 @@ def test_more_link_variants_are_removed(text):
     assert "http://evil.example" not in out.replace("< ", "<")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-1b (Thấp): địa chỉ trong <…> chứa '(' lẻ cũng làm lệch bộ ghép ngoặc, link lọt",
-)
 @pytest.mark.parametrize(
     "text",
     ["[t](<\\\\evil.example/(>)", "[t](<1.2.3.4/(>)"],
@@ -167,10 +147,6 @@ def test_filters_stay_fast_on_more_adversarial_inputs(name):
         assert time.perf_counter() - start < 1.0, (name, fn.__name__)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-5 (Thấp): thẻ nguy hiểm không có thẻ đóng (button/form/select/svg) nuốt nửa sau",
-)
 @pytest.mark.parametrize("tag", ["button", "form", "select", "svg"])
 def test_unclosed_dangerous_tag_does_not_swallow_rest_of_article(tag):
     out = sanitize_html(f"<p>Mở đầu</p><{tag}>Gọi ngay<p>Phần sau rất quan trọng.</p>")
@@ -217,10 +193,6 @@ def test_whitespace_and_case_variants_cannot_close_frame(fake_close):
     assert _closes(prompt, "du_lieu_tham_khao") == _opens(prompt, "du_lieu_tham_khao") == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-6 (Thấp): thẻ đóng khung có ký tự vô hình / dấu ＜ toàn chiều rộng lọt qua",
-)
 @pytest.mark.parametrize(
     "fake_close",
     [
@@ -236,7 +208,8 @@ def test_invisible_or_fullwidth_close_tag_cannot_close_frame(fake_close):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="SL-7 (Thấp): từ khóa nằm ngoài khung và không bị vô hiệu thẻ khung",
+    reason="SL-7 (Thấp): từ khóa nằm ngoài khung và không bị vô hiệu thẻ khung. Để Giai đoạn 5 "
+    "(khi từ khóa đến từ Google Sheets / file kế hoạch), theo quyết định của Chỉ Huy ở T-010.",
 )
 def test_keyword_cannot_fake_a_frame():
     # Từ khóa sau này có thể đến từ Google Sheets / file kế hoạch (security.md 2.4).
@@ -281,10 +254,6 @@ def test_redact_secrets_hides_common_key_formats(secret, template):
     assert secret[8:] not in out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-8 (Thấp): redact_secrets bỏ sót Basic auth và mật khẩu có dấu cách",
-)
 @pytest.mark.parametrize(
     ("text", "secret"),
     [
@@ -320,10 +289,6 @@ def _bad_ai_toml(tmp_path: Path, data: bytes) -> Path:
 AI_TOML = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-9 (Trung bình): ai.toml lưu bằng Notepad dạng ANSI/UTF-16 gây UnicodeDecodeError",
-)
 @pytest.mark.parametrize("encoding", ["cp1258", "utf-16"])
 def test_ai_toml_wrong_encoding_gives_ai_error(tmp_path, encoding):
     data = ("# Ghi chú: mô hình viết bài\n" + AI_TOML).encode(encoding, errors="replace")
@@ -331,10 +296,6 @@ def test_ai_toml_wrong_encoding_gives_ai_error(tmp_path, encoding):
         ai_registry.load_ai_config(_bad_ai_toml(tmp_path, data))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-10 (Thấp): ai.toml UTF-8 có BOM (Notepad cũ) hợp lệ nhưng bị báo sai cú pháp",
-)
 def test_ai_toml_with_utf8_bom_still_loads(tmp_path):
     tasks = ai_registry.load_ai_config(_bad_ai_toml(tmp_path, b"\xef\xbb\xbf" + AI_TOML.encode()))
     assert "write" in tasks
@@ -356,10 +317,6 @@ def test_write_page_survives_badly_typed_ai_toml(project_root, tmp_path, monkeyp
     assert any("web_search" in w.value for w in at.warning)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-9 (Trung bình): trang Soạn bài sập khi ai.toml không phải UTF-8",
-)
 def test_write_page_survives_ai_toml_in_ansi(project_root, tmp_path, monkeypatch):
     bad = _bad_ai_toml(tmp_path, ("# mô hình\n" + AI_TOML).encode("cp1258", errors="replace"))
     monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (bad,))
@@ -367,10 +324,6 @@ def test_write_page_survives_ai_toml_in_ansi(project_root, tmp_path, monkeypatch
     assert not at.exception, at.exception
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-11 (Thấp): content.toml '[voice]' viết sai dạng làm sập trang Soạn bài",
-)
 def test_write_page_survives_content_toml_with_wrong_shape(project_root, tmp_path, monkeypatch):
     bad = tmp_path / "content.toml"
     bad.write_text('voice = "thân thiện"\n', encoding="utf-8")
@@ -383,10 +336,6 @@ def test_write_page_survives_content_toml_with_wrong_shape(project_root, tmp_pat
     assert not at.exception, at.exception
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-12 (Thấp): banned viết thành chuỗi thay vì danh sách → mỗi chữ cái thành cụm cấm",
-)
 def test_banned_written_as_string_is_not_split_into_letters(tmp_path):
     path = tmp_path / "content.toml"
     path.write_text('[voice]\nbanned = "Trong thời đại"\n', encoding="utf-8")
@@ -426,10 +375,6 @@ def test_ordinary_sentences_are_not_flagged(sentence):
     assert find_banned(sentence, BANNED) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-13 (Thấp): so khớp chuỗi con, không theo ranh giới cụm từ → bắt nhầm câu thường",
-)
 @pytest.mark.parametrize(
     "sentence",
     [
@@ -442,10 +387,6 @@ def test_normal_phrases_that_contain_a_banned_substring(sentence):
     assert find_banned(sentence, BANNED) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-14 (Thấp): khoảng trắng lạ (NBSP, hai dấu cách) giữa các chữ làm lọt cụm cấm",
-)
 @pytest.mark.parametrize(
     "sentence", ["Trong\u00a0thời đại số, cửa cuốn…", "Trong  thời đại số, cửa cuốn…"]
 )

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (bắt buộc trước Giai đoạn 5) |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-004 (đã xong) |
-| Trạng thái | Trả lại (Soi Lỗi tìm thêm SL-1..SL-5, xem T-003-006-008-009-soi-loi.md) |
+| Trạng thái | Trả lại lần 2: đổi cách chặn link tận gốc (xem Ghi chú) |
 
 ## Mục tiêu
 
@@ -32,3 +32,8 @@ Không còn đường nào để AI chèn link lạ vào bài, bộ lọc không
 ## Kiểm thử và kiểm định
 
 - Soi Lỗi: Có · Lá Chắn: Có
+
+## Ghi chú của Chỉ Huy
+
+- 2026-10-14, trả lại lần 1: Soi Lỗi tìm SL-1..SL-5 ([báo cáo](../reports/T-003-006-008-009-soi-loi.md)).
+- 2026-10-14, trả lại lần 2: Soi Lỗi R3-1..R3-4 ([báo cáo](../reports/T-008r-010-011-soi-loi.md)), Lá Chắn #1, #2 ([biên bản](../reports/T-008r-010-011-la-chan.md)). Ba vòng vá từng kiểu link đều còn lọt, nên **đổi cách làm**: không cố nhận diện link nữa mà làm cho văn bản AI không thể tạo link Markdown (escape mọi `[`, `]` khi hiển thị/xuất; chuẩn hóa xuống dòng), áp dụng cho mọi trường chữ AI tạo ra (kể cả R3-3: tiêu đề, `reason`, `summary`).

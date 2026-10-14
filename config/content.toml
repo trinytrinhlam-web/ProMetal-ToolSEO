@@ -10,13 +10,15 @@ address = "Xưng «Pro-Metal» hoặc «chúng tôi», gọi người đọc là
 tone = "Thân thiện, nói thẳng vào việc như thợ lành nghề đứng trước cửa nhà khách tư vấn: chỉ ra dấu hiệu, nguyên nhân, cách xử lý, khi nào tự làm được và khi nào nên gọi thợ; không văn hoa, không quảng cáo dồn dập"
 
 # Cụm từ cấm. Câu nào chứa các cụm này sẽ bị đánh dấu (không phân biệt hoa thường).
-# Máy dò theo kiểu "có chứa cụm này", nên chỉ ghi cụm đủ dài để không bắt nhầm câu bình thường.
+# Máy dò so trọn từ («Tóm lại» không khớp «Tóm lạii»), nhưng cụm ngắn vẫn có thể khớp câu bình thường
+# («Hãy cùng» khớp «Hãy cùng lúc…»), nên ghi cụm đủ dài hoặc kèm dấu phẩy, ví dụ «Nhìn chung,».
 banned = [
   # Mở bài rào đón
   "Trong thời đại",
   "Hãy cùng tìm hiểu",
   "Cùng tìm hiểu",
-  "Hãy cùng",
+  "Hãy cùng khám phá",
+  "Hãy cùng điểm qua",
   "Trong bài viết này",
   "Bạn đã bao giờ",
   "Như chúng ta đã biết",
@@ -27,7 +29,8 @@ banned = [
   "Không còn nghi ngờ gì",
   "vô cùng quan trọng",
   "đóng vai trò quan trọng",
-  "Nhìn chung",
+  "Nhìn chung,",
+  "Nhìn chung thì",
   "Tóm lại",
   # Kết bài sáo
   "Hy vọng bài viết",

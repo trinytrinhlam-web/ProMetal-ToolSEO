@@ -8,13 +8,12 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-| [T-008](tickets/T-008-gia-co-bo-loc.md) | Gia cố bộ lọc: làm lại SL-1..SL-5 | Thợ Máy | Trả lại, đang làm | [Soi Lỗi](reports/T-003-006-008-009-soi-loi.md) |
+| [T-008](tickets/T-008-gia-co-bo-loc.md) | Chặn link Markdown tận gốc (lần 3) | Thợ Máy | Trả lại lần 2, đang làm | [Soi Lỗi](reports/T-008r-010-011-soi-loi.md) · [Lá Chắn](reports/T-008r-010-011-la-chan.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-010](tickets/T-010-cau-hinh-chiu-loi-va-loi-thap.md) | File cấu hình chịu lỗi, các lỗi Thấp còn lại | Thợ Máy | T-008 làm lại xong |
 
 ## Việc đang làm ngoài hệ thống phiếu
 
@@ -29,6 +28,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-011](tickets/T-011-sua-cum-cam-bat-nham.md) | Sửa cụm từ cấm bắt nhầm | Ngòi Bút | 2026-10-14 | Lá Chắn: [**ĐẠT**](reports/T-008r-010-011-la-chan.md) |
+| [T-010](tickets/T-010-cau-hinh-chiu-loi-va-loi-thap.md) | File cấu hình chịu lỗi, lỗi Thấp | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-010-tho-may.md) · Lá Chắn: **ĐẠT** |
 | [T-009](tickets/T-009-dua-loi-dan-moi-vao-code.md) | Đưa lời dặn AI mới vào code | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-009-tho-may.md) · Lá Chắn: [**ĐẠT**](reports/T-003-006-008-009-la-chan.md) |
 | [T-006](tickets/T-006-sua-loi-nho-giai-doan-2.md) | Sửa lỗi Trung bình/Thấp Giai đoạn 2 | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-006-tho-may.md) · Lá Chắn: **ĐẠT** |
 | [T-003](tickets/T-003-ra-soat-prompt-noi-dung.md) | Rà soát prompt, quy tắc văn phong | Ngòi Bút | 2026-10-14 | [Báo cáo](reports/T-003-ngoi-but.md) · Lá Chắn: **ĐẠT** |
@@ -38,4 +39,4 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 | [T-007](tickets/T-007-xoa-gps-anh-dai-dien.md) | Xóa GPS trong ảnh | Thợ Máy | 2026-10-14 | **Hủy**: chủ dự án muốn giữ vị trí trong ảnh (sổ rủi ro, `security.md` mục 6) |
 | [T-002](tickets/T-002-kiem-thu-giai-doan-2.md) | Kiểm thử Giai đoạn 2 phần 1 | Soi Lỗi | 2026-10-14 | [Báo cáo](reports/T-002-soi-loi.md): 69 test mới, 8 lỗi (đánh dấu `xfail`), test chặn mạng thật. Chỉ Huy soát: test chỉ dùng khóa giả. |
 
-## Số phiếu tiếp theo: T-011
+## Số phiếu tiếp theo: T-012

@@ -5,6 +5,7 @@ Bài viết được giữ dưới dạng danh sách ``Section``: phần 0 là m
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 
 from seo_app.ai import AIError, AIRouter
@@ -43,6 +44,16 @@ def _clean_list(items: Sequence[str]) -> list[str]:
     return [clean_ai_text(item) for item in items]
 
 
+# Đường dẫn bài đối thủ: chỉ nhận một địa chỉ http(s) liền mạch (không dấu cách, không < > "),
+# để không ghép được thêm cú pháp Markdown (ảnh từ máy chủ lạ…) khi hiển thị (Lá Chắn #4).
+_PLAIN_URL = re.compile(r"https?://[^\s<>\"]+", re.IGNORECASE)
+
+
+def _clean_url(url: str) -> str:
+    url = strip_tags(url).strip()
+    return url if _PLAIN_URL.fullmatch(url) else ""
+
+
 def clean_research(research: Research) -> Research:
     """Kết quả nghiên cứu (có cả chữ chép từ trang đối thủ) cũng là dữ liệu chưa tin cậy."""
     return Research(
@@ -51,7 +62,7 @@ def clean_research(research: Research) -> Research:
         competitors=[
             Competitor(
                 title=strip_tags(c.title).strip(),
-                url=strip_tags(c.url).strip(),
+                url=_clean_url(c.url),
                 covers=clean_ai_text(c.covers),
                 missing=clean_ai_text(c.missing),
             )

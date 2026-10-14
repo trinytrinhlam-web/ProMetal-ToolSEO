@@ -445,3 +445,35 @@ Kết bài (đạt — đúng cách liên hệ trong hồ sơ, không giá):
 ## Câu hỏi cho chủ dự án
 
 Không có câu hỏi bắt buộc. (Nếu muốn: bài theo khu vực như "Quận 7" có được nói "thợ có mặt 30–60 phút" không, vì hồ sơ ghi con số này cho "nội thành"? Đề xuất: **Có**, Quận 7 là quận nội thành.)
+
+## T-011 · Sửa cụm từ cấm bắt nhầm (2026-10-14)
+
+Phiếu: [T-011](../tickets/T-011-sua-cum-cam-bat-nham.md) (SL-13). Kết quả: Hoàn thành.
+
+| File | Thay đổi |
+|---|---|
+| `config/content.toml` | Bỏ «Hãy cùng» (cụm quá ngắn, bắt nhầm «Hãy cùng lúc nhấn hai nút»). Thay bằng hai mở bài sáo cụ thể: «Hãy cùng khám phá», «Hãy cùng điểm qua»; «Hãy cùng tìm hiểu», «Cùng tìm hiểu» vẫn giữ. Đổi «Nhìn chung» thành «Nhìn chung,» và thêm «Nhìn chung thì» (hai cách dùng làm câu đệm), để không bắt «nhìn chung cư», «Nhìn chung quanh». Sửa chú thích: máy dò nay so trọn từ (T-010), cụm ngắn vẫn có thể bắt nhầm nên ghi cụm đủ dài hoặc kèm dấu phẩy. |
+| `tests/test_soi_loi_t003_t009.py` | Chỉ gỡ dấu `xfail` SL-13 của `test_normal_phrases_that_contain_a_banned_substring` (đã qua). |
+
+Lý do chọn: «Hãy cùng» ở đầu bài gần như luôn đi với «tìm hiểu / khám phá / điểm qua», nên liệt kê từng cụm vẫn bắt được câu sáo mà không đụng câu hướng dẫn thật. «Nhìn chung» chỉ là câu đệm khi đứng đầu ý và theo sau là dấu phẩy hoặc «thì».
+
+Kiểm tra (`find_banned` với cấu hình mới):
+
+```
+True  Hãy cùng tìm hiểu cách sửa cửa cuốn.
+True  Nhìn chung, cửa cuốn rất bền.
+True  Nhìn chung thì cửa nào cũng cần bảo dưỡng.
+True  Hãy cùng khám phá các loại cửa.
+False Hãy cùng lúc nhấn hai nút.
+False Nhìn chung quanh khung cửa.
+False Đứng nhìn chung cư đối diện.
+
+$ uv run pytest -q
+636 passed, 1 xfailed
+$ uv run ruff check .
+All checks passed!
+```
+
+`xfail` còn lại là SL-7 (từ khóa ngoài khung), để Giai đoạn 5 theo quyết định của Chỉ Huy, không thuộc phiếu này.
+
+Rủi ro: «Nhìn chung» đứng một mình không dấu phẩy (ví dụ «Nhìn chung cửa cuốn bền») không còn bị máy bắt; bước rà soát AI vẫn chấm theo checklist «không câu đệm» nên còn lớp thứ hai.

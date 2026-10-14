@@ -226,3 +226,63 @@ def test_title_falls_back_to_cleaned_outline_title(writer):
     # Dàn ý chưa lọc (ví dụ người dùng sửa tay) vẫn không đưa thẻ vào tiêu đề bài.
     title, _ = writer.write("cửa sắt", RESEARCH, {}, EVIL_OUTLINE)
     assert title == "Tiêu đề"
+
+
+# ------------------------------------------ T-008 làm lại (Soi Lỗi SL-1 … SL-5)
+
+LINK_LEFT = re.compile(r"\]\s*\(")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[Gọi thợ]" + "[]" * 30 + "(x)" * 30 + "(https://evil.example)",  # lồng sâu hơn số lượt
+        "[a][](x)" * 20_000,
+        "<" * 20_000 + "[](x)" * 20_000 + "script>",
+        '[a](u "(")' * 20_000,
+        "[a]" + "[]" * 20_000 + "(x)" * 20_000 + "(https://evil.example)",
+    ],
+    ids=["long-sau", "chuoi-lien-tiep", "the-sau-link", "tieu-de-ngoac-le", "long-rat-sau"],
+)
+def test_nested_link_tricks_leave_no_link_or_tag_and_run_fast(text):
+    start = time.perf_counter()
+    out = clean_ai_text(text)
+    assert time.perf_counter() - start < 1.0
+    assert not LINK_LEFT.search(out)
+    assert not re.search(r"<[A-Za-z/!?]", out)
+
+
+def test_link_with_unbalanced_title_paren_keeps_label():
+    assert clean_ai_text('Bấm [Gọi thợ](https://evil.example "(") nhé.') == "Bấm Gọi thợ nhé."
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[Lưu ý]: cần đo khe ray trước khi đặt cửa.",
+        "1. [Bước 1]: Tắt cầu dao trước.",
+        "**[Mẹo]:** tra dầu ray.",
+        "[cần bổ sung: giá]: hỏi lại xưởng",
+    ],
+)
+def test_label_colon_sentences_are_kept_whole(text):
+    assert clean_ai_text(text) == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '[r]: https://evil.example "tiêu đề"\n\n[x][r]',
+        "[r]: <https://evil.example> 'tiêu đề'\n\n[x][r]",
+        "[r]: https://evil.example\n  (tiêu đề)\n\n[x][r]",
+        "> [r]:\n> https://evil.example\n\n[x][r]",
+    ],
+)
+def test_reference_definitions_with_titles_are_still_removed(text):
+    assert "evil.example" not in clean_ai_text(text)
+
+
+@pytest.mark.parametrize("tag", ["form", "button", "select", "option", "svg", "math"])
+def test_dangerous_container_tags_keep_text_but_drop_tag(tag):
+    out = sanitize_html(f"<p>A</p><{tag} onclick=x()>Chữ<script>alert(1)</script><p>B</p>")
+    assert out == "<p>A</p>Chữ<p>B</p>"

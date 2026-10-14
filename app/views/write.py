@@ -19,7 +19,7 @@ from seo_app.content import ContentWriter, Outline, OutlineItem, Research, Secti
 from seo_app.content.models import SCORE_LABELS
 from seo_app.content.rules import find_missing
 from seo_app.content.workflow import apply_flag
-from seo_app.text import slugify
+from seo_app.text import markdown_link, slugify
 
 S = st.session_state
 REWRITE_STYLES = ["Ngắn hơn", "Thân thiện hơn", "Thêm ví dụ", "Bớt thuật ngữ", "Trang trọng hơn"]
@@ -296,7 +296,7 @@ def step_prepare(writer: ContentWriter | None) -> None:
         with right, st.container(border=True, height="stretch"):
             st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
             for c in research.competitors:
-                title = f"[{c.title}]({c.url})" if c.url.startswith("http") else c.title
+                title = markdown_link(c.title, c.url)
                 st.markdown(f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]")
         with st.container(border=True):
             st.markdown("#### ✨ Bài của mình phải có thêm")

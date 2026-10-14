@@ -69,3 +69,40 @@ Test `test_filters_run_fast_on_huge_malicious_input` kiểm cả `clean_ai_text`
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Làm lại (2026-10-14, sau [Soi Lỗi T-003-006-008-009](T-003-006-008-009-soi-loi.md))
+
+Soi Lỗi tìm thêm hai cách lách mức Cao (SL-1, SL-2) và bốn lỗi khác. Tất cả đã sửa trong `seo_app/sanitize.py`.
+
+| Lỗi | Sửa |
+|---|---|
+| SL-1 (Cao): tiêu đề link có "(" lẻ làm lệch ghép ngoặc, link lọt | Gặp `](` mà "(" không có ")" khớp thì bắt rộng: bỏ tới ")" cuối cùng của đoạn văn. Đoạn không có ")" nào thì đó không phải link (CommonMark), nên giữ nguyên. Vị trí ")" cuối mỗi đoạn được tính sẵn trong `_matching_parens`, tra bằng `bisect`, nên vẫn chạy tuyến tính. |
+| SL-1b: địa chỉ `<…(>` | Cùng cách sửa SL-1. |
+| SL-2 (Cao): bỏ một link ghép phần còn lại thành link mới | `clean_ai_text` lặp "bỏ thẻ → bỏ link" tới khi chữ không đổi, tối đa 4 lượt. Chữ cố tình lồng sâu hơn 4 tầng thì dùng bước dự phòng: xóa mọi dấu `]` đứng ngay trước `(`, nên không còn link nào. Địa chỉ khi đó **hiện ra thành chữ** (người dùng nhìn thấy, đúng security.md 2.3). |
+| SL-3: bỏ link làm hiện ra thẻ HTML | Cùng vòng lặp với SL-2. Bước dự phòng tách `<` khỏi chữ cái. Hai bước dự phòng chỉ xóa `]` hoặc thêm dấu cách nên không tạo ra link hay thẻ mới. |
+| SL-4: dòng `[nhãn]: chữ` bị xóa cả dòng | `_MD_LINK_DEF` chỉ nhận đúng dạng CommonMark: sau địa chỉ chỉ được có tiêu đề (`"…"`, `'…'`, `(…)`) rồi hết dòng. Dòng tiếp theo trong trích dẫn (`> `) vẫn được nhận. |
+| SL-5: `button/form/select/option/svg/math` không đóng nuốt phần sau | Thêm `DANGEROUS_CONTAINER_TAGS`: chỉ bỏ thẻ, giữ chữ bên trong và phía sau, giống trình duyệt. Thẻ con nguy hiểm (`script`…) vẫn bị bỏ cả ruột. Thuộc tính vẫn bị bỏ vì thẻ không nằm trong danh sách cho phép. |
+
+**Test:**
+- Gỡ 6 dấu `xfail` (18 trường hợp) trong `tests/test_soi_loi_t003_t009.py` của Soi Lỗi.
+- Thêm vào `tests/test_sanitize_hardening.py` 20 trường hợp:
+  - Lồng sâu hơn số lượt, chuỗi 160–200 KB: không còn link hay thẻ, xong dưới 1 giây.
+  - Link có tiêu đề chứa ngoặc lẻ vẫn giữ nhãn.
+  - Dòng `[nhãn]:` thường được giữ nguyên dòng.
+  - Khai báo link có tiêu đề hoặc nằm trong trích dẫn vẫn bị bỏ.
+  - Thẻ "bọc" giữ chữ.
+
+Đo tay (máy cloud): lồng 20 000 tầng (100 KB) mất 0,13 s; `[a][](x)` × 20 000 (160 KB) mất 0,11 s; `[a](u "(")` × 20 000 mất 0,02 s.
+
+```
+$ uv run pytest
+575 passed, 18 xfailed in 22.83s      # 18 xfail còn lại thuộc T-010 (SL-6…SL-14) và SL-7
+
+$ uv run ruff check .
+All checks passed!
+```
+
+**Rủi ro:**
+- Bắt rộng ở SL-1 có thể xóa thừa chữ tới dấu ")" cuối đoạn, nhưng chỉ khi có `](` mà ngoặc lệch (bất thường trong bài thật).
+- Ở bước dự phòng, địa chỉ còn lại hiện thành chữ trần. Streamlit tự biến địa chỉ trần thành link bấm được: đây là rủi ro Lá Chắn #2 đã chấp nhận (người dùng nhìn thấy địa chỉ). Giai đoạn 5 phải liệt kê mọi URL trước khi gửi.
+- Nội dung trong `<form>`/`<svg>`… giờ được giữ thành chữ (trước đây bị bỏ cả ruột).

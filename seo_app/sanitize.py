@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import html
 import re
+from bisect import bisect_right
 from html.parser import HTMLParser
 
 # Thẻ bị bỏ CẢ nội dung bên trong (không chỉ bỏ thẻ).
@@ -94,11 +95,20 @@ def strip_tags(text: str) -> str:
 _ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 # Dòng trống: kết thúc đoạn văn, link Markdown không bao giờ vượt qua.
 _BLANK_LINE_AFTER = re.compile(r"[ \t]*\n")
-# [nhãn]: địa chỉ (link kiểu tham chiếu). Rộng hơn CommonMark cho chắc: nhãn nhiều dòng, địa
-# chỉ ở dòng sau, nằm trong trích dẫn (">") hoặc danh sách ("-", "1.").
+# [nhãn]: địa chỉ ["tiêu đề"] (link kiểu tham chiếu). Rộng hơn CommonMark cho chắc: nhãn nhiều
+# dòng, địa chỉ ở dòng sau, nằm trong trích dẫn (">") hoặc danh sách ("-", "1."). Nhưng sau địa
+# chỉ chỉ được có tiêu đề rồi hết dòng, đúng như CommonMark: dòng chữ thường kiểu
+# "[Lưu ý]: cần đo khe ray…" không phải khai báo link nên được giữ (Soi Lỗi SL-4).
 _MD_LINK_DEF = re.compile(
-    r"^[ \t>*+\-\d.)]*\[(?:[^\[\]\\]|\\.)+\]:[ \t]*\n?[ \t]*\S.*$", re.MULTILINE
+    r"^[ \t>*+\-\d.)]*\[(?:[^\[\]\\]|\\.)+\]:[ \t]*(?:\n[ \t>]*)?(?:<[^<>\n]*>|\S+)[ \t]*"
+    r"(?:(?:\n[ \t>]*)?(?:\"[^\"]*\"|'[^']*'|\([^()]*\))[ \t]*)?$",
+    re.MULTILINE,
 )
+# Dấu "]" (không escape) ngay trước "(": dấu hiệu link nội dòng. Dùng ở bước dự phòng.
+_LINK_JOIN = re.compile(r"(?<!\\)\](?=\()")
+# Số lượt lọc (bỏ thẻ + bỏ link) tối đa. Bỏ một link có thể ghép phần còn lại thành link hoặc
+# thẻ mới (SL-2, SL-3), nên lặp tới khi chữ không đổi; quá số lượt thì dùng bước dự phòng.
+_MAX_CLEAN_PASSES = 4
 
 
 def _is_blank_line_start(text: str, newline: int) -> bool:
@@ -106,10 +116,17 @@ def _is_blank_line_start(text: str, newline: int) -> bool:
     return _BLANK_LINE_AFTER.match(text, newline + 1) is not None
 
 
-def _matching_parens(text: str) -> dict[int, int]:
-    """Vị trí "(" → vị trí ")" khớp với nó (bỏ qua ngoặc escape, không vượt dòng trống)."""
+def _matching_parens(text: str) -> tuple[dict[int, int], list[int], list[int]]:
+    """Ghép ngoặc tròn trong từng đoạn văn (bỏ qua ngoặc escape, không vượt dòng trống).
+
+    Trả về (vị trí "(" → ")" khớp, vị trí cuối mỗi đoạn, vị trí ")" cuối cùng của mỗi đoạn
+    hoặc -1).
+    """
     pairs: dict[int, int] = {}
+    para_ends: list[int] = []
+    para_last_close: list[int] = []
     stack: list[int] = []
+    last_close = -1
     i, n = 0, len(text)
     while i < n:
         char = text[i]
@@ -118,12 +135,19 @@ def _matching_parens(text: str) -> dict[int, int]:
             continue
         if char == "(":
             stack.append(i)
-        elif char == ")" and stack:
-            pairs[stack.pop()] = i
-        elif char == "\n" and stack and _is_blank_line_start(text, i):
+        elif char == ")":
+            last_close = i
+            if stack:
+                pairs[stack.pop()] = i
+        elif char == "\n" and _is_blank_line_start(text, i):
             stack.clear()
+            para_ends.append(i)
+            para_last_close.append(last_close)
+            last_close = -1
         i += 1
-    return pairs
+    para_ends.append(n)
+    para_last_close.append(last_close)
+    return pairs, para_ends, para_last_close
 
 
 def strip_markdown_links(text: str) -> str:
@@ -138,7 +162,7 @@ def strip_markdown_links(text: str) -> str:
     nhãn và "!" của ảnh. Cách này bắt rộng hơn CommonMark: có thể bỏ thừa một địa chỉ vốn
     hiện thành chữ, nhưng không để sót link nào.
     """
-    pairs = _matching_parens(text)
+    pairs, para_ends, para_last_close = _matching_parens(text)
     n = len(text)
     drop = bytearray(n)  # 1 = bỏ ký tự này
     openers: list[int] = []  # vị trí các "[" chưa đóng
@@ -155,6 +179,11 @@ def strip_markdown_links(text: str) -> str:
         elif char == "]":
             opener = openers.pop() if openers else None
             close = pairs.get(i + 1)
+            if close is None and i + 1 < n and text[i + 1] == "(":
+                # "(" không có ")" khớp, ví dụ tiêu đề link chứa "(" lẻ: [x](url "(") (SL-1).
+                # Bắt rộng: bỏ tới ")" cuối cùng của đoạn văn. Không có ")" thì không phải link.
+                last = para_last_close[bisect_right(para_ends, i)]
+                close = last if last > i else None
             if close is not None:
                 drop[i : close + 1] = b"\x01" * (close + 1 - i)
                 if opener is not None:
@@ -171,8 +200,23 @@ def strip_markdown_links(text: str) -> str:
 
 
 def clean_ai_text(text: str) -> str:
-    """Làm sạch một đoạn Markdown do AI viết: không còn thẻ HTML, không còn link ẩn."""
-    return strip_markdown_links(strip_tags(text)).strip()
+    """Làm sạch một đoạn Markdown do AI viết: không còn thẻ HTML, không còn link ẩn.
+
+    Lặp "bỏ thẻ → bỏ link" tới khi chữ không đổi, vì bỏ một phần có thể ghép phần còn lại
+    thành link hay thẻ mới (``[a][](x)(url)``, ``<[](x)script>``). Chữ cố tình lồng sâu hơn số
+    lượt cho phép thì dùng bước dự phòng: bỏ dấu "]" đứng trước "(" (không còn là link, địa
+    chỉ hiện ra thành chữ) và tách "<" khỏi chữ cái (không còn là thẻ). Hai bước này chỉ xóa
+    "]" hoặc thêm dấu cách nên không tạo ra link hay thẻ mới.
+    """
+    for _ in range(_MAX_CLEAN_PASSES):
+        previous = text
+        text = strip_markdown_links(strip_tags(text))
+        if text == previous:
+            break
+    else:
+        text = _MD_LINK_DEF.sub("", _LINK_JOIN.sub("", text))
+        text = _TAG_OPEN.sub("< ", text)
+    return text.strip()
 
 
 # --------------------------------------------------------------- HTML gửi WordPress
@@ -189,6 +233,9 @@ VOID_TAGS = frozenset({"br", "hr", "img"})
 # Thẻ nguy hiểm theo chuẩn HTML không bao giờ có thẻ đóng: chỉ bỏ thẻ, không chờ thẻ đóng
 # (nếu chờ thì mất toàn bộ phần bài phía sau, Soi Lỗi T-004 #3).
 DANGEROUS_VOID_TAGS = frozenset({"input", "base", "link", "meta", "embed", "frame"})
+# Thẻ nguy hiểm chỉ "bọc" nội dung bình thường (trình duyệt vẫn hiện chữ bên trong và phía sau
+# khi thiếu thẻ đóng): chỉ bỏ thẻ, giữ chữ; thẻ con nguy hiểm (script…) vẫn bị bỏ riêng (SL-5).
+DANGEROUS_CONTAINER_TAGS = frozenset({"form", "button", "select", "option", "svg", "math"})
 GLOBAL_ATTRS = frozenset({"class", "id", "title", "lang", "dir"})
 TAG_ATTRS = {
     "a": frozenset({"href", "rel"}),
@@ -254,7 +301,7 @@ class _Sanitizer(HTMLParser):
                 self.skip_depth += 1
             return
         if tag in DANGEROUS_TAGS:
-            if not closed and tag not in DANGEROUS_VOID_TAGS:
+            if not closed and tag not in DANGEROUS_VOID_TAGS | DANGEROUS_CONTAINER_TAGS:
                 self.skip_tag, self.skip_depth = tag, 1
             return
         if tag not in ALLOWED_TAGS:

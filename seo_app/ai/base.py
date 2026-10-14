@@ -13,13 +13,16 @@ T = TypeVar("T", bound=BaseModel)
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
-# Chuỗi trông giống khóa/mật khẩu: khóa Anthropic/OpenAI (sk-…), Google (AIza…), token sau
-# "Bearer", giá trị sau "x-api-key"/"api_key"/"authorization"…
+# Chuỗi trông giống khóa/mật khẩu:
+# - khóa Anthropic/OpenAI (sk-…), Google (AIza…), kể cả khi dính sau "_" (x_sk-…);
+# - token sau "Bearer"/"Basic" (có hoặc không có dấu ":");
+# - giá trị sau "x-api-key", "api_key", "authorization", "password", "token" kèm ":" hoặc "=":
+#   che tới hết dòng (hoặc tới dấu nháy đóng), vì mật khẩu có thể chứa dấu cách.
 _SECRET_LIKE = re.compile(
-    r"\b(?:sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{16,})"
-    r"|(?<=bearer )[A-Za-z0-9._~+/=\-]{8,}"
+    r"(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{16,})"
+    r"|(?:(?<=bearer)|(?<=basic))[ \t]*:?[ \t]+[A-Za-z0-9._~+/=\-]{6,}"
     r"|(?:(?<=x-api-key)|(?<=api[_-]key)|(?<=authorization)|(?<=password)|(?<=token))"
-    r"[\"']?\s*[:=]\s*[\"']?[^\s\"',;]{4,}",
+    r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}",
     re.IGNORECASE,
 )
 
