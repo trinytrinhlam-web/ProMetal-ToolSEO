@@ -156,5 +156,7 @@ seo_app/      phần logic: config.py (đọc .env), auth.py (mật khẩu), tex
 scripts/      script tiện ích (hash_password.py)
 tests/        kiểm thử pytest
 .streamlit/   cấu hình Streamlit (chỉ mở ở localhost, không thu thập số liệu)
-.claude/      hook cài thư viện cho phiên Claude Code trên cloud
+.claude/      hook cài thư viện cho phiên Claude Code trên cloud; agents/ (hồ sơ đội agent)
+docs/team/    quy tắc, chính sách bảo mật, phiếu giao việc, báo cáo của đội agent
+AGENTS.md     điểm bắt đầu cho mọi AI làm tiếp dự án
 ```

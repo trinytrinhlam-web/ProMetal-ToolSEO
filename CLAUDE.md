@@ -105,6 +105,13 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 
+### Đội agent (từ 2026-10-14)
+
+- Dự án làm theo đội agent do **Chỉ Huy** (Claude) điều phối: Thợ Máy (logic), Họa Sĩ (giao diện), Ngòi Bút (nội dung, prompt), Soi Lỗi (kiểm thử), **Lá Chắn** (bảo mật, có quyền chặn), Thư Ký (tài liệu).
+- Điểm bắt đầu cho mọi AI: `AGENTS.md`. Quy tắc, chính sách bảo mật, mẫu phiếu và báo cáo, bảng việc: `docs/team/`. Hồ sơ và model từng agent: `.claude/agents/`.
+- Mọi việc đi qua phiếu (`docs/team/tickets/`) và báo cáo (`docs/team/reports/`). Phiếu có sửa code phải qua Soi Lỗi và Lá Chắn trước khi đóng.
+- Chủ dự án chốt: agent điều phối tự gọi agent phụ; ưu tiên chất lượng, không cần tiết kiệm chi phí model; push thẳng lên `main`, không tạo nhánh mới.
+
 ### Giao diện và trang demo
 
 - Giao diện: theme trong `.streamlit/config.toml` (font Be Vietnam Pro, màu chủ đạo xanh ngọc `#0F7B6C`, có chế độ tối), CSS chung trong `app/assets/style.css`, mảnh HTML dùng chung trong `seo_app/ui.py`. Menu đặt trên cùng (`st.navigation(position="top")`).
@@ -130,3 +137,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-06: Thêm giao diện demo toàn bộ phần mềm (cùng nhánh, PR #2): menu nhóm Tổng quan / Nội dung / Theo dõi / Hệ thống; trang Kế hoạch từ khóa, Viết bài (7 bước), Thử mù, Ảnh, Lịch đăng, Thứ hạng, Cài đặt dùng dữ liệu mẫu.
 - 2026-10-06: Làm lại giao diện demo theo yêu cầu người dùng (cùng nhánh, PR #2): tập trung viết bài; menu trên cùng; Soạn bài 5 bước với nút viết lại từng phần, AI kiểm tra văn phong, chỗ cần ảnh (ảnh thật / ảnh AI + prompt); trang Kế hoạch nhận kế hoạch và đề xuất thay đổi; bỏ các trang Ảnh, Lịch đăng, Thứ hạng riêng (thử mù chuyển vào Cài đặt).
 - 2026-10-14: Giai đoạn 2, phần 1 (đã push thẳng lên `main`): `seo_app/ai/` (lớp provider chung, Anthropic qua thư viện `anthropic`, mô hình theo việc trong `config/ai.toml`), `seo_app/content/` (nghiên cứu có tìm web → dàn ý → viết → tự rà soát và sửa một lượt → viết lại từng phần; quy tắc trong `config/content.toml`, hồ sơ doanh nghiệp `config/business_profile.md` bỏ dòng `[CẦN XÁC NHẬN]`). Trang Soạn bài bước 1–3 chạy AI thật; SEO và Xuất bản vẫn demo. Bài đang soạn chỉ nằm trong session (F5 là mất).
+- 2026-10-14: Lập đội agent (`AGENTS.md`, `docs/team/`, `.claude/agents/`): 7 agent, quy tắc, chính sách bảo mật, mẫu phiếu/báo cáo/biên bản bảo mật, bảng việc. Giao T-001 (Lá Chắn: kiểm định bảo mật toàn repo) và T-002 (Soi Lỗi: kiểm thử Giai đoạn 2 phần 1).
