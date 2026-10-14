@@ -16,7 +16,6 @@ API_KEY_FIELDS = (
     ("GEMINI_API_KEY", "Gemini (Google)", "gemini_api_key",
      "https://aistudio.google.com/apikey"),
 )
-CHECKABLE_KEYS = {"ANTHROPIC_API_KEY"}
 
 
 def _input_key(name: str) -> str:
@@ -98,13 +97,14 @@ def api_key_card(name: str, label: str, configured: bool, url: str) -> None:
         on_click=_save_key,
         args=(name, label),
     )
-    checkable = name in CHECKABLE_KEYS
     if check.button(
         "Kiểm tra",
         key=f"api-key-check-btn-{name}",
         width="stretch",
-        disabled=not (checkable and configured),
-        help=None if checkable else "Chưa kiểm tra được khóa này (chờ cài thư viện của hãng).",
+        disabled=not configured,
+        help=f"Hỏi thử máy chủ {label} xem khóa có dùng được không (không tốn tiền)."
+        if configured
+        else "Lưu khóa trước rồi mới kiểm tra được.",
     ):
         S.pop(f"api-key-flash-{name}", None)
         with st.spinner(f"Đang hỏi thử máy chủ {label}..."):

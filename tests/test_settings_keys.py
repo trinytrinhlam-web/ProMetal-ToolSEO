@@ -17,6 +17,7 @@ from seo_app.auth import hash_password
 PASSWORD = "mat-khau-thu-123"
 CLAUDE_KEY = "sk-ant-api03-ThuNghiemKhongPhaiKhoaThat_abcXYZ-9876wxyz"
 OPENAI_KEY = "sk-proj-KhoaGiaOpenAI1234567890_qrst"
+GEMINI_KEY = "AIzaSyKhoaGiaGemini_0987654321abcd"
 
 
 @pytest.fixture(autouse=True)
@@ -174,12 +175,62 @@ def test_os_environ_override_warning(project_root, monkeypatch):
     assert_key_nowhere(at, "AIzaKhoaTrongMoiTruong123456")
 
 
-def test_check_only_for_claude(project_root):
+def test_check_buttons_disabled_until_key_saved(project_root):
     at = open_settings(project_root)
-    # Chưa có khóa: không kiểm tra được.
-    assert at.button(key="api-key-check-btn-ANTHROPIC_API_KEY").disabled
-    assert at.button(key="api-key-check-btn-OPENAI_API_KEY").disabled
-    assert at.button(key="api-key-check-btn-GEMINI_API_KEY").disabled
+    # Chưa có khóa: không kiểm tra được, nút nào cũng tắt.
+    for name in env_file.ALLOWED_KEYS:
+        assert at.button(key=f"api-key-check-btn-{name}").disabled
+
+
+def test_check_enabled_for_all_three_keys(project_root, env_path):
+    env_path.write_text(
+        f"ANTHROPIC_API_KEY={CLAUDE_KEY}\nOPENAI_API_KEY={OPENAI_KEY}\nGEMINI_API_KEY={GEMINI_KEY}\n",
+        encoding="utf-8",
+    )
+    at = open_settings(project_root)
+    for name in env_file.ALLOWED_KEYS:
+        assert not at.button(key=f"api-key-check-btn-{name}").disabled
+    # Câu cũ "chờ cài thư viện" không còn.
+    assert "chờ cài thư viện" not in visible_text(at)
+    for key in (CLAUDE_KEY, OPENAI_KEY, GEMINI_KEY):
+        assert_key_nowhere(at, key)
+
+
+@pytest.mark.parametrize(
+    ("name", "key"),
+    [("OPENAI_API_KEY", OPENAI_KEY), ("GEMINI_API_KEY", GEMINI_KEY)],
+)
+@pytest.mark.parametrize(
+    ("status", "kind"),
+    [("ok", "success"), ("invalid", "error"), ("unknown", "warning"), ("missing", "warning")],
+)
+def test_check_openai_gemini(project_root, env_path, monkeypatch, name, key, status, kind):
+    env_path.write_text(
+        f"ANTHROPIC_API_KEY={CLAUDE_KEY}\nOPENAI_API_KEY={OPENAI_KEY}\nGEMINI_API_KEY={GEMINI_KEY}\n",
+        encoding="utf-8",
+    )
+    calls = []
+
+    def fake_check(name, **kwargs):
+        calls.append((name, kwargs))
+        return env_file.KeyCheckResult(status, f"Kết quả giả {name}: {status}.")
+
+    monkeypatch.setattr(env_file, "check_api_key", fake_check)
+    at = open_settings(project_root)
+    at.button(key=f"api-key-check-btn-{name}").click().run()
+    assert not at.exception, at.exception
+
+    # Gọi đúng một lần, đúng tên biến, không truyền khóa (hàm tự đọc .env).
+    assert calls == [(name, {})]
+    message = f"Kết quả giả {name}: {status}."
+    assert any(message == el.value for el in getattr(at, kind))
+    # Chỉ một thẻ có kết quả: thông báo không lan sang thẻ khác.
+    shown = [el.value for k in ("success", "error", "warning") for el in getattr(at, k)]
+    assert shown.count(message) == 1
+    assert not any("Kết quả giả" in v and v != message for v in shown)
+    for k in (CLAUDE_KEY, OPENAI_KEY, GEMINI_KEY):
+        assert_key_nowhere(at, k)
+    assert key not in session_dump(at)
 
 
 @pytest.mark.parametrize(
