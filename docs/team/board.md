@@ -8,14 +8,15 @@ _Cập nhật: 2026-10-14_
 
 | Phiếu | Việc | Agent | Trạng thái | Báo cáo |
 |---|---|---|---|---|
-| [T-016](tickets/T-016-luu-nhap-bai-dang-soan.md) | Lưu nháp bài đang soạn (logic) | Thợ Máy | Đang làm | |
-| [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong app | Thợ Máy (lượt 2), rồi Họa Sĩ | Đang làm | |
+| [T-016](tickets/T-016-luu-nhap-bai-dang-soan.md) | Lưu nháp bài đang soạn (logic) | Thợ Máy | Làm xong; Soi Lỗi, Lá Chắn: đạt có điều kiện → T-021 | [Thợ Máy](reports/T-016-tho-may.md) · [Soi Lỗi](reports/T-016-020-soi-loi.md) · [Lá Chắn](reports/T-016-020-la-chan.md) |
+| [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong app | Thợ Máy (lượt 2), rồi Họa Sĩ | Làm xong; Soi Lỗi, Lá Chắn: đạt có điều kiện → T-021 | [Thợ Máy](reports/T-020-tho-may.md) · [Họa Sĩ](reports/T-020-hoa-si.md) |
+| [T-021](tickets/T-021-sua-loi-kho-nhap-va-env.md) | Sửa lỗi kho nháp và ghi `.env` | Thợ Máy (2 lượt) | Đang làm | |
+| [T-017](tickets/T-017-giao-dien-luu-nhap.md) | Tự lưu nháp, mở lại bài đang soạn (giao diện) | Họa Sĩ | Làm xong; chờ kiểm sau T-021 | [Họa Sĩ](reports/T-017-hoa-si.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-017](tickets/T-017-giao-dien-luu-nhap.md) | Tự lưu nháp, mở lại bài đang soạn (giao diện) | Họa Sĩ | T-016 |
 | T-018 | Thêm AI OpenAI và Gemini | Thợ Máy | Chủ dự án duyệt cách kết nối (thư viện mới hay không) |
 | T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | T-018 |
 
@@ -58,4 +59,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-021
+## Số phiếu tiếp theo: T-022
