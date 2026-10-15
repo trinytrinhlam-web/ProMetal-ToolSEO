@@ -213,7 +213,7 @@ def test_check_openai_gemini(project_root, env_path, monkeypatch, name, key, sta
 
     def fake_check(name, **kwargs):
         calls.append((name, kwargs))
-        return env_file.KeyCheckResult(status, f"Kết quả giả {name}: {status}.")
+        return env_file.KeyCheckResult(status, f"Kết quả giả {name.split('_')[0]}: {status}.")
 
     monkeypatch.setattr(env_file, "check_api_key", fake_check)
     at = open_settings(project_root)
@@ -222,7 +222,7 @@ def test_check_openai_gemini(project_root, env_path, monkeypatch, name, key, sta
 
     # Gọi đúng một lần, đúng tên biến, không truyền khóa (hàm tự đọc .env).
     assert calls == [(name, {})]
-    message = f"Kết quả giả {name}: {status}."
+    message = f"Kết quả giả {name.split('_')[0]}: {status}."
     assert any(message == el.value for el in getattr(at, kind))
     # Chỉ một thẻ có kết quả: thông báo không lan sang thẻ khác.
     shown = [el.value for k in ("success", "error", "warning") for el in getattr(at, k)]

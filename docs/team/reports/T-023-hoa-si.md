@@ -64,3 +64,28 @@ Không có.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-15) · sửa 2 lỗi mức Thấp của Soi Lỗi
+
+Soi Lỗi kết luận ĐẠT (`docs/team/reports/T-023-soi-loi.md`); Chỉ Huy yêu cầu sửa luôn 2 lỗi Thấp.
+
+| Lỗi | Sửa |
+|---|---|
+| T023-01: `check_api_key` ném ngoại lệ lạ thì trang sập, có thể hiện nguyên thông điệp (chứa khóa) | `app/views/settings.py`: bọc lời gọi trong `try/except Exception`; lỗi bất ngờ hiện câu cố định màu vàng "Không kiểm tra được khóa (<tên loại lỗi>). Thử lại sau." Không hiện `str(exc)`, không dùng `st.exception`. |
+| T023-02: câu kết quả hiện nguyên, chỉ dựa vào `check_api_key` tự che | Cho câu kết quả qua `redact_secrets` (`seo_app.ai.base`) thêm một lần trước khi lưu vào `session_state` và hiện lên trang. |
+
+Test:
+- Bỏ dấu `xfail(strict=True)` của đúng 2 test (nay qua): `tests/test_soi_loi_t023.py::test_message_containing_key_is_not_shown` (T023-02) và `tests/test_soi_loi_t023.py::test_unexpected_exception_does_not_crash_or_leak` (T023-01). Không đụng test khác của Soi Lỗi.
+- Sửa câu giả trong test của chính tôi, `tests/test_settings_keys.py::test_check_openai_gemini`: câu cũ "Kết quả giả OPENAI_API_KEY: ok." bị `redact_secrets` che đúng luật (chuỗi `api_key:` + giá trị), nên đổi thành "Kết quả giả OPENAI: ok.". Câu thật của `check_api_key` (ví dụ "Khóa Claude dùng được.") không chứa mẫu này nên không bị che nhầm. Kiểm tra trong test giữ nguyên.
+
+Bằng chứng:
+
+```
+$ uv run pytest
+2040 passed, 3 xfailed in 110.26s (0:01:50)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+(3 xfailed còn lại là test có sẵn ở chỗ khác, không thuộc T-023: `tests/test_soi_loi_t023.py` không còn `xfail` nào.)

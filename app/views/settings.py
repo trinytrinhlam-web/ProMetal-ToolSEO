@@ -3,6 +3,7 @@
 import streamlit as st
 
 from seo_app import demo, env_file, ui
+from seo_app.ai.base import redact_secrets
 from seo_app.config import load_settings
 
 S = st.session_state
@@ -108,9 +109,19 @@ def api_key_card(name: str, label: str, configured: bool, url: str) -> None:
     ):
         S.pop(f"api-key-flash-{name}", None)
         with st.spinner(f"Đang hỏi thử máy chủ {label}..."):
-            # Không truyền khóa: hàm tự đọc khóa đang có hiệu lực, giao diện không giữ khóa.
-            result = env_file.check_api_key(name)
-        S[f"api-key-check-{name}"] = (result.status, result.message)
+            try:
+                # Không truyền khóa: hàm tự đọc khóa đang có hiệu lực, giao diện không giữ khóa.
+                result = env_file.check_api_key(name)
+            except Exception as exc:  # nút Kiểm tra không được làm sập trang
+                # Chỉ nêu tên loại lỗi: thông điệp gốc có thể chứa khóa.
+                checked = (
+                    "unknown",
+                    f"Không kiểm tra được khóa ({type(exc).__name__}). Thử lại sau.",
+                )
+            else:
+                # Che thêm một lần (phòng thủ lớp hai), dù check_api_key đã tự che.
+                checked = (result.status, redact_secrets(result.message))
+        S[f"api-key-check-{name}"] = checked
     clear.button(
         "Xóa",
         key=f"api-key-clear-{name}",

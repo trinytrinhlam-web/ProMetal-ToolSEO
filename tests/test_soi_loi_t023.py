@@ -274,11 +274,6 @@ def test_end_to_end_real_check_api_key_with_leaky_library(project_root, env_path
 
 
 @pytest.mark.parametrize("name", list(KEYS))
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi T023-02: giao diện hiện nguyên câu của check_api_key, không che lại khóa "
-    "(phòng thủ lớp 2; hiện chỉ dựa vào check_api_key tự che).",
-)
 def test_message_containing_key_is_not_shown(project_root, env_path, monkeypatch, name):
     write_env(env_path, KEYS)
     fake_checker(monkeypatch, {name: ("invalid", f"Khóa {KEYS[name]} không đúng.")})
@@ -291,11 +286,6 @@ def test_message_containing_key_is_not_shown(project_root, env_path, monkeypatch
 
 
 @pytest.mark.parametrize("name", list(KEYS))
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi T023-01: check_api_key ném ngoại lệ bất ngờ thì trang Cài đặt sập và hiện "
-    "nguyên thông điệp lỗi (có thể chứa khóa); nút bấm không có try/except.",
-)
 def test_unexpected_exception_does_not_crash_or_leak(project_root, env_path, monkeypatch, name):
     write_env(env_path, KEYS)
 
