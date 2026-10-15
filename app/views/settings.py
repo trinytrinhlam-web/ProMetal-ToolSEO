@@ -3,8 +3,11 @@
 import streamlit as st
 
 from seo_app import demo, env_file, ui
-from seo_app.ai.base import redact_secrets
+from seo_app.ai import AIError
+from seo_app.ai.base import EFFORTS, redact_secrets
+from seo_app.ai.registry import PROVIDERS
 from seo_app.config import load_settings
+from seo_app.content import blind_test, load_rules
 
 S = st.session_state
 
@@ -161,6 +164,266 @@ def api_key_card(name: str, label: str, configured: bool, url: str) -> None:
         show(message)
 
 
+# ------------------------------------------------------------------ tab Mô hình AI + thử mù
+# Thử mù (T-019): tên hãng / mô hình của từng bài A/B/C nằm trong ``S.blind_reveal`` và chỉ
+# hiện sau khi bấm "Chấm xong". Không đưa chúng vào nhãn, ``help=``, ``key=`` hay chữ nào
+# khác trên trang trước lúc đó. Chữ AI hiện bằng ``st.markdown`` thường (không HTML).
+
+PROVIDER_LABELS = {pid: label for pid, (label, _env) in PROVIDERS.items()}
+
+
+def _cand_key(i: int, field: str) -> str:
+    return f"blind-cand-{i}-{field}"
+
+
+def _suggest(provider: str, suggestions: dict[str, list[str]], i: int) -> str:
+    names = suggestions.get(provider) or []
+    return names[i % len(names)] if names else ""
+
+
+def _on_provider_change(i: int, suggestions: dict[str, list[str]]) -> None:
+    # Đổi hãng thì đổi luôn tên mô hình sang gợi ý của hãng mới (tên cũ chắc chắn sai hãng).
+    S[_cand_key(i, "model")] = _suggest(S.get(_cand_key(i, "provider"), ""), suggestions, i)
+
+
+def _reset_blind() -> None:
+    for name in ("blind_entries", "blind_reveal", "blind_revealed", "blind_scores"):
+        S.pop(name, None)
+
+
+def _model_table() -> dict[str, list[str]]:
+    """Bảng việc–mô hình đọc từ config/ai.toml. Trả về tên mô hình gợi ý theo hãng."""
+    try:
+        rows = blind_test.task_models()
+    except AIError as exc:
+        st.error(str(exc))
+        return {pid: [] for pid in PROVIDERS}
+    st.dataframe(
+        [
+            {
+                "Việc": r.task_label,
+                "Hãng": r.provider_label,
+                "Mô hình": r.model,
+                "Mức nghĩ (effort)": r.effort,
+            }
+            for r in rows
+        ],
+        hide_index=True,
+    )
+    return blind_test.model_suggestions(rows)
+
+
+def _candidate_inputs(
+    count: int, available: list[str], suggestions: dict[str, list[str]]
+) -> list[blind_test.Candidate]:
+    cands: list[blind_test.Candidate] = []
+    for i, col in enumerate(st.columns(count, gap="medium")):
+        pkey, mkey, ekey = _cand_key(i, "provider"), _cand_key(i, "model"), _cand_key(i, "effort")
+        # Khóa vừa bị xóa ở tab Kết nối: hãng cũ không còn trong danh sách thì chọn lại từ đầu.
+        if S.get(pkey) not in available:
+            S[pkey] = available[i % len(available)]
+            S[mkey] = _suggest(S[pkey], suggestions, i)
+        S.setdefault(mkey, _suggest(S[pkey], suggestions, i))
+        S.setdefault(ekey, "medium")
+        with col, st.container(border=True):
+            st.markdown(f"**Ứng viên {i + 1}**")
+            provider = st.selectbox(
+                "Hãng",
+                available,
+                key=pkey,
+                format_func=PROVIDER_LABELS.get,
+                on_change=_on_provider_change,
+                args=(i, suggestions),
+            )
+            model = st.text_input(
+                "Tên mô hình",
+                key=mkey,
+                max_chars=blind_test.MAX_MODEL_CHARS,
+                placeholder="Gõ đúng tên mô hình của hãng",
+            )
+            hints = suggestions.get(provider) or []
+            if hints:
+                st.caption("Đang dùng trong config/ai.toml: " + ", ".join(f"`{m}`" for m in hints))
+            else:
+                st.caption(
+                    "config/ai.toml chưa dùng mô hình nào của hãng này: gõ tên mô hình theo "
+                    "tài liệu của hãng."
+                )
+            effort = st.selectbox("Mức nghĩ (effort)", EFFORTS, key=ekey)
+        cands.append(blind_test.Candidate(provider=provider, model=model, effort=effort))
+    return cands
+
+
+def _show_entries() -> None:
+    entries = S.blind_entries
+    for col, entry in zip(st.columns(len(entries), gap="medium"), entries, strict=True):
+        with col, st.container(border=True, height="stretch"):
+            st.markdown(f"**Bài {entry.label}**")
+            if not entry.ok:
+                st.warning(entry.error)
+                continue
+            # Chữ AI đã qua clean_ai_text: hiện bằng Markdown thường, không HTML.
+            st.markdown(entry.intro)
+            if entry.heading:
+                st.markdown(f"##### {entry.heading}")
+            st.markdown(entry.body)
+            if S.get("blind_revealed"):
+                st.markdown(f"Điểm: **{S.blind_scores[entry.label]}**/10")
+            else:
+                st.slider("Điểm", 1, 10, 5, key=f"blind-score-{entry.label}")
+
+
+def _show_reveal() -> None:
+    reveal = S.blind_reveal
+    rows = []
+    for entry in S.blind_entries:
+        info = reveal[entry.label]
+        rows.append(
+            {
+                "Bài": entry.label,
+                "Điểm": S.blind_scores.get(entry.label),  # trống nếu bài lỗi
+                "Tình trạng": "có bài" if entry.ok else "lỗi (xem dưới)",
+                "Hãng": info.provider_label,
+                "Mô hình": info.model,
+                "Mức nghĩ (effort)": info.effort,
+            }
+        )
+    rows.sort(key=lambda r: r["Điểm"] or 0, reverse=True)
+    st.dataframe(rows, hide_index=True)
+    for label, info in reveal.items():
+        if info.error:
+            st.error(f"Bài {label} ({info.provider_label} · {info.model}): {info.error}")
+
+    best = next((r for r in rows if r["Điểm"] is not None), None)
+    if best is None:
+        return
+    info = reveal[best["Bài"]]
+    st.markdown("#### Muốn dùng mô hình này cho một việc?")
+    st.markdown(
+        "1. Mở file `config/ai.toml` trong thư mục phần mềm (bằng Notepad hoặc TextEdit).\n"
+        "2. Tìm mục của việc cần đổi, ví dụ `[tasks.write]` là viết bài, `[tasks.review]` là "
+        "kiểm tra văn phong.\n"
+        "3. Sửa hai dòng `provider` và `model` như dưới đây, lưu file, rồi tải lại trang (F5).\n"
+        "4. Máy kia nhận thay đổi khi đồng bộ code qua GitHub."
+    )
+    st.code(
+        f'provider = "{info.provider}"\nmodel = "{info.model}"\neffort = "{info.effort}"',
+        language="toml",
+    )
+    st.caption("Mô hình của hãng nào thì phải có khóa của hãng đó trong tab 🔌 Kết nối.")
+
+
+def blind_models_tab(settings) -> None:
+    st.caption(
+        "Mỗi việc dùng một mô hình riêng, lưu trong config/ai.toml — đổi được mà không sửa "
+        "code, tự đồng bộ giữa 2 máy. Bảng dưới đây đọc thật từ file đó."
+    )
+    suggestions = _model_table()
+
+    st.markdown("#### 🎭 Thử mù: mô hình nào viết hay hơn?")
+    st.caption(
+        "Phần này là thật: cùng một đề gửi cho 2–3 mô hình, mỗi mô hình viết một mở bài và một "
+        "mục ngắn. Bài hiện dưới tên A/B/C theo thứ tự ngẫu nhiên; chấm điểm xong mới biết bài "
+        "nào của ai."
+    )
+    statuses = blind_test.provider_status(settings)
+    st.markdown(
+        " ".join(
+            f":green-badge[✅ {p.label}]"
+            if p.has_key
+            else f":gray-badge[⚪ {p.label}: chưa có khóa]"
+            for p in statuses
+        )
+    )
+    available = [p.provider for p in statuses if p.has_key]
+    if not available:
+        st.info("Chưa có khóa AI nào. Vào tab 🔌 Kết nối nhập ít nhất một khóa để thử mù.")
+        return
+
+    keyword = st.text_input(
+        "Từ khóa thử",
+        key="blind-keyword",
+        max_chars=blind_test.MAX_KEYWORD_CHARS,
+        placeholder="Ví dụ: cửa sắt mỹ thuật",
+    )
+    note = st.text_area(
+        "Ghi chú cho đề (không bắt buộc)",
+        key="blind-note",
+        max_chars=blind_test.MAX_NOTE_CHARS,
+        height=80,
+        placeholder="Ví dụ: nhấn vào độ bền khi ở gần biển",
+    )
+    count = (
+        st.segmented_control(
+            "Số mô hình so sánh",
+            [2, 3],
+            default=2,
+            key="blind-count",
+            format_func=lambda n: f"{n} mô hình",
+        )
+        or 2
+    )
+    if len(available) == 1:
+        st.caption(
+            "Mới có khóa của một hãng: vẫn thử được giữa các mô hình cùng hãng (gõ tên khác nhau)."
+        )
+    cands = _candidate_inputs(count, available, suggestions)
+
+    try:
+        blind_test.validate_request(keyword, note, cands)
+    except AIError as exc:
+        problem = str(exc)
+    else:
+        problem = ""
+    calls = blind_test.estimate_calls(cands)
+    st.warning(
+        f"Bấm chạy sẽ gọi AI {calls} lần (mỗi mô hình một lần) và **có tốn tiền** theo bảng giá "
+        "của từng hãng. Mỗi bài ngắn, không tìm web."
+    )
+    if problem:
+        st.caption(f"Chưa chạy được: {problem}")
+    if st.button(
+        f"▶️ Chạy thử mù (gọi AI {calls} lần)",
+        key="blind-run",
+        type="primary",
+        disabled=bool(problem),
+    ):
+        _reset_blind()
+        with st.spinner(f"Đang gửi đề cho {calls} mô hình..."):
+            try:
+                entries, reveal = blind_test.run_blind_test(
+                    keyword, note, cands, settings, load_rules()
+                )
+            except AIError as exc:
+                st.error(str(exc))
+            else:
+                for entry in entries:
+                    S.pop(f"blind-score-{entry.label}", None)
+                S.blind_entries, S.blind_reveal = entries, reveal
+                S.blind_revealed = False
+
+    if not S.get("blind_entries"):
+        return
+    st.markdown("#### Chấm điểm")
+    _show_entries()
+    reveal_col, again_col = st.columns([3, 1])
+    if reveal_col.button(
+        "Chấm xong — hiện tên mô hình",
+        key="blind-reveal",
+        type="primary",
+        disabled=bool(S.get("blind_revealed")),
+    ):
+        # Chốt điểm lúc bấm: sau đó thanh điểm được thay bằng chữ, không chấm lại được.
+        S.blind_scores = {
+            e.label: S.get(f"blind-score-{e.label}", 5) for e in S.blind_entries if e.ok
+        }
+        S.blind_revealed = True
+        st.rerun()
+    again_col.button("🔄 Xóa kết quả", key="blind-clear", on_click=_reset_blind, width="stretch")
+    if S.get("blind_revealed"):
+        _show_reveal()
+
+
 # Đọc cấu hình sau các callback ở trên, nên trạng thái "đã khai báo" đổi ngay khi vừa lưu.
 settings = load_settings()
 
@@ -197,29 +460,7 @@ with tone:
     )
 
 with models:
-    st.caption(
-        "Mỗi việc dùng một mô hình riêng, lưu trong config/ai_models.toml — đổi được mà "
-        "không sửa code, tự đồng bộ giữa 2 máy."
-    )
-    st.dataframe(demo.AI_TASKS, hide_index=True)
-
-    st.markdown("#### 🎭 Thử mù: mô hình nào viết hay hơn?")
-    st.caption("Cùng một đề, ẩn tên mô hình. Chấm điểm xong mới biết bài nào của ai.")
-    cols = st.columns(len(demo.BLIND_OUTPUTS))
-    scores = {}
-    for col, (label, text) in zip(cols, demo.BLIND_OUTPUTS.items(), strict=True):
-        with col, st.container(border=True, height="stretch"):
-            st.markdown(f"**Bài {label}**")
-            st.write(text)
-            scores[label] = st.slider("Điểm", 1, 10, 5, key=f"score-{label}")
-    if st.button("Chấm xong — hiện tên mô hình", type="primary"):
-        S.blind_revealed = True
-    if S.get("blind_revealed"):
-        ranking = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-        st.dataframe(
-            [{"Bài": k, "Điểm": v, "Mô hình": demo.BLIND_MODELS[k]} for k, v in ranking],
-            hide_index=True,
-        )
+    blind_models_tab(settings)
 
 with images:
     st.markdown("**Thư mục ảnh thật**")

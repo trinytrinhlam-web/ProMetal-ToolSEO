@@ -73,13 +73,10 @@ def test_plan_reading_shows_proposed_changes(project_root):
     assert len(at.session_state["plan_changes"]) == len(demo.PLAN_CHANGES)
 
 
-def test_blind_test_reveals_models_only_after_scoring(project_root):
+def test_blind_test_locked_without_api_key(project_root):
+    # Chi tiết thử mù (T-019): tests/test_settings_blind.py.
     at = open_page(project_root, "settings.py")
-    assert not at.session_state["blind_revealed"] if "blind_revealed" in at.session_state else True
-    at.slider(key="score-C").set_value(9)
-    button(at, "Chấm xong — hiện tên mô hình").click().run()
-    revealed = at.dataframe[-1].value
-    assert list(revealed["Bài"])[0] == "C"
+    assert any("Chưa có khóa AI nào" in i.value for i in at.info)
 
 
 # ------------------------------------------------------------ Soạn bài với AI
