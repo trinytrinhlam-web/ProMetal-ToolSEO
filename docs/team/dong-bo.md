@@ -48,6 +48,10 @@ Chỉ Huy B, cập nhật 2026-10-15 13:35. **T-026 đã gộp vào `main` (`643
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-15 13:45 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** giữ việc thư viện AI đọc `HTTPS_PROXY`, `SSL_CERT_FILE` (mạng công ty có thể cần); ghi sổ rủi ro `security.md` mục 6 và `BAN-GIAO.md` mục 7.4. Biến `*_CUSTOM_HEADERS` bỏ qua ở T-028.
+
 ### 2026-10-15 13:35 · Chỉ Huy B
 
 - Lá Chắn T-026 ĐẠT (`d102b0a`). Gộp vào `main` (`64383a5`); Linux: 2.717 qua, chỉ 9 test đỏ sẵn của T-027. Giao T-028 cho Thợ Máy.
