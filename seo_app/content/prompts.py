@@ -241,7 +241,6 @@ số liệu, giá hay thông tin doanh nghiệp mới. Nếu phần này đang c
 Không lặp lại điều các phần khác đã nói. Chỉ viết chữ Markdown: không HTML, không link."""
 
 
-
 def blind_test_prompt(keyword: str, note: str) -> str:
     """Đề thử mù: mọi mô hình ứng viên nhận đúng lời dặn này (T-019).
 

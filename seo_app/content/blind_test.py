@@ -50,9 +50,9 @@ MASK = "«đã ẩn tên mô hình»"
 
 # Tên hãng / dòng mô hình AI: bài viết về cửa sắt không cần tới, nên AI tự xưng tên thì che
 # để không lộ ứng viên trước khi chấm. "Google" đứng riêng không che (bài hay nói "tìm trên
-# Google"); "Google Gemini" bị che vì có "Gemini".
+# Google"); "Google Gemini" bị che cả cụm.
 _VENDOR_WORDS = re.compile(
-    r"(?<![\w-])(?:claude|anthropic|openai|chatgpt|gpt(?:-[\w.]+)?|gemini|bard)(?![\w-])",
+    r"(?<![\w-])(?:google\s+gemini|claude|anthropic|openai|chatgpt|gpt|gemini|bard)(?:[\w.-]*\w)?",
     re.IGNORECASE,
 )
 
@@ -220,14 +220,14 @@ def validate_request(
 
 def _mask_names(text: str, models: Sequence[str]) -> str:
     for model in sorted(set(models), key=len, reverse=True):
-        pattern = r"(?<![\w-])" + re.escape(model) + r"(?![\w-])"
+        # Chỉ chặn ký tự chữ đứng TRƯỚC (để "o3" không ăn vào giữa từ); phía sau thì che cả
+        # đuôi tự thêm như "gpt-5.1-mini".
+        pattern = r"(?<![\w-])" + re.escape(model) + r"(?:[\w.-]*\w)?"
         text = re.sub(pattern, MASK, text, flags=re.IGNORECASE)
     return _VENDOR_WORDS.sub(MASK, text)
 
 
-def _call(
-    candidate: Candidate, settings: Settings, system: str, prompt: str
-) -> BlindSample | str:
+def _call(candidate: Candidate, settings: Settings, system: str, prompt: str) -> BlindSample | str:
     """Gọi một ứng viên. Trả về bài, hoặc câu lỗi tiếng Việt (không bao giờ chép lỗi thô)."""
     task = TaskConfig(
         name=TASK_NAME,
