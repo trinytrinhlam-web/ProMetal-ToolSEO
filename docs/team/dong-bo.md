@@ -34,20 +34,28 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 13:20. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; nhánh nào cũng đẩy lên GitHub.
+Chỉ Huy B, cập nhật 2026-10-15 13:35. **T-026 đã gộp vào `main` (`64383a5`)** sau khi Lá Chắn ĐẠT. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; nhánh nào cũng đẩy lên GitHub.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) Lỗi Thấp lớp AI | `team/T-026` (`ac9fbda`) | Lá Chắn (Opus tạm) kiểm từ đầu | ĐẠT thì gộp vào `main`, rồi giao T-028 |
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`3628608`) | Soi Lỗi làm nốt T-029 và làm T-030 | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`efc0529`) | Soi Lỗi xong (Linux xanh 2 lần); Lá Chắn đang kiểm | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | chưa có | Chờ T-026 lên `main` | Giao Thợ Máy |
+| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (từ `main` `64383a5`) | Thợ Máy đang làm | Soi Lỗi, rồi Lá Chắn |
 
 **Lưu ý cho Chỉ Huy A:** `main` hiện **đỏ trên Linux** (9 test trong `tests/test_soi_loi_t027.py`: thiếu `socket._fallback_socketpair` trên Python 3.12.3, máy không có IPv6). Trên Windows vẫn xanh. Đang sửa ở T-030.
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 13:45 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** giữ việc thư viện AI đọc `HTTPS_PROXY`, `SSL_CERT_FILE` (mạng công ty có thể cần); ghi sổ rủi ro `security.md` mục 6 và `BAN-GIAO.md` mục 7.4. Biến `*_CUSTOM_HEADERS` bỏ qua ở T-028.
+
+### 2026-10-15 13:35 · Chỉ Huy B
+
+- Lá Chắn T-026 ĐẠT (`d102b0a`). Gộp vào `main` (`64383a5`); Linux: 2.717 qua, chỉ 9 test đỏ sẵn của T-027. Giao T-028 cho Thợ Máy.
+- Phiên cloud không xóa được nhánh trên GitHub (máy chủ git từ chối). `team/T-026` đã gộp xong, Chỉ Huy A hoặc chủ dự án xóa giúp.
 
 ### 2026-10-15 13:10 · Chỉ Huy B nhận quyền
 

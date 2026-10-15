@@ -6,7 +6,17 @@ from typing import Any
 
 import anthropic
 
-from seo_app.ai.base import AIError, T, TaskConfig, redact_secrets
+from seo_app.ai.base import (
+    ANTHROPIC_URL,
+    LIBRARY_ERRORS,
+    AIError,
+    T,
+    TaskConfig,
+    bad_request_error,
+    library_error,
+)
+
+LABEL = "Anthropic (Claude)"
 
 # Khi Claude từ chối một yêu cầu (hiếm, do bộ lọc an toàn), máy chủ tự chạy lại bằng mô hình
 # dự phòng phù hợp, không phải tự viết logic thử lại.
@@ -18,9 +28,19 @@ MAX_CONTINUATIONS = 4
 
 class AnthropicProvider:
     def __init__(self, api_key: str, client: anthropic.Anthropic | None = None) -> None:
-        self._client = client or anthropic.Anthropic(api_key=api_key, max_retries=3)
+        # base_url cố định: biến môi trường ANTHROPIC_BASE_URL không có tác dụng (W4).
+        self._client = client or anthropic.Anthropic(
+            api_key=api_key, base_url=ANTHROPIC_URL, max_retries=3
+        )
 
     def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+        try:
+            return self._generate(task, system=system, prompt=prompt, schema=schema)
+        except LIBRARY_ERRORS as exc:
+            # Thư viện lệch phiên bản (đổi tên tham số, hàm, thuộc tính): báo tiếng Việt.
+            raise library_error(LABEL) from exc
+
+    def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
         extra: dict[str, Any] = {"tools": [WEB_SEARCH_TOOL]} if task.web_search else {}
         try:
@@ -57,9 +77,8 @@ class AnthropicProvider:
             if "credit" in str(exc.message).lower():
                 raise AIError("Tài khoản Anthropic đã hết tiền (credit).") from exc
             if exc.status_code == 400:
-                # Thông điệp do máy chủ gửi về: che chuỗi giống khóa trước khi hiện lên màn hình.
-                detail = redact_secrets(str(exc.message))
-                raise AIError(f"Anthropic không nhận yêu cầu: {detail}") from exc
+                # Câu cố định, không chép thông điệp của máy chủ (S2).
+                raise bad_request_error("Anthropic", task, _error_type(exc)) from exc
             raise AIError(f"Anthropic báo lỗi {exc.status_code}. Thử lại sau ít phút.") from exc
         except anthropic.APIError as exc:
             # Các lỗi còn lại của thư viện (dữ liệu trả về sai dạng…): chỉ nêu tên lỗi, không
@@ -79,3 +98,10 @@ class AnthropicProvider:
         if parsed is None:
             raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.")
         return parsed
+
+
+def _error_type(exc: anthropic.APIStatusError) -> object:
+    """Loại lỗi máy chủ ghi trong ``{"error": {"type": …}}`` (chưa lọc; lọc ở ``safe_code``)."""
+    body = getattr(exc, "body", None)
+    error = body.get("error") if isinstance(body, dict) else None
+    return error.get("type") if isinstance(error, dict) else None

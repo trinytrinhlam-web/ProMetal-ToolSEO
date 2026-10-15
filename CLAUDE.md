@@ -86,7 +86,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 - [x] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
 - [x] Giai đoạn 1 — WordPress: kiểm tra kết nối, lấy chuyên mục/thẻ, tạo bài nháp, tải ảnh lên thư viện, đặt ảnh đại diện.
-- [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, nút viết lại từng phần, AI kiểm tra văn phong, thử mù mô hình (trong Cài đặt). Đã xong: lớp provider + Anthropic, OpenAI, Gemini; quy trình, viết lại từng phần, kiểm tra văn phong trên trang Soạn bài; kiểm tra khóa 3 hãng trong Cài đặt. Còn: thử mù mô hình (T-019), 4 lỗi Thấp lớp AI (T-026).
+- [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, nút viết lại từng phần, AI kiểm tra văn phong, thử mù mô hình (trong Cài đặt). Đã xong: lớp provider + Anthropic, OpenAI, Gemini; quy trình, viết lại từng phần, kiểm tra văn phong trên trang Soạn bài; kiểm tra khóa 3 hãng trong Cài đặt. Còn: thử mù mô hình (T-019), nội dung hỏng từ máy chủ AI (T-028).
 - [ ] Giai đoạn 3 — Ảnh: chỗ cần ảnh trong bài; chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, **giữ nguyên vị trí GPS trong ảnh** (người dùng chốt 2026-10-14: có chủ đích; khi nén WebP phải chép lại EXIF), viết alt bằng AI; ảnh AI kèm prompt, tạo ảnh bằng AI.
 - [ ] Giai đoạn 4 — Tối ưu on-page: meta, schema JSON-LD, liên kết nội bộ dựa trên danh sách bài trên WordPress.
 - [ ] Giai đoạn 5 — Kế hoạch & lịch: nhận kế hoạch người dùng cung cấp (file / dán / Google Sheets), AI đề xuất cập nhật để duyệt, đồng bộ Google Sheets, hẹn giờ đăng.
@@ -144,3 +144,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-15: Chủ dự án chốt: không có hãng AI mặc định (đủ 3 hãng, tự đổi khi cần); giữ Giai đoạn 6. Lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`). Đưa kế hoạch SEO và yêu cầu phần mềm của chủ dự án vào `docs/plan/`.
 - 2026-10-15: Gộp T-022 (hồ sơ doanh nghiệp theo trả lời chủ dự án) và T-024 (bộ lọc hồ sơ bỏ cả ý có nhãn `[CẦN XÁC NHẬN]`) vào `main`. Soi Lỗi đạt, Lá Chắn ĐẠT (Opus tạm).
 - 2026-10-15: Gộp T-027 vào `main`: bộ test chạy xanh trên Windows (bộ chặn mạng cho qua đúng cặp socket nội bộ của asyncio, chặn ConnectEx; tên ngắn cho test dữ liệu lớn). Trên Windows 2.358 test qua, 0 hỏng.
+- 2026-10-15: Gộp T-026 vào `main`: lớp AI chịu được thư viện lệch phiên bản, câu lỗi 400 cố định (không chép câu máy chủ), client 3 hãng dùng địa chỉ chính thức cố định. Lá Chắn ĐẠT (Opus tạm).

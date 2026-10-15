@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Thấp (phải xong trước khi hết Giai đoạn 2) |
 | Phụ thuộc | T-026 đã gộp vào `main` (cùng sửa `seo_app/ai/**`) |
-| Trạng thái | Mới |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 
@@ -34,7 +34,8 @@ Soi Lỗi đã viết sẵn test `xfail(strict=True)` cho SL-T026-4 trong `tests
 
 1. Cả 3 hãng, cả lúc viết bài (`generate`) lẫn lúc kiểm tra khóa: nội dung trả về không đọc được (HTML, JSON hỏng, luồng SSE hỏng, thiếu trường) thì ra `AIError` tiếng Việt kiểu "máy chủ AI trả về dữ liệu lạ, thử lại sau". Câu báo không chép nội dung máy chủ.
 2. Không bắt nhầm thành câu "uv sync" của T-026.
-3. Test cho mọi nhánh mới, dùng mạng giả (`MockTransport` hoặc `tests/fake_ai.py`), không gọi mạng thật.
+3. Bỏ qua các biến môi trường `OPENAI_CUSTOM_HEADERS`, `ANTHROPIC_CUSTOM_HEADERS` (và biến tương tự của Gemini nếu có) khi tạo client: không ai trong dự án cần chúng, mà chúng chèn được header lạ vào mọi lời gọi. **Giữ nguyên** `HTTPS_PROXY`, `SSL_CERT_FILE`: mạng công ty có thể cần (Lá Chắn T-026).
+4. Test cho mọi nhánh mới, dùng mạng giả (`MockTransport` hoặc `tests/fake_ai.py`), không gọi mạng thật.
 
 ## Yêu cầu bảo mật riêng
 
@@ -54,3 +55,5 @@ S2 (không lộ khóa, không chép nội dung máy chủ vào thông báo lỗi
 ## Ghi chú của Chỉ Huy
 
 - Làm trên nhánh tạm `team/T-028`, tạo từ `main` sau khi T-026 đã gộp.
+- 2026-10-15 (Chỉ Huy B): T-026 đã lên `main` (`64383a5`). Giao Thợ Máy trong phiên con **"Thợ Máy · T-028 Nội dung hỏng từ máy chủ AI"**. Theo Lá Chắn T-026: câu báo lỗi là câu cố định, không chép `str(exc)`; thêm mục 3 (bỏ qua `*_CUSTOM_HEADERS`).
+- Máy cloud của Chỉ Huy B chạy Linux: `main` có sẵn 9 test đỏ trong `tests/test_soi_loi_t027.py` (T-030 đang sửa). Tiêu chí pytest tính là: không hỏng gì ngoài 9 test đó.
