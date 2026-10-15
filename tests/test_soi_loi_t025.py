@@ -83,6 +83,32 @@ def test_ratio_just_above_max_is_caught(monkeypatch):
         assert_scales_linearly(_power(clock, 0.025, 1.6), _make)
 
 
+class _CoarseClock(_BurstClock):
+    """Đồng hồ CPU kiểu Windows: chỉ nhảy theo bậc 15,625 ms (T-025 yêu cầu 4)."""
+
+    STEP = 0.015625
+
+    def process_time(self) -> float:
+        return (self.cpu // self.STEP) * self.STEP
+
+
+# Cỡ nhỏ chỉ 3 ms mỗi lần gọi (nhỏ hơn một bậc đồng hồ): helper phải gom nhiều lần gọi cho đủ
+# MIN_MEASURE, nên sai số làm tròn không đẩy hàm tuyến tính quá ngưỡng hay che hàm bình phương.
+@pytest.mark.parametrize("start", [0.0, 0.05, 0.2])
+def test_windows_clock_resolution_linear_passes(monkeypatch, start):
+    clock = _CoarseClock(start, start + 0.3, 2.0)
+    _install(monkeypatch, clock)
+    assert_scales_linearly(_power(clock, 0.003, 1), _make)
+
+
+@pytest.mark.parametrize("start", [0.0, 0.05, 0.2])
+def test_windows_clock_resolution_quadratic_caught(monkeypatch, start):
+    clock = _CoarseClock(start, start + 0.3, 2.0)
+    _install(monkeypatch, clock)
+    with pytest.raises(AssertionError, match="chậm gấp"):
+        assert_scales_linearly(_power(clock, 0.003, 2), _make)
+
+
 def test_limits_are_not_loosened():
     assert timing.MAX_RATIO == 9.0
     assert timing.CLEAR_RATIO < timing.MAX_RATIO
