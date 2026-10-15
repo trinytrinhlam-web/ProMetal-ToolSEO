@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 13:50 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-15, 14:10 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -10,8 +10,10 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu), ChatGPT và Gemini (T-018), nút Kiểm tra khóa cả 3 hãng (T-023).
 - Đã lên `main` 2026-10-15: hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
 - 2026-10-15: bộ test giờ chạy xanh cả trên Windows (T-027).
-- Còn lại: thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động trên `main`: 2.358 bài, đều qua trên Windows.
+- Đã lên `main` 2026-10-15 chiều: lớp AI chịu được thư viện lệch phiên bản, chỉ gọi đúng máy chủ chính thức của 3 hãng (T-026).
+- Làm xong, đang chờ kiểm thử hoặc kiểm bảo mật (ở nhánh tạm): thử mù mô hình (T-019), báo lỗi khi máy chủ AI trả dữ liệu hỏng (T-028), bộ chặn mạng của test (T-029, T-030).
+- Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
+- Bộ kiểm tra tự động trên `main`: đều qua trên Windows; trên Linux còn 9 bài đỏ do bộ test (T-030 sửa, chờ chạy kiểm trên Windows rồi gộp).
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -40,12 +42,12 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt (T-023) | ✅ Xong, đã lên `main` |
 | Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | ✅ Xong, đã lên `main` |
 | Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | ✅ Xong, đã lên `main` |
-| Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi có 2 commit, chưa nộp báo cáo (nhánh `team/T-025`) |
-| 4 lỗi Thấp lớp AI (T-026) | 🔒 Soi Lỗi đạt; **chờ Lá Chắn** (nhánh `team/T-026`) |
+| Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi đang làm nốt, sẽ nộp báo cáo (nhánh `team/T-025`) |
+| 4 lỗi Thấp lớp AI (T-026) | ✅ Xong, đã lên `main` |
 | Bộ test chạy xanh trên Windows (T-027) | ✅ Xong, đã lên `main` |
-| Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) | 🔎 Có code và test, chưa báo cáo (nhánh `team/T-029`) |
-| Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | ⏳ Chờ T-026 lên `main` |
-| Thử mù mô hình trong Cài đặt (T-019) | ⏳ Hết chờ (T-018 đã lên `main`, anh chốt không có hãng mặc định) |
+| Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) + test chạy được trên Linux/Mac (T-030) | 🔒 Soi Lỗi đạt, Lá Chắn đạt có điều kiện; **chờ chạy test trên Windows** rồi gộp (nhánh `team/T-029`) |
+| Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | 🔒 Thợ Máy 2 lượt, Soi Lỗi đạt; **chờ Lá Chắn** (nhánh `team/T-028`) |
+| Thử mù mô hình trong Cài đặt (T-019) | 🔎 Thợ Máy xong logic, Họa Sĩ xong giao diện; **chờ Soi Lỗi, Lá Chắn** (nhánh `team/T-019`) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 

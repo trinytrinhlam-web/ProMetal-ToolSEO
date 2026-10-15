@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 13:35 (Chỉ Huy B, đang giữ quyền điều phối). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
+_Cập nhật: 2026-10-15 14:10 (Chỉ Huy B, đang bàn giao cho Chỉ Huy A: xem mục "Đang làm dở" của dong-bo.md). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
