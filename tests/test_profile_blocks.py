@@ -163,3 +163,50 @@ def test_tag_with_any_unicode_whitespace_between_words(space):
     assert confirmed_profile(f"- Email: abc {tag}\n- Hotline: 0909") == "- Hotline: 0909"
     nfd = unicodedata.normalize("NFD", tag)
     assert confirmed_profile(f"- Email: abc\n  {nfd}\n- Hotline: 0909") == "- Hotline: 0909"
+
+
+# --- Lượt 2: SL-024-1 (dòng trống giữa ý), SL-024-2 (ký tự vô hình) ---------------------------
+
+
+def test_blank_then_unindented_bullet_or_paragraph_is_new_block():
+    # Dòng trống + dòng không thụt lề: luôn là ý / đoạn mới, không gộp vào ý có nhãn trước đó.
+    text = f"- Email {TAG}\n\n- Hotline 0909\n\nĐoạn sau giữ nguyên."
+    assert confirmed_profile(text) == "- Hotline 0909\n\nĐoạn sau giữ nguyên."
+
+
+def test_blank_then_indented_line_stays_in_clean_item_verbatim():
+    text = "- Khách: khoảng 500\n\n  người trong năm\n- Hotline 0909"
+    assert confirmed_profile(text) == text
+
+
+def test_several_blank_lines_and_notes_inside_item():
+    text = f"- Khách: khoảng 500\n\n> ghi chú\n  \n  người {TAG}\n\n- Hotline 0909"
+    assert confirmed_profile(text) == "- Hotline 0909"
+
+
+def test_blank_then_indented_after_heading_is_not_merged_into_heading():
+    text = f"## Mục {TAG}\n\n  đoạn thụt lề sau tiêu đề"
+    # Tiêu đề luôn đứng riêng: dòng thụt lề sau nó không bị bỏ theo (strip() bỏ khoảng trắng đầu).
+    assert confirmed_profile(text) == "đoạn thụt lề sau tiêu đề"
+
+
+def test_invisible_char_kept_in_output():
+    # Chỉ bỏ ký tự vô hình khi so khớp; dòng đưa vào prompt giữ nguyên.
+    text = "- Hotline​ 0909"
+    assert confirmed_profile(text) == text
+
+
+def test_glued_tag_still_not_recognised_but_invisible_separator_is():
+    assert confirmed_profile("- Email x [CẦNXÁC NHẬN]") == "- Email x [CẦNXÁC NHẬN]"
+    assert confirmed_profile("- Email x [CẦN​XÁC NHẬN]\n- B") == "- B"
+    assert confirmed_profile("- Email x [C‍ẦN XÁC NHẬN]\n- B") == "- B"
+
+
+@pytest.mark.parametrize("ch", ["͏", "️", "ㅤ", "ﾠ"])
+def test_default_ignorable_not_cf_in_tag_or_before_note(ch):
+    assert confirmed_profile(f"- Email x [CẦN{ch} XÁC NHẬN]\n- B") == "- B"
+    assert confirmed_profile(f"- B\n{ch}> ghi chú") == "- B"
+
+
+def test_fullwidth_bracket_tag_recognised():
+    assert confirmed_profile("- Email x ［CẦN XÁC NHẬN］\n- B") == "- B"

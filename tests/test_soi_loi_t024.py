@@ -1,7 +1,7 @@
 """T-024 (Soi Lỗi): bộ lọc hồ sơ doanh nghiệp theo khối, thử các kiểu gõ Notepad.
 
-Bổ sung cho ``tests/test_profile_blocks.py`` (test của Thợ Máy). Lỗi còn lại đánh dấu
-``xfail(strict=True)`` kèm mã SL-024-x trong báo cáo ``docs/team/reports/T-024-soi-loi.md``.
+Bổ sung cho ``tests/test_profile_blocks.py`` (test của Thợ Máy). Các lỗi SL-024-1, SL-024-2
+(báo cáo ``docs/team/reports/T-024-soi-loi.md``) đã sửa ở lượt 2, bỏ dấu xfail.
 """
 
 from __future__ import annotations
@@ -213,24 +213,15 @@ def test_random_notepad_profiles_never_leak_tag_or_note():
         assert not any(line.lstrip().startswith(">") for line in out.splitlines()), text
 
 
-# --- Lỗi còn lại --------------------------------------------------------------------------------
+# --- SL-024-1, SL-024-2 (đã sửa) -----------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-024-1: dòng trống trong một ý (dòng sau thụt lề) cắt ý, nửa sau có nhãn thì "
-    "nửa đầu vẫn lọt",
-)
 @pytest.mark.parametrize("blank", ["", "  "])
 def test_item_with_blank_line_then_indented_tagged_continuation(blank):
     text = f"- Khách đã phục vụ: khoảng 500\n{blank}\n  người {TAG}\n- Hotline 0909"
     assert "500" not in confirmed_profile(text)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-024-1: nhãn ở dòng đầu ý, sau dòng trống phần thụt lề tiếp theo vẫn lọt",
-)
 def test_tagged_item_with_blank_line_then_indented_continuation():
     text = f"- Khách đã phục vụ: khoảng 500 {TAG}\n\n  người trong năm 2025\n- Hotline 0909"
     assert "2025" not in confirmed_profile(text)
@@ -239,11 +230,6 @@ def test_tagged_item_with_blank_line_then_indented_continuation():
 INVISIBLE = ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-024-2: ký tự vô hình (U+200B…, chép từ web/Zalo) chèn trong nhãn làm nhãn không "
-    "được nhận, cả ý lọt vào prompt",
-)
 @pytest.mark.parametrize("ch", INVISIBLE)
 @pytest.mark.parametrize("tag", ["[CẦN{c}XÁC NHẬN]", "[CẦN {c}XÁC NHẬN]", "[{c}CẦN XÁC NHẬN]"])
 def test_tag_with_invisible_char_is_recognised(ch, tag):
@@ -256,10 +242,6 @@ def test_invisible_char_before_tag_bracket_still_recognised():
         assert confirmed_profile(f"- Email x {ch}[CẦN XÁC NHẬN]\n- B") == "- B"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-024-2: ký tự vô hình (BOM, U+200B…) đứng trước «>» thì dòng ghi chú không bị bỏ",
-)
 @pytest.mark.parametrize("ch", INVISIBLE)
 @pytest.mark.parametrize("indent", ["", "  "])
 def test_note_preceded_by_invisible_char_is_dropped(ch, indent):

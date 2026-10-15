@@ -14,11 +14,19 @@ from seo_app.config import PROJECT_ROOT
 CONTENT_CONFIG_FILE = PROJECT_ROOT / "config" / "content.toml"
 BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
 # Ý mang nhãn «[CẦN XÁC NHẬN» (có hay không có lý do phía sau) trong hồ sơ doanh nghiệp chưa
-# được chủ dự án xác nhận: AI không được thấy. So trên chữ đã chuẩn hóa NFC và viết hoa; chịu
-# được dấu cách thừa, tab, dấu cách không ngắt.
+# được chủ dự án xác nhận: AI không được thấy. So trên chữ đã bỏ ký tự vô hình, chuẩn hóa NFKC
+# và viết hoa (``_visible``); chịu được dấu cách thừa, tab, dấu cách không ngắt.
 _UNCONFIRMED_PATTERN = re.compile(r"\[\s*CẦN\s+XÁC\s+NHẬN")
 # Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
 _BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
+
+# Ký tự "mặc định bỏ qua" (Unicode Default_Ignorable_Code_Point) KHÔNG thuộc loại Cf: không
+# hiện ra nhưng nằm giữa "<" và "/" vẫn làm thẻ giả trông như thật với AI (Soi Lỗi R3-7), hay
+# chen trong nhãn [CẦN XÁC NHẬN] làm nhãn không được nhận (SL-024-2). Dùng chung với prompts.py.
+_IGNORABLE_NOT_CF = re.compile(
+    "[\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180d\u180f\u2065\u3164"
+    "\ufe00-\ufe0f\uffa0\ufff0-\ufff8\U000e0100-\U000e01ef]"
+)
 
 # Chỗ AI để trống vì thiếu dữ liệu thật, ví dụ: [cần bổ sung: giá cổng 4 m của xưởng]
 MISSING_PATTERN = re.compile(r"\[cần bổ sung:[^\]]*\]", re.IGNORECASE)
@@ -51,14 +59,17 @@ def confirmed_profile(text: str) -> str:
       cho tới dòng trống, tiêu đề hoặc gạch đầu dòng không thụt lề kế tiếp đều thuộc khối đó
       (dòng thụt vào, gạch đầu dòng lồng nhau, cả dòng quên thụt lề khi gõ Notepad).
     - Đoạn văn thường: khối là cả đoạn, ngăn bằng dòng trống.
+    - Dòng **thụt lề** ngay sau dòng trống vẫn thuộc khối trước (một ý nhiều đoạn, như Markdown;
+      Soi Lỗi SL-024-1). Dòng không thụt lề sau dòng trống luôn mở khối mới.
     - Tiêu đề ``#`` (không thụt lề) luôn đứng riêng một khối.
 
-    Khối có nhãn ở bất kỳ dòng nào thì bỏ cả khối. Dòng ghi chú (ký tự đầu tiên không phải
-    khoảng trắng là ``>``) luôn bị bỏ và không cắt khối. Các dòng giữ lại y nguyên như trong
-    file.
+    Khối có nhãn ở bất kỳ dòng nào thì bỏ cả khối. Dòng ghi chú (ký tự nhìn thấy đầu tiên là
+    ``>``) luôn bị bỏ và không cắt khối. Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc
+    và nhãn (SL-024-2). Các dòng giữ lại y nguyên như trong file.
     """
     kept: list[str] = []
     block: list[str] = []
+    blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
     block_unconfirmed = False
 
     def close_block() -> None:
@@ -67,28 +78,56 @@ def confirmed_profile(text: str) -> str:
             kept.extend(block)
         block.clear()
         block_unconfirmed = False
+        kept.extend(blanks)
+        blanks.clear()
 
     for line in text.splitlines():
-        stripped = line.strip()
+        visible = _visible(line)
+        stripped = visible.strip()
         if stripped.startswith(">"):
             continue
         if not stripped:
-            close_block()
-            kept.append(line)
+            if block:
+                blanks.append(line)
+            else:
+                kept.append(line)
             continue
-        indented = line[0].isspace()
-        if not indented and (stripped.startswith("#") or _BULLET.match(stripped)):
+        indented = visible[0].isspace()
+        heading = not indented and stripped.startswith("#")
+        if blanks and not indented:
             close_block()
+        if heading or (not indented and _BULLET.match(stripped)):
+            close_block()
+        block.extend(blanks)
+        blanks.clear()
         block.append(line)
         block_unconfirmed = block_unconfirmed or _is_unconfirmed(line)
-        if not indented and stripped.startswith("#"):
+        if heading:
             close_block()
     close_block()
     return "\n".join(kept).strip()
 
 
+def _visible(line: str, invisible_as: str = "") -> str:
+    """Dòng để so khớp: ký tự vô hình (Unicode loại Cf như U+200B, BOM, gạch nối mềm, và các ký
+    tự "mặc định bỏ qua" khác) đổi thành ``invisible_as``, rồi chuẩn hóa NFKC và viết hoa.
+
+    NFKC chạy trước vì nó có thể biến ký tự thường thành ký tự vô hình (U+FFA0 thành U+1160);
+    chạy lại NFC sau cùng để ghép chữ với dấu bị ký tự vô hình tách ra.
+    """
+    text = unicodedata.normalize("NFKC", line)
+    text = "".join(invisible_as if unicodedata.category(ch) == "Cf" else ch for ch in text)
+    text = _IGNORABLE_NOT_CF.sub(invisible_as, text)
+    return unicodedata.normalize("NFC", text).upper()
+
+
 def _is_unconfirmed(line: str) -> bool:
-    return bool(_UNCONFIRMED_PATTERN.search(unicodedata.normalize("NFC", line).upper()))
+    """Dòng có nhãn [CẦN XÁC NHẬN], kể cả khi ký tự vô hình chen vào nhãn.
+
+    Thử hai cách: bỏ hẳn ký tự vô hình («C<U+200D>ẦN» thành «CẦN») và coi nó như dấu cách
+    («CẦN<U+200B>XÁC» thành «CẦN XÁC», chép từ web hay gặp). Cách nào khớp cũng tính là có nhãn.
+    """
+    return any(_UNCONFIRMED_PATTERN.search(_visible(line, mark)) for mark in ("", " "))
 
 
 def _read_text(path: Path) -> str:
