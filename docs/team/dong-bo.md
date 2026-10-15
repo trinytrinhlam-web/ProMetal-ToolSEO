@@ -68,6 +68,12 @@ Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao l�
 - Lỗi Thấp của bộ lọc hồ sơ: nhãn gõ sai, nhãn trên tiêu đề (Lá Chắn T-022 + T-024).
 - Ngòi Bút sửa chú thích `config/ai.toml`; Thư Ký cập nhật README cho ChatGPT/Gemini.
 
+**Chỉ Huy A làm tiếp (từ 14:12):**
+- ⏳ 14:20 Chạy bộ kiểm T-029 + T-030 trên Windows (worktree `wt-T-029`, theo lệnh của B ở trên).
+- ⏳ 14:20 Giao **Lá Chắn · T-028** (worktree `wt-T-028`, Opus tạm) và **Soi Lỗi · T-019** (worktree `wt-T-019`).
+- ✅ 14:20 Xóa nhánh `team/T-026` đã gộp (B nhờ).
+- Không đụng `team/T-025` (Soi Lỗi của B có thể còn chạy).
+
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
