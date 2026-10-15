@@ -440,7 +440,13 @@ def test_check_reads_key_from_settings_when_not_given(env_path, monkeypatch):
     monkeypatch.setattr(anthropic, "Anthropic", Recorder)
     result = check_api_key("ANTHROPIC_API_KEY", timeout=5)
     assert result.ok
-    assert created == {"api_key": KEY, "timeout": 5, "max_retries": 0}
+    # base_url cố định (T-026, LC-4): biến môi trường ANTHROPIC_BASE_URL không có tác dụng.
+    assert created == {
+        "api_key": KEY,
+        "base_url": "https://api.anthropic.com",
+        "timeout": 5,
+        "max_retries": 0,
+    }
 
 
 def test_check_missing_key(env_path):

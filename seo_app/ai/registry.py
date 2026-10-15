@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from seo_app.ai.base import EFFORTS, AIError, AIProvider, TaskConfig
+from seo_app.ai.base import EFFORTS, SETUP_ERRORS, AIError, AIProvider, TaskConfig, library_error
 from seo_app.config import PROJECT_ROOT, Settings
 
 AI_CONFIG_FILE = PROJECT_ROOT / "config" / "ai.toml"
@@ -92,7 +92,9 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
     if not api_key:
         raise AIError(f"Chưa có khóa {label} ({key_name}). Vào Cài đặt → 🔌 Kết nối để nhập khóa.")
     # Nhập thư viện của hãng khi cần, để app mở nhanh và hãng không dùng thì không phải tải.
-    # Thư viện cài sai phiên bản (nâng ngoài uv.lock) thì báo tiếng Việt, không làm sập trang.
+    # Thư viện cài sai phiên bản (nâng ngoài uv.lock) thì báo tiếng Việt, không làm sập trang:
+    # lúc nhập (thiếu module, thiếu hằng như types.ThinkingLevel) lẫn lúc tạo client (đổi tham
+    # số; google-genai kiểm tham số bằng pydantic nên tham số lạ ra ValidationError).
     try:
         if provider == "anthropic":
             from seo_app.ai.anthropic_provider import AnthropicProvider as cls
@@ -100,12 +102,9 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
             from seo_app.ai.openai_provider import OpenAIProvider as cls
         else:
             from seo_app.ai.gemini_provider import GeminiProvider as cls
-    except ImportError as exc:
-        raise AIError(
-            f"Thư viện của {label} chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / "
-            "run.command (hoặc lệnh uv sync) để cài đúng phiên bản."
-        ) from exc
-    return cls(api_key)
+        return cls(api_key)
+    except SETUP_ERRORS as exc:
+        raise library_error(label) from exc
 
 
 class AIRouter:

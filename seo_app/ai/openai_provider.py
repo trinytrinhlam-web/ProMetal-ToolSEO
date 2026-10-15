@@ -26,7 +26,17 @@ from typing import Any
 import openai
 import pydantic
 
-from seo_app.ai.base import AIError, T, TaskConfig, redact_secrets
+from seo_app.ai.base import (
+    LIBRARY_ERRORS,
+    OPENAI_URL,
+    AIError,
+    T,
+    TaskConfig,
+    bad_request_error,
+    library_error,
+)
+
+LABEL = "OpenAI"
 
 # Tìm web như người dùng ở Việt Nam (kết quả Google Việt Nam sát hơn).
 WEB_SEARCH_TOOL = {
@@ -39,11 +49,20 @@ TIMEOUT_SECONDS = 900.0
 
 class OpenAIProvider:
     def __init__(self, api_key: str, client: openai.OpenAI | None = None) -> None:
+        # base_url cố định: biến môi trường OPENAI_BASE_URL không có tác dụng (W4).
         self._client = client or openai.OpenAI(
-            api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=3
+            api_key=api_key, base_url=OPENAI_URL, timeout=TIMEOUT_SECONDS, max_retries=3
         )
 
     def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+        try:
+            return self._generate(task, system=system, prompt=prompt, schema=schema)
+        except LIBRARY_ERRORS as exc:
+            # Thư viện lệch phiên bản (ví dụ bỏ/đổi openai.pydantic_function_tool mà text_format
+            # dùng, đổi tên tham số của responses.create): báo tiếng Việt, không làm sập trang.
+            raise library_error(LABEL) from exc
+
+    def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         params: dict[str, Any] = {
             "model": task.model,
             "instructions": system,
@@ -84,9 +103,11 @@ class OpenAIProvider:
             raise AIError("Không kết nối được tới OpenAI. Kiểm tra mạng Internet.") from exc
         except openai.APIStatusError as exc:
             if exc.status_code == 400:
-                # Thông điệp do máy chủ gửi về: che chuỗi giống khóa trước khi hiện lên màn hình.
-                detail = redact_secrets(str(exc.message))
-                raise AIError(f"OpenAI không nhận yêu cầu: {detail}") from exc
+                # Câu cố định, không chép thông điệp của máy chủ (S2). Mã lỗi và tên tham số
+                # (đã lọc) giúp biết sửa gì trong config/ai.toml, ví dụ max_output_tokens.
+                code = getattr(exc, "code", None)
+                param = getattr(exc, "param", None)
+                raise bad_request_error("OpenAI", task, code, param) from exc
             raise AIError(f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.") from exc
         except openai.OpenAIError as exc:
             # Các lỗi còn lại của thư viện: chỉ nêu tên lỗi, không chép thông điệp thô.
