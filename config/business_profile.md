@@ -1,12 +1,12 @@
 # Hồ sơ doanh nghiệp — Cơ khí Pro-Metal (suachuacuasat.com)
 
 > CÁCH ĐỌC FILE NÀY (dành cho chủ dự án, AI không thấy phần này):
-> - File được đưa vào prompt mỗi khi AI nghiên cứu và viết bài, TRỪ hai loại dòng:
->   1. Dòng bắt đầu bằng dấu `>` (như các dòng ghi chú này). Dấu `>` phải đứng
->      ở ngay đầu dòng, không có dấu cách phía trước.
->   2. Dòng có chữ `[CẦN XÁC NHẬN` ở bất kỳ chỗ nào trong dòng.
-> - Chỉ ghi điều có thật. Thông tin chưa chắc thì thêm `[CẦN XÁC NHẬN — lý do]`
->   vào cuối dòng; khi đã xác nhận thì xóa nhãn đó đi.
+> - File được đưa vào prompt mỗi khi AI nghiên cứu và viết bài, TRỪ hai thứ:
+>   1. Dòng ghi chú bắt đầu bằng dấu `>` (như các dòng này).
+>   2. Ý có nhãn `[CẦN XÁC NHẬN — lý do]`: nhãn đặt ở dòng nào của ý (kể cả
+>      dòng xuống hàng bên dưới) thì AI bỏ cả ý đó. Viết hoa hay thường đều được.
+> - Chỉ ghi điều có thật. Ý nào chưa chắc thì thêm nhãn trên; khi đã xác nhận
+>   thì xóa nhãn đi.
 > - Lưu file bằng Notepad: chọn Mã hóa (Encoding) UTF-8.
 >
 > Nguồn: đọc website suachuacuasat.com ngày 2026-10-14 (trang chủ, Giới thiệu,
@@ -20,8 +20,9 @@
 - Email: [CẦN XÁC NHẬN — website chưa có]
 - Trụ sở chính / xưởng: 728/1 Lê Trọng Tấn, Sơn Kỳ, Bình Tân, TP.HCM
 - Giờ phục vụ: 6h–21h mỗi ngày; buổi tối và Chủ nhật cần hẹn trước
-- Năm thành lập, số năm kinh nghiệm, tên người phụ trách hay tác giả: không dùng trong bài
-  (chủ dự án quyết định 2026-10-14). Chỉ được nói "nhiều năm kinh nghiệm".
+- Năm thành lập, số năm kinh nghiệm, tên người phụ trách hay tác giả: không dùng
+  trong bài. Chỉ được nói "nhiều năm kinh nghiệm".
+> Chủ dự án quyết định 2026-10-14: không dùng năm thành lập, tên người phụ trách hay tác giả.
 - Mạng xã hội, Google Business Profile: [CẦN XÁC NHẬN — website chưa có liên kết]
 
 ## 2. Năng lực
@@ -36,11 +37,12 @@
 ## 3. Khu vực phục vụ
 
 - Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ
-  (nay đã sáp nhập vào TP.HCM; chủ dự án xác nhận 2026-10-14). Bài viết nói
-  "có thợ ở mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ gần
-  khu vực này".
-- Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập (chủ dự án xác
-  nhận 2026-10-14); bài viết về các khu vực này được nói "có chi nhánh gần khu vực này".
+  (nay đã sáp nhập vào TP.HCM). Bài viết nói "có thợ ở mọi khu vực TP.HCM"; bài
+  viết theo khu vực được phép nói "có thợ gần khu vực này".
+- Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập; bài viết về
+  các khu vực này được nói "có chi nhánh gần khu vực này".
+> Chủ dự án xác nhận 2026-10-14: có thợ ở mọi khu vực, kể cả Bình Dương và Bà Rịa – Vũng Tàu cũ;
+> có chi nhánh ở mọi quận, huyện TP.HCM (trước sáp nhập).
 - Địa chỉ cụ thể dùng được (trong bài và schema): trụ sở 728/1 Lê Trọng Tấn,
   Sơn Kỳ, Bình Tân, cùng các địa chỉ ở trang Liên hệ:
   1686 Tỉnh Lộ 10, P. Bình Tân; Lầu 4, 249 Cộng Hòa, P.13, Tân Bình;

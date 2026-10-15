@@ -224,8 +224,8 @@ Kết quả nguyên văn của `uv run python -c "from seo_app.content.rules imp
 - Hotline / Zalo: 03.4444.07.17 (https://zalo.me/0344440717)
 - Trụ sở chính / xưởng: 728/1 Lê Trọng Tấn, Sơn Kỳ, Bình Tân, TP.HCM
 - Giờ phục vụ: 6h–21h mỗi ngày; buổi tối và Chủ nhật cần hẹn trước
-- Năm thành lập, số năm kinh nghiệm, tên người phụ trách hay tác giả: không dùng trong bài
-  (chủ dự án quyết định 2026-10-14). Chỉ được nói "nhiều năm kinh nghiệm".
+- Năm thành lập, số năm kinh nghiệm, tên người phụ trách hay tác giả: không dùng
+  trong bài. Chỉ được nói "nhiều năm kinh nghiệm".
 
 ## 2. Năng lực
 
@@ -237,11 +237,10 @@ Kết quả nguyên văn của `uv run python -c "from seo_app.content.rules imp
 ## 3. Khu vực phục vụ
 
 - Có thợ ở mọi khu vực TP.HCM, kể cả khu vực Bình Dương và Bà Rịa – Vũng Tàu cũ
-  (nay đã sáp nhập vào TP.HCM; chủ dự án xác nhận 2026-10-14). Bài viết nói
-  "có thợ ở mọi khu vực TP.HCM"; bài viết theo khu vực được phép nói "có thợ gần
-  khu vực này".
-- Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập (chủ dự án xác
-  nhận 2026-10-14); bài viết về các khu vực này được nói "có chi nhánh gần khu vực này".
+  (nay đã sáp nhập vào TP.HCM). Bài viết nói "có thợ ở mọi khu vực TP.HCM"; bài
+  viết theo khu vực được phép nói "có thợ gần khu vực này".
+- Có chi nhánh ở tất cả các quận, huyện của TP.HCM trước sáp nhập; bài viết về
+  các khu vực này được nói "có chi nhánh gần khu vực này".
 - Địa chỉ cụ thể dùng được (trong bài và schema): trụ sở 728/1 Lê Trọng Tấn,
   Sơn Kỳ, Bình Tân, cùng các địa chỉ ở trang Liên hệ:
   1686 Tỉnh Lộ 10, P. Bình Tân; Lầu 4, 249 Cộng Hòa, P.13, Tân Bình;
@@ -323,6 +322,20 @@ Kết quả nguyên văn của `uv run python -c "from seo_app.content.rules imp
 ```
 $ uv run pytest -q
 1889 passed, 9 xfailed in 108.86s (0:01:48)   # sau khi gộp test của Soi Lỗi (tests/test_business_profile.py)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Lượt 2, phần bổ sung (theo góp ý Soi Lỗi và bộ lọc mới T-024)
+
+- **Bỏ ngày quyết định khỏi phần AI thấy** (góp ý của Soi Lỗi): các cụm "(chủ dự án quyết định/xác nhận 2026-10-14)" ở mục 1 và mục 3 chuyển thành dòng ghi chú `>` đặt ngay sau ý. Ngày không giúp gì cho bài viết. Nội dung ý giữ nguyên.
+- **Hướng dẫn đầu file khớp bộ lọc mới của T-024** (Thợ Máy, nhánh `team/T-024`): dòng ghi chú là dòng bắt đầu bằng `>` (bỏ câu "không có dấu cách phía trước", vì bộ lọc mới bỏ cả dòng `>` thụt lề). Nhãn `[CẦN XÁC NHẬN — lý do]` đặt ở dòng nào của một ý, kể cả dòng xuống hàng, thì AI bỏ cả ý; viết hoa hay thường đều được.
+- **Đối chiếu hai bộ lọc:** chạy `confirmed_profile` của `main` hiện tại và của `origin/team/T-024` trên file mới: kết quả **giống hệt nhau**, không còn "2026" hay "XÁC NHẬN" trong phần AI thấy. Phần "AI sẽ thấy gì (lượt 2)" ở trên đã cập nhật theo file mới.
+
+```
+$ uv run pytest -q
+1889 passed, 9 xfailed in 119.94s (0:01:59)
 
 $ uv run ruff check .
 All checks passed!

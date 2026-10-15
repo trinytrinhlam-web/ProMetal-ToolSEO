@@ -25,7 +25,7 @@ Không sửa code ứng dụng.
 
 ```
 $ uv run pytest
-1970 passed, 36 xfailed in 109.58s
+1970 passed, 36 xfailed in 92.30s   (sau khi gộp thêm dfdffc5 của Ngòi Bút)
 
 $ uv run ruff check .
 All checks passed!
@@ -37,7 +37,7 @@ Kiểm tra test mới có giá trị: chạy `tests/test_soi_loi_t024.py` trên 
 
 ### Bước 1: gộp T-022
 
-`git merge --no-edit origin/team/T-022` không xung đột. 6 test `xfail(strict=True)` "chờ T-024" đều báo XPASS, nên đã bỏ dấu xfail cả 6:
+`git merge --no-edit origin/team/T-022` không xung đột (gộp 2 lần, lần sau lấy thêm `dfdffc5` của Ngòi Bút: sửa hướng dẫn đầu hồ sơ). 6 test `xfail(strict=True)` "chờ T-024" đều báo XPASS, nên đã bỏ dấu xfail cả 6:
 
 | Mã | Test | Kết quả |
 |---|---|---|
@@ -105,8 +105,12 @@ Trả lời câu hỏi của Chỉ Huy về U+200B: **có lọt**. Không chỉ 
 | 1 | 20 lần, chạy chồng với các lượt pytest/uv khác của tôi | **4/20** (mỗi lần hỏng 1 trong 3 tham số) |
 | 2 | 20 lần, máy rảnh | 0/20 |
 | 3 | 10 lần, 4 tiến trình chiếm hết 4 nhân CPU | 0/10 |
+| 4 | 20 lần, mỗi lần 2 bản chạy song song | 0/20 |
+| 5 | 10 lần, trong lúc chạy toàn bộ `uv run pytest` song song | 0/10 |
 
-Tổng 4/50 (8%). Đúng là chập chờn: test đo bằng thời gian CPU nên không sợ CPU bận, nhưng hỏng khi có tiến trình Python/uv khác chạy cùng lúc (tranh bộ nhớ đệm, đọc đĩa). Test này hỏng khi bản quét **lỗi** chạy "không đủ chậm", nên lần hỏng là báo động giả, không phải code thật chậm. Không sửa trong phiếu này.
+Tổng 4/80 (5%), cả 4 lần hỏng đều ở lượt 1. Đúng là chập chờn: test đo bằng thời gian CPU nên không sợ CPU bận, nhưng hỏng khi có tiến trình Python/uv khác chạy cùng lúc (tranh bộ nhớ đệm, đọc đĩa). Test này hỏng khi bản quét **lỗi** chạy "không đủ chậm", nên lần hỏng là báo động giả, không phải code thật chậm. Không sửa trong phiếu này.
+
+Theo yêu cầu của Chỉ Huy, đo thêm `tests/test_soi_loi_round6.py::test_helper_catches_quadratic_function` (Ngòi Bút thấy hỏng 1/3 lần): 0/20 khi máy rảnh, 0/20 khi 2 bản chạy song song, 0/10 khi chạy cùng toàn bộ test. Trên máy này không tái hiện được, nhưng test dùng cùng cách đo (`tests/timing.py`) nên có thể chập chờn cùng kiểu.
 
 ## Đối chiếu tiêu chí xong (của phiếu)
 
@@ -125,7 +129,7 @@ Tổng 4/50 (8%). Đúng là chập chờn: test đo bằng thời gian CPU nên
 
 - (Thợ Máy) Sửa SL-024-1 và SL-024-2 trong `seo_app/content/rules.py`, rồi bỏ xfail ở `tests/test_soi_loi_t024.py`.
 - (Ngòi Bút) Hướng dẫn đầu `config/business_profile.md`: ghi rõ cú pháp nhãn đúng `[CẦN XÁC NHẬN — lý do]` (có ngoặc vuông, có dấu), nhắc gõ tay nhãn thay vì chép; sửa câu "`>` phải đứng ở ngay đầu dòng" như Thợ Máy đề xuất.
-- (Soi Lỗi / Thợ Máy, phiếu riêng) `test_many_lookup_inputs_catch_naive_scan` chập chờn khoảng 8%, chỉ khi chạy chồng tiến trình khác. Nên nới **cỡ đầu vào** của bản quét lỗi (để tỉ lệ thời gian của nó cách xa ngưỡng 9) hoặc lấy kết quả tốt nhất trong vài lần đo, không nới ngưỡng của test tốc độ thật.
+- (Soi Lỗi / Thợ Máy, phiếu riêng) Hai test đo tốc độ chập chờn: `test_soi_loi_round7.py::test_many_lookup_inputs_catch_naive_scan` (4/80 ở đây, 1 lần ở máy Thợ Máy) và `test_soi_loi_round6.py::test_helper_catches_quadratic_function` (0/50 ở đây, 1/3 ở máy Ngòi Bút). Cả hai là test kiểm tra rằng `tests/timing.py` **bắt được** hàm chậm, nên lần hỏng là báo động giả. Nên nới **cỡ đầu vào** của bản quét lỗi (để tỉ lệ thời gian của nó cách xa ngưỡng 9) hoặc lấy kết quả tốt nhất trong vài lần đo, không nới ngưỡng của test tốc độ thật.
 
 ## Câu hỏi cho chủ dự án
 
