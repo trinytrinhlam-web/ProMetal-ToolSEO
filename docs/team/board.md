@@ -16,7 +16,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-027](tickets/T-027-test-chay-tren-windows.md) | Bộ test chạy xanh trên Windows (bộ chặn mạng, tên test quá dài) | Soi Lỗi (`Soi Lỗi · T-027 Test trên Windows`, dưới phiên Chỉ Huy A) | `team/T-027` | Đang làm | |
+| [T-027](tickets/T-027-test-chay-tren-windows.md) | Bộ test chạy xanh trên Windows (bộ chặn mạng, tên test quá dài) | Soi Lỗi (`Soi Lỗi · T-027 Test trên Windows`, dưới phiên Chỉ Huy A) → Lá Chắn (`Lá Chắn · T-027 Bộ chặn mạng`) | `team/T-027` | Soi Lỗi xong (`b87d3a4`): trên Windows 2.358 qua, 0 hỏng, chạy 3 lần. **Lá Chắn đang kiểm** | [Soi Lỗi](reports/T-027-soi-loi.md) |
 | [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy (`Thợ Máy · T-026 Lỗi Thấp lớp AI`, dưới phiên Chỉ Huy A) → Soi Lỗi (`Soi Lỗi · T-026 Lỗi Thấp lớp AI`) | `team/T-026` | Thợ Máy xong (`f042764`, 87 test mới, không thêm test đỏ trên Windows). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-026-tho-may.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
