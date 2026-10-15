@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import anthropic
+import pydantic
 
 from seo_app.ai.base import (
     ANTHROPIC_URL,
@@ -13,10 +14,14 @@ from seo_app.ai.base import (
     T,
     TaskConfig,
     bad_request_error,
+    ignoring_custom_headers,
+    is_bad_response,
     library_error,
+    unreadable_error,
 )
 
 LABEL = "Anthropic (Claude)"
+VENDOR = "Anthropic"
 
 # Khi Claude từ chối một yêu cầu (hiếm, do bộ lọc an toàn), máy chủ tự chạy lại bằng mô hình
 # dự phòng phù hợp, không phải tự viết logic thử lại.
@@ -28,17 +33,37 @@ MAX_CONTINUATIONS = 4
 
 class AnthropicProvider:
     def __init__(self, api_key: str, client: anthropic.Anthropic | None = None) -> None:
-        # base_url cố định: biến môi trường ANTHROPIC_BASE_URL không có tác dụng (W4).
-        self._client = client or anthropic.Anthropic(
-            api_key=api_key, base_url=ANTHROPIC_URL, max_retries=3
-        )
+        if client is None:
+            # base_url cố định: biến môi trường ANTHROPIC_BASE_URL không có tác dụng (W4).
+            # ANTHROPIC_CUSTOM_HEADERS bị bỏ qua (T-028).
+            with ignoring_custom_headers():
+                client = anthropic.Anthropic(api_key=api_key, base_url=ANTHROPIC_URL, max_retries=3)
+        self._client = client
 
     def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         try:
             return self._generate(task, system=system, prompt=prompt, schema=schema)
-        except LIBRARY_ERRORS as exc:
-            # Thư viện lệch phiên bản (đổi tên tham số, hàm, thuộc tính): báo tiếng Việt.
-            raise library_error(LABEL) from exc
+        except AIError:
+            raise
+        except Exception as exc:
+            # Mã 200 nhưng nội dung hỏng (trang HTML, JSON thường thay vì luồng SSE, luồng hỏng
+            # hay đứt giữa chừng): thư viện để lọt AssertionError, JSONDecodeError, lỗi httpx…
+            # Câu cố định, không chép thông điệp thô (T-028).
+            if isinstance(exc, pydantic.ValidationError) and is_bad_response(exc):
+                # Thư viện đối chiếu bài với khuôn ngay khi đọc xong khối chữ, trước khi biết lý
+                # do dừng: bài bị cắt vì max_tokens cũng rơi vào đây.
+                raise AIError(
+                    "AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt vì quá giới hạn "
+                    f"{task.max_tokens} token). Bấm thử lại; nếu vẫn lỗi, tăng max_tokens của "
+                    f"việc «{task.name}» trong config/ai.toml."
+                ) from exc
+            error = unreadable_error(exc, VENDOR)
+            if error is not None:
+                raise error from exc
+            if isinstance(exc, LIBRARY_ERRORS):
+                # Thư viện lệch phiên bản (đổi tên tham số, hàm, thuộc tính): báo tiếng Việt.
+                raise library_error(LABEL) from exc
+            raise
 
     def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
