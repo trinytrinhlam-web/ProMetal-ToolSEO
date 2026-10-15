@@ -39,7 +39,7 @@ Chỉ Huy B, cập nhật 2026-10-15 18:58. Chủ dự án dặn chạy tự đ�
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (từ `main` `7d8f6f3`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn, gộp |
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | chưa có | Phiếu đã lập, T-019 đã gộp; chờ chỗ trống | Tạo `team/T-034` từ `main`, giao Thợ Máy |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (từ `main` `699d7ba`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn (S2, W4), gộp |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) README 3 hãng AI, thử mù | chưa có | Phiếu đã lập, chờ T-032 gộp | Giao Thư Ký |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`8013108`) | Soi Lỗi đạt có điều kiện: SL-T032-1 (Trung bình) bắt buộc sửa. Thợ Máy lượt 2 đang sửa (phiên cũ mở lại) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-032` còn mở, gửi tin), Lá Chắn (A1, A3), gộp |
 | [T-036](tickets/T-036-meta-title-description-slug.md) → [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Giai đoạn 4 | chưa có | Thiết kế T-033 xong, đã gộp `main`. Đã lập phiếu | T-036, T-037, T-038 chạy song song khi có chỗ (sau T-034); T-042 chờ chủ dự án trả lời câu 1, 2 |

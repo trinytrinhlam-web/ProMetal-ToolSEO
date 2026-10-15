@@ -24,12 +24,12 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Soi Lỗi (`Soi Lỗi · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Thợ Máy lượt 2 | `team/T-032` | Thợ Máy xong (`f831877`). Soi Lỗi **đạt có điều kiện** (`8013108`, Linux 3.268 qua): SL-T032-1 (Trung bình, bắt buộc: dòng `#hashtag` làm thôi giấu mục), SL-T032-2, -3 (Thấp). **Thợ Máy lượt 2 đang sửa**, rồi Soi Lỗi kiểm lại, Lá Chắn | [Thợ Máy](reports/T-032-tho-may.md) · [Soi Lỗi](reports/T-032-soi-loi.md) |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) | `team/T-031` | Đã giao | |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) | `team/T-034` | Đã giao | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù: SL-T019-3 (số phiên bản lộ sau tên đã che), SL-T019-4 (Claude bị cắt → câu lỗi sai chỗ), SL-T019-5 (race `os.environ` khi gỡ `*_CUSTOM_HEADERS`), LC-T028-1 (`RLock`), LC-T028-3 (gzip hỏng), LC-T019-1 (tên mô hình gõ tay thành link), LC-T019-2 (đường dẫn đầy đủ trong câu lỗi) | Thợ Máy | Chỗ trống (tối đa 3 phiên) |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký | T-032 gộp vào `main` |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
