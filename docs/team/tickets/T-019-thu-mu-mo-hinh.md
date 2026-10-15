@@ -86,3 +86,4 @@ A1 (dữ liệu người dùng trong khung), A2, S2 (lỗi không lộ khóa), U
 ## Ghi chú của Chỉ Huy
 
 - Nhánh tạm `team/T-019` (tạo từ `main`). Phiên **"Thợ Máy · T-019 Thử mù mô hình"**, sau đó **"Họa Sĩ · T-019 Thử mù mô hình"**.
+- 2026-10-15 18:20 (Chỉ Huy B): **mở rộng phạm vi** cho commit `4223a8c` của Thợ Máy lượt 2. Commit này thêm `TokenLimitError` (lớp con của `AIError`) trong `seo_app/ai/base.py` và 3 provider, câu lỗi giữ nguyên từng chữ. Chặn `seo_app/ai/**` ban đầu chỉ để tránh đụng T-028; T-028 đã lên `main`, nên Chỉ Huy chấp nhận. Soi Lỗi phải xác nhận trang Soạn bài và bước rà soát không đổi hành vi; Lá Chắn kiểm cả phần này.
