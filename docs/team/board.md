@@ -19,7 +19,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-029` | Đang làm | |
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). Thợ Máy xong lượt 2 (`d8fd392`, Windows 2.613 qua, 0 hỏng). **Soi Lỗi đang kiểm lại.** SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). Thợ Máy xong lượt 2 (`d8fd392`, Windows 2.613 qua, 0 hỏng). Soi Lỗi lượt 2 **đạt** (`ac9fbda`, Windows 2.718 qua, 0 hỏng). **Lá Chắn đang kiểm** (`Lá Chắn · T-026 Lớp AI (Opus tạm)`). SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ

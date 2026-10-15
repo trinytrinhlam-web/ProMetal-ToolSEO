@@ -44,7 +44,7 @@ _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 - ✅ 13:00 Lá Chắn T-027 **ĐẠT** → gộp vào `main` (`e4107f2`), Windows 2.358 qua, 0 hỏng. Đã xóa nhánh và worktree `team/T-027`.
 - ✅ 13:00 Soi Lỗi T-026 **đạt có điều kiện** (`c906285`). ⏳ **Thợ Máy đang sửa lượt 2** (SL-T026-1, SL-T026-2) trong `wt-T-026`, đã dặn merge `main` vào nhánh trước.
 - ✅ Lập phiếu T-028 (Thợ Máy, chờ T-026 gộp) và T-029 (Soi Lỗi, chạy sau lượt 2 T-026).
-- ✅ 13:20 Thợ Máy xong T-026 lượt 2 (`d8fd392`). ⏳ **Soi Lỗi đang kiểm lại T-026** trong `wt-T-026`.
+- ✅ 13:20 Thợ Máy xong T-026 lượt 2 (`d8fd392`). ✅ 13:35 Soi Lỗi lượt 2 **đạt** (`ac9fbda`). ⏳ **Lá Chắn đang kiểm T-026** (Opus tạm) trong `wt-T-026`.
 - ⏳ 13:20 Đã giao **T-029** cho Soi Lỗi, worktree `D:\ProMetal-ToolSEO\wt-T-029`, nhánh `team/T-029`.
 - Bước kế tiếp: Soi Lỗi đạt T-026 → Lá Chắn T-026 → gộp → giao T-028. T-029 xong → Lá Chắn T-029 → gộp.
 - Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
