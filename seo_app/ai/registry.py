@@ -92,17 +92,20 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
     if not api_key:
         raise AIError(f"Chưa có khóa {label} ({key_name}). Vào Cài đặt → 🔌 Kết nối để nhập khóa.")
     # Nhập thư viện của hãng khi cần, để app mở nhanh và hãng không dùng thì không phải tải.
-    if provider == "anthropic":
-        from seo_app.ai.anthropic_provider import AnthropicProvider
-
-        return AnthropicProvider(api_key)
-    if provider == "openai":
-        from seo_app.ai.openai_provider import OpenAIProvider
-
-        return OpenAIProvider(api_key)
-    from seo_app.ai.gemini_provider import GeminiProvider
-
-    return GeminiProvider(api_key)
+    # Thư viện cài sai phiên bản (nâng ngoài uv.lock) thì báo tiếng Việt, không làm sập trang.
+    try:
+        if provider == "anthropic":
+            from seo_app.ai.anthropic_provider import AnthropicProvider as cls
+        elif provider == "openai":
+            from seo_app.ai.openai_provider import OpenAIProvider as cls
+        else:
+            from seo_app.ai.gemini_provider import GeminiProvider as cls
+    except ImportError as exc:
+        raise AIError(
+            f"Thư viện của {label} chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / "
+            "run.command (hoặc lệnh uv sync) để cài đúng phiên bản."
+        ) from exc
+    return cls(api_key)
 
 
 class AIRouter:

@@ -21,7 +21,8 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 #   (hoặc tới dấu nháy đóng), vì mật khẩu có thể chứa dấu cách;
 # - "người-dùng:mật-khẩu@" trong địa chỉ (https://admin:matkhau@site…);
 # - tham số "key=" trong địa chỉ (Google hay để khóa ở "…?key=…"): che tới "&", dấu cách
-#   hoặc dấu nháy.
+#   hoặc dấu nháy;
+# - giá trị của trường tên đúng "key" trong JSON/dict ("key": "…", 'key': '…').
 _SECRET_NAMES = (
     "x-api-key", "api_key", "api-key", "apikey", "authorization", "password", "passwd",
     "token", "secret", "private_key", "private-key", "privatekey",
@@ -32,7 +33,8 @@ _SECRET_LIKE = re.compile(
     r"|(?:" + "|".join(f"(?<={re.escape(name)})" for name in _SECRET_NAMES) + r")"
     r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}"
     r"|(?<=://)[^/\s:@]+:[^/\s@]+(?=@)"
-    r"|(?<=[?&]key=)[^&\s\"'#]+",
+    r"|(?<=[?&]key=)[^&\s\"'#]+"
+    r"|(?:(?<=\"key\")|(?<='key'))[ \t]*:[ \t]*[\"'][^\"'\n]+(?=[\"'])",
     re.IGNORECASE,
 )
 

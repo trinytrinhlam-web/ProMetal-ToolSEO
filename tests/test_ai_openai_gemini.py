@@ -3,6 +3,9 @@
 Mọi test dùng client giả, không gọi mạng (conftest chặn mạng).
 """
 
+import json
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -583,9 +586,7 @@ def test_content_writer_runs_on_gemini(tmp_path, monkeypatch, model):
 def test_content_writer_runs_on_openai(tmp_path, monkeypatch):
     sample = FakeProvider()
     schemas = {
-        name: cls
-        for cls in _all_schemas()
-        for name in [openai_module.type_to_text_format_param(cls)["name"]]
+        name: cls for cls in _all_schemas() for name in [openai_module.text_format(cls)["name"]]
     }
     calls = []
 
@@ -784,3 +785,76 @@ def env_path(tmp_path, monkeypatch):
     path = tmp_path / ".env"
     monkeypatch.setattr(config, "DEFAULT_ENV_FILE", path)
     return path
+
+
+# ================================================================ Lượt 2 (SL-1, SL-2)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        json.JSONDecodeError("Expecting value", "<html>Đăng nhập Wi-Fi</html>", 0),
+        errors.UnknownApiResponseError("dữ liệu lạ"),
+        httpx.DecodingError(f"gzip hỏng ?key={PLAIN_KEY}"),
+    ],
+)
+def test_gemini_strange_response_becomes_vietnamese_error(error):
+    with pytest.raises(AIError, match="dữ liệu lạ") as info:
+        gm_generate(FakeGemini(error))
+    assert PLAIN_KEY not in str(info.value)
+    assert "Expecting" not in str(info.value) and "gzip" not in str(info.value)
+
+
+def test_gemini_other_request_errors_are_network_errors():
+    with pytest.raises(AIError, match="mạng"):
+        gm_generate(FakeGemini(httpx.TooManyRedirects("vòng lặp")))
+
+
+def test_openai_text_format_uses_public_api_and_matches_library():
+    from openai.lib._parsing._responses import type_to_text_format_param
+
+    from seo_app.content.models import Draft, Outline, Review, SectionText
+
+    for schema in (Research, Outline, Draft, Review, SectionText, Answer):
+        # Cùng khuôn với cách responses.parse của thư viện tự dựng.
+        assert openai_module.text_format(schema) == type_to_text_format_param(schema)
+    source = Path(openai_module.__file__).read_text(encoding="utf-8")
+    assert "from openai.lib" not in source and "import openai.lib" not in source
+
+
+@pytest.mark.parametrize(
+    ("provider", "module", "settings"),
+    [
+        ("anthropic", "seo_app.ai.anthropic_provider", Settings(anthropic_api_key="k")),
+        ("openai", "seo_app.ai.openai_provider", Settings(openai_api_key="k")),
+        ("gemini", "seo_app.ai.gemini_provider", Settings(gemini_api_key="k")),
+    ],
+)
+def test_broken_vendor_library_gives_vietnamese_error(monkeypatch, provider, module, settings):
+    monkeypatch.setitem(sys.modules, module, None)  # nhập module này sẽ ra ImportError
+    with pytest.raises(AIError, match="uv sync"):
+        make_provider(provider, settings)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f'{{"error": {{"key": "{PLAIN_KEY}"}}}}',
+        f'{{"key":"{PLAIN_KEY}"}}',
+        f"{{'key': '{PLAIN_KEY}'}}",
+    ],
+)
+def test_redact_json_key_field(text):
+    assert PLAIN_KEY not in redact_secrets(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"monkey": "chuối", "keyword": "cổng sắt"}',
+        "the key: point of the article",
+        '"key" là từ khóa chính',
+    ],
+)
+def test_redact_json_key_field_keeps_ordinary_text(text):
+    assert redact_secrets(text) == text
