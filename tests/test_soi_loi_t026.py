@@ -11,6 +11,8 @@ Lỗi thật tìm được để ở dạng ``xfail(strict=True)``, có ghi mã 
 ``docs/team/reports/T-026-soi-loi.md``. Không gọi mạng: thư viện thật chạy với ``MockTransport``.
 """
 
+from types import SimpleNamespace
+
 import anthropic
 import httpx
 import httpx2
@@ -18,14 +20,16 @@ import openai
 import pydantic
 import pytest
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
+from seo_app import env_file
 from seo_app.ai import AIError, TaskConfig
 from seo_app.ai import gemini_provider as gemini_module
 from seo_app.ai.anthropic_provider import AnthropicProvider
-from seo_app.ai.base import bad_request_error, safe_code
+from seo_app.ai.base import bad_request_error, library_message, safe_code
 from seo_app.ai.gemini_provider import GeminiProvider
 from seo_app.ai.openai_provider import OpenAIProvider
+from seo_app.ai.registry import PROVIDERS
 
 ANTHROPIC_KEY = "sk-ant-api03-SoiLoiT026KhoaGia_1234567890abcdef"
 OPENAI_KEY = "sk-proj-SoiLoiT026KhoaGia_1234567890abcdef"
@@ -277,3 +281,257 @@ def test_known_400_hints_are_plain_text():
         assert phrase == phrase.lower()  # so với câu máy chủ đã đổi sang chữ thường
         for bad in ("[", "]", "<", ">", "*", "`", "http", "www.", ":red", "#"):
             assert bad not in hint
+
+
+# ================================ LC-1, LC-2: thư viện đổi chữ ký hàm, bỏ thuộc tính, đổi tên lỗi
+
+
+def assert_library_error(info, vendor):
+    assert str(info.value) == library_message(PROVIDERS[vendor][0])
+    assert info.value.__cause__ is not None  # giữ lỗi gốc để tra cứu
+
+
+def test_openai_responses_create_with_new_signature(monkeypatch):
+    # Bản openai khác bỏ tham số "store"/"reasoning" của responses.create (thư viện thật).
+    provider = openai_real(lambda request: pytest.fail("không được gọi mạng"))
+    responses_cls = type(provider._client.responses)
+
+    def create(self, *, model, input, instructions=None, max_output_tokens=None, text=None):
+        pytest.fail("không được tới đây")
+
+    monkeypatch.setattr(responses_cls, "create", create)
+    with pytest.raises(AIError) as info:
+        generate(provider, "openai")
+    assert_library_error(info, "openai")
+    assert isinstance(info.value.__cause__, TypeError)
+
+
+def test_anthropic_beta_messages_stream_with_new_signature(monkeypatch):
+    # Bản anthropic khác bỏ tham số "fallbacks" của beta.messages.stream (thư viện thật).
+    provider = anthropic_real(lambda request: pytest.fail("không được gọi mạng"))
+    messages_cls = type(provider._client.beta.messages)
+
+    def stream(self, *, model, max_tokens, system, messages, output_format, output_config, betas):
+        pytest.fail("không được tới đây")
+
+    monkeypatch.setattr(messages_cls, "stream", stream)
+    with pytest.raises(AIError) as info:
+        generate(provider, "anthropic")
+    assert_library_error(info, "anthropic")
+    assert isinstance(info.value.__cause__, TypeError)
+
+
+def test_gemini_generate_content_with_new_signature(monkeypatch):
+    # Bản google-genai khác đổi tên tham số "config" của models.generate_content.
+    provider = gemini_real(lambda request: pytest.fail("không được gọi mạng"))
+    models_cls = type(provider._client.models)
+
+    def generate_content(self, *, model, contents, generation_config=None):
+        pytest.fail("không được tới đây")
+
+    monkeypatch.setattr(models_cls, "generate_content", generate_content)
+    with pytest.raises(AIError) as info:
+        generate(provider, "gemini")
+    assert_library_error(info, "gemini")
+    assert isinstance(info.value.__cause__, TypeError)
+
+
+class FakeStream:
+    def __init__(self, message):
+        self.message = message
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def get_final_message(self):
+        return self.message
+
+
+class StreamWithoutFinalMessage(FakeStream):
+    get_final_message = None  # đổi tên hàm: gọi None → TypeError
+
+
+def anthropic_fake(make_stream):
+    client = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=make_stream)))
+    return AnthropicProvider(ANTHROPIC_KEY, client=client)
+
+
+@pytest.mark.parametrize(
+    "make_stream",
+    [
+        # Message không còn thuộc tính parsed_output.
+        lambda **kw: FakeStream(SimpleNamespace(stop_reason="end_turn", content=[])),
+        # Message không còn stop_reason.
+        lambda **kw: FakeStream(SimpleNamespace(parsed_output=Answer(text="x"))),
+        # stream() không còn là context manager.
+        lambda **kw: SimpleNamespace(get_final_message=lambda: None),
+        # Đổi tên get_final_message.
+        lambda **kw: StreamWithoutFinalMessage(None),
+    ],
+    ids=["mat-parsed_output", "mat-stop_reason", "khong-context-manager", "doi-ten-ham"],
+)
+def test_anthropic_shape_changes_are_library_errors(make_stream):
+    with pytest.raises(AIError) as info:
+        generate(anthropic_fake(make_stream), "anthropic")
+    assert_library_error(info, "anthropic")
+
+
+def test_openai_client_without_responses_create():
+    provider = OpenAIProvider(OPENAI_KEY, client=SimpleNamespace(responses=SimpleNamespace()))
+    with pytest.raises(AIError) as info:
+        generate(provider, "openai")
+    assert_library_error(info, "openai")
+    assert isinstance(info.value.__cause__, AttributeError)
+
+
+def raising_client(vendor, error):
+    def boom(**kwargs):
+        raise error
+
+    if vendor == "anthropic":
+        return anthropic_fake(boom)
+    if vendor == "openai":
+        client = SimpleNamespace(responses=SimpleNamespace(create=boom))
+        return OpenAIProvider(OPENAI_KEY, client=client)
+    client = SimpleNamespace(models=SimpleNamespace(generate_content=boom))
+    return GeminiProvider(GEMINI_KEY, client=client)
+
+
+@pytest.mark.parametrize(
+    ("vendor", "module", "attr"),
+    [
+        ("anthropic", anthropic, "AuthenticationError"),
+        ("openai", openai, "BadRequestError"),
+        ("openai", openai, "AuthenticationError"),
+        ("gemini", errors, "ClientError"),
+        ("gemini", errors, "APIError"),
+    ],
+)
+def test_renamed_exception_class_in_provider_is_library_error(monkeypatch, vendor, module, attr):
+    # Thư viện đổi tên lớp lỗi: khi có lỗi, chính câu "except thư_viện.TênCũ" ném AttributeError.
+    monkeypatch.delattr(module, attr)
+    with pytest.raises(AIError) as info:
+        generate(raising_client(vendor, RuntimeError("lỗi bất kỳ")), vendor)
+    assert_library_error(info, vendor)
+    assert isinstance(info.value.__cause__, AttributeError)
+
+
+def models_list_raising(error):
+    def boom(**kwargs):
+        raise error
+
+    return SimpleNamespace(models=SimpleNamespace(list=boom))
+
+
+CHECK_CASES = [
+    ("ANTHROPIC_API_KEY", ANTHROPIC_KEY, "Claude", anthropic, "AuthenticationError"),
+    ("OPENAI_API_KEY", OPENAI_KEY, "ChatGPT", openai, "AuthenticationError"),
+    ("GEMINI_API_KEY", GEMINI_KEY, "Gemini", errors, "APIError"),
+]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T026-2: check_api_key để lọt AttributeError thô khi thư viện đổi tên lớp lỗi",
+)
+@pytest.mark.parametrize(("name", "key", "label", "module", "attr"), CHECK_CASES)
+def test_check_api_key_renamed_exception_class(monkeypatch, name, key, label, module, attr):
+    # Nút Kiểm tra khóa (env_file) cũng phải ra câu "uv sync" khi thư viện lệch (phiếu T-026,
+    # yêu cầu 1: "cả 3 hãng, lúc nhập thư viện lẫn lúc gọi"), không ném lỗi thô ra ngoài.
+    monkeypatch.delattr(module, attr)
+    result = env_file.check_api_key(name, api_key=key, client=models_list_raising(RuntimeError()))
+    assert result.status == "unknown"
+    assert result.message == library_message(label)
+
+
+def test_app_bug_inside_generate_keeps_root_cause(monkeypatch):
+    # Rủi ro 1 của Thợ Máy: lỗi kiểu Python trong code của chính app (ở đây _block của phần nội
+    # dung, gọi ở đường Gemini 2 lượt) cũng bị đổi thành câu "uv sync". Ít nhất lỗi gốc phải
+    # còn trong __cause__ và trang không sập (không ném lỗi thô).
+    from seo_app.content import prompts
+
+    app_bug = TypeError("lỗi trong code của app")
+
+    def broken_block(*args, **kwargs):
+        raise app_bug
+
+    monkeypatch.setattr(prompts, "_block", broken_block)
+    part = {"text": "ghi chép"}
+    notes = {
+        "candidates": [{"content": {"role": "model", "parts": [part]}, "finishReason": "STOP"}]
+    }
+    provider = gemini_real(lambda request: httpx.Response(200, json=notes))
+    with pytest.raises(AIError) as info:
+        generate(provider, "gemini", model="gemini-2.5-pro", web_search=True)
+    assert info.value.__cause__ is app_bug
+
+
+# ============================================== dữ liệu lạ từ máy chủ (mã 200, sai định dạng)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T026-3: JSON sai kiểu làm google-genai ném TypeError/AttributeError → câu 'uv sync'",
+)
+@pytest.mark.parametrize(
+    "body",
+    [{"candidates": [1]}, {"candidates": [{"finishReason": 5}]}],
+    ids=["candidate-la-so", "finishReason-la-so"],
+)
+def test_gemini_strange_json_is_not_reported_as_library_problem(body):
+    provider = gemini_real(lambda request: httpx.Response(200, json=body))
+    with pytest.raises(AIError) as info:
+        generate(provider, "gemini")
+    assert "uv sync" not in str(info.value)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"candidates": "x"},
+        {"candidates": [1]},
+        {"candidates": [{"content": "x"}]},
+        {"candidates": [{"finishReason": 5}]},
+        {"usageMetadata": "x"},
+        {"promptFeedback": "x"},
+        [1, 2],
+        "abc",
+        None,
+    ],
+)
+def test_gemini_strange_json_never_crashes(body):
+    # Dù câu báo chưa trúng (SL-T026-3), mọi dạng JSON lạ đều ra AIError, không lỗi thô.
+    provider = gemini_real(lambda request: httpx.Response(200, json=body))
+    with pytest.raises(AIError):
+        generate(provider, "gemini")
+
+
+HTML = {"content-type": "text/html"}
+SSE = {"content-type": "text/event-stream"}
+JSON = {"content-type": "application/json"}
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T026-4 (có sẵn trên main, ngoài phạm vi T-026): lỗi thô lọt ra khi mã 200 sai dạng",
+)
+@pytest.mark.parametrize(
+    ("vendor", "response"),
+    [
+        ("anthropic", httpx2.Response(200, text="<html>Wi-Fi</html>", headers=HTML)),
+        ("anthropic", httpx2.Response(200, json={"x": 1})),
+        (
+            "anthropic",
+            httpx2.Response(200, text="event: message_start\ndata: {sai\n\n", headers=SSE),
+        ),
+        ("openai", httpx2.Response(200, text="{sai", headers=JSON)),
+    ],
+    ids=["anthropic-html", "anthropic-json-thuong", "anthropic-sse-hong", "openai-json-hong"],
+)
+def test_garbage_200_gives_vietnamese_error(vendor, response):
+    make = anthropic_real if vendor == "anthropic" else openai_real
+    with pytest.raises(AIError):
+        generate(make(lambda request: response), vendor)

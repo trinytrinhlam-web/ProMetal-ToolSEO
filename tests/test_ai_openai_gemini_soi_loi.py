@@ -456,6 +456,9 @@ def test_gemini_other_400_is_not_reported_as_bad_key(message, status, expected):
         provider.generate(task("gemini"), system="s", prompt="p", schema=Answer)
     assert expected in str(info.value)
     assert "GEMINI_API_KEY" not in str(info.value)
+    # LC-3 (T-026): câu máy chủ chỉ dùng để nhận ra lỗi, không được chép nguyên ra màn hình.
+    # "User location" ở trên đến từ gợi ý viết sẵn KNOWN_400_HINTS, không phải từ máy chủ.
+    assert message not in str(info.value)
 
 
 class _RaisingGemini:
