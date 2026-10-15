@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Thấp (phải xong trước khi hết Giai đoạn 2) |
 | Phụ thuộc | T-018 (đã lên `main`) |
-| Trạng thái | Mới |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 
@@ -56,3 +56,5 @@ S2 (không lộ khóa trong lỗi), W4 / mục 2.7 (chỉ gọi máy chủ chín
 ## Ghi chú của Chỉ Huy
 
 - Làm trong phiên con **"Thợ Máy · T-026 Lỗi Thấp lớp AI"**, trên nhánh tạm `team/T-026` (tạo từ `main`). Mở khi còn chỗ (tối đa 3 phiên cùng lúc).
+- 2026-10-15 (Chỉ Huy A): giao cho Thợ Máy chạy dưới phiên Chỉ Huy A trên máy chủ dự án (Windows), trong worktree riêng `D:\ProMetal-ToolSEO\wt-T-026`. Nhánh `team/T-026` tạo lại từ `main` `d91a80d`.
+- Trên Windows, `main` đang có 152 test đỏ do bộ test (phiếu T-027 sửa song song). Tiêu chí "pytest sạch" của phiếu này tính là: **không có test hỏng nào ngoài danh sách đỏ sẵn đó**, và mọi test mới của phiếu đều qua. Ghi rõ trong báo cáo.

@@ -12,10 +12,12 @@ _Cập nhật: 2026-10-15 11:00 (Chỉ Huy A). Hai Chỉ Huy phối hợp qua [d
 
 > 2026-10-15 11:30: Chỉ Huy A (Claude Desktop trên máy chủ dự án) đã xóa các nhánh tạm gộp xong: `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
 
-Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (thanh bên app Claude), tên phiên = tên agent + số phiếu. Mỗi phiếu làm trên nhánh tạm `team/T-xxx`, gộp vào `main` khi Lá Chắn ĐẠT.
+Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ quyền (xem [dong-bo.md](dong-bo.md)), tên phiên = tên agent + số phiếu. Mỗi phiếu làm trên nhánh tạm `team/T-xxx`, gộp vào `main` khi Lá Chắn ĐẠT.
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
+| [T-027](tickets/T-027-test-chay-tren-windows.md) | Bộ test chạy xanh trên Windows (bộ chặn mạng, tên test quá dài) | Soi Lỗi (`Soi Lỗi · T-027 Test trên Windows`, dưới phiên Chỉ Huy A) | `team/T-027` | Đang làm | |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy (`Thợ Máy · T-026 Lỗi Thấp lớp AI`, dưới phiên Chỉ Huy A) | `team/T-026` | Đang làm | |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ
@@ -73,4 +75,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-027
+## Số phiếu tiếp theo: T-028

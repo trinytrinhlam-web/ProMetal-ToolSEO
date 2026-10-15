@@ -36,7 +36,9 @@ _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
 - ✅ Lập phiếu điều phối chung; đưa `docs/plan/` lên repo (`5d62087`).
 - ✅ Gộp `team/T-024` (T-022 + T-024) vào `main` (`958a93e`); xóa nhánh `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
-- ⏳ Đang làm: lập phiếu T-027 (Soi Lỗi sửa test chạy trên Windows), rồi giao T-027 và T-026 (Thợ Máy).
+- ✅ Lập phiếu T-027 (Soi Lỗi: bộ test chạy xanh trên Windows).
+- ⏳ Đang làm: giao T-027 cho Soi Lỗi và T-026 cho Thợ Máy. Hai agent chạy dưới phiên Chỉ Huy A, mỗi agent một worktree riêng (`D:\ProMetal-ToolSEO\wt-T-027`, `wt-T-026`), đẩy lên nhánh `team/T-027`, `team/T-026`. **Chỉ Huy B: nếu tiếp quản, xem hai nhánh này trên GitHub để biết agent đã làm tới đâu; đừng giao lại hai phiếu này.**
+- Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
 
 ## Nhật ký bàn giao
 
