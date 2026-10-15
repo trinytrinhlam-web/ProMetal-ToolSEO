@@ -61,6 +61,7 @@ Phiếu chỉ sửa tài liệu thì bỏ qua bước 4; bước 5 vẫn chạy 
   - Soi Lỗi rồi Lá Chắn mở phiên con riêng, làm trên **cùng nhánh** đó. Soi Lỗi được thêm test; Lá Chắn chỉ thêm biên bản.
   - Lá Chắn ĐẠT: Chỉ Huy gộp nhánh vào `main` (merge, không rebase), chạy lại `uv run pytest` và `uv run ruff check .`, đẩy `main`, rồi **xóa nhánh tạm** để repo gọn.
   - Xong việc, phiên con gửi Chỉ Huy một tin ngắn (công cụ `send_message`); Chỉ Huy cũng tự kiểm tra định kỳ.
+  - **Tối đa 3 phiên con chạy cùng lúc.** Tài khoản Claude có giới hạn sử dụng theo 5 tiếng, dùng chung cho mọi phiên, kể cả "Điều phối". Ngày 2026-10-14 chạy 7 phiên cùng lúc thì chạm giới hạn, 4 phiên dừng giữa chừng. Phiên con phải commit và đẩy lên nhánh sau từng phần lớn, để không mất việc nếu bị dừng.
 - **Trong Claude Code trên máy** (một thư mục làm việc): Chỉ Huy gọi agent phụ bằng tên trong `.claude/agents/`, kèm đường dẫn phiếu. Agent phụ không nói chuyện trực tiếp với chủ dự án; Chỉ Huy tổng hợp kết quả và báo lại.
 - **Với AI khác**: mở một phiên mới, đưa cho AI đó nội dung `AGENTS.md`, hồ sơ vai trò và phiếu. Yêu cầu AI nộp báo cáo đúng mẫu.
 
