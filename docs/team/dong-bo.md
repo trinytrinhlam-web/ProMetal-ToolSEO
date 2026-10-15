@@ -37,7 +37,11 @@ _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 - ✅ Lập phiếu điều phối chung; đưa `docs/plan/` lên repo (`5d62087`).
 - ✅ Gộp `team/T-024` (T-022 + T-024) vào `main` (`958a93e`); xóa nhánh `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
 - ✅ Lập phiếu T-027 (Soi Lỗi: bộ test chạy xanh trên Windows).
-- ⏳ Đang làm: giao T-027 cho Soi Lỗi và T-026 cho Thợ Máy. Hai agent chạy dưới phiên Chỉ Huy A, mỗi agent một worktree riêng (`D:\ProMetal-ToolSEO\wt-T-027`, `wt-T-026`), đẩy lên nhánh `team/T-027`, `team/T-026`. **Chỉ Huy B: nếu tiếp quản, xem hai nhánh này trên GitHub để biết agent đã làm tới đâu; đừng giao lại hai phiếu này.**
+- ⏳ **Đã giao lúc 11:45, agent đang chạy:** T-027 cho Soi Lỗi và T-026 cho Thợ Máy. Hai agent chạy dưới phiên Chỉ Huy A, mỗi agent một worktree riêng (`D:\ProMetal-ToolSEO\wt-T-027`, `wt-T-026`), đẩy lên nhánh `team/T-027`, `team/T-026`. **Chỉ Huy B: nếu tiếp quản, xem hai nhánh này trên GitHub để biết agent đã làm tới đâu; đừng giao lại hai phiếu này.**
+- ✅ 12:10 Thợ Máy nộp T-026 (`f042764` trên `team/T-026`). ⏳ Đã giao **Soi Lỗi · T-026** kiểm trên cùng worktree `wt-T-026`. T-027 (Soi Lỗi) vẫn đang chạy.
+- ✅ 12:30 Soi Lỗi nộp T-027 (`b87d3a4` trên `team/T-027`): Windows 2.358 qua, 0 hỏng. ⏳ Đã giao **Lá Chắn · T-027** kiểm bộ chặn mạng (worktree `wt-T-027`); Fable bị từ chối vì hết lượt dùng, chạy tạm Opus 5.5. Soi Lỗi báo thêm một lỗ có từ trước: gửi UDP (`sendto`) không bị chặn; chờ Lá Chắn đánh giá rồi lập phiếu riêng.
+- ⚠️ 12:00 → 12:30 cả tài khoản Chỉ Huy A chạm giới hạn sử dụng; Soi Lỗi · T-026 và Lá Chắn · T-027 dừng giữa chừng, **chưa commit gì**. 12:32 đã chạy tiếp cả hai (nhánh vẫn ở `f042764` và `b87d3a4`). Đã dặn agent commit từng phần nhỏ.
+- Bước kế tiếp khi hai agent nộp báo cáo: Chỉ Huy đọc báo cáo, giao Soi Lỗi kiểm T-026 (trên `team/T-026`), rồi Lá Chắn kiểm từng nhánh, ĐẠT thì gộp vào `main`. Nên gộp T-027 trước để các lượt kiểm sau chạy xanh trên Windows.
 - Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
 
 ## Nhật ký bàn giao
