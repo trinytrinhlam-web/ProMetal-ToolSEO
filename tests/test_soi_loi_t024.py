@@ -236,10 +236,31 @@ def test_tagged_item_with_blank_line_then_indented_continuation():
     assert "2025" not in confirmed_profile(text)
 
 
+INVISIBLE = ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad"]
+
+
 @pytest.mark.xfail(
     strict=True,
-    reason="SL-024-2: ký tự BOM đứng trước «>» (giữa file, ví dụ dán từ file khác) không được "
-    "coi là ghi chú",
+    reason="SL-024-2: ký tự vô hình (U+200B…, chép từ web/Zalo) chèn trong nhãn làm nhãn không "
+    "được nhận, cả ý lọt vào prompt",
 )
-def test_note_preceded_by_bom_is_dropped():
-    assert confirmed_profile("- Hotline 0909\n﻿> ghi chú riêng") == "- Hotline 0909"
+@pytest.mark.parametrize("ch", INVISIBLE)
+@pytest.mark.parametrize("tag", ["[CẦN{c}XÁC NHẬN]", "[CẦN {c}XÁC NHẬN]", "[{c}CẦN XÁC NHẬN]"])
+def test_tag_with_invisible_char_is_recognised(ch, tag):
+    text = f"- Email x {tag.format(c=ch)}\n- Hotline 0909"
+    assert confirmed_profile(text) == "- Hotline 0909"
+
+
+def test_invisible_char_before_tag_bracket_still_recognised():
+    for ch in INVISIBLE:
+        assert confirmed_profile(f"- Email x {ch}[CẦN XÁC NHẬN]\n- B") == "- B"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-024-2: ký tự vô hình (BOM, U+200B…) đứng trước «>» thì dòng ghi chú không bị bỏ",
+)
+@pytest.mark.parametrize("ch", INVISIBLE)
+@pytest.mark.parametrize("indent", ["", "  "])
+def test_note_preceded_by_invisible_char_is_dropped(ch, indent):
+    assert confirmed_profile(f"- Hotline 0909\n{indent}{ch}> ghi chú riêng") == "- Hotline 0909"
