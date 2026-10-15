@@ -166,6 +166,35 @@ def test_ai_naming_itself_markdown_underscore_and_family_names(monkeypatch, text
         assert word not in shown, word
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T019-2: tên mô hình ngắn/gõ nhầm che mất chữ thường trong bài mọi ứng viên",
+)
+@pytest.mark.parametrize("short_model", ["c", "10"])
+def test_short_or_mistyped_model_name_does_not_wreck_other_entries(monkeypatch, short_model):
+    # Ứng viên gõ nhầm tên mô hình (máy chủ báo lỗi) không được làm hỏng bài của ứng viên khác:
+    # hoặc tên quá ngắn bị từ chối trước khi gọi AI, hoặc bài của ứng viên kia còn nguyên chữ.
+    text = "Cửa cuốn của chúng tôi bền 10 năm."
+
+    def write(task):
+        if task.model == short_model:
+            raise AIError("Không có mô hình này.")
+        return text
+
+    class Vendor(WritingVendor):
+        def generate(self, task, *, system, prompt, schema):
+            return BlindSample(intro=self.write(task), heading="Mục", body=self.write(task))
+
+    monkeypatch.setattr(blind_test, "make_provider", lambda p, s: Vendor(write))
+    candidates = [Candidate("openai", short_model), Candidate("openai", "mo-hinh-bi-mat-y2")]
+    try:
+        entries, _ = run(candidates)
+    except AIError:
+        return  # từ chối tên quá ngắn trước khi gọi AI: chấp nhận được
+    good = [e for e in entries if e.ok]
+    assert len(good) == 1 and good[0].intro == text
+
+
 # ======================================== một hãng lỗi / thiếu khóa / thiếu thư viện
 
 
