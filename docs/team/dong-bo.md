@@ -75,8 +75,8 @@ Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao l�
 - Không đụng `team/T-025` (Soi Lỗi của B có thể còn chạy).
 - ✅ 14:24 Lá Chắn T-028 **ĐẠT** (`9e55d38`). Chờ gộp ngay sau T-029 + T-030.
 - ✅ T-029 + T-030 trên Windows: 2 lượt đều 2.758 qua, 0 hỏng; test IPv6, `test_proactor_sendto_is_wrapped_on_windows`, các tham số `vong-lap-mac-dinh` đều PASSED; ruff sạch.
-- ✅ 14:38 Gộp T-029 (`7c8604e`) và T-028 (`d08f8ca`) vào `main`. Windows 3.110 qua, 0 hỏng. Xóa nhánh `team/T-028`, `team/T-029`.
-- ✅ 14:40 Soi Lỗi T-019 **đạt có điều kiện** (`e3cee76`). ⏳ Giao **Thợ Máy · T-019 lượt 2** (worktree `wt-T-019`): sửa SL-T019-1, SL-T019-2, câu lỗi nhắc mục «blind_test» không có trong `config/ai.toml`. Đã dặn merge `main` vào nhánh trước.
+- ✅ 14:29 Gộp T-029 (`7c8604e`) và T-028 (`d08f8ca`) vào `main`. Windows 3.110 qua, 0 hỏng. Xóa nhánh `team/T-028`, `team/T-029`.
+- ✅ 14:29 Soi Lỗi T-019 **đạt có điều kiện** (`e3cee76`). ⏳ Giao **Thợ Máy · T-019 lượt 2** (worktree `wt-T-019`): sửa SL-T019-1, SL-T019-2, câu lỗi nhắc mục «blind_test» không có trong `config/ai.toml`. Đã dặn merge `main` vào nhánh trước.
 - ✅ Lập T-031 (địa chỉ trần, email trong chữ AI thành link; làm sau T-019). Số phiếu tiếp theo: **T-032**.
 
 ## Nhật ký bàn giao
