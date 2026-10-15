@@ -34,14 +34,16 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Trạng thái lúc Chỉ Huy A trả quyền (13:50). **Mọi agent của Chỉ Huy A đã dừng; không còn ai đang sửa nhánh nào.** Việc dở đều đã đẩy lên GitHub, trên máy không còn gì.
+Chỉ Huy B, cập nhật 2026-10-15 13:20. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; nhánh nào cũng đẩy lên GitHub.
 
-| Phiếu | Nhánh (HEAD) | Đã xong | Việc tiếp theo cho Chỉ Huy B |
+| Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) Lỗi Thấp lớp AI | `team/T-026` (`ac9fbda`) | Thợ Máy 2 lượt; Soi Lỗi lượt 2 **đạt**: Windows 2.718 qua, 0 hỏng. Nhánh đã merge `main` `e4107f2` | **Giao Lá Chắn kiểm từ đầu.** Lá Chắn của A bị dừng khi mới đọc, **chưa viết biên bản**. Phạm vi diff, trọng tâm: xem mục bàn giao 13:50 bên dưới. ĐẠT thì gộp vào `main`, xóa nhánh, rồi giao T-028 |
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) Bộ chặn mạng: UDP, tra tên | `team/T-029` (`3628608`) | Soi Lỗi đã có code (`89e6e8c`) và test (`3628608`, file `tests/test_soi_loi_t029.py`). Chỉ Huy A chạy thử `test_soi_loi_t027.py` + `test_soi_loi_t029.py` + `test_safety.py`: 120 qua | **Soi Lỗi làm nốt:** chạy toàn bộ `uv run pytest` (2 lần), viết báo cáo `docs/team/reports/T-029-soi-loi.md`. Rồi Lá Chắn kiểm, ĐẠT thì gộp |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | chưa có | Phiếu đã lập | Giao Thợ Máy **sau khi T-026 lên `main`** (cùng sửa `seo_app/ai/`) |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`a1d48d4`) | Soi Lỗi có 2 commit từ sáng 15/10, chưa báo cáo | Nhánh **chưa merge `main`**, nên còn thiếu T-027 (sửa cùng thư mục `tests/`). Merge `main` vào nhánh trước, rồi Soi Lỗi làm tiếp và nộp báo cáo |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) Lỗi Thấp lớp AI | `team/T-026` (`ac9fbda`) | Lá Chắn (Opus tạm) kiểm từ đầu | ĐẠT thì gộp vào `main`, rồi giao T-028 |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`3628608`) | Soi Lỗi làm nốt T-029 và làm T-030 | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
+| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | chưa có | Chờ T-026 lên `main` | Giao Thợ Máy |
+
+**Lưu ý cho Chỉ Huy A:** `main` hiện **đỏ trên Linux** (9 test trong `tests/test_soi_loi_t027.py`: thiếu `socket._fallback_socketpair` trên Python 3.12.3, máy không có IPv6). Trên Windows vẫn xanh. Đang sửa ở T-030.
 
 ## Nhật ký bàn giao
 
@@ -51,7 +53,8 @@ _Mục mới nhất ở trên cùng._
 
 - `git pull` về `main` = `ce8bc62`. Đọc mục bàn giao 13:50 của Chỉ Huy A, sẽ làm tiếp theo bảng "Đang làm dở".
 - Giờ trong mục bàn giao của A (13:50) lệch với giờ commit `ce8bc62` (13:08). Chỉ Huy B ghi giờ theo đồng hồ máy chủ (UTC+7).
-- Trước khi giao việc: kiểm tra các phiên con cũ của Chỉ Huy B (Soi Lỗi T-025, Thợ Máy T-026, Lá Chắn T-022 + T-024 mở sáng 15/10) đã dừng hẳn, để không ai đẩy chồng lên nhánh A đã tạo lại.
+- Đã kiểm tra: các phiên con cũ của B (Thợ Máy T-026, Soi Lỗi T-025 mở sáng 15/10) dừng từ 08:12 vì giới hạn sử dụng, không còn đẩy gì. Em lưu trữ chúng.
+- Gộp `main` vào `team/T-025` (`ce1a79c`). Chạy toàn bộ test trên Linux: **9 hỏng, đều ở `tests/test_soi_loi_t027.py`**, và cũng hỏng y vậy trên `main`. Lập T-030, giao chung với T-029.
 
 ### 2026-10-15 13:50 · Chỉ Huy A trả quyền (chủ dự án yêu cầu dừng, để Chỉ Huy B làm tiếp)
 
