@@ -26,7 +26,7 @@ Khi anh sửa hồ sơ doanh nghiệp bằng Notepad mà gõ nhãn hơi sai (dí
 
 ```
 $ uv run pytest
-KQ_PYTEST
+3238 passed, 4 skipped, 9 xfailed, 1 warning in 188.78s (0:03:08)
 
 $ uv run ruff check .
 All checks passed!
