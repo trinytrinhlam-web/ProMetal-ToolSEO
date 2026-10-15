@@ -124,3 +124,58 @@ Soát thêm thư viện trong `.venv`: không có `from socket import getaddrinf
 | `test_udp_sendmsg_blocked`, `test_proactor_sendto_is_wrapped_on_windows` | `return` sớm khi không có `sendmsg` / `windows_events` | Có, và nhánh `sendmsg` còn khẳng định `_socket` cũng không có | — |
 
 Trên Linux cloud: 4 bỏ qua, đúng 4 test IPv6 ở trên (`pytest -rs`). Trên Windows/Mac có IPv6 thì cả 4 chạy.
+
+## Kết quả công cụ quét
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pip-audit | Không chạy: phiếu không đổi `pyproject.toml`/`uv.lock` (Chỉ Huy cho phép bỏ) | — |
+| bandit | `-r tests/conftest.py tests/windows_socketpair.py`: **0 vấn đề** (224 dòng). Chạy thêm trên `tests/test_soi_loi_t027.py`, `tests/test_soi_loi_t029.py`: 39 × B101 (`assert` trong test), 1 × B104 (`tests/test_soi_loi_t027.py:127`, có từ T-027) | Có, báo nhầm (dưới) |
+| detect-secrets | `scan` trên 4 file test + báo cáo Soi Lỗi: `results: {}` | Có |
+| Soát lịch sử git | `git log -p origin/main..HEAD \| grep -inE "api[_-]?key\|password\|secret\|token\|sk-ant\|AIza"`: 0 dòng | Có |
+| pytest (Linux, Python 3.12.3) | `uv run pytest`: **2758 passed, 4 skipped, 9 xfailed** in 139s (số lớn hơn báo cáo Soi Lỗi vì nhánh đã gộp `main` mới, có test T-026). 4 bỏ qua = 4 test IPv6; 9 xfailed là lỗi đã biết từ trước, ngoài phiếu này | Có |
+| pytest (Python 3.13.16, hàm thật) | `tests/test_soi_loi_t027.py`, `test_soi_loi_t029.py`, `test_safety.py`: **114 passed, 4 skipped** (môi trường `uv run --isolated` tạm) | Có |
+| ruff | `uv run ruff check .`: All checks passed! (`ruff format --check` báo `tests/test_soi_loi_t029.py:348` và 10 file khác của repo chưa định dạng; dự án không bắt buộc `ruff format`, không phải lỗi) | Có |
+
+## Báo nhầm đã loại
+
+- **B101** (`assert` trong test): cách viết chuẩn của pytest, test không chạy với `-O`.
+- **B104** `tests/test_soi_loi_t027.py:127` (có từ T-027): chuỗi `"0.0.0.0"` là **đích bị chặn** trong test `connect`, không phải bind ra mọi giao diện.
+
+## Phần chưa kiểm được trên Linux
+
+Máy cloud là Linux, Python 3.12.3, không có IPv6. Những phần sau **chưa ai chạy thật** (Soi Lỗi cũng chưa):
+
+1. **`IocpProactor.connect`/`sendto` bị bọc (`tests/conftest.py:153-168`)**: chỉ import được trên Windows. Test liên quan: `test_proactor_sendto_is_wrapped_on_windows`, `test_asyncio_sock_sendto_blocked[*-vong-lap-mac-dinh]`, `test_asyncio_datagram_transport_sendto_blocked[*-vong-lap-mac-dinh]` (trên Linux tham số "mặc định" là Selector, nên chưa kiểm đường Proactor). Theo mã nguồn CPython 3.12, `_ProactorDatagramTransport` gửi bằng `self._loop._proactor.sendto(...)` và `loop.sock_sendto` gọi `self._proactor.sendto(...)`, nên bọc ở lớp `IocpProactor` là đủ; lỗi `RealNetworkBlocked` (là `RuntimeError`) sẽ đi vào `_fatal_error` → `connection_lost`, đúng điều test chờ. Đây là suy luận từ mã nguồn, chưa chạy.
+2. **Đổi `return` sớm thành `if` trong `_block_real_network`** (đường Windows): đọc kỹ thấy đúng, chưa chạy.
+3. **`socket.socketpair` trên Windows** đi qua bản bọc `allow_own_link` mới (listener đầu tiên + một lần connect), dùng cho vòng lặp asyncio và Streamlit `AppTest`: nếu sai thì hàng loạt test giao diện trên Windows sẽ đỏ (hỏng to tiếng, không lọt mạng).
+4. **Test IPv6 thật** (4 test bỏ qua trên cloud) và tham số `ipv6` của `test_soi_loi_t029.py`.
+5. **Mac**: chưa có máy. Theo mã nguồn giống Linux (AF_UNIX, có `sendmsg`, không có `windows_events`), khác là thường có IPv6.
+
+**Đề xuất cách Chỉ Huy A (hoặc chủ dự án) kiểm trên Windows trước khi gộp** (trên nhánh `team/T-029`, máy Windows):
+
+```
+git fetch origin
+git switch team/T-029
+git pull
+uv run pytest -q -rs
+uv run pytest -q -rs
+uv run pytest -q tests/test_soi_loi_t027.py tests/test_soi_loi_t029.py tests/test_safety.py -v -k "proactor or vong-lap-mac-dinh or ipv6 or socketpair"
+uv run ruff check .
+```
+
+Đạt khi: cả hai lượt 0 hỏng, 0 lỗi; dòng `-rs` **không** có bỏ qua IPv6 nào (Windows có `::1`), hoặc nếu có thì lý do đúng là máy tắt IPv6; lệnh thứ ba cho thấy `test_proactor_sendto_is_wrapped_on_windows` và các tham số `vong-lap-mac-dinh` đều **PASSED** (không phải bỏ qua). Ghi kết quả (số qua/bỏ qua, phiên bản Python `uv run python -VV`) vào `docs/team/dong-bo.md` hoặc phần bổ sung của báo cáo Soi Lỗi. Hỏng ở đây thì **không gộp**, giao lại Soi Lỗi.
+
+## Ghi chú thêm (không phải lỗi)
+
+- Soi Lỗi đề xuất ghim cùng bản vá Python trên mọi máy (`.python-version` hiện là `3.12`: cloud 3.12.3, Windows 3.12.15). Về bảo mật tôi đồng ý: hai máy chạy cùng một đường `socketpair` thì test chứng minh đúng thứ chạy thật. Việc này đổi môi trường, cần chủ dự án duyệt; không phải điều kiện của phiếu này.
+- Trên máy có `socket._fallback_socketpair`, fixture dùng hàm thật của Python; bản chép chỉ chạy trên Python cũ (3.12.3 Linux/Mac). Nếu sau này ghim Python ≥ 3.12.4 trên mọi máy thì có thể bỏ hẳn `tests/windows_socketpair.py` (và cả lỗi #1).
+
+## Điều kiện
+
+Phiếu được **gộp vào `main`** khi đủ cả hai:
+
+1. **Chạy trên Windows** theo hướng dẫn ở mục trên: 2 lượt `uv run pytest`, 0 hỏng, các test Proactor và IPv6 thật sự chạy. (Đây cũng là tiêu chí xong của chính phiếu T-029.)
+2. **Lỗi #1 (Thấp):** Soi Lỗi thêm dòng bản quyền PSF và tóm tắt đủ thay đổi vào docstring `tests/windows_socketpair.py`, trên nhánh `team/T-029`. Chỉ sửa docstring thì không cần Lá Chắn kiểm lại; Chỉ Huy đối chiếu bằng `git diff` là đủ.
+
+Lỗi #2 (Thấp, có từ trước): không cần phiếu riêng; ghi vào bảng việc để làm khi có dịp sửa `tests/conftest.py`.
