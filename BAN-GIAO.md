@@ -91,7 +91,7 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 
 **Việc nhỏ còn treo:**
 
-- Lá Chắn kiểm lại T-013 → T-021 bằng Fable 5.1 sau ngày 01/11 (các lượt vừa rồi chạy tạm bằng Opus).
+- Lá Chắn kiểm lại bằng Fable 5.1 sau ngày 01/11 các phiếu đã chạy tạm bằng Opus: T-013 → T-021, T-018, T-022, T-023, T-024 (ngày 15/10 thử Fable vẫn báo giới hạn tới 01/11).
 - Thư Ký cập nhật `README.md`: dòng trạng thái đầu file đã cũ; mục xử lý sự cố còn bảo sửa `.env` bằng tay (nay nhập khóa trong Cài đặt → Kết nối); thêm ChatGPT/Gemini sau khi T-018 lên `main`.
 - Meta title/description chưa được lưu vào nháp (làm ở Giai đoạn 4).
 
