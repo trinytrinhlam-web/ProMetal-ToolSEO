@@ -12,6 +12,14 @@ bình phương tăng khoảng 16 lần. Ngưỡng 9 lần bắt được hàm b�
 
 Thêm một mốc tuyệt đối rộng cho cỡ đầy đủ (``MAX_SECONDS``, Lá Chắn T-015 #2): bắt hàm tuyến
 tính nhưng chậm bất thường (làm treo app), mà máy chậm vẫn không đỏ oan.
+
+Đo xen kẽ nhỏ / lớn (T-025): thời gian CPU vẫn bị đội lên tới khoảng 2 lần trong những đợt ngắn
+(cỡ 0,1 giây) khi có tiến trình khác chạy cùng, vì CPU dùng chung bộ nhớ đệm và xung nhịp. Trước
+đây 2 lần đo cỡ nhỏ đứng liền nhau nên cùng dính một đợt: cỡ nhỏ bị đo chậm, tỉ lệ của hàm bình
+phương tụt từ 16 xuống dưới 9 và test "phải bắt" đỏ oan. Nay lần đo cỡ nhỏ nằm ở cả hai phía lần
+đo cỡ lớn, và tỉ lệ tính từ lần nhanh nhất của mỗi cỡ. Máy bận chỉ làm thời gian dài ra, không
+bao giờ ngắn đi, nên đo thêm chỉ đưa tỉ lệ về gần giá trị thật, không che được hàm chậm thật:
+hàm bình phương chỉ lọt khi MỌI lần đo cỡ nhỏ đều bị đội lên.
 """
 
 from __future__ import annotations
@@ -24,6 +32,8 @@ FACTOR = 4  # đầu vào lớn dài gấp mấy lần đầu vào nhỏ
 MAX_RATIO = 9.0  # thời gian lớn / thời gian nhỏ tối đa
 MAX_SECONDS = 5.0  # thời gian CPU tối đa cho một lần chạy cỡ đầy đủ (hiện khoảng 0,2 giây)
 MIN_MEASURE = 0.1  # mỗi lần đo kéo dài ít nhất chừng này giây CPU (vượt độ phân giải Windows)
+CLEAR_RATIO = 6.0  # tỉ lệ dưới mức này sau vòng đầu là rõ ràng tuyến tính, khỏi đo thêm
+ROUNDS = 3  # số vòng đo (lớn rồi nhỏ) tối đa
 
 
 def _time_per_call(fn: Callable[[str], object], text: str) -> float:
@@ -43,7 +53,10 @@ def assert_scales_linearly(
 ) -> None:
     """``make(k)`` tạo đầu vào cỡ ``k``/4 so với cỡ đầy đủ; ``make(4)`` là cỡ đầy đủ.
 
-    Cỡ nhỏ lấy kết quả nhanh nhất của 2 lần đo; cỡ lớn đo tối đa 3 lần, dừng sớm khi đã đạt.
+    Thứ tự đo: nhỏ, rồi từng vòng (lớn, nhỏ). Tỉ lệ = lớn nhanh nhất / nhỏ nhanh nhất.
+    - Sau vòng 1 (2 lần đo nhỏ kẹp 1 lần đo lớn): tỉ lệ không quá ``CLEAR_RATIO`` thì dừng.
+    - Từ vòng 2 (đã có 3 lần đo nhỏ): tỉ lệ không quá ``MAX_RATIO`` thì dừng.
+    - Tối đa ``ROUNDS`` vòng. Cuối cùng tỉ lệ vẫn quá ``MAX_RATIO`` thì báo lỗi.
     """
     small, large = make(1), make(FACTOR)
     assert len(large) > len(small), "đầu vào lớn phải dài hơn đầu vào nhỏ"
@@ -51,15 +64,16 @@ def assert_scales_linearly(
     gc.disable()
     try:
         fn(small)  # chạy nháp: nạp và biên dịch biểu thức chính quy
-        t_small = max(min(_time_per_call(fn, small) for _ in range(2)), 1e-9)
+        t_small = _time_per_call(fn, small)
         t_large = float("inf")
-        for _ in range(3):
+        for done in range(1, ROUNDS + 1):
             t_large = min(t_large, _time_per_call(fn, large))
-            if t_large <= MAX_RATIO * t_small:
+            t_small = min(t_small, _time_per_call(fn, small))
+            ratio = t_large / max(t_small, 1e-9)
+            if ratio <= (CLEAR_RATIO if done == 1 else MAX_RATIO):
                 break
     finally:
         if enabled:
             gc.enable()
-    ratio = t_large / t_small
     assert ratio <= MAX_RATIO, (label, f"gấp {FACTOR} độ dài thì chậm gấp {ratio:.1f} lần")
     assert t_large <= MAX_SECONDS, (label, f"cỡ đầy đủ mất {t_large:.1f} giây CPU")
