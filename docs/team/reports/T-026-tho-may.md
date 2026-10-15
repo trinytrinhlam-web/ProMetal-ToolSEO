@@ -151,3 +151,49 @@ Windows (phiếu T-027), không có test nào mới hỏng. Lần chạy này kh
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (sau báo cáo Soi Lỗi `T-026-soi-loi.md`, ĐẠT CÓ ĐIỀU KIỆN)
+
+Bước 0: `git pull` (lấy test Soi Lỗi `c906285`), `git merge origin/main` (lấy T-027 `e4107f2`, merge
+commit `3366566`), push ngay. Từ lượt này tiêu chí là `uv run pytest` 0 hỏng, 0 lỗi.
+
+### Đã sửa
+
+| Lỗi | Cách sửa | Vị trí |
+|---|---|---|
+| **SL-T026-1** mã lỗi `www.evil.com` thành link bấm được trong câu 400 (`st.error` hiện Markdown GFM) | `safe_code` bỏ thêm mọi mã **có thể thành link**: chứa `www.` ở bất cứ đâu (GFM tự nhận `www.` cả khi đứng sau `_`), hoặc có dạng tên miền (phần sau dấu chấm cuối là tên miền cấp cao quen thuộc: `com`, `vn`, `io`, `example`, `test`…). `http(s)://` và email vốn không thể có vì bộ ký tự cho phép không có `:`, `/`, `@`. Không dùng cách bọc dấu nháy ngược vì sẽ đổi câu cố định mà test Soi Lỗi kiểm từng chữ. Mã thật của 3 hãng (`invalid_value`, `INVALID_ARGUMENT`, `reasoning.effort`…) vẫn giữ. | `seo_app/ai/base.py:83-115` |
+| **SL-T026-2** `check_api_key` để lọt `AttributeError` thô khi thư viện đổi tên lớp lỗi | Chính câu `except anthropic.AuthenticationError:` ném `AttributeError` khi lớp không còn, lỗi này nằm ngoài các nhánh `except` của khối `try` bên trong. Bọc lời gọi `checker(...)` trong `check_api_key`: `ImportError`/`AttributeError`/`TypeError` → câu "uv sync" của đúng hãng. `KeyError` vẫn chỉ nêu tên lỗi như trước (test Soi Lỗi `test_check_generic_exception_only_names_the_error`). | `seo_app/env_file.py:307-314` |
+
+Bỏ đúng 3 dấu `xfail` trong `tests/test_soi_loi_t026.py`: `test_safe_code_drops_www_autolink`,
+`test_400_code_from_server_cannot_become_link`, `test_check_api_key_renamed_exception_class`. Không sửa gì
+khác trong test của Soi Lỗi. Giữ nguyên `xfail` của SL-T026-3 và SL-T026-4 theo quyết định của Chỉ Huy
+(SL-T026-4 chuyển sang phiếu T-028).
+
+Test thêm trong `tests/test_ai_t026.py`: 7 dạng mã giống link trong `test_unsafe_codes_are_dropped`
+(`www.evil.com`, `WWW.Evil.Com`, `invalid_www.evil`, `evil.com`, `phishing.example`, `login.bank.vn`, `a.b.io`);
+`test_400_link_like_codes_never_reach_message` (3 hãng, thư viện thật + mạng giả);
+`test_check_renamed_exception_class_is_library_message` (3 hãng, đổi tên lớp lỗi khác với test của Soi Lỗi:
+`anthropic.RateLimitError`, `openai.APIStatusError`, `httpx.TimeoutException`).
+
+### Bằng chứng (Windows, máy dự án)
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest -q tests/test_ai_t026.py tests/test_soi_loi_t026.py
+253 passed, 6 xfailed in 14.53s
+
+$ uv run pytest -q -rfE
+2613 passed, 10 skipped, 9 xfailed in 199.38s (0:03:19)
+```
+
+0 hỏng, 0 lỗi. 9 `xfail` = 6 của SL-T026-3 (2) và SL-T026-4 (4), cùng 3 test cũ ngoài phạm vi.
+
+### Rủi ro lượt 2
+
+- Danh sách đuôi tên miền là danh sách chọn lọc, không đủ mọi tên miền. Với Markdown của Streamlit chỉ có dạng `www.`
+  là tự thành link với bộ ký tự này, nên danh sách chỉ là lớp phòng thêm. Bỏ nhầm một mã thật thì chỉ mất phần gợi ý,
+  câu báo vẫn đúng.
