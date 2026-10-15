@@ -41,7 +41,11 @@ _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 - ✅ 12:10 Thợ Máy nộp T-026 (`f042764` trên `team/T-026`). ⏳ Đã giao **Soi Lỗi · T-026** kiểm trên cùng worktree `wt-T-026`. T-027 (Soi Lỗi) vẫn đang chạy.
 - ✅ 12:30 Soi Lỗi nộp T-027 (`b87d3a4` trên `team/T-027`): Windows 2.358 qua, 0 hỏng. ⏳ Đã giao **Lá Chắn · T-027** kiểm bộ chặn mạng (worktree `wt-T-027`); Fable bị từ chối vì hết lượt dùng, chạy tạm Opus 5.5. Soi Lỗi báo thêm một lỗ có từ trước: gửi UDP (`sendto`) không bị chặn; chờ Lá Chắn đánh giá rồi lập phiếu riêng.
 - ⚠️ 12:00 → 12:30 cả tài khoản Chỉ Huy A chạm giới hạn sử dụng; Soi Lỗi · T-026 và Lá Chắn · T-027 dừng giữa chừng, **chưa commit gì**. 12:32 đã chạy tiếp cả hai (nhánh vẫn ở `f042764` và `b87d3a4`). Đã dặn agent commit từng phần nhỏ.
-- Bước kế tiếp khi hai agent nộp báo cáo: Chỉ Huy đọc báo cáo, giao Soi Lỗi kiểm T-026 (trên `team/T-026`), rồi Lá Chắn kiểm từng nhánh, ĐẠT thì gộp vào `main`. Nên gộp T-027 trước để các lượt kiểm sau chạy xanh trên Windows.
+- ✅ 13:00 Lá Chắn T-027 **ĐẠT** → gộp vào `main` (`e4107f2`), Windows 2.358 qua, 0 hỏng. Đã xóa nhánh và worktree `team/T-027`.
+- ✅ 13:00 Soi Lỗi T-026 **đạt có điều kiện** (`c906285`). ⏳ **Thợ Máy đang sửa lượt 2** (SL-T026-1, SL-T026-2) trong `wt-T-026`, đã dặn merge `main` vào nhánh trước.
+- ✅ Lập phiếu T-028 (Thợ Máy, chờ T-026 gộp) và T-029 (Soi Lỗi, chạy sau lượt 2 T-026).
+- Bước kế tiếp: Thợ Máy xong lượt 2 → Soi Lỗi kiểm lại → Lá Chắn T-026 → gộp. Rồi giao T-029, T-028.
+- (Cũ) Bước kế tiếp khi hai agent nộp báo cáo: Chỉ Huy đọc báo cáo, giao Soi Lỗi kiểm T-026 (trên `team/T-026`), rồi Lá Chắn kiểm từng nhánh, ĐẠT thì gộp vào `main`. Nên gộp T-027 trước để các lượt kiểm sau chạy xanh trên Windows.
 - Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
 
 ## Nhật ký bàn giao

@@ -9,9 +9,9 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - Đã xong: bộ khung app, kết nối WordPress (chỉ tạo bản nháp), AI viết bài bằng Claude (bước 1–3 của trang Soạn bài), đội agent và quy trình kiểm tra bảo mật.
 - Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu), ChatGPT và Gemini (T-018), nút Kiểm tra khóa cả 3 hãng (T-023).
 - Đã lên `main` 2026-10-15: hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
-- Phát hiện 2026-10-15: chạy test **trên Windows** có 152 test đỏ, do bộ test (không phải do app). Sẽ lập phiếu sửa.
+- 2026-10-15: bộ test giờ chạy xanh cả trên Windows (T-027).
 - Còn lại: thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động trên `main`: trên Linux (cloud) đều qua; trên Windows 2.009 qua, 152 đỏ (lỗi của bộ test, xem trên).
+- Bộ kiểm tra tự động trên `main`: 2.358 bài, đều qua trên Windows.
 
 ## 2. Lộ trình theo giai đoạn
 
