@@ -155,26 +155,3 @@ TONE_SETTINGS = {
         "quý khách hàng",
     ],
 }
-
-AI_TASKS = [
-    {"Việc": "Nghiên cứu, phân tích đối thủ", "Hãng": "Anthropic"},
-    {"Việc": "Viết bài, viết lại từng phần", "Hãng": "Anthropic"},
-    {"Việc": "Kiểm tra văn phong", "Hãng": "OpenAI"},
-    {"Việc": "Meta title, description", "Hãng": "Google Gemini"},
-    {"Việc": "Viết alt và prompt ảnh", "Hãng": "Google Gemini"},
-    {"Việc": "Tạo ảnh AI", "Hãng": "OpenAI"},
-]
-
-BLIND_OUTPUTS = {
-    "A": "Inox 304 chống gỉ tốt hơn inox 201 vì chứa nhiều niken hơn — nhưng không phải chỗ "
-    "nào cũng cần 304. Ở xưởng, chúng tôi gặp nhiều khách gần biển chọn 201 cho rẻ, rồi chỉ 1–2 "
-    "năm sau mối hàn đã lấm tấm gỉ. Ngược lại, lan can trong nhà làm bằng 201 vẫn dùng tốt nhiều "
-    "năm.",
-    "B": "Inox là vật liệu phổ biến trong xây dựng hiện nay. Có nhiều loại inox khác nhau, trong "
-    "đó 201 và 304 là hai loại thường gặp nhất. Hãy cùng tìm hiểu sự khác biệt qua bài viết dưới "
-    "đây.",
-    "C": "Cùng là cổng inox, có nhà dùng mười năm vẫn sáng, có nhà hai năm đã gỉ mối hàn. Khác "
-    "biệt thường nằm ở loại inox: 304 hay 201. Bài này giúp bạn chọn đúng loại cho từng vị trí, "
-    "để không tốn tiền oan mà cũng không phải sửa sớm.",
-}
-BLIND_MODELS = {"A": "Anthropic", "B": "Google Gemini", "C": "OpenAI"}

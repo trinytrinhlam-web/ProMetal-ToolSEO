@@ -17,6 +17,7 @@ from seo_app.ai.base import (
     ignoring_custom_headers,
     is_bad_response,
     library_error,
+    token_limit_error,
     unreadable_error,
 )
 
@@ -113,10 +114,7 @@ class AnthropicProvider:
         if message.stop_reason == "refusal":
             raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")
         if message.stop_reason == "max_tokens":
-            raise AIError(
-                f"Bài dài quá giới hạn ({task.max_tokens} token). Tăng max_tokens của việc "
-                f"«{task.name}» trong config/ai.toml."
-            )
+            raise token_limit_error(task)
         if message.stop_reason == "pause_turn":
             raise AIError("AI tìm kiếm quá lâu chưa xong. Bấm thử lại.")
         parsed = message.parsed_output

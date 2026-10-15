@@ -35,6 +35,7 @@ from seo_app.ai.base import (
     bad_request_error,
     ignoring_custom_headers,
     library_error,
+    token_limit_error,
     unreadable_error,
 )
 
@@ -159,10 +160,7 @@ def _parse(response: Any, task: TaskConfig, schema: type[T]) -> T:
     status = getattr(response, "status", None)
     reason = getattr(getattr(response, "incomplete_details", None), "reason", None)
     if status == "incomplete" and reason == "max_output_tokens":
-        raise AIError(
-            f"Bài dài quá giới hạn ({task.max_tokens} token). Tăng max_tokens của việc "
-            f"«{task.name}» trong config/ai.toml."
-        )
+        raise token_limit_error(task)
     if status == "incomplete" and reason == "content_filter":
         raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")
     if status in ("failed", "cancelled", "incomplete"):
