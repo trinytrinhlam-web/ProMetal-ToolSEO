@@ -291,31 +291,30 @@ def check_api_key(
 
     ``api_key=None``: lấy khóa đang có hiệu lực từ ``load_settings()`` (``.env`` + biến môi
     trường), để giao diện không phải giữ khóa trong bộ nhớ. ``client`` chỉ dùng cho test.
-    Hiện chỉ kiểm tra được Claude; OpenAI và Gemini chờ duyệt thư viện (T-018).
+    Mỗi hãng gọi lệnh rẻ nhất (lấy danh sách mô hình, không tốn token), có ``timeout`` và chỉ
+    gọi một lần (không tự thử lại).
     """
     _check_name(name)
-    if name != "ANTHROPIC_API_KEY":
-        return KeyCheckResult(
-            "unsupported", "Chưa hỗ trợ kiểm tra khóa này (chờ cài thư viện của hãng)."
-        )
+    label, field, checker = _CHECKERS[name]
     if api_key is None:
         try:
-            api_key = config.load_settings().anthropic_api_key
+            api_key = getattr(config.load_settings(), field)
         except config.ConfigError:
             return KeyCheckResult("unknown", "Cấu hình .env đang có lỗi, chưa kiểm tra được khóa.")
     api_key = (api_key or "").strip()
     if not api_key:
-        return KeyCheckResult("missing", "Chưa khai báo khóa Claude.")
-    return _check_anthropic(api_key, client=client, timeout=timeout)
+        return KeyCheckResult("missing", f"Chưa khai báo khóa {label}.")
+    return checker(api_key, client=client, timeout=timeout)
+
+
+def _result(status: CheckStatus, message: str) -> KeyCheckResult:
+    from seo_app.ai.base import redact_secrets
+
+    return KeyCheckResult(status, redact_secrets(message))
 
 
 def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
     import anthropic
-
-    from seo_app.ai.base import redact_secrets
-
-    def result(status: CheckStatus, message: str) -> KeyCheckResult:
-        return KeyCheckResult(status, redact_secrets(message))
 
     try:
         if client is None:
@@ -324,18 +323,97 @@ def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> Key
         # Gọi rẻ nhất: lấy danh sách mô hình, 1 mục. Không tốn token.
         client.models.list(limit=1, timeout=timeout)
     except anthropic.AuthenticationError:
-        return result("invalid", "Khóa Claude không đúng hoặc đã bị thu hồi.")
+        return _result("invalid", "Khóa Claude không đúng hoặc đã bị thu hồi.")
     except anthropic.PermissionDeniedError:
-        return result("invalid", "Khóa Claude không có quyền truy cập. Kiểm tra trong Console.")
+        return _result("invalid", "Khóa Claude không có quyền truy cập. Kiểm tra trong Console.")
     except anthropic.RateLimitError:
-        return result("unknown", "Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
+        return _result("unknown", "Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
     except anthropic.APITimeoutError:
-        return result("unknown", f"Anthropic không trả lời sau {timeout:g} giây. Thử lại sau.")
+        return _result("unknown", f"Anthropic không trả lời sau {timeout:g} giây. Thử lại sau.")
     except anthropic.APIConnectionError:
-        return result("unknown", "Không kết nối được tới Anthropic. Kiểm tra mạng Internet.")
+        return _result("unknown", "Không kết nối được tới Anthropic. Kiểm tra mạng Internet.")
     except anthropic.APIStatusError as exc:
-        return result("unknown", f"Anthropic báo lỗi {exc.status_code}. Thử lại sau ít phút.")
+        return _result("unknown", f"Anthropic báo lỗi {exc.status_code}. Thử lại sau ít phút.")
     except anthropic.AnthropicError as exc:
         # Không chép thông điệp thô của thư viện (có thể chứa header/URL).
-        return result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
-    return result("ok", "Khóa Claude dùng được.")
+        return _result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
+    return _result("ok", "Khóa Claude dùng được.")
+
+
+def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
+    import openai
+
+    try:
+        if client is None:
+            # max_retries=0: chỉ gọi một lần, người dùng biết kết quả ngay.
+            client = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=0)
+        # Gọi rẻ nhất: lấy danh sách mô hình. Không tốn token.
+        client.models.list(timeout=timeout)
+    except openai.AuthenticationError:
+        return _result("invalid", "Khóa ChatGPT không đúng hoặc đã bị thu hồi.")
+    except openai.PermissionDeniedError:
+        return _result(
+            "invalid", "Khóa ChatGPT không có quyền truy cập. Kiểm tra trên trang OpenAI."
+        )
+    except openai.RateLimitError:
+        return _result("unknown", "OpenAI đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
+    except openai.APITimeoutError:
+        return _result("unknown", f"OpenAI không trả lời sau {timeout:g} giây. Thử lại sau.")
+    except openai.APIConnectionError:
+        return _result("unknown", "Không kết nối được tới OpenAI. Kiểm tra mạng Internet.")
+    except openai.APIStatusError as exc:
+        return _result("unknown", f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.")
+    except Exception as exc:
+        # Các lỗi còn lại (của thư viện hay lọt ra từ tầng mạng khi không thử lại): chỉ nêu
+        # tên lỗi, không chép thông điệp thô (có thể chứa header/URL); không làm sập trang.
+        return _result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
+    return _result("ok", "Khóa ChatGPT dùng được.")
+
+
+def _check_gemini(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
+    import httpx
+    from google import genai
+    from google.genai import errors, types
+
+    try:
+        if client is None:
+            # attempts=1: chỉ gọi một lần. Thời gian chờ của thư viện tính bằng mili giây.
+            client = genai.Client(
+                api_key=api_key,
+                vertexai=False,
+                http_options=types.HttpOptions(
+                    timeout=int(timeout * 1000),
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                ),
+            )
+        # Gọi rẻ nhất: lấy danh sách mô hình, 1 mục. Không tốn token.
+        client.models.list(config={"page_size": 1})
+    except errors.APIError as exc:
+        details = f"{exc.status} {exc.message} {exc.details}".lower()
+        # Google trả 400 (không phải 401) khi khóa sai: lý do API_KEY_INVALID.
+        if exc.code == 401 or "api_key_invalid" in details or "api key not valid" in details:
+            return _result("invalid", "Khóa Gemini không đúng hoặc đã bị thu hồi.")
+        if exc.code == 403:
+            return _result(
+                "invalid", "Khóa Gemini không có quyền truy cập. Kiểm tra trong Google AI Studio."
+            )
+        if exc.code == 429:
+            return _result("unknown", "Gemini đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
+        return _result("unknown", f"Gemini báo lỗi {exc.code}. Thử lại sau ít phút.")
+    except httpx.TimeoutException:
+        return _result("unknown", f"Gemini không trả lời sau {timeout:g} giây. Thử lại sau.")
+    except httpx.TransportError:
+        return _result("unknown", "Không kết nối được tới Gemini. Kiểm tra mạng Internet.")
+    except Exception as exc:
+        # google-genai không gom mọi lỗi về một lớp chung (Anthropic/OpenAI thì có). Chỉ nêu
+        # tên lỗi, không chép thông điệp thô (có thể chứa header/URL); không làm sập trang.
+        return _result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
+    return _result("ok", "Khóa Gemini dùng được.")
+
+
+# Biến trong .env -> (tên hiển thị, trường trong Settings, hàm kiểm tra)
+_CHECKERS = {
+    "ANTHROPIC_API_KEY": ("Claude", "anthropic_api_key", _check_anthropic),
+    "OPENAI_API_KEY": ("ChatGPT", "openai_api_key", _check_openai),
+    "GEMINI_API_KEY": ("Gemini", "gemini_api_key", _check_gemini),
+}

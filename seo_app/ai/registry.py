@@ -16,7 +16,7 @@ PROVIDERS = {
     "openai": ("OpenAI", "OPENAI_API_KEY"),
     "gemini": ("Google Gemini", "GEMINI_API_KEY"),
 }
-SUPPORTED = {"anthropic"}
+SUPPORTED = {"anthropic", "openai", "gemini"}
 
 
 def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
@@ -84,13 +84,28 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
     label, key_name = PROVIDERS[provider]
     if provider not in SUPPORTED:
         raise AIError(f'{label} chưa được hỗ trợ. Tạm thời đổi provider = "anthropic".')
-    if provider == "anthropic":
-        if not settings.anthropic_api_key:
-            raise AIError(f"Chưa có {key_name} trong file .env.")
-        from seo_app.ai.anthropic_provider import AnthropicProvider
-
-        return AnthropicProvider(settings.anthropic_api_key)
-    raise AIError(f"{label} chưa được hỗ trợ.")  # pragma: no cover
+    api_key = {
+        "anthropic": settings.anthropic_api_key,
+        "openai": settings.openai_api_key,
+        "gemini": settings.gemini_api_key,
+    }[provider]
+    if not api_key:
+        raise AIError(f"Chưa có khóa {label} ({key_name}). Vào Cài đặt → 🔌 Kết nối để nhập khóa.")
+    # Nhập thư viện của hãng khi cần, để app mở nhanh và hãng không dùng thì không phải tải.
+    # Thư viện cài sai phiên bản (nâng ngoài uv.lock) thì báo tiếng Việt, không làm sập trang.
+    try:
+        if provider == "anthropic":
+            from seo_app.ai.anthropic_provider import AnthropicProvider as cls
+        elif provider == "openai":
+            from seo_app.ai.openai_provider import OpenAIProvider as cls
+        else:
+            from seo_app.ai.gemini_provider import GeminiProvider as cls
+    except ImportError as exc:
+        raise AIError(
+            f"Thư viện của {label} chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / "
+            "run.command (hoặc lệnh uv sync) để cài đúng phiên bản."
+        ) from exc
+    return cls(api_key)
 
 
 class AIRouter:

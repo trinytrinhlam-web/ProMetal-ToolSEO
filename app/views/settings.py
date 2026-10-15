@@ -3,6 +3,7 @@
 import streamlit as st
 
 from seo_app import demo, env_file, ui
+from seo_app.ai.base import redact_secrets
 from seo_app.config import load_settings
 
 S = st.session_state
@@ -16,7 +17,6 @@ API_KEY_FIELDS = (
     ("GEMINI_API_KEY", "Gemini (Google)", "gemini_api_key",
      "https://aistudio.google.com/apikey"),
 )
-CHECKABLE_KEYS = {"ANTHROPIC_API_KEY"}
 
 
 def _input_key(name: str) -> str:
@@ -98,19 +98,30 @@ def api_key_card(name: str, label: str, configured: bool, url: str) -> None:
         on_click=_save_key,
         args=(name, label),
     )
-    checkable = name in CHECKABLE_KEYS
     if check.button(
         "Kiểm tra",
         key=f"api-key-check-btn-{name}",
         width="stretch",
-        disabled=not (checkable and configured),
-        help=None if checkable else "Chưa kiểm tra được khóa này (chờ cài thư viện của hãng).",
+        disabled=not configured,
+        help=f"Hỏi thử máy chủ {label} xem khóa có dùng được không (không tốn tiền)."
+        if configured
+        else "Lưu khóa trước rồi mới kiểm tra được.",
     ):
         S.pop(f"api-key-flash-{name}", None)
         with st.spinner(f"Đang hỏi thử máy chủ {label}..."):
-            # Không truyền khóa: hàm tự đọc khóa đang có hiệu lực, giao diện không giữ khóa.
-            result = env_file.check_api_key(name)
-        S[f"api-key-check-{name}"] = (result.status, result.message)
+            try:
+                # Không truyền khóa: hàm tự đọc khóa đang có hiệu lực, giao diện không giữ khóa.
+                result = env_file.check_api_key(name)
+            except Exception as exc:  # nút Kiểm tra không được làm sập trang
+                # Chỉ nêu tên loại lỗi: thông điệp gốc có thể chứa khóa.
+                checked = (
+                    "unknown",
+                    f"Không kiểm tra được khóa ({type(exc).__name__}). Thử lại sau.",
+                )
+            else:
+                # Che thêm một lần (phòng thủ lớp hai), dù check_api_key đã tự che.
+                checked = (result.status, redact_secrets(result.message))
+        S[f"api-key-check-{name}"] = checked
     clear.button(
         "Xóa",
         key=f"api-key-clear-{name}",

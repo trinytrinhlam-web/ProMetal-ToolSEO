@@ -49,9 +49,13 @@ def test_missing_api_key_is_reported():
         make_provider("anthropic", Settings())
 
 
-def test_other_providers_are_not_supported_yet():
-    with pytest.raises(AIError, match="OpenAI chưa được hỗ trợ"):
-        make_provider("openai", Settings(openai_api_key="k"))
+def test_openai_and_gemini_are_supported():
+    # T-018: trước đây OpenAI/Gemini báo "chưa được hỗ trợ"; nay tạo đúng provider của hãng.
+    from seo_app.ai.gemini_provider import GeminiProvider
+    from seo_app.ai.openai_provider import OpenAIProvider
+
+    assert isinstance(make_provider("openai", Settings(openai_api_key="k")), OpenAIProvider)
+    assert isinstance(make_provider("gemini", Settings(gemini_api_key="k")), GeminiProvider)
 
 
 def test_router_builds_one_provider_per_vendor():

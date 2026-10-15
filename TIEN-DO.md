@@ -1,15 +1,17 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-14, 21:40 giờ Việt Nam. Người ghi: Chỉ Huy (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md)._
+_Cập nhật: 2026-10-15, 13:50 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
 ## 1. Tóm tắt nhanh
 
 - Đã xong: bộ khung app, kết nối WordPress (chỉ tạo bản nháp), AI viết bài bằng Claude (bước 1–3 của trang Soạn bài), đội agent và quy trình kiểm tra bảo mật.
-- Mới xong, đã lên GitHub: tự lưu bài đang soạn (F5 không mất bài) và ô nhập khóa API trong Cài đặt.
-- Còn lại: thêm AI ChatGPT/Gemini, thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động: 1.871 bài kiểm tra, đều qua.
+- Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu), ChatGPT và Gemini (T-018), nút Kiểm tra khóa cả 3 hãng (T-023).
+- Đã lên `main` 2026-10-15: hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
+- 2026-10-15: bộ test giờ chạy xanh cả trên Windows (T-027).
+- Còn lại: thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
+- Bộ kiểm tra tự động trên `main`: 2.358 bài, đều qua trên Windows.
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -21,7 +23,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
 | 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | ⚪ Chưa làm |
 | 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
-| 6 | Theo dõi thứ hạng qua Search Console | ⏸ Chờ anh quyết có giữ không |
+| 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
 
 ## 3. Giai đoạn 2 chi tiết
 
@@ -34,17 +36,26 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Gia cố bảo mật: lọc HTML/link độc trong chữ AI, hiển thị an toàn (T-001 → T-015) | ✅ Xong, đã lên GitHub |
 | Tự lưu bài đang soạn, mở lại / xóa bài dở (T-016, T-017, T-021) | ✅ Xong, đã lên GitHub |
 | Ô nhập khóa API Claude / ChatGPT / Gemini trong Cài đặt → Kết nối (T-020, T-021) | ✅ Xong, đã lên GitHub |
-| Thêm AI ChatGPT (OpenAI) và Gemini (T-018) | ⏳ **Chờ anh chọn** cách kết nối (thẻ hỏi trong chat) |
-| Thử mù mô hình trong Cài đặt (T-019) | ⏳ Làm sau T-018 |
+| Thêm AI ChatGPT (OpenAI) và Gemini bằng thư viện chính hãng (T-018) | ✅ Xong, đã lên `main` |
+| Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt (T-023) | ✅ Xong, đã lên `main` |
+| Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | ✅ Xong, đã lên `main` |
+| Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | ✅ Xong, đã lên `main` |
+| Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi có 2 commit, chưa nộp báo cáo (nhánh `team/T-025`) |
+| 4 lỗi Thấp lớp AI (T-026) | 🔒 Soi Lỗi đạt; **chờ Lá Chắn** (nhánh `team/T-026`) |
+| Bộ test chạy xanh trên Windows (T-027) | ✅ Xong, đã lên `main` |
+| Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) | 🔎 Có code và test, chưa báo cáo (nhánh `team/T-029`) |
+| Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | ⏳ Chờ T-026 lên `main` |
+| Thử mù mô hình trong Cài đặt (T-019) | ⏳ Hết chờ (T-018 đã lên `main`, anh chốt không có hãng mặc định) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 
 ## 4. Việc đang chờ anh
 
-1. **Chọn cách thêm ChatGPT và Gemini** (thẻ trong chat): dùng thư viện chính hãng (em đề xuất) hay tự viết.
-2. **PR #3 Hồ sơ doanh nghiệp** (`config/business_profile.md`) đang chờ gộp. Khi chưa gộp, AI viết bài chưa có thông tin riêng của Pro-Metal. Còn một chỗ nhỏ cần chỉnh ở dòng 112 trước khi gộp.
-3. **Giai đoạn 6** (theo dõi thứ hạng): có giữ không.
-4. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau.
+1. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
+
+Đã trả lời 2026-10-15: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); giữ Giai đoạn 6; đưa thư mục kế hoạch lên repo (`docs/plan/`); lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`).
+
+Đã trả lời 2026-10-14: dùng thư viện chính hãng cho ChatGPT/Gemini; gộp PR #3 sau khi sửa; Pillow để sau; báo giá không nêu thời gian; không nói giá dưới dạng nào; khu vực gồm cả Bình Dương và Bà Rịa–Vũng Tàu cũ; mỗi agent một phiên con, mỗi phiếu một nhánh tạm.
 
 ## 5. Việc bắt buộc khi làm phần đăng bài lên WordPress (Giai đoạn 5)
 

@@ -30,6 +30,7 @@ Danh sách đầy đủ, phạm vi file và model khuyên dùng: [roster.md](ros
 | `docs/team/rules.md` | Quy tắc, nguyên tắc, ràng buộc chung |
 | `docs/team/security.md` | Chính sách bảo mật và danh sách kiểm định |
 | `docs/team/board.md` | Bảng việc: ai đang làm gì |
+| `docs/team/dong-bo.md` | Phiếu điều phối chung giữa 2 Chỉ Huy (2 tài khoản, chạy luân phiên) |
 | `docs/team/templates/` | Mẫu phiếu giao việc, báo cáo, biên bản bảo mật |
 | `docs/team/tickets/` | Các phiếu giao việc (`T-001-ten-ngan.md`) |
 | `docs/team/reports/` | Báo cáo của agent (`T-001-ten-agent.md`) |

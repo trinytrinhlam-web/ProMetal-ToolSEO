@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=1.13.0",
+    # Thư viện chính hãng của Gemini và ChatGPT (chủ dự án duyệt 2026-10-14, T-018).
+    "google-genai>=2.30.1",
+    "openai>=3.31.0",
     # Khuôn dữ liệu kết quả AI (seo_app/content/models.py). Đã cài sẵn nhờ anthropic, ghi tên
     # ra đây vì app dùng trực tiếp (chủ dự án duyệt 2026-10-14, T-006).
     "pydantic>=2",
