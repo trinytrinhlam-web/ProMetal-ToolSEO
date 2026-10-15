@@ -2,15 +2,13 @@
 
 Test bám theo cấu trúc file (tiêu đề "## 8.", nhãn, dòng ghi chú ">", gạch đầu dòng nhiều
 dòng), không chép cứng câu chữ: Ngòi Bút còn chỉnh câu sau khi chủ dự án trả lời.
-Phần cuối là các trường hợp xấu của bộ lọc từng dòng, đánh dấu xfail chờ T-024.
+Phần cuối là các trường hợp xấu của bộ lọc từng dòng, T-024 đã sửa (SL-022-1 đến SL-022-6).
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
-
-import pytest
 
 from seo_app.content.prompts import _neutralize, system_prompt
 from seo_app.content.rules import BUSINESS_PROFILE_FILE, confirmed_profile, load_rules
@@ -199,44 +197,35 @@ def test_head_office_of_section_1_is_among_section_3_addresses():
     assert number in "\n".join(_section(VISIBLE_LINES, 3))
 
 
-# --- Trường hợp xấu của bộ lọc từng dòng (chờ T-024) -----------------------------------------
+# --- Trường hợp xấu của bộ lọc từng dòng (T-024 đã sửa) ---------------------------------------
 
 
 def test_lowercase_tag_is_dropped():
     assert confirmed_profile("- Email: x [cần xác nhận]\n- Hotline: 0909") == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(strict=True, reason="chờ T-024: nhãn ở dòng cuối, dòng đầu của ý vẫn lọt")
 def test_multiline_item_with_tag_on_last_line_is_dropped_whole():
     text = "- Khách đã phục vụ: khoảng 500\n  khách [CẦN XÁC NHẬN]\n- Hotline: 0909"
     assert confirmed_profile(text) == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(strict=True, reason="chờ T-024: nhãn ở dòng đầu, dòng thụt sau vẫn lọt")
 def test_multiline_item_with_tag_on_first_line_is_dropped_whole():
     text = "- Khách đã phục vụ: khoảng 500 [CẦN XÁC NHẬN]\n  khách trong năm\n- Hotline: 0909"
     assert confirmed_profile(text) == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(strict=True, reason="chờ T-024: '>' có dấu cách đứng trước không bị lọc")
 def test_note_with_leading_space_is_dropped():
     assert confirmed_profile("- Hotline: 0909\n  > ghi chú cho chủ dự án") == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(strict=True, reason="chờ T-024: '>' có tab đứng trước không bị lọc")
 def test_note_with_leading_tab_is_dropped():
     assert confirmed_profile("- Hotline: 0909\n\t> ghi chú cho chủ dự án") == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(strict=True, reason="chờ T-024: nhãn dạng NFD (gõ trên Mac) không bị nhận")
 def test_nfd_tag_is_dropped():
     text = unicodedata.normalize("NFD", "- Email: x [CẦN XÁC NHẬN]") + "\n- Hotline: 0909"
     assert confirmed_profile(text) == "- Hotline: 0909"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="ngoài yêu cầu T-024 (đề xuất): nhãn có dấu cách không ngắt (NBSP) không bị nhận",
-)
 def test_tag_with_nbsp_is_dropped():
     assert confirmed_profile("- Email: x [CẦN XÁC NHẬN]\n- Hotline: 0909") == "- Hotline: 0909"
