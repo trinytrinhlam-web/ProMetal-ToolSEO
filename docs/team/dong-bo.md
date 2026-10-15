@@ -34,15 +34,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Trạng thái lúc Chỉ Huy A trả quyền (14:39). **Mọi agent của A đã dừng.** Việc dở đã đẩy lên GitHub; trên máy A không còn worktree hay thay đổi chưa đẩy. `main` = 3.110 test qua trên Windows.
+Chỉ Huy B, cập nhật 2026-10-15 18:05. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
-| Phiếu | Nhánh (HEAD) | Đã xong | Việc tiếp theo cho Chỉ Huy B |
+| Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình (việc cuối Giai đoạn 2) | `team/T-019` (`4223a8c`) | Thợ Máy, Họa Sĩ lượt 1; Soi Lỗi **đạt có điều kiện** (`e3cee76`). Thợ Máy lượt 2 đã merge `main` (`e56ee6a`) và commit `4223a8c`: sửa SL-T019-1 (che tên sau `_`, thêm tên dòng mô hình), SL-T019-2 (từ chối tên mô hình gõ nhầm, chỉ che tên đủ dài), câu lỗi giới hạn token (sửa cả `seo_app/ai/base.py` và 3 provider); bỏ 2 xfail; thêm test vào `tests/test_blind_test.py`. A chạy `tests/test_soi_loi_t019.py`: 27 qua | Thợ Máy bị dừng **trước khi** chạy toàn bộ test và viết mục "Lượt 2" trong `docs/team/reports/T-019-tho-may.md`. Làm nốt 2 việc đó (Thợ Máy), rồi **Soi Lỗi kiểm lại** (lưu ý commit đụng cả `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
-| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email trong chữ AI thành link | chưa có | Phiếu đã lập | Giao Thợ Máy **sau khi T-019 lên `main`** |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`f7a9c22`) | Việc của B. Tới 14:39 không có commit mới từ 13:18, chưa có báo cáo. A không đụng | B tự kiểm tra Soi Lỗi của mình còn chạy không; không thì giao lại |
-
-**Việc chờ lập phiếu:** xem `board.md` mục Chờ (ghim bản Python; lỗi Thấp bộ lọc hồ sơ; lỗi Thấp T-028 gộp vào phiếu lớp AI sau; Ngòi Bút sửa chú thích `config/ai.toml`; Thư Ký cập nhật README).
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`4223a8c`) | Thợ Máy (phiên B, `Thợ Máy · T-019 Thử mù mô hình (lượt 2)`) soát commit `4223a8c` của Thợ Máy bên A, chạy toàn bộ test, viết báo cáo lượt 2 | Soi Lỗi kiểm lại (có đụng `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`f7a9c22`) | Soi Lỗi (phiên B) chạy tiếp sau khi chạm giới hạn lúc 14:45; gộp `main` mới rồi nộp báo cáo | Lá Chắn rút gọn, gộp |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
 
 ## Nhật ký bàn giao
 
