@@ -6,9 +6,19 @@ Toàn bộ code, tài liệu, phiếu việc, báo cáo và hồ sơ agent đề
 
 ## 1. Trạng thái lúc bàn giao
 
-- Nhánh `main` đã có mọi việc đã xong. Không còn thay đổi nào chưa đẩy lên.
-- Không có agent nào đang làm dở. Bảng việc: [`docs/team/board.md`](docs/team/board.md).
-- 1.871 bài kiểm tra tự động đều qua; `ruff` sạch.
+_Cập nhật 2026-10-15, 08:00 giờ Việt Nam._
+
+- `main` chỉ chứa việc đã qua kiểm định bảo mật. Việc làm xong nhưng chưa qua Lá Chắn nằm ở các **nhánh tạm** `team/T-xxx` trên GitHub, không mất.
+- Đang dở (chi tiết ở [`docs/team/board.md`](docs/team/board.md)):
+
+  | Nhánh | Phiếu | Còn lại |
+  |---|---|---|
+  | `team/T-023` (đã gộp `team/T-018`) | T-018 ChatGPT/Gemini, T-023 nút Kiểm tra khóa | Lá Chắn đang kiểm; ĐẠT thì gộp vào `main` |
+  | `team/T-024` (đã gộp `team/T-022`) | T-022 hồ sơ doanh nghiệp, T-024 bộ lọc hồ sơ | Soi Lỗi kiểm lại lượt 2, rồi Lá Chắn |
+  | `team/T-025` | T-025 ổn định test đo tốc độ | Soi Lỗi đang làm |
+
+- Các agent chạy ở **phiên con dưới phiên "Điều phối"** trên Claude Code cloud (thanh bên app Claude). Phiên "Điều phối" mở được từ bất kỳ máy nào đăng nhập cùng tài khoản: vào app Claude → Code → chọn "Điều phối".
+- `main`: 1.871 bài kiểm tra đều qua, `ruff` sạch.
 - Việc tiếp theo và quyết định đang chờ: mục 6 bên dưới.
 
 ## 2. Những thứ phải tự mang sang (không có trên GitHub)
@@ -65,14 +75,16 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 
 **Chờ anh quyết:**
 
-1. **Cách thêm ChatGPT và Gemini (T-018).** Dùng thư viện chính hãng `openai` và `google-genai` (Chỉ Huy đề xuất, giống cách đang dùng cho Claude) hay tự viết. Quy tắc dự án: thêm thư viện phải được anh duyệt. Trả lời là AI ở project mới làm ngay.
-2. **PR #3 Hồ sơ doanh nghiệp** (`config/business_profile.md`, nhánh `claude/project-thread-bcuk2m`): chờ gộp. Ngòi Bút ghi nhận dòng 112 cần chỉnh: hàm `confirmed_profile` bỏ luôn một quy tắc có nhắc tới nhãn `[CẦN XÁC NHẬN]`. Khi chưa gộp, AI viết bài chưa có thông tin riêng của Pro-Metal.
-3. **Giai đoạn 6** (theo dõi thứ hạng Search Console): có giữ không.
+1. **Mô hình mặc định sau khi T-018 lên `main`:** có đổi sang Gemini không (đề xuất của Thợ Máy trong `docs/team/reports/T-018-tho-may.md`; tên mô hình cần kiểm lại lúc chốt).
+2. **Giai đoạn 6** (theo dõi thứ hạng Search Console): có giữ không.
+
+Đã trả lời 2026-10-14: thư viện chính hãng `openai` + `google-genai` (T-018); gộp PR #3 sau khi sửa (đã gộp, sửa tiếp ở T-022); Pillow để sau (hỏi lại ở Giai đoạn 3).
 
 **Việc tiếp theo theo thứ tự:**
 
-1. T-018: thêm ChatGPT/Gemini (sau khi anh chọn ở điểm 1).
-2. T-019: thử mù mô hình trong Cài đặt.
+1. Gộp `team/T-023` (T-018 + T-023) và `team/T-024` (T-022 + T-024) vào `main` khi Lá Chắn ĐẠT, rồi xóa các nhánh tạm.
+2. Ngòi Bút sửa chú thích đầu `config/ai.toml` (có thêm openai, gemini); Thư Ký cập nhật README.
+3. T-019: thử mù mô hình trong Cài đặt.
 3. Giai đoạn 3: ảnh (giữ nguyên GPS trong ảnh, khi nén WebP phải chép lại EXIF).
 4. Giai đoạn 4: meta, schema, liên kết nội bộ (plugin SiteSEO).
 5. Giai đoạn 5: kế hoạch, lịch, gửi bài lên WordPress. Có danh sách bảo mật bắt buộc ở cuối `docs/team/board.md`.
@@ -80,7 +92,7 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 **Việc nhỏ còn treo:**
 
 - Lá Chắn kiểm lại T-013 → T-021 bằng Fable 5.1 sau ngày 01/11 (các lượt vừa rồi chạy tạm bằng Opus).
-- Thư Ký cập nhật `README.md`: nhập khóa API trong Cài đặt → Kết nối; bài đang soạn được tự lưu.
+- Thư Ký cập nhật `README.md`: dòng trạng thái đầu file đã cũ; mục xử lý sự cố còn bảo sửa `.env` bằng tay (nay nhập khóa trong Cài đặt → Kết nối); thêm ChatGPT/Gemini sau khi T-018 lên `main`.
 - Meta title/description chưa được lưu vào nháp (làm ở Giai đoạn 4).
 
 ## 7. Mọi trao đổi và quyết định của chủ dự án (không được bỏ sót)
