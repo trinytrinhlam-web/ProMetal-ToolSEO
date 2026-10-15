@@ -170,3 +170,44 @@ của hệ điều hành (traceback, `os.environ`, `threading.Lock`).
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (sửa SL-T028-2 theo Soi Lỗi, 2026-10-15)
+
+Gộp `origin/team/T-028` (`d0f82ce`, báo cáo và test của Soi Lỗi) trước khi sửa: fast-forward, không xung đột.
+
+### Đã sửa
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/ai/base.py` | `IGNORED_ENV` thêm `OPENAI_ORG_ID`, `OPENAI_PROJECT_ID`. Dùng chung cho mọi chỗ tạo client (viết bài và nút Kiểm tra khóa), nên không phải sửa chỗ khác. |
+| `tests/test_ai_t028.py` | 4 test mới: `test_ignored_env_covers_org_and_project` (danh sách có 2 biến mới, không có biến proxy/chứng chỉ), `test_openai_would_send_org_and_project_without_fix` (chứng minh thư viện gửi 2 header này nếu không bỏ qua), `test_generate_ignores_openai_org_and_project_env`, `test_check_ignores_openai_org_and_project_env` (không có header `OpenAI-Organization`/`OpenAI-Project`, khóa của app vẫn được gửi, biến được trả lại). |
+| `tests/test_soi_loi_t028.py` | Chỉ bỏ dấu `xfail` của `test_openai_org_and_project_env_ignored` (SL-T028-2). Không đụng SL-T028-1, SL-T028-3. |
+
+### Đã tra mã nguồn thư viện (`.venv`)
+
+- **openai 3.31.0**: `OPENAI_ORG_ID`, `OPENAI_PROJECT_ID` (`_client.py:281-286`) thành header
+  `OpenAI-Organization`/`OpenAI-Project` (`:659-660`) ở mọi lời gọi → đã bỏ qua. `OPENAI_ADMIN_KEY`
+  (`:264-266`) chỉ gửi ở lời gọi quản trị (`admin_api_key_auth`, `resources/admin/…`), và khóa của app được ưu
+  tiên (`setdefault`, `:619-625`) → không cần. `OPENAI_WEBHOOK_SECRET` không gửi đi.
+- **anthropic 1.13.0**: `ANTHROPIC_AUTH_TOKEN` và tự dò thông tin đăng nhập (profile, federation) chỉ chạy khi
+  không truyền `api_key` (`_client.py:218-226`, `:100-109`); app luôn truyền → không cần. Không có biến
+  tổ chức/dự án.
+- **google-genai 2.30.1**: không có biến header; `GOOGLE_CLOUD_PROJECT`/`LOCATION` chỉ dùng khi Vertex, app
+  truyền `vertexai=False`; chế độ ghi/phát lại đã tắt ở lượt 1.
+- **Giữ nguyên** `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `SSL_CERT_DIR`.
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest -q tests/test_ai_t028.py tests/test_soi_loi_t028.py tests/test_ai_t026.py tests/test_soi_loi_t026.py
+710 passed, 6 xfailed, 1 warning
+  (6 xfail: 2 SL-T026-3, 2 SL-T028-1, 2 SL-T028-3; cảnh báo pydantic đến từ test cũ, không từ test_ai_t028.py)
+
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest -q
+9 failed, 3069 passed, 2 skipped, 9 xfailed, 1 warning in 157.93s
+  (9 hỏng đều trong tests/test_soi_loi_t027.py, có sẵn trên main, của T-030; 9 xfail = 6 nêu trên + 3 test cũ
+  ngoài phạm vi)
+```

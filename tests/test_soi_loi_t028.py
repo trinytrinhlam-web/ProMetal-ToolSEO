@@ -599,12 +599,6 @@ def test_lock_released_when_client_creation_fails(evil_env, monkeypatch):
     assert not base_module._ENV_LOCK.locked()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T028-2: OPENAI_ORG_ID / OPENAI_PROJECT_ID trong môi trường máy vẫn được thư viện "
-    "openai gắn vào mọi lời gọi (header OpenAI-Organization / OpenAI-Project). Biến 'tương tự' "
-    "*_CUSTOM_HEADERS chưa được bỏ qua; biến sót từ công cụ khác làm khóa đúng bị báo sai.",
-)
 def test_openai_org_and_project_env_ignored(monkeypatch):
     monkeypatch.setenv("OPENAI_ORG_ID", "org-" + SERVER_TEXT)
     monkeypatch.setenv("OPENAI_PROJECT_ID", "proj_" + SERVER_TEXT)

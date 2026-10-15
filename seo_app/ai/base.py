@@ -187,10 +187,22 @@ def unreadable_error(exc: BaseException, vendor: str) -> AIError | None:
     return None
 
 
-# Biến môi trường mà thư viện đọc lúc tạo client để chèn header vào **mọi** lời gọi (kể cả
-# header Authorization của OpenAI). Dự án không dùng, nên bỏ qua (Lá Chắn LC-T026-2). Proxy và
-# chứng chỉ (HTTPS_PROXY, SSL_CERT_FILE…) vẫn giữ: mạng công ty có thể cần.
-IGNORED_ENV = ("ANTHROPIC_CUSTOM_HEADERS", "OPENAI_CUSTOM_HEADERS")
+# Biến môi trường mà thư viện đọc lúc tạo client để chèn header vào **mọi** lời gọi. Dự án không
+# dùng, nên bỏ qua (Lá Chắn LC-T026-2, Soi Lỗi SL-T028-2):
+# - *_CUSTOM_HEADERS: header tùy ý, kể cả Authorization (openai/_client.py:317-331);
+# - OPENAI_ORG_ID, OPENAI_PROJECT_ID: header OpenAI-Organization / OpenAI-Project
+#   (openai/_client.py:281-286, :659-660). Biến sót từ công cụ OpenAI khác làm khóa đúng bị máy
+#   chủ từ chối, hoặc tính tiền vào tổ chức/dự án khác.
+# Không cần thêm: ANTHROPIC_AUTH_TOKEN (thư viện bỏ qua khi app truyền api_key), OPENAI_ADMIN_KEY
+# (chỉ gửi ở lời gọi quản trị, app không dùng), *_WEBHOOK_* (không gửi đi). google-genai không có
+# biến tương tự khi vertexai=False. Proxy và chứng chỉ (HTTPS_PROXY, SSL_CERT_FILE…) vẫn giữ:
+# mạng công ty có thể cần.
+IGNORED_ENV = (
+    "ANTHROPIC_CUSTOM_HEADERS",
+    "OPENAI_CUSTOM_HEADERS",
+    "OPENAI_ORG_ID",
+    "OPENAI_PROJECT_ID",
+)
 _ENV_LOCK = threading.Lock()
 
 

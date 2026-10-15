@@ -623,6 +623,49 @@ def test_check_ignores_custom_headers_env(custom_headers_env, recorded_headers, 
     assert_clean(recorded_headers[0], KEYS[vendor])
 
 
+# Lượt 2 (Soi Lỗi SL-T028-2): tổ chức/dự án OpenAI sót trong môi trường máy.
+ORG_ENV = {"OPENAI_ORG_ID": "org-T028KhacToChuc", "OPENAI_PROJECT_ID": "proj_T028KhacDuAn"}
+ORG_HEADERS = ("openai-organization", "openai-project")
+
+
+@pytest.fixture
+def org_env(monkeypatch):
+    for name, value in ORG_ENV.items():
+        monkeypatch.setenv(name, value)
+
+
+def test_ignored_env_covers_org_and_project():
+    assert set(ORG_ENV) <= set(IGNORED_ENV)
+    for kept in ("HTTPS_PROXY", "HTTP_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NO_PROXY"):
+        assert kept not in IGNORED_ENV
+
+
+def test_openai_would_send_org_and_project_without_fix(org_env):
+    # Chứng minh biến có tác dụng thật nếu không bỏ qua.
+    headers = openai.OpenAI(api_key=OPENAI_KEY).default_headers
+    assert headers["OpenAI-Organization"] == ORG_ENV["OPENAI_ORG_ID"]
+    assert headers["OpenAI-Project"] == ORG_ENV["OPENAI_PROJECT_ID"]
+
+
+def test_generate_ignores_openai_org_and_project_env(org_env, recorded_headers):
+    with pytest.raises(AIError):
+        generate(OpenAIProvider(OPENAI_KEY), "openai")
+    assert recorded_headers
+    for headers in recorded_headers:
+        assert not set(ORG_HEADERS) & {name.lower() for name in headers}
+        assert "T028Khac" not in str(dict(headers))
+        assert OPENAI_KEY in headers["authorization"]
+    for name, value in ORG_ENV.items():
+        assert os.environ[name] == value  # trả lại cho phần còn lại của máy
+
+
+def test_check_ignores_openai_org_and_project_env(org_env, recorded_headers):
+    env_file.check_api_key("OPENAI_API_KEY", api_key=OPENAI_KEY)
+    assert len(recorded_headers) == 1
+    assert not set(ORG_HEADERS) & {name.lower() for name in recorded_headers[0]}
+    assert OPENAI_KEY in recorded_headers[0]["authorization"]
+
+
 def test_ignoring_custom_headers_keeps_proxy_and_certificates(monkeypatch):
     kept = {
         "HTTPS_PROXY": "http://proxy.congty.test:8080",
