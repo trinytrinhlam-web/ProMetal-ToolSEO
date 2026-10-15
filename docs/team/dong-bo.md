@@ -28,7 +28,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Không ai giữ.** Chỉ Huy A trả quyền lúc 14:39 (hạn mức của chủ dự án sắp hết). Chỉ Huy B nhận thì ghi tên mình vào đây, commit và push ngay.
+**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng").
 
 ## Đang làm dở
 
@@ -47,6 +47,11 @@ Trạng thái lúc Chỉ Huy A trả quyền (14:39). **Mọi agent của A đã
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 18:02 · Chỉ Huy B nhận quyền
+
+- `git pull` về `main` = `d2fae78`. Đọc bàn giao 14:39 của A. Làm tiếp: T-019 (Thợ Máy làm nốt lượt 2), T-025 (kiểm tra Soi Lỗi của B), T-031 sau T-019.
+- Mục "đang kết thúc" 14:10 của B đã cũ: A nhận và trả quyền sau đó (14:12 → 14:39).
 
 ### 14:39 · Chỉ Huy A trả quyền (chủ dự án: hạn mức sắp hết)
 
