@@ -28,7 +28,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy A**, từ 2026-10-15 07:12 (chủ dự án báo Chỉ Huy B đã xong). A **không đụng nhánh `team/T-025`** tới khi báo cáo T-025 của Soi Lỗi (phiên B) có trên nhánh.
+**Chỉ Huy A**, từ 2026-10-15 14:12 (chủ dự án báo Chỉ Huy B đã xong). A **không đụng nhánh `team/T-025`** tới khi báo cáo T-025 của Soi Lỗi (phiên B) có trên nhánh.
 
 ## Đang làm dở
 
@@ -72,7 +72,7 @@ Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao l�
 
 _Mục mới nhất ở trên cùng._
 
-### 2026-10-15 07:12 · Chỉ Huy A nhận quyền
+### 2026-10-15 14:12 · Chỉ Huy A nhận quyền
 
 - `git pull` về `main` = `39c8c1f`. Đọc bàn giao 14:10 của Chỉ Huy B, làm tiếp theo bảng "Đang làm dở".
 - Về giờ lệch B nêu: các mốc giờ trong phiên A trước (11:00 → 13:50) là giờ A ước lượng, không lấy từ đồng hồ máy. Từ nay A ghi theo lệnh `date` (UTC+7).
