@@ -78,6 +78,7 @@ Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao l�
 - ✅ 14:29 Gộp T-029 (`7c8604e`) và T-028 (`d08f8ca`) vào `main`. Windows 3.110 qua, 0 hỏng. Xóa nhánh `team/T-028`, `team/T-029`.
 - ✅ 14:29 Soi Lỗi T-019 **đạt có điều kiện** (`e3cee76`). ⏳ Giao **Thợ Máy · T-019 lượt 2** (worktree `wt-T-019`): sửa SL-T019-1, SL-T019-2, câu lỗi nhắc mục «blind_test» không có trong `config/ai.toml`. Đã dặn merge `main` vào nhánh trước.
 - ✅ Lập T-031 (địa chỉ trần, email trong chữ AI thành link; làm sau T-019). Số phiếu tiếp theo: **T-032**.
+- 14:32 `team/T-025`: commit mới nhất vẫn là `f7a9c22` (13:18 giờ Việt Nam), chưa có báo cáo. Soi Lỗi của B có thể đã dừng. A vẫn chưa đụng nhánh; sẽ tiếp quản T-025 sau khi T-019 xong nếu vẫn không có gì mới.
 
 ## Nhật ký bàn giao
 
