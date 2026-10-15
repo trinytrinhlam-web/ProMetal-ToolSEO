@@ -245,7 +245,7 @@ def test_gethostname_still_works():
 # ------------------------------------------------------- siết ngoại lệ socketpair (#1)
 
 
-def test_second_listener_inside_socketpair_is_blocked(monkeypatch):
+def test_second_listener_inside_socketpair_is_blocked(monkeypatch, fallback_socketpair):
     """Lỗi Thấp #1: trong lúc socketpair() chạy, mở thêm một socket nghe ở 127.0.0.1 rồi nối
     tới nó. Trước T-029 lọt; nay chỉ listener đầu tiên (của cặp) được tính.
     """
@@ -274,14 +274,14 @@ def test_second_listener_inside_socketpair_is_blocked(monkeypatch):
         return result
 
     monkeypatch.setattr(socket.socket, "listen", listen_and_open_another)
-    a, b = socket._fallback_socketpair(socket.AF_INET)
+    a, b = fallback_socketpair(socket.AF_INET)
     with a, b:
         a.sendall(b"x")
         assert b.recv(1) == b"x"
     assert seen == ["chặn"]
 
 
-def test_second_connect_to_pair_listener_is_blocked(monkeypatch):
+def test_second_connect_to_pair_listener_is_blocked(monkeypatch, fallback_socketpair):
     """Mỗi lời gọi socketpair() chỉ được một lần connect: socket thứ hai nối tới đúng cổng
     của cặp vẫn bị chặn, còn cặp vẫn tạo được.
     """
@@ -302,14 +302,14 @@ def test_second_connect_to_pair_listener_is_blocked(monkeypatch):
         return original_accept(self)
 
     monkeypatch.setattr(socket.socket, "accept", accept_after_extra_connect)
-    a, b = socket._fallback_socketpair(socket.AF_INET)
+    a, b = fallback_socketpair(socket.AF_INET)
     with a, b:
         a.sendall(b"x")
         assert b.recv(1) == b"x"
     assert seen == ["chặn"]
 
 
-def test_listener_after_nested_socketpair_is_blocked(monkeypatch):
+def test_listener_after_nested_socketpair_is_blocked(monkeypatch, fallback_socketpair):
     """Lồng một socketpair() khác bên trong rồi mở socket nghe mới: vẫn bị chặn."""
     guarded_listen = socket.socket.listen
     seen = []
@@ -321,7 +321,7 @@ def test_listener_after_nested_socketpair_is_blocked(monkeypatch):
             return result
         busy.append(1)
         try:
-            inner_a, inner_b = socket._fallback_socketpair(socket.AF_INET)
+            inner_a, inner_b = fallback_socketpair(socket.AF_INET)
             inner_a.close()
             inner_b.close()
             with _listener() as extra:
@@ -339,13 +339,15 @@ def test_listener_after_nested_socketpair_is_blocked(monkeypatch):
         return result
 
     monkeypatch.setattr(socket.socket, "listen", listen_nest_then_open)
-    a, b = socket._fallback_socketpair(socket.AF_INET)
+    a, b = fallback_socketpair(socket.AF_INET)
     a.close()
     b.close()
     assert seen == ["chặn"]
 
 
-def test_socketpair_fails_loudly_if_first_listener_is_not_its_own(monkeypatch):
+def test_socketpair_fails_loudly_if_first_listener_is_not_its_own(
+    monkeypatch, fallback_socketpair
+):
     """Nếu có socket khác ``listen()`` trước socket của cặp, cặp không được cho qua: socketpair
     báo ``RealNetworkBlocked`` (hỏng to tiếng) chứ không âm thầm mở cửa cho socket lạ.
     """
@@ -363,14 +365,14 @@ def test_socketpair_fails_loudly_if_first_listener_is_not_its_own(monkeypatch):
     monkeypatch.setattr(socket.socket, "listen", open_another_first)
     try:
         with pytest.raises(RealNetworkBlocked):
-            socket._fallback_socketpair(socket.AF_INET)
+            fallback_socketpair(socket.AF_INET)
     finally:
         for s in extra:
             s.close()
 
 
-def test_consecutive_socketpairs_each_get_their_own_connect():
-    pairs = [socket._fallback_socketpair(socket.AF_INET) for _ in range(3)]
+def test_consecutive_socketpairs_each_get_their_own_connect(fallback_socketpair):
+    pairs = [fallback_socketpair(socket.AF_INET) for _ in range(3)]
     for a, b in pairs:
         with a, b:
             a.sendall(b"ok")

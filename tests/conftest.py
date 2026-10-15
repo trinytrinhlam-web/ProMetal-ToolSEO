@@ -126,7 +126,8 @@ def _block_real_network(monkeypatch):
     monkeypatch.setattr(socket.socket, "listen", guarded_listen)
     monkeypatch.setattr(socket, "socketpair", allow_own_link(socket.socketpair))
     if hasattr(socket, "_fallback_socketpair"):
-        # Linux/Mac có socketpair AF_UNIX thật; bọc cả bản dự phòng để test được đường Windows.
+        # Python 3.12.4+/3.13 có bản dự phòng (đường Windows) trên mọi hệ điều hành; bọc cả nó.
+        # Bản cũ hơn chỉ có nó trên Windows, và khi đó nó chính là ``socket.socketpair``.
         fallback = allow_own_link(socket._fallback_socketpair)
         monkeypatch.setattr(socket, "_fallback_socketpair", fallback)
     original_sendto = socket.socket.sendto
@@ -147,22 +148,44 @@ def _block_real_network(monkeypatch):
     try:
         from asyncio import windows_events
     except ImportError:  # Mac/Linux không có IocpProactor
-        return
+        windows_events = None
 
-    def guarded_proactor_connect(self, conn, address, *args, **kwargs):
-        if conn.family in (socket.AF_INET, socket.AF_INET6):
-            raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
-        return original_proactor_connect(self, conn, address, *args, **kwargs)
+    if windows_events is not None:
 
-    def guarded_proactor_sendto(self, conn, buf, flags=0, addr=None, *args, **kwargs):
-        if conn.family in (socket.AF_INET, socket.AF_INET6):
-            raise RealNetworkBlocked(f"Test không được gửi gói tin mạng thật: {addr!r}")
-        return original_proactor_sendto(self, conn, buf, flags, addr, *args, **kwargs)
+        def guarded_proactor_connect(self, conn, address, *args, **kwargs):
+            if conn.family in (socket.AF_INET, socket.AF_INET6):
+                raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
+            return original_proactor_connect(self, conn, address, *args, **kwargs)
 
-    original_proactor_connect = windows_events.IocpProactor.connect
-    original_proactor_sendto = windows_events.IocpProactor.sendto
-    monkeypatch.setattr(windows_events.IocpProactor, "connect", guarded_proactor_connect)
-    monkeypatch.setattr(windows_events.IocpProactor, "sendto", guarded_proactor_sendto)
+        def guarded_proactor_sendto(self, conn, buf, flags=0, addr=None, *args, **kwargs):
+            if conn.family in (socket.AF_INET, socket.AF_INET6):
+                raise RealNetworkBlocked(f"Test không được gửi gói tin mạng thật: {addr!r}")
+            return original_proactor_sendto(self, conn, buf, flags, addr, *args, **kwargs)
+
+        original_proactor_connect = windows_events.IocpProactor.connect
+        original_proactor_sendto = windows_events.IocpProactor.sendto
+        monkeypatch.setattr(windows_events.IocpProactor, "connect", guarded_proactor_connect)
+        monkeypatch.setattr(windows_events.IocpProactor, "sendto", guarded_proactor_sendto)
+
+    # Cho fixture ``fallback_socketpair`` dùng đúng cách bọc ngoại lệ ở trên (T-030).
+    return allow_own_link
+
+
+@pytest.fixture
+def fallback_socketpair(_block_real_network):
+    """Đường ``socketpair()`` của Windows (nối qua ``127.0.0.1``/``::1``), đã qua bộ chặn mạng.
+
+    Python có ``socket._fallback_socketpair`` (3.12.4 trở lên, 3.13; mọi hệ điều hành) thì dùng
+    chính nó, bản đã bọc ở trên. Không có (ví dụ Python 3.12.3 trên Linux/Mac, nơi
+    ``socket.socketpair`` là AF_UNIX gốc, không đi qua ``listen``/``connect``) thì dùng bản chép
+    nguyên của CPython trong ``tests/windows_socketpair.py``, bọc bằng cùng ngoại lệ. Nhờ vậy các
+    test "trong socketpair vẫn chặn" chạy đủ trên Windows, Linux và Mac (T-030).
+    """
+    if hasattr(socket, "_fallback_socketpair"):
+        return socket._fallback_socketpair
+    from windows_socketpair import copied_fallback_socketpair
+
+    return _block_real_network(copied_fallback_socketpair)
 
 
 @pytest.fixture(autouse=True)

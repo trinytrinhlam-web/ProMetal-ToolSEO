@@ -7,7 +7,8 @@ ngoài, kể cả khi có một socket đang nghe thật trên loopback; ``getad
 ``create_connection`` luôn bị chặn.
 
 Các test chạy giống nhau trên Windows, Mac, Linux: trên Mac/Linux ``socket.socketpair`` dùng
-AF_UNIX nên thêm các test gọi thẳng ``socket._fallback_socketpair`` (đúng đường Windows đi).
+AF_UNIX nên thêm các test gọi đường Windows qua fixture ``fallback_socketpair`` (``conftest.py``):
+``socket._fallback_socketpair`` nếu bản Python có, không thì bản chép của CPython (T-030).
 """
 
 import asyncio
@@ -58,9 +59,9 @@ def test_socketpair_works_in_tests():
         _assert_pair_talks(a, b)
 
 
-def test_fallback_socketpair_ipv4_works_in_tests():
+def test_fallback_socketpair_ipv4_works_in_tests(fallback_socketpair):
     """Đường Windows: hai socket nối qua 127.0.0.1 bên trong socketpair()."""
-    a, b = socket._fallback_socketpair(socket.AF_INET)
+    a, b = fallback_socketpair(socket.AF_INET)
     with a, b:
         assert a.family == socket.AF_INET
         assert a.getsockname()[0] == "127.0.0.1"
@@ -68,8 +69,8 @@ def test_fallback_socketpair_ipv4_works_in_tests():
 
 
 @pytest.mark.skipif(not _ipv6_loopback_usable(), reason="máy không có IPv6 loopback")
-def test_fallback_socketpair_ipv6_works_in_tests():
-    a, b = socket._fallback_socketpair(socket.AF_INET6)
+def test_fallback_socketpair_ipv6_works_in_tests(fallback_socketpair):
+    a, b = fallback_socketpair(socket.AF_INET6)
     with a, b:
         assert a.getsockname()[0] == "::1"
         _assert_pair_talks(a, b)
@@ -131,7 +132,22 @@ def test_ipv4_connect_still_blocked(host):
         s.connect((host, 443))
 
 
-@pytest.mark.parametrize("host", ["::1", "2606:2800:21f:cb07:6820:80da:af6b:8b2c"])
+def _ipv6_sockets_available():
+    """Máy tạo được socket IPv6 không. Không tạo được (``OSError`` errno 97 trên máy cloud tắt
+    IPv6) thì máy đó không có đường IPv6 nào để lọt, và test bên dưới không có gì để thử.
+    """
+    try:
+        socket.socket(socket.AF_INET6, socket.SOCK_STREAM).close()
+    except OSError:
+        return False
+    return True
+
+
+IPV6_HOSTS = ["::1", "2606:2800:21f:cb07:6820:80da:af6b:8b2c"]
+
+
+@pytest.mark.skipif(not _ipv6_sockets_available(), reason="máy không tạo được socket IPv6")
+@pytest.mark.parametrize("host", IPV6_HOSTS)
 def test_ipv6_connect_still_blocked(host):
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     with s, pytest.raises(RealNetworkBlocked):
@@ -139,6 +155,29 @@ def test_ipv6_connect_still_blocked(host):
     s2 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     with s2, pytest.raises(RealNetworkBlocked):
         s2.connect((host, 443))
+
+
+class _FakeIPv6Socket:
+    """Đứng thay socket IPv6 trên máy không có IPv6: chỉ mang ``family``/``type``.
+
+    Nếu bộ chặn để lọt, ``connect`` gốc nhận một đối tượng lạ và ném ``TypeError``, nên test
+    vẫn đỏ chứ không có kết nối thật nào (T-030).
+    """
+
+    family = socket.AF_INET6
+    type = socket.SOCK_STREAM
+
+
+@pytest.mark.parametrize("host", IPV6_HOSTS)
+def test_ipv6_connect_blocked_by_family_check_on_any_machine(host):
+    """Chạy cả khi máy không có IPv6: bộ chặn xét họ địa chỉ AF_INET6 trước khi nối."""
+    fake = _FakeIPv6Socket()
+    with pytest.raises(RealNetworkBlocked):
+        socket.socket.connect(fake, (host, 443, 0, 0))
+    with pytest.raises(RealNetworkBlocked):
+        socket.socket.connect(fake, (host, 443))
+    with pytest.raises(RealNetworkBlocked):
+        socket.socket.connect_ex(fake, (host, 443))
 
 
 def test_connect_to_real_loopback_listener_still_blocked():
@@ -215,7 +254,7 @@ def test_failed_socketpair_does_not_leave_door_open():
             c.connect(srv.getsockname())
 
 
-def test_other_thread_inside_socketpair_does_not_open_this_thread(monkeypatch):
+def test_other_thread_inside_socketpair_does_not_open_this_thread(monkeypatch, fallback_socketpair):
     """Một luồng đang ở giữa socketpair() không làm luồng khác được phép nối loopback."""
     inside = threading.Event()
     release = threading.Event()
@@ -232,7 +271,7 @@ def test_other_thread_inside_socketpair_does_not_open_this_thread(monkeypatch):
 
     def make_pair():
         try:
-            a, b = socket._fallback_socketpair(socket.AF_INET)
+            a, b = fallback_socketpair(socket.AF_INET)
             a.close()
             b.close()
         except BaseException as error:  # noqa: BLE001
@@ -252,10 +291,65 @@ def test_other_thread_inside_socketpair_does_not_open_this_thread(monkeypatch):
     assert errors == []
 
 
+def test_other_thread_cannot_borrow_pair_listener_mid_socketpair(monkeypatch, fallback_socketpair):
+    """Luồng A dừng ngay sau ``listen()`` của socketpair (chưa ``connect``). Luồng chính nối tới
+    đúng cổng của cặp đó vẫn bị chặn: lượt connect duy nhất thuộc về luồng A (T-030; trước đây
+    chưa có test nào bắt được nếu trạng thái ngoại lệ bị dùng chung giữa các luồng).
+    """
+    listening = threading.Event()
+    release = threading.Event()
+    guarded_listen = socket.socket.listen
+    pair_address = {}
+
+    def slow_listen(self, *args, **kwargs):
+        result = guarded_listen(self, *args, **kwargs)
+        if threading.current_thread().name == "dang-tao-cap":
+            pair_address["value"] = self.getsockname()[:2]
+            listening.set()
+            release.wait(timeout=30)
+        return result
+
+    monkeypatch.setattr(socket.socket, "listen", slow_listen)
+    errors = []
+
+    def make_pair():
+        try:
+            a, b = fallback_socketpair(socket.AF_INET)
+            a.close()
+            b.close()
+        except BaseException as error:  # noqa: BLE001
+            errors.append(error)
+
+    t = threading.Thread(target=make_pair, name="dang-tao-cap")
+    t.start()
+    try:
+        assert listening.wait(timeout=30)
+        c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        with c, pytest.raises(RealNetworkBlocked):
+            c.connect(pair_address["value"])
+    finally:
+        release.set()
+        t.join(timeout=30)
+    assert errors == []
+
+
+def test_fallback_fixture_uses_python_own_function_when_present(fallback_socketpair):
+    """Có ``socket._fallback_socketpair`` (Python 3.12.4+, 3.13, Windows) thì test chạy trên
+    chính hàm của Python; chỉ khi không có mới dùng bản chép trong ``windows_socketpair.py``.
+    """
+    if hasattr(socket, "_fallback_socketpair"):
+        assert fallback_socketpair is socket._fallback_socketpair
+    else:
+        assert fallback_socketpair.__wrapped__.__module__ == "windows_socketpair"
+    assert hasattr(fallback_socketpair, "__wrapped__")  # đã qua bộ bọc ngoại lệ của conftest
+
+
 @pytest.mark.parametrize(
     "address", [("10.0.0.1", 80), ("127.0.0.2", 80), "127.0.0.1", ("localhost", 80)]
 )
-def test_inside_socketpair_only_its_own_listener_is_allowed(monkeypatch, address):
+def test_inside_socketpair_only_its_own_listener_is_allowed(
+    monkeypatch, fallback_socketpair, address
+):
     """Kể cả khi đang ở trong socketpair(), connect tới đích khác cặp của nó vẫn bị chặn.
 
     Giả lập bằng cách cho ``listen`` của socketpair kèm một lần connect lạ ngay trong lời gọi.
@@ -279,13 +373,13 @@ def test_inside_socketpair_only_its_own_listener_is_allowed(monkeypatch, address
         return result
 
     monkeypatch.setattr(socket.socket, "listen", listen_then_try_elsewhere)
-    a, b = socket._fallback_socketpair(socket.AF_INET)
+    a, b = fallback_socketpair(socket.AF_INET)
     a.close()
     b.close()
     assert seen == ["chặn"]
 
 
-def test_inside_socketpair_other_loopback_listener_is_blocked(monkeypatch):
+def test_inside_socketpair_other_loopback_listener_is_blocked(monkeypatch, fallback_socketpair):
     """Trong socketpair(), một socket khác nghe ở 127.0.0.1 (không phải của cặp) vẫn bị chặn."""
     seen = []
     original_accept = socket.socket.accept
@@ -306,7 +400,7 @@ def test_inside_socketpair_other_loopback_listener_is_blocked(monkeypatch):
             return original_accept(self)
 
         monkeypatch.setattr(socket.socket, "accept", accept_then_try_outsider)
-        a, b = socket._fallback_socketpair(socket.AF_INET)
+        a, b = fallback_socketpair(socket.AF_INET)
         a.close()
         b.close()
     assert seen == ["chặn"]
