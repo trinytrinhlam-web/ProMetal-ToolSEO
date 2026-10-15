@@ -7,12 +7,12 @@
 | Ngày giao | 2026-10-15 |
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Thấp (phải xong trước khi đóng Giai đoạn 2) |
-| Phụ thuộc | T-019 đã gộp vào `main`, vì phiếu sửa `seo_app/content/blind_test.py` và `seo_app/ai/**` mà T-019 vừa đổi. Không làm cùng lúc với T-031 nếu T-031 sửa `blind_test.py` |
-| Trạng thái | Chờ T-019 |
+| Phụ thuộc | T-019 đã gộp vào `main`, vì phiếu sửa `seo_app/content/blind_test.py` và `seo_app/ai/**` mà T-019 vừa đổi. T-031 chỉ sửa `seo_app/sanitize.py`, nên chạy song song được |
+| Trạng thái | Chờ chỗ trống (T-019 đã gộp `7d8f6f3`) |
 
 ## Mục tiêu
 
-Gom các lỗi mức Thấp mà Soi Lỗi và Lá Chắn đã ghi sổ về lớp AI và trang thử mù. Sửa một lượt để đóng Giai đoạn 2 sạch.
+Gom 7 lỗi mức Thấp mà Soi Lỗi và Lá Chắn đã ghi sổ về lớp AI và trang thử mù. Sửa một lượt để đóng Giai đoạn 2 sạch.
 
 ## Bối cảnh và danh sách lỗi
 
@@ -23,6 +23,8 @@ Gom các lỗi mức Thấp mà Soi Lỗi và Lá Chắn đã ghi sổ về lớ
 | SL-T019-5 | như trên ("Ghi nhận thêm") | `ignoring_custom_headers` (`seo_app/ai/base.py`) **gỡ** biến `*_CUSTOM_HEADERS` khỏi `os.environ` trong lúc tạo client. Luồng khác đang duyệt `os.environ` đúng lúc đó (httpx tìm proxy, `dict(os.environ)`) bị `KeyError`. Test T-028 `test_other_threads_reading_environment_never_fail` có lúc hỏng: Soi Lỗi gặp 25/25 lần khi chạy riêng file trên `main`; Chỉ Huy B chạy 5 lần đều qua, tức là lỗi phụ thuộc máy. Thử mù là chỗ đầu tiên tạo client song song ở nhiều luồng | Tìm cách không gỡ biến khỏi `os.environ`, ví dụ chặn đúng chỗ thư viện đọc biến (nếu thư viện có điểm đọc ổn định), hoặc cách khác có lý do rõ. Phải giữ đủ: header lạ **không bao giờ** tới client (test T-028 vẫn qua). Không làm thì báo cáo lý do và đề xuất sửa test. **Không** được nới lỏng test để qua |
 | LC-T028-1 | `docs/team/reports/T-028-la-chan.md` | Khóa `_ENV_LOCK` là `threading.Lock`: gọi lồng trong cùng luồng sẽ treo (hiện chưa có chỗ gọi lồng) | Đổi sang `RLock`, có test gọi lồng. Nếu SL-T019-5 bỏ hẳn việc gỡ biến thì xét lại có cần khóa không |
 | LC-T028-3 | như trên (= SL-T028-3) | Nội dung nén `gzip`/`br` hỏng ở Anthropic/OpenAI ra câu "Không kết nối được tới …" thay vì câu "dữ liệu lạ" | Nhánh `APIConnectionError`: nếu `__cause__` (hoặc chuỗi nguyên nhân) là lỗi giải nén của httpx (`DecodingError`) thì ra `bad_response_error`. Áp dụng cả ở `seo_app/env_file.py` (nút Kiểm tra khóa). Bỏ `xfail` của test tương ứng |
+| LC-T019-1 | `docs/team/reports/T-019-la-chan.md` | Tên mô hình người dùng gõ ở trang thử mù hiện qua Markdown chưa escape trong câu lỗi (`app/views/settings.py:295`, `:384`, qua `blind_test.py`). Gõ `[a1](https://x.y)` thì thành link bấm được. Chỉ là chữ của chính người dùng | Sửa ở logic, không sửa giao diện: `validate_request` trong `blind_test.py` từ chối tên mô hình có ký tự ngoài `[A-Za-z0-9._:/@-]`, kèm câu lỗi tiếng Việt dễ hiểu. Kiểm lại rằng 42 tên mô hình thật Soi Lỗi đã liệt kê vẫn qua |
+| LC-T019-2 | như trên | `load_ai_config` báo thiếu file kèm **đường dẫn đầy đủ** trên máy (`seo_app/ai/registry.py`). T-019 cho hiện câu này thêm ở tab Mô hình AI | Đổi thành `config/ai.toml`, như các nhánh lỗi khác của hàm |
 
 ## Phạm vi
 
@@ -34,7 +36,7 @@ Gom các lỗi mức Thấp mà Soi Lỗi và Lá Chắn đã ghi sổ về lớ
 
 ## Yêu cầu
 
-1. Sửa 5 lỗi trên. Lỗi nào không sửa được hoặc thấy không nên sửa thì nêu lý do trong báo cáo để Chỉ Huy quyết.
+1. Sửa 7 lỗi trên. Lỗi nào không sửa được hoặc thấy không nên sửa thì nêu lý do trong báo cáo để Chỉ Huy quyết.
 2. Mọi câu lỗi vẫn là câu cố định tiếng Việt, không chép chữ máy chủ, không lộ khóa (S2, T-026, T-028).
 3. Test cho mọi nhánh mới, không gọi mạng thật. Riêng SL-T019-5: test chạy song song nhiều luồng phải qua ổn định. Chạy riêng file `tests/test_soi_loi_t028.py` ít nhất 30 lần, 0 hỏng, ghi số vào báo cáo.
 4. `uv run pytest` và `uv run ruff check .` sạch.
@@ -45,7 +47,7 @@ S2, W4 / mục 2.7 (chỉ gọi máy chủ chính thức, header lạ không l�
 
 ## Tiêu chí xong
 
-- [ ] 5 lỗi đã sửa hoặc có lý do rõ
+- [ ] 7 lỗi đã sửa hoặc có lý do rõ
 - [ ] Test `xfail` tương ứng đã bỏ dấu và qua
 - [ ] `tests/test_soi_loi_t028.py` chạy riêng 30 lần, 0 hỏng
 - [ ] Báo cáo `docs/team/reports/T-034-tho-may.md`

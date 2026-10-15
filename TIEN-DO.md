@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 18:45 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-15, 18:55 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -12,11 +12,11 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - 2026-10-15: bộ test giờ chạy xanh cả trên Windows (T-027).
 - Đã lên `main` 2026-10-15 chiều: lớp AI chịu được thư viện lệch phiên bản, chỉ gọi đúng máy chủ chính thức của 3 hãng (T-026).
 - Đã lên `main` 2026-10-15 chiều: báo lỗi tiếng Việt khi máy chủ AI trả dữ liệu hỏng (T-028), bộ chặn mạng của test chặt hơn và chạy được trên mọi máy (T-029, T-030).
-- Đang sửa lượt 2 (nhánh tạm): thử mù mô hình (T-019), việc cuối của Giai đoạn 2.
+- Đã lên `main` 2026-10-15 tối: **thử mù mô hình** (T-019) ở Cài đặt → 🤖 Mô hình AI.
 - Đã lên `main` 2026-10-15 tối: test đo tốc độ không còn đỏ oan (T-025).
 - Đang chuẩn bị Giai đoạn 4: tìm hiểu cách ghi meta/schema vào SiteSEO (T-033).
 - Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động trên `main`: 3.133 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
+- Bộ kiểm tra tự động trên `main`: 3.344 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -50,9 +50,11 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Bộ test chạy xanh trên Windows (T-027) | ✅ Xong, đã lên `main` |
 | Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) + test chạy được trên Linux/Mac (T-030) | ✅ Xong, đã lên `main` |
 | Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | ✅ Xong, đã lên `main` |
-| Thử mù mô hình trong Cài đặt (T-019) | 🔎 Soi Lỗi đạt có điều kiện (2 lỗi Thấp: AI tự xưng tên lọt lớp che, tên mô hình quá ngắn); Thợ Máy lượt 2 gần xong, còn chạy test và viết báo cáo (nhánh `team/T-019`) |
-| Địa chỉ trần, email trong chữ AI không thành link (T-031) | ⏳ Phiếu đã lập, làm sau T-019 |
-| Bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai và nhãn đặt trên tiêu đề (T-032) | 🔧 Thợ Máy đang làm (nhánh `team/T-032`) |
+| Thử mù mô hình trong Cài đặt (T-019) | ✅ Xong, đã lên `main` |
+| Địa chỉ trần, email trong chữ AI không thành link (T-031) | 🔧 Thợ Máy đang làm (nhánh `team/T-031`) |
+| Bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai và nhãn đặt trên tiêu đề (T-032) | 🔎 Thợ Máy xong, Soi Lỗi đang kiểm (nhánh `team/T-032`) |
+| 7 lỗi Thấp còn lại của lớp AI và thử mù (T-034) | ⏳ Phiếu đã lập |
+| README: hướng dẫn 3 hãng AI và thử mù (T-035) | ⏳ Phiếu đã lập, làm sau T-032 |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 

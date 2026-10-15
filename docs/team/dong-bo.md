@@ -34,19 +34,25 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 18:50. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-15 18:55. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`ab0d560`) | Soi Lỗi lượt 2 ĐẠT (Linux 3.321 qua). Lỗi Thấp còn lại → T-034. Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp (lưu ý `seo_app/content/prompts.py` cũng bị T-032 sửa dòng nhập tên), cập nhật CLAUDE.md (Giai đoạn 2 còn T-031, T-032, T-034) |
-| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 | chưa có | Phiếu đã lập, chờ T-019 lên `main` | Giao Thợ Máy (không chạy cùng lúc với T-031 nếu cùng sửa `blind_test.py`) |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (từ `main` `7d8f6f3`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn, gộp |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | chưa có | Phiếu đã lập, T-019 đã gộp; chờ chỗ trống | Tạo `team/T-034` từ `main`, giao Thợ Máy |
+| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) README 3 hãng AI, thử mù | chưa có | Phiếu đã lập, chờ T-032 gộp | Giao Thư Ký |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`f831877`) | Thợ Máy xong (Linux 3.238 qua). Soi Lỗi đang kiểm | Lá Chắn (A1, A3), gộp |
 | [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) Thiết kế Giai đoạn 4 | `team/T-033` (từ `main`) | Mới giao Thợ Máy (chỉ viết báo cáo thiết kế, không code) | Chỉ Huy đọc, gộp báo cáo; hỏi chủ dự án các câu trong báo cáo; lập phiếu code sau khi T-019 lên `main` |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 18:55 · Chỉ Huy B
+
+- Lá Chắn T-019 (Opus tạm) **ĐẠT** (`2c3d23c`). Gộp T-019 vào `main` (`7d8f6f3`): Linux 3.344 qua, 0 hỏng; ruff sạch. Xóa nhánh `team/T-019` giúp. 5 lỗi Thấp của Soi Lỗi/Lá Chắn gom vào T-034 (7 lỗi).
+- T-025 đã gộp (`39065cd`). Giao T-031 cho Thợ Máy. Lập T-035 (Thư Ký: README 3 hãng AI, thử mù). Số phiếu tiếp theo: **T-036**.
+- Giai đoạn 2 còn: T-031, T-032 (Soi Lỗi đang kiểm), T-034, T-035. Xong 4 phiếu này thì đánh dấu [x] Giai đoạn 2 trong `CLAUDE.md`.
 
 ### 2026-10-15 18:42 · Chỉ Huy B
 
