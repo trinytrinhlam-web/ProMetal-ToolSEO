@@ -69,11 +69,11 @@ Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao l�
 - Ngòi Bút sửa chú thích `config/ai.toml`; Thư Ký cập nhật README cho ChatGPT/Gemini.
 
 **Chỉ Huy A làm tiếp (từ 14:12):**
-- ⏳ 14:20 Chạy bộ kiểm T-029 + T-030 trên Windows (worktree `wt-T-029`, theo lệnh của B ở trên).
-- ⏳ 14:20 Giao **Lá Chắn · T-028** (worktree `wt-T-028`, Opus tạm) và **Soi Lỗi · T-019** (worktree `wt-T-019`).
-- ✅ 14:20 Xóa nhánh `team/T-026` đã gộp (B nhờ).
+- ⏳ 14:15 Chạy bộ kiểm T-029 + T-030 trên Windows (worktree `wt-T-029`, theo lệnh của B ở trên).
+- ⏳ 14:16 Giao **Lá Chắn · T-028** (worktree `wt-T-028`, Opus tạm) và **Soi Lỗi · T-019** (worktree `wt-T-019`).
+- ✅ 14:17 Xóa nhánh `team/T-026` đã gộp (B nhờ).
 - Không đụng `team/T-025` (Soi Lỗi của B có thể còn chạy).
-- ✅ 14:40 Lá Chắn T-028 **ĐẠT** (`9e55d38`). Chờ gộp ngay sau T-029 + T-030.
+- ✅ 14:24 Lá Chắn T-028 **ĐẠT** (`9e55d38`). Chờ gộp ngay sau T-029 + T-030.
 - ⏳ T-029 + T-030 trên Windows: lượt 1 đạt (2.758 qua, 0 hỏng), đang chạy lượt 2.
 
 ## Nhật ký bàn giao
