@@ -28,57 +28,40 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy A**, từ 2026-10-15 14:12 (chủ dự án báo Chỉ Huy B đã xong). A **không đụng nhánh `team/T-025`** tới khi báo cáo T-025 của Soi Lỗi (phiên B) có trên nhánh.
+**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng").
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Trạng thái lúc Chỉ Huy B bàn giao (2026-10-15 14:10). Mọi việc đã đẩy lên GitHub. Agent của B: chỉ còn **Soi Lỗi · T-025** chạy nốt trên nhánh `team/T-025` (không đụng nhánh nào khác); các agent khác của B đã dừng.
+Chỉ Huy B, cập nhật 2026-10-15 18:05. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
-| Phiếu | Nhánh (HEAD) | Đã xong | Việc tiếp theo cho Chỉ Huy A |
+| Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng; test T-027 chạy được trên Linux/Mac | `team/T-029` (`bf69ace`) | Soi Lỗi xong; Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** ([biên bản](reports/T-029-030-la-chan.md)); điều kiện bản quyền PSF đã xong | **Chạy test trên Windows** (lệnh ngay dưới bảng). Đạt thì gộp vào `main`. **Gộp trước các phiếu khác**: `main` đang có 9 test đỏ trên Linux, T-030 sửa |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (`1c300f5`) | Thợ Máy 2 lượt; Soi Lỗi **đạt** (3 lỗi Thấp; SL-T028-2 đã sửa ở lượt 2) | **Giao Lá Chắn.** Trọng tâm: S2 (câu báo lỗi cố định), cách tạm gỡ biến `*_CUSTOM_HEADERS`, `OPENAI_ORG_ID`/`OPENAI_PROJECT_ID` khỏi `os.environ` dưới khóa luồng rồi trả lại. Lá Chắn quyết SL-T028-1 (lệch phiên bản sâu trong thư viện ra câu "dữ liệu lạ", Soi Lỗi đề xuất chấp nhận) và SL-T028-3 (gzip hỏng ra "Không kết nối được", có từ trước). ĐẠT thì gộp |
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình (việc cuối của Giai đoạn 2) | `team/T-019` (`0d09f4d`) | Thợ Máy xong logic (`seo_app/content/blind_test.py`, 39 test); Họa Sĩ xong giao diện (tab 🤖 Mô hình AI, 14 test) | **Giao Soi Lỗi**, rồi Lá Chắn (A1, U1, S2). Lưu ý của Họa Sĩ: nhãn "Bản demo" đầu trang Cài đặt vẫn còn vì tab Văn phong, Ảnh còn demo; chú thích đầu `config/ai.toml` đã cũ (Ngòi Bút sửa sau) |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ chập chờn | `team/T-025` | Soi Lỗi (phiên B) **đang chạy nốt**: đo 100 lần mỗi test, sẽ đẩy báo cáo `docs/team/reports/T-025-soi-loi.md` | Khi có báo cáo: Lá Chắn rút gọn (chỉ soát bí mật), gộp. Nếu tới lúc A làm mà báo cáo chưa có: xem `git log origin/team/T-025`, phiên có thể đã dừng vì giới hạn sử dụng |
-
-**Lệnh kiểm T-029 + T-030 trên Windows** (máy cloud của B không có Windows):
-
-```
-git fetch origin
-git switch team/T-029
-git pull
-uv run python -VV
-uv run pytest -q -rs
-uv run pytest -q -rs
-uv run pytest -q tests/test_soi_loi_t027.py tests/test_soi_loi_t029.py tests/test_safety.py -v -k "proactor or vong-lap-mac-dinh or ipv6 or socketpair"
-uv run ruff check .
-```
-
-Đạt khi:
-- Hai lượt đều 0 hỏng, 0 lỗi.
-- Không bỏ qua test IPv6 nào (trừ khi máy tắt IPv6).
-- `test_proactor_sendto_is_wrapped_on_windows` và các tham số `vong-lap-mac-dinh` đều **PASSED**.
-
-Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao lại Soi Lỗi. Chi tiết: biên bản Lá Chắn, mục "Phần chưa kiểm được trên Linux".
-
-**Việc chờ lập phiếu** (xem `board.md` mục Chờ):
-- Ghim cùng một bản Python cho mọi máy (`.python-version`). Làm sau T-029 + T-030.
-- Lỗi Thấp của bộ lọc hồ sơ: nhãn gõ sai, nhãn trên tiêu đề (Lá Chắn T-022 + T-024).
-- Ngòi Bút sửa chú thích `config/ai.toml`; Thư Ký cập nhật README cho ChatGPT/Gemini.
-
-**Chỉ Huy A làm tiếp (từ 14:12):**
-- ⏳ 14:15 Chạy bộ kiểm T-029 + T-030 trên Windows (worktree `wt-T-029`, theo lệnh của B ở trên).
-- ⏳ 14:16 Giao **Lá Chắn · T-028** (worktree `wt-T-028`, Opus tạm) và **Soi Lỗi · T-019** (worktree `wt-T-019`).
-- ✅ 14:17 Xóa nhánh `team/T-026` đã gộp (B nhờ).
-- Không đụng `team/T-025` (Soi Lỗi của B có thể còn chạy).
-- ✅ 14:24 Lá Chắn T-028 **ĐẠT** (`9e55d38`). Chờ gộp ngay sau T-029 + T-030.
-- ⏳ T-029 + T-030 trên Windows: lượt 1 đạt (2.758 qua, 0 hỏng), đang chạy lượt 2.
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`4223a8c`) | Thợ Máy (phiên B, `Thợ Máy · T-019 Thử mù mô hình (lượt 2)`) soát commit `4223a8c` của Thợ Máy bên A, chạy toàn bộ test, viết báo cáo lượt 2 | Soi Lỗi kiểm lại (có đụng `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`f7a9c22`) | Soi Lỗi (phiên B) chạy tiếp sau khi chạm giới hạn lúc 14:45; gộp `main` mới rồi nộp báo cáo | Lá Chắn rút gọn, gộp |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 18:02 · Chỉ Huy B nhận quyền
+
+- `git pull` về `main` = `d2fae78`. Đọc bàn giao 14:39 của A. Làm tiếp: T-019 (Thợ Máy làm nốt lượt 2), T-025 (kiểm tra Soi Lỗi của B), T-031 sau T-019.
+- Mục "đang kết thúc" 14:10 của B đã cũ: A nhận và trả quyền sau đó (14:12 → 14:39).
+
+### 14:39 · Chỉ Huy A trả quyền (chủ dự án: hạn mức sắp hết)
+
+**Đã xong trong phiên A (14:12 → 14:39), đều đã lên `main`:**
+- Chạy kiểm T-029 + T-030 trên Windows theo lệnh của B: 2 lượt đều 2.758 qua, 0 hỏng; test IPv6, `test_proactor_sendto_is_wrapped_on_windows`, các tham số `vong-lap-mac-dinh` đều PASSED.
+- Lá Chắn T-028 **ĐẠT** (`9e55d38`; 3 lỗi Thấp: LC-T028-1 đổi sang `RLock` khi tiện, LC-T028-2 chấp nhận, LC-T028-3 gzip hỏng → gộp phiếu lớp AI sau).
+- Gộp T-029 (`7c8604e`) và T-028 (`d08f8ca`). Windows 3.110 qua, 0 hỏng.
+- Xóa nhánh đã gộp: `team/T-026`, `team/T-028`, `team/T-029`.
+- Soi Lỗi T-019 đạt có điều kiện; Thợ Máy lượt 2 làm gần xong (bảng trên).
+- Lập T-031. Số phiếu tiếp theo: **T-032**.
+
+**Lưu ý:** Lá Chắn của A vẫn chạy tạm Opus 5.5 (tài khoản A không dùng được Fable). Danh sách kiểm lại bằng Fable sau 01/11 trong `board.md` đã có T-028, T-029, T-030.
 
 ### 2026-10-15 14:12 · Chỉ Huy A nhận quyền
 
