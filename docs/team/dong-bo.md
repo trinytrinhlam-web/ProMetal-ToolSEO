@@ -34,8 +34,9 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-- Lập phiếu điều phối chung (file này); đưa thư mục `plan/` của chủ dự án vào `docs/plan/`; ghi quyết định ngày 2026-10-15 vào tài liệu.
-- Bước kế tiếp: gộp `team/T-024` (T-022 + T-024, Lá Chắn đã ĐẠT) vào `main`; lập phiếu sửa test chạy trên Windows; giao T-026.
+- ✅ Lập phiếu điều phối chung; đưa `docs/plan/` lên repo (`5d62087`).
+- ✅ Gộp `team/T-024` (T-022 + T-024) vào `main` (`958a93e`); xóa nhánh `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
+- ⏳ Đang làm: lập phiếu T-027 (Soi Lỗi sửa test chạy trên Windows), rồi giao T-027 và T-026 (Thợ Máy).
 
 ## Nhật ký bàn giao
 

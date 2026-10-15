@@ -10,22 +10,20 @@ _Cập nhật: 2026-10-15 11:00 (Chỉ Huy A). Hai Chỉ Huy phối hợp qua [d
 >
 > 2026-10-15: 4 phiên (Ngòi Bút · T-022, Soi Lỗi · T-018/T-023/T-024) dừng lúc 22:05 ngày 14/10 vì chạm giới hạn sử dụng của tài khoản; đã chạy lại theo đợt, tối đa 3 phiên cùng lúc.
 
-> 2026-10-15: phiên cloud không xóa được nhánh trên GitHub (máy chủ git từ chối lệnh xóa). Các nhánh đã gộp hết vào `main`, xóa được an toàn trên trang GitHub → Branches: `team/T-018`, `team/T-023`.
+> 2026-10-15 11:30: Chỉ Huy A (Claude Desktop trên máy chủ dự án) đã xóa các nhánh tạm gộp xong: `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
 
 Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (thanh bên app Claude), tên phiên = tên agent + số phiếu. Mỗi phiếu làm trên nhánh tạm `team/T-xxx`, gộp vào `main` khi Lá Chắn ĐẠT.
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Đang làm | |
-| [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp (PR #3 đã gộp vào `main`) | Ngòi Bút (`Ngòi Bút · T-022 Hồ sơ doanh nghiệp`) → Soi Lỗi (`Soi Lỗi · T-022 Hồ sơ doanh nghiệp`) | `team/T-022` | Ngòi Bút xong lượt 2 (dfdffc5), Soi Lỗi lượt 1 **đạt**. Đã gộp vào `team/T-024`, **Lá Chắn đang kiểm** chung | [Ngòi Bút](reports/T-022-ngoi-but.md) · [Soi Lỗi](reports/T-022-soi-loi.md) |
-| [T-024](tickets/T-024-loc-ho-so-theo-khoi.md) | Bộ lọc hồ sơ doanh nghiệp lọc theo cả ý (Ngòi Bút phát hiện ở T-022) | Thợ Máy (`Thợ Máy · T-024 Bộ lọc hồ sơ`) → Soi Lỗi (`Soi Lỗi · T-024 Bộ lọc hồ sơ`) | `team/T-024` | Soi Lỗi lượt 2 **đạt** (2ab85ec). Nhánh đã gộp T-022 và `main` (2.023 test qua). **Lá Chắn đang kiểm** (`Lá Chắn · T-022 + T-024 Hồ sơ doanh nghiệp (Opus tạm)`) | [Thợ Máy](reports/T-024-tho-may.md) · [Soi Lỗi](reports/T-024-soi-loi.md) |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy | Còn chỗ (tối đa 3 phiên) |
 | T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Hết chờ: chủ dự án chốt 2026-10-15 không có hãng mặc định. Chờ lập phiếu |
+| _(chưa lập phiếu)_ | Lỗi Thấp #1, #2 của bộ lọc hồ sơ: nhãn gõ sai (`[CẦNXÁC NHẬN]`, không dấu, ngoặc tròn), nhãn trên tiêu đề | Thợ Máy (#1), Ngòi Bút (#2) | Lá Chắn đề nghị ([biên bản](reports/T-022-024-la-chan.md)); lập phiếu sau T-026 |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
@@ -40,6 +38,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-024](tickets/T-024-loc-ho-so-theo-khoi.md) | Bộ lọc hồ sơ lọc theo cả ý | Thợ Máy | 2026-10-15 | [Thợ Máy](reports/T-024-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-024-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-022-024-la-chan.md) (Opus tạm), 4 lỗi Thấp ghi sổ. Gộp vào `main` `958a93e` |
+| [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp theo trả lời của chủ dự án | Ngòi Bút | 2026-10-15 | [Ngòi Bút](reports/T-022-ngoi-but.md) (2 lượt) · [Soi Lỗi](reports/T-022-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-022-024-la-chan.md) (Opus tạm). Gộp vào `main` `958a93e` |
 | [T-023](tickets/T-023-nut-kiem-tra-khoa-openai-gemini.md) | Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt → Kết nối | Họa Sĩ | 2026-10-15 | [Họa Sĩ](reports/T-023-hoa-si.md) (2 lượt) · [Soi Lỗi](reports/T-023-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-018-023-la-chan.md) (Opus tạm) |
 | [T-018](tickets/T-018-them-openai-gemini.md) | Thêm ChatGPT (`openai`) và Gemini (`google-genai`) vào lớp AI | Thợ Máy | 2026-10-15 | [Thợ Máy](reports/T-018-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-018-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-018-023-la-chan.md) (Opus tạm), 4 lỗi Thấp → T-026 |
 | [T-021](tickets/T-021-sua-loi-kho-nhap-va-env.md) | Sửa lỗi kho nháp và ghi `.env` (2 lượt Thợ Máy) | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-021-tho-may.md) · [Soi Lỗi](reports/T-016-020-soi-loi.md) lần 2: đạt · Lá Chắn: [**ĐẠT**](reports/T-016-020-la-chan.md) lần 2 (chạy tạm Opus) |

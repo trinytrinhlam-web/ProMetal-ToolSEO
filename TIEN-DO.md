@@ -8,7 +8,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 
 - Đã xong: bộ khung app, kết nối WordPress (chỉ tạo bản nháp), AI viết bài bằng Claude (bước 1–3 của trang Soạn bài), đội agent và quy trình kiểm tra bảo mật.
 - Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu), ChatGPT và Gemini (T-018), nút Kiểm tra khóa cả 3 hãng (T-023).
-- **Đã qua kiểm định bảo mật, chờ gộp vào `main`** (nhánh `team/T-024`): hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
+- Đã lên `main` 2026-10-15: hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
 - Phát hiện 2026-10-15: chạy test **trên Windows** có 152 test đỏ, do bộ test (không phải do app). Sẽ lập phiếu sửa.
 - Còn lại: thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
 - Bộ kiểm tra tự động trên `main`: trên Linux (cloud) đều qua; trên Windows 2.009 qua, 152 đỏ (lỗi của bộ test, xem trên).
@@ -38,8 +38,8 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Ô nhập khóa API Claude / ChatGPT / Gemini trong Cài đặt → Kết nối (T-020, T-021) | ✅ Xong, đã lên GitHub |
 | Thêm AI ChatGPT (OpenAI) và Gemini bằng thư viện chính hãng (T-018) | ✅ Xong, đã lên `main` |
 | Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt (T-023) | ✅ Xong, đã lên `main` |
-| Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | 🔒 Lá Chắn ĐẠT, chờ gộp vào `main` (nhánh `team/T-024`) |
-| Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | 🔒 Lá Chắn ĐẠT, chờ gộp vào `main` (cùng nhánh) |
+| Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | ✅ Xong, đã lên `main` |
+| Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | ✅ Xong, đã lên `main` |
 | Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi có 2 commit, chưa nộp báo cáo (nhánh `team/T-025`) |
 | 4 lỗi Thấp lớp AI (T-026) | ⏳ Chưa giao |
 | Thử mù mô hình trong Cài đặt (T-019) | ⏳ Hết chờ (T-018 đã lên `main`, anh chốt không có hãng mặc định) |
