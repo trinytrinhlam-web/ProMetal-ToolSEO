@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 14:32 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-15, 14:39 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -48,7 +48,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Bộ test chạy xanh trên Windows (T-027) | ✅ Xong, đã lên `main` |
 | Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) + test chạy được trên Linux/Mac (T-030) | ✅ Xong, đã lên `main` |
 | Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | ✅ Xong, đã lên `main` |
-| Thử mù mô hình trong Cài đặt (T-019) | 🔎 Soi Lỗi đạt có điều kiện (2 lỗi Thấp: AI tự xưng tên lọt lớp che, tên mô hình quá ngắn); **Thợ Máy đang sửa lượt 2** (nhánh `team/T-019`) |
+| Thử mù mô hình trong Cài đặt (T-019) | 🔎 Soi Lỗi đạt có điều kiện (2 lỗi Thấp: AI tự xưng tên lọt lớp che, tên mô hình quá ngắn); Thợ Máy lượt 2 gần xong, còn chạy test và viết báo cáo (nhánh `team/T-019`) |
 | Địa chỉ trần, email trong chữ AI không thành link (T-031) | ⏳ Phiếu đã lập, làm sau T-019 |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
