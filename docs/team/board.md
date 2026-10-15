@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 18:43 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-15 18:50 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -22,8 +22,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ (`Họa Sĩ · T-019 Thử mù mô hình`) | `team/T-019` | Thợ Máy xong logic (`d2bfa8c`, 39 test). Họa Sĩ xong giao diện (`0d09f4d`, 14 test; Linux chỉ 9 test đỏ sẵn của T-027). Soi Lỗi **đạt có điều kiện** (`e3cee76`): SL-T019-1 AI tự xưng tên lọt lớp che (`_Claude_`, `Opus`…), SL-T019-2 tên mô hình quá ngắn làm hỏng bài mọi ứng viên. Thợ Máy lượt 2 **xong** (`94a2813`, Linux 3.222 qua, 0 hỏng; Chỉ Huy B chấp nhận phần sửa `seo_app/ai/`, ghi trong phiếu). **Soi Lỗi đang kiểm lại** (`Soi Lỗi · T-019 Thử mù mô hình (lượt 2)`), rồi Lá Chắn | [Thợ Máy](reports/T-019-tho-may.md) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md) |
-| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) | `team/T-032` | Đã giao | |
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ (`Họa Sĩ · T-019 Thử mù mô hình`) | `team/T-019` | Thợ Máy xong logic, Họa Sĩ xong giao diện. Soi Lỗi lượt 1 đạt có điều kiện (SL-T019-1, -2). Thợ Máy lượt 2 sửa xong (`94a2813`; Chỉ Huy B chấp nhận phần sửa `seo_app/ai/`, ghi trong phiếu). Soi Lỗi lượt 2 **ĐẠT** (`ab0d560`, Linux 3.321 qua): 2 lỗi Thấp mới SL-T019-3, -4 và race `os.environ` của T-028 → [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md). **Lá Chắn đang kiểm** (`Lá Chắn · T-019 Thử mù mô hình (Opus tạm)`) | [Thợ Máy](reports/T-019-tho-may.md) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md) |
+| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Soi Lỗi (`Soi Lỗi · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) | `team/T-032` | Thợ Máy xong (`f831877`, Linux 3.238 qua, 122 test mới; phần hồ sơ AI thấy không đổi). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-032-tho-may.md) |
 | [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4 (on-page): SiteSEO lưu meta/schema ở đâu, ghi qua REST được không, chia phiếu, câu hỏi cho chủ dự án. Không sửa code | Thợ Máy (`Thợ Máy · T-033 Thiết kế Giai đoạn 4`) | `team/T-033` | Đã giao | |
 
 ## Chờ
@@ -31,7 +31,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được (Soi Lỗi phát hiện ở T-019; có ở cả trang Soạn bài) | Thợ Máy | T-019 gộp vào `main` |
-| _(gộp vào phiếu lớp AI tiếp theo)_ | Lỗi Thấp của Lá Chắn T-028: LC-T028-1 đổi khóa gỡ biến môi trường sang `RLock` (gọi lồng sẽ treo; hiện không có chỗ gọi lồng); LC-T028-3 gzip hỏng ra "Không kết nối được" (có từ trước). LC-T028-2 chấp nhận | Thợ Máy | Khi có phiếu lớp AI tiếp theo |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | Lỗi Thấp còn lại của lớp AI và thử mù: SL-T019-3 (số phiên bản lộ sau tên đã che), SL-T019-4 (Claude bị cắt → câu lỗi sai chỗ), SL-T019-5 (race `os.environ` khi gỡ `*_CUSTOM_HEADERS`), LC-T028-1 (`RLock`), LC-T028-3 (gzip hỏng → câu "dữ liệu lạ") | Thợ Máy | T-019 gộp vào `main` |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
@@ -88,4 +88,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-034
+## Số phiếu tiếp theo: T-035
