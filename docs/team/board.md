@@ -22,8 +22,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (`Soi Lỗi · T-029 + T-030 Bộ chặn mạng`) | `team/T-029` | Đang làm nốt (đã có code `89e6e8c`, test `3628608`), làm chung T-030. Xong thì Lá Chắn, rồi chạy lại trên Windows trước khi gộp | |
-| [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Test của T-027 chạy được trên Linux/Mac (`main` đang có 9 test đỏ trên Linux) | Soi Lỗi (cùng phiên T-029) | `team/T-029` | Đang làm | |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (`Soi Lỗi · T-029 + T-030 Bộ chặn mạng`) | `team/T-029` | Soi Lỗi **xong** (`efc0529`): Linux 2.398 qua, 0 hỏng (2 lần); 6/6 đột biến bị bắt. **Lá Chắn đang kiểm** (`Lá Chắn · T-029 + T-030 Bộ chặn mạng (Opus tạm)`). Trước khi gộp: chạy lại trên Windows | [Soi Lỗi](reports/T-029-soi-loi.md) |
+| [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Test của T-027 chạy được trên Linux/Mac (`main` đang có 9 test đỏ trên Linux) | Soi Lỗi (cùng phiên T-029) | `team/T-029` | Soi Lỗi xong, Lá Chắn kiểm chung với T-029 | [Soi Lỗi](reports/T-029-soi-loi.md) |
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → báo lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS` | Thợ Máy (`Thợ Máy · T-028 Nội dung hỏng từ máy chủ AI`) | `team/T-028` | Đang làm | |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) | `team/T-025` | Chỉ Huy B đã gộp `main` vào nhánh (`ce1a79c`). Soi Lỗi làm tiếp và nộp báo cáo | |
 

@@ -38,7 +38,7 @@ Chỉ Huy B, cập nhật 2026-10-15 13:35. **T-026 đã gộp vào `main` (`643
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`3628608`) | Soi Lỗi làm nốt T-029 và làm T-030 | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`efc0529`) | Soi Lỗi xong (Linux xanh 2 lần); Lá Chắn đang kiểm | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (từ `main` `64383a5`) | Thợ Máy đang làm | Soi Lỗi, rồi Lá Chắn |
 
