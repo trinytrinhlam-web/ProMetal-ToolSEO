@@ -6,10 +6,29 @@ trong ``conftest.py`` phải cho qua (đúng một lần) mà vẫn chặn mọi
 
 Bản Python mới (3.12.4 trở lên, 3.13) giữ đường này ở ``socket._fallback_socketpair`` trên mọi
 hệ điều hành, nên Linux/Mac gọi thẳng được. Bản cũ hơn (ví dụ 3.12.3 mà ``uv`` chọn trên máy
-cloud) chỉ định nghĩa nó trên Windows, nên trên Linux/Mac test dùng bản sao dưới đây. Hàm chép
-nguyên từ ``Lib/socket.py`` của CPython 3.13 (giấy phép PSF), chỉ đổi tên cho khớp và dùng
-``contextlib.suppress`` thay ``try/except/pass``. Nó gọi ``socket.socket(...).listen``, ``connect``,
-``accept`` nên đi qua đúng các hàm đã bị bộ chặn bọc.
+cloud) chỉ định nghĩa nó trên Windows, nên trên Linux/Mac test dùng bản sao dưới đây. Nó gọi
+``socket.socket(...).listen``, ``connect``, ``accept`` nên đi qua đúng các hàm đã bị bộ chặn bọc.
+
+Nguồn và giấy phép: hàm ``copied_fallback_socketpair`` là bản phái sinh của
+``_fallback_socketpair`` trong ``Lib/socket.py`` của CPython 3.13
+(https://github.com/python/cpython/blob/3.13/Lib/socket.py).
+Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved.
+Dùng theo PSF License Agreement for Python 3.13 (https://docs.python.org/3/license.html).
+
+Các thay đổi so với bản gốc (tóm tắt theo điều 3 của PSF License Agreement); hành vi trên
+Windows, Linux, Mac giữ nguyên:
+
+1. Đổi tên hàm ``_fallback_socketpair`` thành ``copied_fallback_socketpair``.
+2. Vì nằm ngoài module ``socket``: gọi ``socket.socket``, ``socket.AF_INET``, ``socket.AF_INET6``,
+   ``socket.SOCK_STREAM`` thay cho tên trần; viết thẳng ``"127.0.0.1"``, ``"::1"`` thay cho hằng
+   ``_LOCALHOST``, ``_LOCALHOST_V6``.
+3. Câu báo lỗi ``ValueError`` của họ địa chỉ gộp thành một chuỗi (nội dung giữ nguyên).
+4. ``try: connect ... except (BlockingIOError, InterruptedError): pass`` đổi thành
+   ``with contextlib.suppress(BlockingIOError, InterruptedError)``.
+5. ``except:`` (trần) đổi thành ``except BaseException:`` (bắt cùng mọi lỗi như nhau).
+6. Bỏ điều kiện ``if sys.platform != "wasi"`` quanh bước kiểm ``getsockname``/``getpeername``:
+   bản chép luôn kiểm (dự án không chạy trên WASI); điều kiện kiểm viết gọn trên một dòng.
+7. Bỏ các chú thích gốc của CPython.
 
 Test lấy hàm qua fixture ``fallback_socketpair`` (``conftest.py``), không gọi file này trực tiếp.
 """

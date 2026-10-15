@@ -121,3 +121,7 @@ T-029:
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Bổ sung sau Lá Chắn
+
+- Lỗi Thấp #1 (`T-029-030-la-chan.md`): docstring `tests/windows_socketpair.py` thêm dòng bản quyền PSF nguyên văn theo `LICENSE` của CPython 3.13, nguồn (`Lib/socket.py`, link giấy phép) và đủ 7 thay đổi so với bản gốc; phần code giữ nguyên (đã so `diff` sau docstring). `uv run pytest tests/test_soi_loi_t027.py tests/test_soi_loi_t029.py -q`: 77 passed, 4 skipped; `uv run ruff check .`: All checks passed!
