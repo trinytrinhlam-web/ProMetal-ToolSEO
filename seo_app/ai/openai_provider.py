@@ -25,7 +25,6 @@ from typing import Any
 
 import openai
 import pydantic
-from openai.lib._parsing._responses import type_to_text_format_param
 
 from seo_app.ai.base import AIError, T, TaskConfig, redact_secrets
 
@@ -50,7 +49,7 @@ class OpenAIProvider:
             "instructions": system,
             "input": prompt,
             "max_output_tokens": task.max_tokens,
-            "text": {"format": type_to_text_format_param(schema)},
+            "text": {"format": text_format(schema)},
             "reasoning": {"effort": task.effort},
             # Không lưu bài trên máy chủ OpenAI (mỗi lượt gọi đã đủ dữ liệu).
             "store": False,
@@ -94,6 +93,22 @@ class OpenAIProvider:
             raise AIError(f"Lỗi khi gọi OpenAI ({type(exc).__name__}). Bấm thử lại.") from exc
 
         return _parse(response, task, schema)
+
+
+def text_format(schema: type[T]) -> dict[str, Any]:
+    """Khuôn ``json_schema`` (strict) cho Responses API, dựng bằng hàm công khai của thư viện.
+
+    ``openai.pydantic_function_tool`` đổi lớp pydantic sang JSON Schema "strict" đúng như
+    ``responses.parse`` làm, nhưng không đụng tới hàm nội bộ (``openai.lib._parsing``) có thể
+    đổi tên giữa các phiên bản.
+    """
+    function = openai.pydantic_function_tool(schema)["function"]
+    return {
+        "type": "json_schema",
+        "name": function["name"],
+        "strict": True,
+        "schema": function["parameters"],
+    }
 
 
 def _about_reasoning(exc: openai.BadRequestError) -> bool:

@@ -29,6 +29,7 @@ Khóa API đi trong header ``x-goog-api-key`` (thư viện tự đặt), không 
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -64,6 +65,9 @@ _BLOCKED = {
 }
 REFUSAL = "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú."
 BAD_SHAPE = "AI trả về dữ liệu không đúng khuôn. Bấm thử lại."
+BAD_RESPONSE = (
+    "Máy chủ Gemini trả về dữ liệu lạ (có thể do mạng Wi-Fi hoặc proxy). Kiểm tra mạng rồi thử lại."
+)
 
 SEARCH_NOTES_PROMPT = """
 
@@ -117,7 +121,11 @@ class GeminiProvider:
             raise _api_error(exc, task) from exc
         except httpx.TimeoutException as exc:
             raise AIError("Gemini trả lời quá lâu. Bấm thử lại.") from exc
-        except httpx.TransportError as exc:
+        except (json.JSONDecodeError, errors.UnknownApiResponseError, httpx.DecodingError) as exc:
+            # Mã 200 nhưng không phải JSON của Gemini (Wi-Fi bắt đăng nhập, proxy công ty trả
+            # trang HTML) hoặc dữ liệu nén hỏng: không chép thông điệp thô.
+            raise AIError(BAD_RESPONSE) from exc
+        except httpx.RequestError as exc:
             raise AIError("Không kết nối được tới Gemini. Kiểm tra mạng Internet.") from exc
         return _parse(response, task, schema)
 

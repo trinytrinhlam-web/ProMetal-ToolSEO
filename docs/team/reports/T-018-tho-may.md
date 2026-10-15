@@ -207,3 +207,51 @@ Test chính trong `tests/test_ai_openai_gemini.py`:
    Flash cho viết lại) không? **Đề xuất: có**, sau khi thử vài bài.
 2. Tài khoản Gemini đã bật thanh toán chưa? Gemini 4 Argon **không dùng được ở gói miễn phí**.
    Nếu chưa: dùng `gemini-3.8-flash` cho mọi việc.
+
+## Lượt 2 (2026-10-15) · sửa theo báo cáo Soi Lỗi `T-018-soi-loi.md`
+
+### Đã sửa
+
+| Lỗi | Cách sửa | File |
+|---|---|---|
+| **SL-1** (Trung bình): Gemini nhận dữ liệu không phải JSON (trang HTML của Wi-Fi/proxy) hoặc dữ liệu nén hỏng thì lỗi thô lọt ra | Bắt `json.JSONDecodeError`, `errors.UnknownApiResponseError`, `httpx.DecodingError` → `AIError` "Máy chủ Gemini trả về dữ liệu lạ (có thể do mạng Wi-Fi hoặc proxy). Kiểm tra mạng rồi thử lại." Không chép thông điệp thô. Đổi `httpx.TransportError` thành `httpx.RequestError` (thêm cả `TooManyRedirects`) → "Không kết nối được tới Gemini". Không bắt chung `ValueError`, để lỗi lập trình không bị gọi nhầm là "lỗi mạng". | `seo_app/ai/gemini_provider.py` (`generate`) |
+| SL-1, phía OpenAI | Đã kiểm: không có lỗ tương tự. Thư viện openai tự bọc dữ liệu lạ thành `APIResponseValidationError` / `APIConnectionError` (đều là `OpenAIError`), provider đã đổi sang `AIError`; Soi Lỗi cũng đã thử. Không sửa. | — |
+| **SL-2** (Thấp): phụ thuộc hàm nội bộ `type_to_text_format_param` | **Bỏ hẳn phụ thuộc**: dựng khuôn `json_schema` bằng hàm công khai `openai.pydantic_function_tool` (xuất ở `openai/__init__.py`), cho ra JSON Schema strict giống hệt cách `responses.parse` làm (test so sánh với hàm nội bộ cho cả 6 khuôn). Thêm lớp an toàn: `make_provider` bắt `ImportError` khi nhập module của bất kỳ hãng nào → `AIError` "Thư viện của … chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / run.command (hoặc lệnh uv sync)…". | `seo_app/ai/openai_provider.py` (`text_format`), `seo_app/ai/registry.py` (`make_provider`) |
+| Ghi chú cho Lá Chắn: `redact_secrets` không che `"key": "…"` | Đã thêm: che giá trị của trường tên **đúng** `key` trong JSON/dict (`"key": "…"`, `'key': '…'`). Không che `"monkey"`, `"keyword"`, câu thường có chữ "key". `key%3D…` và `key=` đầu dòng vẫn không che (không có đường thật để khóa đi vào dạng này; khóa thật có tiền tố `AIza`/`sk-` vẫn bị che). | `seo_app/ai/base.py` |
+
+Mục 1 trong "Rủi ro và điểm cần chú ý" ở lượt 1 (hàm nội bộ openai) **không còn đúng**: code không
+còn nhập gì từ `openai.lib` (có test `test_openai_text_format_uses_public_api_and_matches_library`).
+
+### Test
+
+Bỏ dấu `xfail(strict=True)` ở đúng 3 test của Soi Lỗi (`tests/test_ai_openai_gemini_soi_loi.py`):
+
+| Test | Thay đổi |
+|---|---|
+| `test_gemini_html_response_becomes_vietnamese_error` | Chỉ bỏ dấu `xfail`. |
+| `test_gemini_decoding_error_becomes_vietnamese_error` | Chỉ bỏ dấu `xfail`. |
+| `test_openai_internal_helper_missing_gives_vietnamese_error` | Bỏ dấu `xfail` **và sửa nội dung**: vì đã bỏ phụ thuộc hàm nội bộ, xóa hàm đó thì ChatGPT **vẫn chạy** (không còn lỗi để báo). Test giờ khẳng định (1) mất hàm nội bộ → `make_provider("openai")` vẫn tạo được provider; (2) module provider không nhập được (`ImportError`) → `AIError` nhắc `uv sync`. Mời Soi Lỗi xem lại test này. |
+
+Không đụng test nào khác của Soi Lỗi. Test mới của tôi (trong `tests/test_ai_openai_gemini.py`):
+`test_gemini_strange_response_becomes_vietnamese_error` (3 loại lỗi, có khóa giả trong thông
+điệp), `test_gemini_other_request_errors_are_network_errors`,
+`test_openai_text_format_uses_public_api_and_matches_library`,
+`test_broken_vendor_library_gives_vietnamese_error` (3 hãng), `test_redact_json_key_field`,
+`test_redact_json_key_field_keeps_ordinary_text`. Test cũ `test_content_writer_runs_on_openai` đổi
+tên hàm gọi (`type_to_text_format_param` → `text_format`).
+
+### Bằng chứng
+
+```
+$ uv run pytest
+2099 passed, 3 xfailed in 90.59s (0:01:30)
+# 3 xfailed còn lại là test cũ không thuộc T-018 (R4-3, SL-7).
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Chưa làm (để Chỉ Huy quyết)
+
+- Gợi ý của Soi Lỗi: lỗi 400 của OpenAI hiện nguyên chuỗi `Error code: 400 - {...}` (đã che khóa),
+  khó đọc. Có thể chỉ lấy `error.message` trong body. Không thuộc 2 lỗi được giao nên chưa sửa.

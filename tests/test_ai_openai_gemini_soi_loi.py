@@ -196,11 +196,6 @@ def test_gemini_real_library_network_errors(error, message_part):
         run_gemini(handler)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi SL-1: Gemini trả 200 nhưng không phải JSON (trang HTML của Wi-Fi/proxy) "
-    "làm lọt json.JSONDecodeError thô, không thành AIError tiếng Việt.",
-)
 def test_gemini_html_response_becomes_vietnamese_error():
     html = httpx.Response(
         200, text="<html>Đăng nhập Wi-Fi</html>", headers={"content-type": "text/html"}
@@ -209,11 +204,6 @@ def test_gemini_html_response_becomes_vietnamese_error():
         run_gemini(lambda request: html)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi SL-1: lỗi đọc dữ liệu của httpx (DecodingError, không thuộc TransportError) "
-    "lọt ra thô, không thành AIError tiếng Việt.",
-)
 def test_gemini_decoding_error_becomes_vietnamese_error():
     def handler(request):
         raise httpx.DecodingError("gzip hỏng", request=request)
@@ -366,19 +356,22 @@ def test_openai_real_library_network_errors(error, message_part):
 # ======================================== (a) hàm nội bộ type_to_text_format_param biến mất
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi SL-2: nếu bản openai mới bỏ/đổi hàm nội bộ type_to_text_format_param, "
-    "make_provider('openai') ném ImportError thô; trang Soạn bài chỉ bắt AIError nên sập.",
-)
 def test_openai_internal_helper_missing_gives_vietnamese_error(monkeypatch):
+    # Lỗi SL-2 (đã sửa ở lượt 2 của Thợ Máy): openai_provider không còn dùng hàm nội bộ
+    # type_to_text_format_param (dùng openai.pydantic_function_tool công khai), nên hàm đó mất
+    # thì ChatGPT vẫn chạy; thư viện hỏng hẳn (ImportError) thì ra AIError tiếng Việt.
     import openai.lib._parsing._responses as internal
 
+    from seo_app.ai.openai_provider import OpenAIProvider
     from seo_app.ai.registry import make_provider
 
     monkeypatch.delattr(internal, "type_to_text_format_param")
     monkeypatch.delitem(sys.modules, "seo_app.ai.openai_provider")
-    with pytest.raises(AIError):
+    provider = make_provider("openai", Settings(openai_api_key=OPENAI_KEY))
+    assert type(provider).__name__ == OpenAIProvider.__name__
+
+    monkeypatch.setitem(sys.modules, "seo_app.ai.openai_provider", None)  # nhập là ImportError
+    with pytest.raises(AIError, match="uv sync"):
         make_provider("openai", Settings(openai_api_key=OPENAI_KEY))
 
 
