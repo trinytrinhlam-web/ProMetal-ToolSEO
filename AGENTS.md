@@ -2,7 +2,8 @@
 
 Bạn là một AI (Claude, ChatGPT, Gemini, Copilot…) vừa được giao thư mục dự án này. Đọc theo đúng thứ tự dưới đây trước khi làm bất cứ việc gì.
 
-0. `BAN-GIAO.md` và `TIEN-DO.md`: trạng thái mới nhất, việc tiếp theo, quyết định đang chờ, cách dựng lại trên máy mới.
+0. Nếu bạn là **Chỉ Huy**: `docs/team/dong-bo.md` trước tiên (phiếu điều phối chung giữa 2 Chỉ Huy: ai đang giữ quyền, việc đang làm dở, bàn giao mới nhất).
+   Sau đó `BAN-GIAO.md` và `TIEN-DO.md`: trạng thái mới nhất, việc tiếp theo, quyết định đang chờ, cách dựng lại trên máy mới.
 1. `CLAUDE.md`: dự án là gì, các quyết định đã chốt, quy trình nội dung, lộ trình, trạng thái. **Đây là luật gốc của dự án**, áp dụng cho mọi AI chứ không riêng Claude.
 2. `docs/team/README.md`: cách đội agent làm việc (ai điều phối, phiếu giao việc, báo cáo).
 3. `docs/team/rules.md`: quy tắc bắt buộc cho mọi agent.

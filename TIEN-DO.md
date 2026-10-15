@@ -1,18 +1,17 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 08:00 giờ Việt Nam. Người ghi: Chỉ Huy (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md)._
+_Cập nhật: 2026-10-15, 11:00 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
 ## 1. Tóm tắt nhanh
 
 - Đã xong: bộ khung app, kết nối WordPress (chỉ tạo bản nháp), AI viết bài bằng Claude (bước 1–3 của trang Soạn bài), đội agent và quy trình kiểm tra bảo mật.
-- Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu).
-- **Làm xong, đang chờ kiểm định bảo mật rồi mới lên `main`** (nằm ở nhánh tạm, xem mục 3):
-  - ChatGPT và Gemini (T-018), nút Kiểm tra khóa (T-023);
-  - hồ sơ doanh nghiệp đã sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
+- Đã lên `main`: tự lưu bài đang soạn, ô nhập khóa API trong Cài đặt, hồ sơ doanh nghiệp (PR #3, bản đầu), ChatGPT và Gemini (T-018), nút Kiểm tra khóa cả 3 hãng (T-023).
+- **Đã qua kiểm định bảo mật, chờ gộp vào `main`** (nhánh `team/T-024`): hồ sơ doanh nghiệp sửa theo trả lời của anh (T-022), bộ lọc hồ sơ chặt hơn (T-024).
+- Phát hiện 2026-10-15: chạy test **trên Windows** có 152 test đỏ, do bộ test (không phải do app). Sẽ lập phiếu sửa.
 - Còn lại: thử mù mô hình, ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động: trên `main` 1.871 bài; trên nhánh T-018 + T-023 đã gộp là 2.169 bài, đều qua.
+- Bộ kiểm tra tự động trên `main`: trên Linux (cloud) đều qua; trên Windows 2.009 qua, 152 đỏ (lỗi của bộ test, xem trên).
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -24,7 +23,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
 | 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | ⚪ Chưa làm |
 | 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
-| 6 | Theo dõi thứ hạng qua Search Console | ⏸ Chờ anh quyết có giữ không |
+| 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
 
 ## 3. Giai đoạn 2 chi tiết
 
@@ -37,20 +36,21 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Gia cố bảo mật: lọc HTML/link độc trong chữ AI, hiển thị an toàn (T-001 → T-015) | ✅ Xong, đã lên GitHub |
 | Tự lưu bài đang soạn, mở lại / xóa bài dở (T-016, T-017, T-021) | ✅ Xong, đã lên GitHub |
 | Ô nhập khóa API Claude / ChatGPT / Gemini trong Cài đặt → Kết nối (T-020, T-021) | ✅ Xong, đã lên GitHub |
-| Thêm AI ChatGPT (OpenAI) và Gemini bằng thư viện chính hãng (T-018) | 🔒 Xong, Soi Lỗi đạt; **Lá Chắn đang kiểm** (nhánh `team/T-023`) |
-| Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt (T-023) | 🔒 Xong, Soi Lỗi đạt; **Lá Chắn đang kiểm** chung với T-018 |
-| Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | 🔒 Xong, Soi Lỗi đạt; chờ Lá Chắn (nhánh `team/T-024`) |
-| Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | 🔎 Thợ Máy sửa xong lượt 2, **Soi Lỗi đang kiểm lại** |
-| Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi đang làm (nhánh `team/T-025`) |
-| Thử mù mô hình trong Cài đặt (T-019) | ⏳ Làm sau khi T-018 lên `main` |
+| Thêm AI ChatGPT (OpenAI) và Gemini bằng thư viện chính hãng (T-018) | ✅ Xong, đã lên `main` |
+| Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt (T-023) | ✅ Xong, đã lên `main` |
+| Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | 🔒 Lá Chắn ĐẠT, chờ gộp vào `main` (nhánh `team/T-024`) |
+| Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | 🔒 Lá Chắn ĐẠT, chờ gộp vào `main` (cùng nhánh) |
+| Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi có 2 commit, chưa nộp báo cáo (nhánh `team/T-025`) |
+| 4 lỗi Thấp lớp AI (T-026) | ⏳ Chưa giao |
+| Thử mù mô hình trong Cài đặt (T-019) | ⏳ Hết chờ (T-018 đã lên `main`, anh chốt không có hãng mặc định) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 
 ## 4. Việc đang chờ anh
 
-1. **Sau khi T-018 lên `main`:** có đổi mô hình mặc định sang Gemini không (Thợ Máy đề xuất Gemini 4 Argon cho phần lớn các bước; gói này cần bật thanh toán ở Google AI Studio).
-2. **Giai đoạn 6** (theo dõi thứ hạng): có giữ không.
-3. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
+1. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
+
+Đã trả lời 2026-10-15: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); giữ Giai đoạn 6; đưa thư mục kế hoạch lên repo (`docs/plan/`); lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`).
 
 Đã trả lời 2026-10-14: dùng thư viện chính hãng cho ChatGPT/Gemini; gộp PR #3 sau khi sửa; Pillow để sau; báo giá không nêu thời gian; không nói giá dưới dạng nào; khu vực gồm cả Bình Dương và Bà Rịa–Vũng Tàu cũ; mỗi agent một phiên con, mỗi phiếu một nhánh tạm.
 

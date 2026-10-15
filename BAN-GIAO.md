@@ -6,7 +6,7 @@ Toàn bộ code, tài liệu, phiếu việc, báo cáo và hồ sơ agent đề
 
 ## 1. Trạng thái lúc bàn giao
 
-_Cập nhật 2026-10-15, 08:00 giờ Việt Nam._
+_Cập nhật 2026-10-15, 08:00 giờ Việt Nam. Trạng thái mới hơn: xem [`docs/team/dong-bo.md`](docs/team/dong-bo.md) và [`TIEN-DO.md`](TIEN-DO.md)._
 
 - `main` chỉ chứa việc đã qua kiểm định bảo mật. Việc làm xong nhưng chưa qua Lá Chắn nằm ở các **nhánh tạm** `team/T-xxx` trên GitHub, không mất.
 - Đang dở (chi tiết ở [`docs/team/board.md`](docs/team/board.md)):
@@ -73,10 +73,9 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 
 ## 6. Việc tiếp theo và quyết định đang chờ
 
-**Chờ anh quyết:**
+**Chờ anh quyết:** không còn câu nào. Ngày 2026-10-15 anh chốt: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); **giữ** Giai đoạn 6.
 
-1. **Mô hình mặc định sau khi T-018 lên `main`:** có đổi sang Gemini không (đề xuất của Thợ Máy trong `docs/team/reports/T-018-tho-may.md`; tên mô hình cần kiểm lại lúc chốt).
-2. **Giai đoạn 6** (theo dõi thứ hạng Search Console): có giữ không.
+> Trạng thái mới nhất giữa hai Chỉ Huy luôn nằm ở [`docs/team/dong-bo.md`](docs/team/dong-bo.md); mục này có thể cũ hơn.
 
 Đã trả lời 2026-10-14: thư viện chính hãng `openai` + `google-genai` (T-018); gộp PR #3 sau khi sửa (đã gộp, sửa tiếp ở T-022); Pillow để sau (hỏi lại ở Giai đoạn 3).
 
@@ -140,7 +139,9 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 - Anh muốn **tự nhập khóa API trong phần mềm** (Gemini, ChatGPT, Claude): đã làm ở Cài đặt → 🔌 Kết nối; khóa lưu trong `.env`, không bao giờ hiện lại.
 - Anh sẽ dùng **Gemini** (và có thể ChatGPT, Claude). Cách nối ChatGPT/Gemini vào phần viết bài (T-018) đang chờ anh chọn (mục 6).
 - AI viết bài có bật **mô hình dự phòng**: nếu Claude từ chối một yêu cầu thì tự chạy lại bằng mô hình khác.
-- Giai đoạn 6 (theo dõi thứ hạng) đã bỏ khỏi giao diện demo; chờ anh xác nhận có giữ không.
+- Giai đoạn 6 (theo dõi thứ hạng) đã bỏ khỏi giao diện demo. Anh chốt 2026-10-15: **giữ**.
+- Chốt 2026-10-15: **không có hãng AI mặc định**, giữ đủ Claude, ChatGPT, Gemini; anh tự đổi khi cần.
+- Chốt 2026-10-15: kế hoạch SEO và yêu cầu phần mềm anh soạn ngày 07/10 đưa vào repo ở `docs/plan/` (đọc `docs/plan/README.md` trước: có những chỗ đã lệch với quyết định mới hơn).
 
 ### 7.6 Lịch sử ngắn
 
@@ -148,3 +149,10 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 - 14/10 sáng: PR #2 gộp vào `main`; soạn hồ sơ doanh nghiệp (PR #3); Giai đoạn 2 phần 1 (Claude viết bài) đẩy lên `main`.
 - 14/10 chiều tối: lập đội agent; T-001 → T-021 xong (kiểm định bảo mật, gia cố lọc nội dung AI, tự lưu bài, nhập khóa API).
 - 14/10 tối: anh chuyển sang máy mới và project mới; viết file này.
+- 15/10 sáng: T-018, T-023 lên `main`. Có thêm Chỉ Huy thứ hai (Claude Desktop trên máy anh); lập phiếu điều phối chung; đưa `docs/plan/` lên repo.
+
+### 7.7 Hai Chỉ Huy (chốt 2026-10-15)
+
+- Có **hai Chỉ Huy** ở hai tài khoản Claude khác nhau, chạy luân phiên: một bên chỉ làm khi bên kia dừng, mà thường dừng vì hết lượt dùng nên không kịp dặn lại.
+- Hai bên liên lạc **chỉ qua phiếu điều phối chung** `docs/team/dong-bo.md`. Quy tắc nằm trong file đó: đầu phiên ghi nhận quyền và push ngay, sau mỗi bước cập nhật "Đang làm dở" và push.
+- Phiên "Điều Phối" thứ ba từng mở trên máy anh đã bị bỏ (làm việc chưa đúng quy trình), không tính.

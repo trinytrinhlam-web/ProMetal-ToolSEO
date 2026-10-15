@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15_
+_Cập nhật: 2026-10-15 11:00 (Chỉ Huy A). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
 
 ## Đang làm
 
@@ -25,7 +25,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (tha
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy | Còn chỗ (tối đa 3 phiên) |
-| T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Chủ dự án chốt mô hình mặc định (có đổi sang Gemini không) |
+| T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Hết chờ: chủ dự án chốt 2026-10-15 không có hãng mặc định. Chờ lập phiếu |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu

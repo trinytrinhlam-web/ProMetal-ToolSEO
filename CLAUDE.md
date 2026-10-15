@@ -20,7 +20,7 @@ Người dùng là chủ dự án: hiểu khái niệm lập trình nhưng ít d
   - Trong máy chỉ có cache SQLite; xóa đi vẫn tạo lại được.
 - Hẹn giờ đăng: gửi bài sang WordPress với trạng thái `future` kèm ngày giờ. App không cần chạy nền.
 - Mặc định mọi bài là bản nháp (`draft`). Đăng ngay (`publish`) phải được người dùng bấm xác nhận.
-- AI: một lớp provider chung, hỗ trợ Anthropic, OpenAI, Google Gemini. Mô hình cho từng việc (nghiên cứu, viết, rà soát, meta, alt ảnh, tạo ảnh) khai báo trong file cấu hình, đổi được mà không sửa code.
+- AI: một lớp provider chung, hỗ trợ Anthropic, OpenAI, Google Gemini. Mô hình cho từng việc (nghiên cứu, viết, rà soát, meta, alt ảnh, tạo ảnh) khai báo trong file cấu hình, đổi được mà không sửa code. **Không có hãng mặc định** (chốt 2026-10-15): giữ đủ cả 3, chủ dự án tự đổi hãng khi cần.
 - Google: dùng service account (file JSON nằm ngoài repo, đường dẫn khai báo trong `.env`).
 - Có màn hình đăng nhập bằng mật khẩu; `.env` chỉ lưu mã băm của mật khẩu, kèm script để người dùng tạo mã băm.
 - Phần mềm tập trung vào **viết bài** (người dùng chốt 2026-10-06). Menu trên cùng: Bài viết · Soạn bài · Kế hoạch · Cài đặt · Kết nối WordPress.
@@ -90,7 +90,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - [ ] Giai đoạn 3 — Ảnh: chỗ cần ảnh trong bài; chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, **giữ nguyên vị trí GPS trong ảnh** (người dùng chốt 2026-10-14: có chủ đích; khi nén WebP phải chép lại EXIF), viết alt bằng AI; ảnh AI kèm prompt, tạo ảnh bằng AI.
 - [ ] Giai đoạn 4 — Tối ưu on-page: meta, schema JSON-LD, liên kết nội bộ dựa trên danh sách bài trên WordPress.
 - [ ] Giai đoạn 5 — Kế hoạch & lịch: nhận kế hoạch người dùng cung cấp (file / dán / Google Sheets), AI đề xuất cập nhật để duyệt, đồng bộ Google Sheets, hẹn giờ đăng.
-- [ ] Giai đoạn 6 — Theo dõi: Search Console (từ khóa, vị trí, lượt click) theo từng bài. *(Chờ người dùng xác nhận có giữ không — đã bỏ khỏi giao diện demo vì phần mềm tập trung vào viết bài.)*
+- [ ] Giai đoạn 6 — Theo dõi: Search Console (từ khóa, vị trí, lượt click) theo từng bài. *(Chủ dự án chốt 2026-10-15: **giữ**. Giao diện demo hiện chưa có trang này; khi làm thì hỏi chủ dự án đặt ở đâu trong menu.)*
 
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
@@ -111,6 +111,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 - Mọi việc đi qua phiếu (`docs/team/tickets/`) và báo cáo (`docs/team/reports/`). Phiếu có sửa code phải qua Soi Lỗi và Lá Chắn trước khi đóng.
 - Chủ dự án chốt: agent điều phối tự gọi agent phụ; ưu tiên chất lượng, không cần tiết kiệm chi phí model; push thẳng lên `main`, không tạo nhánh mới, không mở PR.
 - Từ 2026-10-14 (chủ dự án chốt): mỗi agent chạy ở **một phiên con riêng** dưới phiên "Điều phối", tên phiên ghi rõ vai và phiếu (ví dụ "Thợ Máy · T-018 …"). Mỗi phiếu dùng **một nhánh tạm** `team/T-xxx`; Soi Lỗi và Lá Chắn kiểm trên nhánh đó; Lá Chắn ĐẠT thì Chỉ Huy gộp vào `main` và xóa nhánh. `main` chỉ chứa code đã qua kiểm định.
+- Từ 2026-10-15 (chủ dự án chốt): có **hai Chỉ Huy** ở hai tài khoản Claude, chạy luân phiên (một bên chỉ làm khi bên kia dừng, thường vì hết lượt dùng). Hai bên liên lạc qua **phiếu điều phối chung** `docs/team/dong-bo.md`: đọc đầu phiên, ghi nhận quyền, cập nhật và push sau mỗi bước.
 
 ### Giao diện và trang demo
 
@@ -140,3 +141,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-14: Lập đội agent (`AGENTS.md`, `docs/team/`, `.claude/agents/`): 7 agent, quy tắc, chính sách bảo mật, mẫu phiếu/báo cáo/biên bản bảo mật, bảng việc. Giao T-001 (Lá Chắn: kiểm định bảo mật toàn repo) và T-002 (Soi Lỗi: kiểm thử Giai đoạn 2 phần 1).
 - 2026-10-14: Thêm `config/business_profile.md` (hồ sơ doanh nghiệp để AI dùng khi viết bài), soạn từ website; người dùng đã trả lời các câu hỏi chính; mục 7 (chất liệu thật) điền sau. Nhánh `claude/project-thread-bcuk2m` (PR #3), gộp vào `main` ngày 2026-10-14 kèm phiếu T-022.
 - 2026-10-15: Gộp T-018 (ChatGPT qua `openai`, Gemini qua `google-genai`; chủ dự án duyệt thư viện 2026-10-14) và T-023 (nút Kiểm tra khóa cả 3 hãng) vào `main`. Soi Lỗi đạt, Lá Chắn ĐẠT (chạy tạm Opus 5.5, kiểm lại bằng Fable sau 01/11). Đổi hãng cho từng việc: sửa `provider`/`model` trong `config/ai.toml`.
+- 2026-10-15: Chủ dự án chốt: không có hãng AI mặc định (đủ 3 hãng, tự đổi khi cần); giữ Giai đoạn 6. Lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`). Đưa kế hoạch SEO và yêu cầu phần mềm của chủ dự án vào `docs/plan/`.
