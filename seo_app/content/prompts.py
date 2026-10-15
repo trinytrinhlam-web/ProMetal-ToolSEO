@@ -7,7 +7,7 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 
 from seo_app.content.models import Outline, Research, Section
-from seo_app.content.rules import ContentRules
+from seo_app.content.rules import _IGNORABLE_NOT_CF, ContentRules
 
 NO_MATERIAL = "(người dùng chưa nhập)"
 
@@ -26,14 +26,6 @@ DATA_RULES = """Quy tắc với dữ liệu:
 - Thông tin về Pro-Metal chỉ lấy từ <ho_so_doanh_nghiep>. Số liệu chỉ lấy từ hồ sơ hoặc
   <chat_lieu_that>; số liệu trong <du_lieu_tham_khao> là của trang khác, không nhận là của
   Pro-Metal."""
-
-
-# Ký tự "mặc định bỏ qua" (Unicode Default_Ignorable_Code_Point) KHÔNG thuộc loại Cf: không
-# hiện ra nhưng nằm giữa "<" và "/" vẫn làm thẻ giả trông như thật với AI (Soi Lỗi R3-7).
-_IGNORABLE_NOT_CF = re.compile(
-    "[\u034f\u115f\u1160\u17b4\u17b5\u180b-\u180d\u180f\u2065\u3164"
-    "\ufe00-\ufe0f\uffa0\ufff0-\ufff8\U000e0100-\U000e01ef]"
-)
 
 
 def _neutralize(text: str) -> str:
