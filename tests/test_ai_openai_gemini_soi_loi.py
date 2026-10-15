@@ -772,3 +772,124 @@ def test_content_writer_end_to_end_on_real_library_with_mock_network(tmp_path, m
     # Chỉ bước nghiên cứu có công cụ, và chỉ là công cụ tìm web.
     assert "tools" in requests[0]
     assert all("tools" not in r for r in requests[1:])
+
+
+# ================================================================ Lượt 2 (Soi Lỗi kiểm lại)
+
+
+class _OneAnswerOpenAI:
+    def __init__(self):
+        self.calls = []
+
+        def create(**kwargs):
+            self.calls.append(kwargs)
+            from types import SimpleNamespace as NS
+
+            content = [NS(type="output_text", text=OK_JSON)]
+            return NS(
+                status="completed",
+                incomplete_details=None,
+                output=[NS(type="message", phase=None, content=content)],
+            )
+
+        from types import SimpleNamespace as NS
+
+        self.responses = NS(create=create)
+
+
+def test_openai_still_generates_when_internal_helper_is_gone(monkeypatch):
+    # SL-2: hàm nội bộ mất thì ChatGPT vẫn **viết được** (không chỉ dựng được provider).
+    import openai.lib._parsing._responses as internal
+
+    monkeypatch.delattr(internal, "type_to_text_format_param")
+    monkeypatch.delitem(sys.modules, "seo_app.ai.openai_provider")
+    from seo_app.ai.openai_provider import OpenAIProvider as Fresh
+
+    client = _OneAnswerOpenAI()
+    result = Fresh(OPENAI_KEY, client=client).generate(
+        task("openai"), system="s", prompt="p", schema=Answer
+    )
+    assert result.text == "xong"
+    assert client.calls[0]["text"]["format"]["type"] == "json_schema"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Lỗi SL-3: nếu bản openai mới đổi/bỏ openai.pydantic_function_tool, text_format() "
+    "ném AttributeError thô ngay trong generate (ngoài khối try), trang Soạn bài chỉ bắt "
+    "AIError nên sập — rủi ro SL-2 chỉ dời từ lúc nhập sang lúc gọi.",
+)
+def test_openai_public_helper_change_gives_vietnamese_error(monkeypatch):
+    monkeypatch.delattr(openai, "pydantic_function_tool")
+    with pytest.raises(AIError):
+        OpenAIProvider(OPENAI_KEY, client=_OneAnswerOpenAI()).generate(
+            task("openai"), system="s", prompt="p", schema=Answer
+        )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="Lỗi SL-4: make_provider chỉ bắt ImportError. Bản google-genai mới bỏ một hằng "
+    "(ví dụ types.ThinkingLevel) thì gemini_provider ném AttributeError lúc nhập, lọt ra thô.",
+)
+def test_gemini_library_missing_constant_gives_vietnamese_error(monkeypatch):
+    from seo_app.ai.registry import make_provider
+
+    monkeypatch.delattr(types, "ThinkingLevel")
+    monkeypatch.delitem(sys.modules, "seo_app.ai.gemini_provider")
+    with pytest.raises(AIError):
+        make_provider("gemini", Settings(gemini_api_key=GEMINI_KEY))
+
+
+@pytest.mark.parametrize(
+    ("provider", "module", "settings"),
+    [
+        ("anthropic", "seo_app.ai.anthropic_provider", Settings(anthropic_api_key="k")),
+        ("openai", "seo_app.ai.openai_provider", Settings(openai_api_key="k")),
+        ("gemini", "seo_app.ai.gemini_provider", Settings(gemini_api_key="k")),
+    ],
+)
+def test_broken_vendor_library_error_is_vietnamese_and_through_router(
+    monkeypatch, provider, module, settings
+):
+    # Thư viện hỏng: lỗi đi qua AIRouter (đường build_writer dùng), câu tiếng Việt, có tên hãng.
+    from seo_app.ai.registry import PROVIDERS
+
+    monkeypatch.setitem(sys.modules, module, None)
+    tasks = {"write": task(provider)}
+    with pytest.raises(AIError) as info:
+        AIRouter(tasks, settings)
+    message = str(info.value)
+    assert PROVIDERS[provider][0] in message and "uv sync" in message
+    assert "ImportError" not in message and "No module" not in message
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        '{{"key": "{k}"}}',
+        "{{'key': '{k}'}}",
+        '{{"key" : "{k}"}}',
+        '{{"KEY":"{k}"}}',
+        '{{"key":\t"{k}"}}',
+        "{{'key': \"{k}\"}}",
+        "Error code: 400 - {{'error': {{'message': 'bad', 'key': '{k}'}}}}",
+        '{{"error": {{"details": [{{"metadata": {{"key": "{k}"}}}}]}}}}',
+    ],
+)
+def test_redact_json_key_field_shapes(template):
+    assert PLAIN_KEY not in redact_secrets(template.format(k=PLAIN_KEY))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"keyword": "cửa cuốn"}',
+        '{"key_points": ["a", "b"]}',
+        '{"monkey": "chuối"}',
+        '{"key": ""}',
+        "chìa khóa (key) của bài: cổng sắt",
+    ],
+)
+def test_redact_json_key_field_leaves_other_fields(text):
+    assert redact_secrets(text) == text

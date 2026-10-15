@@ -148,3 +148,75 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-15) · kiểm lại bản sửa d028c13
+
+**Kết luận: ĐẠT.** SL-1 và SL-2 đã sửa đúng. Có thêm 2 lỗi mức **Thấp** cùng loại với SL-2
+(chỉ xảy ra khi thư viện bị nâng ngoài `uv.lock`). Hai lỗi này không lộ khóa, không chặn cổng bảo
+mật, nên sửa trong phiếu sau cũng được.
+
+### Bằng chứng
+
+```
+$ uv run pytest
+2116 passed, 5 xfailed in 86.51s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+`tests/test_ai_openai_gemini_soi_loi.py` có thêm 6 hàm test (21 trường hợp: 19 qua, 2 `xfail(strict=True)` cho SL-3, SL-4).
+
+### Kết quả kiểm từng mục
+
+1. **SL-1 đã sửa.** `gemini_provider.py` bắt `JSONDecodeError`, `UnknownApiResponseError`, `httpx.DecodingError`
+   và trả câu "Máy chủ Gemini trả về dữ liệu lạ…". Lỗi mạng khác (`httpx.RequestError`) ra "Kiểm tra
+   mạng". Hai test xfail của tôi nay qua thật với thư viện thật. Không chép thông điệp thô.
+2. **SL-2 đã sửa, test được Thợ Máy sửa nội dung, không bị nới lỏng nhưng yếu hơn bản gốc.** Code mới
+   dùng `openai.pydantic_function_tool` công khai. Thợ Máy đã kiểm khuôn tạo ra **trùng** với hàm cũ
+   cho mọi khuôn bài viết. Test sửa lại kiểm hai việc: hàm nội bộ mất thì vẫn dựng được provider, và
+   module hỏng hẳn (`ImportError`) thì ra `AIError` "uv sync". Cả hai đúng rủi ro ban đầu. Chỗ yếu: test
+   chỉ dựng provider, chưa gọi `generate`. Tôi thêm `test_openai_still_generates_when_internal_helper_is_gone`:
+   hàm nội bộ mất thì vẫn viết được bài (qua). Rủi ro "thư viện đổi thì sập" vẫn còn một nhánh,
+   xem SL-3.
+3. **`redact_secrets` che trường `"key"`.** Đã che được nháy kép, nháy đơn, có dấu cách quanh `:`, tab, chữ hoa,
+   nháy lẫn (`'key': "…"`), dạng `Error code: 400 - {'error': {…, 'key': '…'}}` và trường lồng sâu.
+   Không che nhầm `keyword`, `key_points`, `monkey`, `"key": ""`.
+   - Che dư: giá trị thường của trường tên đúng `key` cũng bị ẩn (`{"key": "cổng sắt"}` →
+     `[đã ẩn]`). Hàm này chỉ dùng cho thông báo lỗi (`openai_provider.py:88`,
+     `anthropic_provider.py:61`, `gemini_provider.py:186`, `env_file.py:313`) nên vô hại.
+   - Chưa che được (ghi nhận, không xếp là lỗi vì chưa thấy đường thật nào đưa khóa vào): xuống
+     dòng giữa `:` và giá trị; JSON đã escape (`{\"key\": \"…\"}`); giá trị không có nháy
+     (`"key": abc`); tuple `("key", "…")`. Khóa Google thật có tiền tố `AIza` nên vẫn bị che ở mọi dạng.
+4. **`make_provider` bắt `ImportError` của cả 3 hãng.** Đúng. Test của Thợ Máy
+   (`test_broken_vendor_library_gives_vietnamese_error`) và test của tôi
+   (`test_broken_vendor_library_error_is_vietnamese_and_through_router`, đi qua `AIRouter`
+   như `build_writer`) đều qua. Câu báo có tên hãng, không có chữ `ImportError`. Chưa bắt
+   `AttributeError`, xem SL-4.
+
+### Lỗi mới
+
+**SL-3 · Đổi `openai.pydantic_function_tool` thì lỗi thô ngay lúc viết bài, mức Thấp**
+- Tái hiện: `test_openai_public_helper_change_gives_vietnamese_error` (`xfail(strict=True)`): bỏ
+  `openai.pydantic_function_tool`, gọi `OpenAIProvider.generate`.
+- Mong đợi: `AIError` tiếng Việt (giống câu "uv sync").
+- Thực tế: `AttributeError` thô. `text_format(schema)` chạy khi dựng `params`, nằm ngoài khối `try`
+  (`openai_provider.py:52`). `ai_call` chỉ bắt `AIError` nên trang sập. Hàm công khai ít đổi hơn hàm
+  nội bộ, nên rủi ro thấp hơn SL-2 nhưng chưa hết: lỗi chỉ dời từ lúc nhập sang lúc gọi.
+- Gợi ý sửa: bọc `text_format(schema)` (hoặc cả phần dựng `params`) để đổi `AttributeError`/`TypeError`/`KeyError` sang `AIError`.
+
+**SL-4 · `make_provider` chỉ bắt `ImportError`, không bắt `AttributeError` lúc nhập, mức Thấp**
+- Tái hiện: `test_gemini_library_missing_constant_gives_vietnamese_error` (`xfail(strict=True)`):
+  bỏ `google.genai.types.ThinkingLevel`, gọi `make_provider("gemini", …)`.
+- Mong đợi: `AIError` "Thư viện của Google Gemini … uv sync".
+- Thực tế: `AttributeError` thô. `gemini_provider.py` dùng hằng của thư viện ngay khi nhập
+  (`THINKING_LEVELS`, `_BLOCKED`, `RETRY`). Bản google-genai đổi tên một hằng là trang Soạn bài sập.
+- Gợi ý sửa: `registry.py:96-103` bắt `(ImportError, AttributeError)`.
+
+### Ghi chú
+
+Thợ Máy đã sửa file test của Soi Lỗi: bỏ 3 dấu `xfail` và viết lại nội dung một test. Việc này
+đúng hướng và nội dung không nới lỏng, nhưng theo phân công thì file `tests/*_soi_loi.py` do Soi
+Lỗi giữ. Lần sau nên để Soi Lỗi bỏ `xfail`.
