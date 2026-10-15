@@ -10,6 +10,8 @@ _Cập nhật: 2026-10-15_
 >
 > 2026-10-15: 4 phiên (Ngòi Bút · T-022, Soi Lỗi · T-018/T-023/T-024) dừng lúc 22:05 ngày 14/10 vì chạm giới hạn sử dụng của tài khoản; đã chạy lại theo đợt, tối đa 3 phiên cùng lúc.
 
+> 2026-10-15: phiên cloud không xóa được nhánh trên GitHub (máy chủ git từ chối lệnh xóa). Các nhánh đã gộp hết vào `main`, xóa được an toàn trên trang GitHub → Branches: `team/T-018`, `team/T-023`.
+
 Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (thanh bên app Claude), tên phiên = tên agent + số phiếu. Mỗi phiếu làm trên nhánh tạm `team/T-xxx`, gộp vào `main` khi Lá Chắn ĐẠT.
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
