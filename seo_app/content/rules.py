@@ -68,13 +68,16 @@ def confirmed_profile(text: str) -> str:
 
     Khối có nhãn thì bỏ cả khối. Nhãn được tìm trên cả khối (các dòng nối nhau bằng dấu cách),
     nên nhãn bị xuống dòng giữa chừng («[CẦN XÁC» cuối dòng này, «NHẬN]» đầu dòng sau) vẫn được
-    nhận. Dòng ghi chú (ký tự nhìn thấy đầu tiên là
-    ``>``) luôn bị bỏ và không cắt khối. Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc
-    và nhãn (SL-024-2). Các dòng giữ lại y nguyên như trong file.
+    nhận. Tiêu đề có nhãn thì bỏ cả **mục**: tiêu đề đó và mọi dòng bên dưới, tới tiêu đề kế tiếp
+    cùng cấp hoặc cao hơn (số dấu ``#`` bằng hoặc ít hơn; ``## 7. …`` giấu qua ``### 7.1`` tới
+    ``## 8.``). Dòng ghi chú (ký tự nhìn thấy đầu tiên là ``>``) luôn bị bỏ và không cắt khối.
+    Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc và nhãn (SL-024-2). Các dòng giữ lại
+    y nguyên như trong file.
     """
     kept: list[str] = []
     block: list[str] = []
     blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
+    hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
 
     def close_block() -> None:
         if block and not _is_unconfirmed(" ".join(block)):
@@ -88,14 +91,19 @@ def confirmed_profile(text: str) -> str:
         stripped = visible.strip()
         if stripped.startswith(">"):
             continue
+        indented = bool(stripped) and visible[0].isspace()
+        heading = bool(stripped) and not indented and stripped.startswith("#")
+        level = len(stripped) - len(stripped.lstrip("#")) if heading else 0
+        if hidden_level:
+            if not heading or level > hidden_level:
+                continue
+            hidden_level = 0
         if not stripped:
             if block:
                 blanks.append(line)
             else:
                 kept.append(line)
             continue
-        indented = visible[0].isspace()
-        heading = not indented and stripped.startswith("#")
         if blanks and not indented:
             close_block()
         if heading or (not indented and _BULLET.match(stripped)):
@@ -104,6 +112,8 @@ def confirmed_profile(text: str) -> str:
         blanks.clear()
         block.append(line)
         if heading:
+            if _is_unconfirmed(line):
+                hidden_level = level
             close_block()
     close_block()
     return "\n".join(kept).strip()
