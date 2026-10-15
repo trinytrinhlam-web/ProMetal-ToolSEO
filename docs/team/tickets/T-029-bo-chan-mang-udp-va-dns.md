@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-027 (đã gộp vào `main` `e4107f2`) |
-| Trạng thái | Mới |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 

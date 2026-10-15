@@ -18,7 +18,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). **Thợ Máy đang sửa lượt 2.** SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-029` | Đang làm | |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). Thợ Máy xong lượt 2 (`d8fd392`, Windows 2.613 qua, 0 hỏng). **Soi Lỗi đang kiểm lại.** SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ
@@ -26,7 +27,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → báo lỗi tiếng Việt, không traceback (SL-T026-4, có sẵn trên `main`) | Thợ Máy | T-026 gộp vào `main` (cùng sửa `seo_app/ai/`) |
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener (2 lỗi Thấp của Lá Chắn T-027) | Soi Lỗi | Còn chỗ; chạy sau lượt 2 T-026 để tránh chạm giới hạn sử dụng |
 | T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Hết chờ: chủ dự án chốt 2026-10-15 không có hãng mặc định. Chờ lập phiếu |
 | _(chưa lập phiếu)_ | Lỗi Thấp #1, #2 của bộ lọc hồ sơ: nhãn gõ sai (`[CẦNXÁC NHẬN]`, không dấu, ngoặc tròn), nhãn trên tiêu đề | Thợ Máy (#1), Ngòi Bút (#2) | Lá Chắn đề nghị ([biên bản](reports/T-022-024-la-chan.md)); lập phiếu sau T-026 |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
