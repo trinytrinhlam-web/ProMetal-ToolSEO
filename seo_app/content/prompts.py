@@ -7,7 +7,7 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 
 from seo_app.content.models import Outline, Research, Section
-from seo_app.content.rules import _IGNORABLE_NOT_CF, ContentRules
+from seo_app.content.rules import IGNORABLE_NOT_CF, ContentRules
 
 NO_MATERIAL = "(người dùng chưa nhập)"
 
@@ -39,7 +39,7 @@ def _neutralize(text: str) -> str:
     """
     visible = unicodedata.normalize("NFKC", text)
     visible = "".join(ch for ch in visible if unicodedata.category(ch) != "Cf")
-    visible = _IGNORABLE_NOT_CF.sub("", visible)
+    visible = IGNORABLE_NOT_CF.sub("", visible)
     return _TAG_RE.sub(lambda m: f"‹{m.group(1)}{m.group(2)}", visible)
 
 

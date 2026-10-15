@@ -196,8 +196,9 @@ def test_invisible_char_kept_in_output():
     assert confirmed_profile(text) == text
 
 
-def test_glued_tag_still_not_recognised_but_invisible_separator_is():
-    assert confirmed_profile("- Email x [CẦNXÁC NHẬN]") == "- Email x [CẦNXÁC NHẬN]"
+def test_glued_tag_and_invisible_separator_both_recognised():
+    # T-032: nhãn gõ dính chữ giờ cũng được nhận.
+    assert confirmed_profile("- Email x [CẦNXÁC NHẬN]\n- B") == "- B"
     assert confirmed_profile("- Email x [CẦN​XÁC NHẬN]\n- B") == "- B"
     assert confirmed_profile("- Email x [C‍ẦN XÁC NHẬN]\n- B") == "- B"
 

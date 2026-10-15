@@ -102,17 +102,20 @@ def test_note_alone_between_paragraph_lines_does_not_split_paragraph():
     assert confirmed_profile(text) == "Đoạn sau."
 
 
-# --- Điểm (4): nhãn viết sai hẳn không được nhận (ghi nhận hành vi) ----------------------------
+# --- Điểm (4): nhãn gõ sai vẫn được nhận (T-032); thiếu ngoặc mở thì không ----------------------
 
 
 @pytest.mark.parametrize(
-    "tag",
-    ["CẦN XÁC NHẬN", "[CAN XAC NHAN]", "(CẦN XÁC NHẬN)", "[CẦNXÁC NHẬN]", "[CHƯA XÁC NHẬN]"],
+    "tag", ["[CAN XAC NHAN]", "(CẦN XÁC NHẬN)", "[CẦNXÁC NHẬN]", "[CHƯA XÁC NHẬN]"]
 )
-def test_misspelled_tags_are_not_recognised(tag):
-    # Đúng phạm vi phiếu (không đổi cú pháp nhãn). Đề xuất trong báo cáo: Ngòi Bút ghi rõ cú
-    # pháp trong hướng dẫn đầu file.
-    text = f"- Email x {tag}"
+def test_misspelled_tags_are_recognised(tag):
+    # T-032: kiểu gõ sai trong Notepad vẫn giấu ý (an toàn khi nghi ngờ).
+    assert confirmed_profile(f"- Email x {tag}\n- B") == "- B"
+
+
+def test_tag_without_opening_bracket_is_not_recognised():
+    # Không có ngoặc mở thì là câu thường, không phải nhãn: giữ nguyên.
+    text = "- Email x CẦN XÁC NHẬN"
     assert confirmed_profile(text) == text
 
 
