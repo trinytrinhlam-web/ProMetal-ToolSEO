@@ -33,6 +33,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|
 | T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Hết chờ: chủ dự án chốt 2026-10-15 không có hãng mặc định. Chờ lập phiếu |
 | _(chưa lập phiếu)_ | Lỗi Thấp #1, #2 của bộ lọc hồ sơ: nhãn gõ sai (`[CẦNXÁC NHẬN]`, không dấu, ngoặc tròn), nhãn trên tiêu đề | Thợ Máy (#1), Ngòi Bút (#2) | Lá Chắn đề nghị ([biên bản](reports/T-022-024-la-chan.md)); lập phiếu sau T-026 |
+| _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
