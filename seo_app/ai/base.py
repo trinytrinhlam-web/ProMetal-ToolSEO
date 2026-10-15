@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -46,6 +46,73 @@ def redact_secrets(text: str) -> str:
 
 class AIError(RuntimeError):
     """Lỗi khi gọi AI. Thông điệp viết bằng tiếng Việt để hiện thẳng cho người dùng."""
+
+
+# Địa chỉ máy chủ chính thức của từng hãng (security.md W4, mục 2.7). Luôn truyền rõ khi tạo
+# client: thư viện chỉ đọc biến môi trường (OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
+# GOOGLE_GEMINI_BASE_URL) khi không được truyền địa chỉ, nên phần mềm khác trên máy không lái
+# được khóa và bài viết sang máy chủ lạ.
+ANTHROPIC_URL = "https://api.anthropic.com"
+OPENAI_URL = "https://api.openai.com/v1"
+GEMINI_URL = "https://generativelanguage.googleapis.com/"
+
+# Lỗi Python do thư viện của hãng lệch phiên bản (nâng/hạ ngoài uv.lock): thiếu module, hằng,
+# hàm (ImportError, AttributeError), đổi tham số (TypeError), đổi dạng dữ liệu (KeyError).
+LIBRARY_ERRORS: tuple[type[Exception], ...] = (ImportError, AttributeError, TypeError, KeyError)
+# Lúc nhập module hãng và tạo client: thêm lỗi kiểm tham số của pydantic (google-genai dựng
+# HttpOptions, HttpRetryOptions… bằng pydantic, không nhận trường lạ).
+SETUP_ERRORS: tuple[type[Exception], ...] = (*LIBRARY_ERRORS, ValidationError)
+
+
+def library_message(label: str) -> str:
+    """Câu báo thư viện của hãng ``label`` cài thiếu hoặc sai phiên bản (nhắc chạy uv sync)."""
+    return (
+        f"Thư viện của {label} chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / "
+        "run.command (hoặc lệnh uv sync) để cài đúng phiên bản."
+    )
+
+
+def library_error(label: str) -> AIError:
+    return AIError(library_message(label))
+
+
+# Mã lỗi ngắn của máy chủ (invalid_value, INVALID_ARGUMENT, max_output_tokens…): chỉ chữ cái
+# không dấu, nối bằng "_" hoặc ".". Không có số, dấu cách hay ký tự Markdown, nên không thể là
+# khóa API hay câu thô của máy chủ.
+_SAFE_CODE = re.compile(r"[A-Za-z]+(?:[_.][A-Za-z]+)*")
+
+
+def safe_code(value: object) -> str | None:
+    """``value`` nếu là mã lỗi ngắn an toàn để hiện ra (xem ``_SAFE_CODE``), ngược lại ``None``."""
+    if isinstance(value, str) and len(value) <= 40 and _SAFE_CODE.fullmatch(value):
+        return value
+    return None
+
+
+def bad_request_error(
+    vendor: str,
+    task: TaskConfig,
+    code: object = None,
+    param: object = None,
+    *,
+    hint: str | None = None,
+) -> AIError:
+    """Lỗi 400 (máy chủ không nhận yêu cầu): câu cố định, không bao giờ chép câu của máy chủ.
+
+    Chỉ kèm mã lỗi 400, tên mô hình, và (nếu có) mã lỗi / tên tham số ngắn đã lọc bằng
+    ``safe_code`` để người dùng biết sửa chỗ nào trong ``config/ai.toml`` (security S2).
+    ``hint``: câu gợi ý viết sẵn trong code cho một lỗi đã biết (không lấy từ máy chủ).
+    """
+    extra = [f"mã {c}" for c in [safe_code(code)] if c]
+    extra += [f"tham số {p}" for p in [safe_code(param)] if p]
+    note = f"; {', '.join(extra)}" if extra else ""
+    advice = hint or (
+        f"Kiểm tra tên mô hình và các thông số (max_tokens, effort, web_search) của việc "
+        f"«{task.name}» trong config/ai.toml rồi thử lại."
+    )
+    return AIError(
+        f"{vendor} không nhận yêu cầu (lỗi 400{note}) với mô hình «{task.model}». {advice}"
+    )
 
 
 @dataclass(frozen=True)

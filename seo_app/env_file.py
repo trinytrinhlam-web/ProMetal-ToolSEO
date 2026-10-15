@@ -313,13 +313,33 @@ def _result(status: CheckStatus, message: str) -> KeyCheckResult:
     return KeyCheckResult(status, redact_secrets(message))
 
 
+def _library_result(label: str) -> KeyCheckResult:
+    """Thư viện của hãng cài thiếu hoặc sai phiên bản (nâng ngoài uv.lock): nhắc chạy uv sync."""
+    from seo_app.ai.base import library_message
+
+    return _result("unknown", library_message(label))
+
+
+# Lúc gọi kiểm tra: lỗi kiểu Python do thư viện lệch phiên bản (đổi tên hàm, tham số). KeyError
+# không tính vào đây (có thể do dữ liệu trả về lạ), vẫn chỉ nêu tên lỗi như mọi lỗi lạ khác.
+_CALL_LIBRARY_ERRORS = (ImportError, AttributeError, TypeError)
+
+
 def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
-    import anthropic
+    from seo_app.ai.base import ANTHROPIC_URL, SETUP_ERRORS
 
     try:
+        import anthropic
+
         if client is None:
-            # max_retries=0: chỉ gọi một lần, người dùng biết kết quả ngay.
-            client = anthropic.Anthropic(api_key=api_key, timeout=timeout, max_retries=0)
+            # max_retries=0: chỉ gọi một lần, người dùng biết kết quả ngay. base_url cố định:
+            # biến môi trường ANTHROPIC_BASE_URL không có tác dụng (W4).
+            client = anthropic.Anthropic(
+                api_key=api_key, base_url=ANTHROPIC_URL, timeout=timeout, max_retries=0
+            )
+    except SETUP_ERRORS:
+        return _library_result("Claude")
+    try:
         # Gọi rẻ nhất: lấy danh sách mô hình, 1 mục. Không tốn token.
         client.models.list(limit=1, timeout=timeout)
     except anthropic.AuthenticationError:
@@ -337,16 +357,29 @@ def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> Key
     except anthropic.AnthropicError as exc:
         # Không chép thông điệp thô của thư viện (có thể chứa header/URL).
         return _result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
+    except _CALL_LIBRARY_ERRORS:
+        return _library_result("Claude")
+    except Exception as exc:
+        # Lỗi lạ khác (lọt ra từ tầng mạng…): chỉ nêu tên lỗi, không làm sập trang.
+        return _result("unknown", f"Lỗi khi kiểm tra khóa ({type(exc).__name__}).")
     return _result("ok", "Khóa Claude dùng được.")
 
 
 def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
-    import openai
+    from seo_app.ai.base import OPENAI_URL, SETUP_ERRORS
 
     try:
+        import openai
+
         if client is None:
-            # max_retries=0: chỉ gọi một lần, người dùng biết kết quả ngay.
-            client = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=0)
+            # max_retries=0: chỉ gọi một lần, người dùng biết kết quả ngay. base_url cố định:
+            # biến môi trường OPENAI_BASE_URL không có tác dụng (W4).
+            client = openai.OpenAI(
+                api_key=api_key, base_url=OPENAI_URL, timeout=timeout, max_retries=0
+            )
+    except SETUP_ERRORS:
+        return _library_result("ChatGPT")
+    try:
         # Gọi rẻ nhất: lấy danh sách mô hình. Không tốn token.
         client.models.list(timeout=timeout)
     except openai.AuthenticationError:
@@ -363,6 +396,8 @@ def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyChe
         return _result("unknown", "Không kết nối được tới OpenAI. Kiểm tra mạng Internet.")
     except openai.APIStatusError as exc:
         return _result("unknown", f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.")
+    except _CALL_LIBRARY_ERRORS:
+        return _library_result("ChatGPT")
     except Exception as exc:
         # Các lỗi còn lại (của thư viện hay lọt ra từ tầng mạng khi không thử lại): chỉ nêu
         # tên lỗi, không chép thông điệp thô (có thể chứa header/URL); không làm sập trang.
@@ -371,21 +406,28 @@ def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyChe
 
 
 def _check_gemini(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
-    import httpx
-    from google import genai
-    from google.genai import errors, types
+    from seo_app.ai.base import GEMINI_URL, SETUP_ERRORS
 
     try:
+        import httpx
+        from google import genai
+        from google.genai import errors, types
+
         if client is None:
             # attempts=1: chỉ gọi một lần. Thời gian chờ của thư viện tính bằng mili giây.
+            # base_url cố định: biến môi trường GOOGLE_GEMINI_BASE_URL không có tác dụng (W4).
             client = genai.Client(
                 api_key=api_key,
                 vertexai=False,
                 http_options=types.HttpOptions(
+                    base_url=GEMINI_URL,
                     timeout=int(timeout * 1000),
                     retry_options=types.HttpRetryOptions(attempts=1),
                 ),
             )
+    except SETUP_ERRORS:
+        return _library_result("Gemini")
+    try:
         # Gọi rẻ nhất: lấy danh sách mô hình, 1 mục. Không tốn token.
         client.models.list(config={"page_size": 1})
     except errors.APIError as exc:
@@ -404,6 +446,8 @@ def _check_gemini(api_key: str, *, client: Any | None, timeout: float) -> KeyChe
         return _result("unknown", f"Gemini không trả lời sau {timeout:g} giây. Thử lại sau.")
     except httpx.TransportError:
         return _result("unknown", "Không kết nối được tới Gemini. Kiểm tra mạng Internet.")
+    except _CALL_LIBRARY_ERRORS:
+        return _library_result("Gemini")
     except Exception as exc:
         # google-genai không gom mọi lỗi về một lớp chung (Anthropic/OpenAI thì có). Chỉ nêu
         # tên lỗi, không chép thông điệp thô (có thể chứa header/URL); không làm sập trang.

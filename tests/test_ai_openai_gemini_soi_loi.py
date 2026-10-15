@@ -813,12 +813,6 @@ def test_openai_still_generates_when_internal_helper_is_gone(monkeypatch):
     assert client.calls[0]["text"]["format"]["type"] == "json_schema"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi SL-3: nếu bản openai mới đổi/bỏ openai.pydantic_function_tool, text_format() "
-    "ném AttributeError thô ngay trong generate (ngoài khối try), trang Soạn bài chỉ bắt "
-    "AIError nên sập — rủi ro SL-2 chỉ dời từ lúc nhập sang lúc gọi.",
-)
 def test_openai_public_helper_change_gives_vietnamese_error(monkeypatch):
     monkeypatch.delattr(openai, "pydantic_function_tool")
     with pytest.raises(AIError):
@@ -827,11 +821,6 @@ def test_openai_public_helper_change_gives_vietnamese_error(monkeypatch):
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="Lỗi SL-4: make_provider chỉ bắt ImportError. Bản google-genai mới bỏ một hằng "
-    "(ví dụ types.ThinkingLevel) thì gemini_provider ném AttributeError lúc nhập, lọt ra thô.",
-)
 def test_gemini_library_missing_constant_gives_vietnamese_error(monkeypatch):
     from seo_app.ai.registry import make_provider
 
