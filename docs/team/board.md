@@ -25,13 +25,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (`Soi Lỗi · T-029 + T-030 Bộ chặn mạng`) | `team/T-029` | Soi Lỗi **xong** (`efc0529`): Linux 2.398 qua, 0 hỏng (2 lần); 6/6 đột biến bị bắt. Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** ([biên bản](reports/T-029-030-la-chan.md)). Bản quyền PSF đã thêm (`bf69ace`). Còn: **chạy test 2 lần trên Windows** (lệnh trong [dong-bo.md](dong-bo.md)) rồi mới gộp | [Soi Lỗi](reports/T-029-soi-loi.md) |
 | [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Test của T-027 chạy được trên Linux/Mac (`main` đang có 9 test đỏ trên Linux) | Soi Lỗi (cùng phiên T-029) | `team/T-029` | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** chung với T-029; chờ chạy trên Windows | [Soi Lỗi](reports/T-029-soi-loi.md) |
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → báo lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS` | Thợ Máy (`Thợ Máy · T-028 Nội dung hỏng từ máy chủ AI`) | `team/T-028` | Đang làm | |
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ | `team/T-019` | Thợ Máy đang làm phần logic | |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) | `team/T-025` | Chỉ Huy B đã gộp `main` vào nhánh (`ce1a79c`). Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Hết chờ: chủ dự án chốt 2026-10-15 không có hãng mặc định. Chờ lập phiếu |
 | _(chưa lập phiếu)_ | Lỗi Thấp #1, #2 của bộ lọc hồ sơ: nhãn gõ sai (`[CẦNXÁC NHẬN]`, không dấu, ngoặc tròn), nhãn trên tiêu đề | Thợ Máy (#1), Ngòi Bút (#2) | Lá Chắn đề nghị ([biên bản](reports/T-022-024-la-chan.md)); lập phiếu sau T-026 |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
