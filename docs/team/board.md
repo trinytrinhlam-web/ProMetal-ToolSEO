@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 13:35 (Chỉ Huy B, đang giữ quyền điều phối). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
+_Cập nhật: 2026-10-15 14:10 (Chỉ Huy B, đang bàn giao cho Chỉ Huy A: xem mục "Đang làm dở" của dong-bo.md). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -24,8 +24,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (`Soi Lỗi · T-029 + T-030 Bộ chặn mạng`) | `team/T-029` | Soi Lỗi **xong** (`efc0529`): Linux 2.398 qua, 0 hỏng (2 lần); 6/6 đột biến bị bắt. Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** ([biên bản](reports/T-029-030-la-chan.md)). Bản quyền PSF đã thêm (`bf69ace`). Còn: **chạy test 2 lần trên Windows** (lệnh trong [dong-bo.md](dong-bo.md)) rồi mới gộp | [Soi Lỗi](reports/T-029-soi-loi.md) |
 | [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Test của T-027 chạy được trên Linux/Mac (`main` đang có 9 test đỏ trên Linux) | Soi Lỗi (cùng phiên T-029) | `team/T-029` | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** chung với T-029; chờ chạy trên Windows | [Soi Lỗi](reports/T-029-soi-loi.md) |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → báo lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS` | Thợ Máy (`Thợ Máy · T-028 Nội dung hỏng từ máy chủ AI`) | `team/T-028` | Đang làm | |
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ | `team/T-019` | Thợ Máy đang làm phần logic | |
+| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → báo lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS` | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-028 Nội dung hỏng từ máy chủ AI`) | `team/T-028` | Soi Lỗi **đạt** (`d0f82ce`, 3 lỗi Thấp). Thợ Máy đã sửa SL-T028-2 (`1c300f5`, bỏ qua `OPENAI_ORG_ID`/`OPENAI_PROJECT_ID`; Linux 3.069 qua, chỉ 9 test đỏ sẵn). Lá Chắn **ĐẠT** (`9e55d38`, Opus tạm; Windows 3.070 qua, 0 hỏng; 3 lỗi Thấp LC-T028-1 → 3 ghi sổ). **Chờ gộp** ngay sau T-029 + T-030 | [Thợ Máy](reports/T-028-tho-may.md) · [Soi Lỗi](reports/T-028-soi-loi.md) |
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ (`Họa Sĩ · T-019 Thử mù mô hình`) | `team/T-019` | Thợ Máy xong logic (`d2bfa8c`, 39 test). Họa Sĩ xong giao diện (`0d09f4d`, 14 test; Linux chỉ 9 test đỏ sẵn của T-027). **Soi Lỗi đang kiểm** (phiên Chỉ Huy A), rồi Lá Chắn | [Thợ Máy](reports/T-019-tho-may.md) · [Họa Sĩ](reports/T-019-hoa-si.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) | `team/T-025` | Chỉ Huy B đã gộp `main` vào nhánh (`ce1a79c`). Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ
@@ -33,6 +33,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | _(chưa lập phiếu)_ | Lỗi Thấp #1, #2 của bộ lọc hồ sơ: nhãn gõ sai (`[CẦNXÁC NHẬN]`, không dấu, ngoặc tròn), nhãn trên tiêu đề | Thợ Máy (#1), Ngòi Bút (#2) | Lá Chắn đề nghị ([biên bản](reports/T-022-024-la-chan.md)); lập phiếu sau T-026 |
+| _(gộp vào phiếu lớp AI tiếp theo)_ | Lỗi Thấp của Lá Chắn T-028: LC-T028-1 đổi khóa gỡ biến môi trường sang `RLock` (gọi lồng sẽ treo; hiện không có chỗ gọi lồng); LC-T028-3 gzip hỏng ra "Không kết nối được" (có từ trước). LC-T028-2 chấp nhận | Thợ Máy | Khi có phiếu lớp AI tiếp theo |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |

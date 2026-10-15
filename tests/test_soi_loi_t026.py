@@ -506,10 +506,6 @@ SSE = {"content-type": "text/event-stream"}
 JSON = {"content-type": "application/json"}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T026-4 (có sẵn trên main, ngoài phạm vi T-026): lỗi thô lọt ra khi mã 200 sai dạng",
-)
 @pytest.mark.parametrize(
     ("vendor", "response"),
     [

@@ -28,22 +28,22 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, nhận lúc 2026-10-15 13:10 (theo yêu cầu của chủ dự án: "đọc việc agent khác đã làm, tiếp tục từ chỗ đang làm dở").
+**Chỉ Huy A**, từ 2026-10-15 14:12 (chủ dự án báo Chỉ Huy B đã xong). A **không đụng nhánh `team/T-025`** tới khi báo cáo T-025 của Soi Lỗi (phiên B) có trên nhánh.
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 13:35. **T-026 đã gộp vào `main` (`64383a5`)** sau khi Lá Chắn ĐẠT. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; nhánh nào cũng đẩy lên GitHub.
+Trạng thái lúc Chỉ Huy B bàn giao (2026-10-15 14:10). Mọi việc đã đẩy lên GitHub. Agent của B: chỉ còn **Soi Lỗi · T-025** chạy nốt trên nhánh `team/T-025` (không đụng nhánh nào khác); các agent khác của B đã dừng.
 
-| Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
+| Phiếu | Nhánh (HEAD) | Đã xong | Việc tiếp theo cho Chỉ Huy A |
 |---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`bf69ace`) | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN**; điều kiện bản quyền PSF đã xong (`bf69ace`). **Chỉ còn chạy test trên Windows** | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
-| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (từ `main`) | Thợ Máy làm phần logic | Họa Sĩ làm giao diện, rồi Soi Lỗi, Lá Chắn |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (từ `main` `64383a5`) | Thợ Máy đang làm | Soi Lỗi, rồi Lá Chắn |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng; test T-027 chạy được trên Linux/Mac | `team/T-029` (`bf69ace`) | Soi Lỗi xong; Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** ([biên bản](reports/T-029-030-la-chan.md)); điều kiện bản quyền PSF đã xong | **Chạy test trên Windows** (lệnh ngay dưới bảng). Đạt thì gộp vào `main`. **Gộp trước các phiếu khác**: `main` đang có 9 test đỏ trên Linux, T-030 sửa |
+| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (`1c300f5`) | Thợ Máy 2 lượt; Soi Lỗi **đạt** (3 lỗi Thấp; SL-T028-2 đã sửa ở lượt 2) | **Giao Lá Chắn.** Trọng tâm: S2 (câu báo lỗi cố định), cách tạm gỡ biến `*_CUSTOM_HEADERS`, `OPENAI_ORG_ID`/`OPENAI_PROJECT_ID` khỏi `os.environ` dưới khóa luồng rồi trả lại. Lá Chắn quyết SL-T028-1 (lệch phiên bản sâu trong thư viện ra câu "dữ liệu lạ", Soi Lỗi đề xuất chấp nhận) và SL-T028-3 (gzip hỏng ra "Không kết nối được", có từ trước). ĐẠT thì gộp |
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình (việc cuối của Giai đoạn 2) | `team/T-019` (`0d09f4d`) | Thợ Máy xong logic (`seo_app/content/blind_test.py`, 39 test); Họa Sĩ xong giao diện (tab 🤖 Mô hình AI, 14 test) | **Giao Soi Lỗi**, rồi Lá Chắn (A1, U1, S2). Lưu ý của Họa Sĩ: nhãn "Bản demo" đầu trang Cài đặt vẫn còn vì tab Văn phong, Ảnh còn demo; chú thích đầu `config/ai.toml` đã cũ (Ngòi Bút sửa sau) |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ chập chờn | `team/T-025` | Soi Lỗi (phiên B) **đang chạy nốt**: đo 100 lần mỗi test, sẽ đẩy báo cáo `docs/team/reports/T-025-soi-loi.md` | Khi có báo cáo: Lá Chắn rút gọn (chỉ soát bí mật), gộp. Nếu tới lúc A làm mà báo cáo chưa có: xem `git log origin/team/T-025`, phiên có thể đã dừng vì giới hạn sử dụng |
 
-**Việc cần Chỉ Huy A (máy Windows) trước khi gộp T-029 + T-030** (máy cloud của B không có Windows). Chạy trên nhánh `team/T-029`:
+**Lệnh kiểm T-029 + T-030 trên Windows** (máy cloud của B không có Windows):
 
 ```
 git fetch origin
@@ -56,13 +56,53 @@ uv run pytest -q tests/test_soi_loi_t027.py tests/test_soi_loi_t029.py tests/tes
 uv run ruff check .
 ```
 
-Đạt khi: hai lượt 0 hỏng, 0 lỗi; không bỏ qua test IPv6 nào (trừ khi máy tắt IPv6); `test_proactor_sendto_is_wrapped_on_windows` và các tham số `vong-lap-mac-dinh` đều **PASSED**. Ghi kết quả vào nhật ký dưới đây. Đạt thì gộp `team/T-029` vào `main`; hỏng thì không gộp, giao lại Soi Lỗi. Chi tiết: `docs/team/reports/T-029-030-la-chan.md`, mục "Phần chưa kiểm được trên Linux".
+Đạt khi:
+- Hai lượt đều 0 hỏng, 0 lỗi.
+- Không bỏ qua test IPv6 nào (trừ khi máy tắt IPv6).
+- `test_proactor_sendto_is_wrapped_on_windows` và các tham số `vong-lap-mac-dinh` đều **PASSED**.
 
-**Lưu ý cho Chỉ Huy A:** `main` hiện **đỏ trên Linux** (9 test trong `tests/test_soi_loi_t027.py`: thiếu `socket._fallback_socketpair` trên Python 3.12.3, máy không có IPv6). Trên Windows vẫn xanh. Đang sửa ở T-030.
+Ghi kết quả vào nhật ký dưới đây. Hỏng thì không gộp, giao lại Soi Lỗi. Chi tiết: biên bản Lá Chắn, mục "Phần chưa kiểm được trên Linux".
+
+**Việc chờ lập phiếu** (xem `board.md` mục Chờ):
+- Ghim cùng một bản Python cho mọi máy (`.python-version`). Làm sau T-029 + T-030.
+- Lỗi Thấp của bộ lọc hồ sơ: nhãn gõ sai, nhãn trên tiêu đề (Lá Chắn T-022 + T-024).
+- Ngòi Bút sửa chú thích `config/ai.toml`; Thư Ký cập nhật README cho ChatGPT/Gemini.
+
+**Chỉ Huy A làm tiếp (từ 14:12):**
+- ⏳ 14:15 Chạy bộ kiểm T-029 + T-030 trên Windows (worktree `wt-T-029`, theo lệnh của B ở trên).
+- ⏳ 14:16 Giao **Lá Chắn · T-028** (worktree `wt-T-028`, Opus tạm) và **Soi Lỗi · T-019** (worktree `wt-T-019`).
+- ✅ 14:17 Xóa nhánh `team/T-026` đã gộp (B nhờ).
+- Không đụng `team/T-025` (Soi Lỗi của B có thể còn chạy).
+- ✅ 14:24 Lá Chắn T-028 **ĐẠT** (`9e55d38`). Chờ gộp ngay sau T-029 + T-030.
+- ⏳ T-029 + T-030 trên Windows: lượt 1 đạt (2.758 qua, 0 hỏng), đang chạy lượt 2.
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 14:12 · Chỉ Huy A nhận quyền
+
+- `git pull` về `main` = `39c8c1f`. Đọc bàn giao 14:10 của Chỉ Huy B, làm tiếp theo bảng "Đang làm dở".
+- Về giờ lệch B nêu: các mốc giờ trong phiên A trước (11:00 → 13:50) là giờ A ước lượng, không lấy từ đồng hồ máy. Từ nay A ghi theo lệnh `date` (UTC+7).
+
+### 2026-10-15 14:10 · Chỉ Huy B bàn giao cho Chỉ Huy A (chủ dự án yêu cầu)
+
+**Đã xong trong phiên B (13:10 → 14:10):**
+- **Gộp T-026 vào `main`** (`64383a5`): lớp AI chịu được thư viện lệch phiên bản, câu lỗi 400 cố định, client 3 hãng dùng địa chỉ chính thức. Lá Chắn ĐẠT.
+- Phát hiện `main` **đỏ trên Linux** (9 test của T-027: thiếu `socket._fallback_socketpair` ở Python 3.12.3, máy không IPv6). Lập T-030, làm chung T-029. Cả hai đã qua Soi Lỗi và Lá Chắn (đạt có điều kiện), chỉ còn chạy trên Windows.
+- T-028: Thợ Máy 2 lượt, Soi Lỗi đạt. Chờ Lá Chắn.
+- Lập và làm T-019 (thử mù mô hình): Thợ Máy xong logic, Họa Sĩ xong giao diện. Chờ Soi Lỗi.
+- **Quyết định chủ dự án:** giữ việc thư viện AI đọc `HTTPS_PROXY`, `SSL_CERT_FILE`; đã ghi sổ rủi ro `security.md` mục 6 và `BAN-GIAO.md` 7.4.
+- Số phiếu tiếp theo: **T-031**.
+
+**Lưu ý vận hành:**
+- Phiên cloud của B **không xóa được nhánh** trên GitHub (máy chủ git từ chối). Nhánh đã gộp, A xóa giúp: `team/T-026`.
+- Tài khoản của B đang gần giới hạn sử dụng 5 tiếng (mở lại khoảng 18:00).
+- Lá Chắn của B chạy tạm Opus 5.5. Danh sách kiểm lại bằng Fable sau 01/11 trong `board.md` đã thêm T-026; khi gộp thì thêm T-028, T-029, T-030, T-019.
+
+### 2026-10-15 14:05 · Chỉ Huy B
+
+- Chủ dự án yêu cầu tạm dừng B, nhường A. Không giao việc mới; chờ 3 agent đang chạy làm xong rồi bàn giao.
 
 ### 2026-10-15 13:50 · Chỉ Huy B
 

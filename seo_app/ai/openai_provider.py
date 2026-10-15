@@ -33,10 +33,13 @@ from seo_app.ai.base import (
     T,
     TaskConfig,
     bad_request_error,
+    ignoring_custom_headers,
     library_error,
+    unreadable_error,
 )
 
 LABEL = "OpenAI"
+VENDOR = "OpenAI"
 
 # Tìm web như người dùng ở Việt Nam (kết quả Google Việt Nam sát hơn).
 WEB_SEARCH_TOOL = {
@@ -49,18 +52,31 @@ TIMEOUT_SECONDS = 900.0
 
 class OpenAIProvider:
     def __init__(self, api_key: str, client: openai.OpenAI | None = None) -> None:
-        # base_url cố định: biến môi trường OPENAI_BASE_URL không có tác dụng (W4).
-        self._client = client or openai.OpenAI(
-            api_key=api_key, base_url=OPENAI_URL, timeout=TIMEOUT_SECONDS, max_retries=3
-        )
+        if client is None:
+            # base_url cố định: biến môi trường OPENAI_BASE_URL không có tác dụng (W4).
+            # OPENAI_CUSTOM_HEADERS bị bỏ qua (T-028).
+            with ignoring_custom_headers():
+                client = openai.OpenAI(
+                    api_key=api_key, base_url=OPENAI_URL, timeout=TIMEOUT_SECONDS, max_retries=3
+                )
+        self._client = client
 
     def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         try:
             return self._generate(task, system=system, prompt=prompt, schema=schema)
-        except LIBRARY_ERRORS as exc:
-            # Thư viện lệch phiên bản (ví dụ bỏ/đổi openai.pydantic_function_tool mà text_format
-            # dùng, đổi tên tham số của responses.create): báo tiếng Việt, không làm sập trang.
-            raise library_error(LABEL) from exc
+        except AIError:
+            raise
+        except Exception as exc:
+            # Mã 200 nhưng nội dung hỏng (JSON hỏng, trang HTML…): thư viện để lọt
+            # JSONDecodeError… Câu cố định, không chép thông điệp thô (T-028).
+            error = unreadable_error(exc, VENDOR)
+            if error is not None:
+                raise error from exc
+            if isinstance(exc, LIBRARY_ERRORS):
+                # Thư viện lệch phiên bản (ví dụ bỏ/đổi openai.pydantic_function_tool mà
+                # text_format dùng, đổi tên tham số của responses.create): báo tiếng Việt.
+                raise library_error(LABEL) from exc
+            raise
 
     def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
         params: dict[str, Any] = {
@@ -153,21 +169,29 @@ def _parse(response: Any, task: TaskConfig, schema: type[T]) -> T:
         raise AIError("OpenAI chưa trả lời xong. Bấm thử lại.")
 
     texts: list[str] = []
-    for item in getattr(response, "output", None) or []:
+    for item in _as_list(getattr(response, "output", None)):
         if getattr(item, "type", None) != "message":
             continue
         # Chỉ lấy câu trả lời cuối (bỏ các đoạn "đang làm" nếu mô hình có gửi kèm).
         if getattr(item, "phase", None) not in (None, "final_answer"):
             continue
-        for content in getattr(item, "content", None) or []:
+        for content in _as_list(getattr(item, "content", None)):
             kind = getattr(content, "type", None)
             if kind == "refusal":
                 raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")
-            if kind == "output_text" and getattr(content, "text", None):
-                texts.append(content.text)
+            text = getattr(content, "text", None)
+            if kind == "output_text" and isinstance(text, str) and text:
+                texts.append(text)
     if not texts:
         raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.")
     try:
         return schema.model_validate_json(texts[-1])
     except pydantic.ValidationError as exc:
         raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.") from exc
+
+
+def _as_list(value: Any) -> list[Any]:
+    """``value`` nếu là danh sách. Máy chủ/proxy trả JSON sai kiểu (``"output": 5``) thì thư viện
+    vẫn giữ nguyên giá trị đó; coi như rỗng để ra câu "không đúng khuôn", không ra lỗi thô.
+    """
+    return list(value) if isinstance(value, (list, tuple)) else []
