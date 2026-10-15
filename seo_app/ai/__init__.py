@@ -1,4 +1,4 @@
-"""Lớp AI chung: một giao diện cho mọi hãng (Anthropic; OpenAI, Gemini sẽ thêm sau)."""
+"""Lớp AI chung: một giao diện cho mọi hãng (Anthropic, OpenAI, Gemini)."""
 
 from seo_app.ai.base import AIError, AIProvider, TaskConfig
 from seo_app.ai.registry import AIRouter, load_ai_config, make_provider
