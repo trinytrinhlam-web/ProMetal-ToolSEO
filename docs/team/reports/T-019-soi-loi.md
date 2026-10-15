@@ -99,8 +99,12 @@ $ uv run pytest -q -rfE
 2771 passed, 10 skipped, 9 xfailed in 335.03s (0:05:35)
 
 # Sau khi thêm test, Windows
-KET_QUA_SAU
+$ uv run pytest -q -rfE
+2791 passed, 10 skipped, 16 xfailed in 267.62s (0:04:27)
 ```
+
+0 hỏng, 0 lỗi. So với trước: **+20 passed, +7 xfailed**, khớp đúng 27 trường hợp mới. 9 xfail cũ không đổi.
+Lần chạy trước mất 335 giây vì máy đang chạy việc khác cùng lúc. Không có test hỏng hay chập chờn.
 
 Tôi chạy 7 xfail mới với `--runxfail` để chắc chúng thất bại đúng lý do: chữ `claude`/`gemini`/`opus`/`sonnet`/`deepmind`
 còn trong bài, và bài của ứng viên đúng bị che.
