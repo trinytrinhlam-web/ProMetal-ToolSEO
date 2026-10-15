@@ -711,6 +711,17 @@ def test_truncated_real_database_never_crashes(tmp_path):
         '{"keyword": ' + "[" * 100_000 + "]" * 100_000 + "}",
         '{"keyword": 1e999999}',
     ],
+    # Tên ngắn: pytest ghi tên test (kèm tham số) vào biến môi trường PYTEST_CURRENT_TEST,
+    # Windows giới hạn 32.767 ký tự nên tham số 100.000 ký tự không được làm tên (T-027).
+    ids=[
+        "null",
+        "mang-rong",
+        "chuoi",
+        "khong-phai-json",
+        "100k-ngoac-nhon",
+        "100k-ngoac-vuong-long-nhau",
+        "so-qua-lon",
+    ],
 )
 def test_bad_json_in_row_gives_draft_error(store, data):
     snap = store.save(DraftSnapshot(keyword="a"))
