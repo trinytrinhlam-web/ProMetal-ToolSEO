@@ -443,10 +443,17 @@ def test_ordinary_text_is_not_masked(text):
         ("123", False),
         ("co", False),
         ("--", False),
+        ("cho", False),
+        ("khi", False),
+        ("gpt", False),
+        ("chatgpt", False),
+        ("a-b", False),
         ("o3", True),
+        ("4o", True),
         ("o4-mini", True),
-        ("gpt", True),
         ("gemini-3-pro", True),
+        ("gemini-flash-latest", True),
+        ("claude-opus-5-5", True),
     ],
 )
 def test_short_or_mistyped_model_names(vendor, model, ok):
@@ -464,7 +471,10 @@ def test_short_or_mistyped_model_names(vendor, model, ok):
 def test_short_names_are_never_used_for_masking():
     # Phòng thủ thêm: kể cả khi được gọi trực tiếp, tên ngắn không che chữ thường.
     text = "Cửa cuốn của chúng tôi bền 10 năm."
-    assert blind_test._mask_names(text, ["c", "10", "co"]) == text
+    assert blind_test._mask_names(text, ["c", "10", "co", "cua", "chung"]) == text
+    assert blind_test._mask_names("Giao hàng cho khách khi xong.", ["cho", "khi"]) == (
+        "Giao hàng cho khách khi xong."
+    )
     assert blind_test._mask_names("Dùng o3-mini viết.", ["o3"]) == f"Dùng {MASK} viết."
 
 

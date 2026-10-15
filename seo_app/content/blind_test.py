@@ -55,9 +55,10 @@ TOKEN_LIMIT_ERROR = (
 )
 # Không có "[", "]", "(", ")": chữ che chạy SAU ``clean_ai_text`` nên không được ghép thành link.
 MASK = "«đã ẩn tên mô hình»"
-# Tên mô hình dùng để che: phải có chữ cái và (dài từ 3 ký tự hoặc có chữ số, như "o3"). Tên
-# gõ nhầm kiểu "c", "10", "co" sẽ che mất chữ thường ("Cửa", "của", "10 năm") trong bài của mọi
-# ứng viên (Soi Lỗi SL-T019-2), nên bị từ chối ngay ở ``validate_request`` (xem ``_maskable``).
+# Tên mô hình dùng để che: phải có chữ cái, và có chữ số ("o3", "gpt-5.1") hoặc là tên dài có
+# "-"/"." ("gemini-flash-latest"). Tên gõ nhầm kiểu "c", "10", "co", "cho", "khi" sẽ che mất chữ
+# thường ("Cửa", "của", "cho", "10 năm") trong bài của mọi ứng viên (Soi Lỗi SL-T019-2), nên bị
+# từ chối ngay ở ``validate_request`` (xem ``_maskable``). Tên thật của cả 3 hãng đều qua luật này.
 
 # Ranh giới trước tên: không đứng sau chữ/số hay "-" (để "o3" không ăn vào giữa từ), nhưng
 # ĐƯỢC đứng sau "_" vì Markdown viết nghiêng/đậm bằng gạch dưới (``_Claude_``, ``__Gemini__``;
@@ -244,10 +245,15 @@ def validate_request(
 
 
 def _maskable(model: str) -> bool:
-    """Tên mô hình đủ rõ để che an toàn: có chữ cái, và dài từ 3 ký tự hoặc có chữ số ("o3")."""
+    """Tên mô hình đủ rõ để che an toàn, không trùng chữ thường của bài.
+
+    Có chữ cái, và: có chữ số ("o3", "4o", "gpt-5.1"), hoặc dài từ 5 ký tự và có "-" / "."
+    ("gemini-flash-latest"). Từ trơn như "cho", "khi", "gpt" bị coi là gõ nhầm.
+    """
     has_letter = any(ch.isalpha() for ch in model)
     has_digit = any(ch.isdigit() for ch in model)
-    return has_letter and (len(model) >= 3 or (len(model) == 2 and has_digit))
+    has_sep = "-" in model or "." in model
+    return has_letter and (has_digit or (len(model) >= 5 and has_sep))
 
 
 def _mask_names(text: str, models: Sequence[str]) -> str:
