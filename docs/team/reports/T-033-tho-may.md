@@ -233,3 +233,105 @@ Kiểm bằng code thường, chỉ thư viện chuẩn + `pydantic` (đã có):
 5. Kiểm trùng nguồn: nếu loại schema đã có ở code site (Article, BreadcrumbList, LocalBusiness) thì phần mềm từ chối dựng loại đó (danh sách cấu hình).
 
 Test: chỉ dữ liệu giả, không gọi Google Rich Results Test.
+
+---
+
+## 4. Liên kết nội bộ (YC-601 → YC-604)
+
+### 4.1 Danh sách bài/trang đã đăng
+
+| Việc | Thiết kế |
+|---|---|
+| Lấy danh sách | Hàm mới `WordPressClient.list_published()`: `GET /wp/v2/posts` và `GET /wp/v2/pages` với `status=publish`, `_fields=id,type,slug,link,title,modified_gmt,meta`, `per_page=100`, dùng lại `_get_all_pages` (đã có giới hạn `MAX_PAGES`). Hiện site có 4 bài + 25 trang = 1 lần gọi mỗi loại |
+| Chỉ bài đã đăng | Gửi `status=publish` **và** lọc lại phía app: bỏ mọi mục có `status != "publish"` (phòng plugin trả lẫn nháp/hẹn giờ cho tài khoản đã đăng nhập). Bài `future` (đã hẹn giờ, chưa lên) **không** được link (YC-603) |
+| Dữ liệu ngoài là chưa tin cậy | Tiêu đề qua `_plain` (đã có); `link` phải là `https://` và **đúng tên máy** của `WORDPRESS_URL`, sai thì bỏ mục đó; độ dài có giới hạn |
+| Cache SQLite | **Có**. Module mới `seo_app/storage/site_index.py`, file riêng `data/site_index.sqlite` (cùng thư mục với `drafts.sqlite`, đã nằm trong `.gitignore` theo D2: *Lá Chắn kiểm lại*). Bảng `pages(id, type, slug, link, title, meta_title, meta_desc, modified_gmt)` + thời điểm tải có múi giờ. Xóa file vẫn tải lại được (đúng `CLAUDE.md`). Không lưu gì bí mật |
+| Làm mới | Tự tải lại nếu cache cũ hơn 6 giờ; nút "Tải lại danh sách bài" ở bước SEO; **bắt buộc tải lại ngay trước khi gửi nháp** (để kiểm link hỏng trên dữ liệu mới nhất) |
+
+Cùng danh sách này phục vụ luôn YC-402 (kiểm trùng title/meta, mục 5.4) vì REST đã trả `_siteseo_titles_title`, `_siteseo_titles_desc` (mục 1.3).
+
+### 4.2 AI gợi ý chỗ chèn và anchor
+
+1. **Code chọn ứng viên trước**, AI chỉ chọn trong đó (YC-602):
+   - link bắt buộc theo phiếu giao bài (trang dịch vụ đích + link khác; YC-601) luôn có mặt, không để AI bỏ;
+   - quy tắc theo loại trang: hướng dẫn → trang dịch vụ đích + 2–3 bài cùng nhóm; dịch vụ → 2–3 bài hướng dẫn liên quan;
+   - "cùng nhóm" lúc đầu = cùng chuyên mục hoặc trùng từ (không dấu) giữa tiêu đề; chưa cần embedding.
+2. Lời dặn gửi AI: danh sách ứng viên (ID + tiêu đề) và bài viết, **mỗi thứ trong một khung dữ liệu** (`security.md` 2.4). Cần thêm tên khung mới (ví dụ `danh_sach_bai`) vào `DATA_TAGS` ở `seo_app/content/prompts.py` để được vô hiệu thẻ khung như các khung khác. **Không gửi URL cho AI**, chỉ gửi ID.
+3. AI trả khuôn pydantic: `[{post_id, section, anchor}]` (`section` = số thứ tự phần như `Flag.section`), ≤ 1 link mỗi đích, tổng ≤ 5.
+4. Code kiểm từng gợi ý, sai là **bỏ**, không sửa giùm:
+   - `post_id` có trong danh sách ứng viên;
+   - `anchor` có **nguyên văn** trong thân phần đó (không nằm trong tiêu đề H2/H3), 2–8 từ, không trùng anchor khác;
+   - không 2 link vào cùng một đoạn.
+5. Người dùng tick chọn trong bảng (bố cục demo đã duyệt: cột "Dùng", "Cụm từ trong bài", "Trỏ tới bài").
+
+### 4.3 Chèn link mà không phá lớp bảo vệ đã có (T-004 → T-015)
+
+Nguyên tắc: **AI không bao giờ viết link**. Chữ AI vẫn đi qua `clean_ai_text` như cũ (bỏ thẻ, bỏ link, `escape_link_syntax`). Không được dùng `unescape_link_syntax` hay nới bất kỳ bộ lọc nào để "cho link đi qua".
+
+| Bước | Ở đâu | Việc |
+|---|---|---|
+| 1 | Bài đang soạn | Link lưu **riêng** dạng dữ liệu `InternalLink(section, anchor, post_id)`, không nhét vào chữ Markdown |
+| 2 | Khi dựng HTML (Giai đoạn 5) | Markdown → HTML (bộ chuyển có escape, không autolink, theo `board.md`). **Sau đó** hàm `apply_links(html, links, index)` duyệt **nút chữ** bằng `html.parser` (không regex trên HTML), bọc lần xuất hiện đầu tiên của anchor ở đúng phần bằng `<a href="…">`. `href` lấy từ **cache**, không từ AI; `html.escape(quote=True)`. Không chèn bên trong `<a>`, `<h2>`/`<h3>`, `<code>` |
+| 3 | Ngay trước gửi | `sanitize_html` cho **toàn bộ** HTML cuối (như `create_draft` đang làm) |
+| 4 | Màn hình xác nhận (Giai đoạn 5, bắt buộc theo `board.md`) | Liệt kê mọi `href`; đánh dấu link không cùng tên máy với `WORDPRESS_URL`, có `@` ở phần tên máy, hoặc trỏ tới ID không còn trong danh sách đã đăng |
+
+Như vậy link nội bộ chỉ đi vào ở **một** chỗ do code viết, các lớp T-004 → T-015 giữ nguyên.
+
+### 4.4 Chặn link tới bài nháp (YC-603)
+
+- Danh sách ứng viên chỉ lấy từ cache `publish` (4.1).
+- Link do người dùng tự gõ trong bài (Giai đoạn 5): nếu cùng tên miền site mà đường dẫn **không** có trong cache, hoặc có dạng `?p=123` / `?page_id=123` / `preview=true` (dạng URL của nháp) → **Chặn** (M7 #11).
+
+### 4.5 Kiểm link hỏng không gọi mạng thật trong test (YC-604)
+
+| Loại link | Kiểm thế nào | Mức (M7 #11) |
+|---|---|---|
+| Nội bộ (cùng tên miền) | So với cache **vừa tải lại** (4.1): đường dẫn không có trong danh sách đã đăng = hỏng hoặc chưa đăng | Chặn |
+| Bắt buộc theo phiếu (trang dịch vụ đích) | Phải có mặt trong HTML cuối và có trong cache | Chặn |
+| Ra ngoài | AI không chèn được (4.3). Link người dùng tự gõ: chỉ liệt kê ở màn hình xác nhận, **không** tự gọi tới trang lạ (tránh app đi "dò" địa chỉ do bài chứa) | Cảnh báo |
+| Neo trong bài (`#muc`) | Có `id` tương ứng trong HTML | Cảnh báo |
+
+Không cần gửi HEAD/GET tới từng link: nguồn sự thật là REST của chính site, gọi bằng client đã có (https, timeout, chỉ `WORDPRESS_URL`). Test dùng `tests/fake_wordpress.py` sẵn có và cache trong thư mục tạm.
+
+---
+
+## 5. Meta (YC-401, YC-402)
+
+### 5.1 Đếm độ dài tiếng Việt có dấu
+
+- Chữ Việt có thể đến ở 2 dạng: dựng sẵn (NFC, "ữ" = 1 ký tự) hoặc tổ hợp (NFD, "ữ" = 3 ký tự; hay gặp khi dán chữ trên Mac). Đếm bằng `len()` thô thì cùng một câu có thể dài gấp đôi.
+- Quy tắc: **chuẩn hóa NFC trước khi đếm và trước khi gửi**; bỏ ký tự vô hình (loại Cf, như `_neutralize` đang làm); gộp khoảng trắng; không cho xuống dòng (SiteSEO cũng bỏ qua `sanitize_text_field`).
+- Bước SEO hiện đếm `len(S.meta_title)` thô (`app/views/write.py:781, 785`): sửa khi làm thật.
+- Ngưỡng (giữ như demo đã duyệt, khớp YC-401):
+
+| Trường | Nên | Cảnh báo (M7 #9) | Chặn |
+|---|---|---|---|
+| Meta title | 50–60 ký tự | < 30 hoặc > 65 | rỗng; có thẻ HTML; có `%%` |
+| Meta description | 120–155 ký tự | < 70 hoặc > 160 | rỗng; có thẻ HTML; có `%%` |
+| Slug | ≤ 60 ký tự, 3–7 từ | dài hơn | rỗng; có ký tự ngoài `a-z0-9-` |
+
+Google cắt theo **độ rộng điểm ảnh** (khoảng 580–600 px), không theo số ký tự; ký tự có dấu rộng xấp xỉ chữ không dấu nên đếm ký tự NFC là đủ dùng. Ngưỡng điểm ảnh **chưa xác minh**, nên chỉ dùng để Cảnh báo.
+
+`%%`: SiteSEO hiểu `%%tên%%` là biến (ví dụ `%%post_title%%`, `main/titlesmetas.php:407` `replace_variables`, mẫu mặc định `main/install.php:82`), nên chữ của phần mềm không được chứa `%%`.
+
+### 5.2 Slug không dấu
+
+- Dùng `seo_app/text.py` `slugify` (đã có: bỏ dấu, `đ → d`, nối `-`, cắt 80).
+- Thêm: cắt mặc định 60; bỏ từ nối vô nghĩa ở **cuối** slug; slug của phiếu giao bài thắng slug tự sinh (yêu cầu 3.1).
+- Kiểm trùng với `slug` trong cache: trùng thì WordPress tự thêm `-2` → **Chặn** (N5: hai trang cùng nhắm một từ khóa).
+
+### 5.3 AI tạo meta theo lời dặn có khung dữ liệu
+
+- Hàm mới, ví dụ `ContentWriter.meta(keyword, title, parts, research)`, gọi lớp provider đã có, việc `meta` trong `config/ai.toml` (đã khai báo sẵn: *Thợ Máy kiểm lại tên việc khi làm*).
+- Dữ liệu (bài viết, ý định tìm kiếm, hồ sơ doanh nghiệp) nằm trong các khung `<bai_viet>`, `<du_lieu_tham_khao>`, `<ho_so_doanh_nghiep>` như `prompts.py` đang làm, kèm `DATA_RULES`.
+- Khuôn trả về: `MetaSuggestions{titles: list[str] (3), descriptions: list[str] (2)}`.
+- Kiểm kết quả trước khi dùng (A2): `strip_tags`, NFC, bỏ xuống dòng, bỏ `%%`, không link/URL, không cụm cấm (`find_banned` với `config/content.toml`), không nêu giá (theo `BAN-GIAO.md` 7.4), có từ khóa chính (không phân biệt hoa thường, so cả bản không dấu), độ dài trong ngưỡng Chặn. Gợi ý hỏng thì bỏ; hỏng hết thì báo lỗi tiếng Việt và cho viết lại.
+- Nút 🔄 (đã có trong bố cục) = viết lại riêng title hoặc riêng description, giữ bản trước để quay lại (đúng quyết định "viết lại một phần không đụng phần khác").
+- Hậu tố thương hiệu: site đang dùng "… | Pro Metal" ở một số bài (GET #3). Thống nhất một dạng: **câu hỏi 3**.
+
+### 5.4 Kiểm trùng title/meta với bài khác (YC-402, M7 #6: Chặn)
+
+- Nguồn so sánh: cache (4.1), gồm tiêu đề bài, `_siteseo_titles_title`, `_siteseo_titles_desc` của cả 29 URL. Mục meta rỗng thì so với tiêu đề bài (SiteSEO dùng mẫu `%%post_title%% %%sep%% %%sitetitle%%` khi để trống).
+- Chuẩn hóa trước khi so: NFC, chữ thường, gộp khoảng trắng, bỏ dấu câu, bỏ hậu tố thương hiệu (" | Pro Metal", " - Pro-Metal"…).
+- Trùng hệt sau chuẩn hóa → **Chặn**. Giống nhiều (tỉ lệ từ chung theo bản không dấu ≥ 0,8, chỉ dùng `difflib`/`set` của thư viện chuẩn) → **Cảnh báo**, hiện tên bài bị giống.
+- Bỏ qua chính bài đang cập nhật (YC-804, sau này).
