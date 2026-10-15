@@ -16,7 +16,7 @@ Trước đây app chỉ giấu đúng **một dòng** có nhãn `[CẦN XÁC NH
 | File | Thay đổi |
 |---|---|
 | `seo_app/content/rules.py` | `confirmed_profile` lọc theo khối; thêm `_is_unconfirmed` (NFC + viết hoa + regex chịu khoảng trắng); bỏ hằng `UNCONFIRMED_TAG` (không còn nơi nào dùng) |
-| `tests/test_profile_blocks.py` | 39 test mới (tính cả tham số) |
+| `tests/test_profile_blocks.py` | 46 test mới (tính cả tham số) |
 
 ### Cách chia khối
 
@@ -31,7 +31,7 @@ Trước đây app chỉ giấu đúng **một dòng** có nhãn `[CẦN XÁC NH
 
 ```
 $ uv run pytest
-1910 passed, 3 xfailed in 99.37s
+1917 passed, 3 xfailed in 99.55s
 
 $ uv run ruff check .
 All checks passed!
@@ -64,9 +64,16 @@ danh sách khu vực ở trên). AI chỉ dùng trụ sở Bình Tân ...       
 
 Test `test_real_profile_only_drops_what_old_filter_leaked` kiểm trên file thật: kết quả mới là dãy con của kết quả cũ (không thêm, không đổi dòng nào), không còn nhãn, không còn dòng `>`. Test không gắn với nội dung cụ thể, để Ngòi Bút sửa hồ sơ không làm hỏng test.
 
+### Bổ sung theo Chỉ Huy: SL-022-6 (nhãn có dấu cách không ngắt)
+
+- Code ở commit `0abf443` đã xử lý được lỗi này. Regex `\[\s*CẦN\s+XÁC\s+NHẬN` chạy trên chữ đã chuẩn hóa NFC; `\s` của Python khớp mọi khoảng trắng Unicode (NBSP U+00A0, U+2009, U+202F, U+3000, tab, nhiều dấu cách). Kết quả giống như gộp mọi khoảng trắng thành một dấu cách rồi mới so.
+- Thêm `test_tag_with_any_unicode_whitespace_between_words`: 7 kiểu khoảng trắng, đặt ở mọi chỗ trong nhãn, thử cả dạng NFC lẫn NFD.
+- Đã chạy `tests/test_business_profile.py` của nhánh `team/T-022` trên code nhánh này (chép tạm, không commit): cả 6 test `xfail(strict=True)` "chờ T-024" (SL-022-1…6) đều **XPASS**, 18 test còn lại qua. Khi Soi Lỗi bỏ dấu xfail, các test này sẽ qua.
+- Chưa xử lý ký tự không phải khoảng trắng như dấu cách độ rộng 0 (U+200B). Unicode không xếp U+200B vào khoảng trắng và hiếm khi gặp khi gõ Notepad.
+
 ## Đối chiếu tiêu chí xong
 
-- [x] Không còn cách viết thường gặp nào làm dòng chưa xác nhận lọt vào prompt: nhãn ở dòng đầu, giữa, cuối (`test_multiline_bullet_dropped_whatever_line_has_tag`, `test_tag_at_end_of_second_line_as_profile_instructs`, `test_paragraph_block_is_whole_paragraph`); viết thường, NFD, dấu cách thừa, tab, NBSP (`test_tag_variants_recognised`); quên thụt lề (`test_unindented_continuation_of_bullet_belongs_to_bullet`); lồng nhau (`test_nested_bullets_drop_whole_parent_item`, `test_tag_on_parent_drops_nested_children`); `>` có dấu cách/tab/NBSP (`test_note_lines_dropped_even_with_leading_whitespace`); xuống dòng kiểu Windows (`test_windows_line_endings`)
+- [x] Không còn cách viết thường gặp nào làm dòng chưa xác nhận lọt vào prompt: nhãn ở dòng đầu, giữa, cuối (`test_multiline_bullet_dropped_whatever_line_has_tag`, `test_tag_at_end_of_second_line_as_profile_instructs`, `test_paragraph_block_is_whole_paragraph`); viết thường, NFD, dấu cách thừa, tab, NBSP và khoảng trắng Unicode khác (`test_tag_variants_recognised`, `test_tag_with_any_unicode_whitespace_between_words`); quên thụt lề (`test_unindented_continuation_of_bullet_belongs_to_bullet`); lồng nhau (`test_nested_bullets_drop_whole_parent_item`, `test_tag_on_parent_drops_nested_children`); `>` có dấu cách/tab/NBSP (`test_note_lines_dropped_even_with_leading_whitespace`); xuống dòng kiểu Windows (`test_windows_line_endings`)
 - [x] Kết quả trên file thật không mất dòng đúng nào: giống hệt bộ lọc cũ (bảng trên, `test_real_profile_only_drops_what_old_filter_leaked`)
 - [x] `uv run pytest` và `uv run ruff check .` sạch
 - [x] Báo cáo nộp tại `docs/team/reports/T-024-tho-may.md`
