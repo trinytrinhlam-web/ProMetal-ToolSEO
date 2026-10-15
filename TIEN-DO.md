@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 11:00 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-15, 13:50 giờ Việt Nam. Người ghi: Chỉ Huy A (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -41,7 +41,10 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Hồ sơ doanh nghiệp theo trả lời của anh (T-022) | ✅ Xong, đã lên `main` |
 | Bộ lọc hồ sơ: bỏ cả ý khi có nhãn `[CẦN XÁC NHẬN]` (T-024) | ✅ Xong, đã lên `main` |
 | Ổn định test đo tốc độ chập chờn (T-025) | 🔎 Soi Lỗi có 2 commit, chưa nộp báo cáo (nhánh `team/T-025`) |
-| 4 lỗi Thấp lớp AI (T-026) | ⏳ Chưa giao |
+| 4 lỗi Thấp lớp AI (T-026) | 🔒 Soi Lỗi đạt; **chờ Lá Chắn** (nhánh `team/T-026`) |
+| Bộ test chạy xanh trên Windows (T-027) | ✅ Xong, đã lên `main` |
+| Chặn thêm UDP, tra tên trong bộ chặn mạng của test (T-029) | 🔎 Có code và test, chưa báo cáo (nhánh `team/T-029`) |
+| Nội dung hỏng từ máy chủ AI → báo lỗi tiếng Việt (T-028) | ⏳ Chờ T-026 lên `main` |
 | Thử mù mô hình trong Cài đặt (T-019) | ⏳ Hết chờ (T-018 đã lên `main`, anh chốt không có hãng mặc định) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
