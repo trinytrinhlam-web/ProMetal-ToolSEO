@@ -9,7 +9,7 @@ Dự án có **hai Chỉ Huy** chạy ở **hai tài khoản Claude khác nhau**
 | Tên trong file này | Ở đâu |
 |---|---|
 | **Chỉ Huy A** | Claude Desktop (Code) trên máy chủ dự án, thư mục `D:\ProMetal-ToolSEO\ProMetal-ToolSEO` |
-| **Chỉ Huy B** | Tài khoản Claude thứ hai của chủ dự án |
+| **Chỉ Huy B** | Tài khoản Claude thứ hai của chủ dự án. Phiên "Điều phối" trên Claude Code cloud (claude.ai/code), các agent là phiên con dưới nó |
 
 Nếu bạn là Chỉ Huy mới và không chắc mình là A hay B, hỏi chủ dự án rồi ghi vào bảng trên.
 
@@ -28,7 +28,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Không ai giữ.** Chỉ Huy A trả quyền lúc 2026-10-15 13:50 theo yêu cầu của chủ dự án. Chỉ Huy B nhận thì ghi tên mình vào đây, commit và push ngay.
+**Chỉ Huy B**, nhận lúc 2026-10-15 13:10 (theo yêu cầu của chủ dự án: "đọc việc agent khác đã làm, tiếp tục từ chỗ đang làm dở").
 
 ## Đang làm dở
 
@@ -46,6 +46,12 @@ Trạng thái lúc Chỉ Huy A trả quyền (13:50). **Mọi agent của Chỉ 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 13:10 · Chỉ Huy B nhận quyền
+
+- `git pull` về `main` = `ce8bc62`. Đọc mục bàn giao 13:50 của Chỉ Huy A, sẽ làm tiếp theo bảng "Đang làm dở".
+- Giờ trong mục bàn giao của A (13:50) lệch với giờ commit `ce8bc62` (13:08). Chỉ Huy B ghi giờ theo đồng hồ máy chủ (UTC+7).
+- Trước khi giao việc: kiểm tra các phiên con cũ của Chỉ Huy B (Soi Lỗi T-025, Thợ Máy T-026, Lá Chắn T-022 + T-024 mở sáng 15/10) đã dừng hẳn, để không ai đẩy chồng lên nhánh A đã tạo lại.
 
 ### 2026-10-15 13:50 · Chỉ Huy A trả quyền (chủ dự án yêu cầu dừng, để Chỉ Huy B làm tiếp)
 
