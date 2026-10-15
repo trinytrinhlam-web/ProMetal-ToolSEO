@@ -143,6 +143,7 @@ Rủi ro chủ dự án đã quyết định chấp nhận thay vì sửa. Mỗi
 | Ngày | Rủi ro | Lý do chấp nhận | Người quyết định |
 |---|---|---|---|
 | 2026-10-14 | Ảnh tải lên WordPress giữ nguyên vị trí GPS (EXIF) | Có chủ đích: chủ dự án muốn giữ vị trí trong ảnh | An Manu |
+| 2026-10-15 | Thư viện AI (anthropic, openai, google-genai) vẫn đọc biến môi trường proxy và chứng chỉ của máy (`HTTPS_PROXY`, `SSL_CERT_FILE` và tương tự). Kẻ đã cài được biến độc vào máy thì đổi được đường đi của lời gọi AI | Mạng công ty có thể bắt buộc đi qua proxy; muốn khai thác phải chiếm máy trước. Lá Chắn T-026 xếp mức Thấp. Biến `*_CUSTOM_HEADERS` thì **không** chấp nhận, bỏ qua ở T-028 | An Manu |
 
 ## 7. Khi có sự cố
 

@@ -738,7 +738,13 @@ def test_check_openai_builds_client_without_retry(monkeypatch):
 
     monkeypatch.setattr(openai, "OpenAI", Recorder)
     assert env_file.check_api_key("OPENAI_API_KEY", api_key=OPENAI_KEY, timeout=5).ok
-    assert created == {"api_key": OPENAI_KEY, "timeout": 5, "max_retries": 0}
+    # base_url cố định (T-026, LC-4): biến môi trường OPENAI_BASE_URL không có tác dụng.
+    assert created == {
+        "api_key": OPENAI_KEY,
+        "base_url": "https://api.openai.com/v1",
+        "timeout": 5,
+        "max_retries": 0,
+    }
 
 
 def test_check_gemini_builds_client_without_retry(monkeypatch):
@@ -757,6 +763,7 @@ def test_check_gemini_builds_client_without_retry(monkeypatch):
     assert created["api_key"] == GEMINI_KEY and created["vertexai"] is False
     assert options.timeout == 5000
     assert options.retry_options.attempts == 1
+    assert options.base_url == "https://generativelanguage.googleapis.com/"  # T-026, LC-4
 
 
 @pytest.mark.parametrize(

@@ -28,26 +28,77 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, nhận lúc 2026-10-15 13:10 (theo yêu cầu của chủ dự án: "đọc việc agent khác đã làm, tiếp tục từ chỗ đang làm dở").
+**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng").
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 13:20. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; nhánh nào cũng đẩy lên GitHub.
+Chỉ Huy B, cập nhật 2026-10-15 18:05. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) Lỗi Thấp lớp AI | `team/T-026` (`ac9fbda`) | Lá Chắn (Opus tạm) kiểm từ đầu | ĐẠT thì gộp vào `main`, rồi giao T-028 |
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`3628608`) | Soi Lỗi làm nốt T-029 và làm T-030 | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
-| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | chưa có | Chờ T-026 lên `main` | Giao Thợ Máy |
-
-**Lưu ý cho Chỉ Huy A:** `main` hiện **đỏ trên Linux** (9 test trong `tests/test_soi_loi_t027.py`: thiếu `socket._fallback_socketpair` trên Python 3.12.3, máy không có IPv6). Trên Windows vẫn xanh. Đang sửa ở T-030.
+| [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`4223a8c`) | Thợ Máy (phiên B, `Thợ Máy · T-019 Thử mù mô hình (lượt 2)`) soát commit `4223a8c` của Thợ Máy bên A, chạy toàn bộ test, viết báo cáo lượt 2 | Soi Lỗi kiểm lại (có đụng `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`f7a9c22`) | Soi Lỗi (phiên B) chạy tiếp sau khi chạm giới hạn lúc 14:45; gộp `main` mới rồi nộp báo cáo | Lá Chắn rút gọn, gộp |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 18:02 · Chỉ Huy B nhận quyền
+
+- `git pull` về `main` = `d2fae78`. Đọc bàn giao 14:39 của A. Làm tiếp: T-019 (Thợ Máy làm nốt lượt 2), T-025 (kiểm tra Soi Lỗi của B), T-031 sau T-019.
+- Mục "đang kết thúc" 14:10 của B đã cũ: A nhận và trả quyền sau đó (14:12 → 14:39).
+
+### 14:39 · Chỉ Huy A trả quyền (chủ dự án: hạn mức sắp hết)
+
+**Đã xong trong phiên A (14:12 → 14:39), đều đã lên `main`:**
+- Chạy kiểm T-029 + T-030 trên Windows theo lệnh của B: 2 lượt đều 2.758 qua, 0 hỏng; test IPv6, `test_proactor_sendto_is_wrapped_on_windows`, các tham số `vong-lap-mac-dinh` đều PASSED.
+- Lá Chắn T-028 **ĐẠT** (`9e55d38`; 3 lỗi Thấp: LC-T028-1 đổi sang `RLock` khi tiện, LC-T028-2 chấp nhận, LC-T028-3 gzip hỏng → gộp phiếu lớp AI sau).
+- Gộp T-029 (`7c8604e`) và T-028 (`d08f8ca`). Windows 3.110 qua, 0 hỏng.
+- Xóa nhánh đã gộp: `team/T-026`, `team/T-028`, `team/T-029`.
+- Soi Lỗi T-019 đạt có điều kiện; Thợ Máy lượt 2 làm gần xong (bảng trên).
+- Lập T-031. Số phiếu tiếp theo: **T-032**.
+
+**Lưu ý:** Lá Chắn của A vẫn chạy tạm Opus 5.5 (tài khoản A không dùng được Fable). Danh sách kiểm lại bằng Fable sau 01/11 trong `board.md` đã có T-028, T-029, T-030.
+
+### 2026-10-15 14:12 · Chỉ Huy A nhận quyền
+
+- `git pull` về `main` = `39c8c1f`. Đọc bàn giao 14:10 của Chỉ Huy B, làm tiếp theo bảng "Đang làm dở".
+- Về giờ lệch B nêu: các mốc giờ trong phiên A trước (11:00 → 13:50) là giờ A ước lượng, không lấy từ đồng hồ máy. Từ nay A ghi theo lệnh `date` (UTC+7).
+
+### 2026-10-15 14:10 · Chỉ Huy B bàn giao cho Chỉ Huy A (chủ dự án yêu cầu)
+
+**Đã xong trong phiên B (13:10 → 14:10):**
+- **Gộp T-026 vào `main`** (`64383a5`): lớp AI chịu được thư viện lệch phiên bản, câu lỗi 400 cố định, client 3 hãng dùng địa chỉ chính thức. Lá Chắn ĐẠT.
+- Phát hiện `main` **đỏ trên Linux** (9 test của T-027: thiếu `socket._fallback_socketpair` ở Python 3.12.3, máy không IPv6). Lập T-030, làm chung T-029. Cả hai đã qua Soi Lỗi và Lá Chắn (đạt có điều kiện), chỉ còn chạy trên Windows.
+- T-028: Thợ Máy 2 lượt, Soi Lỗi đạt. Chờ Lá Chắn.
+- Lập và làm T-019 (thử mù mô hình): Thợ Máy xong logic, Họa Sĩ xong giao diện. Chờ Soi Lỗi.
+- **Quyết định chủ dự án:** giữ việc thư viện AI đọc `HTTPS_PROXY`, `SSL_CERT_FILE`; đã ghi sổ rủi ro `security.md` mục 6 và `BAN-GIAO.md` 7.4.
+- Số phiếu tiếp theo: **T-031**.
+
+**Lưu ý vận hành:**
+- Phiên cloud của B **không xóa được nhánh** trên GitHub (máy chủ git từ chối). Nhánh đã gộp, A xóa giúp: `team/T-026`.
+- Tài khoản của B đang gần giới hạn sử dụng 5 tiếng (mở lại khoảng 18:00).
+- Lá Chắn của B chạy tạm Opus 5.5. Danh sách kiểm lại bằng Fable sau 01/11 trong `board.md` đã thêm T-026; khi gộp thì thêm T-028, T-029, T-030, T-019.
+
+### 2026-10-15 14:05 · Chỉ Huy B
+
+- Chủ dự án yêu cầu tạm dừng B, nhường A. Không giao việc mới; chờ 3 agent đang chạy làm xong rồi bàn giao.
+
+### 2026-10-15 13:50 · Chỉ Huy B
+
+- Lá Chắn T-029 + T-030 **ĐẠT CÓ ĐIỀU KIỆN** (`91dbdb9`): không lỗi Nghiêm trọng/Cao/Trung bình; 17 phép thử lách đều bị chặn. Điều kiện: (1) chạy test trên Windows (lệnh ở mục "Đang làm dở"); (2) Soi Lỗi thêm bản quyền PSF vào docstring, đang làm. Lỗi Thấp #2 (bộ chặn chỉ xét AF_INET/AF_INET6, có từ trước): không lập phiếu, ghi bảng việc.
+
+### 2026-10-15 13:45 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** giữ việc thư viện AI đọc `HTTPS_PROXY`, `SSL_CERT_FILE` (mạng công ty có thể cần); ghi sổ rủi ro `security.md` mục 6 và `BAN-GIAO.md` mục 7.4. Biến `*_CUSTOM_HEADERS` bỏ qua ở T-028.
+
+### 2026-10-15 13:35 · Chỉ Huy B
+
+- Lá Chắn T-026 ĐẠT (`d102b0a`). Gộp vào `main` (`64383a5`); Linux: 2.717 qua, chỉ 9 test đỏ sẵn của T-027. Giao T-028 cho Thợ Máy.
+- Phiên cloud không xóa được nhánh trên GitHub (máy chủ git từ chối). `team/T-026` đã gộp xong, Chỉ Huy A hoặc chủ dự án xóa giúp.
 
 ### 2026-10-15 13:10 · Chỉ Huy B nhận quyền
 
