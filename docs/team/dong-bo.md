@@ -45,7 +45,6 @@ _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 - ✅ 13:00 Soi Lỗi T-026 **đạt có điều kiện** (`c906285`). ⏳ **Thợ Máy đang sửa lượt 2** (SL-T026-1, SL-T026-2) trong `wt-T-026`, đã dặn merge `main` vào nhánh trước.
 - ✅ Lập phiếu T-028 (Thợ Máy, chờ T-026 gộp) và T-029 (Soi Lỗi, chạy sau lượt 2 T-026).
 - Bước kế tiếp: Thợ Máy xong lượt 2 → Soi Lỗi kiểm lại → Lá Chắn T-026 → gộp. Rồi giao T-029, T-028.
-- (Cũ) Bước kế tiếp khi hai agent nộp báo cáo: Chỉ Huy đọc báo cáo, giao Soi Lỗi kiểm T-026 (trên `team/T-026`), rồi Lá Chắn kiểm từng nhánh, ĐẠT thì gộp vào `main`. Nên gộp T-027 trước để các lượt kiểm sau chạy xanh trên Windows.
 - Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
 
 ## Nhật ký bàn giao
