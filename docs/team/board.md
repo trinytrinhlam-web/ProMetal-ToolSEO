@@ -2,7 +2,9 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 11:00 (Chỉ Huy A). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
+_Cập nhật: 2026-10-15 13:50 (Chỉ Huy A, lúc trả quyền điều phối). Hai Chỉ Huy phối hợp qua [dong-bo.md](dong-bo.md): đọc file đó trước._
+
+> 2026-10-15 13:50: chủ dự án yêu cầu Chỉ Huy A dừng để Chỉ Huy B làm tiếp. **Không còn agent nào đang chạy.** Hai phiếu dưới đây dừng giữa chừng, việc dở đã đẩy lên nhánh.
 
 ## Đang làm
 
@@ -18,8 +20,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-029` | Đang làm | |
-| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi (dưới phiên Chỉ Huy A) | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). Thợ Máy xong lượt 2 (`d8fd392`, Windows 2.613 qua, 0 hỏng). Soi Lỗi lượt 2 **đạt** (`ac9fbda`, Windows 2.718 qua, 0 hỏng). **Lá Chắn đang kiểm** (`Lá Chắn · T-026 Lớp AI (Opus tạm)`). SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) | Bộ chặn mạng của test: chặn thêm UDP, hàm tra tên; siết listener | Soi Lỗi | `team/T-029` | **Dừng giữa chừng.** Đã có code (`89e6e8c`) và test (`3628608`); chưa chạy toàn bộ test, chưa báo cáo. Cần Soi Lỗi làm nốt rồi qua Lá Chắn | |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy → Soi Lỗi → Lá Chắn | `team/T-026` | Soi Lỗi **đạt có điều kiện** (`c906285`): 2 lỗi Thấp phải sửa (SL-T026-1 mã lỗi thành link, SL-T026-2 kiểm tra khóa lọt lỗi thô). Thợ Máy xong lượt 2 (`d8fd392`, Windows 2.613 qua, 0 hỏng). Soi Lỗi lượt 2 **đạt** (`ac9fbda`, Windows 2.718 qua, 0 hỏng). **Lá Chắn bị dừng khi mới đọc, chưa có biên bản: cần giao Lá Chắn kiểm từ đầu.** SL-T026-3 Chỉ Huy chấp nhận; SL-T026-4 → T-028 | [Thợ Máy](reports/T-026-tho-may.md) · [Soi Lỗi](reports/T-026-soi-loi.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Có 2 commit (`5ff60f3`, `a1d48d4`), **chưa nộp báo cáo**; phiên dừng giữa chừng. Cần Soi Lỗi làm tiếp và nộp báo cáo | |
 
 ## Chờ

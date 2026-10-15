@@ -28,30 +28,46 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy A**, từ 2026-10-15 11:00.
+**Không ai giữ.** Chỉ Huy A trả quyền lúc 2026-10-15 13:50 theo yêu cầu của chủ dự án. Chỉ Huy B nhận thì ghi tên mình vào đây, commit và push ngay.
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-- ✅ Lập phiếu điều phối chung; đưa `docs/plan/` lên repo (`5d62087`).
-- ✅ Gộp `team/T-024` (T-022 + T-024) vào `main` (`958a93e`); xóa nhánh `team/T-018`, `team/T-022`, `team/T-023`, `team/T-024`.
-- ✅ Lập phiếu T-027 (Soi Lỗi: bộ test chạy xanh trên Windows).
-- ⏳ **Đã giao lúc 11:45, agent đang chạy:** T-027 cho Soi Lỗi và T-026 cho Thợ Máy. Hai agent chạy dưới phiên Chỉ Huy A, mỗi agent một worktree riêng (`D:\ProMetal-ToolSEO\wt-T-027`, `wt-T-026`), đẩy lên nhánh `team/T-027`, `team/T-026`. **Chỉ Huy B: nếu tiếp quản, xem hai nhánh này trên GitHub để biết agent đã làm tới đâu; đừng giao lại hai phiếu này.**
-- ✅ 12:10 Thợ Máy nộp T-026 (`f042764` trên `team/T-026`). ⏳ Đã giao **Soi Lỗi · T-026** kiểm trên cùng worktree `wt-T-026`. T-027 (Soi Lỗi) vẫn đang chạy.
-- ✅ 12:30 Soi Lỗi nộp T-027 (`b87d3a4` trên `team/T-027`): Windows 2.358 qua, 0 hỏng. ⏳ Đã giao **Lá Chắn · T-027** kiểm bộ chặn mạng (worktree `wt-T-027`); Fable bị từ chối vì hết lượt dùng, chạy tạm Opus 5.5. Soi Lỗi báo thêm một lỗ có từ trước: gửi UDP (`sendto`) không bị chặn; chờ Lá Chắn đánh giá rồi lập phiếu riêng.
-- ⚠️ 12:00 → 12:30 cả tài khoản Chỉ Huy A chạm giới hạn sử dụng; Soi Lỗi · T-026 và Lá Chắn · T-027 dừng giữa chừng, **chưa commit gì**. 12:32 đã chạy tiếp cả hai (nhánh vẫn ở `f042764` và `b87d3a4`). Đã dặn agent commit từng phần nhỏ.
-- ✅ 13:00 Lá Chắn T-027 **ĐẠT** → gộp vào `main` (`e4107f2`), Windows 2.358 qua, 0 hỏng. Đã xóa nhánh và worktree `team/T-027`.
-- ✅ 13:00 Soi Lỗi T-026 **đạt có điều kiện** (`c906285`). ⏳ **Thợ Máy đang sửa lượt 2** (SL-T026-1, SL-T026-2) trong `wt-T-026`, đã dặn merge `main` vào nhánh trước.
-- ✅ Lập phiếu T-028 (Thợ Máy, chờ T-026 gộp) và T-029 (Soi Lỗi, chạy sau lượt 2 T-026).
-- ✅ 13:20 Thợ Máy xong T-026 lượt 2 (`d8fd392`). ✅ 13:35 Soi Lỗi lượt 2 **đạt** (`ac9fbda`). ⏳ **Lá Chắn đang kiểm T-026** (Opus tạm) trong `wt-T-026`.
-- ⏳ 13:20 Đã giao **T-029** cho Soi Lỗi, worktree `D:\ProMetal-ToolSEO\wt-T-029`, nhánh `team/T-029`.
-- Bước kế tiếp: Soi Lỗi đạt T-026 → Lá Chắn T-026 → gộp → giao T-028. T-029 xong → Lá Chắn T-029 → gộp.
-- Còn treo: T-025 (Soi Lỗi có 2 commit trên `team/T-025`, chưa nộp báo cáo). Chưa giao lại vì đang chạy 2 agent.
+Trạng thái lúc Chỉ Huy A trả quyền (13:50). **Mọi agent của Chỉ Huy A đã dừng; không còn ai đang sửa nhánh nào.** Việc dở đều đã đẩy lên GitHub, trên máy không còn gì.
+
+| Phiếu | Nhánh (HEAD) | Đã xong | Việc tiếp theo cho Chỉ Huy B |
+|---|---|---|---|
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) Lỗi Thấp lớp AI | `team/T-026` (`ac9fbda`) | Thợ Máy 2 lượt; Soi Lỗi lượt 2 **đạt**: Windows 2.718 qua, 0 hỏng. Nhánh đã merge `main` `e4107f2` | **Giao Lá Chắn kiểm từ đầu.** Lá Chắn của A bị dừng khi mới đọc, **chưa viết biên bản**. Phạm vi diff, trọng tâm: xem mục bàn giao 13:50 bên dưới. ĐẠT thì gộp vào `main`, xóa nhánh, rồi giao T-028 |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) Bộ chặn mạng: UDP, tra tên | `team/T-029` (`3628608`) | Soi Lỗi đã có code (`89e6e8c`) và test (`3628608`, file `tests/test_soi_loi_t029.py`). Chỉ Huy A chạy thử `test_soi_loi_t027.py` + `test_soi_loi_t029.py` + `test_safety.py`: 120 qua | **Soi Lỗi làm nốt:** chạy toàn bộ `uv run pytest` (2 lần), viết báo cáo `docs/team/reports/T-029-soi-loi.md`. Rồi Lá Chắn kiểm, ĐẠT thì gộp |
+| [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | chưa có | Phiếu đã lập | Giao Thợ Máy **sau khi T-026 lên `main`** (cùng sửa `seo_app/ai/`) |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`a1d48d4`) | Soi Lỗi có 2 commit từ sáng 15/10, chưa báo cáo | Nhánh **chưa merge `main`**, nên còn thiếu T-027 (sửa cùng thư mục `tests/`). Merge `main` vào nhánh trước, rồi Soi Lỗi làm tiếp và nộp báo cáo |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 13:50 · Chỉ Huy A trả quyền (chủ dự án yêu cầu dừng, để Chỉ Huy B làm tiếp)
+
+**Đã xong trong phiên A (11:00 → 13:50), đều đã lên `main`:**
+- Phiếu điều phối này; `docs/plan/` (kế hoạch SEO của chủ dự án, đọc `docs/plan/README.md` trước); ghi quyết định 15/10 vào `CLAUDE.md`, `TIEN-DO.md`, `BAN-GIAO.md`.
+- Gộp T-022 + T-024 (`958a93e`) và T-027 (`e4107f2`). **Từ T-027, `uv run pytest` chạy xanh cả trên Windows** (trước đó 152 test đỏ oan trên Windows).
+- Xóa các nhánh tạm đã gộp: `team/T-018`, `T-022`, `T-023`, `T-024`, `T-027`.
+- Lập phiếu T-027, T-028, T-029. Số phiếu tiếp theo: **T-030**.
+
+**Dừng giữa chừng (chi tiết ở bảng "Đang làm dở"):** Lá Chắn T-026 (chưa có biên bản), Soi Lỗi T-029 (có code và test, chưa báo cáo).
+
+**Gợi ý cho Lá Chắn T-026** (lời giao A đã soạn, dùng lại được):
+- Diff riêng của T-026, không tính T-027 đã kiểm: `git diff ed0324e c906285` (trước khi merge main) và `git diff e4107f2 ac9fbda` (sau merge `3366566`). File code: `seo_app/ai/base.py`, `registry.py`, `anthropic_provider.py`, `openai_provider.py`, `gemini_provider.py`, `seo_app/env_file.py`.
+- Trọng tâm: S2 (câu lỗi 400 không còn chữ nào của máy chủ ngoài mã đã qua `safe_code`; mã không thành link); W4 / `security.md` 2.7 (đủ 6 chỗ tạo client có `base_url` chính thức cố định); bắt lỗi rộng `ImportError/AttributeError/TypeError/KeyError` → câu "uv sync" có che lỗi bảo mật không.
+- Đánh giá 2 điểm Chỉ Huy A đã quyết: SL-T026-3 **chấp nhận** (Gemini nhận JSON sai kiểu → câu "uv sync" thay vì "dữ liệu lạ", không lộ gì); SL-T026-4 → T-028.
+- Thợ Máy nêu, ngoài phạm vi: thư viện AI vẫn đọc `HTTPS_PROXY`, `SSL_CERT_FILE`, `OPENAI_CUSTOM_HEADERS`, `ANTHROPIC_CUSTOM_HEADERS`. Cần Lá Chắn đánh giá có lập phiếu không; lưu ý chủ dự án có thể dùng mạng công ty phải đi qua proxy.
+
+**Lưu ý vận hành:**
+- Tài khoản của A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy tạm Opus 5.5. Danh sách kiểm lại bằng Fable sau 01/11 trong `board.md` đã thêm T-027.
+- Tài khoản của A chạm giới hạn sử dụng lúc 12:00 khi 2 agent chạy cùng lúc. Agent nên commit và push từng phần nhỏ.
+- A làm trên Windows (Claude Desktop, mỗi agent một git worktree). Các worktree đã xóa; nhánh còn trên GitHub.
+- Các nhánh cũ `claude/project-thread-bcuk2m`, `claude/wizardly-brahmagupta-f0w8d8` đã gộp hết vào `main` từ trước, xóa được khi tiện.
 
 ### 2026-10-15 11:00 · Chỉ Huy A nhận quyền
 
