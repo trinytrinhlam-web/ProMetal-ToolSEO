@@ -30,21 +30,29 @@ def _block_real_network(monkeypatch):
        của **chính luồng đó**;
     2. socket cùng họ địa chỉ và là ``SOCK_STREAM``, như cặp socketpair;
     3. địa chỉ đích đúng là ``127.0.0.1`` (IPv4) hoặc ``::1`` (IPv6), dạng tuple;
-    4. đích là một socket vừa ``listen()`` ngay trong lời gọi socketpair đó (cùng luồng).
+    4. đích là socket **đầu tiên** gọi ``listen()`` trong lời gọi socketpair đó (cùng luồng), và
+       mỗi lời gọi socketpair chỉ được cho qua **một lần** ``connect`` (T-029).
 
     Ngoài lời gọi socketpair, ``connect`` tới ``127.0.0.1``, ``localhost``, ``::1`` hay bất kỳ
-    đâu vẫn bị chặn; ``connect_ex``, ``getaddrinfo``, ``create_connection`` và đường nối riêng
-    của asyncio trên Windows (``IocpProactor.connect``) luôn bị chặn.
+    đâu vẫn bị chặn. Luôn bị chặn với socket IPv4/IPv6: ``connect_ex``, gửi UDP không kết nối
+    (``sendto``, ``sendmsg``; T-029). Luôn bị chặn: tra tên ``getaddrinfo``, ``gethostbyname``,
+    ``gethostbyname_ex``, ``gethostbyaddr``, ``getnameinfo`` (kéo theo ``getfqdn``,
+    ``loop.getaddrinfo``, ``loop.getnameinfo``), ``create_connection``, và đường riêng của
+    asyncio trên Windows (``IocpProactor.connect``, ``IocpProactor.sendto``, tức
+    ``loop.sock_connect``, ``loop.sock_sendto``, ``transport.sendto`` của UDP).
     """
 
     state = threading.local()
 
-    def _pair_listeners():
-        return getattr(state, "listeners", None)
+    def _pair_call():
+        """Trạng thái lời gọi socketpair() đang chạy trên luồng này, hoặc None."""
+        return getattr(state, "pair_call", None)
 
     def _is_socketpair_link(sock, address):
-        listeners = _pair_listeners()
-        if listeners is None:  # không ở trong socketpair() của luồng này
+        call = _pair_call()
+        if call is None:  # không ở trong socketpair() của luồng này
+            return False
+        if call["used"] or call["listener"] is None:  # đã dùng lượt connect duy nhất
             return False
         if sock.type != socket.SOCK_STREAM or sock.family not in _SOCKETPAIR_HOSTS:
             return False
@@ -53,13 +61,13 @@ def _block_real_network(monkeypatch):
         host, port = address[0], address[1]
         if host != _SOCKETPAIR_HOSTS[sock.family]:
             return False
-        return (sock.family, host, port) in listeners
+        return (sock.family, host, port) == call["listener"]
 
     def guarded_connect(self, address, *args, **kwargs):
-        if self.family in (socket.AF_INET, socket.AF_INET6) and not _is_socketpair_link(
-            self, address
-        ):
-            raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            if not _is_socketpair_link(self, address):
+                raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
+            _pair_call()["used"] = True  # chỉ một lần, kể cả khi connect báo lỗi
         return original_connect(self, address, *args, **kwargs)
 
     def guarded_connect_ex(self, address, *args, **kwargs):
@@ -69,23 +77,40 @@ def _block_real_network(monkeypatch):
 
     def guarded_listen(self, *args, **kwargs):
         result = original_listen(self, *args, **kwargs)
-        listeners = _pair_listeners()
-        if listeners is not None and self.family in _SOCKETPAIR_HOSTS:
+        call = _pair_call()
+        # Chỉ ghi nhận socket nghe ĐẦU TIÊN của lời gọi socketpair (đúng socket của cặp).
+        if call is not None and call["listener"] is None and self.family in _SOCKETPAIR_HOSTS:
             host, port = self.getsockname()[:2]
-            listeners.add((self.family, host, port))
+            call["listener"] = (self.family, host, port)
         return result
 
     def allow_own_link(original):
         @functools.wraps(original)
         def guarded_socketpair(*args, **kwargs):
-            outer = _pair_listeners()
-            state.listeners = set()
+            outer = _pair_call()
+            state.pair_call = {"listener": None, "used": False}
             try:
                 return original(*args, **kwargs)
             finally:
-                state.listeners = outer
+                state.pair_call = outer
 
         return guarded_socketpair
+
+    def guarded_sendto(self, *args, **kwargs):
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            raise RealNetworkBlocked(f"Test không được gửi gói tin mạng thật: {args[-1:]!r}")
+        return original_sendto(self, *args, **kwargs)
+
+    def guarded_sendmsg(self, *args, **kwargs):
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            raise RealNetworkBlocked(f"Test không được gửi gói tin mạng thật: {args[3:4]!r}")
+        return original_sendmsg(self, *args, **kwargs)
+
+    def block_name_lookup(name):
+        def guarded_lookup(host, *args, **kwargs):
+            raise RealNetworkBlocked(f"Test không được tra tên miền thật ({name}): {host!r}")
+
+        return guarded_lookup
 
     def guarded_getaddrinfo(host, *args, **kwargs):
         raise RealNetworkBlocked(f"Test không được tra tên miền thật: {host!r}")
@@ -101,28 +126,66 @@ def _block_real_network(monkeypatch):
     monkeypatch.setattr(socket.socket, "listen", guarded_listen)
     monkeypatch.setattr(socket, "socketpair", allow_own_link(socket.socketpair))
     if hasattr(socket, "_fallback_socketpair"):
-        # Linux/Mac có socketpair AF_UNIX thật; bọc cả bản dự phòng để test được đường Windows.
+        # Python 3.12.4+/3.13 có bản dự phòng (đường Windows) trên mọi hệ điều hành; bọc cả nó.
+        # Bản cũ hơn chỉ có nó trên Windows, và khi đó nó chính là ``socket.socketpair``.
         fallback = allow_own_link(socket._fallback_socketpair)
         monkeypatch.setattr(socket, "_fallback_socketpair", fallback)
+    original_sendto = socket.socket.sendto
+    monkeypatch.setattr(socket.socket, "sendto", guarded_sendto)
+    if hasattr(socket.socket, "sendmsg"):  # Mac/Linux; Windows không có sendmsg
+        original_sendmsg = socket.socket.sendmsg
+        monkeypatch.setattr(socket.socket, "sendmsg", guarded_sendmsg)
     monkeypatch.setattr(socket, "getaddrinfo", guarded_getaddrinfo)
+    for name in ("gethostbyname", "gethostbyname_ex", "gethostbyaddr", "getnameinfo"):
+        monkeypatch.setattr(socket, name, block_name_lookup(name))
     monkeypatch.setattr(socket, "create_connection", guarded_create_connection)
 
-    # Windows: vòng lặp asyncio mặc định (Proactor) nối socket bằng ConnectEx/WSAConnect của
-    # ``_overlapped``, không đi qua ``socket.connect``. Khi vòng lặp đã tạo được (nhờ ngoại lệ
-    # socketpair ở trên) thì đường này phải bị chặn riêng, nếu không ``asyncio.open_connection``
-    # tới một địa chỉ IP sẽ lọt ra mạng thật.
+    # Windows: vòng lặp asyncio mặc định (Proactor) nối socket bằng ConnectEx/WSAConnect và gửi
+    # UDP bằng WSASendTo của ``_overlapped``, không đi qua ``socket.connect``/``socket.sendto``.
+    # Khi vòng lặp đã tạo được (nhờ ngoại lệ socketpair ở trên) thì các đường này phải bị chặn
+    # riêng, nếu không ``asyncio.open_connection`` tới một địa chỉ IP hay ``loop.sock_sendto``,
+    # ``transport.sendto`` của UDP sẽ lọt ra mạng thật.
     try:
         from asyncio import windows_events
     except ImportError:  # Mac/Linux không có IocpProactor
-        return
+        windows_events = None
 
-    def guarded_proactor_connect(self, conn, address, *args, **kwargs):
-        if conn.family in (socket.AF_INET, socket.AF_INET6):
-            raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
-        return original_proactor_connect(self, conn, address, *args, **kwargs)
+    if windows_events is not None:
 
-    original_proactor_connect = windows_events.IocpProactor.connect
-    monkeypatch.setattr(windows_events.IocpProactor, "connect", guarded_proactor_connect)
+        def guarded_proactor_connect(self, conn, address, *args, **kwargs):
+            if conn.family in (socket.AF_INET, socket.AF_INET6):
+                raise RealNetworkBlocked(f"Test không được gọi mạng thật: {address!r}")
+            return original_proactor_connect(self, conn, address, *args, **kwargs)
+
+        def guarded_proactor_sendto(self, conn, buf, flags=0, addr=None, *args, **kwargs):
+            if conn.family in (socket.AF_INET, socket.AF_INET6):
+                raise RealNetworkBlocked(f"Test không được gửi gói tin mạng thật: {addr!r}")
+            return original_proactor_sendto(self, conn, buf, flags, addr, *args, **kwargs)
+
+        original_proactor_connect = windows_events.IocpProactor.connect
+        original_proactor_sendto = windows_events.IocpProactor.sendto
+        monkeypatch.setattr(windows_events.IocpProactor, "connect", guarded_proactor_connect)
+        monkeypatch.setattr(windows_events.IocpProactor, "sendto", guarded_proactor_sendto)
+
+    # Cho fixture ``fallback_socketpair`` dùng đúng cách bọc ngoại lệ ở trên (T-030).
+    return allow_own_link
+
+
+@pytest.fixture
+def fallback_socketpair(_block_real_network):
+    """Đường ``socketpair()`` của Windows (nối qua ``127.0.0.1``/``::1``), đã qua bộ chặn mạng.
+
+    Python có ``socket._fallback_socketpair`` (3.12.4 trở lên, 3.13; mọi hệ điều hành) thì dùng
+    chính nó, bản đã bọc ở trên. Không có (ví dụ Python 3.12.3 trên Linux/Mac, nơi
+    ``socket.socketpair`` là AF_UNIX gốc, không đi qua ``listen``/``connect``) thì dùng bản chép
+    nguyên của CPython trong ``tests/windows_socketpair.py``, bọc bằng cùng ngoại lệ. Nhờ vậy các
+    test "trong socketpair vẫn chặn" chạy đủ trên Windows, Linux và Mac (T-030).
+    """
+    if hasattr(socket, "_fallback_socketpair"):
+        return socket._fallback_socketpair
+    from windows_socketpair import copied_fallback_socketpair
+
+    return _block_real_network(copied_fallback_socketpair)
 
 
 @pytest.fixture(autouse=True)
