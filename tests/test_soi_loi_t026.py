@@ -755,3 +755,153 @@ def test_gemini_client_stays_off_vertex_despite_env(hostile_env):
     api_client = GeminiProvider(GEMINI_KEY)._client._api_client
     assert api_client.vertexai is False
     assert api_client._http_options.base_url == "https://generativelanguage.googleapis.com/"
+
+
+# ===================================================================== Lượt 2 (sau khi sửa)
+
+# --- SL-T026-1: không mã nào lọt qua safe_code mà thành link được khi hiện bằng Markdown GFM
+
+# Mã thật của 3 hãng phải giữ được (để người dùng biết sửa gì trong config/ai.toml).
+REAL_CODES = [
+    # OpenAI: error.code
+    "invalid_value", "invalid_request_error", "context_length_exceeded", "unsupported_parameter",
+    "unsupported_value", "invalid_type", "missing_required_parameter", "string_above_max_length",
+    "model_not_found", "invalid_prompt", "invalid_json_schema",
+    # OpenAI: error.param
+    "reasoning.effort", "reasoning.summary", "max_output_tokens", "text.format",
+    "text.format.schema", "text.format.name", "text.verbosity", "tools", "tool_choice", "input",
+    "instructions", "model", "store", "include", "temperature",
+    # Anthropic: error.type
+    "authentication_error", "permission_error", "not_found_error", "request_too_large",
+    "rate_limit_error", "api_error", "overloaded_error", "billing_error", "timeout_error",
+    # Gemini: error.status
+    "INVALID_ARGUMENT", "FAILED_PRECONDITION", "OUT_OF_RANGE", "UNAUTHENTICATED",
+    "PERMISSION_DENIED", "NOT_FOUND", "RESOURCE_EXHAUSTED", "ABORTED", "CANCELLED", "INTERNAL",
+    "UNAVAILABLE", "DEADLINE_EXCEEDED", "UNIMPLEMENTED", "DATA_LOSS", "UNKNOWN", "ALREADY_EXISTS",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("code", REAL_CODES)
+def test_real_vendor_codes_are_still_kept(code):
+    assert safe_code(code) == code
+
+
+# GFM chỉ tự tạo link cho "www." (không phân biệt hoa thường), "http(s)://" và email. Bộ ký tự
+# của safe_code không có ":", "/", "@", nên chỉ còn dạng "www." cần chặn, ở bất cứ vị trí nào.
+WWW_BYPASS = [
+    "WwW.evil.com", "wWw.EVIL.ru", "www.evil", "WWW.x", "a_www.evil", "invalid_www.x",
+    "x.www.y", "abc.www.evil.ru", "www.a.b.c.d", "A_WWW.B_C",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("code", WWW_BYPASS)
+def test_www_anywhere_any_case_is_dropped(code):
+    assert safe_code(code) is None
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["evil.COM", "Evil.Com", "a.b.c.vn", "login.bank.io", "x_y.example", "phish.localhost"],
+)
+def test_domain_like_codes_with_listed_tld_are_dropped(code):
+    assert safe_code(code) is None
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["xn--80ak6aa92e.com", "evil.com.", ".evil.com", "evil..com", "ev il.com", "evil.c0m"],
+    ids=["punycode", "cham-cuoi", "cham-dau", "hai-cham", "dau-cach", "co-so"],
+)
+def test_other_domain_shapes_fail_charset(code):
+    # IDN/punycode có "-" và số, dấu chấm ở đầu/cuối/liền nhau: bộ ký tự đã chặn.
+    assert safe_code(code) is None
+
+
+def test_no_accepted_code_can_contain_www_property():
+    # Thử ngẫu nhiên (cố định hạt giống, không phụ thuộc lần chạy) trên bộ chữ dễ tạo "www.":
+    # mọi mã safe_code nhận đều không chứa "www." ở bất kỳ kiểu chữ hoa/thường nào, và câu
+    # báo dựng từ mã đó cũng không chứa.
+    import random
+
+    rng = random.Random(26026)
+    alphabet = "wW._aE"
+    accepted = 0
+    for _ in range(30_000):
+        code = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 14)))
+        kept = safe_code(code)
+        if kept is None:
+            continue
+        accepted += 1
+        assert "www." not in kept.lower()
+        message = str(bad_request_error("OpenAI", task("openai"), kept, kept))
+        assert "www." not in message.lower()
+    assert accepted > 1000  # phép thử có ý nghĩa: nhiều mã được nhận
+
+
+# --- SL-T026-2: check_api_key với mọi lớp lỗi bị đổi tên, cả 3 hãng
+
+RENAMED_IN_CHECK = [
+    ("ANTHROPIC_API_KEY", ANTHROPIC_KEY, "Claude", anthropic, attr)
+    for attr in (
+        "AuthenticationError", "PermissionDeniedError", "RateLimitError", "APITimeoutError",
+        "APIConnectionError", "APIStatusError", "AnthropicError",
+    )
+] + [
+    ("OPENAI_API_KEY", OPENAI_KEY, "ChatGPT", openai, attr)
+    for attr in (
+        "AuthenticationError", "PermissionDeniedError", "RateLimitError", "APITimeoutError",
+        "APIConnectionError", "APIStatusError",
+    )
+] + [
+    ("GEMINI_API_KEY", GEMINI_KEY, "Gemini", errors, "APIError"),
+    ("GEMINI_API_KEY", GEMINI_KEY, "Gemini", httpx, "TimeoutException"),
+    ("GEMINI_API_KEY", GEMINI_KEY, "Gemini", httpx, "TransportError"),
+]  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("name", "key", "label", "module", "attr"),
+    RENAMED_IN_CHECK,
+    ids=[f"{case[2]}-{case[4]}" for case in RENAMED_IN_CHECK],
+)
+def test_check_every_renamed_exception_class(monkeypatch, name, key, label, module, attr):
+    # Lỗi lạ (ValueError) không khớp nhánh nào nên Python tính mọi câu except, gặp lớp đã mất.
+    monkeypatch.delattr(module, attr)
+    error = ValueError(f"lỗi bất kỳ {key}")
+    result = env_file.check_api_key(name, api_key=key, client=models_list_raising(error))
+    assert result.status == "unknown"
+    assert result.message == library_message(label)
+    assert key not in result.message
+
+
+@pytest.mark.parametrize(("name", "key", "label"), [case[:3] for case in CHECK_CASES])
+@pytest.mark.parametrize("error_type", [ImportError, AttributeError, TypeError])
+def test_check_library_error_types_from_call(name, key, label, error_type):
+    result = env_file.check_api_key(
+        name, api_key=key, client=models_list_raising(error_type(f"lỗi {key}"))
+    )
+    assert result.status == "unknown"
+    assert result.message == library_message(label)
+
+
+@pytest.mark.parametrize(("name", "key", "label"), [case[:3] for case in CHECK_CASES])
+def test_check_key_error_still_only_names_it(name, key, label):
+    # KeyError có thể do dữ liệu trả về lạ: chỉ nêu tên lỗi, không nhắc uv sync.
+    result = env_file.check_api_key(
+        name, api_key=key, client=models_list_raising(KeyError(f"lỗi {key}"))
+    )
+    assert result.status == "unknown"
+    assert result.message == "Lỗi khi kiểm tra khóa (KeyError)."
+
+
+@pytest.mark.parametrize(("name", "key", "label"), [case[:3] for case in CHECK_CASES])
+def test_check_renamed_class_with_key_error_is_library_message(monkeypatch, name, key, label):
+    # Thư viện đổi tên lớp lỗi + máy trả KeyError: lỗi thư viện thắng (đúng hãng).
+    module, attr = {
+        "Claude": (anthropic, "AuthenticationError"),
+        "ChatGPT": (openai, "AuthenticationError"),
+        "Gemini": (errors, "APIError"),
+    }[label]
+    monkeypatch.delattr(module, attr)
+    result = env_file.check_api_key(name, api_key=key, client=models_list_raising(KeyError("x")))
+    assert result.message == library_message(label)
