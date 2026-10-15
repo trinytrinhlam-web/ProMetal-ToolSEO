@@ -11,6 +11,7 @@ Lỗi thật tìm được để ở dạng ``xfail(strict=True)``, có ghi mã 
 ``docs/team/reports/T-026-soi-loi.md``. Không gọi mạng: thư viện thật chạy với ``MockTransport``.
 """
 
+import json
 from types import SimpleNamespace
 
 import anthropic
@@ -535,3 +536,231 @@ def test_garbage_200_gives_vietnamese_error(vendor, response):
     make = anthropic_real if vendor == "anthropic" else openai_real
     with pytest.raises(AIError):
         generate(make(lambda request: response), vendor)
+
+
+# ============================== Gemini: cấu hình dựng bằng dict gửi đi đúng như bản cũ (điểm 4)
+
+
+def old_style_config(task_config, system, schema, search, thinking=True):
+    """Cấu hình dựng đúng như code trên main trước T-026 (types.ThinkingConfig, types.Tool)."""
+    config = {"system_instruction": system, "max_output_tokens": task_config.max_tokens}
+    if thinking:
+        level = gemini_module.THINKING_LEVELS[task_config.effort]
+        config["thinking_config"] = types.ThinkingConfig(thinking_level=level)
+    if schema is not None:
+        config["response_mime_type"] = "application/json"
+        config["response_schema"] = schema
+    if search:
+        config["tools"] = [types.Tool(google_search=types.GoogleSearch())]
+    return types.GenerateContentConfig(**config)
+
+
+def old_call(handler, **kwargs):
+    # Giữ biến client tới hết lượt gọi (client bị thu dọn thì thư viện đóng kết nối).
+    client = gemini_client(handler)
+    return client.models.generate_content(**kwargs)
+
+
+def recording(responses=()):
+    """Mạng giả ghi (địa chỉ, JSON) mọi yêu cầu; trả lần lượt ``responses``, hết thì 400."""
+    seen: list = []
+    queue = list(responses)
+
+    def handler(request):
+        seen.append((str(request.url), json.loads(request.content)))
+        if queue:
+            return queue.pop(0)
+        return httpx.Response(400, json={"error": {"code": 400, "message": "x", "status": "X"}})
+
+    return handler, seen
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
+@pytest.mark.parametrize("schema", [Answer, None], ids=["co-khuon", "khong-khuon"])
+@pytest.mark.parametrize("search", [True, False], ids=["tim-web", "khong-tim"])
+def test_gemini_request_body_same_as_before(effort, schema, search):
+    t = task("gemini", effort=effort, max_tokens=12345)
+    handler, new = recording()
+    with pytest.raises(errors.ClientError):
+        gemini_real(handler)._call(
+            t, system="hệ thống", prompt="đề bài", schema=schema, search=search
+        )
+    handler, old = recording()
+    with pytest.raises(errors.ClientError):
+        old_call(
+            handler,
+            model=t.model,
+            contents="đề bài",
+            config=old_style_config(t, "hệ thống", schema, search),
+        )
+    assert new == old
+    body = new[0][1]
+    # Thư viện gửi tên trường kiểu "thinking_level" (bản cũ và mới như nhau); chỉ kiểm giá trị.
+    thinking = body["generationConfig"]["thinkingConfig"]
+    assert list(thinking.values()) == [gemini_module.THINKING_LEVELS[effort].value]
+    assert body.get("tools", []) == ([{"googleSearch": {}}] if search else [])
+
+
+def test_gemini_thinking_retry_body_same_as_before():
+    # Lỗi 400 về "thinking": lượt gọi lại bỏ thinking_config, còn lại giữ nguyên như bản cũ.
+    thinking_400 = httpx.Response(
+        400,
+        json={"error": {"code": 400, "message": "Thinking level not supported", "status": "X"}},
+    )
+    t = task("gemini", web_search=True)
+    handler, new = recording([thinking_400])
+    with pytest.raises(AIError):
+        generate(gemini_real(handler), "gemini", web_search=True)
+    assert len(new) == 2
+    handler, old = recording()
+    with pytest.raises(errors.ClientError):
+        old_call(
+            handler,
+            model=t.model,
+            contents="p",
+            config=old_style_config(t, "s", Answer, True, False),
+        )
+    assert new[1] == old[0]
+    assert "thinkingConfig" not in new[1][1]["generationConfig"]
+
+
+def test_gemini_legacy_two_turn_bodies_same_as_before():
+    # Gemini 2.x tìm web: lượt 1 chỉ tìm (không khuôn), lượt 2 không công cụ, có khuôn.
+    notes = {
+        "candidates": [
+            {"content": {"role": "model", "parts": [{"text": "ghi chép"}]}, "finishReason": "STOP"}
+        ]
+    }
+    t = task("gemini", model="gemini-2.5-pro", web_search=True)
+    handler, new = recording([httpx.Response(200, json=notes)])
+    with pytest.raises(AIError):
+        generate(gemini_real(handler), "gemini", model="gemini-2.5-pro", web_search=True)
+    assert len(new) == 2
+    first, second = new[0][1], new[1][1]
+    expected_first = old_style_config(t, "s", None, True)
+    expected_second = old_style_config(t, "s", Answer, False)
+    for body, expected, contents in (
+        (first, expected_first, "p" + gemini_module.SEARCH_NOTES_PROMPT),
+        (second, expected_second, None),
+    ):
+        handler, old = recording()
+        with pytest.raises(errors.ClientError):
+            old_call(
+                handler,
+                model=t.model,
+                contents=contents or second["contents"][0]["parts"][0]["text"],
+                config=expected,
+            )
+        assert body == old[0][1]
+    assert first["tools"] == [{"googleSearch": {}}] and "tools" not in second
+    assert "<du_lieu_tham_khao>" in second["contents"][0]["parts"][0]["text"]
+
+
+# ============================ LC-4: biến môi trường đổi địa chỉ / đổi hãng / đổi khóa (thêm)
+
+ENV_KEYS = {
+    "OPENAI_API_KEY": "sk-proj-KhoaGiaTuBienMoiTruong_OPENAI_999",
+    "ANTHROPIC_API_KEY": "sk-ant-KhoaGiaTuBienMoiTruong_ANTHROPIC_999",
+    "ANTHROPIC_AUTH_TOKEN": "TokenGiaTuBienMoiTruong_ANTHROPIC_999",
+    "GOOGLE_API_KEY": "AIzaSyKhoaGiaTuBienMoiTruong_GOOGLE_999",
+    "GEMINI_API_KEY": "AIzaSyKhoaGiaTuBienMoiTruong_GEMINI_999",
+}
+
+
+@pytest.fixture
+def hostile_env(monkeypatch):
+    """Phần mềm khác trên máy đặt biến môi trường: đổi địa chỉ, bật Vertex AI, đặt khóa khác."""
+    for name in ("OPENAI_BASE_URL", "ANTHROPIC_BASE_URL", "GOOGLE_GEMINI_BASE_URL"):
+        monkeypatch.setenv(name, "http://127.0.0.1:8080/")
+    monkeypatch.setenv("GOOGLE_VERTEX_BASE_URL", "https://evil.example/")
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "du-an-la")
+    monkeypatch.setenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+    for name, value in ENV_KEYS.items():
+        monkeypatch.setenv(name, value)
+
+
+@pytest.fixture
+def capture_with_headers(monkeypatch):
+    """Bọc hàm tạo client của 3 thư viện (giữ nguyên tham số app truyền), ghi địa chỉ + header."""
+    seen: list = []
+    real_anthropic, real_openai, real_genai = anthropic.Anthropic, openai.OpenAI, genai.Client
+
+    def record_httpx2(request):
+        seen.append((request.url, dict(request.headers)))
+        body = {"type": "error", "error": {"type": "invalid_request_error", "message": "x"}}
+        return httpx2.Response(400, json=body)
+
+    def record_httpx(request):
+        seen.append((request.url, dict(request.headers)))
+        return httpx.Response(400, json={"error": {"code": 400, "message": "x", "status": "X"}})
+
+    def make_anthropic(**kwargs):
+        transport = httpx2.MockTransport(record_httpx2)
+        return real_anthropic(**kwargs, http_client=httpx2.Client(transport=transport))
+
+    def make_openai(**kwargs):
+        transport = httpx2.MockTransport(record_httpx2)
+        return real_openai(**kwargs, http_client=httpx2.Client(transport=transport))
+
+    def make_genai(**kwargs):
+        options = kwargs["http_options"].model_copy(
+            update={
+                "client_args": {"transport": httpx.MockTransport(record_httpx)},
+                "retry_options": types.HttpRetryOptions(attempts=1),
+            }
+        )
+        return real_genai(**{**kwargs, "http_options": options})
+
+    monkeypatch.setattr(anthropic, "Anthropic", make_anthropic)
+    monkeypatch.setattr(openai, "OpenAI", make_openai)
+    monkeypatch.setattr(genai, "Client", make_genai)
+    return seen
+
+
+OFFICIAL = {
+    "anthropic": ("api.anthropic.com", "x-api-key", ANTHROPIC_KEY),
+    "openai": ("api.openai.com", "authorization", f"Bearer {OPENAI_KEY}"),
+    "gemini": ("generativelanguage.googleapis.com", "x-goog-api-key", GEMINI_KEY),
+}
+
+
+def assert_official_requests(seen, vendor):
+    host, header, value = OFFICIAL[vendor]
+    assert seen, "phải có ít nhất một yêu cầu"
+    for url, headers in seen:
+        assert url.scheme == "https" and url.host == host
+        assert headers.get(header) == value  # đúng khóa của app, không phải khóa trong biến
+        for env_value in ENV_KEYS.values():
+            assert env_value not in json.dumps(headers) and env_value not in str(url)
+
+
+@pytest.mark.parametrize("vendor", ["anthropic", "openai", "gemini"])
+def test_generate_ignores_hostile_env(hostile_env, capture_with_headers, vendor):
+    cls = {"anthropic": AnthropicProvider, "openai": OpenAIProvider, "gemini": GeminiProvider}
+    provider = cls[vendor](OFFICIAL[vendor][2].removeprefix("Bearer "))
+    with pytest.raises(AIError, match="không nhận yêu cầu"):
+        generate(provider, vendor)
+    assert_official_requests(capture_with_headers, vendor)
+
+
+@pytest.mark.parametrize(
+    ("vendor", "name"),
+    [
+        ("anthropic", "ANTHROPIC_API_KEY"),
+        ("openai", "OPENAI_API_KEY"),
+        ("gemini", "GEMINI_API_KEY"),
+    ],
+)
+def test_check_api_key_ignores_hostile_env(hostile_env, capture_with_headers, vendor, name):
+    key = OFFICIAL[vendor][2].removeprefix("Bearer ")
+    result = env_file.check_api_key(name, api_key=key)
+    assert result.status in ("unknown", "invalid")
+    assert len(capture_with_headers) == 1
+    assert_official_requests(capture_with_headers, vendor)
+
+
+def test_gemini_client_stays_off_vertex_despite_env(hostile_env):
+    api_client = GeminiProvider(GEMINI_KEY)._client._api_client
+    assert api_client.vertexai is False
+    assert api_client._http_options.base_url == "https://generativelanguage.googleapis.com/"
