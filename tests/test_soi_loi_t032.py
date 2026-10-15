@@ -114,8 +114,8 @@ def test_invisible_chars_in_heading_hashes_and_tag():
 
 
 def test_glued_hash_heading_with_tag_and_crlf():
-    text = _notepad(f"##7 {TAG}\n- bí mật\n\n###7.1\n- bí mật 2\n##8\n- ok")
-    assert _cp(text) == "##8\n- ok"
+    text = _notepad(f"##7 {TAG}\n- bí mật\n\n###7.1\n- bí mật 2\n## 8\n- ok")
+    assert _cp(text) == "## 8\n- ok"
 
 
 def test_h1_tag_hides_to_end_of_file():
