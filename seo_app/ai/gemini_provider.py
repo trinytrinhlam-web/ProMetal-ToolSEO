@@ -38,6 +38,7 @@ import httpx
 import pydantic
 from google import genai
 from google.genai import errors, types
+from google.genai.client import DebugConfig
 
 from seo_app.ai.base import (
     GEMINI_URL,
@@ -46,6 +47,7 @@ from seo_app.ai.base import (
     T,
     TaskConfig,
     bad_request_error,
+    bad_response_message,
     library_error,
 )
 
@@ -76,9 +78,7 @@ _BLOCKED = {
 }
 REFUSAL = "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú."
 BAD_SHAPE = "AI trả về dữ liệu không đúng khuôn. Bấm thử lại."
-BAD_RESPONSE = (
-    "Máy chủ Gemini trả về dữ liệu lạ (có thể do mạng Wi-Fi hoặc proxy). Kiểm tra mạng rồi thử lại."
-)
+BAD_RESPONSE = bad_response_message("Gemini")
 # Lỗi 400 đã biết của Gemini: (đoạn chữ thường để nhận ra trong câu máy chủ, gợi ý viết sẵn).
 KNOWN_400_HINTS = (
     (
@@ -117,6 +117,7 @@ class GeminiProvider:
             http_options=types.HttpOptions(
                 base_url=GEMINI_URL, timeout=TIMEOUT_MS, retry_options=RETRY
             ),
+            debug_config=no_debug_config(),
         )
 
     def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
@@ -192,6 +193,18 @@ class GeminiProvider:
             return self._client.models.generate_content(
                 model=task.model, contents=prompt, config=_content_config(config)
             )
+
+
+def no_debug_config() -> DebugConfig:
+    """Tắt chế độ ghi/phát lại của google-genai (T-028).
+
+    google-genai không có biến chèn header như ``*_CUSTOM_HEADERS``, nhưng có biến tương tự đổi
+    cách gọi mạng: ``GOOGLE_GENAI_CLIENT_MODE`` (record/replay/auto),
+    ``GOOGLE_GENAI_REPLAYS_DIRECTORY``, ``GOOGLE_GENAI_REPLAY_ID``. Ở chế độ đó thư viện ghi lời
+    gọi (kèm bài viết) ra thư mục, hoặc lấy câu trả lời từ file thay vì máy chủ. Truyền rõ giá trị
+    rỗng để thư viện không đọc các biến này.
+    """
+    return DebugConfig(client_mode=None, replays_directory=None, replay_id=None)
 
 
 def _content_config(config: dict[str, Any]) -> types.GenerateContentConfig:
