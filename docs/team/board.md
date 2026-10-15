@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 18:29 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-15 18:37 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -23,7 +23,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ (`Họa Sĩ · T-019 Thử mù mô hình`) | `team/T-019` | Thợ Máy xong logic (`d2bfa8c`, 39 test). Họa Sĩ xong giao diện (`0d09f4d`, 14 test; Linux chỉ 9 test đỏ sẵn của T-027). Soi Lỗi **đạt có điều kiện** (`e3cee76`): SL-T019-1 AI tự xưng tên lọt lớp che (`_Claude_`, `Opus`…), SL-T019-2 tên mô hình quá ngắn làm hỏng bài mọi ứng viên. Thợ Máy lượt 2 **xong** (`94a2813`, Linux 3.222 qua, 0 hỏng; Chỉ Huy B chấp nhận phần sửa `seo_app/ai/`, ghi trong phiếu). **Soi Lỗi đang kiểm lại** (`Soi Lỗi · T-019 Thử mù mô hình (lượt 2)`), rồi Lá Chắn | [Thợ Máy](reports/T-019-tho-may.md) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md) |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) | `team/T-025` | Chỉ Huy B đã gộp `main` vào nhánh (`ce1a79c`). Soi Lỗi làm tiếp và nộp báo cáo | |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) → Lá Chắn | `team/T-025` | Soi Lỗi **xong** (`a36a943`): helper đo xen kẽ nhỏ/lớn, lấy lần nhanh nhất; 1.000 lần đo: trước sửa hỏng 25, sau sửa 0; pytest thật 150 lần (cả lúc máy bận) 0 hỏng; Linux 3.133 qua. Ngưỡng 9 giữ nguyên. **Lá Chắn rút gọn đang kiểm** (`Lá Chắn · T-025 Test đo tốc độ (rút gọn, Opus tạm)`) | [Soi Lỗi](reports/T-025-soi-loi.md) |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) | `team/T-032` | Đã giao | |
 
 ## Chờ

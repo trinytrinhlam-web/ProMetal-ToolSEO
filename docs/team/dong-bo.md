@@ -34,12 +34,12 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 18:29. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-15 18:37. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`94a2813`) | Thợ Máy lượt 2 xong (Linux 3.222 qua). Chỉ Huy B chấp nhận commit `4223a8c` sửa `seo_app/ai/` (ghi trong phiếu). Soi Lỗi đang kiểm lại | Soi Lỗi kiểm lại (có đụng `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`f7a9c22`) | Soi Lỗi (phiên B) chạy tiếp sau khi chạm giới hạn lúc 14:45; gộp `main` mới rồi nộp báo cáo | Lá Chắn rút gọn, gộp |
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`a36a943`) | Soi Lỗi xong (0/1.000 lần hỏng, Linux 3.133 qua). Lá Chắn rút gọn (Opus tạm) đang kiểm | ĐẠT thì gộp; nhắc chạy test trên Windows sau khi gộp (6 test đồng hồ kiểu Windows mới kiểm bằng đồng hồ giả) |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (từ `main`) | Mới giao Thợ Máy | Soi Lỗi, Lá Chắn (A1, A3), gộp |
 
