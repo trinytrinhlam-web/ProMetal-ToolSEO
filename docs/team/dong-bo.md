@@ -34,19 +34,26 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 18:55. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-15 18:58. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (từ `main` `7d8f6f3`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn, gộp |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | chưa có | Phiếu đã lập, T-019 đã gộp; chờ chỗ trống | Tạo `team/T-034` từ `main`, giao Thợ Máy |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) README 3 hãng AI, thử mù | chưa có | Phiếu đã lập, chờ T-032 gộp | Giao Thư Ký |
-| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`f831877`) | Thợ Máy xong (Linux 3.238 qua). Soi Lỗi đang kiểm | Lá Chắn (A1, A3), gộp |
-| [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) Thiết kế Giai đoạn 4 | `team/T-033` (từ `main`) | Mới giao Thợ Máy (chỉ viết báo cáo thiết kế, không code) | Chỉ Huy đọc, gộp báo cáo; hỏi chủ dự án các câu trong báo cáo; lập phiếu code sau khi T-019 lên `main` |
+| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`8013108`) | Soi Lỗi đạt có điều kiện: SL-T032-1 (Trung bình) bắt buộc sửa. Thợ Máy lượt 2 đang sửa (phiên cũ mở lại) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-032` còn mở, gửi tin), Lá Chắn (A1, A3), gộp |
+| [T-036](tickets/T-036-meta-title-description-slug.md) → [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Giai đoạn 4 | chưa có | Thiết kế T-033 xong, đã gộp `main`. Đã lập phiếu | T-036, T-037, T-038 chạy song song khi có chỗ (sau T-034); T-042 chờ chủ dự án trả lời câu 1, 2 |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 18:58 · Chỉ Huy B
+
+- T-033 (thiết kế Giai đoạn 4) xong, gộp `main`. Kết luận chính: SiteSEO 1.4.2 ghi được qua "Abilities" (cần bật công tắc) hoặc qua 4 khóa meta site đã mở sẵn; site đã tự xuất Article/Breadcrumb/LocalBusiness nên phần mềm không xuất các loại đó.
+- Lập T-036 → T-042 (Giai đoạn 4). Số tạm trong báo cáo T-033 (T-034 → T-041) đã đánh lại; bảng đối chiếu ở `board.md`.
+- **4 câu hỏi chờ chủ dự án** (chủ dự án đang treo máy, dặn không hỏi): ghi ở `TIEN-DO.md` mục 4. Bên nào gặp chủ dự án trước thì hỏi, ghi câu trả lời vào `CLAUDE.md` / `BAN-GIAO.md` 7 và nhật ký này.
+- T-032: Soi Lỗi đạt có điều kiện; Thợ Máy lượt 2 đang sửa SL-T032-1.
 
 ### 2026-10-15 18:55 · Chỉ Huy B
 

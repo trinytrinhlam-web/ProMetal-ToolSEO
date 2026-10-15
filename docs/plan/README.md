@@ -15,6 +15,7 @@ Những chỗ đã biết là **lệch** với quyết định mới hơn:
 | `yeu_cau_phan_mem_ProMetal_ToolSEO.md`: phần mềm không theo dõi thứ hạng | **Giữ** Giai đoạn 6, theo dõi qua Search Console (chủ dự án chốt 2026-10-15) |
 | `thong_tin_can_dien.xlsx`: có cột giá, tác giả bài viết, năm bắt đầu hoạt động | Bài **không** nêu giá dưới bất kỳ dạng nào, không tên tác giả, không năm thành lập (2026-10-14, `BAN-GIAO.md` 7.4) |
 | `thong_tin_can_dien.xlsx`: địa chỉ từng quận điền dần | Địa chỉ cụ thể chỉ dùng 9 địa chỉ trên trang Liên hệ, tới khi chủ dự án bổ sung |
+| `yeu_cau_phan_mem_ProMetal_ToolSEO.md` mục 6: cài Rank Math/Yoast, mu-plugin đăng ký meta, site staging | Site dùng **SiteSEO** (chốt 2026-10-14), **không có staging**. SiteSEO ghi được qua Abilities hoặc 4 khóa meta site đã mở, nên mu-plugin chỉ là phương án cuối (`docs/team/reports/T-033-tho-may.md`) |
 | `ke_hoach_6_thang_chi_tiet.md`, `outline_va_internal_linking.md` (bản v1) | **Không triển khai bản v1** (`review_ke_hoach_v1.md`): sai địa danh, số liệu tự đặt, nguy cơ trang cửa ngõ (doorway) |
 
 ## Danh sách file

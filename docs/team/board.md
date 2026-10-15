@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 18:55 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-15 18:58 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -22,8 +22,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Soi Lỗi (`Soi Lỗi · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) | `team/T-032` | Thợ Máy xong (`f831877`, Linux 3.238 qua, 122 test mới; phần hồ sơ AI thấy không đổi). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-032-tho-may.md) |
-| [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4 (on-page): SiteSEO lưu meta/schema ở đâu, ghi qua REST được không, chia phiếu, câu hỏi cho chủ dự án. Không sửa code | Thợ Máy (`Thợ Máy · T-033 Thiết kế Giai đoạn 4`) | `team/T-033` | Đã giao | |
+| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Soi Lỗi (`Soi Lỗi · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) → Thợ Máy lượt 2 | `team/T-032` | Thợ Máy xong (`f831877`). Soi Lỗi **đạt có điều kiện** (`8013108`, Linux 3.268 qua): SL-T032-1 (Trung bình, bắt buộc: dòng `#hashtag` làm thôi giấu mục), SL-T032-2, -3 (Thấp). **Thợ Máy lượt 2 đang sửa**, rồi Soi Lỗi kiểm lại, Lá Chắn | [Thợ Máy](reports/T-032-tho-may.md) · [Soi Lỗi](reports/T-032-soi-loi.md) |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) | `team/T-031` | Đã giao | |
 
 ## Chờ
@@ -32,6 +31,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù: SL-T019-3 (số phiên bản lộ sau tên đã che), SL-T019-4 (Claude bị cắt → câu lỗi sai chỗ), SL-T019-5 (race `os.environ` khi gỡ `*_CUSTOM_HEADERS`), LC-T028-1 (`RLock`), LC-T028-3 (gzip hỏng), LC-T019-1 (tên mô hình gõ tay thành link), LC-T019-2 (đường dẫn đầy đủ trong câu lỗi) | Thợ Máy | Chỗ trống (tối đa 3 phiên) |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký | T-032 gộp vào `main` |
+| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
+| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
+| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | **Chủ dự án trả lời câu 1, 2 của [T-033](reports/T-033-tho-may.md)**; T-037 |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
@@ -48,6 +54,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4: SiteSEO lưu meta ở đâu, ghi qua REST (Abilities / meta đã mở), schema site đang có, chia phiếu | Thợ Máy | 2026-10-15 | [Báo cáo](reports/T-033-tho-may.md) (chỉ tài liệu, 8 lần GET công khai). Gộp vào `main`. Lập T-036 → T-042; 4 câu hỏi chờ chủ dự án |
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy, Họa Sĩ | 2026-10-15 | [Thợ Máy](reports/T-019-tho-may.md) (2 lượt) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-019-la-chan.md) (Opus tạm), 5 lỗi Thấp → T-034. Gộp vào `main` `7d8f6f3`: Linux 3.344 qua, 0 hỏng |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi | 2026-10-15 | [Soi Lỗi](reports/T-025-soi-loi.md): 1.000 lần đo, trước sửa hỏng 25, sau sửa 0; ngưỡng 9 giữ nguyên · Lá Chắn rút gọn: [**ĐẠT**](reports/T-025-la-chan.md) (Opus tạm). Gộp vào `main` `39065cd`: Linux 3.133 qua, 0 hỏng. Nên chạy lại trên Windows (6 test đồng hồ kiểu Windows mới kiểm bằng đồng hồ giả) |
 | [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Bộ chặn mạng chặn thêm UDP, tra tên; test T-027 chạy được trên Linux/Mac | Soi Lỗi | 2026-10-15 | [Soi Lỗi](reports/T-029-soi-loi.md) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-029-030-la-chan.md) (Opus tạm). Điều kiện chạy trên Windows: Chỉ Huy A chạy 2 lượt, 2.758 qua, 0 hỏng; test IPv6, Proactor, `vong-lap-mac-dinh` đều qua. Gộp vào `main` `7c8604e` |
@@ -89,4 +96,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-036
+## Số phiếu tiếp theo: T-043 (dành cho bước thử thật trên site sau T-042)

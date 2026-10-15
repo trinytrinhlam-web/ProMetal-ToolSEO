@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-15, 18:55 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-15, 18:58 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -14,7 +14,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - Đã lên `main` 2026-10-15 chiều: báo lỗi tiếng Việt khi máy chủ AI trả dữ liệu hỏng (T-028), bộ chặn mạng của test chặt hơn và chạy được trên mọi máy (T-029, T-030).
 - Đã lên `main` 2026-10-15 tối: **thử mù mô hình** (T-019) ở Cài đặt → 🤖 Mô hình AI.
 - Đã lên `main` 2026-10-15 tối: test đo tốc độ không còn đỏ oan (T-025).
-- Đang chuẩn bị Giai đoạn 4: tìm hiểu cách ghi meta/schema vào SiteSEO (T-033).
+- Giai đoạn 4: thiết kế xong (T-033), đã chia phiếu. **Có 4 câu hỏi chờ anh** (mục 4).
 - Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
 - Bộ kiểm tra tự động trên `main`: 3.344 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
 
@@ -26,7 +26,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 1 | WordPress: kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện | ✅ Xong |
 | 2 | AI viết bài | 🟡 Đang làm (xem mục 3) |
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
-| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 📐 Đang thiết kế (T-033: tìm hiểu SiteSEO, chia phiếu; chưa viết code) |
+| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 📐 Thiết kế xong (T-033), đã lập phiếu T-036 → T-042; phần ghi lên site chờ anh trả lời 4 câu ở mục 4 |
 | 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
 | 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
 
@@ -61,6 +61,24 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 ## 4. Việc đang chờ anh
 
 1. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
+2. **Giai đoạn 4 (tối ưu SEO): 4 câu hỏi**, giải thích đầy đủ ở [`docs/team/reports/T-033-tho-may.md`](docs/team/reports/T-033-tho-may.md) mục 7. Anh trả lời bằng chữ cái, ví dụ "1A 2A 3A 4A".
+   - **Câu 1.** Phần mềm ghi tiêu đề và mô tả SEO vào SiteSEO bằng cách nào?
+     - **A (đề xuất):** anh bật công tắc **Abilities** trong SiteSEO;
+     - **B:** không bật gì, thử đường website đang mở sẵn;
+     - **C:** anh tự chép tay.
+   - **Câu 2.** Tạo tài khoản WordPress vai **Biên tập viên** riêng cho phần mềm?
+     - **A (đề xuất):** có;
+     - **B:** dùng tài khoản quản trị (không nên).
+   - **Câu 3.** Tiêu đề SEO có đuôi "| Pro-Metal" không?
+     - **A (đề xuất):** có, khi còn chỗ;
+     - **B:** không.
+   - **Câu 4.** Dọn hai chỗ trùng trên website:
+     - khối doanh nghiệp rỗng tên của SiteSEO;
+     - đoạn mô tả thừa ở trang chủ ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức";
+     - mức giá "$$".
+
+     **A (đề xuất):** có, anh hoặc người làm web dọn. **B:** để sau.
+3. **Nên nhờ người làm web kiểm tra:** website có các đường REST `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Phần mềm sẽ không bao giờ gọi các đường này. Nhưng anh nên nhờ người làm web xác nhận chúng **bắt buộc đăng nhập quản trị** mới dùng được. Đội agent chỉ thấy tên đường trong danh sách công khai, chưa thử gọi.
 
 Đã trả lời 2026-10-15: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); giữ Giai đoạn 6; đưa thư mục kế hoạch lên repo (`docs/plan/`); lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`).
 

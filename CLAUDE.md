@@ -94,6 +94,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
+- Chờ chủ dự án (2026-10-15): 4 câu hỏi Giai đoạn 4 (cách ghi SEO vào SiteSEO, tài khoản Biên tập viên, đuôi "| Pro-Metal", dọn schema/mô tả trùng trên site): `TIEN-DO.md` mục 4, chi tiết `docs/team/reports/T-033-tho-may.md` mục 7.
 - Đã chốt 2026-10-14: plugin SEO là **SiteSEO** (ghi meta/schema theo SiteSEO). Tên miền suachuacuasat.com. **Không có staging**: làm việc trực tiếp trên site chính thức, nên mọi bài thử phải là nháp.
 
 ## Cách làm việc
