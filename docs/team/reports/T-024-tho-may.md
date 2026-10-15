@@ -95,3 +95,72 @@ Test `test_real_profile_only_drops_what_old_filter_leaked` kiểm trên file th�
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-15): sửa SL-024-1, SL-024-2
+
+Soi Lỗi trả phiếu (`docs/team/reports/T-024-soi-loi.md`) vì 2 lỗi mức Trung bình. Đã sửa cả hai.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/content/rules.py` | `confirmed_profile`: giữ dòng trống "chờ" cho tới dòng không trống kế tiếp; `_visible` (bỏ ký tự vô hình, NFKC, viết hoa) dùng để xét cấu trúc và `>`; `_is_unconfirmed` thử nhãn trên hai bản; nhận `_IGNORABLE_NOT_CF` chuyển từ `prompts.py` |
+| `seo_app/content/prompts.py` | Chỉ đổi chỗ khai báo: `_IGNORABLE_NOT_CF` nay nhập từ `rules.py` (hành vi `_neutralize` không đổi). Ngoài phạm vi ghi trong phiếu, nhưng Chỉ Huy gợi ý dùng lại hằng này. `prompts.py` đã nhập từ `rules.py`, nên `rules.py` không thể nhập ngược lại vì sẽ bị vòng import. Chuyển hằng là cách không phải chép hai nơi. |
+| `tests/test_soi_loi_t024.py` | Bỏ dấu `xfail(strict=True)` của đúng 4 hàm test (33 trường hợp), sửa docstring và dòng tiêu đề mục; nội dung test giữ nguyên, không nới lỏng |
+| `tests/test_profile_blocks.py` | 11 test mới cho lượt 2 |
+
+### SL-024-1: dòng trống giữa một ý
+
+- Gặp dòng trống (kể cả dòng chỉ có khoảng trắng) khi đang có một khối, bộ lọc **chưa đóng khối** mà giữ dòng trống ở trạng thái chờ.
+  - Dòng không trống kế tiếp **thụt lề**: dòng trống và dòng đó thuộc khối trước. Khối có nhãn thì bỏ hết.
+  - Dòng kế tiếp **không thụt lề** (gạch đầu dòng, đoạn văn, tiêu đề): đóng khối trước, dòng trống được giữ ở giữa như lượt 1. Không gộp nhầm ý hay đoạn mới (`test_blank_then_unindented_bullet_or_paragraph_is_new_block`).
+- Tiêu đề vẫn đứng riêng: dòng thụt lề sau tiêu đề và dòng trống không bị kéo theo tiêu đề (`test_blank_then_indented_after_heading_is_not_merged_into_heading`).
+- Dòng ghi chú `>` chen giữa vẫn không cắt ý (`test_several_blank_lines_and_notes_inside_item`).
+
+### SL-024-2: ký tự vô hình
+
+- Khi **so khớp** (nhãn, `>`, thụt lề, gạch đầu dòng, tiêu đề), bộ lọc xét bản đã chuẩn hóa NFKC và bỏ ký tự vô hình: Unicode loại Cf (U+200B/C/D, U+2060, BOM U+FEFF, gạch nối mềm U+00AD…) và các ký tự "mặc định bỏ qua" không thuộc Cf (U+034F, U+FE0F, U+3164, U+FFA0…), giống `_neutralize` của `prompts.py`. Dòng đưa vào prompt **giữ nguyên** (`test_invisible_char_kept_in_output`). `_neutralize` vẫn xử lý ký tự vô hình riêng ở bước dựng prompt.
+- Nhãn được thử theo **hai cách**: bỏ hẳn ký tự vô hình, và coi nó như một dấu cách. Lý do:
+  - Nếu chỉ bỏ hẳn: `[CẦN<U+200B>XÁC NHẬN]` (ký tự vô hình thay dấu cách) thành `[CẦNXÁC`. Mà test `test_misspelled_tags_are_not_recognised` của Soi Lỗi chốt `[CẦNXÁC NHẬN]` gõ liền là **không** nhận, nên không thể nới regex.
+  - Nếu chỉ coi như dấu cách: `[C<U+200D>ẦN` thành `[C ẦN` thì hỏng.
+  - Thử cả hai thì nhận đủ, mà `[CẦNXÁC NHẬN]` gõ liền vẫn không nhận (`test_glued_tag_still_not_recognised_but_invisible_separator_is`).
+- Lợi thêm nhờ NFKC: ngoặc toàn chiều rộng `［CẦN XÁC NHẬN］` cũng được nhận (`test_fullwidth_bracket_tag_recognised`).
+
+### Test của Soi Lỗi đã bỏ xfail (33 trường hợp, đều qua)
+
+| Mã | Test | Số trường hợp |
+|---|---|---|
+| SL-024-1 | `test_item_with_blank_line_then_indented_tagged_continuation` | 2 |
+| SL-024-1 | `test_tagged_item_with_blank_line_then_indented_continuation` | 1 |
+| SL-024-2 | `test_tag_with_invisible_char_is_recognised` | 18 |
+| SL-024-2 | `test_note_preceded_by_invisible_char_is_dropped` | 12 |
+
+Không còn test nào giữ xfail trong `tests/test_soi_loi_t024.py`. 3 xfail còn lại trong cả bộ là có sẵn từ trước, không thuộc phiếu này.
+
+### So bộ lọc cũ và mới trên file thật (chạy lại)
+
+| Phiên bản hồ sơ | Cũ | Mới | Khác nhau |
+|---|---|---|---|
+| `dfdffc5` (T-022 lượt 2, đang ở nhánh này) | 101 dòng | 101 dòng | Giống hệt |
+| `73ba839` | 97 | 97 | Giống hệt |
+| `55e3e61` | 103 | 103 | Giống hệt |
+| `491d639` | 95 | 92 | Mới bỏ thêm đúng 3 dòng lọt như lượt 1 |
+
+### Bằng chứng
+
+```
+$ uv run pytest
+2014 passed, 3 xfailed in 90.73s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Rủi ro lượt 2
+
+- Thụt lề sau dòng trống được gộp vào khối trước với **mọi** loại khối (cả đoạn văn), không riêng gạch đầu dòng. Cách này thiên về giấu: một đoạn thụt lề đứng riêng sau một ý có nhãn sẽ bị giấu theo.
+- Một dòng chỉ có ký tự vô hình được coi là dòng trống.
+- Ký tự vô hình đứng đầu dòng không làm dòng thành "thụt lề".
+- `prompts.py` nhập một tên có gạch dưới (`_IGNORABLE_NOT_CF`) từ `rules.py`. Có thể đổi thành tên công khai nếu Lá Chắn muốn, nhưng tôi giữ tên cũ để diff nhỏ.
