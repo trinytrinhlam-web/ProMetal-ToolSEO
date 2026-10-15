@@ -59,3 +59,23 @@ Hồ sơ thật: lưu `confirmed_profile(...)` trước khi sửa, so `cmp` sau 
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (theo báo cáo Soi Lỗi `T-032-soi-loi.md`)
+
+| Lỗi | Sửa | Test |
+|---|---|---|
+| SL-T032-1 (Trung bình) | Mục đang giấu chỉ kết thúc ở **tiêu đề thật** `_REAL_HEADING = #{1,6}(?:\s\|$)`, không thụt lề, cấp ≤. Dòng `#suachuacuasat`, `#1 khu vực` không còn làm thôi giấu | Bỏ `xfail` `test_hash_word_line_does_not_end_hidden_section`; thêm `test_hash_without_space_does_not_end_hidden_section` |
+| SL-T032-2 (Thấp) | Dòng thụt lề trông như tiêu đề thật **và có nhãn** thì coi là tiêu đề: đóng khối trước rồi giấu cả mục. Đóng khối trước an toàn vì dòng bắt đầu bằng `#` không thể ghép thành nửa sau nhãn của khối trước (mẫu nhãn không cho `#` chen giữa). Tiêu đề thụt lề không nhãn vẫn là dòng tiếp của khối trước; tiêu đề thụt lề vẫn không kết thúc mục đang giấu (đã chấp nhận) | Bỏ `xfail` `test_indented_tagged_heading_hides_section`; thêm `test_indented_tagged_heading_hides_section_and_keeps_item_before` (giữ được `- ok` phía trước), `test_indented_heading_without_tag_still_belongs_to_block` |
+| SL-T032-3 (Thấp) | Tiêu đề kết thúc bằng **nửa nhãn** (`_ends_with_partial_tag`: ngoặc mở rồi chỉ còn chữ là phần đầu của `CANXACNHAN`/`CHUAXACNHAN`, đã bỏ dấu; kể cả chỉ có `[`) thì chờ dòng kế (bỏ qua dòng `>`): ghép được nhãn thì giấu cả mục, kể cả dòng kế; không ghép được thì giữ tiêu đề y nguyên. Hết file mà còn nửa nhãn thì bỏ tiêu đề. Chỉ thêm một biến trạng thái, vẫn một lượt qua các dòng | Bỏ `xfail` `test_heading_tag_split_across_lines_hides_section`; thêm `test_heading_tag_split_across_lines` (4 kiểu), `…_with_note_between`, `test_heading_with_open_bracket_not_completed_is_kept` (`## Giá [`, `## Giá (tham khảo`…), `…_at_end_of_file_is_dropped`, `test_half_tag_heading_followed_by_heading` |
+
+- **Đổi tham số `"##8. Quy tắc"`** của `test_tag_on_h2_hides_section_until_same_or_higher_heading`: theo hành vi mới `##8` (thiếu dấu cách) không kết thúc mục giấu, nên chuyển sang test riêng ghim việc nó bị giấu theo. Thay bằng hai tiêu đề thật khác: `#\tPhụ lục` (tab sau `#`) và `##` (tiêu đề rỗng).
+- **Còn giữ (đã ghi, an toàn khi nghi ngờ):** dòng không thụt lề bắt đầu bằng `#` sát chữ mà **có nhãn** (`#hashtag [CẦN XÁC NHẬN]`, `##8 … [CẦN XÁC NHẬN]`) vẫn mở mục giấu với cấp bằng số `#`; với `#hashtag` là giấu tới tiêu đề thật `# ` kế tiếp (thường là hết file). Lọc thừa, không lọt.
+- **Hồ sơ thật:** so `cmp` kết quả của `origin/main` (chạy trong worktree tạm) với nhánh: giống hệt, 100 dòng.
+
+```
+$ uv run pytest
+KQ_PYTEST_L2
+
+$ uv run ruff check .
+All checks passed!
+```
