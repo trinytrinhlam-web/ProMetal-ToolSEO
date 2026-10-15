@@ -113,3 +113,87 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (sửa theo Soi Lỗi, 2026-10-15)
+
+Lượt 2 do hai phiên Thợ Máy làm. Phiên đầu (Chỉ Huy A giao, máy Windows) sửa code ở commit
+`4223a8c` nhưng dừng trước khi chạy toàn bộ test. Phiên sau (Chỉ Huy B giao, cloud Linux) soát lại
+commit đó, sửa thêm một lỗ hổng cùng loại SL-T019-2 (`bdf2653`), gộp `main` (`d443041`), chạy toàn
+bộ test và viết mục này.
+
+### Tóm tắt (cho chủ dự án)
+
+- Tên hãng/mô hình mà AI tự xưng giờ bị che cả khi viết nghiêng/đậm (`_Claude_`, `__Gemini__`) và
+  khi là tên dòng mô hình (Opus, Sonnet, DeepMind…).
+- Tên mô hình gõ nhầm (`c`, `10`, `cho`, `gpt`…) bị từ chối **trước khi gọi AI**, nên không tốn
+  tiền và không làm hỏng chữ trong bài của ứng viên khác.
+- Bài thử bị cắt vì quá dài: câu lỗi chỉ cách sửa làm được thật (chọn effort thấp hơn), thay cho câu
+  cũ bảo sửa một mục không có trong `config/ai.toml`.
+
+### Sửa gì cho từng lỗi
+
+| Lỗi | Sửa | File | Commit |
+|---|---|---|---|
+| **SL-T019-1** (tên sau `_`, tên dòng mô hình) | Ranh giới che đổi thành `(?<![^\W_]\|-)`: tên đứng sau `_` vẫn bị che. Đuôi che `(?:[\w.-]*[^\W_])?` không ăn `_` cuối, nên Markdown vẫn đóng đúng (`_«đã ẩn tên mô hình»_`). Áp dụng cho cả danh sách tên hãng và tên ứng viên. Thêm tên dòng/công ty: `opus`, `sonnet`, `haiku`, `fable`, `dall-e`/`dalle`, `sora`, `codex`, `gemma`, `deepmind`, `palm 2`, cụm `Google DeepMind/Bard/Gemma/AI Studio`. | `seo_app/content/blind_test.py` (`_BEFORE`, `_TAIL`, `_VENDOR_NAMES`, `_mask_names`) | `4223a8c` |
+| **SL-T019-2** (tên ngắn/gõ nhầm che chữ của mọi bài) | `validate_request` từ chối tên không đủ rõ (`_maskable`), báo "quá ngắn hoặc gõ nhầm" trước khi gọi AI. `_mask_names` chỉ dùng tên đủ rõ (phòng thủ thêm). | `seo_app/content/blind_test.py` | `4223a8c` |
+| **SL-T019-2, phần còn sót** (tìm thấy khi soát `4223a8c`) | Luật `4223a8c` nhận mọi tên ≥ 3 ký tự có chữ cái, nên tên gõ nhầm là từ tiếng Việt không dấu (`cho`, `khi`, `con`, `nha`) vẫn được nhận và che mất chữ thường của mọi bài. Luật mới: có chữ cái **và** (có chữ số, **hoặc** dài ≥ 5 ký tự và có `-`/`.`). Tên thật của 3 hãng đều qua (`o3`, `4o`, `o4-mini`, `gpt-5.1`, `claude-opus-5-5`, `gemini-3-pro`, `gemini-flash-latest`). Từ trơn như `gpt`, `chatgpt` bị từ chối. | `seo_app/content/blind_test.py` (`_maskable`) | `bdf2653` |
+| **Câu lỗi giới hạn token** (Soi Lỗi "Ghi nhận thêm" mục 2) | Lớp AI ném `TokenLimitError` (lớp con của `AIError`, **câu giữ nguyên từng chữ**) qua hàm chung `token_limit_error(task)`. Thử mù bắt riêng lỗi này và thay bằng `TOKEN_LIMIT_ERROR` (chỉ cách hạ effort). Nơi khác bắt `AIError` vẫn chạy y như cũ. | `seo_app/ai/base.py`, `seo_app/ai/anthropic_provider.py`, `seo_app/ai/openai_provider.py`, `seo_app/ai/gemini_provider.py`, `seo_app/content/blind_test.py` (`_call`) | `4223a8c` |
+
+**Ra ngoài phạm vi phiếu (Chỉ Huy cần biết):** phiếu ghi "Không được sửa `seo_app/ai/**`" vì lúc đó
+T-028 đang sửa thư mục này. T-028 đã lên `main` trước lượt 2 nên không còn đụng file. Thay đổi trong
+`seo_app/ai/` chỉ là gom 3 chỗ `raise AIError(...)` giống hệt nhau thành một hàm và đổi lớp lỗi sang
+lớp con. Câu lỗi, thời điểm ném và mọi nơi bắt `AIError` không đổi
+(`test_token_limit_error_keeps_old_message_for_other_tasks`, `test_every_provider_raises_token_limit_error`).
+Phiên đầu tự quyết, không có ghi chép là đã hỏi Chỉ Huy. Nếu Chỉ Huy không đồng ý thì có thể bỏ phần
+này: thử mù sẽ hiện lại câu cũ, không hỏng gì khác.
+
+### Test
+
+- Bỏ `xfail` (Soi Lỗi, `tests/test_soi_loi_t019.py`):
+  - `test_ai_naming_itself_markdown_underscore_and_family_names` (5 trường hợp)
+  - `test_short_or_mistyped_model_name_does_not_wreck_other_entries` (2 trường hợp)
+- Test mới trong `tests/test_blind_test.py`:
+  - che tên sau `_`, tên dòng mô hình, Markdown vẫn đóng đúng;
+  - `test_short_or_mistyped_model_names`: bảng tên bị từ chối/được nhận. `bdf2653` thêm `cho`, `khi`,
+    `gpt`, `chatgpt`, `a-b` (từ chối), `4o`, `gemini-flash-latest`, `claude-opus-5-5` (nhận);
+  - `test_short_names_are_never_used_for_masking` (thêm `cua`, `chung`, `cho`, `khi`);
+  - `test_token_limit_message_points_to_effort_not_missing_config`,
+    `test_token_limit_error_keeps_old_message_for_other_tasks`, `test_every_provider_raises_token_limit_error`.
+
+### Đã thử thêm bằng tay (khi soát `4223a8c`)
+
+| Chữ AI viết | Sau khi che |
+|---|---|
+| `Tôi là _Claude_.` | `Tôi là _«đã ẩn tên mô hình»_.` |
+| `**__Gemini__**` | `**__«đã ẩn tên mô hình»__**` |
+| `Google DeepMind và Google tìm kiếm` | `«đã ẩn tên mô hình» và Google tìm kiếm` ("Google" riêng giữ nguyên) |
+| `PaLM 2 và palm-2`, `Sonnet, Haiku.` | che hết, giữ dấu câu |
+| `Cửa sổ 10 năm` (ứng viên `o3`, `claude-opus-5-5`) | giữ nguyên |
+
+### Bằng chứng (cloud Linux, sau khi gộp `main`, HEAD `d443041`)
+
+```
+$ uv run pytest -q
+3222 passed, 4 skipped, 9 xfailed, 1 warning in 158.36s (0:02:38)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+0 hỏng. 9 xfail là 9 xfail cũ có sẵn trên `main`. 7 xfail của T-019 đã bỏ và giờ qua.
+
+**Một test chập chờn, không do phiếu này:** ở lần chạy toàn bộ đầu tiên,
+`tests/test_soi_loi_round6.py::test_helper_catches_quadratic_function` hỏng 1 lần. Đây là test đo thời
+gian của một hàm phụ trong bộ test. Tôi chạy riêng nó 10 lần trên `team/T-019` và 10 lần trên
+`origin/main` (worktree riêng): 0/10 hỏng ở cả hai. Nhánh không sửa file test đó hay `sanitize.py`.
+Lần chạy toàn bộ thứ hai xanh hết. Đề xuất Soi Lỗi để ý nếu nó còn hỏng trên máy bận.
+
+### Điểm Soi Lỗi nên soi kỹ
+
+1. Phần `seo_app/ai/`: `TokenLimitError` có thật sự không đổi hành vi của Soạn bài/rà soát không
+   (câu lỗi, chỗ bắt lỗi).
+2. Luật `_maskable` mới có từ chối nhầm tên mô hình thật nào của 3 hãng không.
+3. Danh sách tên che mới có che nhầm chữ thường trong bài về cửa sắt không (`sora`, `codex`, `fable`,
+   `haiku`, `opus` đều là chữ tiếng Anh; bài tiếng Việt hầu như không dùng).
