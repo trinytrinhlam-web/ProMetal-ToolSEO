@@ -245,7 +245,7 @@ Test: chỉ dữ liệu giả, không gọi Google Rich Results Test.
 | Lấy danh sách | Hàm mới `WordPressClient.list_published()`: `GET /wp/v2/posts` và `GET /wp/v2/pages` với `status=publish`, `_fields=id,type,slug,link,title,modified_gmt,meta`, `per_page=100`, dùng lại `_get_all_pages` (đã có giới hạn `MAX_PAGES`). Hiện site có 4 bài + 25 trang = 1 lần gọi mỗi loại |
 | Chỉ bài đã đăng | Gửi `status=publish` **và** lọc lại phía app: bỏ mọi mục có `status != "publish"` (phòng plugin trả lẫn nháp/hẹn giờ cho tài khoản đã đăng nhập). Bài `future` (đã hẹn giờ, chưa lên) **không** được link (YC-603) |
 | Dữ liệu ngoài là chưa tin cậy | Tiêu đề qua `_plain` (đã có); `link` phải là `https://` và **đúng tên máy** của `WORDPRESS_URL`, sai thì bỏ mục đó; độ dài có giới hạn |
-| Cache SQLite | **Có**. Module mới `seo_app/storage/site_index.py`, file riêng `data/site_index.sqlite` (cùng thư mục với `drafts.sqlite`, đã nằm trong `.gitignore` theo D2: *Lá Chắn kiểm lại*). Bảng `pages(id, type, slug, link, title, meta_title, meta_desc, modified_gmt)` + thời điểm tải có múi giờ. Xóa file vẫn tải lại được (đúng `CLAUDE.md`). Không lưu gì bí mật |
+| Cache SQLite | **Có**. Module mới `seo_app/storage/site_index.py`, file riêng `data/site_index.sqlite` (cùng thư mục với `drafts.sqlite`; `.gitignore` đã chặn `data/` và `*.sqlite`, D2). Bảng `pages(id, type, slug, link, title, meta_title, meta_desc, modified_gmt)` + thời điểm tải có múi giờ. Xóa file vẫn tải lại được (đúng `CLAUDE.md`). Không lưu gì bí mật |
 | Làm mới | Tự tải lại nếu cache cũ hơn 6 giờ; nút "Tải lại danh sách bài" ở bước SEO; **bắt buộc tải lại ngay trước khi gửi nháp** (để kiểm link hỏng trên dữ liệu mới nhất) |
 
 Cùng danh sách này phục vụ luôn YC-402 (kiểm trùng title/meta, mục 5.4) vì REST đã trả `_siteseo_titles_title`, `_siteseo_titles_desc` (mục 1.3).
@@ -322,7 +322,7 @@ Google cắt theo **độ rộng điểm ảnh** (khoảng 580–600 px), không
 
 ### 5.3 AI tạo meta theo lời dặn có khung dữ liệu
 
-- Hàm mới, ví dụ `ContentWriter.meta(keyword, title, parts, research)`, gọi lớp provider đã có, việc `meta` trong `config/ai.toml` (đã khai báo sẵn: *Thợ Máy kiểm lại tên việc khi làm*).
+- Hàm mới, ví dụ `ContentWriter.meta(keyword, title, parts, research)`, gọi lớp provider đã có, việc mới `[tasks.meta]` trong `config/ai.toml` (hiện file chỉ có `research`, `outline`, `write`, `rewrite`, `review`: phải thêm, chủ dự án chọn hãng/mô hình).
 - Dữ liệu (bài viết, ý định tìm kiếm, hồ sơ doanh nghiệp) nằm trong các khung `<bai_viet>`, `<du_lieu_tham_khao>`, `<ho_so_doanh_nghiep>` như `prompts.py` đang làm, kèm `DATA_RULES`.
 - Khuôn trả về: `MetaSuggestions{titles: list[str] (3), descriptions: list[str] (2)}`.
 - Kiểm kết quả trước khi dùng (A2): `strip_tags`, NFC, bỏ xuống dòng, bỏ `%%`, không link/URL, không cụm cấm (`find_banned` với `config/content.toml`), không nêu giá (theo `BAN-GIAO.md` 7.4), có từ khóa chính (không phân biệt hoa thường, so cả bản không dấu), độ dài trong ngưỡng Chặn. Gợi ý hỏng thì bỏ; hỏng hết thì báo lỗi tiếng Việt và cho viết lại.
@@ -335,3 +335,104 @@ Google cắt theo **độ rộng điểm ảnh** (khoảng 580–600 px), không
 - Chuẩn hóa trước khi so: NFC, chữ thường, gộp khoảng trắng, bỏ dấu câu, bỏ hậu tố thương hiệu (" | Pro Metal", " - Pro-Metal"…).
 - Trùng hệt sau chuẩn hóa → **Chặn**. Giống nhiều (tỉ lệ từ chung theo bản không dấu ≥ 0,8, chỉ dùng `difflib`/`set` của thư viện chuẩn) → **Cảnh báo**, hiện tên bài bị giống.
 - Bỏ qua chính bài đang cập nhật (YC-804, sau này).
+
+---
+
+## 6. Chia phiếu Giai đoạn 4
+
+Số phiếu là **số tạm** bắt đầu từ T-034 (theo `board.md`); Chỉ Huy đánh lại nếu đã dùng. Chỉ Huy nên tạo sẵn gói rỗng `seo_app/onpage/__init__.py` trên `main` trước khi giao, để T-034, T-036, T-037 mỗi phiếu chỉ **thêm file riêng** và chạy song song không đụng nhau.
+
+### Nhóm 1: logic thuần, chạy ngay bằng test giả (không cần site)
+
+| Phiếu | Mục tiêu | Agent | File được sửa | Phụ thuộc | Bảo mật (`security.md`) |
+|---|---|---|---|---|---|
+| **T-034** Meta | Đếm độ dài NFC, kiểm title/description/slug (5.1, 5.2), kiểm trùng (5.4) trên danh sách đưa vào; AI gợi ý meta + kiểm kết quả (5.3) | Thợ Máy | mới: `seo_app/onpage/meta.py`, `tests/test_onpage_meta.py`; sửa: `seo_app/content/workflow.py` (thêm hàm `meta`), `config/ai.toml` (`[tasks.meta]`) | Không | A1 (khung dữ liệu), A2 (kiểm kết quả AI), chặn `%%`, thẻ HTML |
+| **T-035** Danh sách bài đã đăng + cache | `list_published()` (4.1), cache `seo_app/storage/site_index.py` | Thợ Máy | sửa: `seo_app/wordpress/client.py` (chỉ thêm hàm đọc); mới: `seo_app/storage/site_index.py`, `tests/test_site_index.py` | Không | W4 (https, timeout), chỉ `GET`, lọc `status`, `link` phải đúng tên máy site; SQL tham số `?`; dữ liệu đọc từ file là chưa tin cậy (như `drafts.py`) |
+| **T-036** Liên kết nội bộ | Chọn ứng viên (YC-601, 602), AI gợi ý anchor + kiểm (4.2), `apply_links` trên nút chữ HTML (4.3), kiểm link nháp/hỏng (4.4, 4.5) | Thợ Máy | mới: `seo_app/onpage/links.py`, `tests/test_onpage_links.py`; sửa: `seo_app/content/prompts.py` (chỉ thêm tên khung vào `DATA_TAGS` và hàm lời dặn) | Dùng **kiểu dữ liệu** của T-035; làm song song được với danh sách giả | A1, A2; W3: không nới `sanitize_html`/`clean_ai_text`; `href` chỉ từ cache; test chứng minh AI đưa URL lạ thì bị bỏ |
+| **T-037** Schema | Khuôn pydantic FAQPage, dựng + kiểm cấu trúc không mạng (3.4), danh sách loại do site lo (chặn trùng nguồn, chặn HowTo) | Thợ Máy | mới: `seo_app/onpage/schema.py`, `tests/test_onpage_schema.py` | Không | Escape `<`, `>`, `&` trong JSON; URL cùng tên miền; AI không viết JSON |
+| **T-038** Lời dặn meta và anchor | Rà và viết lại lời dặn của T-034, T-036 cho tự nhiên, đúng giọng; thêm mục `[meta]` (ngưỡng, hậu tố thương hiệu) vào `config/content.toml` | Ngòi Bút | `config/content.toml`; phần chữ lời dặn trong `seo_app/onpage/meta.py`, `seo_app/content/prompts.py` | Sau T-034, T-036 | A1; không bỏ `DATA_RULES` |
+
+### Nhóm 2: giao diện (thay demo bước 4)
+
+| Phiếu | Mục tiêu | Agent | File được sửa | Phụ thuộc | Bảo mật |
+|---|---|---|---|---|---|
+| **T-040** Bước SEO thật | Thay demo bước 4 trong Soạn bài bằng chức năng thật, **giữ bố cục đã duyệt**: meta + 🔄, đếm NFC, xem trước Google, bảng liên kết nội bộ có tick, xem schema; nút "Tải lại danh sách bài". Xóa `META_TITLES`, `META_DESCRIPTIONS`, `SLUG`, `INTERNAL_LINKS`, `SCHEMA` khỏi `seo_app/demo.py`. Lưu meta, link vào nháp cục bộ | Họa Sĩ (+ Thợ Máy cho `seo_app/storage/drafts.py`) | `app/views/write.py` (chỉ `step_seo` và trạng thái liên quan), `seo_app/demo.py`, `seo_app/storage/drafts.py` (thêm trường, giữ `extra="forbid"`) | T-034 → T-037 | U1: chữ từ site/AI hiển thị phải escape (`ui.serp_preview` đã có, kiểm lại); test mở trang (`tests/test_app_pages.py`) |
+
+### Nhóm 3: cần chủ dự án làm trên site
+
+| Phiếu | Mục tiêu | Agent | File được sửa | Phụ thuộc | Bảo mật |
+|---|---|---|---|---|---|
+| **T-039** Ghi meta SEO lên nháp | `WordPressClient.set_seo_meta(post_id, …)`: dò đường B (Abilities) hay A (meta), ghi title/description/từ khóa chính; **chỉ** cho bài trong `_created_post_ids`; không gửi `null`; danh sách ability cố định; `check_connection` báo "SiteSEO: ghi được / chưa bật" | Thợ Máy | `seo_app/wordpress/client.py`, `tests/test_wordpress_client.py` (hoặc file test mới) | T-035 (cùng file `client.py`, làm **sau**); câu hỏi 1, 2 | W1 (không đổi `status`), W2 (test: bài không do app tạo → từ chối), W4; lỗi không chép thông điệp máy chủ có thể chứa dữ liệu lạ (như `_error_from`) |
+| **T-041** Thử thật một lần trên site | Chủ dự án (có Chỉ Huy hướng dẫn) tạo 1 bài **nháp** bằng app, mở trong trang quản trị xem hộp SiteSEO hiện đúng title/description; rồi xóa nháp bằng tay. Ghi kết quả vào báo cáo | Chỉ Huy + chủ dự án | `docs/team/reports/T-041-*.md` | T-039, tài khoản Biên tập viên | Chỉ nháp; Application Password không ghi vào báo cáo |
+| (nếu cần) mu-plugin | Chỉ khi A và B đều không ghi được: Lá Chắn duyệt mã mục 2, chủ dự án cài | Lá Chắn, chủ dự án | không có file trong repo, hoặc `docs/site/` | Kết quả T-041 | Lá Chắn duyệt trước khi cài |
+
+Thứ tự đề xuất: **T-034, T-035, T-037 song song** (≤ 3 phiên con) → T-036 → T-038 → T-040 → T-039 → T-041.
+
+Ngoài Giai đoạn 4 (ghi lại để không quên): Service schema cho trang dịch vụ, LocalBusiness cho trang khu vực, FAQPage lên site (cách d mục 3.3), YC-501 rà soát 29 URL (danh sách T-035 dùng lại được).
+
+---
+
+## 7. Câu hỏi cho chủ dự án
+
+Xếp theo mức cần thiết. Mỗi câu trả lời bằng một chữ cái.
+
+**Câu 1. Cho phần mềm ghi tiêu đề và mô tả SEO vào SiteSEO bằng cách nào?**
+SiteSEO là plugin SEO trên website của anh. Phần mềm cần ghi vào đó "tiêu đề hiện trên Google" và "đoạn mô tả dưới tiêu đề".
+- **A (đề xuất).** Anh vào trang quản trị WordPress → SiteSEO → bật mục **Abilities** (một công tắc). Phần mềm ghi được đủ: tiêu đề, mô tả, từ khóa chính. Hệ quả: tính năng này cũng cho các công cụ AI khác (nếu anh có kết nối) đọc/sửa SEO, nhưng chỉ với tài khoản đăng nhập có quyền sửa bài.
+- **B.** Không bật gì. Phần mềm thử ghi qua đường website đang mở sẵn (chỉ tiêu đề, mô tả). Hệ quả: có thể không ghi được, khi đó cần người làm web sửa một đoạn code nhỏ.
+- **C.** Phần mềm không ghi SEO; anh tự chép tiêu đề, mô tả vào bài nháp trong WordPress. Hệ quả: thêm việc tay mỗi bài.
+
+**Câu 2. Anh tạo được một tài khoản WordPress vai "Biên tập viên" (Editor) riêng cho phần mềm không?**
+Phần mềm dùng tài khoản này để tạo nháp và ghi SEO. Vai Biên tập viên không đổi được cài đặt, plugin hay giao diện site.
+- **A (đề xuất).** Có, tạo tài khoản mới kiểu `phan-mem-seo` + Application Password. Hệ quả: nếu lộ mật khẩu, kẻ xấu cũng không cài được plugin hay đổi cài đặt.
+- **B.** Dùng tài khoản quản trị đang có. Hệ quả: lộ mật khẩu là mất quyền cả website. Không nên.
+
+**Câu 3. Tiêu đề SEO có gắn tên thương hiệu ở cuối không?**
+Ví dụ "6 dấu hiệu cần thay bánh xe cửa kéo **| Pro-Metal**". Vài bài trên site đang có đuôi "| Pro Metal", vài bài không.
+- **A (đề xuất).** Có, dạng thống nhất "| Pro-Metal", chỉ thêm khi tiêu đề còn chỗ (dưới 60 ký tự). Hệ quả: khách nhận ra thương hiệu trên Google.
+- **B.** Không gắn. Hệ quả: tiêu đề có thêm chỗ cho từ khóa.
+
+**Câu 4. Dọn hai chỗ trùng trên website (anh hoặc người làm web làm, phần mềm không đụng)?**
+Trên mọi trang, SiteSEO đang xuất một khối thông tin doanh nghiệp **rỗng tên, rỗng logo** cho Google, trùng với khối đầy đủ do website tự làm. Trang chủ còn có **2 đoạn mô tả**, một đoạn ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức" không khớp thông tin hiện tại. Khối đầy đủ cũng ghi mức giá "$$" (trong khi bài viết không nói giá).
+- **A (đề xuất).** Có: tắt khối doanh nghiệp của SiteSEO (SiteSEO → Social → Knowledge Graph), bỏ đoạn mô tả thừa ở trang chủ, cân nhắc bỏ "$$". Hệ quả: Google đọc thông tin doanh nghiệp từ một nguồn duy nhất, đúng.
+- **B.** Để sau. Hệ quả: không hỏng gì ngay, nhưng Google thấy thông tin mâu thuẫn.
+
+---
+
+## 8. Thư viện
+
+**Không cần thư viện mới** cho Giai đoạn 4.
+
+| Việc | Dùng | Không dùng (và vì sao) |
+|---|---|---|
+| Đếm ký tự, chuẩn hóa | `unicodedata` (chuẩn) | `grapheme`, `regex`: NFC đủ cho tiếng Việt |
+| Slug | `seo_app/text.py` `slugify` (đã có) | `python-slugify` |
+| Kiểm trùng, giống nhau | `difflib`, `set` (chuẩn) | `rapidfuzz`: 29 URL, không cần tốc độ |
+| Chèn link vào HTML | `html.parser` (chuẩn, như `sanitize.py`) | `beautifulsoup4`, `lxml`: thêm bề mặt tấn công |
+| Schema | `json` (chuẩn) + `pydantic` (đã có) | `jsonschema`, `extruct`, công cụ trực tuyến của Google |
+| Cache | `sqlite3` (chuẩn, như `drafts.py`) | |
+| Gọi WordPress | `requests` (đã có) | |
+
+Riêng **bộ chuyển Markdown → HTML** (cần cho bước 2 mục 4.3) thuộc Giai đoạn 5: lúc đó mới cân nhắc `markdown-it-py` hay tự viết; không quyết ở đây.
+
+---
+
+## Đối chiếu tiêu chí xong
+
+- [x] Báo cáo có đủ 8 mục, nguồn rõ ràng (`file:dòng` SiteSEO 1.4.2, lõi WordPress 6.9, 8 URL đã GET)
+- [x] Không có thay đổi code, cấu hình hay test (chỉ file này: `git diff main --stat`)
+- [x] Đẩy báo cáo lên nhánh `team/T-033`
+
+## Rủi ro và điểm cần chú ý
+
+- **Chưa xác minh** (cần tài khoản, ngoài phạm vi phiếu): Biên tập viên có ghi được 4 khóa meta đang mở không; công tắc Abilities đang bật hay tắt; site có SiteSEO Pro không; đoạn code nào của site mở 4 khóa và xuất Article/Breadcrumb/LocalBusiness (theme `prometal-0` hay Code Snippets).
+- Site có các đường REST nhạy cảm: `/code-snippets/v1/…` (chạy mã PHP), `/prometal/v1/deploy-files`, `/prometal/v1/purge`. Client của phần mềm nên có **danh sách đường được gọi cố định** (`wp/v2/posts|pages|media|categories|tags|users/me`, 2 ability SiteSEO) và từ chối mọi đường khác. Đề xuất Lá Chắn đưa vào yêu cầu T-039.
+- Abilities ghi được cả bài đã đăng: phần mềm phải tự chặn (mục 1.4). Đây là điểm Lá Chắn cần soát kỹ nhất ở T-039.
+- Đoạn mã mu-plugin (mục 2) chưa chạy thử và chưa qua Lá Chắn.
+- `robots.txt` có `Disallow: /wp-json/`: chỉ ảnh hưởng bot tìm kiếm, **không** chặn phần mềm gọi REST.
+
+## Đề xuất
+
+- Thư Ký: chú thích đầu `config/ai.toml` còn ghi "`openai` và `gemini` sẽ thêm sau" (đã có từ T-018), nên sửa.
+- Chỉ Huy: báo chủ dự án các lỗi trên site ở câu 4 (không thuộc phần mềm).
+- Cập nhật `docs/plan/README.md` bảng "lệch": mục 6 của yêu cầu phần mềm (cài Rank Math/Yoast, mu-plugin, staging) đã lệch, vì site dùng SiteSEO và đã mở REST một phần.
