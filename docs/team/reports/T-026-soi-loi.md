@@ -156,3 +156,64 @@ Gemini báo câu "uv sync". Anthropic ném `AssertionError`, OpenAI ném `JSONDe
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (kiểm lại sau khi Thợ Máy sửa, nhánh `d8fd392`)
+
+**Kết luận lượt 2: ĐẠT.** Hai điều kiện ở lượt 1 (SL-T026-1, SL-T026-2) đã được sửa đúng. Tôi không tìm
+thêm được lỗi mới. SL-T026-3 vẫn để `xfail` theo quyết định của Chỉ Huy. SL-T026-4 đã chuyển sang phiếu T-028.
+
+### Đã kiểm
+
+- **Thợ Máy chỉ bỏ đúng 3 `xfail` của tôi.** `git diff c906285 d8fd392 -- tests/test_soi_loi_t026.py`
+  chỉ có 9 dòng bị xóa (3 dấu `xfail` của `test_safe_code_drops_www_autolink`,
+  `test_400_code_from_server_cannot_become_link`, `test_check_api_key_renamed_exception_class`), không sửa gì
+  khác. `tests/test_ai_openai_gemini_soi_loi.py` và báo cáo của tôi không bị đụng.
+- **SL-T026-1** (`seo_app/ai/base.py:83-115`). GFM chỉ tự tạo link cho 3 dạng: `www.`, `http(s)://` và email.
+  Bộ ký tự của `safe_code` không có `:`, `/`, `@`, nên chỉ còn dạng `www.` có thể thành link. Thợ Máy bỏ mọi mã chứa
+  `www.` ở bất kỳ vị trí nào, so sánh sau khi đổi sang chữ thường. Cách này phủ đủ mọi dạng GFM nhận, vì GFM nhận
+  `www.` không phân biệt hoa thường, ở đầu dòng, sau dấu cách hoặc sau `*`, `_`, `~`, `(`.
+  - Tôi thử thêm 10 dạng lách: `WwW.evil.com`, `a_www.evil`, `x.www.y`, `www.evil` (không có đuôi), `A_WWW.B_C`…
+    Tất cả đều bị bỏ.
+  - Mã có dạng tên miền với đuôi trong danh sách (`evil.COM`, `login.bank.io`, `phish.localhost`…) bị bỏ.
+  - Punycode `xn--…`, dấu chấm ở đầu/cuối/liền nhau, dấu cách, chữ số đều bị chặn ngay từ bộ ký tự.
+  - Thử ngẫu nhiên 30 000 mã ghép từ `wW._aE` (hạt giống cố định): không mã nào được nhận mà còn chứa `www.`. Với
+    `safe_code` lượt 1, cùng phép thử này lọt 208 mã.
+  - 58 mã thật của 3 hãng vẫn giữ được: mã lỗi và tham số của OpenAI (`reasoning.effort`, `text.format.schema`…),
+    loại lỗi của Anthropic, trạng thái của Gemini.
+  - Ghi chú, không phải lỗi: danh sách đuôi tên miền không đủ, ví dụ `evil.ru` vẫn được giữ. Markdown của
+    Streamlit không tự tạo link cho tên miền trần (không có `www.`), nên đây chỉ là lớp phòng thêm, như Thợ Máy đã
+    ghi ở mục rủi ro.
+- **SL-T026-2** (`seo_app/env_file.py:307-314`).
+  - Đổi tên **từng** lớp lỗi mà 3 hàm `_check_*` dùng tới, 16 trường hợp: 7 của Claude, 6 của ChatGPT, 3 của
+    Gemini (`errors.APIError`, `httpx.TimeoutException`, `httpx.TransportError`). Cả 16 đều ra câu "uv sync" của
+    đúng hãng, không lộ khóa.
+  - `ImportError`/`AttributeError`/`TypeError` ném lúc gọi ra câu "uv sync", cả 3 hãng.
+  - `KeyError` vẫn chỉ nêu tên lỗi, cả 3 hãng.
+  - Đổi tên lớp lỗi cùng lúc với máy trả `KeyError` thì vẫn ra câu "uv sync".
+
+### Test thêm ở lượt 2 (`tests/test_soi_loi_t026.py`)
+
+105 trường hợp, đều qua:
+
+- `test_real_vendor_codes_are_still_kept` (58)
+- `test_www_anywhere_any_case_is_dropped` (10)
+- `test_domain_like_codes_with_listed_tld_are_dropped` (6)
+- `test_other_domain_shapes_fail_charset` (6)
+- `test_no_accepted_code_can_contain_www_property` (1)
+- `test_check_every_renamed_exception_class` (16)
+- `test_check_library_error_types_from_call` (9)
+- `test_check_key_error_still_only_names_it` (3)
+- `test_check_renamed_class_with_key_error_is_library_message` (3)
+
+### Bằng chứng (Windows, máy dự án, nhánh `team/T-026` sau khi thêm test lượt 2)
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest -q -rfE
+2718 passed, 10 skipped, 9 xfailed in 206.76s (0:03:26)
+```
+
+0 hỏng, 0 lỗi. Có 2718 test qua, tức là 2613 của Thợ Máy cộng 105 trường hợp mới của tôi. Có 9 `xfail`: 2 của
+SL-T026-3, 4 của SL-T026-4 (phiếu T-028) và 3 test cũ ngoài phạm vi.
