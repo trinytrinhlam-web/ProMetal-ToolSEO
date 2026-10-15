@@ -38,15 +38,34 @@ Chỉ Huy B, cập nhật 2026-10-15 13:35. **T-026 đã gộp vào `main` (`643
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`efc0529`) | Soi Lỗi xong (Linux xanh 2 lần); Lá Chắn đang kiểm | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
+| [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) Bộ chặn mạng, test chạy trên Linux/Mac | `team/T-029` (`91dbdb9`) | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN**. Soi Lỗi đang thêm dòng bản quyền PSF vào docstring `tests/windows_socketpair.py` | Lá Chắn kiểm; **chạy lại `uv run pytest` trên Windows** (A hoặc chủ dự án) rồi mới gộp |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) Test đo tốc độ | `team/T-025` (`ce1a79c`, đã gộp `main`) | Soi Lỗi làm tiếp, nộp báo cáo | Lá Chắn rút gọn, gộp |
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) Nội dung hỏng từ máy chủ AI | `team/T-028` (từ `main` `64383a5`) | Thợ Máy đang làm | Soi Lỗi, rồi Lá Chắn |
+
+**Việc cần Chỉ Huy A (máy Windows) trước khi gộp T-029 + T-030** (máy cloud của B không có Windows). Chạy trên nhánh `team/T-029`:
+
+```
+git fetch origin
+git switch team/T-029
+git pull
+uv run python -VV
+uv run pytest -q -rs
+uv run pytest -q -rs
+uv run pytest -q tests/test_soi_loi_t027.py tests/test_soi_loi_t029.py tests/test_safety.py -v -k "proactor or vong-lap-mac-dinh or ipv6 or socketpair"
+uv run ruff check .
+```
+
+Đạt khi: hai lượt 0 hỏng, 0 lỗi; không bỏ qua test IPv6 nào (trừ khi máy tắt IPv6); `test_proactor_sendto_is_wrapped_on_windows` và các tham số `vong-lap-mac-dinh` đều **PASSED**. Ghi kết quả vào nhật ký dưới đây. Đạt thì gộp `team/T-029` vào `main`; hỏng thì không gộp, giao lại Soi Lỗi. Chi tiết: `docs/team/reports/T-029-030-la-chan.md`, mục "Phần chưa kiểm được trên Linux".
 
 **Lưu ý cho Chỉ Huy A:** `main` hiện **đỏ trên Linux** (9 test trong `tests/test_soi_loi_t027.py`: thiếu `socket._fallback_socketpair` trên Python 3.12.3, máy không có IPv6). Trên Windows vẫn xanh. Đang sửa ở T-030.
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-15 13:50 · Chỉ Huy B
+
+- Lá Chắn T-029 + T-030 **ĐẠT CÓ ĐIỀU KIỆN** (`91dbdb9`): không lỗi Nghiêm trọng/Cao/Trung bình; 17 phép thử lách đều bị chặn. Điều kiện: (1) chạy test trên Windows (lệnh ở mục "Đang làm dở"); (2) Soi Lỗi thêm bản quyền PSF vào docstring, đang làm. Lỗi Thấp #2 (bộ chặn chỉ xét AF_INET/AF_INET6, có từ trước): không lập phiếu, ghi bảng việc.
 
 ### 2026-10-15 13:45 · Chỉ Huy B
 
