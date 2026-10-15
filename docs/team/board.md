@@ -14,8 +14,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (tha
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-018](tickets/T-018-them-openai-gemini.md) | Thêm AI ChatGPT (OpenAI) và Gemini, thư viện chính hãng (chủ dự án duyệt 2026-10-14) | Thợ Máy (`Thợ Máy · T-018 ChatGPT/Gemini`) → Soi Lỗi (`Soi Lỗi · T-018 ChatGPT/Gemini`) | `team/T-018` | Soi Lỗi lượt 2 **đạt** (654cdb7; còn SL-3, SL-4 mức Thấp). Đã gộp vào `team/T-023` (2.169 test qua). **Lá Chắn đang kiểm** (`Lá Chắn · T-018 + T-023 ChatGPT/Gemini (Opus tạm)`) | [Thợ Máy](reports/T-018-tho-may.md) · [Soi Lỗi](reports/T-018-soi-loi.md) |
-| [T-023](tickets/T-023-nut-kiem-tra-khoa-openai-gemini.md) | Bật nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt → Kết nối | Họa Sĩ (`Họa Sĩ · T-023 Nút Kiểm tra khóa`) → Soi Lỗi (`Soi Lỗi · T-023 Nút Kiểm tra khóa`) | `team/T-023` | Soi Lỗi **đạt**; Họa Sĩ đã sửa 2 lỗi Thấp (67c0be3). **Lá Chắn đang kiểm** chung với T-018 trên `team/T-023`. Lá Chắn kiểm chung T-018 + T-023 | [Họa Sĩ](reports/T-023-hoa-si.md) · [Soi Lỗi](reports/T-023-soi-loi.md) |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ`) | `team/T-025` | Đang làm | |
 | [T-022](tickets/T-022-sua-ho-so-doanh-nghiep.md) | Soát, sửa hồ sơ doanh nghiệp (PR #3 đã gộp vào `main`) | Ngòi Bút (`Ngòi Bút · T-022 Hồ sơ doanh nghiệp`) → Soi Lỗi (`Soi Lỗi · T-022 Hồ sơ doanh nghiệp`) | `team/T-022` | Ngòi Bút xong lượt 2 (dfdffc5), Soi Lỗi lượt 1 **đạt**. Đã gộp vào `team/T-024`, **Lá Chắn đang kiểm** chung | [Ngòi Bút](reports/T-022-ngoi-but.md) · [Soi Lỗi](reports/T-022-soi-loi.md) |
 | [T-024](tickets/T-024-loc-ho-so-theo-khoi.md) | Bộ lọc hồ sơ doanh nghiệp lọc theo cả ý (Ngòi Bút phát hiện ở T-022) | Thợ Máy (`Thợ Máy · T-024 Bộ lọc hồ sơ`) → Soi Lỗi (`Soi Lỗi · T-024 Bộ lọc hồ sơ`) | `team/T-024` | Soi Lỗi lượt 2 **đạt** (2ab85ec). Nhánh đã gộp T-022 và `main` (2.023 test qua). **Lá Chắn đang kiểm** (`Lá Chắn · T-022 + T-024 Hồ sơ doanh nghiệp (Opus tạm)`) | [Thợ Máy](reports/T-024-tho-may.md) · [Soi Lỗi](reports/T-024-soi-loi.md) |
@@ -24,7 +22,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên "Điều phối" (tha
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | T-018 |
+| [T-026](tickets/T-026-loi-thap-lop-ai.md) | Sửa 4 lỗi Thấp lớp AI (LC-1 → LC-4 của Lá Chắn) | Thợ Máy | Còn chỗ (tối đa 3 phiên) |
+| T-019 | Thử mù mô hình trong Cài đặt | Họa Sĩ, Thợ Máy | Chủ dự án chốt mô hình mặc định (có đổi sang Gemini không) |
 | Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
@@ -39,6 +38,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-023](tickets/T-023-nut-kiem-tra-khoa-openai-gemini.md) | Nút Kiểm tra khóa ChatGPT/Gemini trong Cài đặt → Kết nối | Họa Sĩ | 2026-10-15 | [Họa Sĩ](reports/T-023-hoa-si.md) (2 lượt) · [Soi Lỗi](reports/T-023-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-018-023-la-chan.md) (Opus tạm) |
+| [T-018](tickets/T-018-them-openai-gemini.md) | Thêm ChatGPT (`openai`) và Gemini (`google-genai`) vào lớp AI | Thợ Máy | 2026-10-15 | [Thợ Máy](reports/T-018-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-018-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-018-023-la-chan.md) (Opus tạm), 4 lỗi Thấp → T-026 |
 | [T-021](tickets/T-021-sua-loi-kho-nhap-va-env.md) | Sửa lỗi kho nháp và ghi `.env` (2 lượt Thợ Máy) | Thợ Máy | 2026-10-14 | [Báo cáo](reports/T-021-tho-may.md) · [Soi Lỗi](reports/T-016-020-soi-loi.md) lần 2: đạt · Lá Chắn: [**ĐẠT**](reports/T-016-020-la-chan.md) lần 2 (chạy tạm Opus) |
 | [T-020](tickets/T-020-nhap-khoa-api-trong-app.md) | Nhập khóa API Claude/ChatGPT/Gemini trong Cài đặt | Thợ Máy, Họa Sĩ | 2026-10-14 | [Thợ Máy](reports/T-020-tho-may.md) · [Họa Sĩ](reports/T-020-hoa-si.md) · Lá Chắn: **ĐẠT** |
 | [T-017](tickets/T-017-giao-dien-luu-nhap.md) | Tự lưu, mở lại, xóa bài đang soạn | Họa Sĩ | 2026-10-14 | [Báo cáo](reports/T-017-hoa-si.md) · Soi Lỗi: đạt · Lá Chắn: **ĐẠT** |
@@ -70,4 +71,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-026
+## Số phiếu tiếp theo: T-027
