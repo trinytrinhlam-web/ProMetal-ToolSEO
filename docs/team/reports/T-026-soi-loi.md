@@ -108,8 +108,17 @@ Số test hỏng: 152
 Nằm ngoài danh sách đỏ sẵn: 0
 
 # Sau khi thêm test
-KET_QUA_SAU
+$ uv run pytest -q -rfE
+145 failed, 2394 passed, 10 skipped, 18 xfailed, 57 warnings, 7 errors in 186.38s (0:03:06)
+$ uv run python compare_failures.py t026_soiloi_run2.txt windows_baseline_failures.txt
+Số test hỏng: 152
+Nằm ngoài danh sách đỏ sẵn: 0
 ```
+
+Chênh lệch: **+144 passed, +15 xfailed**, khớp đúng 159 trường hợp mới (144 qua, 15 `xfail(strict=True)`).
+152 test hỏng còn lại (145 failed + 7 errors) đều nằm trong danh sách đỏ sẵn trên Windows (phiếu T-027), giống
+hệt trước khi thêm test. Không gặp test đo tốc độ chập chờn trong hai lần chạy.
+
 
 15 xfail mới đều thất bại đúng lý do: tôi chạy với `--runxfail` và đối chiếu từng lỗi. `safe_code('www.evil.com')`
 trả `'www.evil.com'`. `check_api_key` ném `AttributeError: module 'anthropic' has no attribute 'AuthenticationError'`.
