@@ -34,13 +34,14 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 18:42. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-15 18:43. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) Thử mù mô hình | `team/T-019` (`94a2813`) | Thợ Máy lượt 2 xong (Linux 3.222 qua). Chỉ Huy B chấp nhận commit `4223a8c` sửa `seo_app/ai/` (ghi trong phiếu). Soi Lỗi đang kiểm lại | Soi Lỗi kiểm lại (có đụng `seo_app/ai/`), rồi Lá Chắn (A1, U1, S2), ĐẠT thì gộp |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | chưa có | Chờ T-019 lên `main` | Giao Thợ Máy |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (từ `main`) | Mới giao Thợ Máy | Soi Lỗi, Lá Chắn (A1, A3), gộp |
+| [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) Thiết kế Giai đoạn 4 | `team/T-033` (từ `main`) | Mới giao Thợ Máy (chỉ viết báo cáo thiết kế, không code) | Chỉ Huy đọc, gộp báo cáo; hỏi chủ dự án các câu trong báo cáo; lập phiếu code sau khi T-019 lên `main` |
 
 ## Nhật ký bàn giao
 
@@ -49,7 +50,7 @@ _Mục mới nhất ở trên cùng._
 ### 2026-10-15 18:42 · Chỉ Huy B
 
 - Lá Chắn T-025 (rút gọn, Opus tạm) **ĐẠT** (`790b6c0`). Gộp T-025 vào `main` (`39065cd`): Linux 3.133 qua, 0 hỏng; ruff sạch. **Việc cho A khi ngồi máy Windows:** chạy `uv run pytest` một lượt để xác nhận 6 test đồng hồ kiểu Windows (`tests/test_soi_loi_t025.py`) qua trên máy thật. Xóa nhánh `team/T-025` giúp.
-- Lập T-032 (bộ lọc hồ sơ nhận nhãn gõ sai), giao Thợ Máy. Số phiếu tiếp theo: **T-033**.
+- Lập T-032 (bộ lọc hồ sơ nhận nhãn gõ sai), giao Thợ Máy. Số phiếu tiếp theo: **T-034** (đã lập thêm T-033 thiết kế Giai đoạn 4).
 - Chủ dự án dặn B chạy tự động tới khi hết hạn mức, không hỏi lại.
 
 ### 2026-10-15 18:02 · Chỉ Huy B nhận quyền
