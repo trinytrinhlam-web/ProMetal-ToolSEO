@@ -528,6 +528,14 @@ def test_gemini_known_400_gets_written_hint_not_server_text():
         "code_with_digit_1",
         "a" * 41,
         "**đậm**",
+        # Lượt 2 (SL-T026-1): dạng có thể thành link khi hiện bằng Markdown GFM.
+        "www.evil.com",
+        "WWW.Evil.Com",
+        "invalid_www.evil",
+        "evil.com",
+        "phishing.example",
+        "login.bank.vn",
+        "a.b.io",
         "<b>x</b>",
         "",
         12345,
@@ -708,3 +716,41 @@ def test_gemini_config_contents_still_correct():
         tool.model_dump(mode="json", exclude_none=True, by_alias=True) for tool in config.tools
     ]
     assert tools == [{"googleSearch": {}}]
+
+
+@pytest.mark.parametrize("vendor", ["anthropic", "openai", "gemini"])
+def test_400_link_like_codes_never_reach_message(vendor):
+    # Lượt 2 (SL-T026-1): mã/tham số/trạng thái lạ dạng link của máy chủ bị bỏ ở cả 3 hãng.
+    handlers = {
+        "anthropic": lambda r: anthropic_400("x", "www.evil.com"),
+        "openai": lambda r: openai_400("x", "www.evil.com", "login.bank.vn"),
+        "gemini": lambda r: gemini_400("x", "evil.com"),
+    }
+    make = {"anthropic": anthropic_real, "openai": openai_real, "gemini": gemini_real}[vendor]
+    provider, _ = make(handlers[vendor])
+    with pytest.raises(AIError) as info:
+        generate(provider, vendor)
+    message = str(info.value)
+    assert "(lỗi 400)" in message
+    assert "www" not in message.lower() and "evil" not in message and "bank" not in message
+
+
+@pytest.mark.parametrize(
+    ("name", "key", "label", "module", "attr"),
+    [
+        ("ANTHROPIC_API_KEY", ANTHROPIC_KEY, "Claude", anthropic, "RateLimitError"),
+        ("OPENAI_API_KEY", OPENAI_KEY, "ChatGPT", openai, "APIStatusError"),
+        ("GEMINI_API_KEY", GEMINI_KEY, "Gemini", httpx, "TimeoutException"),
+    ],
+)
+def test_check_renamed_exception_class_is_library_message(
+    monkeypatch, name, key, label, module, attr
+):
+    # Lượt 2 (SL-T026-2): lớp lỗi bị đổi tên thì chính câu "except <lớp>" ném AttributeError;
+    # check_api_key vẫn trả câu "uv sync", không ném lỗi thô.
+    monkeypatch.delattr(module, attr)
+    error = ValueError(f"lỗi bất kỳ {key}")
+    client = SimpleNamespace(models=SimpleNamespace(list=lambda **k: (_ for _ in ()).throw(error)))
+    result = env_file.check_api_key(name, api_key=key, client=client)
+    assert result.status == "unknown"
+    assert result.message == library_message(label)

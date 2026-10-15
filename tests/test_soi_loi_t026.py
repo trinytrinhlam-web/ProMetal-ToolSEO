@@ -222,10 +222,6 @@ def test_safe_code_length_boundary():
     assert safe_code("a.b_c") == "a.b_c"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T026-1: safe_code giữ 'www.evil.com'; st.error hiện Markdown GFM nên thành link",
-)
 @pytest.mark.parametrize("code", ["www.evil.com", "WWW.EVIL.COM", "www.phishing.example"])
 def test_safe_code_drops_www_autolink(code):
     # Streamlit hiện st.error bằng Markdown có GFM: "www.xxx.yyy" sau dấu cách tự thành link
@@ -233,7 +229,6 @@ def test_safe_code_drops_www_autolink(code):
     assert safe_code(code) is None
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T026-1: mã lỗi 'www.…' của máy chủ thành link bấm được")
 @pytest.mark.parametrize("vendor", ["anthropic", "openai", "gemini"])
 def test_400_code_from_server_cannot_become_link(vendor):
     with pytest.raises(AIError) as info:
@@ -434,10 +429,6 @@ CHECK_CASES = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T026-2: check_api_key để lọt AttributeError thô khi thư viện đổi tên lớp lỗi",
-)
 @pytest.mark.parametrize(("name", "key", "label", "module", "attr"), CHECK_CASES)
 def test_check_api_key_renamed_exception_class(monkeypatch, name, key, label, module, attr):
     # Nút Kiểm tra khóa (env_file) cũng phải ra câu "uv sync" khi thư viện lệch (phiếu T-026,

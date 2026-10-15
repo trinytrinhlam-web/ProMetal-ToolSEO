@@ -304,7 +304,13 @@ def check_api_key(
     api_key = (api_key or "").strip()
     if not api_key:
         return KeyCheckResult("missing", f"Chưa khai báo khóa {label}.")
-    return checker(api_key, client=client, timeout=timeout)
+    try:
+        return checker(api_key, client=client, timeout=timeout)
+    except _CALL_LIBRARY_ERRORS:
+        # Thư viện đổi tên lớp lỗi (bỏ anthropic.AuthenticationError…): chính câu
+        # "except anthropic.AuthenticationError" ném AttributeError, lọt khỏi khối try bên trong
+        # (Soi Lỗi SL-T026-2). Bắt ở đây để vẫn ra câu "uv sync".
+        return _library_result(label)
 
 
 def _result(status: CheckStatus, message: str) -> KeyCheckResult:

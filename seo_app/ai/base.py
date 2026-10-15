@@ -80,11 +80,37 @@ def library_error(label: str) -> AIError:
 # không dấu, nối bằng "_" hoặc ".". Không có số, dấu cách hay ký tự Markdown, nên không thể là
 # khóa API hay câu thô của máy chủ.
 _SAFE_CODE = re.compile(r"[A-Za-z]+(?:[_.][A-Za-z]+)*")
+# Câu lỗi hiện bằng st.error (Markdown có GFM). Với bộ ký tự trên, http(s):// và email không thể
+# có (thiếu ":", "/", "@"), nhưng "www.x.y" tự thành link bấm được, kể cả khi đứng sau "_"
+# (Soi Lỗi SL-T026-1). Bỏ mọi mã có "www."; bỏ thêm mã có dạng tên miền (đuôi là tên miền cấp
+# cao quen thuộc) phòng khi câu được hiện ở nơi tự biến "ten.com" thành link. Mã thật của 3 hãng
+# không có dạng này; bỏ nhầm thì chỉ mất phần gợi ý, câu báo vẫn đúng.
+_LINK_TLDS = frozenset((
+    "com", "net", "org", "edu", "gov", "int", "mil", "io", "vn", "co", "info", "biz", "xyz",
+    "app", "dev", "ai", "me", "us", "uk", "tv", "cc", "ly", "to", "gg", "sh", "site", "online",
+    "top", "club", "shop", "store", "link", "click", "example", "test", "local", "localhost",
+    "invalid",
+))  # fmt: skip
+
+
+def _looks_like_link(value: str) -> bool:
+    lower = value.lower()
+    if "www." in lower:
+        return True
+    return "." in lower and lower.rsplit(".", 1)[1] in _LINK_TLDS
 
 
 def safe_code(value: object) -> str | None:
-    """``value`` nếu là mã lỗi ngắn an toàn để hiện ra (xem ``_SAFE_CODE``), ngược lại ``None``."""
-    if isinstance(value, str) and len(value) <= 40 and _SAFE_CODE.fullmatch(value):
+    """``value`` nếu là mã lỗi ngắn an toàn để hiện ra (xem ``_SAFE_CODE``), ngược lại ``None``.
+
+    Không bao giờ trả về thứ có thể thành link (``www.…``, ``ten.com``).
+    """
+    if (
+        isinstance(value, str)
+        and len(value) <= 40
+        and _SAFE_CODE.fullmatch(value)
+        and not _looks_like_link(value)
+    ):
         return value
     return None
 
