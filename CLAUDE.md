@@ -146,3 +146,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-15: Gộp T-027 vào `main`: bộ test chạy xanh trên Windows (bộ chặn mạng cho qua đúng cặp socket nội bộ của asyncio, chặn ConnectEx; tên ngắn cho test dữ liệu lớn). Trên Windows 2.358 test qua, 0 hỏng.
 - 2026-10-15: Chỉ Huy B gộp T-026 (lớp AI chịu được thư viện lệch phiên bản, câu lỗi 400 cố định, địa chỉ máy chủ chính thức cố định). Chỉ Huy A gộp T-029 + T-030 (bộ chặn mạng của test chặn thêm UDP, tra tên; test chạy được trên Linux/Mac) và T-028 (nội dung hỏng từ máy chủ AI ra câu lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS`). Windows 3.110 test qua.
 - 2026-10-15: Gộp T-026 vào `main`: lớp AI chịu được thư viện lệch phiên bản, câu lỗi 400 cố định (không chép câu máy chủ), client 3 hãng dùng địa chỉ chính thức cố định. Lá Chắn ĐẠT (Opus tạm).
+- 2026-10-15: Gộp T-025 vào `main`: test đo tốc độ không còn đỏ oan (đo xen kẽ nhỏ/lớn, lấy lần nhanh nhất; ngưỡng giữ nguyên). Lá Chắn ĐẠT (Opus tạm).

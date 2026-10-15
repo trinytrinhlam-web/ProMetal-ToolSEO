@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-15 18:37 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-15 18:42 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -10,7 +10,7 @@ _Cập nhật: 2026-10-15 18:37 (Chỉ Huy B giữ quyền điều phối; xem [
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-026, T-027, T-028, T-029, T-030.
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-025, T-026, T-027, T-028, T-029, T-030.
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -23,7 +23,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy (`Thợ Máy · T-019 Thử mù mô hình`) → Họa Sĩ (`Họa Sĩ · T-019 Thử mù mô hình`) | `team/T-019` | Thợ Máy xong logic (`d2bfa8c`, 39 test). Họa Sĩ xong giao diện (`0d09f4d`, 14 test; Linux chỉ 9 test đỏ sẵn của T-027). Soi Lỗi **đạt có điều kiện** (`e3cee76`): SL-T019-1 AI tự xưng tên lọt lớp che (`_Claude_`, `Opus`…), SL-T019-2 tên mô hình quá ngắn làm hỏng bài mọi ứng viên. Thợ Máy lượt 2 **xong** (`94a2813`, Linux 3.222 qua, 0 hỏng; Chỉ Huy B chấp nhận phần sửa `seo_app/ai/`, ghi trong phiếu). **Soi Lỗi đang kiểm lại** (`Soi Lỗi · T-019 Thử mù mô hình (lượt 2)`), rồi Lá Chắn | [Thợ Máy](reports/T-019-tho-may.md) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md) |
-| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi (`Soi Lỗi · T-025 Test đo tốc độ (tiếp)`) → Lá Chắn | `team/T-025` | Soi Lỗi **xong** (`a36a943`): helper đo xen kẽ nhỏ/lớn, lấy lần nhanh nhất; 1.000 lần đo: trước sửa hỏng 25, sau sửa 0; pytest thật 150 lần (cả lúc máy bận) 0 hỏng; Linux 3.133 qua. Ngưỡng 9 giữ nguyên. **Lá Chắn rút gọn đang kiểm** (`Lá Chắn · T-025 Test đo tốc độ (rút gọn, Opus tạm)`) | [Soi Lỗi](reports/T-025-soi-loi.md) |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy (`Thợ Máy · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai`) | `team/T-032` | Đã giao | |
 
 ## Chờ
@@ -48,6 +47,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi | 2026-10-15 | [Soi Lỗi](reports/T-025-soi-loi.md): 1.000 lần đo, trước sửa hỏng 25, sau sửa 0; ngưỡng 9 giữ nguyên · Lá Chắn rút gọn: [**ĐẠT**](reports/T-025-la-chan.md) (Opus tạm). Gộp vào `main` `39065cd`: Linux 3.133 qua, 0 hỏng. Nên chạy lại trên Windows (6 test đồng hồ kiểu Windows mới kiểm bằng đồng hồ giả) |
 | [T-029](tickets/T-029-bo-chan-mang-udp-va-dns.md) + [T-030](tickets/T-030-test-t027-chay-tren-linux-mac.md) | Bộ chặn mạng chặn thêm UDP, tra tên; test T-027 chạy được trên Linux/Mac | Soi Lỗi | 2026-10-15 | [Soi Lỗi](reports/T-029-soi-loi.md) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-029-030-la-chan.md) (Opus tạm). Điều kiện chạy trên Windows: Chỉ Huy A chạy 2 lượt, 2.758 qua, 0 hỏng; test IPv6, Proactor, `vong-lap-mac-dinh` đều qua. Gộp vào `main` `7c8604e` |
 | [T-028](tickets/T-028-noi-dung-hong-tu-may-chu-ai.md) | Máy chủ AI trả 200 nhưng nội dung hỏng → câu lỗi tiếng Việt; bỏ qua `*_CUSTOM_HEADERS` | Thợ Máy | 2026-10-15 | [Thợ Máy](reports/T-028-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-028-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-028-la-chan.md) (Opus tạm), 3 lỗi Thấp ghi sổ. Gộp vào `main` `d08f8ca`: Windows 3.110 qua, 0 hỏng |
 | [T-026](tickets/T-026-loi-thap-lop-ai.md) | 4 lỗi Thấp lớp AI: thư viện lệch phiên bản, câu lỗi 400 cố định, `base_url` chính thức | Thợ Máy | 2026-10-15 | [Thợ Máy](reports/T-026-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-026-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-026-la-chan.md) (Opus tạm, Chỉ Huy B giao lại) |
