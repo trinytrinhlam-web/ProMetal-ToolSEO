@@ -49,6 +49,7 @@ from seo_app.ai.base import (
     bad_request_error,
     bad_response_message,
     library_error,
+    token_limit_error,
 )
 
 LABEL = "Google Gemini"
@@ -266,10 +267,7 @@ def _text(response: Any, task: TaskConfig) -> str:
         raise AIError(BAD_SHAPE)
     reason = getattr(candidates[0], "finish_reason", None)
     if reason == types.FinishReason.MAX_TOKENS:
-        raise AIError(
-            f"Bài dài quá giới hạn ({task.max_tokens} token). Tăng max_tokens của việc "
-            f"«{task.name}» trong config/ai.toml."
-        )
+        raise token_limit_error(task)
     if reason in _BLOCKED:
         raise AIError(REFUSAL)
     content = getattr(candidates[0], "content", None)

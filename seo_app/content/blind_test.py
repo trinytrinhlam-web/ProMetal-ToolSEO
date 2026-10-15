@@ -21,7 +21,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from seo_app.ai import AIError, TaskConfig, load_ai_config, make_provider
-from seo_app.ai.base import EFFORTS
+from seo_app.ai.base import EFFORTS, TokenLimitError
 from seo_app.ai.registry import AI_CONFIG_FILE, PROVIDERS
 from seo_app.config import Settings
 from seo_app.content import prompts
@@ -45,16 +45,36 @@ HIDDEN_ERROR = (
     "bấm hiện tên mô hình."
 )
 UNEXPECTED_ERROR = "Gặp lỗi không mong đợi khi gọi AI. Thử lại sau ít phút."
+# Bài bị cắt vì chạm giới hạn token: giới hạn của thử mù cố định trong code (BLIND_MAX_TOKENS),
+# không đọc từ config/ai.toml, nên câu của lớp AI ("tăng max_tokens của việc …") không làm được.
+# Mô hình suy nghĩ kỹ tính cả phần suy nghĩ vào giới hạn này, nên hạ effort là cách sửa thật.
+TOKEN_LIMIT_ERROR = (
+    f"Bài thử dài quá giới hạn {BLIND_MAX_TOKENS} token của phần thử mù (mô hình suy nghĩ càng kỹ "
+    "càng dùng nhiều phần giới hạn này). Chọn effort thấp hơn (low hoặc medium) cho ứng viên này "
+    "rồi chạy lại."
+)
 # Không có "[", "]", "(", ")": chữ che chạy SAU ``clean_ai_text`` nên không được ghép thành link.
 MASK = "«đã ẩn tên mô hình»"
+# Tên mô hình dùng để che: phải có chữ cái và (dài từ 3 ký tự hoặc có chữ số, như "o3"). Tên
+# gõ nhầm kiểu "c", "10", "co" sẽ che mất chữ thường ("Cửa", "của", "10 năm") trong bài của mọi
+# ứng viên (Soi Lỗi SL-T019-2), nên bị từ chối ngay ở ``validate_request`` (xem ``_maskable``).
 
-# Tên hãng / dòng mô hình AI: bài viết về cửa sắt không cần tới, nên AI tự xưng tên thì che
-# để không lộ ứng viên trước khi chấm. "Google" đứng riêng không che (bài hay nói "tìm trên
-# Google"); "Google Gemini" bị che cả cụm.
-_VENDOR_WORDS = re.compile(
-    r"(?<![\w-])(?:google\s+gemini|claude|anthropic|openai|chatgpt|gpt|gemini|bard)(?:[\w.-]*\w)?",
-    re.IGNORECASE,
-)
+# Ranh giới trước tên: không đứng sau chữ/số hay "-" (để "o3" không ăn vào giữa từ), nhưng
+# ĐƯỢC đứng sau "_" vì Markdown viết nghiêng/đậm bằng gạch dưới (``_Claude_``, ``__Gemini__``;
+# Soi Lỗi SL-T019-1). Phía sau che cả đuôi tự thêm ("gpt-5.1-mini", "Claude's") nhưng không ăn
+# "_" cuối, để Markdown vẫn đóng đúng.
+_BEFORE = r"(?<![^\W_]|-)"
+_TAIL = r"(?:[\w.-]*[^\W_])?"
+# Tên hãng, công ty, dòng mô hình AI của 3 hãng: bài về cửa sắt không cần tới, nên AI tự xưng
+# tên thì che để không lộ ứng viên trước khi chấm. "Google" đứng riêng
+# không che (bài hay nói "tìm trên Google"); "Google Gemini", "Google DeepMind"… che cả cụm.
+_VENDOR_NAMES = (
+    r"google\s+(?:gemini|deepmind|bard|gemma|ai\s+studio)",
+    "claude", "anthropic", "opus", "sonnet", "haiku", "fable",
+    "openai", "chatgpt", "gpt", "dall-e", "dalle", "sora", "codex",
+    "gemini", "gemma", "bard", "deepmind", r"palm[\s-]?2",
+)  # fmt: skip
+_VENDOR_WORDS = re.compile(_BEFORE + "(?:" + "|".join(_VENDOR_NAMES) + ")" + _TAIL, re.IGNORECASE)
 
 TASK_LABELS = {
     "research": "Nghiên cứu, phân tích đối thủ",
@@ -212,18 +232,29 @@ def validate_request(
             raise AIError(f"Ứng viên {i}: chưa chọn hãng AI.")
         if not model or len(model) > MAX_MODEL_CHARS or any(ch.isspace() for ch in model):
             raise AIError(f"Ứng viên {i}: tên mô hình trống hoặc viết sai (không có dấu cách).")
+        if not _maskable(model):
+            raise AIError(
+                f"Ứng viên {i}: tên mô hình «{model}» quá ngắn hoặc gõ nhầm. Ghi đúng tên đầy đủ, "
+                "ví dụ claude-opus-5-5, gpt-6.1, gemini-3-pro."
+            )
         if effort not in EFFORTS:
             raise AIError(f"Ứng viên {i}: effort phải là một trong {', '.join(EFFORTS)}.")
         clean.append(Candidate(provider=provider, model=model, effort=effort))
     return keyword, note, clean
 
 
+def _maskable(model: str) -> bool:
+    """Tên mô hình đủ rõ để che an toàn: có chữ cái, và dài từ 3 ký tự hoặc có chữ số ("o3")."""
+    has_letter = any(ch.isalpha() for ch in model)
+    has_digit = any(ch.isdigit() for ch in model)
+    return has_letter and (len(model) >= 3 or (len(model) == 2 and has_digit))
+
+
 def _mask_names(text: str, models: Sequence[str]) -> str:
-    for model in sorted(set(models), key=len, reverse=True):
-        # Chỉ chặn ký tự chữ đứng TRƯỚC (để "o3" không ăn vào giữa từ); phía sau thì che cả
-        # đuôi tự thêm như "gpt-5.1-mini".
-        pattern = r"(?<![\w-])" + re.escape(model) + r"(?:[\w.-]*\w)?"
-        text = re.sub(pattern, MASK, text, flags=re.IGNORECASE)
+    # Chỉ che tên đủ rõ (``_maskable``): tên gõ nhầm quá ngắn không được che chữ thường của bài.
+    names = {m for m in models if _maskable(m)}
+    for model in sorted(names, key=len, reverse=True):
+        text = re.sub(_BEFORE + re.escape(model) + _TAIL, MASK, text, flags=re.IGNORECASE)
     return _VENDOR_WORDS.sub(MASK, text)
 
 
@@ -240,6 +271,9 @@ def _call(candidate: Candidate, settings: Settings, system: str, prompt: str) ->
     try:
         provider = make_provider(candidate.provider, settings)
         return provider.generate(task, system=system, prompt=prompt, schema=BlindSample)
+    except TokenLimitError:
+        # Câu của lớp AI bảo sửa mục «blind_test» trong config/ai.toml, mà mục đó không có.
+        return TOKEN_LIMIT_ERROR
     except AIError as exc:
         return str(exc)
     except Exception:  # noqa: BLE001 - một ứng viên hỏng không được làm hỏng cả lượt thử

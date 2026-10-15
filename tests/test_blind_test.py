@@ -9,12 +9,14 @@ import re
 import pytest
 
 from seo_app.ai import AIError
+from seo_app.ai.base import TokenLimitError, token_limit_error
 from seo_app.config import Settings
 from seo_app.content import blind_test, prompts
 from seo_app.content.blind_test import (
     BLIND_MAX_TOKENS,
     HIDDEN_ERROR,
     MASK,
+    TOKEN_LIMIT_ERROR,
     UNEXPECTED_ERROR,
     BlindSample,
     Candidate,
@@ -385,3 +387,141 @@ def test_task_models_real_config_and_bad_file(tmp_path):
     bad.write_text("[tasks.write\n", encoding="utf-8")
     with pytest.raises(AIError):
         blind_test.task_models(bad)
+
+
+# ------------------------------------------------------------------ lượt 2 (Soi Lỗi T-019)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Tôi là _Claude_, rất vui.",
+        "Bài do __Gemini__ viết.",
+        "Viết bởi *ChatGPT* và _gpt-5.1-mini_.",
+        "Tôi là Claude Opus 5.5.",
+        "Bản Sonnet viết nhanh, bản Haiku rẻ hơn, bản Fable mới nhất.",
+        "Theo Google DeepMind và Google Bard.",
+        "Mô hình Gemma, PaLM 2, DALL-E, Sora, Codex của OpenAI.",
+        "ANTHROPIC_Claude_x",
+    ],
+)
+def test_family_names_and_underscore_markdown_are_masked(text):
+    # SL-T019-1: tên sau "_" (Markdown nghiêng/đậm) và tên dòng mô hình / công ty đều bị che.
+    out = blind_test._mask_names(text, [])
+    for word in (
+        "claude", "anthropic", "opus", "sonnet", "haiku", "fable", "openai", "chatgpt", "gpt",
+        "gemini", "gemma", "deepmind", "bard", "palm", "dall", "sora", "codex",
+    ):  # fmt: skip
+        assert word not in out.lower(), word
+    assert MASK in out
+
+
+def test_markdown_underscores_still_close_around_mask():
+    # Đuôi che không ăn "_" cuối: "_Claude_" thành "_«…»_" (vẫn là chữ nghiêng hợp lệ).
+    assert blind_test._mask_names("Tôi là _Claude_.", []) == f"Tôi là _{MASK}_."
+    assert blind_test._mask_names("__Gemini__", []) == f"__{MASK}__"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Tìm trên Google rồi gọi thợ.",
+        "Cửa cuốn của chúng tôi bền 10 năm.",
+        "Mã sản phẩm GPX-200, khóa cửa Gemi-Lock, bản lề x-claude.",
+    ],
+)
+def test_ordinary_text_is_not_masked(text):
+    # "Google" đứng riêng, số liệu, tên đứng giữa từ (sau chữ cái hoặc "-") không bị che.
+    assert blind_test._mask_names(text, ["gpt-5.1", "claude-opus-5-5"]) == text
+
+
+@pytest.mark.parametrize(
+    ("model", "ok"),
+    [
+        ("c", False),
+        ("10", False),
+        ("123", False),
+        ("co", False),
+        ("--", False),
+        ("o3", True),
+        ("o4-mini", True),
+        ("gpt", True),
+        ("gemini-3-pro", True),
+    ],
+)
+def test_short_or_mistyped_model_names(vendor, model, ok):
+    # SL-T019-2: tên quá ngắn / không có chữ cái bị từ chối trước khi gọi AI (chưa tốn tiền).
+    candidates = [CANDIDATES[0], Candidate("openai", model)]
+    if ok:
+        entries, reveal = _run(candidates)
+        assert {r.model for r in reveal.values()} == {"claude-opus-5-5", model}
+    else:
+        with pytest.raises(AIError, match="quá ngắn hoặc gõ nhầm"):
+            _run(candidates)
+        assert vendor["calls"] == []
+
+
+def test_short_names_are_never_used_for_masking():
+    # Phòng thủ thêm: kể cả khi được gọi trực tiếp, tên ngắn không che chữ thường.
+    text = "Cửa cuốn của chúng tôi bền 10 năm."
+    assert blind_test._mask_names(text, ["c", "10", "co"]) == text
+    assert blind_test._mask_names("Dùng o3-mini viết.", ["o3"]) == f"Dùng {MASK} viết."
+
+
+def test_token_limit_message_points_to_effort_not_missing_config(vendor):
+    # Lượt 2, yêu cầu 3: config/ai.toml không có mục «blind_test», nên câu lỗi khi bài bị cắt
+    # phải chỉ cách làm được thật (hạ effort), không bảo sửa mục không tồn tại.
+    task = blind_test.TaskConfig(
+        name=blind_test.TASK_NAME, provider="openai", model="gpt-5.1", max_tokens=BLIND_MAX_TOKENS
+    )
+    vendor["fail"]["gpt-5.1"] = token_limit_error(task)
+    _, reveal = _run()
+    errors = [r.error for r in reveal.values() if r.error]
+    assert errors == [TOKEN_LIMIT_ERROR]
+    assert "config/ai.toml" not in TOKEN_LIMIT_ERROR and "blind_test" not in TOKEN_LIMIT_ERROR
+    assert str(BLIND_MAX_TOKENS) in TOKEN_LIMIT_ERROR and "effort" in TOKEN_LIMIT_ERROR
+
+
+def test_token_limit_error_keeps_old_message_for_other_tasks():
+    task = blind_test.TaskConfig(name="write", provider="openai", model="m", max_tokens=16000)
+    error = token_limit_error(task)
+    assert isinstance(error, TokenLimitError) and isinstance(error, AIError)
+    assert str(error) == (
+        "Bài dài quá giới hạn (16000 token). Tăng max_tokens của việc «write» trong config/ai.toml."
+    )
+
+
+def test_every_provider_raises_token_limit_error():
+    # Ba hãng cùng ném TokenLimitError (lớp con của AIError) khi bài bị cắt vì giới hạn token.
+    from types import SimpleNamespace
+
+    from google.genai import types
+
+    from seo_app.ai import anthropic_provider, gemini_provider, openai_provider
+
+    task = blind_test.TaskConfig(name="write", provider="openai", model="m", max_tokens=100)
+    cut = SimpleNamespace(
+        status="incomplete", incomplete_details=SimpleNamespace(reason="max_output_tokens")
+    )
+    with pytest.raises(TokenLimitError):
+        openai_provider._parse(cut, task, BlindSample)
+
+    candidate = SimpleNamespace(finish_reason=types.FinishReason.MAX_TOKENS, content=None)
+    with pytest.raises(TokenLimitError):
+        gemini_provider._text(SimpleNamespace(prompt_feedback=None, candidates=[candidate]), task)
+
+    message = SimpleNamespace(stop_reason="max_tokens", parsed_output=None, content=[])
+
+    class Stream:
+        def __enter__(self):
+            return SimpleNamespace(get_final_message=lambda: message)
+
+        def __exit__(self, *exc):
+            return False
+
+    client = SimpleNamespace(
+        beta=SimpleNamespace(messages=SimpleNamespace(stream=lambda **k: Stream()))
+    )
+    provider = anthropic_provider.AnthropicProvider("k", client=client)
+    with pytest.raises(TokenLimitError):
+        provider.generate(task, system="s", prompt="p", schema=BlindSample)

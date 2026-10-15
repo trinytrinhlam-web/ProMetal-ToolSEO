@@ -153,10 +153,6 @@ LEAKING = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T019-1: bỏ sót tên đứng sau '_' (Markdown nghiêng) và tên dòng mô hình",
-)
 @pytest.mark.parametrize("text", list(LEAKING.values()), ids=list(LEAKING))
 def test_ai_naming_itself_markdown_underscore_and_family_names(monkeypatch, text):
     patch_vendors(monkeypatch, write=lambda task: text)
@@ -166,10 +162,6 @@ def test_ai_naming_itself_markdown_underscore_and_family_names(monkeypatch, text
         assert word not in shown, word
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T019-2: tên mô hình ngắn/gõ nhầm che mất chữ thường trong bài mọi ứng viên",
-)
 @pytest.mark.parametrize("short_model", ["c", "10"])
 def test_short_or_mistyped_model_name_does_not_wreck_other_entries(monkeypatch, short_model):
     # Ứng viên gõ nhầm tên mô hình (máy chủ báo lỗi) không được làm hỏng bài của ứng viên khác:

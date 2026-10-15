@@ -54,6 +54,21 @@ class AIError(RuntimeError):
     """Lỗi khi gọi AI. Thông điệp viết bằng tiếng Việt để hiện thẳng cho người dùng."""
 
 
+class TokenLimitError(AIError):
+    """Câu trả lời bị cắt vì chạm giới hạn ``max_tokens`` của việc.
+
+    Lớp riêng để nơi gọi (ví dụ thử mù, nơi giới hạn không đọc từ ``config/ai.toml``) thay câu
+    gợi ý cho đúng cách người dùng sửa được.
+    """
+
+
+def token_limit_error(task: TaskConfig) -> TokenLimitError:
+    return TokenLimitError(
+        f"Bài dài quá giới hạn ({task.max_tokens} token). Tăng max_tokens của việc "
+        f"«{task.name}» trong config/ai.toml."
+    )
+
+
 # Địa chỉ máy chủ chính thức của từng hãng (security.md W4, mục 2.7). Luôn truyền rõ khi tạo
 # client: thư viện chỉ đọc biến môi trường (OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
 # GOOGLE_GEMINI_BASE_URL) khi không được truyền địa chỉ, nên phần mềm khác trên máy không lái
