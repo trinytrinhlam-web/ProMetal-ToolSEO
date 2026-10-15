@@ -138,3 +138,129 @@ còn trong bài, và bài của ứng viên đúng bị che.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (kiểm lại, 2026-10-15)
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Soi Lỗi (`soi-loi`), bên Chỉ Huy B, cloud Linux · model: Claude Opus 5.5 |
+| Kiểm trên | `team/T-019` tại `94a2813` (Thợ Máy A `4223a8c` + Thợ Máy B `bdf2653`, đã gộp `main`) |
+| Kết luận | **ĐẠT** |
+
+### Tóm tắt (cho chủ dự án)
+
+- Hai lỗi lượt 1 đã sửa đúng. AI tự xưng tên kiểu `_Claude_`, Opus, Sonnet, DeepMind… đều bị che. Tên mô hình gõ nhầm (`c`, `10`, `cho`, `gpt`) bị từ chối trước khi gọi AI, nên không tốn tiền và không làm hỏng bài khác.
+- Phần sửa trong lớp AI (`seo_app/ai/`) không đổi gì ở trang Soạn bài: câu lỗi giống từng chữ, chỗ bắt lỗi vẫn bắt được.
+- Không có tên mô hình thật nào của 3 hãng bị từ chối nhầm (thử 42 tên). Chữ tiếng Việt về cửa sắt không bị che nhầm.
+- Tìm thêm 2 lỗi nhỏ, mức **Thấp**, **không chặn**:
+  - **SL-T019-3:** số phiên bản đứng sau tên còn lộ, ví dụ "Opus 5.5" thành "«đã ẩn» 5.5".
+  - **SL-T019-4:** riêng Claude, khi bài thử bị cắt vì quá dài, câu lỗi vẫn bảo sửa `config/ai.toml`.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t019_luot2.py` | **Mới**, 103 trường hợp: 99 qua, 4 `xfail(strict=True)` (SL-T019-3: 3, SL-T019-4: 1). |
+
+Không sửa code ứng dụng. Không xóa, `skip` hay nới lỏng test nào.
+
+### Xác nhận lỗi lượt 1
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T019-1 | **Đã sửa** | Ở `tests/test_soi_loi_t019.py`, Thợ Máy chỉ bỏ 2 dòng `xfail` (`git diff e3cee76..HEAD`), thân test và danh sách chữ cấm giữ nguyên. Thêm `test_vendor_words_still_masked` (9 câu: `_Claude_`, `**__Gemini__**`, Sora/Codex/Gemma, PaLM 2, dall-e-3, `ChatGPT's`…). Giao diện: `_Claude_` hiện thành `_«đã ẩn tên mô hình»_`, Markdown vẫn đóng đúng. |
+| SL-T019-2 | **Đã sửa** | 2 trường hợp cũ (`c`, `10`) qua, test không đổi. Thêm `test_mistyped_names_rejected_before_any_call`: 20 tên gõ nhầm, gồm từ Việt không dấu, tên hãng trơn, `--`, `..`. Tất cả bị từ chối và **không có lần gọi AI nào**. Trên giao diện, nút Chạy bị khóa kèm câu "quá ngắn hoặc gõ nhầm" (`test_ui_mistyped_model_blocks_run_without_calling`). |
+
+### Ba điểm Thợ Máy nhờ soi
+
+**(1) `TokenLimitError` không đổi hành vi Soạn bài.** Đạt.
+- `TokenLimitError` là lớp con của `AIError`. Mọi chỗ bắt lỗi vẫn là `except AIError`: `app/views/write.py:379` (`ai_call`), `:876`, `app/views/settings.py`, và `except AIError: raise` trong 3 provider. Chỉ `blind_test._call` bắt riêng lớp con. Không có chỗ nào so `type(exc) is AIError`.
+- Thư viện thật OpenAI và Gemini, mạng giả trả bài bị cắt kèm JSON dở dang, với việc `write`, `review`, `rewrite`: câu lỗi giống **từng chữ** câu cũ ở `e3cee76` (`test_token_limit_real_library_same_message_and_still_aierror`, 6 trường hợp).
+- Trang Soạn bài qua AppTest, AI giả chạm giới hạn ở bước viết và ở bước rà soát: hiện đúng câu cũ (lấy `max_tokens` từ `config/ai.toml`), không hiện câu của thử mù, không sập, ở lại bước dàn ý (`test_write_page_token_limit_shows_same_message`). Đối chứng: luồng thường vẫn tới bước bài viết.
+- Thư viện thật Anthropic bị cắt vẫn ra câu "không đúng khuôn…" của T-028, không đổi (`test_token_limit_anthropic_real_library_message_unchanged`). Xem SL-T019-4.
+
+**(2) Luật `_maskable`.** Đạt.
+- 42 tên thật của 3 hãng đều được nhận, cả ở `validate_request` (`test_real_model_names_are_accepted`). Danh sách gồm `o1`, `o3`, `4o`, `o4-mini`, `gpt-5.1`, `ft:gpt-4o-mini:org::abc123`, `computer-use-preview` (không có số), `claude-opus-4@20250514`, `claude-3-5-haiku-latest`, `models/gemini-2.5-pro`, `gemini-flash-lite-latest`, `gemma-3-27b-it`…
+- Ghi nhận: một vài tên gõ nhầm có chữ số vẫn được nhận (`a1`, `x1`, `cửa1`). Hậu quả chỉ là che đúng chữ đó, ví dụ "A1" trong bài. Không đáng sửa.
+
+**(3) Danh sách che mới với bài tiếng Việt.** Đạt.
+- 13 câu về cửa sắt giữ nguyên (`test_vietnamese_door_text_untouched`): "Ô pớt", "ô-pớt", "thợ sơn", "son môi", "anh Sơn", "Hải Phòng", "hai ku-pi-đông", "chị Hài", "pơ-mu", mác thép, số điện thoại, "tìm trên Google"… Âm tiết tiếng Việt không chứa được các cụm `opus`, `sonnet`, `haiku`, `sora`, `gemma`, `bard`, `codex`, `fable`.
+- Ghi nhận, không tính lỗi: danh từ riêng tiếng Anh bắt đầu bằng các chữ trong danh sách vẫn bị che, vì đuôi che ăn tiếp chữ. Ví dụ "bản lề Opus", "cửa sổ Sora", "Claude Monet", "Bardi", "sonneteer", mã hàng "GPT-2000". Việc che chỉ ảnh hưởng phần hiện trước khi chấm, không đụng bài thật, nên chấp nhận được. Ngược lại, "DALL·E 3" (dấu chấm giữa) không bị che. AI viết bài chữ khó tự xưng là DALL·E, nên bỏ qua.
+
+### Lỗi mới
+
+| Mã | Mức | Ở đâu | Cách tái hiện | Mong đợi | Thực tế |
+|---|---|---|---|---|---|
+| **SL-T019-3** | Thấp, không chặn | `seo_app/content/blind_test.py` (`_VENDOR_WORDS`, `_TAIL`) | AI viết `Tôi là Claude Opus 5.5`, `Tôi là GPT 6.1.`, `Gemini 3 Pro viết bài.` Test: `test_version_number_after_vendor_word_is_masked` (3 trường hợp, `xfail(strict)`). | Không còn số phiên bản đi kèm tên. | Thành `«đã ẩn tên mô hình» «đã ẩn tên mô hình» 5.5`, `… 6.1`, `… 3 Pro`. Người quen số phiên bản đoán được hãng. Chỉ xảy ra khi AI không nghe lời dặn cấm tự xưng. Gợi ý: sau một chữ đã che, che thêm phần `\s+\d[\w.]*` (và `Pro`/`Flash`…). Không được che số đứng riêng trong bài: đối chứng `test_version_like_numbers_in_article_are_kept` ("dày 5.5 mm"). |
+| **SL-T019-4** | Thấp, không chặn | `seo_app/ai/anthropic_provider.py:51-60` (nhánh `ValidationError`), `blind_test._call` | Ứng viên Claude, thư viện `anthropic` thật, máy chủ giả trả JSON bị cắt kèm `stop_reason = max_tokens` (đúng như máy chủ thật làm khi chạm giới hạn). Test: `test_blind_token_limit_anthropic_real_library_points_to_effort` (`xfail(strict)`). | Sau khi hiện tên, câu lỗi chỉ cách hạ effort (`TOKEN_LIMIT_ERROR`), như OpenAI và Gemini (`test_blind_token_limit_real_library_points_to_effort` qua). | Ra câu "…tăng max_tokens của việc «blind_test» trong config/ai.toml", mục người dùng không làm theo được. Lý do: thư viện anthropic kiểm khuôn trước khi biết lý do dừng, nên lỗi không đi qua `token_limit_error`. Test cũ của Thợ Máy chỉ dùng stream giả không ném `ValidationError`, nên không bắt được. Gợi ý: ở nhánh đó ném `TokenLimitError` với câu T-028 giữ nguyên, hoặc thử mù nhận ra câu này. |
+
+### Thử trên giao diện (AppTest)
+
+`test_ui_full_flow_three_vendors_names_hidden_until_scored`: 3 hãng, đi đủ luồng: chọn 3 ứng viên → cảnh báo → chạy → chấm → hiện tên.
+- **Cảnh báo:** có "gọi AI 3 lần… tốn tiền", nhãn nút ghi "3 lần".
+- **Ba ứng viên giả:**
+  - Claude viết bài, trong bài tự xưng tên.
+  - OpenAI chạm giới hạn token.
+  - Gemini lỗi, câu lỗi chứa tên mô hình và chữ "Google Gemini".
+- **Trước khi chấm:**
+  - Không tên mô hình nào có ở bất cứ đâu trên trang (markdown, caption, cảnh báo, lỗi, bảng).
+  - Không có "Google Gemini", "Claude", "max_tokens", "config/ai.toml" trong phần kết quả.
+  - Hai ứng viên lỗi hiện cùng một câu `HIDDEN_ERROR`, không có `st.error`.
+  - Chỉ bài có chữ mới có thanh điểm. Chữ tiếng Việt giữ nguyên.
+- **Sau khi chấm:**
+  - Bảng có đủ 3 tên, điểm đúng như đã chọn (8).
+  - Câu lỗi hiện kèm tên: OpenAI ra câu hạ effort, Gemini ra câu gốc.
+  - Nút "Chấm xong" bị khóa. Không lộ khóa nào.
+
+### Bằng chứng (cloud Linux)
+
+```
+$ uv run ruff check .
+All checks passed!
+
+# Trước khi thêm test (94a2813)
+$ uv run pytest -q
+3222 passed, 4 skipped, 9 xfailed, 1 warning in 179.29s
+
+# Sau khi thêm test
+$ uv run pytest -q tests/test_soi_loi_t019_luot2.py
+99 passed, 4 xfailed
+
+$ uv run pytest -q
+3321 passed, 4 skipped, 13 xfailed, 1 warning in 163.93s
+```
+
+0 hỏng. So với trước: +99 passed, +4 xfailed, khớp đúng 103 trường hợp mới. 4 xfail mới đã chạy với `--runxfail` và hỏng đúng lý do: còn chuỗi `5.5`, `6.1`, `3 Pro`; câu của Claude còn `config/ai.toml`.
+
+### Ghi nhận thêm: test chập chờn, có sẵn trên `main`, không do T-019
+
+`tests/test_soi_loi_t028.py::test_other_threads_reading_environment_never_fail` (T-028):
+- Hỏng 1 lần trong một lần chạy toàn bộ (lần chạy toàn bộ sau xanh).
+- Chạy riêng file đó: hỏng **10/10** trên `team/T-019` và **25/25** trên `origin/main` (worktree riêng, cùng file test và cùng `ignoring_custom_headers`).
+- Lỗi: `KeyError('OPENAI_CUSTOM_HEADERS')`. Luồng khác duyệt `os.environ` (`dict(os.environ)`, `urllib.request.getproxies()`) đúng lúc `ignoring_custom_headers` gỡ biến. Khóa `_ENV_LOCK` chỉ chặn các luồng cùng tạo client, không chặn luồng đọc.
+
+Liên quan tới thử mù:
+- Thử mù là chỗ đầu tiên gọi `make_provider` song song ở nhiều luồng.
+- Lỗi chỉ xảy ra khi máy có đặt một biến `*_CUSTOM_HEADERS`. httpx đọc proxy lúc tạo client, mà việc này nằm trong khóa, nên rủi ro thực tế thấp.
+
+Đề xuất: Chỉ Huy lập phiếu riêng cho Thợ Máy (T-028 tiếp) để sửa code hoặc sửa test. Không chặn T-019.
+
+### Đối chiếu tiêu chí xong
+
+- [x] Thử mù chạy được với 2–3 ứng viên khác hãng (giao diện 3 hãng, đủ luồng).
+- [x] Không lộ tên mô hình trước khi chấm: các dạng của lượt 1 đã che. Còn số phiên bản (SL-T019-3, Thấp).
+- [x] Chữ AI không qua HTML, không còn link Markdown (test lượt 1 vẫn qua).
+- [x] Một hãng lỗi / thiếu khóa / thiếu thư viện / chạm giới hạn: hãng khác vẫn chạy, câu lỗi tiếng Việt, không traceback, không lộ khóa.
+- [x] Không có hãng mặc định ngầm.
+- [x] Phần sửa ở `seo_app/ai/` không đổi hành vi Soạn bài.
+- [x] `uv run pytest` 0 hỏng trên Linux, `uv run ruff check .` sạch.
+
+### Đề xuất
+
+- Chuyển T-019 sang Lá Chắn. Phần đáng soi là `seo_app/ai/` ngoài phạm vi ban đầu của phiếu: tôi đã xác nhận không đổi câu lỗi và không đổi chỗ bắt lỗi.
+- SL-T019-3 và SL-T019-4 là Thấp. Sửa ngay trong T-019 hay để phiếu sau, Chỉ Huy quyết. Sửa xong thì bỏ `xfail` của 2 test tương ứng.
+- Lập phiếu cho test chập chờn của T-028 (xem trên).
+
+### Câu hỏi cho chủ dự án
+
+Không có.
