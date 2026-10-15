@@ -1,7 +1,8 @@
 """Soi Lỗi T-032: bộ lọc hồ sơ với nhãn gõ sai, nhãn vắt dòng và nhãn trên tiêu đề.
 
 Thử kiểu gõ Notepad (CRLF, tab, BOM), ký tự vô hình, chữ toàn khổ, dấu tổ hợp tách rời, tiêu
-đề ``#`` sát chữ, tiêu đề thụt lề, tiêu đề lồng nhau. Lỗi chưa sửa: ``xfail(strict=True)``.
+đề ``#`` sát chữ, tiêu đề thụt lề, tiêu đề lồng nhau. Lỗi SL-T032-1..3 đã sửa ở lượt 2 của
+Thợ Máy, bỏ ``xfail``.
 """
 
 import unicodedata
@@ -150,10 +151,9 @@ def test_parenthesis_overfilter_is_accepted():
     assert confirmed_profile("- [CẠN XÁC NHẬN]\n- B") == "- B"
 
 
-# --- Lỗi tìm được (chưa sửa) ----------------------------------------------------------------
+# --- Lỗi tìm được (đã sửa ở lượt 2) ---------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-1: dòng «#chữ» kết thúc mục đang giấu")
 @pytest.mark.parametrize("line", ["#suachuacuasat #cuasat", "#1 khu vực Thủ Đức"])
 def test_hash_word_line_does_not_end_hidden_section(line):
     text = f"## 7. Chất liệu thật {TAG}\n- bí mật A\n{line}\n- bí mật B\n## 8\n- ok"
@@ -161,14 +161,12 @@ def test_hash_word_line_does_not_end_hidden_section(line):
     assert "bí mật" not in out
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-2: tiêu đề có nhãn bị thụt lề không giấu cả mục")
 @pytest.mark.parametrize("indent", [" ", "   ", "\t", "\u00a0"])
 def test_indented_tagged_heading_hides_section(indent):
     text = f"- ok\n\n{indent}## 7. Chất liệu thật {TAG}\n- bí mật A\n\n## 8\n- ok8"
     assert "bí mật" not in _cp(_notepad(text))
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-3: nhãn vắt hai dòng trên tiêu đề không được nhận")
 def test_heading_tag_split_across_lines_hides_section():
     text = "## 7. Chất liệu thật [CẦN XÁC\nNHẬN]\n- bí mật A\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)

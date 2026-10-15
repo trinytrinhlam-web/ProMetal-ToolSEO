@@ -136,11 +136,19 @@ PROFILE = "\n".join(
 
 
 @pytest.mark.parametrize("tag", [TAG, "[can xac nhan]", "(CHƯA XÁC NHẬN)", "[CẦNXÁC NHẬN]"])
-@pytest.mark.parametrize("next_heading", ["## 8. Quy tắc", "# Phụ lục", "##8. Quy tắc"])
+@pytest.mark.parametrize("next_heading", ["## 8. Quy tắc", "# Phụ lục", "#\tPhụ lục", "##"])
 def test_tag_on_h2_hides_section_until_same_or_higher_heading(tag, next_heading):
     out = confirmed_profile(PROFILE.format(tag=tag, next=next_heading))
     assert out == f"# Hồ sơ\n## 6. Kiến thức\n- Ý 6\n\n{next_heading}\n- Ý sau"
     assert "bí mật" not in out
+
+
+@pytest.mark.parametrize("line", ["##8. Quy tắc", "#suachuacuasat", "#1 khu vực"])
+def test_hash_without_space_does_not_end_hidden_section(line):
+    # Lượt 2 (SL-T032-1): chỉ tiêu đề thật («#» rồi khoảng trắng) mới thôi giấu; «##8» gõ thiếu
+    # dấu cách cũng bị giấu theo (an toàn khi nghi ngờ).
+    out = confirmed_profile(PROFILE.format(tag=TAG, next=line))
+    assert out == "# Hồ sơ\n## 6. Kiến thức\n- Ý 6"
 
 
 def test_tag_on_h3_does_not_hide_following_h2():
@@ -199,3 +207,54 @@ def test_hidden_section_is_linear_on_large_input():
     assert time.perf_counter() - start < 5
     assert out.count("## Mục") == 1000
     assert "XÁC NHẬN" not in out
+
+
+# --- Lượt 2: tiêu đề thụt lề có nhãn, nhãn vắt hai dòng trên tiêu đề -------------------------
+
+
+@pytest.mark.parametrize("indent", [" ", "   ", "\t", " "])
+def test_indented_tagged_heading_hides_section_and_keeps_item_before(indent):
+    text = f"- ok\n\n{indent}## 7 {TAG}\n- bí mật\n  ## 7.1 thụt\n- bí mật\n## 8\n- B"
+    assert confirmed_profile(text) == "- ok\n\n## 8\n- B"
+
+
+def test_indented_heading_without_tag_still_belongs_to_block():
+    # Không có nhãn thì giữ cách cũ: dòng thụt lề là dòng tiếp của ý trước.
+    text = "- ok\n  ## không phải tiêu đề\n- B"
+    assert confirmed_profile(text) == text
+
+
+@pytest.mark.parametrize(
+    "first, second",
+    [("[CẦN XÁC", "NHẬN]"), ("[", "CẦN XÁC NHẬN]"), ("(chưa", "xác nhận)"), ("[CAN", "XAC NHAN]")],
+)
+def test_heading_tag_split_across_lines(first, second):
+    text = f"## 6\n- A\n## 7 {first}\n{second} lý do\n- bí mật\n### 7.1\n- bí mật\n## 8\n- B"
+    assert confirmed_profile(text) == "## 6\n- A\n## 8\n- B"
+
+
+def test_heading_tag_split_with_note_between():
+    text = "## 7 [CẦN XÁC\n> ghi chú\nNHẬN]\n- bí mật\n## 8\n- B"
+    assert confirmed_profile(text) == "## 8\n- B"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "## Giá [\n\n- A",
+        "## Giá (tham khảo\n- A",
+        "## Cần [CẦN\n- A khác",
+        "## Câu hỏi (chưa\n- có",
+    ],
+)
+def test_heading_with_open_bracket_not_completed_is_kept(text):
+    # Nửa nhãn ở cuối tiêu đề mà dòng kế không ghép thành nhãn: giữ tiêu đề và dòng kế y nguyên.
+    assert confirmed_profile(text) == text
+
+
+def test_heading_with_half_tag_at_end_of_file_is_dropped():
+    assert confirmed_profile("- A\n## 7 [CẦN XÁC") == "- A"
+
+
+def test_half_tag_heading_followed_by_heading():
+    assert confirmed_profile("## 7 [CẦN\n## 8\n- B") == "## 7 [CẦN\n## 8\n- B"
