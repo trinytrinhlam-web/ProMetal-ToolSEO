@@ -5,7 +5,7 @@
 | Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 |
 | Phiếu | [T-024](../tickets/T-024-loc-ho-so-theo-khoi.md) |
 | Ngày nộp | 2026-10-15 |
-| Kết quả | Hoàn thành. Kết luận kiểm thử: **KHÔNG ĐẠT** (2 lỗi làm lọt thông tin chưa xác nhận) |
+| Kết quả | Hoàn thành. Lượt 1: KHÔNG ĐẠT (SL-024-1, SL-024-2). **Lượt 2: ĐẠT** |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -130,6 +130,37 @@ Theo yêu cầu của Chỉ Huy, đo thêm `tests/test_soi_loi_round6.py::test_h
 - (Thợ Máy) Sửa SL-024-1 và SL-024-2 trong `seo_app/content/rules.py`, rồi bỏ xfail ở `tests/test_soi_loi_t024.py`.
 - (Ngòi Bút) Hướng dẫn đầu `config/business_profile.md`: ghi rõ cú pháp nhãn đúng `[CẦN XÁC NHẬN — lý do]` (có ngoặc vuông, có dấu), nhắc gõ tay nhãn thay vì chép; sửa câu "`>` phải đứng ở ngay đầu dòng" như Thợ Máy đề xuất.
 - (Soi Lỗi / Thợ Máy, phiếu riêng) Hai test đo tốc độ chập chờn: `test_soi_loi_round7.py::test_many_lookup_inputs_catch_naive_scan` (4/80 ở đây, 1 lần ở máy Thợ Máy) và `test_soi_loi_round6.py::test_helper_catches_quadratic_function` (0/50 ở đây, 1/3 ở máy Ngòi Bút). Cả hai là test kiểm tra rằng `tests/timing.py` **bắt được** hàm chậm, nên lần hỏng là báo động giả. Nên nới **cỡ đầu vào** của bản quét lỗi (để tỉ lệ thời gian của nó cách xa ngưỡng 9) hoặc lấy kết quả tốt nhất trong vài lần đo, không nới ngưỡng của test tốc độ thật.
+
+## Lượt 2 (2026-10-15, code `4d88cd1`, commit `ea1a7be`)
+
+**Kết luận: ĐẠT.** Cả 2 lỗi đã sửa đúng, không lọt thông tin chưa xác nhận, không mất dòng đúng nào trên hồ sơ thật.
+
+```
+$ uv run pytest
+2014 passed, 3 xfailed in 91.24s      (3 xfail có sẵn từ trước, không thuộc phiếu này)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- **Gỡ xfail:** Thợ Máy bỏ dấu xfail ở đúng 4 hàm (33 trường hợp) của `tests/test_soi_loi_t024.py`. Phần thân test và tham số giữ nguyên, không nới gì. Cả 33 trường hợp nay đều qua.
+- **SL-024-1 đã sửa:** dòng thụt lề sau dòng trống được tính vào ý trước; dòng không thụt lề sau dòng trống mở ý mới.
+- **SL-024-2 đã sửa:** ký tự vô hình (Cf và các ký tự "mặc định bỏ qua") được bỏ qua khi so nhãn và khi xét `>`. Thử thêm `＞` toàn khổ: ghi chú cũng bị bỏ.
+- **Thêm 9 test** (`tests/test_soi_loi_t024.py`, mục "Lượt 2"): file nay 71 test, qua hết.
+
+### Các điểm Thợ Máy tự nêu
+
+| Điểm | Đánh giá |
+|---|---|
+| (a) Dòng thụt lề sau dòng trống gộp vào mọi loại khối, kể cả đoạn văn | Không lọt. **Mất thông tin đúng** ở một cách viết hợp lý: đoạn văn **thụt đầu dòng kiểu Word** (tab hoặc 4 dấu cách ở đầu mỗi đoạn). `"\tĐoạn 1 [CẦN XÁC NHẬN]\n\n\tĐoạn 2\n\n\tĐoạn 3"` → mất cả Đoạn 2, 3, tới tiêu đề kế tiếp. Ý gạch đầu dòng sạch mà sau dòng trống có đoạn thụt lề mang nhãn cũng mất cả ý (đúng chủ ý). Hồ sơ thật hiện không có dòng thụt lề nào sau dòng trống, nên kết quả không đổi. Mức **Thấp**, không chặn; xem Đề xuất. |
+| (b) Dòng chỉ có ký tự vô hình coi là dòng trống | Đúng. Nó tách hai ý (ý sạch không bị bỏ theo) và không cắt một ý có dòng thụt lề phía sau. Dòng đó vẫn còn trong kết quả (chỉ có ký tự vô hình), vô hại. `test_line_of_only_invisible_chars_acts_as_blank`. |
+| (c) `_IGNORABLE_NOT_CF` chuyển sang `rules.py` | Regex chép y nguyên từng ký tự; `prompts.py` import lại đúng tên. `test_prompt_data_frames.py`, `test_soi_loi_round3.py` (R3-7) và các test hồ sơ: 273 qua. Toàn bộ test qua. `_neutralize` không đổi hành vi. |
+| (d) `[CẦNXÁC NHẬN]` gõ liền không được nhận | Chấp nhận được, không chặn. Nhưng tôi **nghiêng về nhận luôn** (đổi `\s+` thành `\s*` trong `_UNCONFIRMED_PATTERN`): chuỗi `[CẦNXÁC` không bao giờ là chữ thật nên không có nhận nhầm, lại đỡ cho lỗi gõ thiếu dấu cách trong Notepad. Nếu đổi thì sửa tham số `"[CẦNXÁC NHẬN]"` trong `test_misspelled_tags_are_not_recognised` và câu đầu của `test_glued_tag_still_not_recognised_but_invisible_separator_is`. Chỉ Huy quyết. |
+
+### Đề xuất lượt 2
+
+- (Thợ Máy, mức Thấp) Chỉ gộp dòng thụt lề sau dòng trống vào khối **gạch đầu dòng**, không gộp vào đoạn văn. Đúng chữ của phiếu ("đoạn văn: khối là cả đoạn, ngăn bằng dòng trống") và tránh mất đoạn thụt đầu dòng kiểu Word. Không ảnh hưởng SL-024-1, vì lỗi đó chỉ có ở gạch đầu dòng.
+- (Thợ Máy, mức Thấp) Nhận cả nhãn gõ liền, như điểm (d).
 
 ## Câu hỏi cho chủ dự án
 

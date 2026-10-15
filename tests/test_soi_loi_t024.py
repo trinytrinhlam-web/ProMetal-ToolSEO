@@ -246,3 +246,31 @@ def test_invisible_char_before_tag_bracket_still_recognised():
 @pytest.mark.parametrize("indent", ["", "  "])
 def test_note_preceded_by_invisible_char_is_dropped(ch, indent):
     assert confirmed_profile(f"- Hotline 0909\n{indent}{ch}> ghi chú riêng") == "- Hotline 0909"
+
+
+# --- Lượt 2: điểm Thợ Máy tự nêu ---------------------------------------------------------------
+
+
+def test_word_style_indented_paragraphs_never_leak_tag():
+    # (a) Đoạn thụt đầu dòng kiểu Word bị gộp với đoạn có nhãn phía trên (mất thông tin đúng,
+    # xem Đề xuất trong báo cáo), nhưng không bao giờ lọt nhãn; tiêu đề cắt chuỗi gộp.
+    text = f"\tĐoạn 1 {TAG}\n\n\tĐoạn 2\n\n## Mục\n\tĐoạn 3"
+    out = confirmed_profile(text)
+    assert "Đoạn 1" not in out
+    assert out.endswith("## Mục\n\tĐoạn 3")
+
+
+def test_unindented_paragraphs_after_tagged_paragraph_are_kept():
+    text = f"Đoạn 1 {TAG}\n\nĐoạn 2 đúng\n\nĐoạn 3 đúng"
+    assert confirmed_profile(text) == "Đoạn 2 đúng\n\nĐoạn 3 đúng"
+
+
+@pytest.mark.parametrize("ch", INVISIBLE)
+def test_line_of_only_invisible_chars_acts_as_blank(ch):
+    # (b) Dòng chỉ có ký tự vô hình là dòng trống: tách hai ý, không làm ý sạch bị bỏ theo.
+    assert confirmed_profile(f"- A {TAG}\n{ch}\n- B") == f"{ch}\n- B"
+    assert confirmed_profile(f"- A\n{ch}\n  tiếp {TAG}\n- B") == "- B"
+
+
+def test_fullwidth_note_marker_is_dropped():
+    assert confirmed_profile("- B\n＞ ghi chú riêng\n  ＞ ghi chú 2") == "- B"
