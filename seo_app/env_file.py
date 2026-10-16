@@ -371,7 +371,12 @@ _CALL_LIBRARY_ERRORS = (ImportError, AttributeError, TypeError)
 
 
 def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
-    from seo_app.ai.base import ANTHROPIC_URL, SETUP_ERRORS, ignoring_custom_headers
+    from seo_app.ai.base import (
+        ANTHROPIC_URL,
+        SETUP_ERRORS,
+        caused_by_decoding,
+        ignoring_custom_headers,
+    )
 
     try:
         import anthropic
@@ -397,7 +402,10 @@ def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> Key
         return _result("unknown", "Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
     except anthropic.APITimeoutError:
         return _result("unknown", f"Anthropic không trả lời sau {timeout:g} giây. Thử lại sau.")
-    except anthropic.APIConnectionError:
+    except anthropic.APIConnectionError as exc:
+        if caused_by_decoding(exc):
+            # Nội dung nén gzip/br hỏng: thư viện bọc thành lỗi kết nối (LC-T028-3).
+            return _result("unknown", _bad_response("Anthropic"))
         return _result("unknown", "Không kết nối được tới Anthropic. Kiểm tra mạng Internet.")
     except anthropic.APIStatusError as exc:
         return _result("unknown", f"Anthropic báo lỗi {exc.status_code}. Thử lại sau ít phút.")
@@ -413,7 +421,12 @@ def _check_anthropic(api_key: str, *, client: Any | None, timeout: float) -> Key
 
 
 def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyCheckResult:
-    from seo_app.ai.base import OPENAI_URL, SETUP_ERRORS, ignoring_custom_headers
+    from seo_app.ai.base import (
+        OPENAI_URL,
+        SETUP_ERRORS,
+        caused_by_decoding,
+        ignoring_custom_headers,
+    )
 
     try:
         import openai
@@ -441,7 +454,10 @@ def _check_openai(api_key: str, *, client: Any | None, timeout: float) -> KeyChe
         return _result("unknown", "OpenAI đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
     except openai.APITimeoutError:
         return _result("unknown", f"OpenAI không trả lời sau {timeout:g} giây. Thử lại sau.")
-    except openai.APIConnectionError:
+    except openai.APIConnectionError as exc:
+        if caused_by_decoding(exc):
+            # Nội dung nén gzip/br hỏng: thư viện bọc thành lỗi kết nối (LC-T028-3).
+            return _result("unknown", _bad_response("OpenAI"))
         return _result("unknown", "Không kết nối được tới OpenAI. Kiểm tra mạng Internet.")
     except openai.APIStatusError as exc:
         return _result("unknown", f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.")

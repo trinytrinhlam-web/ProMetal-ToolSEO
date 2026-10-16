@@ -8,6 +8,7 @@ import pytest
 
 from seo_app.content import rules
 from seo_app.content.rules import BUSINESS_PROFILE_FILE, confirmed_profile
+from tests.timing import assert_scales_linearly
 
 TAG = "[CẦN XÁC NHẬN — lý do]"
 
@@ -258,3 +259,118 @@ def test_heading_with_half_tag_at_end_of_file_is_dropped():
 
 def test_half_tag_heading_followed_by_heading():
     assert confirmed_profile("## 7 [CẦN\n## 8\n- B") == "## 7 [CẦN\n## 8\n- B"
+
+
+# --- T-043 -----------------------------------------------------------------------------------
+
+
+def test_t043_half_tag_heading_blank_lines_kept_when_not_joined():
+    """Tiêu đề kết thúc bằng «[» mà dòng sau dòng trống không ghép thành nhãn: giữ nguyên cả
+    tiêu đề lẫn dòng trống (SL-T032-4)."""
+    text = "## 9 Giá [\n\n\n- ok\n## 10"
+    assert confirmed_profile(text) == text
+
+
+def test_t043_half_tag_heading_many_blanks_then_rest():
+    text = "## 7 [CẦN XÁC\n\n\n  \nNHẬN]\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
+
+
+@pytest.mark.parametrize("indent", [" ", "  ", "\t", " "])
+def test_t043_indented_half_tag_heading_keeps_previous_bullet(indent):
+    text = f"- trước\n{indent}## 7 [CẦN XÁC\nNHẬN]\n- bí mật\n### 7.1\n- bí mật 2\n## 8\n- ok"
+    assert confirmed_profile(text) == "- trước\n## 8\n- ok"
+
+
+def test_t043_indented_half_tag_heading_not_joined_is_kept():
+    text = "- trước\n  ## 9 Giá [\n- ok\n## 10"
+    assert confirmed_profile(text) == text
+
+
+
+def test_t043_indented_heading_that_completes_previous_tag_hides_previous_block():
+    """Dòng thụt lề trông như tiêu đề có nửa nhãn, nhưng lại là nửa sau nhãn của khối trước:
+    khối trước vẫn bị giấu."""
+    text = "- bí mật [CẦN XÁC\n  ## NHẬN] (\n- ok"
+    assert confirmed_profile(text) == "- ok"
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "[**CẦN XÁC NHẬN**]",
+        '["CẦN XÁC NHẬN"]',
+        "[⚠ CẦN XÁC NHẬN]",
+        "[⚠️ CẦN XÁC NHẬN]",
+        "[: CẦN XÁC NHẬN]",
+        "[CẦN-XÁC-NHẬN]",
+        "[CẦN_XÁC_NHẬN]",
+        "[ * CẦN * XÁC * NHẬN ]",
+        "[__CẦN__XÁC__NHẬN__]",
+        "(*cần xác nhận*)",
+        "[!!!! CHƯA - XÁC - NHẬN]",
+        "[CẦN/XÁC/NHẬN]",
+        "[«CẦN XÁC NHẬN»]",
+        "[CẦN — XÁC — NHẬN]",
+    ],
+)
+def test_t043_symbols_inside_tag(tag):
+    text = f"- công khai\n- bí mật {tag} lý do\n- ok"
+    assert confirmed_profile(text) == "- công khai\n- ok"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- khách cần xác nhận lịch trước khi thợ tới",
+        "- [*****CẦN XÁC NHẬN]",  # 5 ký tự: quá giới hạn, coi là câu thường
+        "- [1] cần xác nhận lịch",
+        "- giá (xem bảng) cần xác nhận với khách",
+        "- (*) cần xác nhận lịch",
+        "- [] cần xác nhận lịch",
+        "- [CẦN XÁC 1 NHẬN]",
+    ],
+)
+def test_t043_plain_sentences_still_kept(line):
+    assert confirmed_profile(line) == line
+
+
+@pytest.mark.parametrize(
+    ("half", "rest"),
+    [
+        ("[**CẦN XÁC", "NHẬN**]"),
+        ('["CẦN', 'XÁC NHẬN"]'),
+        ("[⚠ CHƯA", "XÁC NHẬN]"),
+        ("[CẦN-XÁC-", "NHẬN]"),
+        ("[ * ", "CẦN XÁC NHẬN]"),
+    ],
+)
+def test_t043_heading_with_half_tag_and_symbols(half, rest):
+    text = f"## 7 Chất liệu {half}\n{rest}\n- bí mật\n## 8\n- ok"
+    assert "bí mật" not in confirmed_profile(text)
+    assert confirmed_profile(text).endswith("## 8\n- ok")
+
+
+def test_t043_half_tag_last_bracket_is_not_the_tag_start():
+    """Ngoặc cuối dòng nằm bên trong nửa nhãn: vẫn nhận ra nửa nhãn từ ngoặc trước đó."""
+    text = "## 7 [CẦN (XÁC\nNHẬN]\n- bí mật\n## 8"
+    assert confirmed_profile(text) == "## 8"
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "- " + "[" * 20000 * k,
+        lambda k: "- " + "[(" * 10000 * k + "CAN XAC",
+        lambda k: "- [" + "*" * 20000 * k + "CAN",
+        lambda k: "- " + "[ * " * 5000 * k,
+        lambda k: "- " + "[CAN " + " " * 20000 * k + "* " * 3,
+        lambda k: "- " + "[CAN-XAC-" * 3000 * k,
+        lambda k: "## " + "[*" * 10000 * k + "\n- ok",
+        lambda k: ("## 7 [CAN XAC\n" + "\n" * 50 + "- x\n") * 200 * k,
+        lambda k: ("- a\n  ## 7 [**CAN\nNHAN]\n- b\n## 8\n") * 200 * k,
+    ],
+    ids=["brackets", "mixed", "stars", "spaced", "spaces", "dashes", "heading", "blanks", "indent"],
+)
+def test_t043_filter_scales_linearly(make):
+    assert_scales_linearly(confirmed_profile, make, label="T-043")

@@ -25,7 +25,8 @@ def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
         # "utf-8-sig": nhận cả file UTF-8 có BOM (Notepad đời cũ lưu kiểu này).
         data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError as exc:
-        raise AIError(f"Không thấy file cấu hình AI: {path}") from exc
+        # Chỉ tên file, không lộ đường dẫn đầy đủ trên máy (Lá Chắn LC-T019-2).
+        raise AIError(f"Không thấy file cấu hình AI: config/{path.name}.") from exc
     except UnicodeDecodeError as exc:
         raise AIError(
             f"File config/{path.name} không lưu ở dạng UTF-8. Mở lại bằng Notepad, chọn "

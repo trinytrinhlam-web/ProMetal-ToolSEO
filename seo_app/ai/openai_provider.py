@@ -33,6 +33,8 @@ from seo_app.ai.base import (
     T,
     TaskConfig,
     bad_request_error,
+    bad_response_error,
+    caused_by_decoding,
     ignoring_custom_headers,
     library_error,
     token_limit_error,
@@ -117,6 +119,9 @@ class OpenAIProvider:
         except openai.APITimeoutError as exc:
             raise AIError("OpenAI trả lời quá lâu. Bấm thử lại.") from exc
         except openai.APIConnectionError as exc:
+            if caused_by_decoding(exc):
+                # Nội dung nén gzip/br hỏng: đã có trả lời, chỉ là đọc không được (LC-T028-3).
+                raise bad_response_error(VENDOR) from exc
             raise AIError("Không kết nối được tới OpenAI. Kiểm tra mạng Internet.") from exc
         except openai.APIStatusError as exc:
             if exc.status_code == 400:

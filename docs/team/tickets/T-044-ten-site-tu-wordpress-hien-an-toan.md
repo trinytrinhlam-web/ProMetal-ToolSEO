@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-16 |
 | Giai đoạn | Giai đoạn 2 (dọn lỗi giao diện) |
 | Mức ưu tiên | Thấp |
-| Phụ thuộc | T-031 đã gộp (dùng `escape_markdown` hoặc `escape_link_syntax` phiên bản mới) |
-| Trạng thái | Chờ T-031 |
+| Phụ thuộc | T-031, T-034 đã gộp |
+| Trạng thái | Chờ chỗ trống |
 
 ## Mục tiêu
 
@@ -20,7 +20,7 @@ Soi Lỗi phát hiện khi kiểm T-031 (`docs/team/reports/T-031-soi-loi.md`, S
 
 ## Phạm vi
 
-- **Được sửa:** `app/views/wordpress.py`, test giao diện.
+- **Được sửa:** `app/views/wordpress.py`, `app/views/settings.py` (chỉ chỗ hiện câu lỗi thử mù, LC-T034-1), test giao diện.
 - **Không được sửa:** `seo_app/**`.
 
 ## Yêu cầu
@@ -47,3 +47,4 @@ U1, D3.
 ## Ghi chú của Chỉ Huy
 
 - Phiên **"Họa Sĩ · T-044 Tên site từ WordPress hiện an toàn"**, nhánh `team/T-044` (từ `main` sau khi T-031 gộp).
+- 2026-10-16 (Chỉ Huy B): gộp thêm **LC-T034-1** (`docs/team/reports/T-034-la-chan.md`). Tên mô hình dạng `https://…` / `www.…` do người dùng gõ ở trang thử mù vẫn qua bộ lọc tên, rồi tự thành link trong `st.error`. Hiện câu lỗi đó bằng chữ đã escape (`escape_markdown` hoặc `escape_link_syntax`), có test.
