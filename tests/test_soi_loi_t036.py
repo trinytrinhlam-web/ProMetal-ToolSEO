@@ -612,3 +612,133 @@ def test_ai_filter_linear_on_long_runs(make):
     assert_scales_linearly(
         lambda text: accept_ai_description(text, "a"), make, label="lọc gợi ý AI"
     )
+
+
+# ================================================================== Lượt 2 (sau khi Thợ Máy sửa)
+
+
+@pytest.mark.parametrize(
+    "invisible",
+    ["͏", "ㅤ", "ᅟ", "ﾠ", "᠎", "⁤", "\U000e0020", "️", "឴"],
+)
+def test_r2_html_hidden_by_ignorable_char_blocked(invisible):
+    """SL-T036-1: cả ký tự "mặc định bỏ qua" (không thuộc loại Cf) chen sau «<»."""
+    for check in (check_title, check_description):
+        result = check(f"Cửa sắt bị xệ <{invisible}script>alert(1) cho nhà phố bền đẹp")
+        assert result.level is Level.BLOCK
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "&lt;script&gt;alert(1) cửa sắt bị xệ tại nhà",
+        "&#60;script&#62; cửa sắt bị xệ tại nhà phố",
+        "&#37;&#37;sitetitle&#37;&#37; cửa sắt bị xệ",
+        "&amp;amp; cửa sắt bị xệ tại nhà phố hay",
+        "％％sitetitle％％ cửa sắt bị xệ tại nhà",
+    ],
+)
+def test_r2_entities_and_fullwidth_percent(raw):
+    """SL-T036-7 chỉ áp cho gợi ý AI: AI bị bỏ, chữ người dùng gõ không bị Chặn (theo phiếu)."""
+    assert accept_ai_title(raw, KEYWORD) is None
+    assert check_title(raw).level is not Level.BLOCK
+
+
+def test_r2_fullwidth_angle_brackets_are_not_tags():
+    """«＜script＞» toàn khổ không phải thẻ với trình duyệt: được nhận, ghi lại hành vi."""
+    raw = "＜script＞alert(1)＜/script＞ cửa sắt bị xệ tại nhà"
+    assert check_title(raw).level is not Level.BLOCK
+    assert "<script>" not in (accept_ai_title(raw, KEYWORD) or "")
+
+
+@pytest.mark.parametrize(
+    "price",
+    ["năm trăm ngàn", "500.000đ", "500k/m2", "giá rẻ chỉ từ", "500.000 VNĐ", "một triệu rưỡi",
+     "1,5tr", "５００ｋ"],
+)  # fmt: skip
+def test_r2_price_forms_detected(price):
+    assert mentions_price(f"Sửa cửa {price} tại nhà", KEYWORD)
+
+
+@pytest.mark.parametrize("price", ["5 trăm", "chỉ 5 trăm", "triệu rưỡi", "giá tính bằng VNĐ"])
+@pytest.mark.xfail(strict=True, reason="SL-T036-11: vài cách nói giá còn lọt (Thấp)")
+def test_r2_price_forms_still_missed(price):
+    assert mentions_price(f"Sửa cửa sắt {price} tại nhà", KEYWORD)
+
+
+@pytest.mark.parametrize(
+    "ok",
+    ["đồng hồ", "đô thị", "tỉ lệ", "cửa 2 cánh", "dày 1.2 mm", "năm 2025", "TP.HCM", "tư vấn",
+     "5 kg", "bảo hành 2 năm", "hai đồng bộ", "10 tầng", "3 đời", "một đồng nghiệp",
+     "năm đồng hồ"],
+)  # fmt: skip
+def test_r2_not_price(ok):
+    assert not mentions_price(f"Cửa sắt {ok} đẹp", KEYWORD)
+
+
+@pytest.mark.parametrize("ok", ["7 xu hướng", "vài xu hướng", "2 đô vật"])
+@pytest.mark.xfail(strict=True, reason="SL-T036-10: «xu hướng», «đô vật» bị coi là giá (xu, đô)")
+def test_r2_xu_huong_not_price(ok):
+    assert not mentions_price(f"Cửa sắt {ok} năm nay", KEYWORD)
+
+
+@pytest.mark.parametrize(
+    "domain", ["bit.ly/x", "Bit.ly", "abc.asia", "x.shop", "SUACHUACUASAT.COM"]
+)
+def test_r2_domain_any_tld(domain):
+    assert has_link(f"Xem {domain}")
+
+
+@pytest.mark.parametrize(
+    "ok",
+    ["TP.HCM", "tp.hcm", "Tp.Hcm", "v.v.", "1.2mm", "2.4m", "xong.tiếp", "Q.7", "P.Tân Định",
+     "TS.Nguyễn", "ThS.lê", "inox 304.dày", "v1.5kg", "Cửa.Sắt", "sat.Xem"],
+)  # fmt: skip
+def test_r2_not_domain(ok):
+    assert not has_link(f"Cửa sắt {ok} đẹp")
+
+
+def test_r2_description_cap_is_160():
+    desc = "Cửa sắt bị xệ " + "a" * 146
+    assert len(desc) == 160
+    assert accept_ai_description(desc, KEYWORD) == desc
+    assert accept_ai_description(desc + "b", KEYWORD) is None
+
+
+def test_r2_ai_title_with_repeated_old_brand_kept_once():
+    raw = "Cửa sắt bị xệ: 5 dấu hiệu sớm và cách xử lý | Pro Metal | Pro-Metal"
+    assert (
+        accept_ai_title(raw, KEYWORD)
+        == "Cửa sắt bị xệ: 5 dấu hiệu sớm và cách xử lý" + BRAND_SUFFIX
+    )
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "Cửa sắt" + " | Pro-Metal" * (k * 500),
+        lambda k: "Cửa sắt" + " · ABC" * (k * 800),
+        lambda k: "Cửa sắt " + "a-" * (k * 2000),
+    ],
+    ids=["duoi-lap", "duoi-tuy-chinh", "gach-dai"],
+)
+def test_r2_brand_strip_linear(make):
+    assert_scales_linearly(lambda text: with_brand(text, suffix="· ABC"), make, label="gỡ hậu tố")
+
+
+@pytest.mark.parametrize(
+    ("fn", "make"),
+    [
+        (has_link, lambda k: "a-" * (k * 2000)),
+        (has_link, lambda k: "a." * (k * 2000)),
+        (mentions_price, lambda k: "1" * (k * 4000)),
+    ],
+    ids=["link-gach", "link-cham", "gia-so"],
+)
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T036-12: has_link/mentions_price gọi thẳng với chuỗi dài vẫn bậc hai (hiện chỉ"
+    " gọi qua _ai_text đã cắt độ dài, Thấp)",
+)
+def test_r2_public_detectors_linear(fn, make):
+    assert_scales_linearly(fn, make, label="soát link/giá")
