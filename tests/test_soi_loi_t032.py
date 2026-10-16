@@ -193,3 +193,96 @@ def test_one_huge_block_with_many_brackets_scales_linearly():
         lambda k: "- A\n" + "  ([ " * 2000 * k + "\n" + "  [CAN    XAC " * 500 * k,
         label="T-032 khối lớn",
     )
+
+
+# --- Lượt 2: thử xấu phần Thợ Máy sửa ------------------------------------------------------
+
+
+@pytest.mark.parametrize("line", ["#suachuacuasat", "#1 khu vực", "##8. Quy tắc", "####### 8"])
+def test_round2_fake_heading_never_ends_hidden_section(line):
+    text = _notepad(f"## 7 {TAG}\n- bí mật A\n{line}\n- bí mật B\n\n## 9\n- ok")
+    assert _cp(text) == "## 9\n- ok"
+
+
+@pytest.mark.parametrize("real", ["## 8", "##\t8", "## 8", "##", "# 8", "＃＃ 8"])
+def test_round2_real_heading_ends_hidden_section(real):
+    out = confirmed_profile(f"## 7 {TAG}\n- bí mật\n{real}\n- ok")
+    assert "bí mật" not in out and out.endswith("- ok")
+
+
+@pytest.mark.parametrize(
+    "between", ["> ghi chú\n", "> a\n> b\n", "​> ghi chú\n"], ids=["note", "notes", "zwsp-note"]
+)
+def test_round2_half_tag_heading_then_note_then_rest(between):
+    text = _notepad(f"## 7 Chất liệu [CẦN XÁC\n{between}NHẬN]\n- bí mật\n## 8\n- ok")
+    assert _cp(text) == "## 8\n- ok"
+
+
+@pytest.mark.parametrize(
+    "tail", ["", "\n", "\n> ghi chú", "\n> ghi chú\n"], ids=["eof", "nl", "note", "note-nl"]
+)
+def test_round2_half_tag_heading_at_end_of_file_dropped(tail):
+    assert _cp(_notepad(f"- ok\n## 7 [CẦN XÁC{tail}")) == "- ok"
+
+
+def test_round2_half_tag_heading_then_heading_then_half_tag_heading():
+    text = "## 7 [CẦN\n## 8 [CHƯA\nXÁC NHẬN]\n- bí mật\n## 9\n- ok"
+    assert confirmed_profile(text) == "## 7 [CẦN\n## 9\n- ok"
+
+
+def test_round2_half_tag_heading_inside_hidden_section():
+    text = f"## 7 {TAG}\n### 7.1 [CẦN\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
+
+
+@pytest.mark.parametrize("indent", ["  ", "\t", " "])
+def test_round2_indented_tagged_heading_right_after_bullet(indent):
+    text = f"- Dịch vụ\n{indent}## ghi chú {TAG}\n- bí mật\n### con\n- bí mật 2\n\n## 8\n- ok"
+    assert _cp(_notepad(text)) == "- Dịch vụ\n## 8\n- ok"
+
+
+def test_round2_nested_levels():
+    text = (
+        f"# A\n## B\n### C {TAG}\n#### D\n- x\n### E\n- ok\n"
+        f"## F {TAG}\n### G\n#### H\n- y\n# I\n- ok2"
+    )
+    assert confirmed_profile(text) == "# A\n## B\n### E\n- ok\n# I\n- ok2"
+
+
+def test_round2_hashtag_with_tag_hides_until_real_h1_accepted():
+    # Điểm Thợ Máy nêu ở lượt 2: «#hashtag [nhãn]» mở mục giấu cấp 1. Lọc thừa, chấp nhận.
+    text = f"- a\n#hashtag {TAG}\n- x\n## 8\n- y\n# Z\n- ok"
+    assert confirmed_profile(text) == "- a\n# Z\n- ok"
+
+
+@pytest.mark.xfail(strict=True, reason="SL-T032-4: nửa nhãn trên tiêu đề, nửa sau sau dòng trống")
+@pytest.mark.parametrize("rest", ["NHẬN]", "  NHẬN]"], ids=["flush", "indented"])
+def test_round2_half_tag_heading_then_blank_then_rest(rest):
+    text = f"## 7 Chất liệu [CẦN XÁC\n\n{rest}\n- bí mật\n## 8\n- ok"
+    assert "bí mật" not in confirmed_profile(text)
+
+
+@pytest.mark.xfail(strict=True, reason="SL-T032-5: tiêu đề thụt lề có nửa nhãn không giấu mục")
+def test_round2_indented_half_tag_heading():
+    text = "- trước\n ## 7 [CẦN XÁC\nNHẬN]\n- bí mật\n## 8\n- ok"
+    assert "bí mật" not in confirmed_profile(text)
+
+
+def _big_round2(k: int) -> str:
+    unit = (
+        f"## 7 [CẦN XÁC\n> n\nNHẬN]\n- x\n#tag\n##8\n  ## y {TAG}\n- z\n## 9 [\n- ok\n"
+        "## Giá (" + "THAM " * 30 + "\n## (( [[ (CAN XAC\n\n"
+    )
+    return unit * (300 * k)
+
+
+def test_round2_filter_scales_linearly():
+    assert_scales_linearly(confirmed_profile, _big_round2, label="T-032 lượt 2")
+
+
+def test_round2_long_heading_with_many_brackets_scales_linearly():
+    assert_scales_linearly(
+        confirmed_profile,
+        lambda k: "## " + "[CAN XAC " * 3000 * k + "\n- ok",
+        label="T-032 tiêu đề dài",
+    )
