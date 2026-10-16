@@ -24,13 +24,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-034 …`) → Thợ Máy lượt 2 | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`). Soi Lỗi **đạt có điều kiện** (`9f9de06`, Linux 3.565 qua): SL-T034-2 (đường dự phòng khi thư viện đổi cấu trúc, bắt buộc sửa), SL-T034-1 (biến thể có gạch nối sau số phiên bản còn lộ). **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
 | [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-043 …`) | `team/T-043` | Thợ Máy xong (`9167776`, Linux 3.605 qua; hồ sơ thật AI thấy không đổi). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-043-tho-may.md) |
+| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy (`Thợ Máy · T-036 Meta title, description, slug`) | `team/T-036` | Đã giao | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Tên site, tên người dùng từ WordPress hiện an toàn trên trang Kết nối WordPress (SL-T031-1) | Họa Sĩ | Chỗ trống (T-031 đã gộp) |
-| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
