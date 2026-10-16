@@ -12,6 +12,7 @@ Hai lớp, chỉ dùng thư viện chuẩn (security.md mục 2.3, 2.4):
 from __future__ import annotations
 
 import html
+import html.entities
 import re
 from bisect import bisect_right
 from html.parser import HTMLParser
@@ -388,6 +389,120 @@ class _CodeSpanLookup:
         return self._k < len(spans) and spans[self._k][0] <= i
 
 
+# ----------------------------------------------- địa chỉ trần thành link tự động (T-031)
+#
+# Streamlit hiện Markdown bằng remark-gfm. Ngoài link "[chữ](địa chỉ)", GFM còn TỰ biến chữ
+# thường thành link ("autolink literal"): "http://…", "https://…", "www.…" và email "a@b.vn"
+# (kể cả "mailto:"/"xmpp:" đi kèm email). Bộ nhận diện chạy trên chữ ĐÃ GIẢI MÃ: "\." và
+# "&#46;" đều thành "." trước khi tìm, nên "www\.evil.com" hay "a&#64;evil.com" vẫn thành link.
+#
+# Cách chặn: chèn một ký tự rộng 0 (``AUTOLINK_BREAK``, không hiện ra) vào đúng chỗ bộ nhận
+# diện cần liền mạch. Người đọc vẫn thấy nguyên địa chỉ, nhưng không bấm được:
+# - "://"  thành ":/" + ký tự ngắt + "/"   (mọi giao thức, cả "//" của linkify)
+# - "www." thành "www" + ký tự ngắt + "."  (không phân biệt hoa thường)
+# - "a@"   thành "a" + ký tự ngắt + "@"    (khi ký tự trước "@" có thể thuộc tên email)
+# Ký tự ngắt chỉ đứng trước "/", "." hoặc "@", không bao giờ sau "]", nên không đụng tới
+# việc escape link Markdown ở ``escape_link_syntax``.
+
+AUTOLINK_BREAK = "​"  # ZERO WIDTH SPACE
+# Mã ký tự HTML mà Markdown giải mã: "&#46;", "&#x2E;", "&period;" (phải có ";").
+_ENTITY = re.compile(r"&(?:#[xX]([0-9a-fA-F]{1,6})|#([0-9]{1,7})|([A-Za-z][A-Za-z0-9]{0,31}));")
+# Ký tự đứng trước "@" có thể thuộc tên email: GFM nhận [-.\w+] (\w chỉ ASCII); linkify nhận
+# thêm ";:&=$,\"". Lấy rộng cho chắc.
+_EMAIL_NAME_CHAR = r"[-A-Za-z0-9_.+;:&=$,\"]"
+# Ký tự (trong chữ đã giải mã) cần chèn ký tự ngắt NGAY TRƯỚC. Không dùng re.IGNORECASE: với
+# Unicode, "K" (Kelvin) hay "ſ" cũng khớp chữ ASCII; GFM chỉ không phân biệt hoa thường ASCII.
+_AUTOLINK_CUT = re.compile(r"(?<=:/)/|(?<=[Ww][Ww][Ww])\.|(?<=" + _EMAIL_NAME_CHAR + r")@")
+# Ký tự ngắt do ``break_autolinks`` chèn (nằm đúng một trong ba chỗ trên).
+_AUTOLINK_BREAK_AT = re.compile(
+    "(?<=:/)" + AUTOLINK_BREAK + "(?=/)"
+    "|(?<=[Ww][Ww][Ww])" + AUTOLINK_BREAK + r"(?=\.)"
+    "|(?<=" + _EMAIL_NAME_CHAR + ")" + AUTOLINK_BREAK + "(?=@)"
+)
+
+
+def _entity_value(match: re.Match[str]) -> str | None:
+    """Chữ mà Markdown giải mã từ ``&…;``; không phải mã hợp lệ thì None (giữ nguyên "&")."""
+    hex_digits, dec_digits, name = match.groups()
+    if name is not None:
+        return html.entities.html5.get(name + ";")
+    code = int(hex_digits, 16) if hex_digits is not None else int(dec_digits)
+    if code == 0 or code > 0x10FFFF or 0xD800 <= code <= 0xDFFF:
+        return "�"
+    return chr(code)
+
+
+def _decoded_view(text: str) -> tuple[str, list[int]]:
+    """Chữ sau khi Markdown giải mã "\\x" và "&…;", kèm vị trí gốc của từng ký tự.
+
+    ``starts[k]`` là vị trí trong ``text`` nơi bắt đầu phần sinh ra ký tự thứ ``k`` (ký tự thứ
+    hai trở đi của một mã sinh nhiều ký tự thì là -1: không chèn được vào giữa). Một lượt,
+    tuyến tính.
+    """
+    if "\\" not in text and "&" not in text:
+        return text, list(range(len(text)))
+    chars: list[str] = []
+    starts: list[int] = []
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            chars.append(text[i + 1])
+            starts.append(i)
+            i += 2
+            continue
+        if char == "&" and (match := _ENTITY.match(text, i)) is not None:
+            value = _entity_value(match)
+            if value:
+                chars.append(value)
+                starts.append(i)
+                starts.extend([-1] * (len(value) - 1))
+                i = match.end()
+                continue
+        chars.append(char)
+        starts.append(i)
+        i += 1
+    return "".join(chars), starts
+
+
+def break_autolinks(text: str) -> str:
+    """Chèn ``AUTOLINK_BREAK`` để địa chỉ trần, "www." và email không thành link bấm được.
+
+    Chạy lại không đổi gì (idempotent): sau khi chèn, các chỗ trên không còn liền mạch.
+    """
+    decoded, starts = _decoded_view(text)
+    cuts = [starts[m.start()] for m in _AUTOLINK_CUT.finditer(decoded)]
+    cuts = [cut for cut in cuts if cut >= 0]
+    if not cuts:
+        return text
+    pieces: list[str] = []
+    previous = 0
+    for cut in cuts:
+        pieces.append(text[previous:cut])
+        pieces.append(AUTOLINK_BREAK)
+        previous = cut
+    pieces.append(text[previous:])
+    return "".join(pieces)
+
+
+def unbreak_autolinks(text: str) -> str:
+    """Nghịch đảo của ``break_autolinks``: bỏ ký tự ngắt nằm đúng chỗ hàm đó chèn.
+
+    Bảo đảm ``break_autolinks(unbreak_autolinks(t)) == t`` khi ``t`` đã qua ``break_autolinks``.
+    """
+    if AUTOLINK_BREAK not in text:
+        return text
+    decoded, starts = _decoded_view(text)
+    drop = {
+        starts[m.start()]
+        for m in _AUTOLINK_BREAK_AT.finditer(decoded)
+        if starts[m.start()] >= 0 and text[starts[m.start()]] == AUTOLINK_BREAK
+    }
+    if not drop:
+        return text
+    return "".join(char for i, char in enumerate(text) if i not in drop)
+
+
 def escape_link_syntax(text: str) -> str:
     """Làm cho chữ KHÔNG THỂ thành link Markdown, dù link viết theo kiểu nào.
 
@@ -404,6 +519,8 @@ def escape_link_syntax(text: str) -> str:
     nên chỗ "[cần bổ sung: …]" vẫn nhận diện được. "\\r" đứng riêng cũng là xuống dòng (R4-2).
     Cố ý escape cả trong đoạn `code` (dấu "\\" hiện ra ở đó): bỏ qua code thì an toàn lại phụ
     thuộc việc nhận đúng đoạn code như bộ hiển thị (Soi Lỗi R4-3, xem báo cáo T-014).
+    Cuối cùng chạy ``break_autolinks``: địa chỉ trần, "www." và email cũng không thành link
+    (T-031). Chạy ở đây để mọi đường hiện chữ đều được che, kể cả chỗ nối của ``apply_flag``.
     """
     out: list[str] = []
     start = 0  # đầu đoạn chưa chép sang ``out``
@@ -435,9 +552,9 @@ def escape_link_syntax(text: str) -> str:
             at_line_prefix = False
         i += 1
     if not out:
-        return text
+        return break_autolinks(text)
     out.append(text[start:])
-    return "".join(out)
+    return break_autolinks("".join(out))
 
 
 def unescape_link_syntax(text: str) -> str:
@@ -449,6 +566,7 @@ def unescape_link_syntax(text: str) -> str:
     hoặc ":" khi "[" mở nhãn đứng đầu dòng. Bảo đảm
     ``escape_link_syntax(unescape_link_syntax(t)) == t`` với mọi ``t`` đã escape.
     """
+    text = unbreak_autolinks(text)
     out: list[str] = []
     start = 0
     at_line_prefix = True
@@ -497,6 +615,7 @@ def clean_ai_text(text: str) -> str:
        tình lồng sâu hơn số lượt cho phép thì tách "<" khỏi chữ cái (không còn là thẻ).
     3. ``escape_link_syntax``: bước quyết định an toàn. Link nào còn sót (bộ đọc ở bước 2
        không nhận ra) cũng bị vô hiệu hóa, không phụ thuộc việc nhận ra link.
+       Địa chỉ trần, "www." và email được chèn ký tự ngắt rộng 0 (``break_autolinks``).
     """
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     for _ in range(_MAX_CLEAN_PASSES):

@@ -18,6 +18,8 @@ from seo_app.content.workflow import apply_flag, clean_ai_line, clean_outline, c
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, unescape_link_syntax
 
 EVIL = "https://evil.example"
+# Địa chỉ sau khi lọc: có ký tự ngắt rộng 0 nên không thành link (T-031)
+EVIL_SHOWN = "https:/\u200b/evil.example"
 # "]" không escape (sau một số chẵn dấu "\") đứng sát "(" hoặc "[": link nội dòng / tham chiếu.
 LINK_JOIN = re.compile(r"(?<!\\)(?:\\\\)*\][(\[]")
 # "[nhãn]:" ở đầu dòng (sau thụt lề / ">" / dấu danh sách) với "]" không escape: khai báo link.
@@ -74,8 +76,9 @@ def test_clean_and_escape_are_idempotent(text):
 def test_escape_only_adds_backslashes():
     text = f"Xem [đây]({EVIL}) và [a][b], rồi\n[c]: d"
     out = escape_link_syntax(text)
-    assert out.replace("\\", "") == text
-    assert out == f"Xem [đây]\\({EVIL}) và [a]\\[b], rồi\n[c]\\: d"
+    # Chỉ thêm "\\" và ký tự ngắt rộng 0 vào địa chỉ trần (T-031)
+    assert out.replace("\\", "").replace("\u200b", "") == text
+    assert out == f"Xem [đây]\\({EVIL_SHOWN}) và [a]\\[b], rồi\n[c]\\: d"
 
 
 @pytest.mark.parametrize(
@@ -270,7 +273,7 @@ def test_only_real_link_targets_are_removed(text, expected):
         # Dấu "`" không đóng trên cùng dòng: không coi là code, link vẫn bị bỏ.
         (f"`a\nb` [x]({EVIL}) `c`", "`a\nb` x `c`"),
         # Thẻ HTML bị bỏ trước, rồi mới xét code: chữ trong code giữ nguyên, vẫn escape.
-        (f"<b>`[x]({EVIL})`</b>", f"`[x]\\({EVIL})`"),
+        (f"<b>`[x]({EVIL})`</b>", f"`[x]\\({EVIL_SHOWN})`"),
     ],
 )
 def test_code_spans_keep_text_but_stay_escaped(text, expected):

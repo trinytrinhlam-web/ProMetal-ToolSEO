@@ -7,6 +7,8 @@ import re
 import unicodedata
 from urllib.parse import quote
 
+from seo_app.sanitize import break_autolinks
+
 
 def remove_accents(text: str) -> str:
     """Bỏ dấu tiếng Việt: "Cửa sắt Đà Nẵng" -> "Cua sat Da Nang"."""
@@ -40,8 +42,12 @@ _PLAIN_URL = re.compile(r"https?://[^\s<>\"]+", re.IGNORECASE)
 
 
 def escape_markdown(text: str) -> str:
-    """Escape ký tự Markdown để chữ (dữ liệu chưa tin cậy) hiện đúng nguyên văn."""
-    return _MARKDOWN_SPECIAL.sub(r"\\\1", " ".join(text.split()))
+    """Escape ký tự Markdown để chữ (dữ liệu chưa tin cậy) hiện đúng nguyên văn.
+
+    Escape chưa đủ cho địa chỉ trần: GFM giải mã "\\:" rồi mới tìm "https://", "www.", email,
+    nên phải chèn thêm ký tự ngắt (``break_autolinks``, T-031).
+    """
+    return break_autolinks(_MARKDOWN_SPECIAL.sub(r"\\\1", " ".join(text.split())))
 
 
 def markdown_link(title: str, url: str) -> str:
