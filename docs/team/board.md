@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 07:48 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 07:52 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -23,7 +23,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 → Lá Chắn (`Lá Chắn · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai (Opus tạm)`) | `team/T-032` | Thợ Máy 2 lượt (`ca2860a`). Soi Lỗi lượt 2 **ĐẠT** (`da33f5b`, Linux 3.324 qua; SL-T032-1..3 đã sửa; 2 lỗi Thấp mới SL-T032-4, -5 không chặn). **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-032-tho-may.md) · [Soi Lỗi](reports/T-032-soi-loi.md) |
-| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) | `team/T-031` | Đã giao | |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) → Soi Lỗi (`Soi Lỗi · T-031 …`) | `team/T-031` | Thợ Máy xong (`192d9c5`, Linux 3.434 qua): chèn ký tự rộng 0 vào `://`, `www.`, `@`; sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` (tên bài đối thủ có địa chỉ vẫn thành link). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) | `team/T-034` | Đã giao | |
 
 ## Chờ
