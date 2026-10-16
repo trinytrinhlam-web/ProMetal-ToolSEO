@@ -83,9 +83,11 @@ _VENDOR_NAMES = (
 # luôn, vì người quen số phiên bản đoán được hãng (Soi Lỗi SL-T019-3). Chỉ xét ngay sau tên
 # (cách bằng dấu cách, không qua dòng mới), nên số liệu đứng riêng trong bài ("dày 5.5 mm")
 # không bị đụng.
+# Mỗi phần có thể kèm đuôi nối bằng gạch ("Flash-Lite", "5.5-preview", "Pro-002"; Soi Lỗi
+# SL-T034-1).
 _VERSION = (
     r"(?:[^\S\n]+(?:v?\d+(?:[.,]\d+)*(?:[a-z]\b)?|pro|flash|ultra|mini|nano|lite|turbo|max"
-    r"|plus|preview|thinking|exp|latest)(?![\w.-]*[^\W_]))*"
+    r"|plus|preview|thinking|exp|latest)(?:-[^\W_]+(?:\.\d+)*)*(?![\w.-]*[^\W_]))*"
 )
 _VENDOR_WORDS = re.compile(
     _BEFORE + "(?:" + "|".join(_VENDOR_NAMES) + ")" + _TAIL + _VERSION, re.IGNORECASE

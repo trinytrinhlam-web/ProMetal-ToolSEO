@@ -455,11 +455,6 @@ def test_version_after_masked_name_is_masked(text, leaks):
         assert leak not in shown, (leak, shown)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T034-1: biến thể/số có gạch nối sau số phiên bản còn lộ "
-    "(Gemini 2.5 Flash-Lite, Opus 5.5-preview, Gemini 1.5 Pro-002)",
-)
 @pytest.mark.parametrize(
     ("text", "leak"),
     [
