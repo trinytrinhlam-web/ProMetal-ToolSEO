@@ -444,12 +444,19 @@ def mentions_price(text: str, keyword: str = "") -> bool:
     return _PRICE.search(lowered) is not None
 
 
-def _ai_text(raw: object, keyword: str, banned) -> str | None:
-    """Kiểm chung cho một gợi ý: trả chữ đã chuẩn hóa, hoặc None nếu phải bỏ."""
+def _ai_text(raw: object, keyword: str, banned, max_length: int) -> str | None:
+    """Kiểm chung cho một gợi ý: trả chữ đã chuẩn hóa, hoặc None nếu phải bỏ.
+
+    Gợi ý dài quá ``max_length`` bị bỏ NGAY sau khi chuẩn hóa (bước tuyến tính), trước mọi
+    biểu thức soát link/giá: các biểu thức đó quay lui nên chậm theo bình phương với chuỗi dài
+    không có dấu cách mà AI bị dụ trả về (SL-T036-9).
+    """
     if not isinstance(raw, str) or has_html(raw):
         return None
     value = normalize_meta(raw)
-    if not value or "%%" in value or has_link(value):
+    if not value or len(value) > max_length:
+        return None
+    if "%%" in value or has_link(value):
         return None
     if find_banned(value, tuple(banned)) or mentions_price(value, keyword):
         return None
@@ -478,7 +485,8 @@ def _dedupe(values, limit: int) -> list[str]:
 
 def accept_ai_title(raw: object, keyword: str, banned=(), suffix: object = None) -> str | None:
     """Một meta title AI gợi ý, đã kiểm và gắn hậu tố thương hiệu; None nếu phải bỏ."""
-    value = _ai_text(raw, keyword, banned)
+    # AI có thể tự gắn hậu tố cũ (bỏ đi rồi gắn lại), nên cho thêm chỗ cho hậu tố.
+    value = _ai_text(raw, keyword, banned, TITLE_LIMITS.warn_max + BRAND_SUFFIX_MAX_LENGTH)
     if value is None or not has_keyword(strip_brand(value), keyword):
         return None
     titled = with_brand(value, suffix)
@@ -487,7 +495,7 @@ def accept_ai_title(raw: object, keyword: str, banned=(), suffix: object = None)
 
 def accept_ai_description(raw: object, keyword: str, banned=()) -> str | None:
     """Một meta description AI gợi ý, đã kiểm; None nếu phải bỏ."""
-    value = _ai_text(raw, keyword, banned)
+    value = _ai_text(raw, keyword, banned, DESCRIPTION_LIMITS.warn_max)
     if value is None or not has_keyword(value, keyword):
         return None
     return _final(value, check_description(value), DESCRIPTION_LIMITS)

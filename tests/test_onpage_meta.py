@@ -647,3 +647,27 @@ def test_tag_hidden_by_invisible_char_blocked(check, invisible):
     result = check(f"Cửa sắt bị xệ <{invisible}script>alert(1) cho nhà phố, xem cách sửa tại nhà")
     assert result.level is Level.BLOCK
     assert any("HTML" in m for m in result.messages)
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "1" * (k * 4000),
+        lambda k: "a." * (k * 2000),
+        lambda k: "https" * (k * 800),
+        lambda k: "cửa sắt bị xệ " + "x-" * (k * 2000),
+    ],
+    ids=["so", "cham", "giao-thuc", "co-tu-khoa"],
+)
+def test_ai_filters_linear_on_long_runs(make):
+    """SL-T036-9: gợi ý AI dài bị bỏ trước khi soát link/giá, nên tuyến tính."""
+    assert_scales_linearly(
+        lambda text: (accept_ai_title(text, KEYWORD), accept_ai_description(text, KEYWORD)),
+        make,
+        label="lọc gợi ý AI dài",
+    )
+
+
+def test_ai_title_with_old_brand_near_limit_still_accepted():
+    base = "Cửa sắt bị xệ: 5 dấu hiệu sớm, nguyên nhân và cách xử lý gọn"  # 59 ký tự
+    assert accept_ai_title(base + " | Pro Metal", KEYWORD) == base

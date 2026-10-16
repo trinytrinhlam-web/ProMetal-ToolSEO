@@ -621,10 +621,6 @@ def test_duplicates_linear_in_posts():
     [lambda k: "1" * (k * 2000), lambda k: "a." * (k * 1000), lambda k: "a" * (k * 2000)],
     ids=["so-dai", "cham-dai", "chu-dai"],
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T036-9: soát link/giá trên gợi ý AI chạy bình phương với chuỗi dài không dấu cách",
-)
 def test_ai_filter_linear_on_long_runs(make):
     assert_scales_linearly(
         lambda text: accept_ai_description(text, "a"), make, label="lọc gợi ý AI"
