@@ -78,8 +78,8 @@ def confirmed_profile(text: str) -> str:
     cùng cấp hoặc cao hơn (số dấu ``#`` bằng hoặc ít hơn; ``## 7. …`` giấu qua ``### 7.1`` tới
     ``## 8.``). Chỉ tiêu đề thật (``#`` rồi khoảng trắng) mới kết thúc mục đang giấu. Tiêu đề lỡ
     thụt lề mà có nhãn cũng giấu cả mục. Tiêu đề kết thúc bằng nửa nhãn (``## 7. … [CẦN XÁC``)
-    được xét nối với dòng kế. Dòng ghi chú (ký tự nhìn thấy đầu tiên là ``>``) luôn bị bỏ và
-    không cắt khối.
+    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4). Dòng ghi chú (ký tự nhìn
+    thấy đầu tiên là ``>``) luôn bị bỏ và không cắt khối.
     Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc và nhãn (SL-024-2). Các dòng giữ lại
     y nguyên như trong file.
     """
@@ -88,6 +88,7 @@ def confirmed_profile(text: str) -> str:
     blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
     hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
     pending: tuple[str, int] | None = None  # tiêu đề có nửa nhãn ở cuối, chờ dòng kế
+    pending_blanks: list[str] = []  # dòng trống giữa tiêu đề chờ và dòng kế (SL-T032-4)
 
     def close_block() -> None:
         if block and not _is_unconfirmed(" ".join(block)):
@@ -105,12 +106,17 @@ def confirmed_profile(text: str) -> str:
         heading = bool(stripped) and not indented and stripped.startswith("#")
         level = len(stripped) - len(stripped.lstrip("#"))
         if pending is not None:
+            if not stripped:
+                pending_blanks.append(line)  # nửa sau của nhãn có thể nằm sau dòng trống
+                continue
             head, head_level = pending
             pending = None
             if _is_unconfirmed(f"{head} {line}"):
                 hidden_level = head_level  # dòng này (nửa sau của nhãn) bị giấu cùng mục
             else:
                 kept.append(head)
+                kept.extend(pending_blanks)
+            pending_blanks.clear()
         if hidden_level:
             if not heading or level > hidden_level or not _REAL_HEADING.match(stripped):
                 continue

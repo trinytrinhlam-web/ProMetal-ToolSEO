@@ -258,3 +258,18 @@ def test_heading_with_half_tag_at_end_of_file_is_dropped():
 
 def test_half_tag_heading_followed_by_heading():
     assert confirmed_profile("## 7 [CẦN\n## 8\n- B") == "## 7 [CẦN\n## 8\n- B"
+
+
+# --- T-043 -----------------------------------------------------------------------------------
+
+
+def test_t043_half_tag_heading_blank_lines_kept_when_not_joined():
+    """Tiêu đề kết thúc bằng «[» mà dòng sau dòng trống không ghép thành nhãn: giữ nguyên cả
+    tiêu đề lẫn dòng trống (SL-T032-4)."""
+    text = "## 9 Giá [\n\n\n- ok\n## 10"
+    assert confirmed_profile(text) == text
+
+
+def test_t043_half_tag_heading_many_blanks_then_rest():
+    text = "## 7 [CẦN XÁC\n\n\n  \nNHẬN]\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
