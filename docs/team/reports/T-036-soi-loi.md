@@ -5,7 +5,7 @@
 | Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 |
 | Phiếu | [T-036](../tickets/T-036-meta-title-description-slug.md) |
 | Ngày nộp | 2026-10-16 |
-| Kết quả | Hoàn thành. Kết luận: **ĐẠT CÓ ĐIỀU KIỆN** (phải sửa SL-T036-1 trước khi gộp) |
+| Kết quả | Lượt 1: ĐẠT CÓ ĐIỀU KIỆN. **Lượt 2 (2026-10-16): ĐẠT** |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -123,3 +123,70 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 - SL-T036-8: hai tiêu đề chỉ khác số quận ("…quận 7" / "…quận 8") có nên bị **Cảnh báo** "rất giống" không? Đề xuất: **Có** (giữ như hiện tại).
+
+---
+
+## Lượt 2 (2026-10-16): kiểm lại sau khi Thợ Máy sửa (`c0ca3b7`)
+
+**Kết luận: ĐẠT.** Cả 8 lỗi đã sửa đúng. Còn 3 lỗi Thấp mới (SL-T036-10, 11, 12), không chặn việc gộp.
+
+### Tóm tắt (cho chủ dự án)
+
+Lỗi thẻ HTML giấu ký tự vô hình đã bị chặn ở mọi kiểu đã thử. Bộ lọc giá bắt được "năm trăm ngàn", "1tr5", "５００ｋ"; bộ lọc link bắt được tên miền đuôi bất kỳ (bit.ly, .shop). Gợi ý AI quá dài bị bỏ ngay nên không còn chậm. Còn một lỗi nhỏ: gợi ý AI có chữ "xu hướng" ("7 xu hướng cửa sắt…") bị bỏ oan vì phần mềm tưởng "xu" là tiền. Người dùng chỉ cần bấm viết lại.
+
+### Xác nhận
+
+- Thợ Máy chỉ bỏ dòng `xfail`, không đổi thân test (`git diff a8de5c9..HEAD -- tests/test_soi_loi_t036.py`: chỉ có dòng xóa `@pytest.mark.xfail`).
+- Bằng chứng:
+
+```
+$ uv run pytest tests/test_soi_loi_t036.py
+230 passed, 10 xfailed
+
+$ uv run pytest
+5082 passed, 4 skipped, 26 xfailed, 1 warning in 239.74s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+| Lỗi | Lượt 2 | Test thêm (lượt 2) |
+|---|---|---|
+| SL-T036-1 | Đã sửa. Chặn với 14 ký tự vô hình: loại Cf (U+200B, U+00AD, U+2060, U+FEFF, U+180E, U+2064, U+E0020) và ký tự "mặc định bỏ qua" (U+034F, U+3164, U+115F, U+FFA0, U+FE0F, U+17B4). `＜script＞` toàn khổ không phải thẻ với trình duyệt nên không chặn, đúng | `test_r2_html_hidden_by_ignorable_char_blocked`, `test_r2_fullwidth_angle_brackets_are_not_tags` |
+| SL-T036-2, 3, 4 | Đã sửa. Đuôi lặp 7 lần gỡ hết; gỡ có giới hạn 5 vòng (mỗi vòng gỡ 2 dạng), tuyến tính | `test_r2_ai_title_with_repeated_old_brand_kept_once`, `test_r2_brand_strip_linear` |
+| SL-T036-5 | Đã sửa: "năm trăm ngàn", "500.000đ", "500k/m2", "giá rẻ chỉ từ", "500.000 VNĐ", "một triệu rưỡi", "1,5tr", "５００ｋ". Không bắt nhầm "đồng hồ", "đô thị", "tỉ lệ", "cửa 2 cánh", "dày 1.2 mm", "năm 2025", "TP.HCM", "tư vấn", "hai đồng bộ"… | `test_r2_price_forms_detected`, `test_r2_not_price` |
+| SL-T036-6 | Đã sửa: bit.ly, .asia, .shop, ".COM" hoa. Không bắt nhầm "TP.HCM", "Tp.Hcm", "v.v.", "1.2mm", "2.4m", "xong.tiếp", "Q.7", "P.Tân Định", "TS.Nguyễn", "ThS.lê", "v1.5kg" | `test_r2_domain_any_tld`, `test_r2_not_domain` |
+| SL-T036-7 | Đã sửa, chỉ áp cho gợi ý AI. Gợi ý AI có `&lt;`, `&#60;`, `&#37;&#37;`, `&amp;amp;`, `％％` bị bỏ; chữ người dùng gõ không bị Chặn | `test_r2_entities_and_fullwidth_percent` |
+| SL-T036-9 | Đã sửa. Ngưỡng áp đúng: description 160 ký tự được nhận, 161 bị bỏ trước regex; title cắt ở 65 + 25 (chỗ cho đuôi cũ AI tự gắn) | `test_r2_description_cap_is_160` + test cũ `test_ai_filter_linear_on_long_runs` |
+
+### Đánh giá rủi ro SL-T036-7 với chữ người dùng gõ
+
+- `％％` (U+FF05) toàn khổ: SiteSEO thay biến bằng `%%` ASCII, không chuẩn hóa NFKC, nên `％％sitetitle％％` không thành biến. **Không có rủi ro**, chỉ là chữ lạ do người dùng tự gõ.
+- `&amp;amp;`, `&lt;script&gt;`, `&#37;&#37;sitetitle&#37;&#37;`: an toàn nếu WordPress/SiteSEO lưu và in nguyên văn (có escape). Có rủi ro chỉ khi một bước nào đó **giải mã** thực thể rồi mới thay biến hoặc in không escape: khi đó `&#37;&#37;` thành `%%` và `&lt;script&gt;` thành thẻ thật. **Đề nghị T-042** (ghi meta lên WordPress) kiểm cách SiteSEO lưu/in meta. Nếu chưa chắc, cho `check_title`/`check_description` Chặn cả thực thể HTML trong chữ người dùng gõ (rẻ, người dùng gần như không bao giờ gõ thực thể). Đề nghị Lá Chắn xem điểm này.
+
+### Lỗi mới (Thấp, không chặn gộp)
+
+#### SL-T036-10 · Thấp · "xu hướng", "đô vật" bị coi là giá
+- Tái hiện: `mentions_price("Cửa sắt 7 xu hướng năm nay", "cửa sắt bị xệ")` → `True` (đơn vị "xu"; tương tự "vài xu hướng", "2 đô vật").
+- Mong đợi: `False`. "N xu hướng" rất hay gặp trong tiêu đề ("7 xu hướng mẫu cửa sắt đẹp 2026"), nên gợi ý AI tốt bị bỏ oan. Sửa: loại trừ "xu hướng" như "đồng hồ", hoặc bỏ đơn vị "xu" (không ai báo giá cửa bằng xu).
+- Cùng loại, hiếm hơn: "hai đồng loại", "ba đồng chí", "năm nghìn khách" (đếm người, không phải tiền) cũng bị bắt. Không viết test.
+- Test: `test_r2_xu_huong_not_price`.
+
+#### SL-T036-11 · Thấp · Vài cách nói giá còn lọt
+- "5 trăm", "chỉ 5 trăm", "triệu rưỡi" (không có số đứng trước), "giá tính bằng VNĐ" (đơn vị không kèm số), "2 củ" (tiếng lóng). Không có từ chỉ tiền thì khó phân biệt ("5 trăm" mét?), nên chỉ ghi nhận.
+- Test: `test_r2_price_forms_still_missed`.
+
+#### SL-T036-12 · Thấp · `has_link`, `mentions_price` gọi thẳng với chuỗi dài vẫn chạy bậc hai
+- "a-" × 8000 qua `has_link` mất khoảng 2,4 giây; 16.000 chữ số qua `mentions_price` mất khoảng 6,5 giây.
+- Hiện **không có đường nào** tới được: hai hàm chỉ được gọi trong `_ai_text`, sau khi đã cắt độ dài (`grep` trong `seo_app/`, `app/`). Nhưng đây là hàm công khai; nếu T-041 dùng để soát chữ người dùng gõ thì sẽ chậm. Sửa: cắt độ dài ngay trong hai hàm, hoặc ghi rõ trong docstring "chỉ gọi với chữ đã cắt độ dài".
+- Test: `test_r2_public_detectors_linear`.
+
+### Ghi nhận khác
+
+- Tên miền: "tp.vinh", "xong.tiep" (không dấu, chữ thường) bị coi là link; "BIT.LY" toàn hoa không bị bắt. Hiếm, chỉ ảnh hưởng gợi ý AI. Không viết test.
+- SL-T036-8 giữ nguyên theo quyết định của Chỉ Huy; test `test_short_titles_dice_edge_cases_documented` vẫn ghi đúng hành vi.
+
+### Đề xuất
+
+- Gộp T-036 được. SL-T036-10 (vài dòng) nên sửa trước khi giao diện T-041 dùng gợi ý AI; SL-T036-11, 12 để phiếu lỗi Thấp sau.
+- Lá Chắn và T-042: xem phần đánh giá rủi ro thực thể HTML trong chữ người dùng gõ ở trên.
