@@ -6,7 +6,7 @@
 | Phiếu | [T-034](../tickets/T-034-loi-thap-lop-ai-sau-t019.md) |
 | Báo cáo được kiểm | [T-034-tho-may.md](T-034-tho-may.md) |
 | Ngày nộp | 2026-10-16 |
-| Kết quả | **Đạt có điều kiện**: 7/7 lỗi đã sửa đúng; có 2 lỗi mới mức Thấp (SL-T034-1, SL-T034-2) |
+| Kết quả | Lượt 1: đạt có điều kiện (2 lỗi mới mức Thấp). **Lượt 2 (2026-10-16): ĐẠT**, đã sửa cả SL-T034-1 và SL-T034-2 |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -137,3 +137,65 @@ bận: pass=30 fail=0   (mỗi lần: 302 passed, 7 xfailed)
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-16) · Kết luận: **ĐẠT**
+
+Kiểm trên `team/T-034`, sau 2 commit sửa của Thợ Máy:
+- `b5f3cf1` (SL-T034-2)
+- `f785ec3` (SL-T034-1)
+
+### Tóm tắt (cho chủ dự án)
+
+Hai lỗi nhỏ của lượt 1 đã sửa xong:
+- Thử mù che được cả "Flash-Lite", "5.5-preview", "Pro-002". Số liệu và mã hàng trong bài giữ nguyên.
+- Phần chặn header lạ vẫn an toàn khi thư viện đổi cấu trúc.
+
+Không test nào bị nới.
+
+### Kết quả
+
+| Mục | Kết quả | Test (trong `tests/test_soi_loi_t034.py`) |
+|---|---|---|
+| SL-T034-2: gói còn cài mà không nhập được `_client` thì gỡ biến tạm thời | **Đạt**. Trong khối, `os.environ` không còn 4 biến; `HTTPS_PROXY` giữ nguyên. Module kia vẫn được trỏ tạm. Ra khỏi khối, biến trả lại đủ, khóa nhả, kể cả khi có `ValueError` / `KeyboardInterrupt`. 8 luồng × 20 lần không treo, lần nào cũng không thấy biến. Client tạo trong khối không có header lạ. | `test_library_without_client_module_falls_back` (bỏ `xfail`), `test_l2_missing_client_module_hides_env_from_any_reader`, `test_l2_missing_client_module_restored_after_exception`, `test_l2_missing_client_module_clients_still_clean`, `test_l2_missing_client_module_parallel_threads` |
+| Chỉ bỏ qua khi chính gói chưa cài | **Đạt**. Gói chưa cài thì `os.environ` không bị đụng, gói kia vẫn được che. | `test_l2_package_not_installed_is_skipped_without_touching_env` |
+| SL-T034-1: che đuôi nối gạch | **Đạt**. Che được "Flash-Lite", "5.5-preview", "Pro-002", "Flash-Lite-preview-06-17", và cả trường hợp ngay sau tên mô hình ứng viên. | `test_hyphenated_variant_after_version_is_masked` (bỏ `xfail`), `test_l2_hyphenated_suffixes_masked` |
+| Những chữ không được che | **Đạt**. Giữ nguyên "dày 5.5 mm", "cổng 3 cánh", "năm 2025", "loại 2-3 lớp", "mã SP-002", "CS-15.2", "pro-max", "mini-2". Sau tên hãng nhưng không dính vào tên cũng giữ: "Claude: loại 2-3 lớp", "5.5mm", "GPT 6.1 - bản thử", "– nhanh". | `test_l2_article_numbers_and_codes_untouched`, `test_l2_text_after_masked_name_but_not_glued_kept`, cùng các test đối chứng của lượt 1 (vẫn qua) |
+| Có test nào bị nới không | **Không**. `git diff 9f9de06..3b151ba -- tests` chỉ bỏ đúng 2 khối `xfail` (SL-T034-1, SL-T034-2). Không đổi dòng kiểm nào, không đụng file test nào khác. | — |
+
+### Ghi nhận (không phải lỗi)
+
+Biểu thức mới có đuôi nối gạch nên tốn thời gian **theo bình phương** độ dài, nhưng chỉ với một chuỗi xấu cố ý: tên hãng rồi hàng nghìn đoạn `-1.1` liền nhau.
+
+| Độ dài chuỗi xấu | Thời gian |
+|---|---|
+| 10.000 ký tự | 0,14 giây |
+| 20.000 ký tự | 0,45 giây |
+| 80.000 ký tự | ~7 giây |
+
+Bài thử mù tối đa 2000 token (`BLIND_MAX_TOKENS`), cỡ 10.000 ký tự, nên không ảnh hưởng thực tế. Đã thêm `test_l2_hyphen_suffix_adversarial_text_is_fast` (20.000 ký tự, dưới 3 giây) để chặn khi mã sau này chậm thêm. Nếu sau này tăng giới hạn token của thử mù, nên giới hạn số đuôi nối gạch, ví dụ `{0,4}`.
+
+### Bằng chứng
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest -q
+3599 passed, 4 skipped, 7 xfailed, 1 warning in 150.34s
+# 7 xfailed = đúng 7 có sẵn trước T-034; 5 xfail của SL-T034-1/2 đã qua
+
+$ uv run pytest -q tests/test_soi_loi_t034.py
+216 passed
+
+# tests/test_soi_loi_t028.py chạy riêng, máy rảnh
+rảnh: pass=30 fail=0
+
+# test_soi_loi_t028.py + test_soi_loi_t034.py, trong lúc 3 vòng pytest khác chạy song song (load 4,2 / 4 nhân)
+bận: pass=30 fail=0   (mỗi lần: 336 passed, 2 xfailed)
+```
+
+### Đề xuất
+
+Chuyển Lá Chắn (S2, W4 mục 2.7). Lá Chắn nên soi:
+- `_OsWithoutIgnored`: trong lúc trỏ tạm, `environ` chỉ đọc.
+- Nhánh dự phòng mới trong `ignoring_custom_headers`.
