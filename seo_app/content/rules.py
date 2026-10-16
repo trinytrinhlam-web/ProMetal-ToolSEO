@@ -19,14 +19,22 @@ BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
 # («[CẦNXÁC NHẬN]»), không dấu («[CAN XAC NHAN]»), ngoặc tròn, «CHƯA XÁC NHẬN». An toàn khi nghi
 # ngờ: thà giấu thừa còn hơn để lọt. Vẫn bắt buộc có ngoặc mở để câu thường như «khách cần xác
 # nhận lịch» không bị giấu.
-_UNCONFIRMED_PATTERN = re.compile(r"[\[(]\s*(?:CAN|CHUA)\s*XAC\s*NHAN")
+# Giữa ngoặc mở và chữ, giữa các chữ: khoảng trắng tùy ý và tối đa 4 ký tự không phải chữ/số
+# («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[⚠ CẦN»,  «[CẦN-XÁC_NHẬN]», Lá Chắn LC-T032-1), trừ dấu
+# đóng ngoặc. Giới hạn {0,4} là bắt buộc: «[» cũng là ký tự không phải chữ, dùng «*» thì chuỗi
+# «[[[[…» chạy bậc hai. Hai nhánh trong nhóm không trùng nhau với «\s», nên không quay lui bùng nổ.
+_GAP = r"\s*(?:(?:[^\w\s\])]|_)\s*){0,4}"
+_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
 # Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
 _BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
 # Tiêu đề "thật" như Markdown: 1–6 dấu «#» rồi khoảng trắng hoặc hết dòng. Chỉ tiêu đề thật mới
 # kết thúc mục đang giấu; «#suachuacuasat» hay «#1 khu vực» thì không (Soi Lỗi SL-T032-1).
 _REAL_HEADING = re.compile(r"#{1,6}(?:\s|$)")
-# Cuối dòng là nửa đầu của nhãn: ngoặc mở rồi chỉ còn chữ cái / khoảng trắng (đã bỏ dấu).
-_PARTIAL_TAG_TAIL = re.compile(r"[\[(]([A-Z\s]*)$")
+# Phần sau ngoặc mở của nửa nhãn: chỉ chữ cái (đã bỏ dấu), khoảng trắng, «_» và ký tự không
+# phải chữ/số trừ dấu đóng ngoặc (như ``_GAP``).
+_PARTIAL_TAG_REST = re.compile(r"(?:[A-Z\s_]|[^\w\s\])])*")
+# Nửa nhãn dài nhất sau khi gộp khoảng trắng: ngoặc, 11 chữ, 4 khoảng × (4 ký tự + dấu cách).
+_PARTIAL_TAG_MAX = 64
 _TAG_WORDS = ("CANXACNHAN", "CHUAXACNHAN")
 
 # Ký tự "mặc định bỏ qua" (Unicode Default_Ignorable_Code_Point) KHÔNG thuộc loại Cf: không
@@ -78,8 +86,8 @@ def confirmed_profile(text: str) -> str:
     cùng cấp hoặc cao hơn (số dấu ``#`` bằng hoặc ít hơn; ``## 7. …`` giấu qua ``### 7.1`` tới
     ``## 8.``). Chỉ tiêu đề thật (``#`` rồi khoảng trắng) mới kết thúc mục đang giấu. Tiêu đề lỡ
     thụt lề mà có nhãn cũng giấu cả mục. Tiêu đề kết thúc bằng nửa nhãn (``## 7. … [CẦN XÁC``)
-    được xét nối với dòng kế. Dòng ghi chú (ký tự nhìn thấy đầu tiên là ``>``) luôn bị bỏ và
-    không cắt khối.
+    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4). Dòng ghi chú (ký tự nhìn
+    thấy đầu tiên là ``>``) luôn bị bỏ và không cắt khối.
     Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc và nhãn (SL-024-2). Các dòng giữ lại
     y nguyên như trong file.
     """
@@ -88,6 +96,7 @@ def confirmed_profile(text: str) -> str:
     blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
     hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
     pending: tuple[str, int] | None = None  # tiêu đề có nửa nhãn ở cuối, chờ dòng kế
+    pending_blanks: list[str] = []  # dòng trống giữa tiêu đề chờ và dòng kế (SL-T032-4)
 
     def close_block() -> None:
         if block and not _is_unconfirmed(" ".join(block)):
@@ -105,12 +114,17 @@ def confirmed_profile(text: str) -> str:
         heading = bool(stripped) and not indented and stripped.startswith("#")
         level = len(stripped) - len(stripped.lstrip("#"))
         if pending is not None:
+            if not stripped:
+                pending_blanks.append(line)  # nửa sau của nhãn có thể nằm sau dòng trống
+                continue
             head, head_level = pending
             pending = None
             if _is_unconfirmed(f"{head} {line}"):
                 hidden_level = head_level  # dòng này (nửa sau của nhãn) bị giấu cùng mục
             else:
                 kept.append(head)
+                kept.extend(pending_blanks)
+            pending_blanks.clear()
         if hidden_level:
             if not heading or level > hidden_level or not _REAL_HEADING.match(stripped):
                 continue
@@ -121,10 +135,15 @@ def confirmed_profile(text: str) -> str:
             else:
                 kept.append(line)
             continue
-        if indented and _REAL_HEADING.match(stripped) and _is_unconfirmed(line):
-            # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2). Đóng khối trước được
-            # vì dòng bắt đầu bằng «#» không thể là nửa sau nhãn của khối trước.
-            heading = True
+        if indented and _REAL_HEADING.match(stripped):
+            if _is_unconfirmed(line):
+                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2).
+                heading = True
+            elif _ends_with_partial_tag(line) and not (block and _ends_with_partial_tag(block[-1])):
+                # Tiêu đề lỡ thụt lề có nửa nhãn ở cuối: chờ dòng kế như tiêu đề thường
+                # (SL-T032-5). Dòng trước còn nửa nhãn thì dòng này có thể là nửa sau của nhãn
+                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt.
+                heading = True
         if blanks and not indented:
             close_block()
         if heading or (not indented and _BULLET.match(stripped)):
@@ -168,12 +187,23 @@ def _tag_text(text: str) -> str:
 
 
 def _ends_with_partial_tag(text: str) -> bool:
-    """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[» (nhãn bị xuống dòng)."""
-    match = _PARTIAL_TAG_TAIL.search(_tag_text(text).rstrip())
-    if not match:
-        return False
-    letters = "".join(match.group(1).split())
-    return any(words.startswith(letters) for words in _TAG_WORDS)
+    """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[**CẦN», «[» (nhãn bị xuống
+    dòng).
+
+    Chỉ xét đoạn cuối dài ``_PARTIAL_TAG_MAX`` ký tự (sau khi gộp khoảng trắng), nên mỗi dòng
+    tốn thời gian cố định dù có hàng nghìn ngoặc. Thử từng ngoặc mở trong đoạn đó.
+    """
+    tail = " ".join(_tag_text(text).split())[-_PARTIAL_TAG_MAX:]
+    for start, ch in enumerate(tail):
+        if ch not in "[(":
+            continue
+        rest = tail[start + 1 :]
+        if not _PARTIAL_TAG_REST.fullmatch(rest):
+            continue
+        letters = re.sub(r"[^A-Z]", "", rest)
+        if any(words.startswith(letters) for words in _TAG_WORDS):
+            return True
+    return False
 
 
 def _is_unconfirmed(text: str) -> bool:

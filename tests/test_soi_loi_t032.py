@@ -255,14 +255,12 @@ def test_round2_hashtag_with_tag_hides_until_real_h1_accepted():
     assert confirmed_profile(text) == "- a\n# Z\n- ok"
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-4: nửa nhãn trên tiêu đề, nửa sau sau dòng trống")
 @pytest.mark.parametrize("rest", ["NHẬN]", "  NHẬN]"], ids=["flush", "indented"])
 def test_round2_half_tag_heading_then_blank_then_rest(rest):
     text = f"## 7 Chất liệu [CẦN XÁC\n\n{rest}\n- bí mật\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-5: tiêu đề thụt lề có nửa nhãn không giấu mục")
 def test_round2_indented_half_tag_heading():
     text = "- trước\n ## 7 [CẦN XÁC\nNHẬN]\n- bí mật\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)
