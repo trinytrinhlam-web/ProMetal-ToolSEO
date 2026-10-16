@@ -273,3 +273,15 @@ def test_t043_half_tag_heading_blank_lines_kept_when_not_joined():
 def test_t043_half_tag_heading_many_blanks_then_rest():
     text = "## 7 [CẦN XÁC\n\n\n  \nNHẬN]\n- bí mật\n## 8\n- ok"
     assert confirmed_profile(text) == "## 8\n- ok"
+
+
+@pytest.mark.parametrize("indent", [" ", "  ", "\t", " "])
+def test_t043_indented_half_tag_heading_keeps_previous_bullet(indent):
+    text = f"- trước\n{indent}## 7 [CẦN XÁC\nNHẬN]\n- bí mật\n### 7.1\n- bí mật 2\n## 8\n- ok"
+    assert confirmed_profile(text) == "- trước\n## 8\n- ok"
+
+
+def test_t043_indented_half_tag_heading_not_joined_is_kept():
+    text = "- trước\n  ## 9 Giá [\n- ok\n## 10"
+    assert confirmed_profile(text) == text
+

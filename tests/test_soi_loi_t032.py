@@ -261,7 +261,6 @@ def test_round2_half_tag_heading_then_blank_then_rest(rest):
     assert "bí mật" not in confirmed_profile(text)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T032-5: tiêu đề thụt lề có nửa nhãn không giấu mục")
 def test_round2_indented_half_tag_heading():
     text = "- trước\n ## 7 [CẦN XÁC\nNHẬN]\n- bí mật\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)

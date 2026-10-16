@@ -127,10 +127,15 @@ def confirmed_profile(text: str) -> str:
             else:
                 kept.append(line)
             continue
-        if indented and _REAL_HEADING.match(stripped) and _is_unconfirmed(line):
-            # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2). Đóng khối trước được
-            # vì dòng bắt đầu bằng «#» không thể là nửa sau nhãn của khối trước.
-            heading = True
+        if indented and _REAL_HEADING.match(stripped):
+            if _is_unconfirmed(line):
+                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2).
+                heading = True
+            elif _ends_with_partial_tag(line) and not (block and _ends_with_partial_tag(block[-1])):
+                # Tiêu đề lỡ thụt lề có nửa nhãn ở cuối: chờ dòng kế như tiêu đề thường
+                # (SL-T032-5). Dòng trước còn nửa nhãn thì dòng này có thể là nửa sau của nhãn
+                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt.
+                heading = True
         if blanks and not indented:
             close_block()
         if heading or (not indented and _BULLET.match(stripped)):
