@@ -28,25 +28,31 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng").
+**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng"); giữ tiếp sáng 2026-10-16 07:42 (chủ dự án: "Thử lại").
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-15 18:58. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 07:43. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (từ `main` `7d8f6f3`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn, gộp |
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (từ `main` `699d7ba`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn (S2, W4), gộp |
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (chưa có commit) | Thợ Máy chạm giới hạn 15/10 19:03 trước khi đẩy gì; B gọi làm tiếp 16/10 07:42 | Soi Lỗi, Lá Chắn, gộp |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (chưa có commit) | Thợ Máy chạm giới hạn 15/10 19:03 trước khi đẩy gì; B gọi làm tiếp 16/10 07:42 | Soi Lỗi, Lá Chắn (S2, W4), gộp |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) README 3 hãng AI, thử mù | chưa có | Phiếu đã lập, chờ T-032 gộp | Giao Thư Ký |
-| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`8013108`) | Soi Lỗi đạt có điều kiện: SL-T032-1 (Trung bình) bắt buộc sửa. Thợ Máy lượt 2 đang sửa (phiên cũ mở lại) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-032` còn mở, gửi tin), Lá Chắn (A1, A3), gộp |
+| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) Bộ lọc hồ sơ nhận nhãn gõ sai | `team/T-032` (`506a62f`) | Thợ Máy lượt 2 đã đẩy phần sửa SL-T032-1..3 (`735dbfa`), còn điền số test vào báo cáo. Chạm giới hạn 15/10 19:04, B gọi làm tiếp 16/10 07:42 | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-032` còn mở, gửi tin), Lá Chắn (A1, A3), gộp |
 | [T-036](tickets/T-036-meta-title-description-slug.md) → [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Giai đoạn 4 | chưa có | Thiết kế T-033 xong, đã gộp `main`. Đã lập phiếu | T-036, T-037, T-038 chạy song song khi có chỗ (sau T-034); T-042 chờ chủ dự án trả lời câu 1, 2 |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 07:42 · Chỉ Huy B
+
+- Tối 15/10 khoảng 19:03, cả 3 phiên con (Thợ Máy T-031, T-032 lượt 2, T-034) chạm giới hạn sử dụng 5 tiếng của tài khoản B. Phiên Điều phối của B cũng dừng. `main` không đổi từ `18e6a41`; A không nhận quyền trong lúc đó.
+- Sáng 16/10 chủ dự án nhắn "Thử lại". B giữ quyền, gửi tin cho 3 phiên làm tiếp. T-031 và T-034 chưa đẩy commit nào, có thể phải làm lại từ đầu.
+- Bài học: ra lệnh agent đẩy sau **mỗi phần nhỏ**; tránh chạy 3 phiên Opus nặng cùng lúc khi gần cuối khung 5 tiếng.
 
 ### 2026-10-15 18:58 · Chỉ Huy B
 
