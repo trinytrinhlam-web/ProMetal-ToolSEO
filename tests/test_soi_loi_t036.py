@@ -217,17 +217,11 @@ def test_brand_not_twice(old):
     assert once.lower().count("pro") == 1
 
 
-@pytest.mark.xfail(
-    strict=True, reason="SL-T036-2: hậu tố thương hiệu lặp hai lần ở cuối chỉ bỏ được một lần"
-)
 def test_brand_repeated_twice_collapsed():
     result = with_brand(BASE_TITLE[:30] + " | Pro-Metal | Pro Metal")
     assert result.count("Pro") == 1
 
 
-@pytest.mark.xfail(
-    strict=True, reason="SL-T036-3: hậu tố tùy chỉnh (khác Pro-Metal) bị gắn thêm lần nữa"
-)
 def test_custom_brand_not_twice():
     assert with_brand("Cửa sắt bị xệ · Cơ khí ABC", suffix="· Cơ khí ABC").count("ABC") == 1
 
@@ -246,16 +240,11 @@ def test_empty_brand_turns_off(off):
     assert with_brand(BASE_TITLE + " | Pro Metal", suffix=off) == BASE_TITLE
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T036-4: hậu tố chỉ toàn ký tự vô hình thành hậu tố « » (title có dấu cách cuối)",
-)
 def test_invisible_only_brand_no_trailing_space():
     assert with_brand(BASE_TITLE, suffix="\u200b") in (BASE_TITLE, BASE_TITLE + BRAND_SUFFIX)
 
 
 @pytest.mark.parametrize("old", [" | Pro\u2011Metal", " | Pro\u2013Metal", " | Pro-Metal."])
-@pytest.mark.xfail(strict=True, reason="SL-T036-4: biến thể gạch nối lạ trong tên không được gỡ")
 def test_brand_odd_hyphen_variants_stripped(old):
     assert strip_brand(BASE_TITLE + old) == BASE_TITLE
 

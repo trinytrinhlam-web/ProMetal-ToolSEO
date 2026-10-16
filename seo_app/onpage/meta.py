@@ -155,17 +155,25 @@ def check_description(description: str) -> FieldCheck:
 # (không gắn) thì đổi hằng số này thành "" (hoặc truyền ``suffix=""``), không phải sửa chỗ khác.
 BRAND_SUFFIX = " | Pro-Metal"
 BRAND_SUFFIX_MAX_LENGTH = 25
-# Các dạng hậu tố đang có trên site hoặc AI hay viết: " | Pro Metal", " - Pro-Metal", "– ProMetal".
-_BRAND_TAIL = re.compile(r"\s*[|\-–—:·•]\s*pro[\s\-]?metal\s*$", re.IGNORECASE)
+# Các dạng hậu tố đang có trên site hoặc AI hay viết: " | Pro Metal", " - Pro-Metal", "– ProMetal",
+# "| Pro‑Metal" (gạch nối không ngắt U+2011), "| Pro-Metal." (SL-T036-4).
+_HYPHENS = "\\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+_BRAND_TAIL = re.compile(
+    rf"\s*[|¦:·•/{_HYPHENS}]\s*pro[\s{_HYPHENS}]?metal\s*\.?\s*$", re.IGNORECASE
+)
+# Số lần gỡ hậu tố lặp ở cuối ("… | Pro-Metal | Pro Metal", SL-T036-2). Có giới hạn để chữ cố
+# tình lặp hàng nghìn lần không làm chậm theo bình phương.
+_MAX_BRAND_STRIPS = 5
 
 
 def resolve_brand_suffix(value: object = None) -> str:
     """Hậu tố dùng thật. Không có cấu hình (``None``) hoặc cấu hình sai (không phải chữ, có thẻ,
     có ``%%``, dài quá ``BRAND_SUFFIX_MAX_LENGTH``) thì dùng ``BRAND_SUFFIX``, không báo lỗi.
-    Chữ rỗng là chủ ý "không gắn thương hiệu"."""
+    Chữ rỗng (kể cả chỉ có khoảng trắng hay ký tự vô hình, SL-T036-4) là chủ ý "không gắn
+    thương hiệu"."""
     if not isinstance(value, str):
         return BRAND_SUFFIX
-    if not value.strip():
+    if not normalize_meta(value):
         return ""
     if has_html(value) or "%%" in value:
         return BRAND_SUFFIX
@@ -173,18 +181,38 @@ def resolve_brand_suffix(value: object = None) -> str:
     return suffix if len(suffix) <= BRAND_SUFFIX_MAX_LENGTH else BRAND_SUFFIX
 
 
-def strip_brand(title: str) -> str:
-    """Bỏ hậu tố thương hiệu ở cuối (mọi dạng " | Pro Metal", " - Pro-Metal"…)."""
-    return _BRAND_TAIL.sub("", normalize_meta(title)).strip()
+def _strip_custom(text: str, brand: str) -> tuple[str, bool]:
+    """Bỏ ``brand`` (hậu tố đang dùng, đã bỏ dấu cách đầu) nếu nó đứng trọn ở cuối ``text``."""
+    if not brand or len(text) < len(brand) or text[-len(brand) :].lower() != brand.lower():
+        return text, False
+    before = text[: -len(brand)]
+    if before and before[-1].isalnum() and brand[0].isalnum():
+        return text, False  # "xPro-Metal": không phải hậu tố riêng
+    return before.rstrip(), True
+
+
+def strip_brand(title: str, suffix: object = None) -> str:
+    """Bỏ hậu tố thương hiệu ở cuối: mọi dạng " | Pro Metal", " - Pro-Metal"…, và cả hậu tố
+    đang dùng (``suffix``, mặc định ``BRAND_SUFFIX``) khi nó khác dạng Pro-Metal (SL-T036-3).
+    Hậu tố lặp nhiều lần ở cuối cũng bỏ hết (tối đa ``_MAX_BRAND_STRIPS`` lần)."""
+    text = normalize_meta(title)
+    brand = resolve_brand_suffix(suffix).strip()
+    for _ in range(_MAX_BRAND_STRIPS):
+        stripped = _BRAND_TAIL.sub("", text).strip()
+        stripped, _ = _strip_custom(stripped, brand)
+        if stripped == text:
+            break
+        text = stripped
+    return text
 
 
 def with_brand(title: str, suffix: object = None, max_length: int = TITLE_LIMITS.good_max) -> str:
     """Tiêu đề kèm hậu tố thương hiệu nếu còn chỗ (tổng không quá ``max_length`` ký tự).
 
-    Hậu tố cũ ở cuối (mọi dạng) được bỏ trước để chỉ còn một dạng thống nhất. Không đủ chỗ
-    hoặc hậu tố rỗng thì trả tiêu đề không hậu tố.
+    Hậu tố cũ ở cuối (mọi dạng, kể cả hậu tố đang dùng) được bỏ trước để chỉ còn một dạng
+    thống nhất. Không đủ chỗ hoặc hậu tố rỗng thì trả tiêu đề không hậu tố.
     """
-    base = strip_brand(title)
+    base = strip_brand(title, suffix)
     brand = resolve_brand_suffix(suffix)
     if base and brand and len(base) + len(brand) <= max_length:
         return base + brand

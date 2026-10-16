@@ -702,3 +702,41 @@ def test_price_words_and_abbreviations_detected(price):
 )
 def test_not_price_common_phrases(ok):
     assert not mentions_price(ok, KEYWORD)
+
+
+def test_brand_repeated_tails_all_removed():
+    """SL-T036-2: tiêu đề cũ bị gắn đuôi hai, ba lần."""
+    base = "Cửa sắt bị xệ"
+    assert with_brand(base + " | Pro-Metal | Pro Metal - ProMetal") == base + " | Pro-Metal"
+    assert strip_brand(base + " | Pro-Metal | Pro Metal") == base
+
+
+@pytest.mark.parametrize(
+    "old", [" | Pro‑Metal", " | Pro–Metal", " | Pro-Metal.", " — Pro Metal", " / Pro-Metal"]
+)
+def test_brand_odd_hyphens_removed(old):
+    """SL-T036-4: biến thể gạch nối lạ, dấu chấm cuối."""
+    assert strip_brand("Cửa sắt bị xệ" + old) == "Cửa sắt bị xệ"
+
+
+def test_custom_suffix_not_added_twice():
+    """SL-T036-3: hậu tố người dùng tự đặt (không phải dạng Pro-Metal)."""
+    assert with_brand("Cửa sắt bị xệ · Cơ khí ABC", suffix="· Cơ khí ABC") == (
+        "Cửa sắt bị xệ · Cơ khí ABC"
+    )
+    assert with_brand("Cửa sắt bị xệ Pro-Metal", suffix="Pro-Metal") == "Cửa sắt bị xệ Pro-Metal"
+    # chữ dính liền không phải hậu tố riêng
+    assert strip_brand("Cửa sắt XABC", suffix="ABC") == "Cửa sắt XABC"
+
+
+@pytest.mark.parametrize("off", ["​", "﻿ ​", "­"])
+def test_invisible_only_suffix_is_off(off):
+    """SL-T036-4: hậu tố chỉ có ký tự vô hình = không gắn (không để dấu cách cuối)."""
+    assert resolve_brand_suffix(off) == ""
+    assert with_brand("Cửa sắt bị xệ", suffix=off) == "Cửa sắt bị xệ"
+
+
+def test_strip_brand_many_tails_is_linear():
+    assert_scales_linearly(
+        strip_brand, lambda k: "Cửa sắt" + " | Pro Metal" * (k * 2000), label="hậu tố lặp"
+    )
