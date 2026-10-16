@@ -17,7 +17,8 @@ import re
 import pytest
 from timing import assert_scales_linearly
 
-from seo_app.content.workflow import clean_ai_line
+from seo_app.content.models import Flag, Section
+from seo_app.content.workflow import apply_flag, clean_ai_line, clean_flags
 from seo_app.sanitize import (
     AUTOLINK_BREAK,
     break_autolinks,
@@ -26,6 +27,7 @@ from seo_app.sanitize import (
     unbreak_autolinks,
     unescape_link_syntax,
 )
+from seo_app.text import markdown_link
 
 B = AUTOLINK_BREAK
 _ESCAPABLE = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
@@ -207,3 +209,48 @@ def test_autolink_break_is_linear(unit):
     count = 20000
     assert_scales_linearly(clean_ai_text, lambda k: unit * (count * k // 4), label=unit)
     assert_scales_linearly(unescape_link_syntax, lambda k: (B + unit) * (count * k // 4))
+
+
+# ------------------------------------- gợi ý văn phong cho câu có địa chỉ (clean_flags)
+
+
+def test_flag_on_sentence_with_address_is_kept_and_applies():
+    """AI chép câu từ bài nhưng không chép ký tự ngắt: gợi ý vẫn được nhận và Áp dụng được."""
+    body = clean_ai_text("Mở bài. Xem giá ở www.evil.example hoặc gửi a@evil.example nhé. Hết.")
+    sentence = "Xem giá ở www.evil.example hoặc gửi a@evil.example nhé."
+    assert sentence not in body  # trong bài đã có ký tự ngắt
+    flags = clean_flags(
+        [Section(heading="h", body=body)],
+        [Flag(section=0, sentence=sentence, reason="r", replacement="Gọi 0900 000 000.")],
+    )
+    assert len(flags) == 1 and flags[0].sentence in body
+    fixed = apply_flag(body, flags[0].sentence, flags[0].replacement)
+    assert fixed == "Mở bài. Gọi 0900 000 000. Hết."
+    removed = apply_flag(body, flags[0].sentence, "")
+    assert removed == "Mở bài. Hết."
+
+
+def test_apply_flag_seam_cannot_make_bare_address():
+    """Chỗ nối: "www" cuối câu trước + ".evil.example" ở câu thay thế vẫn không thành link."""
+    body = clean_ai_text("Vào www X nhé, gửi a X nhé, mở https:X nhé.")
+    for replacement in (".evil.example", "@evil.example", "//evil.example"):
+        out = apply_flag(body, "X", clean_ai_text(replacement))
+        assert gfm_autolinks(out) == [], out
+
+
+# --------------------------------------------- markdown_link (lỗi có sẵn, tìm ra ở T-031)
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "[bấm vào đây](https://evil.example/x) ![ảnh](https://evil.example/a.png)",
+        "Liên hệ www.evil.example hoặc a@evil.example",
+    ],
+)
+@pytest.mark.parametrize("url", ["", "javascript:alert(1)", "https://doi-thu.example/bai"])
+def test_competitor_title_never_has_bare_link(title, url):
+    shown_text = markdown_link(title, url)
+    label = shown_text if not url.startswith("https") else shown_text[1 : shown_text.rindex("](")]
+    assert gfm_autolinks(label) == [], shown_text
+    assert " ".join(shown(label).split()) == " ".join(title.split())
