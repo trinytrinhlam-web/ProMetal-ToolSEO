@@ -144,8 +144,8 @@ $ uv run ruff check .
 All checks passed!
 
 $ uv run pytest -q
-KET_QUA_PYTEST_L2
+3570 passed, 4 skipped, 7 xfailed, 1 warning in 137.30s
 
 # Chạy riêng tests/test_soi_loi_t028.py 30 lần
-KET_QUA_30_LAN_L2
+pass=30 fail=0
 ```
