@@ -32,6 +32,8 @@ $ uv run ruff check .
 All checks passed!
 ```
 
+Lần chạy toàn bộ trước đó có 1 test hỏng: `tests/test_soi_loi_t028.py::test_other_threads_reading_environment_never_fail` (test chạy đua nhiều luồng của T-028, thuộc `seo_app/ai`, phiếu này không đụng tới). Chạy riêng 5 lần đều qua, chạy lại toàn bộ thì qua (kết quả trên). Có vẻ là test chập chờn; đề nghị Soi Lỗi xem ở phiếu khác.
+
 Hồ sơ thật: lưu `confirmed_profile(...)` trước khi sửa, so `cmp` sau mỗi phần (regex, tiêu đề, hướng dẫn `>`): giống hệt (100 dòng). Test `test_real_profile_output_unchanged` so chuỗi kết quả mới với kết quả khi thay `_is_unconfirmed` bằng mẫu nhãn cũ.
 
 ## Đối chiếu tiêu chí xong
@@ -74,8 +76,10 @@ Không có.
 
 ```
 $ uv run pytest
-KQ_PYTEST_L2
+3298 passed, 4 skipped, 9 xfailed, 1 warning in 139.77s (0:02:19)
 
 $ uv run ruff check .
 All checks passed!
 ```
+
+Lần chạy toàn bộ trước đó có 1 test hỏng: `tests/test_soi_loi_t028.py::test_other_threads_reading_environment_never_fail` (test chạy đua nhiều luồng của T-028, thuộc `seo_app/ai`, phiếu này không đụng tới). Chạy riêng 5 lần đều qua, chạy lại toàn bộ thì qua (kết quả trên). Có vẻ là test chập chờn; đề nghị Soi Lỗi xem ở phiếu khác.
