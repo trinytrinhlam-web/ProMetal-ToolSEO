@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 08:32. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 12:44. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -46,6 +46,14 @@ Chỉ Huy B, cập nhật 2026-10-16 08:32. Chủ dự án dặn chạy tự đ�
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 12:44 · Chỉ Huy B
+
+- Khoảng 08:30–08:42, cả 3 phiên con và phiên Điều phối chạm giới hạn 5 tiếng; mở lại 12:40.
+  - Soi Lỗi T-034 lượt 2: đã đẩy test `2353773`, chưa có báo cáo.
+  - Lá Chắn T-043: chưa có biên bản.
+  - Thợ Máy T-036: đã đẩy phần 1 `817cfcf`.
+- B gọi cả 3 làm tiếp. Vẫn theo yêu cầu chủ dự án: làm xong việc dở rồi bàn giao, **không giao việc mới**.
 
 ### 2026-10-16 08:32 · Chỉ Huy B (đang kết thúc)
 
