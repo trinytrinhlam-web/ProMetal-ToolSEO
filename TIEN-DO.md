@@ -80,9 +80,9 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
      - mức giá "$$".
 
      **A (đề xuất):** có, anh hoặc người làm web dọn. **B:** để sau.
+3. **Nên nhờ người làm web kiểm tra:** website có các đường REST `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Phần mềm sẽ không bao giờ gọi các đường này. Nhưng anh nên nhờ người làm web xác nhận chúng **bắt buộc đăng nhập quản trị** mới dùng được. Đội agent chỉ thấy tên đường trong danh sách công khai, chưa thử gọi.
 4. **Thư viện ảnh Pillow** (Giai đoạn 3: nén WebP, giữ GPS): 14/10 anh chọn "để sau"; khi bắt đầu Giai đoạn 3 cần anh đồng ý thêm thư viện này.
 5. **Chạy kiểm tra trên Windows:** khi mở máy Windows với Chỉ Huy A, nhờ A chạy `uv run pytest` một lượt (các phiếu gần đây mới chạy trên Linux).
-3. **Nên nhờ người làm web kiểm tra:** website có các đường REST `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Phần mềm sẽ không bao giờ gọi các đường này. Nhưng anh nên nhờ người làm web xác nhận chúng **bắt buộc đăng nhập quản trị** mới dùng được. Đội agent chỉ thấy tên đường trong danh sách công khai, chưa thử gọi.
 
 Đã trả lời 2026-10-15: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); giữ Giai đoạn 6; đưa thư mục kế hoạch lên repo (`docs/plan/`); lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`).
 
