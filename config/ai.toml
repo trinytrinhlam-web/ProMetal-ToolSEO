@@ -1,11 +1,30 @@
 # Mô hình AI cho từng việc. Sửa file này rồi tải lại trang là có hiệu lực, không cần sửa code.
+# Không có hãng mặc định: mỗi việc ghi rõ dùng hãng nào, và hãng đó phải có khóa trong
+# Cài đặt → 🔌 Kết nối. Muốn chọn mô hình nào thì thử mù ở Cài đặt → 🤖 Mô hình AI.
 #
-# provider   : hãng AI. Hiện có "anthropic". "openai" và "gemini" sẽ thêm sau.
-# model      : tên mô hình của hãng đó, ví dụ "claude-opus-5-5", "claude-sonnet-5-5".
+# provider   : hãng AI, một trong ba giá trị:
+#                "anthropic" (Claude), "openai" (ChatGPT), "gemini" (Google Gemini).
+# model      : tên mô hình của hãng đó, ghi đúng theo tài liệu của hãng. Ví dụ đang dùng
+#              hoặc đã thử trong app:
+#                anthropic: "claude-opus-5-5", "claude-sonnet-5-5"
+#                openai   : "gpt-5.1"
+#                gemini   : "gemini-3-pro"
+#              Tên sai thì app báo "Không có mô hình ...".
 # effort     : AI nghĩ kỹ tới đâu: "low" | "medium" | "high" | "xhigh" | "max".
 #              Càng cao càng kỹ, nhưng chậm hơn và tốn tiền hơn.
-# web_search : true = cho AI tự tìm trên Google/web (dùng cho bước nghiên cứu đối thủ).
+#                anthropic, openai: dùng đúng mức bạn ghi.
+#                gemini: chỉ có 3 mức low / medium / high; "xhigh" và "max" được tính là "high".
+#              Mô hình không có chế độ suy nghĩ thì app tự bỏ qua effort (OpenAI, Gemini).
+# web_search : true = cho AI tự tìm trên web (dùng cho bước nghiên cứu đối thủ). Cả 3 hãng
+#              đều hỗ trợ.
 # max_tokens : độ dài tối đa AI được trả về (1 token ≈ 1 chữ tiếng Việt ngắn).
+#              Báo "Bài dài quá giới hạn" thì tăng số này.
+#
+# Thử mù (Cài đặt → 🤖 Mô hình AI) KHÔNG đọc và KHÔNG ghi file này, và không có mục
+# [tasks.blind_test] ở đây: hãng, mô hình, effort do bạn chọn trên màn hình, độ dài bài thử
+# cố định trong app. Thử mù xong, bạn tự sửa provider / model / effort của việc cần đổi ở dưới.
+# Ví dụ đổi việc viết bài sang ChatGPT: trong [tasks.write] ghi provider = "openai" và
+# model = "gpt-5.1".
 
 [tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
 provider = "anthropic"
