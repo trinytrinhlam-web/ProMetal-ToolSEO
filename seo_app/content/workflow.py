@@ -23,7 +23,7 @@ from seo_app.content.models import (
     SectionText,
 )
 from seo_app.content.rules import ContentRules, find_banned
-from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags
+from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
 
 INTRO_HEADING = "Mở bài"
 
@@ -137,7 +137,8 @@ def clean_flags(parts: Sequence[Section], flags: Sequence[Flag]) -> list[Flag]:
     seen: set[str] = set()
     result = []
     for flag in flags:
-        sentence = flag.sentence.strip()
+        # Bài đã có ký tự ngắt ở địa chỉ trần (T-031); câu AI chép lại thường không có.
+        sentence = break_autolinks(flag.sentence.strip())
         if not sentence or sentence in seen or not 0 <= flag.section < len(parts):
             continue
         if sentence not in parts[flag.section].body:
