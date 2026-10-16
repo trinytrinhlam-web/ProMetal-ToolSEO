@@ -108,3 +108,62 @@ Giao lại Thợ Máy sửa SL-T032-1 (bắt buộc) và SL-T032-2, SL-T032-3 (n
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (kiểm lại sau khi Thợ Máy sửa, code `735dbfa`)
+
+### Kết luận lượt 2: **ĐẠT**
+
+Ba lỗi SL-T032-1..3 đã sửa đúng. Thợ Máy chỉ bỏ 3 dòng `xfail` và sửa chú thích trong `tests/test_soi_loi_t032.py`, phần thân test giữ nguyên (đã đọc `git diff 8013108..735dbfa`). Thêm 2 lỗi Thấp (SL-T032-4, SL-T032-5), đều là biến thể hiếm của "nửa nhãn trên tiêu đề". **Không chặn gộp**, sửa sau cũng được.
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest
+3324 passed, 4 skipped, 12 xfailed, 1 warning in 141.38s (0:02:21)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Hồ sơ thật so với `origin/main` (cùng cách như lượt 1): `equal: True 4826 chars`, AI vẫn thấy đúng chuỗi như `main`.
+
+Test chập chờn `tests/test_soi_loi_t028.py::test_other_threads_reading_environment_never_fail` (T-034): lần chạy này **không gặp**.
+
+### Đã kiểm
+
+- **SL-T032-1:** `#suachuacuasat`, `#1 khu vực`, `##8. Quy tắc`, `####### 8` (7 dấu) đều không làm thôi giấu mục. Tiêu đề thật `## 8`, `##<tab>8`, `##<NBSP>8`, `##` rỗng, `# 8`, `＃＃ 8` toàn khổ đều kết thúc mục đúng (`test_round2_fake_heading_…`, `test_round2_real_heading_…`).
+- **SL-T032-2:** tiêu đề thụt lề (2 dấu cách, tab, NBSP) có nhãn đứng ngay sau gạch đầu dòng: giữ gạch đầu dòng trước, giấu cả mục kể cả `###` con, dừng ở `## 8` (`test_round2_indented_tagged_heading_right_after_bullet`).
+- **SL-T032-3:** nửa nhãn trên tiêu đề, rồi dòng `>` (một, hai dòng, có ký tự vô hình trước `>`), rồi nửa sau: giấu cả mục. Nửa nhãn ở cuối file (có/không xuống dòng, có `>` sau): bỏ tiêu đề. Hai tiêu đề nửa nhãn liên tiếp, tiêu đề nửa nhãn bên trong mục đang giấu: đúng.
+- **Tiêu đề lồng nhiều cấp:** `#` → `##` → `###` có nhãn → `####` → `###` → `##` có nhãn → `###` → `####` → `#`: đúng từng chỗ dừng (`test_round2_nested_levels`).
+- **Tốc độ:** vẫn tuyến tính, kể cả nhiều tiêu đề nửa nhãn chờ dòng kế và một tiêu đề rất dài có hàng nghìn `[CAN XAC` (`test_round2_filter_scales_linearly`, `test_round2_long_heading_with_many_brackets_scales_linearly`).
+
+### Đánh giá điểm Thợ Máy nêu ở lượt 2
+
+**`#hashtag [CẦN XÁC NHẬN]` mở mục giấu cấp 1, giấu tới tiêu đề `# ` thật kế tiếp (thường là hết file): chấp nhận.** Đây là lọc thừa, không để lọt. Nếu đổi thành "giấu tới tiêu đề thật bất kỳ cấp nào" thì `##8 … [nhãn]` (gõ quên dấu cách, ý là cấp 2) sẽ thôi giấu ở `### 8.1`, làm lọt mục con. Cách hiện tại an toàn hơn. Đã ghim bằng `test_round2_hashtag_with_tag_hides_until_real_h1_accepted`. Cái giá: AI mất phần hồ sơ còn lại mà không báo. Chỉ xảy ra khi chủ dự án gắn nhãn lên dòng bắt đầu bằng `#`, nên hiếm.
+
+### Lỗi mới (Thấp, không chặn)
+
+#### SL-T032-4 · Thấp · Nửa nhãn trên tiêu đề, nửa sau nằm sau một dòng trống
+
+- **Tái hiện:** `## 7 Chất liệu [CẦN XÁC`, dòng trống, `NHẬN]` (hoặc `  NHẬN]` thụt lề), `- bí mật`, `## 8`.
+- **Mong đợi:** giấu cả mục 7.
+- **Thực tế:** dòng trống làm tiêu đề thôi chờ, nên tiêu đề, `NHẬN]` và `- bí mật` đều tới AI. Với gạch đầu dòng, dòng thụt lề sau dòng trống vẫn được ghép (SL-024-1), riêng tiêu đề thì không.
+- **Gợi ý:** khi tiêu đề đang chờ nửa nhãn, bỏ qua dòng trống như đang bỏ qua dòng `>` (giữ lại dòng trống nếu không ghép được).
+- **Test:** `test_round2_half_tag_heading_then_blank_then_rest` (xfail, 2 kiểu).
+
+#### SL-T032-5 · Thấp · Tiêu đề thụt lề có nửa nhãn không giấu mục
+
+- **Tái hiện:** `- trước`, ` ## 7 [CẦN XÁC` (1 dấu cách đầu dòng), `NHẬN]`, `- bí mật`, `## 8`.
+- **Thực tế:** tiêu đề thụt lề không có nhãn trọn nên thành dòng tiếp của `- trước`. Cả khối bị giấu (thừa), nhưng `- bí mật` tới AI.
+- **Gợi ý:** dòng thụt lề trông như tiêu đề thật mà có nửa nhãn ở cuối thì cũng chờ dòng kế, như tiêu đề không thụt lề.
+- **Test:** `test_round2_indented_half_tag_heading` (xfail).
+
+Cả hai cần hai lỗi gõ cùng lúc (nhãn bị xuống dòng **và** dòng trống, hoặc **và** thụt lề), nên rất hiếm.
+
+### Đã thay đổi lượt 2
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t032.py` | Thêm 26 test lượt 2 qua + 3 test `xfail(strict=True)` cho SL-T032-4, SL-T032-5 |
