@@ -22,7 +22,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy (`Thợ Máy · T-036 Meta title, description, slug`) | `team/T-036` | Thợ Máy **xong** (`9cde0b1`, Linux 4.431 qua; 130 test mới). `seo_app/onpage/meta.py`, `ContentWriter.meta`, `[tasks.meta]` trong `config/ai.toml`; đuôi " \| Pro-Metal" là tham số mặc định. **Chờ Soi Lỗi** (chưa giao, Chỉ Huy B đang bàn giao) | [Thợ Máy](reports/T-036-tho-may.md) |
+| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-036 Meta title, description, slug`) | `team/T-036` | Thợ Máy xong (`9cde0b1`, Linux 4.431 qua). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-036-tho-may.md) |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy (`Thợ Máy · T-037 Danh sách bài đã đăng, cache`) | `team/T-037` | Đã giao | |
+| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng | Thợ Máy (`Thợ Máy · T-038 Schema FAQPage`) | `team/T-038` | Đã giao | |
 
 ## Chờ
 
@@ -31,8 +33,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | Bộ lọc hồ sơ: theo dõi 3 lỗi Thấp sau T-043 (LC-T043-1 lùi so với trước, SL-T043-1, -2). Điều kiện của Lá Chắn T-043 | Thợ Máy | Chỗ trống |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Tên site, tên người dùng từ WordPress hiện an toàn trên trang Kết nối WordPress (SL-T031-1) | Họa Sĩ | Chỗ trống (T-031 đã gộp) |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
-| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
