@@ -34,11 +34,11 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 13:55.
+Chỉ Huy B, cập nhật 2026-10-16 13:58.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`9cde0b1`) | Thợ Máy xong. Soi Lỗi đang kiểm | Lá Chắn (A1: khung `<de_bai>` chưa có trong `DATA_RULES`; A2), gộp |
+| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`a8de5c9`) | Soi Lỗi đạt có điều kiện (SL-T036-1 Cao bắt buộc; -9, -5 Trung bình). Thợ Máy lượt 2 đang sửa (phiên cũ mở lại; được dặn gộp `main` vào nhánh) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-036` còn mở), Lá Chắn, gộp |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` | Thợ Máy đang làm | Soi Lỗi, Lá Chắn, gộp; rồi T-042 |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) (GĐ4) | `team/T-038` (`94c9eb5`) | Thợ Máy xong (Linux 4.740 qua). Soi Lỗi đang kiểm | Lá Chắn (W3, U1), gộp |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập | Theo thứ tự trong phiếu |
