@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-16, 08:26 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-16, 12:52 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -17,7 +17,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - Đã lên `main` 2026-10-15 tối: test đo tốc độ không còn đỏ oan (T-025).
 - Giai đoạn 4: thiết kế xong (T-033), đã chia phiếu. **Có 4 câu hỏi chờ anh** (mục 4).
 - Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động trên `main`: 4.301 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
+- Bộ kiểm tra tự động trên `main`: 4.403 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -54,9 +54,9 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Thử mù mô hình trong Cài đặt (T-019) | ✅ Xong, đã lên `main` |
 | Địa chỉ trần, email trong chữ AI không thành link (T-031) | ✅ Xong, đã lên `main` |
 | Bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai và nhãn đặt trên tiêu đề (T-032) | ✅ Xong, đã lên `main` |
-| 7 lỗi Thấp còn lại của lớp AI và thử mù (T-034) | 🔎 Thợ Máy xong, Soi Lỗi đang kiểm (nhánh `team/T-034`) |
+| 7 lỗi Thấp còn lại của lớp AI và thử mù (T-034) | 🛡️ Thợ Máy 2 lượt, Soi Lỗi đạt; Lá Chắn đang kiểm (nhánh `team/T-034`) |
 | README: hướng dẫn 3 hãng AI và thử mù (T-035) | ✅ Xong, đã lên `main` (README mục 7) |
-| 3 lỗi Thấp còn lại của bộ lọc hồ sơ (T-043) | 🔧 Thợ Máy đang làm (nhánh `team/T-043`) |
+| 3 lỗi Thấp còn lại của bộ lọc hồ sơ (T-043) | ✅ Xong, đã lên `main` (còn 3 lỗi Thấp hiếm gặp theo dõi ở T-045) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 
