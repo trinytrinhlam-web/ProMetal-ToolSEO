@@ -415,11 +415,6 @@ def test_fallback_nested_keeps_variables_hidden_until_outer_ends(monkeypatch):
     assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T034-2: thư viện đã cài nhưng không còn module ``_client`` (đổi cấu trúc): "
-    "ignoring_custom_headers bỏ qua (``continue``) thay vì quay về cách gỡ biến",
-)
 @pytest.mark.usefixtures("evil_env")
 @pytest.mark.parametrize("module_name", CLIENT_MODULES)
 def test_library_without_client_module_falls_back(monkeypatch, module_name):

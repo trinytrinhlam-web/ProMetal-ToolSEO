@@ -335,7 +335,15 @@ def ignoring_custom_headers() -> Iterator[None]:
                 try:
                     module = importlib.import_module(module_name)
                 except ImportError:
-                    continue  # thư viện chưa cài: không có client nào của nó được tạo
+                    # Gói chưa cài: không có client nào của nó được tạo. Gói vẫn cài mà mất
+                    # module ``_client`` (thư viện đổi cấu trúc): không biết nó đọc biến ở đâu,
+                    # nên gỡ biến như cách cũ (Soi Lỗi SL-T034-2).
+                    try:
+                        importlib.import_module(module_name.split(".")[0])
+                    except ImportError:
+                        continue
+                    fallback = True
+                    continue
             current = getattr(module, "os", None)
             if current is os or current is _OS_WITHOUT_IGNORED:
                 patched.append((module, current))
