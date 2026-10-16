@@ -39,4 +39,4 @@ W1, W2, W3, W4, S2, D3. Lá Chắn soát kỹ nhất phần chặn ghi bài đã
 ## Ghi chú của Chỉ Huy
 
 - Phiên **"Thợ Máy · T-042 Ghi meta SEO lên nháp"**, nhánh `team/T-042`. Chỉ giao sau khi chủ dự án trả lời.
-- Sau phiếu này là **T-043**: chủ dự án (có Chỉ Huy hướng dẫn) tạo thử **một bài nháp** bằng app, mở trang quản trị xem hộp SiteSEO hiện đúng, rồi tự xóa nháp. Ghi kết quả `docs/team/reports/T-043-chi-huy.md`. Lập phiếu T-043 khi tới bước đó.
+- Sau phiếu này là một phiếu thử thật (số phiếu kế tiếp lúc đó): chủ dự án (có Chỉ Huy hướng dẫn) tạo thử **một bài nháp** bằng app, mở trang quản trị xem hộp SiteSEO hiện đúng, rồi tự xóa nháp. Ghi kết quả vào báo cáo của phiếu đó. Lập phiếu khi tới bước đó.

@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 07:53 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 07:58 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -10,7 +10,7 @@ _Cập nhật: 2026-10-16 07:53 (Chỉ Huy B giữ quyền điều phối; xem [
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030.
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-032.
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -22,15 +22,15 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận cả nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề (Lá Chắn T-022+024 lỗi Thấp #1, #2, #4) | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 → Lá Chắn (`Lá Chắn · T-032 Bộ lọc hồ sơ nhận nhãn gõ sai (Opus tạm)`) | `team/T-032` | Thợ Máy 2 lượt (`ca2860a`). Soi Lỗi lượt 2 **ĐẠT** (`da33f5b`, Linux 3.324 qua; SL-T032-1..3 đã sửa; 2 lỗi Thấp mới SL-T032-4, -5 không chặn). **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-032-tho-may.md) · [Soi Lỗi](reports/T-032-soi-loi.md) |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) → Soi Lỗi (`Soi Lỗi · T-031 …`) | `team/T-031` | Thợ Máy xong (`192d9c5`, Linux 3.434 qua): chèn ký tự rộng 0 vào `://`, `www.`, `@`; sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` (tên bài đối thủ có địa chỉ vẫn thành link). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) → Soi Lỗi (`Soi Lỗi · T-034 …`) | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`, Linux 3.383 qua). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-034-tho-may.md) |
+| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký (`Thư Ký · T-035 README 3 hãng AI, thử mù`) | `team/T-035` | Đã giao | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký | T-032 gộp vào `main` |
+| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 (SL-T032-4, -5, LC-T032-1: ký tự lạ chen trong nhãn) | Thợ Máy | Chỗ trống |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
@@ -54,6 +54,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-032-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-032-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-032-la-chan.md) (Opus tạm), 3 lỗi Thấp → T-043. Gộp vào `main` `cbfe37a`: Linux 3.558 qua, 0 hỏng |
 | [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4: SiteSEO lưu meta ở đâu, ghi qua REST (Abilities / meta đã mở), schema site đang có, chia phiếu | Thợ Máy | 2026-10-15 | [Báo cáo](reports/T-033-tho-may.md) (chỉ tài liệu, 8 lần GET công khai). Gộp vào `main`. Lập T-036 → T-042; 4 câu hỏi chờ chủ dự án |
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy, Họa Sĩ | 2026-10-15 | [Thợ Máy](reports/T-019-tho-may.md) (2 lượt) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-019-la-chan.md) (Opus tạm), 5 lỗi Thấp → T-034. Gộp vào `main` `7d8f6f3`: Linux 3.344 qua, 0 hỏng |
 | [T-025](tickets/T-025-on-dinh-test-do-toc-do.md) | Ổn định các test đo tốc độ chập chờn | Soi Lỗi | 2026-10-15 | [Soi Lỗi](reports/T-025-soi-loi.md): 1.000 lần đo, trước sửa hỏng 25, sau sửa 0; ngưỡng 9 giữ nguyên · Lá Chắn rút gọn: [**ĐẠT**](reports/T-025-la-chan.md) (Opus tạm). Gộp vào `main` `39065cd`: Linux 3.133 qua, 0 hỏng. Nên chạy lại trên Windows (6 test đồng hồ kiểu Windows mới kiểm bằng đồng hồ giả) |
@@ -96,4 +97,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
 
-## Số phiếu tiếp theo: T-043 (dành cho bước thử thật trên site sau T-042)
+## Số phiếu tiếp theo: T-044
