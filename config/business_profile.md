@@ -5,7 +5,8 @@
 >   1. Dòng ghi chú bắt đầu bằng dấu `>` (như các dòng này).
 >   2. Ý có nhãn `[CẦN XÁC NHẬN — lý do]`: nhãn đặt ở dòng nào của ý (kể cả
 >      dòng xuống hàng bên dưới) thì AI bỏ cả ý đó. Viết hoa hay thường, có dấu
->      hay không dấu, ngoặc vuông `[ ]` hay ngoặc tròn `( )` đều được. Nhớ gõ
+>      hay không dấu, ngoặc vuông `[ ]` hay ngoặc tròn `( )`, có in đậm `**`,
+>      ngoặc kép hay gạch nối giữa các chữ đều được. Nhớ gõ
 >      dấu mở ngoặc: chữ "cần xác nhận" không có ngoặc là câu thường, AI vẫn thấy.
 >   3. Cả mục có nhãn trên tiêu đề (ví dụ `## 7. … [CẦN XÁC NHẬN]`): AI bỏ tiêu
 >      đề đó và mọi dòng bên dưới, kể cả mục con `###`, tới tiêu đề cùng cấp kế

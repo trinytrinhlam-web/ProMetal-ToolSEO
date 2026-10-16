@@ -19,14 +19,22 @@ BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
 # («[CẦNXÁC NHẬN]»), không dấu («[CAN XAC NHAN]»), ngoặc tròn, «CHƯA XÁC NHẬN». An toàn khi nghi
 # ngờ: thà giấu thừa còn hơn để lọt. Vẫn bắt buộc có ngoặc mở để câu thường như «khách cần xác
 # nhận lịch» không bị giấu.
-_UNCONFIRMED_PATTERN = re.compile(r"[\[(]\s*(?:CAN|CHUA)\s*XAC\s*NHAN")
+# Giữa ngoặc mở và chữ, giữa các chữ: khoảng trắng tùy ý và tối đa 4 ký tự không phải chữ/số
+# («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[⚠ CẦN»,  «[CẦN-XÁC_NHẬN]», Lá Chắn LC-T032-1), trừ dấu
+# đóng ngoặc. Giới hạn {0,4} là bắt buộc: «[» cũng là ký tự không phải chữ, dùng «*» thì chuỗi
+# «[[[[…» chạy bậc hai. Hai nhánh trong nhóm không trùng nhau với «\s», nên không quay lui bùng nổ.
+_GAP = r"\s*(?:(?:[^\w\s\])]|_)\s*){0,4}"
+_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
 # Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
 _BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
 # Tiêu đề "thật" như Markdown: 1–6 dấu «#» rồi khoảng trắng hoặc hết dòng. Chỉ tiêu đề thật mới
 # kết thúc mục đang giấu; «#suachuacuasat» hay «#1 khu vực» thì không (Soi Lỗi SL-T032-1).
 _REAL_HEADING = re.compile(r"#{1,6}(?:\s|$)")
-# Cuối dòng là nửa đầu của nhãn: ngoặc mở rồi chỉ còn chữ cái / khoảng trắng (đã bỏ dấu).
-_PARTIAL_TAG_TAIL = re.compile(r"[\[(]([A-Z\s]*)$")
+# Phần sau ngoặc mở của nửa nhãn: chỉ chữ cái (đã bỏ dấu), khoảng trắng, «_» và ký tự không
+# phải chữ/số trừ dấu đóng ngoặc (như ``_GAP``).
+_PARTIAL_TAG_REST = re.compile(r"(?:[A-Z\s_]|[^\w\s\])])*")
+# Nửa nhãn dài nhất sau khi gộp khoảng trắng: ngoặc, 11 chữ, 4 khoảng × (4 ký tự + dấu cách).
+_PARTIAL_TAG_MAX = 64
 _TAG_WORDS = ("CANXACNHAN", "CHUAXACNHAN")
 
 # Ký tự "mặc định bỏ qua" (Unicode Default_Ignorable_Code_Point) KHÔNG thuộc loại Cf: không
@@ -179,12 +187,23 @@ def _tag_text(text: str) -> str:
 
 
 def _ends_with_partial_tag(text: str) -> bool:
-    """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[» (nhãn bị xuống dòng)."""
-    match = _PARTIAL_TAG_TAIL.search(_tag_text(text).rstrip())
-    if not match:
-        return False
-    letters = "".join(match.group(1).split())
-    return any(words.startswith(letters) for words in _TAG_WORDS)
+    """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[**CẦN», «[» (nhãn bị xuống
+    dòng).
+
+    Chỉ xét đoạn cuối dài ``_PARTIAL_TAG_MAX`` ký tự (sau khi gộp khoảng trắng), nên mỗi dòng
+    tốn thời gian cố định dù có hàng nghìn ngoặc. Thử từng ngoặc mở trong đoạn đó.
+    """
+    tail = " ".join(_tag_text(text).split())[-_PARTIAL_TAG_MAX:]
+    for start, ch in enumerate(tail):
+        if ch not in "[(":
+            continue
+        rest = tail[start + 1 :]
+        if not _PARTIAL_TAG_REST.fullmatch(rest):
+            continue
+        letters = re.sub(r"[^A-Z]", "", rest)
+        if any(words.startswith(letters) for words in _TAG_WORDS):
+            return True
+    return False
 
 
 def _is_unconfirmed(text: str) -> bool:
