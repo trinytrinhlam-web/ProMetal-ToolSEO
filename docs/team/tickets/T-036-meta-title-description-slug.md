@@ -82,3 +82,4 @@ A1, A2, U1 (chữ AI qua `clean_ai_text`), D1 (không thư viện mới), D3.
 ## Ghi chú của Chỉ Huy
 
 - Phiên **"Thợ Máy · T-036 Meta title, description, slug"**, nhánh `team/T-036` (từ `main`).
+- 2026-10-16: chủ dự án chưa trả lời câu 3 (đuôi "| Pro-Metal") và dặn phần mềm phải chạy ổn định khi chưa trả lời. Hậu tố là tham số có giá trị mặc định, thiếu hoặc sai cấu hình thì vẫn chạy (dùng mặc định, không lỗi).

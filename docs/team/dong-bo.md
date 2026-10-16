@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 07:58. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 08:05. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -47,6 +47,14 @@ Chỉ Huy B, cập nhật 2026-10-16 07:58. Chủ dự án dặn chạy tự đ�
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 08:05 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** Chủ dự án 2026-10-16: chưa trả lời 4 câu hỏi Giai đoạn 4; yêu cầu phần mềm **vẫn chạy ổn định khi chưa có câu trả lời** và làm tiếp các việc khác. Cách làm:
+  - mọi phần cần câu trả lời là tùy chọn, mặc định tắt hoặc theo phương án đề xuất, đổi được trong cấu hình;
+  - khi chưa ghi được SEO lên SiteSEO, bước SEO cho chép tay (phương án C) và không báo lỗi;
+  - T-042 vẫn chờ câu 1, 2.
+  - Đã ghi vào `TIEN-DO.md` mục 4, `BAN-GIAO.md` 7.4, phiếu T-036, T-041, T-042.
 
 ### 2026-10-16 07:58 · Chỉ Huy B
 

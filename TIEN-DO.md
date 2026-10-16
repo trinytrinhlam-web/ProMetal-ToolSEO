@@ -63,7 +63,7 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 ## 4. Việc đang chờ anh
 
 1. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
-2. **Giai đoạn 4 (tối ưu SEO): 4 câu hỏi**, giải thích đầy đủ ở [`docs/team/reports/T-033-tho-may.md`](docs/team/reports/T-033-tho-may.md) mục 7. Anh trả lời bằng chữ cái, ví dụ "1A 2A 3A 4A".
+2. **Giai đoạn 4 (tối ưu SEO): 4 câu hỏi** (anh chưa trả lời, 16/10 dặn: phần mềm phải chạy ổn định khi chưa có câu trả lời. Đội làm theo phương án đề xuất ở chỗ đổi được bằng cấu hình; phần ghi SEO lên website tạm để anh chép tay), giải thích đầy đủ ở [`docs/team/reports/T-033-tho-may.md`](docs/team/reports/T-033-tho-may.md) mục 7. Anh trả lời bằng chữ cái, ví dụ "1A 2A 3A 4A".
    - **Câu 1.** Phần mềm ghi tiêu đề và mô tả SEO vào SiteSEO bằng cách nào?
      - **A (đề xuất):** anh bật công tắc **Abilities** trong SiteSEO;
      - **B:** không bật gì, thử đường website đang mở sẵn;

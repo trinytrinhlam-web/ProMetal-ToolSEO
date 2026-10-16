@@ -52,3 +52,7 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
 ## Ghi chú của Chỉ Huy
 
 - Phiên **"Thợ Máy · T-041 Lưu SEO vào nháp"** rồi **"Họa Sĩ · T-041 Bước SEO thật"**, nhánh `team/T-041`.
+- 2026-10-16: chủ dự án chưa trả lời câu 1, 2 (cách ghi SEO lên SiteSEO). Bước SEO phải chạy trọn vẹn **không cần** ghi lên site:
+  - có nút chép (copy) title, description, slug để chủ dự án dán tay vào hộp SiteSEO;
+  - không hiện lỗi hay nút hỏng khi chưa cấu hình ghi SEO;
+  - không có kết nối WordPress thì danh sách bài (liên kết nội bộ, kiểm trùng) báo nhẹ "chưa kết nối", các phần còn lại vẫn dùng được.
