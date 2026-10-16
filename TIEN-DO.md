@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-16, 13:10 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-16, 14:16 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -18,7 +18,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - **Giai đoạn 2 xong** (2026-10-16): đủ 3 hãng AI, thử mù, bộ lọc hồ sơ chặt, chữ AI không còn thành link.
 - Giai đoạn 4: thiết kế xong (T-033), đã chia phiếu; phần meta (T-036) Thợ Máy làm xong, chờ kiểm. Anh đã trả lời 4 câu (16/10); còn vài việc anh làm trên website (mục 4).
 - Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
-- Bộ kiểm tra tự động trên `main`: 4.658 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
+- Bộ kiểm tra tự động trên `main`: 4.867 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
 
 ## 2. Lộ trình theo giai đoạn
 
@@ -28,7 +28,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 1 | WordPress: kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện | ✅ Xong |
 | 2 | AI viết bài | ✅ Xong (2026-10-16; xem mục 3) |
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
-| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 🟡 Đang làm: thiết kế xong (T-033), phiếu T-036 → T-042; T-036 (meta) đang kiểm |
+| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 🟡 Đang làm: thiết kế xong (T-033); schema FAQPage (T-038) đã lên `main`; meta (T-036) và danh sách bài đã đăng (T-037) đang kiểm |
 | 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
 | 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
 

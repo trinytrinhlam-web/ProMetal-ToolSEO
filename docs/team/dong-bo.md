@@ -34,14 +34,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 14:12.
+Chỉ Huy B, cập nhật 2026-10-16 14:16.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`c0ca3b7`) | Thợ Máy lượt 2 xong (Linux 5.019 qua). Soi Lỗi kiểm lại (phiên cũ) | Lá Chắn (A1, A2), gộp |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` | Soi Lỗi đạt có điều kiện (SL-T037-1 bắt buộc). Thợ Máy lượt 2 đang sửa (phiên cũ) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-037` còn mở), Lá Chắn, gộp; rồi T-042 |
-| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) (GĐ4) | `team/T-038` (`365251c`) | Soi Lỗi đạt có điều kiện (SL-T038-1, -2 chuyển T-041, ghi trong phiếu T-041). Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập | Theo thứ tự trong phiếu |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập. T-041 có thêm 3 điều kiện bắt buộc của Lá Chắn T-038 (ghi trong phiếu) | T-039 sau khi T-036, T-037 gộp |
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện Lá Chắn T-043) | Giao Thợ Máy, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
@@ -49,6 +48,10 @@ Chỉ Huy B, cập nhật 2026-10-16 14:12.
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 14:16 · Chỉ Huy B
+
+- Lá Chắn T-038 (Opus tạm) **ĐẠT CÓ ĐIỀU KIỆN** (`6bb4871`). Gộp T-038 vào `main`: Linux 4.867 qua, 0 hỏng. Ba điều kiện ghi vào phiếu T-041: chặn Cs/Co/Cn; bỏ Markdown nội dòng, không đổi sang HTML; hiện `json_ld` bằng `st.code`.
 
 ### 2026-10-16 13:10 · Chỉ Huy B nhận lại quyền
 

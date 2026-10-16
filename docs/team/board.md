@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 13:10 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 14:16 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -10,7 +10,7 @@ _Cập nhật: 2026-10-16 13:10 (Chỉ Huy B giữ quyền điều phối; xem [
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-043.
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-038, T-043.
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -24,7 +24,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 | `team/T-036` | Thợ Máy lượt 2 **xong** (`c0ca3b7`, đã gộp `main`; Linux 5.019 qua): sửa SL-T036-1 (Cao), -9, -5 và 5 lỗi Thấp; SL-T036-8 giữ nguyên. **Soi Lỗi đang kiểm lại** | [Thợ Máy](reports/T-036-tho-may.md) · [Soi Lỗi](reports/T-036-soi-loi.md) |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-037 …`) → Thợ Máy lượt 2 | `team/T-037` | Soi Lỗi **đạt có điều kiện** (Linux 4.848 qua; 38 dạng link giả mạo đều chặn): SL-T037-1 (cache bị khóa lâu bị xóa nhầm, bắt buộc sửa), SL-T037-2 (cắt lặng lẽ khi vượt `MAX_PAGES`). Test tên "publish" đã sửa được Soi Lỗi gia cố, không cần đổi tên hàm. **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-037-tho-may.md) · [Soi Lỗi](reports/T-037-soi-loi.md) |
-| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng | Thợ Máy → Soi Lỗi → Lá Chắn (`Lá Chắn · T-038 Schema FAQPage (Opus tạm)`) | `team/T-038` | Thợ Máy xong (`94c9eb5`). Soi Lỗi **đạt có điều kiện** (`365251c`, Linux 4.867 qua): SL-T038-2 (Markdown nội dòng trong câu trả lời) và SL-T038-1 (surrogate lẻ) chuyển sang T-041. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-038-tho-may.md) · [Soi Lỗi](reports/T-038-soi-loi.md) |
 
 ## Chờ
 
@@ -53,6 +52,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (`seo_app/onpage/schema.py`) | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-038-tho-may.md) · [Soi Lỗi](reports/T-038-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-038-la-chan.md) (Opus tạm): 3 điều kiện chuyển T-041. Gộp vào `main`: Linux 4.867 qua, 0 hỏng |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp lớp AI và thử mù: che số phiên bản và biến thể, Claude bị cắt, `_OsWithoutIgnored` thay gỡ biến môi trường, `RLock`, gzip hỏng, tên mô hình lạ, đường dẫn trong câu lỗi | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-034-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-034-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-034-la-chan.md) (Opus tạm), 3 lỗi Thấp ghi sổ. Gộp vào `main` `49f57c9`: Linux 4.658 qua, 0 hỏng |
 | [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: nhãn có ký tự lạ chen vào, nửa nhãn qua dòng trống, tiêu đề thụt lề có nửa nhãn | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-043-tho-may.md) · [Soi Lỗi](reports/T-043-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-043-la-chan.md) (Opus tạm): gộp được ngay, mở phiếu theo dõi T-045. Gộp vào `main`: Linux 4.403 qua, 0 hỏng |
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI và chữ ngoài không thành link (chèn ký tự rộng 0); sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-031-tho-may.md) · [Soi Lỗi](reports/T-031-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-031-la-chan.md) (Opus tạm; 48.977 ca, 0 link). Gộp vào `main`: Linux 4.301 qua, 0 hỏng. Cần chạy lại trên Windows |

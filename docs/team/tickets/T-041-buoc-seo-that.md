@@ -60,3 +60,10 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
   - SL-T038-2 (Trung bình): bỏ Markdown nội dòng (`**đậm**`, link, `` `mã` ``) ở **cả** bài lẫn câu trả lời trước khi so nguyên văn. JSON-LD không được mang dấu Markdown.
   - SL-T038-1 (Thấp): chặn ký tự surrogate lẻ (loại Cs).
   - Bỏ `xfail` tương ứng trong `tests/test_soi_loi_t038.py`.
+- 2026-10-16: **Điều kiện bắt buộc của Lá Chắn T-038** (`docs/team/reports/T-038-la-chan.md`). Phải xong trước khi giao diện dùng `json_ld`, hạn chót trước khi hết Giai đoạn 4:
+  1. `schema.py` chặn thêm ký tự loại Cs, Co, Cn.
+  2. Bỏ Markdown nội dòng ở cả bài lẫn câu trả lời:
+     - link chỉ giữ chữ, không giữ địa chỉ, nên `[x](javascript:…)` không còn trong JSON-LD;
+     - ảnh: bỏ, hoặc chỉ giữ alt;
+     - **không bao giờ** đổi sang HTML.
+  3. Giao diện hiện `json_ld` bằng `st.code`, không dùng `unsafe_allow_html`.
