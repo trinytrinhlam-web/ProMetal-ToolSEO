@@ -13,7 +13,10 @@ from seo_app.ai.base import (
     AIError,
     T,
     TaskConfig,
+    TokenLimitError,
     bad_request_error,
+    bad_response_error,
+    caused_by_decoding,
     ignoring_custom_headers,
     is_bad_response,
     library_error,
@@ -53,11 +56,7 @@ class AnthropicProvider:
             if isinstance(exc, pydantic.ValidationError) and is_bad_response(exc):
                 # Thư viện đối chiếu bài với khuôn ngay khi đọc xong khối chữ, trước khi biết lý
                 # do dừng: bài bị cắt vì max_tokens cũng rơi vào đây.
-                raise AIError(
-                    "AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt vì quá giới hạn "
-                    f"{task.max_tokens} token). Bấm thử lại; nếu vẫn lỗi, tăng max_tokens của "
-                    f"việc «{task.name}» trong config/ai.toml."
-                ) from exc
+                raise _schema_error(task, AIError) from exc
             error = unreadable_error(exc, VENDOR)
             if error is not None:
                 raise error from exc
@@ -83,7 +82,14 @@ class AnthropicProvider:
                     fallbacks="default",
                     **extra,
                 ) as stream:
-                    message = stream.get_final_message()
+                    try:
+                        message = stream.get_final_message()
+                    except pydantic.ValidationError as exc:
+                        if _cut_by_token_limit(stream):
+                            # Đã biết chắc là bị cắt: lớp lỗi riêng để thử mù gợi ý đúng cách
+                            # sửa (Soi Lỗi SL-T019-4). Câu chữ giữ như cũ.
+                            raise _schema_error(task, TokenLimitError) from exc
+                        raise
                 if message.stop_reason != "pause_turn":
                     break
                 messages = [*messages, {"role": "assistant", "content": message.content}]
@@ -98,6 +104,9 @@ class AnthropicProvider:
         except anthropic.RateLimitError as exc:
             raise AIError("Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại.") from exc
         except anthropic.APIConnectionError as exc:
+            if caused_by_decoding(exc):
+                # Nội dung nén gzip/br hỏng: đã có trả lời, chỉ là đọc không được (LC-T028-3).
+                raise bad_response_error(VENDOR) from exc
             raise AIError("Không kết nối được tới Anthropic. Kiểm tra mạng Internet.") from exc
         except anthropic.APIStatusError as exc:
             if "credit" in str(exc.message).lower():
@@ -128,3 +137,38 @@ def _error_type(exc: anthropic.APIStatusError) -> object:
     body = getattr(exc, "body", None)
     error = body.get("error") if isinstance(body, dict) else None
     return error.get("type") if isinstance(error, dict) else None
+
+
+def _schema_error(task: TaskConfig, cls: type[AIError]) -> AIError:
+    """Bài không khớp khuôn (thường vì bị cắt giữa chừng). Câu cố định, không chép dữ liệu."""
+    return cls(
+        "AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt vì quá giới hạn "
+        f"{task.max_tokens} token). Bấm thử lại; nếu vẫn lỗi, tăng max_tokens của "
+        f"việc «{task.name}» trong config/ai.toml."
+    )
+
+
+# Đọc tiếp tối đa chừng này sự kiện sau chỗ lỗi để tìm lý do dừng (thường chỉ còn 2).
+_MAX_TAIL_EVENTS = 50
+
+
+def _cut_by_token_limit(stream: object) -> bool:
+    """Luồng trả lời dừng vì chạm ``max_tokens`` không (đọc tiếp phần còn lại của luồng).
+
+    Thư viện đối chiếu khuôn ngay khi khối chữ kết thúc, tức là **trước** sự kiện
+    ``message_delta`` mang lý do dừng. Đọc tiếp các sự kiện thô còn lại (đã có sẵn trong trả
+    lời, không gọi thêm lần nào) để lấy ``stop_reason``. Mọi trục trặc (thư viện đổi tên thuộc
+    tính, mạng đứt, dữ liệu lạ) đều trả ``False``: giữ cách báo cũ.
+    """
+    try:
+        raw = getattr(stream, "_raw_stream", None)
+        if raw is None:
+            return False
+        for count, event in enumerate(raw):
+            if count >= _MAX_TAIL_EVENTS:
+                return False
+            if getattr(event, "type", None) == "message_delta":
+                return getattr(getattr(event, "delta", None), "stop_reason", None) == "max_tokens"
+    except Exception:  # noqa: BLE001 - chỉ là đoán thêm; lỗi thì giữ câu cũ
+        return False
+    return False

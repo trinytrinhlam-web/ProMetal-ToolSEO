@@ -210,11 +210,6 @@ def test_blind_token_limit_real_library_points_to_effort(monkeypatch, vendor):
     assert sorted(e.error or "" for e in entries) == ["", HIDDEN_ERROR]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T019-4: Claude (thư viện thật) bị cắt vì giới hạn token vẫn ra câu bảo sửa "
-    "«blind_test» trong config/ai.toml",
-)
 def test_blind_token_limit_anthropic_real_library_points_to_effort(monkeypatch):
     cut = START + BLOCK_START + text_delta('{"intro": "bài dài') + BLOCK_STOP
     provider = anthropic_stream(cut + message_end("max_tokens"))
@@ -303,10 +298,6 @@ def test_vendor_words_still_masked(text):
         assert word not in shown, word
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T019-3: số phiên bản đứng sau tên hãng/dòng mô hình còn lộ (Opus 5.5, GPT 6.1)",
-)
 @pytest.mark.parametrize(
     ("text", "leak"),
     [("Tôi là Claude Opus 5.5, viết bài này.", "5.5"), ("Tôi là GPT 6.1.", "6.1"),

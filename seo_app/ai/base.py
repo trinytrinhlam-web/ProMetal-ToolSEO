@@ -7,7 +7,7 @@ import os
 import re
 import threading
 import traceback
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
@@ -188,6 +188,22 @@ def network_error_kind(exc: BaseException) -> str | None:
     return None
 
 
+def caused_by_decoding(exc: BaseException) -> bool:
+    """``exc`` (hoặc lỗi gốc của nó) là lỗi giải nén của httpx (nội dung ``gzip``/``br`` hỏng).
+
+    Thư viện anthropic, openai bọc lỗi này thành ``APIConnectionError``, nên phải lần theo chuỗi
+    ``__cause__`` / ``__context__`` (Lá Chắn LC-T028-3). Có giới hạn số bước, phòng chuỗi vòng.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen and len(seen) < 20:
+        if network_error_kind(current) == "decode":
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def unreadable_error(exc: BaseException, vendor: str) -> AIError | None:
     """``AIError`` (câu cố định) cho lỗi khi đọc trả lời của ``vendor``: dữ liệu hỏng
     (``is_bad_response``), hoặc mạng đứt / quá giờ giữa lúc đọc luồng. ``None`` nếu không phải.
@@ -218,22 +234,133 @@ IGNORED_ENV = (
     "OPENAI_ORG_ID",
     "OPENAI_PROJECT_ID",
 )
-_ENV_LOCK = threading.Lock()
+# Module của thư viện đọc các biến trên lúc tạo client (anthropic/_client.py:244,
+# openai/_client.py:281-317, đều qua ``os.environ.get``).
+_CLIENT_MODULES = ("anthropic._client", "openai._client")
+
+
+class _ReentrantLock:
+    """``threading.RLock`` có thêm ``locked()`` (RLock chỉ có hàm này từ Python 3.14).
+
+    Gọi lồng trong cùng một luồng không tự treo (Lá Chắn LC-T028-1).
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._depth = 0
+
+    def __enter__(self) -> None:
+        self._lock.acquire()
+        self._depth += 1
+
+    def __exit__(self, *exc_info: object) -> None:
+        self._depth -= 1
+        self._lock.release()
+
+    def locked(self) -> bool:
+        """Có luồng nào (kể cả luồng đang gọi) đang giữ khóa không."""
+        if not self._lock.acquire(blocking=False):
+            return True
+        try:
+            return self._depth > 0
+        finally:
+            self._lock.release()
+
+
+_ENV_LOCK = _ReentrantLock()
+
+
+class _EnvironWithoutIgnored(Mapping[str, str]):
+    """``os.environ`` nhìn qua một lớp lọc: đọc như thật nhưng không thấy ``IGNORED_ENV``.
+
+    Chỉ đọc. Không chép giá trị ra: mỗi lần đọc đều hỏi ``os.environ`` thật.
+    """
+
+    def __getitem__(self, name: str) -> str:
+        if name in IGNORED_ENV:
+            raise KeyError(name)
+        return os.environ[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return (name for name in list(os.environ) if name not in IGNORED_ENV)
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def copy(self) -> dict[str, str]:
+        return dict(self)
+
+
+class _OsWithoutIgnored:
+    """Thay cho module ``os`` bên trong module tạo client của thư viện: mọi thứ như ``os`` thật,
+    riêng ``environ`` là ``_EnvironWithoutIgnored``.
+    """
+
+    environ = _EnvironWithoutIgnored()
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(os, name)
+
+    def getenv(self, name: str, default: str | None = None) -> str | None:
+        return self.environ.get(name, default)
+
+
+_OS_WITHOUT_IGNORED = _OsWithoutIgnored()
 
 
 @contextmanager
 def ignoring_custom_headers() -> Iterator[None]:
-    """Tạm ẩn ``IGNORED_ENV`` trong lúc tạo client (thư viện chỉ đọc chúng trong ``__init__``).
+    """Thư viện không thấy ``IGNORED_ENV`` trong lúc tạo client (chỉ đọc chúng trong ``__init__``).
 
-    Khóa ``_ENV_LOCK`` để hai trang tạo client cùng lúc không trả biến về sai giá trị. Xong thì trả
-    lại như cũ: chỉ client của app không thấy biến, phần còn lại của máy không bị đụng.
+    Không gỡ biến khỏi ``os.environ`` (Soi Lỗi SL-T019-5): luồng khác đang duyệt ``os.environ``
+    (httpx tìm proxy, ``dict(os.environ)``) sẽ gặp ``KeyError`` nếu biến biến mất giữa chừng. Thay
+    vào đó, tên ``os`` bên trong ``anthropic._client`` và ``openai._client`` được tạm trỏ sang
+    ``_OsWithoutIgnored``; phần còn lại của máy (và của chính thư viện) vẫn thấy ``os`` thật.
+
+    Nếu một bản thư viện khác không đọc biến qua ``os`` của module đó (không có tên ``os`` trỏ
+    tới module ``os`` thật), thì quay về cách cũ: tạm gỡ biến khỏi ``os.environ``, để header lạ
+    không bao giờ tới client.
+
+    Khóa ``_ENV_LOCK`` để các luồng cùng tạo client không trả ``os`` / biến về sai.
     """
+    import importlib
+    import sys
+
     with _ENV_LOCK:
-        saved = {name: os.environ.pop(name) for name in IGNORED_ENV if name in os.environ}
+        patched: list[tuple[object, object]] = []
+        fallback = False
+        for module_name in _CLIENT_MODULES:
+            module = sys.modules.get(module_name)
+            if module is None:
+                try:
+                    module = importlib.import_module(module_name)
+                except ImportError:
+                    # Gói chưa cài: không có client nào của nó được tạo. Gói vẫn cài mà mất
+                    # module ``_client`` (thư viện đổi cấu trúc): không biết nó đọc biến ở đâu,
+                    # nên gỡ biến như cách cũ (Soi Lỗi SL-T034-2).
+                    try:
+                        importlib.import_module(module_name.split(".")[0])
+                    except ImportError:
+                        continue
+                    fallback = True
+                    continue
+            current = getattr(module, "os", None)
+            if current is os or current is _OS_WITHOUT_IGNORED:
+                patched.append((module, current))
+                module.os = _OS_WITHOUT_IGNORED  # type: ignore[attr-defined]
+            else:
+                fallback = True
+        saved = (
+            {name: os.environ.pop(name) for name in IGNORED_ENV if name in os.environ}
+            if fallback
+            else {}
+        )
         try:
             yield
         finally:
             os.environ.update(saved)
+            for module, original in reversed(patched):
+                module.os = original  # type: ignore[attr-defined]
 
 
 # Mã lỗi ngắn của máy chủ (invalid_value, INVALID_ARGUMENT, max_output_tokens…): chỉ chữ cái

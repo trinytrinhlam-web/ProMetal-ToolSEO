@@ -10,6 +10,7 @@
 Không gọi mạng: thư viện thật chạy với ``MockTransport``.
 """
 
+import importlib
 import json
 import os
 from types import SimpleNamespace
@@ -666,6 +667,23 @@ def test_check_ignores_openai_org_and_project_env(org_env, recorded_headers):
     assert OPENAI_KEY in recorded_headers[0]["authorization"]
 
 
+def library_sees(name):
+    """Thư viện anthropic/openai có thấy biến ``name`` lúc tạo client không (T-034: biến không
+    còn bị gỡ khỏi ``os.environ``; thư viện đọc qua ``os`` riêng của module ``_client``).
+    """
+    return [
+        lib.__name__
+        for lib in client_modules()
+        if lib.os.environ.get(name) is not None or name in lib.os.environ
+    ]
+
+
+def client_modules():
+    """Module ``anthropic._client`` và ``openai._client`` (thuộc tính ``_client`` của gói có thể
+    bị gói che mất, nên lấy qua importlib)."""
+    return [importlib.import_module(name) for name in ("anthropic._client", "openai._client")]
+
+
 def test_ignoring_custom_headers_keeps_proxy_and_certificates(monkeypatch):
     kept = {
         "HTTPS_PROXY": "http://proxy.congty.test:8080",
@@ -680,9 +698,12 @@ def test_ignoring_custom_headers_keeps_proxy_and_certificates(monkeypatch):
         monkeypatch.setenv(name, EVIL_HEADERS)
     with ignoring_custom_headers():
         for name in IGNORED_ENV:
-            assert name not in os.environ
+            assert library_sees(name) == []
+            assert os.environ[name] == EVIL_HEADERS  # phần còn lại của máy vẫn thấy (T-034)
         for name, value in kept.items():
             assert os.environ[name] == value
+            for lib in client_modules():
+                assert lib.os.environ.get(name) == value
     for name in IGNORED_ENV:
         assert os.environ[name] == EVIL_HEADERS
 

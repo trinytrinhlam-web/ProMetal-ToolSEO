@@ -60,6 +60,10 @@ MASK = "«đã ẩn tên mô hình»"
 # thường ("Cửa", "của", "cho", "10 năm") trong bài của mọi ứng viên (Soi Lỗi SL-T019-2), nên bị
 # từ chối ngay ở ``validate_request`` (xem ``_maskable``). Tên thật của cả 3 hãng đều qua luật này.
 
+# Ký tự được phép trong tên mô hình: đủ cho tên thật của cả 3 hãng ("models/gemini-2.5-pro",
+# "ft:gpt-4o-mini:org::abc123", "claude-opus-4@20250514"), không có ký tự Markdown/HTML.
+_MODEL_CHARS = re.compile(r"[A-Za-z0-9._:/@-]+")
+
 # Ranh giới trước tên: không đứng sau chữ/số hay "-" (để "o3" không ăn vào giữa từ), nhưng
 # ĐƯỢC đứng sau "_" vì Markdown viết nghiêng/đậm bằng gạch dưới (``_Claude_``, ``__Gemini__``;
 # Soi Lỗi SL-T019-1). Phía sau che cả đuôi tự thêm ("gpt-5.1-mini", "Claude's") nhưng không ăn
@@ -75,7 +79,19 @@ _VENDOR_NAMES = (
     "openai", "chatgpt", "gpt", "dall-e", "dalle", "sora", "codex",
     "gemini", "gemma", "bard", "deepmind", r"palm[\s-]?2",
 )  # fmt: skip
-_VENDOR_WORDS = re.compile(_BEFORE + "(?:" + "|".join(_VENDOR_NAMES) + ")" + _TAIL, re.IGNORECASE)
+# Số phiên bản / biến thể đứng liền sau tên đã che ("Opus 5.5", "GPT 6.1", "Gemini 3 Pro"): che
+# luôn, vì người quen số phiên bản đoán được hãng (Soi Lỗi SL-T019-3). Chỉ xét ngay sau tên
+# (cách bằng dấu cách, không qua dòng mới), nên số liệu đứng riêng trong bài ("dày 5.5 mm")
+# không bị đụng.
+# Mỗi phần có thể kèm đuôi nối bằng gạch ("Flash-Lite", "5.5-preview", "Pro-002"; Soi Lỗi
+# SL-T034-1).
+_VERSION = (
+    r"(?:[^\S\n]+(?:v?\d+(?:[.,]\d+)*(?:[a-z]\b)?|pro|flash|ultra|mini|nano|lite|turbo|max"
+    r"|plus|preview|thinking|exp|latest)(?:-[^\W_]+(?:\.\d+)*)*(?![\w.-]*[^\W_]))*"
+)
+_VENDOR_WORDS = re.compile(
+    _BEFORE + "(?:" + "|".join(_VENDOR_NAMES) + ")" + _TAIL + _VERSION, re.IGNORECASE
+)
 
 TASK_LABELS = {
     "research": "Nghiên cứu, phân tích đối thủ",
@@ -233,6 +249,13 @@ def validate_request(
             raise AIError(f"Ứng viên {i}: chưa chọn hãng AI.")
         if not model or len(model) > MAX_MODEL_CHARS or any(ch.isspace() for ch in model):
             raise AIError(f"Ứng viên {i}: tên mô hình trống hoặc viết sai (không có dấu cách).")
+        if not _MODEL_CHARS.fullmatch(model):
+            # Tên mô hình hiện lại trong câu lỗi (Markdown): chặn ký tự có thể thành link hay định
+            # dạng, như "[a1](https://x.y)" (Lá Chắn LC-T019-1).
+            raise AIError(
+                f"Ứng viên {i}: tên mô hình chỉ gồm chữ không dấu, số và các dấu . _ : / @ -, "
+                "ví dụ claude-opus-5-5, gpt-6.1, gemini-3-pro."
+            )
         if not _maskable(model):
             raise AIError(
                 f"Ứng viên {i}: tên mô hình «{model}» quá ngắn hoặc gõ nhầm. Ghi đúng tên đầy đủ, "
@@ -260,7 +283,9 @@ def _mask_names(text: str, models: Sequence[str]) -> str:
     # Chỉ che tên đủ rõ (``_maskable``): tên gõ nhầm quá ngắn không được che chữ thường của bài.
     names = {m for m in models if _maskable(m)}
     for model in sorted(names, key=len, reverse=True):
-        text = re.sub(_BEFORE + re.escape(model) + _TAIL, MASK, text, flags=re.IGNORECASE)
+        text = re.sub(
+            _BEFORE + re.escape(model) + _TAIL + _VERSION, MASK, text, flags=re.IGNORECASE
+        )
     return _VENDOR_WORDS.sub(MASK, text)
 
 
