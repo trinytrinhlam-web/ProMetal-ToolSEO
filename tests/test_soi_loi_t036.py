@@ -120,11 +120,6 @@ def test_html_variants_blocked(raw):
 
 
 @pytest.mark.parametrize("invisible", ["\u200b", "\u00ad", "\u2060", "\ufeff"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T036-1: thẻ HTML chen ký tự vô hình sau «<» không bị Chặn, mà value đã chuẩn hóa"
-    " lại chứa thẻ thật",
-)
 def test_html_hidden_by_invisible_char_blocked(invisible):
     raw = f"Cửa sắt bị xệ <{invisible}script>alert(1) cho nhà phố bền đẹp"
     result = check_title(raw)

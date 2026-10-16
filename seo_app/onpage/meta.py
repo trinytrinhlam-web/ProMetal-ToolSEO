@@ -110,7 +110,9 @@ def _check_text(field: str, raw: str, limits: Limits) -> FieldCheck:
     if not value:
         return FieldCheck(field, value, 0, Level.BLOCK, (f"{name} đang trống.",))
     blocks = []
-    if has_html(raw):
+    # Xét cả chữ gốc lẫn chữ đã chuẩn hóa: "<" + ký tự vô hình + "script>" chỉ thành thẻ thật
+    # SAU khi bỏ ký tự vô hình, mà chữ gửi đi là ``value`` (SL-T036-1).
+    if has_html(raw) or has_html(value):
         blocks.append(f"{name} có thẻ HTML (dấu < ngay trước chữ). Bỏ thẻ đi.")
     if "%%" in value:
         blocks.append(f"{name} có «%%»: plugin SiteSEO hiểu đó là biến. Bỏ «%%» đi.")

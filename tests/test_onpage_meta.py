@@ -635,3 +635,15 @@ def test_ai_suggestions_pass_clean_ai_text():
 
 def test_ai_non_string_items_dropped():
     assert filter_ai_titles([None, 5, GOOD_TITLES[0]], KEYWORD) == [GOOD_TITLES[0] + " | Pro-Metal"]
+
+
+# ------------------------------------------------------------------ lượt 2 (Soi Lỗi T-036)
+
+
+@pytest.mark.parametrize("check", [check_title, check_description])
+@pytest.mark.parametrize("invisible", ["​", "­", "⁠", "﻿", "͏"])
+def test_tag_hidden_by_invisible_char_blocked(check, invisible):
+    """SL-T036-1: thẻ chỉ hiện ra sau khi bỏ ký tự vô hình vẫn bị Chặn."""
+    result = check(f"Cửa sắt bị xệ <{invisible}script>alert(1) cho nhà phố, xem cách sửa tại nhà")
+    assert result.level is Level.BLOCK
+    assert any("HTML" in m for m in result.messages)
