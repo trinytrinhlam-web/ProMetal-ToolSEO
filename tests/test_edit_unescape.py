@@ -9,11 +9,17 @@ import random
 import pytest
 from fake_ai import DRAFT, OUTLINE, SCORES, FakeProvider
 from streamlit.testing.v1 import AppTest
+from test_sanitize_autolink import gfm_autolinks
 
 from seo_app.ai import registry as ai_registry
 from seo_app.auth import hash_password
 from seo_app.content.models import Draft, Flag, Outline, OutlineItem, Review
-from seo_app.sanitize import clean_ai_text, escape_link_syntax, unescape_link_syntax
+from seo_app.sanitize import (
+    break_autolinks,
+    clean_ai_text,
+    escape_link_syntax,
+    unescape_link_syntax,
+)
 
 PASSWORD = "mat-khau-thu-123"
 
@@ -25,8 +31,9 @@ PAIRS = [
     ("- [Mẹo]: lau khô", "- [Mẹo]\\: lau khô"),
     ("> [Ghi chú]: xem lại", "> [Ghi chú]\\: xem lại"),
     ("Mục [1] và [2]: giữ nguyên", "Mục [1] và [2]: giữ nguyên"),
-    ("Xem [bảng giá](https://evil.example)", "Xem [bảng giá]\\(https://evil.example)"),
-    ("Dòng 1\n[nhãn]: https://evil.example", "Dòng 1\n[nhãn]\\: https://evil.example"),
+    # Địa chỉ trần có ký tự ngắt rộng 0 (T-031), ô sửa cũng không hiện nó
+    ("Xem [bảng giá](https://evil.example)", "Xem [bảng giá]\\(https:/\u200b/evil.example)"),
+    ("Dòng 1\n[nhãn]: https://evil.example", "Dòng 1\n[nhãn]\\: https:/\u200b/evil.example"),
     ("Không có ngoặc vuông.", "Không có ngoặc vuông."),
 ]
 
@@ -178,7 +185,8 @@ def test_manual_edit_box_hides_backslash_and_save_escapes_again(project_root, mo
     at.button(key=f"save-{pid}").click().run()
     assert not at.exception, at.exception
     saved = at.session_state[f"texts-{pid}"][0]
-    assert saved == "Gọi [thợ]\\(https://evil.example)\n[a]\\: https://b.example"
+    assert saved == "Gọi [thợ]\\(https:/\u200b/evil.example)\n[a]\\: https:/\u200b/b.example"
+    assert gfm_autolinks(saved) == []  # địa chỉ trần cũng không thành link (T-031)
     assert not any("](https" in m.value for m in at.markdown)
 
 
@@ -194,6 +202,8 @@ def test_draft_text_from_ai_is_unchanged_without_editing(project_root, monkeypat
 EVIL = "https://evil.example"
 EVIL_BODY = f"Gọi ngay [thợ]: {EVIL}\n[thợ] nhé.\n\nĐoạn sau."
 EVIL_SENTENCE = f"[thợ]: {EVIL}\n[thợ] nhé."
+# Địa chỉ như hiện trên trang: có ký tự ngắt rộng 0 nên không thành link (T-031)
+EVIL_SHOWN = "https:/\u200b/evil.example"
 
 
 class _FlagProvider(FakeProvider):
@@ -227,7 +237,8 @@ def test_flagged_sentence_is_quoted_line_by_line_without_link(project_root, monk
     for value in quoted:
         assert escape_link_syntax(value) == value  # không còn "](", "][", "[nhãn]:" chưa escape
         assert all(line.startswith(">") for line in value.split("\n"))
-    assert f"> [thợ]\\: {EVIL}\n> [thợ] nhé." in quoted
+        assert gfm_autolinks(value) == []  # địa chỉ trần cũng không thành link (T-031)
+    assert f"> [thợ]\\: {EVIL_SHOWN}\n> [thợ] nhé." in quoted
 
 
 def _button(at: AppTest, prefix: str):
@@ -235,7 +246,7 @@ def _button(at: AppTest, prefix: str):
 
 
 def test_apply_and_ignore_still_use_original_sentence(project_root, monkeypatch, app_env):
-    shown = f"> [thợ]\\: {EVIL}\n> [thợ] nhé."
+    shown = f"> [thợ]\\: {EVIL_SHOWN}\n> [thợ] nhé."
     at = _to_review(project_root, monkeypatch)
     pid = at.session_state["part_ids"][0]
     assert shown in _quoted(at)
@@ -248,5 +259,6 @@ def test_apply_and_ignore_still_use_original_sentence(project_root, monkeypatch,
     at = _to_review(project_root, monkeypatch)
     pid = at.session_state["part_ids"][0]
     _button(at, f"skip-{pid}-").click().run()
-    assert EVIL_SENTENCE in at.session_state["ignored_flags"]
+    # Câu đã được clean_flags ngắt địa chỉ như trong bài (T-031)
+    assert break_autolinks(EVIL_SENTENCE) in at.session_state["ignored_flags"]
     assert shown not in _quoted(at)

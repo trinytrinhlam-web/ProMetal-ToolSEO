@@ -23,7 +23,12 @@ from seo_app.ai import registry as ai_registry
 from seo_app.auth import hash_password
 from seo_app.content.models import Draft, Flag, Review, Section
 from seo_app.content.workflow import apply_flag, clean_ai_line, clean_flags, clean_review
-from seo_app.sanitize import clean_ai_text, escape_link_syntax, unescape_link_syntax
+from seo_app.sanitize import (
+    break_autolinks,
+    clean_ai_text,
+    escape_link_syntax,
+    unescape_link_syntax,
+)
 
 E = "https://evil.example"
 # "](" hoặc "][" mà "]" không bị escape (đứng sau một số chẵn dấu "\\").
@@ -225,7 +230,8 @@ def test_r4_1_flag_sentence_is_a_substring_of_safe_body():
         )
     )
     flags = clean_flags([Section(heading="h", body=body)], review.flags)
-    assert flags and flags[0].sentence == EVIL_SENTENCE  # câu được nhận vì có trong bài
+    # Câu được nhận vì có trong bài; địa chỉ trong câu được ngắt như trong bài (T-031)
+    assert flags and flags[0].sentence == break_autolinks(EVIL_SENTENCE)
 
 
 class _EvilProvider(FakeProvider):
