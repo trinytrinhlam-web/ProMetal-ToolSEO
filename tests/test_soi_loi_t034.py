@@ -812,3 +812,159 @@ def test_other_config_read_errors_have_no_machine_path(tmp_path):
         message = str(info.value)
         assert str(tmp_path) not in message
         assert "thu-muc-bi-mat" not in message
+
+
+# ============================================================================ Lượt 2
+# SL-T034-2: gói còn cài mà mất ``_client`` → gỡ biến như cũ; chỉ bỏ qua khi chính gói chưa cài.
+
+
+@pytest.mark.usefixtures("evil_env")
+@pytest.mark.parametrize("module_name", CLIENT_MODULES)
+def test_l2_missing_client_module_hides_env_from_any_reader(monkeypatch, module_name):
+    """Thư viện bản mới (giả lập) đọc biến ở một module khác: trong khối không thấy biến nào."""
+    monkeypatch.setitem(sys.modules, module_name, None)
+    with ignoring_custom_headers():
+        assert all(os.environ.get(name) is None for name in IGNORED_ENV)
+        assert os.environ.get("HTTPS_PROXY") == PROXY  # proxy vẫn giữ
+        # Module còn lại vẫn được trỏ tạm như bình thường.
+        other = next(n for n in CLIENT_MODULES if n != module_name)
+        assert client_module(other).os is not os
+    assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+    assert not base_module._ENV_LOCK.locked()
+    other_module = client_module(next(n for n in CLIENT_MODULES if n != module_name))
+    assert other_module.os is os
+
+
+@pytest.mark.usefixtures("evil_env")
+@pytest.mark.parametrize("error", [ValueError, KeyboardInterrupt])
+def test_l2_missing_client_module_restored_after_exception(monkeypatch, error):
+    monkeypatch.setitem(sys.modules, "openai._client", None)
+    with pytest.raises(error), ignoring_custom_headers():
+        assert "OPENAI_CUSTOM_HEADERS" not in os.environ
+        raise error()
+    assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+    assert client_module("anthropic._client").os is os
+    assert not base_module._ENV_LOCK.locked()
+
+
+@pytest.mark.usefixtures("evil_env")
+def test_l2_missing_client_module_clients_still_clean(monkeypatch):
+    """Một gói mất ``_client``, gói kia vẫn tạo client thật: client vẫn sạch."""
+    monkeypatch.setitem(sys.modules, "openai._client", None)
+    with ignoring_custom_headers():
+        client = anthropic.Anthropic(api_key=KEYS["anthropic"])
+    assert_no_evil(client._custom_headers)
+    assert_no_evil(client.default_headers)
+    assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+
+
+@pytest.mark.usefixtures("evil_env")
+@pytest.mark.parametrize("package", ["anthropic", "openai"])
+def test_l2_package_not_installed_is_skipped_without_touching_env(monkeypatch, package):
+    """Chính gói chưa cài: bỏ qua, không gỡ biến (gói kia vẫn được che qua ``os`` riêng)."""
+    module_name = f"{package}._client"
+    monkeypatch.setitem(sys.modules, package, None)
+    monkeypatch.setitem(sys.modules, module_name, None)
+    with ignoring_custom_headers():
+        assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+        other = next(n for n in CLIENT_MODULES if n != module_name)
+        assert client_module(other).os is not os
+    assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+    assert not base_module._ENV_LOCK.locked()
+
+
+@pytest.mark.usefixtures("evil_env")
+def test_l2_missing_client_module_parallel_threads(monkeypatch):
+    """Đường dự phòng (gỡ biến) chạy nhiều luồng: biến luôn được trả đủ, khóa nhả, không treo."""
+    monkeypatch.setitem(sys.modules, "openai._client", None)
+    errors: list[BaseException] = []
+    seen: list[str | None] = []
+    barrier = threading.Barrier(8)
+
+    def work():
+        try:
+            barrier.wait()
+            for _ in range(20):
+                with ignoring_custom_headers():
+                    seen.append(os.environ.get("OPENAI_CUSTOM_HEADERS"))
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=work) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert seen == [None] * 160
+    assert all(os.environ[name] == EVIL for name in IGNORED_ENV)
+    assert not base_module._ENV_LOCK.locked()
+
+
+# SL-T034-1: đuôi nối gạch sau số phiên bản bị che; số liệu, mã hàng trong bài giữ nguyên.
+
+
+@pytest.mark.parametrize(
+    ("text", "leaks"),
+    [
+        ("Viết bởi Gemini 2.5 Flash-Lite.", ["Flash", "Lite", "2.5"]),
+        ("Tôi là Claude Opus 5.5-preview.", ["5.5", "preview"]),
+        ("Tôi là Gemini 1.5 Pro-002.", ["Pro", "002"]),
+        ("Gemini 2.5 Flash-Lite-preview-06-17 viết.", ["Lite", "preview", "06-17"]),
+        ("Tôi là gpt-6.1 5.5-preview.", ["5.5", "preview"]),
+    ],
+)
+def test_l2_hyphenated_suffixes_masked(text, leaks):
+    shown = _mask_names(text, REAL_CANDIDATES)
+    for leak in leaks:
+        assert leak not in shown, (leak, shown)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Thép dày 5.5 mm.",
+        "Cổng 3 cánh.",
+        "Làm từ năm 2025.",
+        "Sơn loại 2-3 lớp.",
+        "Mã SP-002, mã CS-15.2.",
+        "Bản lề 3-4 cái, khóa 2-3-5.",
+        "Cửa pro-max, cửa mini-2, ray lite-3.",
+    ],
+)
+def test_l2_article_numbers_and_codes_untouched(text):
+    assert _mask_names(text, REAL_CANDIDATES) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "kept"),
+    [
+        ("Claude: sơn loại 2-3 lớp.", "loại 2-3 lớp"),
+        ("Gemini nói mã SP-002 bền.", "mã SP-002"),
+        ("Opus 5.5mm sai đơn vị.", "5.5mm"),
+        ("GPT 6.1 - bản thử.", "- bản thử"),
+        ("Claude Sonnet 4.5 – nhanh.", "– nhanh"),
+    ],
+)
+def test_l2_text_after_masked_name_but_not_glued_kept(text, kept):
+    shown = _mask_names(text, REAL_CANDIDATES)
+    assert MASK in shown
+    assert kept in shown
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Claude 1" + "-1.1" * 5000 + "x",
+        "Claude pro" + "-a.1" * 5000 + "_x",
+        ("Claude 1-" + "1." * 20 + "x ") * 2000,
+        "gpt 1-" * 20000,
+    ],
+    ids=["gach-so", "gach-chu", "lap", "lap-gach"],
+)
+def test_l2_hyphen_suffix_adversarial_text_is_fast(text):
+    # Bài thử mù tối đa BLIND_MAX_TOKENS (2000) token, cỡ 10.000 ký tự; ở đây 20.000+.
+    start = time.perf_counter()
+    _mask_names(text, REAL_CANDIDATES)
+    assert time.perf_counter() - start < 3.0
