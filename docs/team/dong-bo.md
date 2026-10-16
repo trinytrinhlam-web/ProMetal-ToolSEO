@@ -41,7 +41,7 @@ Chỉ Huy B, cập nhật 2026-10-16 08:17. Chủ dự án dặn chạy tự đ�
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (`c6505ee`) | Soi Lỗi ĐẠT (Linux 4.087 qua). Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp; rồi giao T-044 (Họa Sĩ). Cần chạy trên Windows sau khi gộp |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Tên site từ WordPress hiện an toàn | chưa có | Phiếu đã lập, chờ T-031 | Giao Họa Sĩ |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (`9f9de06`) | Soi Lỗi đạt có điều kiện: SL-T034-2 bắt buộc sửa. Thợ Máy lượt 2 đang sửa (phiên cũ mở lại) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-034` còn mở), Lá Chắn (soi kỹ `_OsWithoutIgnored`), gộp; sau đó Thư Ký sửa README 7.6 theo câu lỗi mới |
-| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) Bộ lọc hồ sơ, 3 lỗi Thấp sau T-032 | `team/T-043` (từ `main` `4a5480b`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn (A1, A3), gộp |
+| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) Bộ lọc hồ sơ, 3 lỗi Thấp sau T-032 | `team/T-043` (`9167776`) | Thợ Máy xong (Linux 3.605 qua). Soi Lỗi đang kiểm | Lá Chắn (A1, A3), gộp |
 | [T-036](tickets/T-036-meta-title-description-slug.md) → [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Giai đoạn 4 | chưa có | Thiết kế T-033 xong, đã gộp `main`. Đã lập phiếu | T-036, T-037, T-038 chạy song song khi có chỗ (sau T-034); T-042 chờ chủ dự án trả lời câu 1, 2 |
 
 ## Nhật ký bàn giao
