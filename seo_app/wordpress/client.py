@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import requests
 
@@ -22,6 +23,20 @@ from seo_app.text import slugify
 DEFAULT_TIMEOUT = 30
 PER_PAGE = 100
 MAX_PAGES = 50  # chặn vòng lặp vô hạn nếu máy chủ trả số trang sai
+
+# Giới hạn độ dài cho dữ liệu đọc từ site (chưa tin cậy) trong ``list_published`` (T-037).
+MAX_TITLE_CHARS = 300
+MAX_META_CHARS = 500
+MAX_SLUG_CHARS = 200
+MAX_LINK_CHARS = 2000
+PUBLISHED_TYPES = ("post", "page")
+# Khóa meta SiteSEO site đã mở trong REST (T-033 mục 1.3).
+SITESEO_TITLE_KEY = "_siteseo_titles_title"
+SITESEO_DESC_KEY = "_siteseo_titles_desc"
+_PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
+_MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+_SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 IMAGE_TYPES = {
     ".jpg": "image/jpeg",
@@ -72,6 +87,51 @@ class Post:
     link: str
     edit_link: str
     featured_media: int = 0
+
+
+@dataclass(frozen=True)
+class PublishedItem:
+    """Một bài hoặc trang ĐÃ ĐĂNG trên site (đọc từ REST hoặc từ cache).
+
+    Tự kiểm khuôn khi tạo: dữ liệu từ site và từ file cache đều là chưa tin cậy. Sai khuôn thì
+    ``ValueError``. Chữ ở dạng thuần (không thẻ, đã giải mã ``&amp;``) nhưng **chưa escape**:
+    nơi hiện lên giao diện hoặc ghép vào HTML phải tự ``html.escape``.
+    """
+
+    id: int
+    type: str  # "post" hoặc "page"
+    slug: str
+    link: str
+    title: str
+    meta_title: str = ""  # trống: site chưa đặt (SiteSEO dùng mẫu theo tiêu đề bài)
+    meta_desc: str = ""
+    modified_gmt: str = ""  # "YYYY-MM-DDTHH:MM:SS" giờ UTC như WordPress trả; trống nếu thiếu
+
+    def __post_init__(self) -> None:
+        if type(self.id) is not int or self.id <= 0:
+            raise ValueError("id phải là số nguyên dương")
+        if self.type not in PUBLISHED_TYPES:
+            raise ValueError("loại phải là post hoặc page")
+        limits = {
+            "slug": MAX_SLUG_CHARS,
+            "link": MAX_LINK_CHARS,
+            "title": MAX_TITLE_CHARS,
+            "meta_title": MAX_META_CHARS,
+            "meta_desc": MAX_META_CHARS,
+            "modified_gmt": 19,
+        }
+        for name, limit in limits.items():
+            value = getattr(self, name)
+            if not isinstance(value, str) or len(value) > limit:
+                raise ValueError(f"{name} sai kiểu hoặc quá dài")
+            if _CONTROL_CHARS.search(value):
+                raise ValueError(f"{name} có ký tự điều khiển")
+        if self.slug and not _SLUG_PATTERN.fullmatch(self.slug):
+            raise ValueError("slug có ký tự lạ")
+        if self.modified_gmt and not _MODIFIED_PATTERN.fullmatch(self.modified_gmt):
+            raise ValueError("modified_gmt sai dạng")
+        if not self.link:
+            raise ValueError("thiếu link")
 
 
 @dataclass(frozen=True)
@@ -186,6 +246,35 @@ class WordPressClient:
             )
             for item in self._get_all_pages(path, params)
         ]
+
+    def list_published(self) -> list[PublishedItem]:
+        """Mọi bài và trang ĐÃ ĐĂNG (``publish``) trên site, kèm meta SiteSEO nếu site mở.
+
+        Chỉ đọc (``GET``), đúng hai đường cố định ``/wp/v2/posts`` và ``/wp/v2/pages``. Dữ liệu
+        trả về là chưa tin cậy nên được lọc lại phía app (T-037, T-033 mục 4.1):
+        - chỉ giữ mục có ``status == "publish"`` (bỏ ``future``, ``draft``, ``private``…);
+        - ``link`` phải là ``https://`` và đúng tên máy (và cổng) của ``WORDPRESS_URL``;
+        - tiêu đề và meta bỏ thẻ, gộp khoảng trắng, cắt theo giới hạn độ dài;
+        - mục sai khuôn (thiếu id, link lạ…) bị bỏ, không làm hỏng cả danh sách.
+        Meta SiteSEO không có trong kết quả thì để rỗng.
+        """
+        params = {
+            "status": "publish",
+            "per_page": PER_PAGE,
+            "orderby": "id",
+            "order": "asc",
+            "_fields": _PUBLISHED_FIELDS,
+        }
+        items: list[PublishedItem] = []
+        seen: set[tuple[str, int]] = set()
+        for kind, path in (("post", "/wp/v2/posts"), ("page", "/wp/v2/pages")):
+            for raw in self._get_all_pages(path, params):
+                item = _published_from(raw, kind, self.base_url)
+                if item is None or (item.type, item.id) in seen:
+                    continue
+                seen.add((item.type, item.id))
+                items.append(item)
+        return items
 
     def _get_all_pages(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
@@ -405,6 +494,78 @@ class WordPressClient:
         else:
             message = f"WordPress báo lỗi (mã {status})."
         return WordPressError(message + detail, status_code=status, code=code)
+
+
+def is_site_link(link: object, base_url: str) -> bool:
+    """``link`` là địa chỉ ``https://`` trên đúng tên máy (và cổng) của ``base_url``.
+
+    Từ chối: ``http://``, tên máy khác (kể cả tên miền con), có tên/mật khẩu trong địa chỉ,
+    khoảng trắng hoặc ký tự điều khiển, cổng sai dạng, quá dài.
+    """
+    if not isinstance(link, str) or not link or len(link) > MAX_LINK_CHARS:
+        return False
+    if _CONTROL_CHARS.search(link) or any(ch.isspace() for ch in link) or "\\" in link:
+        return False
+    try:
+        got, want = urlsplit(link), urlsplit(base_url)
+        got_port, want_port = got.port, want.port
+    except ValueError:
+        return False
+    if got.scheme.lower() != "https" or want.scheme.lower() != "https":
+        return False
+    if got.username is not None or got.password is not None:
+        return False
+    if not got.hostname or got.hostname != (want.hostname or ""):
+        return False
+    return (got_port or 443) == (want_port or 443)
+
+
+def _published_from(raw: object, kind: str, base_url: str) -> PublishedItem | None:
+    """Một mục REST -> ``PublishedItem``; ``None`` nếu không phải bài đã đăng hợp lệ."""
+    if not isinstance(raw, dict) or raw.get("status") != "publish":
+        return None
+    link = raw.get("link")
+    if not is_site_link(link, base_url):
+        return None
+    meta = raw.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
+    slug = raw.get("slug")
+    modified = raw.get("modified_gmt")
+    try:
+        return PublishedItem(
+            id=raw.get("id"),  # type: ignore[arg-type]  # PublishedItem tự kiểm kiểu
+            type=kind,
+            slug=slug if _matches(_SLUG_PATTERN, slug, MAX_SLUG_CHARS) else "",
+            link=link,  # type: ignore[arg-type]
+            title=_clean_text(_rendered(raw.get("title")), MAX_TITLE_CHARS),
+            meta_title=_clean_text(meta.get(SITESEO_TITLE_KEY), MAX_META_CHARS),
+            meta_desc=_clean_text(meta.get(SITESEO_DESC_KEY), MAX_META_CHARS),
+            modified_gmt=modified if _matches(_MODIFIED_PATTERN, modified, 19) else "",
+        )
+    except ValueError:
+        return None
+
+
+def _matches(pattern: re.Pattern[str], value: object, limit: int) -> bool:
+    return isinstance(value, str) and len(value) <= limit and bool(pattern.fullmatch(value))
+
+
+def _rendered(value: object) -> object:
+    """Tiêu đề WordPress dạng ``{"rendered": "…"}`` hoặc chuỗi."""
+    if isinstance(value, dict):
+        return value.get("rendered")
+    return value
+
+
+def _clean_text(value: object, limit: int) -> str:
+    """Chữ một dòng từ site: bỏ thẻ, giải mã, bỏ ký tự điều khiển, gộp khoảng trắng, cắt."""
+    if isinstance(value, list):  # meta đăng ký kiểu mảng: lấy phần tử đầu
+        value = value[0] if value else ""
+    if not isinstance(value, str):
+        return ""
+    text = _CONTROL_CHARS.sub(" ", _plain(value[: limit * 20]))
+    return " ".join(text.split())[:limit].rstrip()
 
 
 def _plain(text: str) -> str:

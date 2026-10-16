@@ -251,8 +251,14 @@ def test_create_draft_requires_title(fake_wp, wp_client):
     assert fake_wp.requests == []
 
 
+# Hàm duy nhất được có chữ "publish": hàm CHỈ ĐỌC danh sách bài đã đăng (T-037); test riêng
+# trong test_wordpress_published.py chứng minh nó chỉ gửi GET.
+READ_ONLY_PUBLISH_NAMES = {"list_published"}
+
+
 def test_client_has_no_publish_function(wp_client):
-    assert not any("publish" in name for name in dir(wp_client))
+    names = {name for name in dir(wp_client) if "publish" in name}
+    assert names <= READ_ONLY_PUBLISH_NAMES
 
 
 def test_set_featured_image(fake_wp, wp_client):
