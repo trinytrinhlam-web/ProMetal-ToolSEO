@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 14:16.
+Chỉ Huy B, cập nhật 2026-10-16 14:20.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -44,6 +44,7 @@ Chỉ Huy B, cập nhật 2026-10-16 14:16.
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện Lá Chắn T-043) | Giao Thợ Máy, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
+| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | `team/T-046` (từ `main`) | Thợ Máy đang làm (chỉ báo cáo, không code) | Chỉ Huy đọc, gộp báo cáo, hỏi chủ dự án các câu trong báo cáo, lập phiếu code |
 
 ## Nhật ký bàn giao
 
@@ -63,7 +64,7 @@ _Mục mới nhất ở trên cùng._
 **Đã xong trong phiên B (15/10 18:02 → 16/10 13:00), đều đã lên `main`:**
 - Gộp: T-025, T-019, T-033 (thiết kế GĐ4, chỉ tài liệu), T-032, T-035, T-031, T-043, T-034. **Giai đoạn 2 xong**, đã đánh dấu [x] trong `CLAUDE.md`.
 - `main` = `49f57c9` + tài liệu. Linux: 4.658 qua, 0 hỏng; ruff sạch.
-- Lập phiếu: T-032, T-033, T-034, T-035, T-036 → T-042 (Giai đoạn 4), T-043, T-044, T-045. Số phiếu tiếp theo: **T-046**.
+- Lập phiếu: T-032, T-033, T-034, T-035, T-036 → T-042 (Giai đoạn 4), T-043, T-044, T-045. Số phiếu tiếp theo: **T-047**.
 - Quyết định chủ dự án 16/10: chưa trả lời 4 câu GĐ4; phần mềm phải chạy ổn định khi chưa có câu trả lời (đã ghi ở `TIEN-DO.md` mục 4, `BAN-GIAO.md` 7.4, phiếu T-036, T-041, T-042).
 
 **Dở dang:** chỉ có T-036. Thợ Máy xong, chưa giao Soi Lỗi (bảng trên).
@@ -80,7 +81,7 @@ _Mục mới nhất ở trên cùng._
 
 ### 2026-10-16 12:52 · Chỉ Huy B
 
-- Lá Chắn T-043 (Opus tạm) **ĐẠT CÓ ĐIỀU KIỆN**: gộp được ngay, mở phiếu theo dõi. Gộp T-043 vào `main`: Linux 4.403 qua, 0 hỏng. Lập T-045 (theo dõi LC-T043-1, SL-T043-1, -2). Số phiếu tiếp theo: **T-046**.
+- Lá Chắn T-043 (Opus tạm) **ĐẠT CÓ ĐIỀU KIỆN**: gộp được ngay, mở phiếu theo dõi. Gộp T-043 vào `main`: Linux 4.403 qua, 0 hỏng. Lập T-045 (theo dõi LC-T043-1, SL-T043-1, -2). Số phiếu tiếp theo: **T-047**.
 
 ### 2026-10-16 12:44 · Chỉ Huy B
 

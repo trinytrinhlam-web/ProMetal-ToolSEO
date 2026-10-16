@@ -24,6 +24,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 | `team/T-036` | Thợ Máy lượt 2 **xong** (`c0ca3b7`, đã gộp `main`; Linux 5.019 qua): sửa SL-T036-1 (Cao), -9, -5 và 5 lỗi Thấp; SL-T036-8 giữ nguyên. **Soi Lỗi đang kiểm lại** | [Thợ Máy](reports/T-036-tho-may.md) · [Soi Lỗi](reports/T-036-soi-loi.md) |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-037 …`) → Thợ Máy lượt 2 | `team/T-037` | Soi Lỗi **đạt có điều kiện** (Linux 4.848 qua; 38 dạng link giả mạo đều chặn): SL-T037-1 (cache bị khóa lâu bị xóa nhầm, bắt buộc sửa), SL-T037-2 (cắt lặng lẽ khi vượt `MAX_PAGES`). Test tên "publish" đã sửa được Soi Lỗi gia cố, không cần đổi tên hàm. **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-037-tho-may.md) · [Soi Lỗi](reports/T-037-soi-loi.md) |
+| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) | GĐ3: thiết kế xử lý ảnh (đọc thư mục, WebP giữ GPS, alt AI, ảnh AI, gắn thẻ), chia phiếu. Không sửa code | Thợ Máy (`Thợ Máy · T-046 Thiết kế Giai đoạn 3`) | `team/T-046` | Đã giao | |
 
 ## Chờ
 
@@ -38,7 +39,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | T-037 (chủ dự án đã trả lời 1A, 2A ngày 16/10; thử thật cần anh bật Abilities và tạo tài khoản Biên tập viên) |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
-| Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án **đồng ý** thêm Pillow (2026-10-16); lập phiếu khi bắt đầu Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
 
@@ -102,4 +102,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-046
+## Số phiếu tiếp theo: T-047
