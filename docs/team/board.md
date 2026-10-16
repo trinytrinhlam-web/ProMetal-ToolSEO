@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 07:58 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 08:03 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -24,7 +24,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) → Soi Lỗi (`Soi Lỗi · T-031 …`) | `team/T-031` | Thợ Máy xong (`192d9c5`, Linux 3.434 qua): chèn ký tự rộng 0 vào `://`, `www.`, `@`; sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` (tên bài đối thủ có địa chỉ vẫn thành link). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) → Soi Lỗi (`Soi Lỗi · T-034 …`) | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`, Linux 3.383 qua). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-034-tho-may.md) |
-| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký (`Thư Ký · T-035 README 3 hãng AI, thử mù`) | `team/T-035` | Đã giao | |
+| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký (`Thư Ký · T-035 README 3 hãng AI, thử mù`) → Lá Chắn rút gọn | `team/T-035` | Thư Ký xong (README mục 7 viết lại 7.1–7.6; `ai.toml` chỉ đổi dòng `#`). Chỉ Huy B soát câu lỗi: khớp code. **Lá Chắn rút gọn đang kiểm** | [Thư Ký](reports/T-035-thu-ky.md) |
 
 ## Chờ
 
