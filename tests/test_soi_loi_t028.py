@@ -37,6 +37,7 @@ from test_ai_t028 import (
     anthropic_stream,
     gemini_client,
     generate,
+    library_sees,
     message_end,
     real_client,
     real_provider,
@@ -216,12 +217,6 @@ def test_broken_compression_gives_fixed_message(vendor, body):
     assert_clean(result.message, vendor)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T028-3: Anthropic/OpenAI gzip hỏng (dữ liệu nén sai) ra câu 'Không kết nối được' "
-    "thay vì 'dữ liệu lạ' (thư viện bọc httpx2.DecodingError thành APIConnectionError). Có sẵn "
-    "trước T-028, câu cố định, chỉ gợi ý sai hướng.",
-)
 @pytest.mark.parametrize("vendor", ["anthropic", "openai"])
 def test_gzip_garbage_is_strange_data(vendor):
     with pytest.raises(AIError) as info:
@@ -479,7 +474,8 @@ def evil_env(monkeypatch):
 def test_unicode_value_restored_exactly(evil_env):
     with ignoring_custom_headers():
         for name in IGNORED_ENV:
-            assert name not in os.environ
+            assert library_sees(name) == []
+            assert os.environ[name] == UNICODE_VALUE  # không gỡ khỏi os.environ (T-034)
     for name in IGNORED_ENV:
         assert os.environ[name] == UNICODE_VALUE
     assert not base_module._ENV_LOCK.locked()
@@ -498,7 +494,9 @@ def test_only_one_of_two_variables_set(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_CUSTOM_HEADERS", UNICODE_VALUE)
     monkeypatch.delenv("OPENAI_CUSTOM_HEADERS", raising=False)
     with ignoring_custom_headers():
-        assert "ANTHROPIC_CUSTOM_HEADERS" not in os.environ
+        assert library_sees("ANTHROPIC_CUSTOM_HEADERS") == []
+        assert os.environ["ANTHROPIC_CUSTOM_HEADERS"] == UNICODE_VALUE
+        assert "OPENAI_CUSTOM_HEADERS" not in os.environ
     assert os.environ["ANTHROPIC_CUSTOM_HEADERS"] == UNICODE_VALUE
     # Không tự thêm biến vốn không có.
     assert "OPENAI_CUSTOM_HEADERS" not in os.environ
@@ -508,7 +506,9 @@ def test_empty_value_is_restored(monkeypatch):
     for name in IGNORED_ENV:
         monkeypatch.setenv(name, "")
     with ignoring_custom_headers():
-        assert all(name not in os.environ for name in IGNORED_ENV)
+        # Giá trị rỗng: thư viện vẫn coi là "có biến", nên cũng phải bị che.
+        assert all(library_sees(name) == [] for name in IGNORED_ENV)
+        assert all(os.environ[name] == "" for name in IGNORED_ENV)
     assert all(os.environ[name] == "" for name in IGNORED_ENV)
 
 
