@@ -34,12 +34,12 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 14:18.
+Chỉ Huy B, cập nhật 2026-10-16 14:19.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`560fc3f`) | Soi Lỗi lượt 2 ĐẠT (Linux 5.082 qua). Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp; ghi SL-T036-10/11/12 vào T-041 (nếu Lá Chắn đồng ý), câu hỏi thực thể HTML vào T-042 |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` | Soi Lỗi đạt có điều kiện (SL-T037-1 bắt buộc). Thợ Máy lượt 2 đang sửa (phiên cũ) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-037` còn mở), Lá Chắn, gộp; rồi T-042 |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` (`1fd1415`) | Thợ Máy lượt 2 xong (Linux 4.858 qua). Soi Lỗi kiểm lại (phiên cũ) | Lá Chắn (W4, F1, D2; allowlist tên "publish"), gộp; rồi T-042 |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập. T-041 có thêm 3 điều kiện bắt buộc của Lá Chắn T-038 (ghi trong phiếu) | T-039 sau khi T-036, T-037 gộp |
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
