@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có đăng nhập và kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện) và viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -50,7 +50,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 Khóa API, mật khẩu WordPress, đường dẫn thư mục ảnh… đều nằm trong file **`.env`** ở thư mục dự án. File này được tạo tự động khi bạn đặt mật khẩu, dựa trên file mẫu `.env.example`. Mỗi dòng trong file mẫu đều có chú thích tiếng Việt.
 
 - **Mở file:** dùng Notepad (Windows) hoặc TextEdit (Mac). Trên Mac, file bắt đầu bằng dấu chấm bị ẩn; trong Finder nhấn `Command + Shift + .` để hiện.
-- **Khóa API AI (Claude, ChatGPT, Gemini)** nhập ngay trong app: **Cài đặt → 🔌 Kết nối**, dán khóa rồi bấm Lưu. App ghi vào `.env` và không bao giờ hiện lại khóa.
+- **Khóa API AI (Claude, ChatGPT, Gemini)** nhập ngay trong app: **Cài đặt → 🔌 Kết nối**, dán khóa, bấm **Lưu** rồi **Kiểm tra**. App ghi vào `.env` và không bao giờ hiện lại khóa (xem mục 7.1).
 - **Chỉ điền mục cần dùng.** Trang chủ của app cho biết mục nào đã khai báo, mục nào chưa (không hiện giá trị).
 - Sửa `.env` xong thì tắt app rồi mở lại.
 - **Bảo mật:**
@@ -96,25 +96,99 @@ App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn t�
 
 Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Bước **SEO** và **Xuất bản** vẫn là bản demo.
 
-1. Tạo khóa API ở https://console.anthropic.com (mục **API Keys**) và nạp tiền (credit) cho tài khoản.
-2. Mở file `.env`, điền `ANTHROPIC_API_KEY=...`, rồi tắt app và mở lại.
-3. Vào **Soạn bài**, nhập từ khóa, bấm **Phân tích từ khóa**. Điền phần **Chất liệu thật** (kinh nghiệm, số liệu, câu hỏi khách hay hỏi): AI không tự bịa phần này.
-4. Bấm **Tiếp: tạo dàn ý**, sửa / xóa / sắp xếp lại các mục, rồi bấm **Duyệt dàn ý**. AI viết toàn bài, tự rà soát theo checklist và sửa một lượt trước khi đưa bạn xem.
-5. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
+App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và **Gemini** (Google). **Không có hãng mặc định**: bạn có khóa của hãng nào thì dùng hãng đó, và đổi hãng cho từng việc khi cần (xem "Đổi hãng hoặc mô hình" bên dưới). Việc nào trong `config/ai.toml` đang ghi hãng nào thì hãng đó phải có khóa.
+
+### 7.1. Lấy khóa API và nhập vào app
+
+Khóa API là một dãy chữ-số riêng của bạn, để app gọi AI thay bạn. Chỉ cần khóa của hãng bạn định dùng.
+
+| Hãng | Lấy khóa ở | Có cần nạp tiền không |
+|---|---|---|
+| Claude (Anthropic) | https://console.anthropic.com → mục **API Keys** | Cần: nạp tiền (credit) vào tài khoản API. Khác với gói Claude chat. |
+| ChatGPT (OpenAI) | https://platform.openai.com/api-keys | Cần: thêm thẻ hoặc nạp tiền trả trước ở trang quản lý thanh toán (Billing). Khác với gói ChatGPT Plus. |
+| Gemini (Google) | https://aistudio.google.com/apikey | Thường có bậc miễn phí với hạn mức thấp; muốn dùng nhiều thì bật thanh toán. Hết hạn mức thì app báo (xem bảng lỗi). |
+
+App tính tiền theo lượng chữ AI đọc và viết, giá do từng hãng quy định và có thể đổi. Xem giá mới nhất trên trang giá của hãng, đừng dựa vào con số cũ.
+
+Nhập khóa ngay trong app, không cần mở file:
+
+1. Vào **Cài đặt → 🔌 Kết nối**, ở mục **🔑 Khóa API cho AI** chọn thẻ của hãng.
+2. Dán khóa vào ô, bấm **Lưu**. App ghi vào file `.env` trên máy này và không bao giờ hiện lại khóa.
+3. Bấm **Kiểm tra**: app hỏi thử máy chủ của hãng xem khóa dùng được không (không tốn tiền). Báo xanh "Khóa … dùng được." là xong. Muốn gỡ khóa thì bấm **Xóa**.
+
+Khóa nằm trong `.env` của từng máy, nên máy thứ hai cần nhập lại một lần.
+
+### 7.2. Đổi hãng hoặc mô hình cho từng việc
+
+Mỗi việc (nghiên cứu, dàn ý, viết bài, viết lại một phần, kiểm tra văn phong) dùng một mô hình riêng, khai báo trong `config/ai.toml`. Mở bằng Notepad / TextEdit, sửa hai dòng `provider` và `model` của việc cần đổi, lưu file rồi tải lại trang (F5, sẽ phải đăng nhập lại). Không cần sửa code.
+
+Ví dụ đổi việc viết bài sang ChatGPT:
+
+```toml
+[tasks.write]
+provider = "openai"        # "anthropic" (Claude), "openai" (ChatGPT) hoặc "gemini"
+model = "gpt-5.1"          # tên mô hình đúng theo tài liệu của hãng đó
+effort = "high"
+max_tokens = 32000
+```
+
+- Tên mô hình do hãng đặt và đổi theo thời gian. Xem danh sách mới nhất trong tài liệu của hãng, gõ sai thì app báo "Không có mô hình …".
+- `effort` là mức "suy nghĩ" của AI (`low`, `medium`, `high`, `xhigh`, `max`): càng cao càng kỹ nhưng chậm và tốn tiền hơn. Claude và ChatGPT dùng đúng mức bạn ghi. Gemini chỉ có 3 mức (`low`, `medium`, `high`): `xhigh` và `max` được tính là `high`. Mô hình không có chế độ suy nghĩ thì app tự bỏ qua `effort`.
+- Việc đang dùng hãng nào thì hãng đó phải có khóa. Thiếu khóa thì ngay khi mở **Soạn bài**, app báo màu vàng và khóa tạm các bước dùng AI.
+
+### 7.3. Thử mù: chọn mô hình viết hay nhất
+
+Không biết nên dùng hãng nào? Cho 2–3 mô hình viết cùng một đề, chấm điểm không biết tên, rồi mới xem bài nào của ai.
+
+1. Vào **Cài đặt → 🤖 Mô hình AI**. Bảng phía trên cho biết mỗi việc đang dùng mô hình nào (đọc thật từ `config/ai.toml`). Các hãng chưa có khóa hiện nhãn xám "chưa có khóa" và không chọn được.
+2. Ở mục **🎭 Thử mù**, nhập **Từ khóa thử** (và ghi chú nếu muốn), chọn **2 mô hình** hoặc **3 mô hình**. Với mỗi ứng viên, chọn hãng, tên mô hình và mức nghĩ (effort). Có thể thử giữa các mô hình của cùng một hãng.
+3. App báo trước: *"Bấm chạy sẽ gọi AI N lần (mỗi mô hình một lần) và có tốn tiền"*. Mỗi bài thử ngắn (một mở bài và một mục), không tìm web nên tốn rất ít. Bấm **▶️ Chạy thử mù**.
+4. Các bài hiện dưới tên **A / B / C** theo thứ tự ngẫu nhiên, tên mô hình bị che. Kéo thanh **Điểm** (1–10) cho từng bài.
+5. Bấm **Chấm xong — hiện tên mô hình**. Bảng xếp hạng hiện ra kèm hãng và mô hình của từng bài, cùng hướng dẫn sửa `config/ai.toml` để dùng mô hình điểm cao nhất. Điểm đã chốt thì không chấm lại được; muốn thử lại, bấm **🔄 Xóa kết quả**.
+
+Thử mù **không đọc và không ghi** `config/ai.toml` (không có mục `blind_test` trong đó): giới hạn độ dài bài thử cố định trong app. Muốn dùng kết quả, bạn tự sửa `config/ai.toml` như mục 7.2.
+
+### 7.4. Soạn một bài
+
+1. Vào **Soạn bài**, nhập từ khóa, bấm **Phân tích từ khóa**. Điền phần **Chất liệu thật** (kinh nghiệm, số liệu, câu hỏi khách hay hỏi): AI không tự bịa phần này.
+2. Bấm **Tiếp: tạo dàn ý**, sửa / xóa / sắp xếp lại các mục, rồi bấm **Duyệt dàn ý**. AI viết toàn bài, tự rà soát theo checklist và sửa một lượt trước khi đưa bạn xem.
+3. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
 
 Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn được **tự lưu** sau mỗi thay đổi (vào `data/drafts.sqlite` trên máy, không lên GitHub). Tải lại trang hay tắt app vẫn không mất bài: vào **Soạn bài**, khung **Bài đang soạn dở** ở bước 1 có nút Mở và Xóa.
 
-**Tùy chỉnh (không cần sửa code)**, mở bằng Notepad / TextEdit:
-- `config/ai.toml`: mô hình AI và mức "suy nghĩ" (effort) cho từng việc. Effort cao hơn thì bài kỹ hơn nhưng chậm và tốn tiền hơn.
+### 7.5. Tùy chỉnh khác (không cần sửa code)
+
+Mở bằng Notepad / TextEdit:
+- `config/ai.toml`: hãng, mô hình, mức "suy nghĩ" (effort) và độ dài tối đa (`max_tokens`) cho từng việc.
 - `config/content.toml`: cách xưng hô, giọng văn, cụm từ cấm, checklist rà soát.
-- `config/business_profile.md`: hồ sơ doanh nghiệp AI được phép dùng. Dòng có nhãn `[CẦN XÁC NHẬN]` bị bỏ qua.
+- `config/business_profile.md`: hồ sơ doanh nghiệp AI được phép dùng. Ý nào chưa chắc, đánh dấu bằng nhãn `[CẦN XÁC NHẬN]` thì AI bỏ qua ý đó (viết hoa hay thường, có dấu hay không dấu, ngoặc vuông `[ ]` hay ngoặc tròn `( )` đều được; nhớ gõ dấu mở ngoặc). Nhãn đặt trên tiêu đề (ví dụ `## 7. … [CẦN XÁC NHẬN]`) thì AI bỏ cả mục, tới tiêu đề cùng cấp kế tiếp. Khi đã xác nhận, xóa nhãn đi. Chi tiết nằm ngay đầu file đó.
+
+### 7.6. Lỗi thường gặp
+
+Dấu `…` là chỗ app điền tên cụ thể (tên hãng, tên mô hình, con số).
 
 | App báo | Cách xử lý |
 |---|---|
-| "Chưa có ANTHROPIC_API_KEY" | Điền khóa vào `.env` rồi mở lại app. |
-| "Khóa ANTHROPIC_API_KEY … không đúng" | Tạo khóa mới ở console.anthropic.com và thay vào `.env`. |
-| "đã hết tiền (credit)" | Nạp thêm credit ở console.anthropic.com → Billing. |
-| "Bài dài quá giới hạn" | Tăng `max_tokens` của việc đó trong `config/ai.toml`. |
+| "Chưa có khóa Anthropic (Claude) (ANTHROPIC_API_KEY). Vào Cài đặt → 🔌 Kết nối để nhập khóa. Các bước dùng AI tạm khóa cho tới khi sửa xong.", hoặc "…OpenAI (OPENAI_API_KEY)…", "…Google Gemini (GEMINI_API_KEY)…" | Việc đó trong `config/ai.toml` đang dùng hãng chưa có khóa. Vào **Cài đặt → 🔌 Kết nối** nhập khóa, hoặc đổi hãng của việc đó (mục 7.2). |
+| "Khóa ANTHROPIC_API_KEY trong file .env không đúng." (cũng có bản cho `OPENAI_API_KEY`, `GEMINI_API_KEY`) | Tạo khóa mới ở trang của hãng, nhập lại ở **Cài đặt → 🔌 Kết nối**, bấm **Kiểm tra**. |
+| Ở nút Kiểm tra: "Khóa Claude (hoặc ChatGPT, Gemini) không đúng hoặc đã bị thu hồi." | Như trên: khóa sai hoặc đã bị xóa ở trang của hãng. |
+| Ở nút Kiểm tra: "Khóa … không có quyền truy cập…" | Khóa đúng nhưng tài khoản chưa được cấp quyền dùng API. Mở trang của hãng (Console, OpenAI, Google AI Studio) để kiểm tra. |
+| "Tài khoản Anthropic đã hết tiền (credit)." | Nạp thêm credit ở console.anthropic.com → Billing. |
+| "Tài khoản OpenAI đã hết tiền (credit) hoặc hết hạn mức." | Nạp thêm tiền hoặc kiểm tra hạn mức ở trang quản lý thanh toán của OpenAI. |
+| "Tài khoản Gemini đã hết tiền hoặc hết hạn mức (quota) trong ngày." | Đợi sang ngày mới, hoặc bật thanh toán ở Google AI Studio. |
+| "Bài dài quá giới hạn (… token). Tăng max_tokens của việc «…» trong config/ai.toml." | Mở `config/ai.toml`, tăng `max_tokens` của việc được nêu tên (ví dụ từ 32000 lên 48000). |
+| "AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt vì quá giới hạn … token)…" (Claude) | Bấm thử lại; nếu vẫn lỗi, tăng `max_tokens` như trên. |
+| Ở thử mù: "Bài thử dài quá giới hạn 2000 token của phần thử mù…" | Giới hạn này cố định, không sửa trong `config/ai.toml`. Chọn effort thấp hơn (`low` hoặc `medium`) cho ứng viên đó rồi chạy lại. |
+| "Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại." (cũng có bản cho OpenAI, Gemini) | Đợi một phút rồi bấm lại. |
+| "Anthropic báo lỗi … Thử lại sau ít phút." (cũng có bản cho OpenAI, Gemini), "… trả lời quá lâu. Bấm thử lại." | Máy chủ của hãng đang bận hoặc quá tải. Đợi vài phút rồi thử lại. |
+| "Không có mô hình «…». Kiểm tra lại tên trong config/ai.toml." | Tên mô hình gõ sai hoặc hãng đã bỏ mô hình đó. Xem tên đúng trong tài liệu của hãng và sửa `model`. |
+| "Tài khoản … không được dùng mô hình «…»." | Tài khoản chưa được cấp mô hình đó. Đổi sang mô hình khác hoặc hỏi hãng. |
+| "… không nhận yêu cầu (lỗi 400…) với mô hình «…». Kiểm tra tên mô hình và các thông số…" | Kiểm tra `model`, `max_tokens`, `effort`, `web_search` của việc được nêu tên trong `config/ai.toml`. |
+| "Gemini chưa phục vụ khu vực mạng bạn đang dùng (User location is not supported)…" | Tắt VPN hoặc proxy rồi thử lại, hoặc đổi việc đó sang hãng khác trong `config/ai.toml`. |
+| "Không kết nối được tới … Kiểm tra mạng Internet." hoặc "Mất kết nối tới … giữa chừng…" | Kiểm tra mạng rồi bấm thử lại. |
+| "Máy chủ … trả về dữ liệu lạ (có thể do mạng Wi-Fi hoặc proxy)…" | Thường do Wi-Fi bắt đăng nhập hoặc proxy công ty chen vào. Đăng nhập Wi-Fi hoặc đổi mạng rồi thử lại. |
+| "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú." | Bộ lọc an toàn của hãng chặn. Đổi cách viết từ khóa hoặc ghi chú. |
+| "Thư viện của … chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / run.command…" | Đóng app, bấm đúp `run.bat` / `run.command` để app cài đúng thư viện. |
 
 ## 8. Cập nhật phiên bản mới
 
