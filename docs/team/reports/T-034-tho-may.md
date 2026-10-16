@@ -69,13 +69,14 @@ $ uv run ruff check .
 All checks passed!
 
 $ uv run pytest -q
-KET_QUA_PYTEST
+3383 passed, 4 skipped, 7 xfailed, 1 warning in 159.07s
+# (trước phiếu: 13 xfailed; bỏ đúng 6 trường hợp xfail đã sửa)
 
 $ uv run pytest -q tests/test_ai_t034.py
 33 passed
 
 # SL-T019-5: chạy riêng tests/test_soi_loi_t028.py 30 lần
-KET_QUA_30_LAN
+pass=30 fail=0
 ```
 
 ## Đối chiếu tiêu chí xong
