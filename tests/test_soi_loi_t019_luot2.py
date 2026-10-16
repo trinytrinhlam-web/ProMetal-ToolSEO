@@ -298,10 +298,6 @@ def test_vendor_words_still_masked(text):
         assert word not in shown, word
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T019-3: số phiên bản đứng sau tên hãng/dòng mô hình còn lộ (Opus 5.5, GPT 6.1)",
-)
 @pytest.mark.parametrize(
     ("text", "leak"),
     [("Tôi là Claude Opus 5.5, viết bài này.", "5.5"), ("Tôi là GPT 6.1.", "6.1"),
