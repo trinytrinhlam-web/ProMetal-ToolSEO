@@ -86,3 +86,41 @@ Commit trên `team/T-036`: `817cfcf` (phần 1), `bc244c0` (phần 2), `f6eeaed`
 ## Câu hỏi cho chủ dự án
 
 Không có câu mới. Câu 3 (đuôi "| Pro-Metal") vẫn chờ; phần mềm đang chạy theo phương án A và đổi được bằng một hằng số.
+
+---
+
+## Lượt 2 (2026-10-16, theo báo cáo Soi Lỗi `T-036-soi-loi.md`)
+
+Đã gộp `origin/main` vào nhánh (merge, không rebase; có T-034 và bản sửa test chập chờn T-028). Sửa đủ 8 lỗi được giao; SL-T036-8 giữ nguyên theo quyết định của Chỉ Huy. Đã bỏ `xfail` của mọi test tương ứng trong `tests/test_soi_loi_t036.py` (không còn `xfail` nào trong file).
+
+| Lỗi | Mức | Sửa | Commit | Test thêm (`tests/test_onpage_meta.py`) |
+|---|---|---|---|---|
+| SL-T036-1 | Cao | `_check_text` soát thẻ HTML trên cả chữ gốc lẫn `value` đã chuẩn hóa (chữ sẽ gửi đi) | `778f9d7` | `test_tag_hidden_by_invisible_char_blocked` (title + description, 5 ký tự vô hình) |
+| SL-T036-9 | Trung bình | `_ai_text` bỏ gợi ý dài quá ngưỡng ngay sau khi chuẩn hóa, trước mọi regex link/giá. Title cho thêm chỗ bằng độ dài hậu tố tối đa (AI có thể tự gắn đuôi cũ) | `2f673f8` | `test_ai_filters_linear_on_long_runs` (4 dạng chuỗi), `test_ai_title_with_old_brand_near_limit_still_accepted` |
+| SL-T036-5 | Trung bình | Soát giá trên chữ NFKC; thêm số + đơn vị dính số (`1tr5`), đơn vị `đô`, `đô la`, `tỉ`, `xu`, ký hiệu `¥ £`; chữ số viết bằng chữ + đơn vị ("năm trăm nghìn", "hai triệu", "vài trăm ngàn"); "nghìn/triệu đồng". Loại trừ từ ghép không phải tiền: "đồng hồ", "đồng nghiệp", "đô thị", "tỉ lệ"… | `2e054bc` | `test_price_words_and_abbreviations_detected` (13 mẫu), `test_not_price_common_phrases` (8 câu không được bắt nhầm) |
+| SL-T036-2 | Thấp | `strip_brand` gỡ đuôi lặp, tối đa 5 lần (giới hạn để không chậm bình phương) | `ac267d4` | `test_brand_repeated_tails_all_removed`, `test_strip_brand_many_tails_is_linear` |
+| SL-T036-3 | Thấp | `strip_brand(title, suffix)` gỡ cả hậu tố đang dùng khi nó khác dạng Pro-Metal; `with_brand` truyền `suffix` xuống. Chữ dính liền ("XABC") không bị coi là hậu tố | `ac267d4` | `test_custom_suffix_not_added_twice` |
+| SL-T036-4 | Thấp | Hậu tố chỉ có ký tự vô hình = tắt; đuôi nhận mọi loại gạch (U+2010…2015, U+2212), dấu "/", dấu chấm cuối | `ac267d4` | `test_invisible_only_suffix_is_off`, `test_brand_odd_hyphens_removed` |
+| SL-T036-6 | Thấp | Thêm `_BARE_DOMAIN`: tên miền đuôi chữ thường bất kỳ (2–12 chữ). Không bắt "TP.HCM", "tp.hcm", "1.2mm", "xong.tiếp", "v.v.", "Q.7" | `9dcc8b2` | `test_bare_domain_any_tld_is_link`, `test_not_domain_common_text` |
+| SL-T036-7 | Thấp | Gợi ý AI có mã ký tự HTML (`&amp;`, `&#38;`) hoặc `％％` toàn khổ bị bỏ; dấu "&" trơn vẫn được nhận | `9dcc8b2` | `test_ai_entity_and_fullwidth_percent_dropped`, `test_ai_plain_ampersand_kept` |
+| SL-T036-8 | Cần quyết | **Giữ nguyên** (Chỉ Huy quyết: tiêu đề chỉ khác số quận bị Cảnh báo là đúng ý, tránh trang khu vực na ná nhau; chỉ Cảnh báo, không Chặn) | | |
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest
+5019 passed, 4 skipped, 16 xfailed, 1 warning in 212.50s
+
+$ uv run pytest tests/test_soi_loi_t036.py tests/test_onpage_meta.py
+361 passed in 5.31s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Điểm cần chú ý lượt 2
+
+- Bộ dò giá và tên miền vẫn dựa trên mẫu. Bắt nhầm chỉ làm bỏ một gợi ý AI (người dùng bấm viết lại); với chữ người dùng tự gõ, `check_title`/`check_description` không soát giá hay link (đúng phạm vi phiếu: chỉ soát gợi ý AI).
+- SL-T036-7 chỉ áp cho gợi ý AI. Chữ người dùng tự gõ có `&amp;` hoặc `％％` thì không bị Chặn: SiteSEO chỉ hiểu `%%` ASCII; cách WordPress in `&amp;` để T-042 xác minh.
+- Tiêu đề kết thúc đúng bằng hậu tố tùy chỉnh (ví dụ hậu tố "Pro-Metal" và tiêu đề "… Pro-Metal") sẽ được coi là đã có hậu tố và chỉ còn một lần. Đó là chủ ý của SL-T036-3.
+
