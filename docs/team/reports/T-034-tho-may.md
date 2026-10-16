@@ -103,3 +103,49 @@ pass=30 fail=0
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-16)
+
+Theo báo cáo Soi Lỗi `docs/team/reports/T-034-soi-loi.md` (đạt có điều kiện).
+
+| Mã | Cách sửa | Commit |
+|---|---|---|
+| SL-T034-2 (bảo mật) | `ignoring_custom_headers`: không nhập được `anthropic._client` / `openai._client` thì thử nhập gói gốc (`anthropic`, `openai`). Gói nhập được (thư viện còn cài nhưng đổi cấu trúc) thì bật đường dự phòng, tức là gỡ biến tạm thời như cách cũ. Chỉ bỏ qua khi chính gói chưa cài, vì khi đó không có client nào của gói được tạo. | `seo_app/ai/base.py` |
+| SL-T034-1 | Trong `_VERSION`, mỗi phần (số hoặc biến thể) được kèm đuôi nối bằng gạch `(?:-[^\W_]+(?:\.\d+)*)*` trước phần nhìn trước. "Gemini 2.5 Flash-Lite", "Opus 5.5-preview", "Pro-002" đều bị che. Số đứng riêng vẫn giữ: "dày 5.5-6 mm", "cửa pro-max" không có tên hãng đứng trước nên không bị đụng. | `seo_app/content/blind_test.py` |
+
+Test đã bỏ `xfail` (trong `tests/test_soi_loi_t034.py`):
+- `test_library_without_client_module_falls_back` (2 trường hợp, SL-T034-2)
+- `test_hyphenated_variant_after_version_is_masked` (3 trường hợp, SL-T034-1)
+
+### Câu lỗi người dùng thấy (để Thư Ký đối chiếu README mục 7.6)
+
+T-034 **không đổi chữ** câu lỗi khi Claude bị cắt ở trang Soạn bài. Câu vẫn là:
+
+> AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt vì quá giới hạn … token). Bấm thử lại; nếu vẫn lỗi, tăng max_tokens của việc «…» trong config/ai.toml.
+
+Dòng này ở README 7.6 **vẫn đúng** cho Soạn bài. Chỗ đổi là **lớp lỗi**: khi luồng báo chắc chắn bị cắt (`stop_reason = max_tokens`), lỗi là `TokenLimitError`. Nhờ vậy ở **thử mù**, ứng viên Claude bị cắt giờ hiện câu sau (giống ChatGPT, Gemini), thay cho câu trên:
+
+> Bài thử dài quá giới hạn 2000 token của phần thử mù (mô hình suy nghĩ càng kỹ càng dùng nhiều phần giới hạn này). Chọn effort thấp hơn (low hoặc medium) cho ứng viên này rồi chạy lại.
+
+README đã có dòng "Ở thử mù: «Bài thử dài quá giới hạn 2000 token…»". Đề xuất Thư Ký: ở dòng "(Claude)" thêm ghi chú "ở trang Soạn bài". Không cần dòng mới.
+
+Câu khác T-034 làm người dùng gặp, kiểm với README 7.6:
+
+| Tình huống | Câu | README |
+|---|---|---|
+| Nội dung nén gzip/br hỏng (Anthropic, OpenAI, cả nút Kiểm tra) | "Máy chủ … trả về dữ liệu lạ (có thể do mạng Wi-Fi hoặc proxy). Kiểm tra mạng rồi thử lại." Trước đây là "Không kết nối được tới …". | Đã có dòng (189). Không cần sửa. |
+| Tên mô hình ở thử mù có ký tự lạ | "Ứng viên …: tên mô hình chỉ gồm chữ không dấu, số và các dấu . _ : / @ -, ví dụ claude-opus-5-5, gpt-6.1, gemini-3-pro." | Chưa có. Câu tự giải thích, có thể không cần thêm. |
+| Thiếu `config/ai.toml` | "Không thấy file cấu hình AI: config/ai.toml." (trước ghi đường dẫn đầy đủ) | Chưa có. Có thể thêm: "Tải lại phần mềm từ GitHub hoặc chép lại file `config/ai.toml`." |
+
+### Bằng chứng lượt 2
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest -q
+KET_QUA_PYTEST_L2
+
+# Chạy riêng tests/test_soi_loi_t028.py 30 lần
+KET_QUA_30_LAN_L2
+```
