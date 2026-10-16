@@ -23,6 +23,7 @@ from seo_app.content.models import (
     SectionText,
 )
 from seo_app.content.rules import ContentRules, find_banned
+from seo_app.onpage import meta as onpage_meta
 from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
 
 INTRO_HEADING = "Mở bài"
@@ -256,3 +257,52 @@ class ContentWriter:
         if not body:
             raise AIError("AI trả về bản viết lại rỗng. Bấm thử lại hoặc đổi yêu cầu.")
         return body
+
+    # 6. Gợi ý meta title / meta description (T-036)
+    def meta(
+        self,
+        keyword: str,
+        title: str,
+        parts: Sequence[Section],
+        which: str = "both",
+        current_title: str = "",
+        current_description: str = "",
+        brand_suffix: object = None,
+    ) -> prompts.MetaSuggestions:
+        """AI gợi ý meta; code kiểm từng gợi ý (``seo_app/onpage/meta.py``), bỏ gợi ý hỏng.
+
+        ``which`` = "title" hoặc "description": viết lại riêng phần đó, danh sách của phần kia
+        trả về rỗng (người dùng giữ nguyên phần kia). Phần được yêu cầu mà mọi gợi ý đều hỏng
+        thì báo ``AIError`` để người dùng bấm viết lại. ``brand_suffix``: hậu tố thương hiệu
+        (``None`` hoặc cấu hình sai thì dùng mặc định ``onpage_meta.BRAND_SUFFIX``).
+        """
+        if which not in prompts.META_PARTS:
+            raise ValueError(f"which phải là một trong {prompts.META_PARTS}")
+        keyword = onpage_meta.normalize_meta(keyword)
+        if not keyword:
+            raise AIError("Chưa có từ khóa chính nên chưa gợi ý meta được. Nhập từ khóa trước.")
+        prompt = prompts.meta_prompt(
+            keyword, title, parts, which, current_title, current_description
+        )
+        raw = self._run("meta", prompt, prompts.MetaSuggestions)
+        titles: list[str] = []
+        descriptions: list[str] = []
+        if which in ("both", "title"):
+            titles = onpage_meta.filter_ai_titles(
+                raw.titles, keyword, self.rules.banned, brand_suffix
+            )
+            if not titles:
+                raise AIError(
+                    "Các meta title AI gợi ý đều không đạt (thiếu từ khóa, dài/ngắn quá, có link,"
+                    " giá hoặc cụm sáo rỗng). Bấm viết lại."
+                )
+        if which in ("both", "description"):
+            descriptions = onpage_meta.filter_ai_descriptions(
+                raw.descriptions, keyword, self.rules.banned
+            )
+            if not descriptions:
+                raise AIError(
+                    "Các meta description AI gợi ý đều không đạt (thiếu từ khóa, dài/ngắn quá,"
+                    " có link, giá hoặc cụm sáo rỗng). Bấm viết lại."
+                )
+        return prompts.MetaSuggestions(titles=titles, descriptions=descriptions)

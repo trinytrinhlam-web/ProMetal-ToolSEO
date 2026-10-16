@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import unquote
 
-from seo_app.content.rules import IGNORABLE_NOT_CF
-from seo_app.sanitize import strip_tags
+from seo_app.content.rules import IGNORABLE_NOT_CF, find_banned
+from seo_app.sanitize import clean_ai_text, strip_tags
 from seo_app.text import remove_accents, slugify
 
 
@@ -392,3 +392,110 @@ def check_slug_duplicates(slug: str, posts, current_id: int | None = None) -> Fi
             (f"Slug trùng bài {_names(same)}. Đổi slug khác.",),
         )
     return FieldCheck("slug", value, len(value), Level.GOOD, ())
+
+
+# ------------------------------------------------------------------ kiểm gợi ý của AI (A2)
+
+# Số gợi ý tối đa giữ lại (khuôn trả về: 3 title, 2 description).
+MAX_TITLE_SUGGESTIONS = 3
+MAX_DESCRIPTION_SUGGESTIONS = 2
+
+# Link hay địa chỉ: giao thức ("https:", "javascript:", "x://"), "www.", link Markdown, email,
+# tên miền trần ("suachuacuasat.com"). Xét trên chữ đã NFKC ("ｗｗｗ．" cũng là "www.").
+_LINK = re.compile(
+    r"[a-z][a-z0-9+.\-]*://|\b(?:https?|javascript|data|vbscript|file|mailto|tel|zalo):"
+    r"|www\.|\]\s*[(\[]|@[\w-]+\.|\b[\w-]+\.(?:com|vn|net|org|info|io|me|biz|xyz|co|site|link)\b",
+    re.IGNORECASE,
+)
+# Nêu giá dưới mọi dạng (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt; "báo giá qua Zalo" thì
+# được). Xét trên chữ thường NFC, đã bỏ từ khóa chính (từ khóa có thể chứa chữ "giá").
+_PRICE = re.compile(
+    r"\d[\d.,]*\s*(?:đ|đồng|vnđ|vnd|k|nghìn|ngàn|triệu|tr|tỷ|usd)\b|[$€₫]"
+    r"|\b(?:giá|chi phí)\s+(?:rẻ|tốt|chỉ|từ|gốc|sỉ|ưu đãi|cạnh tranh|hợp lý|phải chăng|thấp"
+    r"|mềm|bình dân|bao nhiêu)\b"
+    r"|\b(?:rẻ|đắt|bảng giá|giảm giá|khuyến mãi|miễn phí|ưu đãi|trọn gói)\b"
+)
+
+
+def _plain_words(text: str) -> str:
+    """Chữ không dấu, chữ thường, chỉ còn từ, bọc dấu cách hai đầu (để so trọn từ)."""
+    words = _WORD.findall(remove_accents(normalize_meta(text)).lower())
+    return " " + " ".join(words) + " "
+
+
+def has_keyword(text: str, keyword: str) -> bool:
+    """Có từ khóa chính (trọn từ, không phân biệt hoa thường; so bản không dấu nên AI viết
+    thiếu dấu, sai dấu vẫn được nhận). Từ khóa rỗng thì coi như có."""
+    key = _plain_words(keyword)
+    return not key.strip() or key in _plain_words(text)
+
+
+def has_link(text: str) -> bool:
+    return _LINK.search(unicodedata.normalize("NFKC", normalize_meta(text))) is not None
+
+
+def mentions_price(text: str, keyword: str = "") -> bool:
+    lowered = normalize_meta(text).lower()
+    kw = normalize_meta(keyword).lower()
+    if kw:
+        lowered = lowered.replace(kw, " ")
+    return _PRICE.search(lowered) is not None
+
+
+def _ai_text(raw: object, keyword: str, banned) -> str | None:
+    """Kiểm chung cho một gợi ý: trả chữ đã chuẩn hóa, hoặc None nếu phải bỏ."""
+    if not isinstance(raw, str) or has_html(raw):
+        return None
+    value = normalize_meta(raw)
+    if not value or "%%" in value or has_link(value):
+        return None
+    if find_banned(value, tuple(banned)) or mentions_price(value, keyword):
+        return None
+    return value
+
+
+def _final(value: str, check: FieldCheck, limits: Limits) -> str | None:
+    """Gợi ý cuối: không bị Chặn, độ dài trong ngưỡng Cảnh báo, và lọc ``clean_ai_text`` (U1)
+    không đổi chữ (chữ được đếm chính là chữ được gửi đi)."""
+    if check.level is Level.BLOCK or not limits.warn_min <= check.length <= limits.warn_max:
+        return None
+    cleaned = " ".join(clean_ai_text(value).split())
+    return cleaned if cleaned == value else None
+
+
+def _dedupe(values, limit: int) -> list[str]:
+    seen: set[str] = set()
+    out = []
+    for value in values:
+        key = compare_key(value)
+        if value and key not in seen:
+            seen.add(key)
+            out.append(value)
+    return out[:limit]
+
+
+def accept_ai_title(raw: object, keyword: str, banned=(), suffix: object = None) -> str | None:
+    """Một meta title AI gợi ý, đã kiểm và gắn hậu tố thương hiệu; None nếu phải bỏ."""
+    value = _ai_text(raw, keyword, banned)
+    if value is None or not has_keyword(strip_brand(value), keyword):
+        return None
+    titled = with_brand(value, suffix)
+    return _final(titled, check_title(titled), TITLE_LIMITS)
+
+
+def accept_ai_description(raw: object, keyword: str, banned=()) -> str | None:
+    """Một meta description AI gợi ý, đã kiểm; None nếu phải bỏ."""
+    value = _ai_text(raw, keyword, banned)
+    if value is None or not has_keyword(value, keyword):
+        return None
+    return _final(value, check_description(value), DESCRIPTION_LIMITS)
+
+
+def filter_ai_titles(raws, keyword: str, banned=(), suffix: object = None) -> list[str]:
+    accepted = (accept_ai_title(r, keyword, banned, suffix) for r in raws)
+    return _dedupe((a for a in accepted if a), MAX_TITLE_SUGGESTIONS)
+
+
+def filter_ai_descriptions(raws, keyword: str, banned=()) -> list[str]:
+    accepted = (accept_ai_description(r, keyword, banned) for r in raws)
+    return _dedupe((a for a in accepted if a), MAX_DESCRIPTION_SUGGESTIONS)
