@@ -14,10 +14,11 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.parse import unquote
 
 from seo_app.content.rules import IGNORABLE_NOT_CF
 from seo_app.sanitize import strip_tags
-from seo_app.text import slugify
+from seo_app.text import remove_accents, slugify
 
 
 class Level(StrEnum):
@@ -262,3 +263,132 @@ def check_slug(slug: str) -> FieldCheck:
         return FieldCheck("slug", value, length, Level.WARN, tuple(warns))
     note = f"Slug có {words} từ, nên {low}–{high} từ." if words < low else "Slug gọn, đúng chuẩn."
     return FieldCheck("slug", value, length, Level.GOOD, (note,))
+
+
+# ------------------------------------------------------------------ kiểm trùng với bài khác
+
+
+@dataclass(frozen=True)
+class SitePost:
+    """Một bài trên site để so trùng (T-037 sẽ đưa dữ liệu thật từ cache vào).
+
+    Chữ đến từ site là dữ liệu chưa tin cậy: giao diện phải escape khi hiện (U1).
+    """
+
+    id: int
+    title: str = ""
+    meta_title: str = ""
+    meta_description: str = ""
+    slug: str = ""
+
+
+# Tỉ lệ từ chung (hệ số Dice trên tập từ không dấu) từ mức này trở lên là "giống nhiều".
+SIMILARITY_WARN = 0.8
+# Số tên bài bị trùng/giống nêu trong một câu báo (còn lại ghi "và N bài khác").
+_MAX_NAMED = 3
+_PUNCTUATION = re.compile(r"[^\w\s]|_")
+
+
+def compare_key(text: str) -> str:
+    """Chữ để so trùng: chuẩn hóa như ``normalize_meta``, bỏ hậu tố thương hiệu, chữ thường,
+    bỏ dấu câu, gộp khoảng trắng. Giữ dấu tiếng Việt ("cửa" khác "của")."""
+    base = strip_brand(text).lower()
+    return " ".join(_PUNCTUATION.sub(" ", base).split())
+
+
+def _word_set(key: str) -> frozenset[str]:
+    return frozenset(remove_accents(key).split())
+
+
+def similarity(a: frozenset[str], b: frozenset[str]) -> float:
+    """Hệ số Dice: 2·|chung| / (|a| + |b|). 1 là cùng tập từ, 0 là không chung từ nào."""
+    if not a or not b:
+        return 0.0
+    return 2 * len(a & b) / (len(a) + len(b))
+
+
+def _names(posts: list[SitePost]) -> str:
+    shown = [f"«{normalize_meta(p.title) or f'bài #{p.id}'}»" for p in posts[:_MAX_NAMED]]
+    more = len(posts) - _MAX_NAMED
+    return ", ".join(shown) + (f" và {more} bài khác" if more > 0 else "")
+
+
+def _duplicate_check(
+    field: str, value: str, candidates: list[tuple[SitePost, list[str]]]
+) -> FieldCheck:
+    """So ``value`` với các chữ của từng bài (``candidates``: bài, các chữ của bài đó)."""
+    name = _FIELD_NAMES[field]
+    shown = normalize_meta(value)
+    key = compare_key(value)
+    if not key:
+        return FieldCheck(field, shown, len(shown), Level.GOOD, ())
+    words = _word_set(key)
+    same: list[SitePost] = []
+    alike: list[SitePost] = []
+    for post, texts in candidates:
+        keys = {compare_key(t) for t in texts if t}
+        keys.discard("")
+        if key in keys:
+            same.append(post)
+        elif any(similarity(words, _word_set(k)) >= SIMILARITY_WARN for k in keys):
+            alike.append(post)
+    if same:
+        return FieldCheck(
+            field,
+            shown,
+            len(shown),
+            Level.BLOCK,
+            (f"{name} trùng hệt bài {_names(same)}. Hai trang giống nhau tranh nhau trên Google.",),
+        )
+    if alike:
+        return FieldCheck(
+            field,
+            shown,
+            len(shown),
+            Level.WARN,
+            (f"{name} rất giống bài {_names(alike)}. Nên viết khác đi cho rõ bài này nói gì.",),
+        )
+    return FieldCheck(field, shown, len(shown), Level.GOOD, ())
+
+
+def _others(posts, current_id: int | None) -> list[SitePost]:
+    return [p for p in posts if current_id is None or p.id != current_id]
+
+
+def check_title_duplicates(title: str, posts, current_id: int | None = None) -> FieldCheck:
+    """So meta title với bài khác. Bài chưa có meta title thì SiteSEO dùng tiêu đề bài, nên so
+    với cả tiêu đề bài lẫn meta title của từng bài. Bỏ qua bài ``current_id`` (bài đang sửa)."""
+    return _duplicate_check(
+        "title", title, [(p, [p.meta_title, p.title]) for p in _others(posts, current_id)]
+    )
+
+
+def check_description_duplicates(
+    description: str, posts, current_id: int | None = None
+) -> FieldCheck:
+    """So meta description với meta description của bài khác (bài để trống thì bỏ qua)."""
+    return _duplicate_check(
+        "description",
+        description,
+        [(p, [p.meta_description]) for p in _others(posts, current_id)],
+    )
+
+
+def _slug_key(slug: str) -> str:
+    return unquote(slug).strip().strip("/").lower()
+
+
+def check_slug_duplicates(slug: str, posts, current_id: int | None = None) -> FieldCheck:
+    """Slug trùng bài khác thì WordPress tự thêm "-2" (hai trang cùng nhắm một từ khóa): Chặn."""
+    value = slug.strip()
+    key = _slug_key(value)
+    same = [p for p in _others(posts, current_id) if key and _slug_key(p.slug) == key]
+    if same:
+        return FieldCheck(
+            "slug",
+            value,
+            len(value),
+            Level.BLOCK,
+            (f"Slug trùng bài {_names(same)}. Đổi slug khác.",),
+        )
+    return FieldCheck("slug", value, len(value), Level.GOOD, ())

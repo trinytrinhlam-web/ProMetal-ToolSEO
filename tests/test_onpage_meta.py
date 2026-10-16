@@ -3,14 +3,19 @@
 import unicodedata
 
 import pytest
+from timing import FACTOR, assert_scales_linearly
 
 from seo_app.onpage import meta
 from seo_app.onpage.meta import (
     BRAND_SUFFIX,
     Level,
+    SitePost,
     check_description,
+    check_description_duplicates,
     check_slug,
+    check_slug_duplicates,
     check_title,
+    check_title_duplicates,
     make_slug,
     meta_length,
     normalize_meta,
@@ -247,3 +252,120 @@ def test_check_slug(slug, level):
 def test_auto_slug_passes_check():
     for text in ("Cửa sắt 2 cánh — giá bao nhiêu?", "cửa sắt " * 30, TITLE_54):
         assert check_slug(make_slug(text)).level is not Level.BLOCK
+
+
+# ------------------------------------------------------------------ kiểm trùng
+
+
+POSTS = [
+    SitePost(
+        id=1,
+        title="Sửa cửa cuốn tại nhà",
+        meta_title="Sửa cửa cuốn bị kẹt tại nhà nhanh | Pro Metal",
+        meta_description="Cửa cuốn kẹt giữa chừng? Thợ Pro-Metal đến tận nơi kiểm tra.",
+        slug="sua-cua-cuon",
+    ),
+    SitePost(id=2, title="Cửa sắt bị xệ: nguyên nhân và cách sửa", slug="cua-sat-bi-xe"),
+    SitePost(id=3, title="Làm cổng inox 304", slug="lam-cong-inox-304"),
+]
+
+
+def test_exact_duplicate_title_blocked_after_normalizing():
+    # khác hậu tố thương hiệu, hoa thường, dấu câu, khoảng trắng, NFD: vẫn trùng hệt
+    title = nfd("SỬA CỬA CUỐN bị kẹt tại nhà — nhanh!!  - Pro-Metal")
+    result = check_title_duplicates(title, POSTS)
+    assert result.level is Level.BLOCK
+    assert "Sửa cửa cuốn tại nhà" in result.messages[0]
+
+
+def test_title_compared_with_post_title_when_meta_empty():
+    result = check_title_duplicates("Cửa sắt bị xệ – nguyên nhân và cách sửa | Pro-Metal", POSTS)
+    assert result.level is Level.BLOCK
+    assert "Cửa sắt bị xệ" in result.messages[0]
+
+
+def test_similar_title_warns_with_post_name():
+    result = check_title_duplicates("Cửa sắt bị xệ: nguyên nhân, cách sửa nhanh", POSTS)
+    assert result.level is Level.WARN
+    assert "Cửa sắt bị xệ: nguyên nhân và cách sửa" in result.messages[0]
+
+
+def test_accent_difference_is_similar_not_exact():
+    """«của» khác «cửa»: không trùng hệt, nhưng bản không dấu giống hệt thì Cảnh báo."""
+    result = check_title_duplicates(
+        "Làm cổng inox 304", [SitePost(id=9, title="Làm cống inox 304")]
+    )
+    assert result.level is Level.WARN
+
+
+def test_different_title_is_fine():
+    result = check_title_duplicates("Bảo dưỡng bản lề cửa kéo mùa mưa", POSTS)
+    assert result.level is Level.GOOD
+    assert result.messages == ()
+
+
+def test_current_post_is_skipped():
+    title = "Sửa cửa cuốn bị kẹt tại nhà nhanh"
+    assert check_title_duplicates(title, POSTS, current_id=1).level is Level.GOOD
+    assert check_title_duplicates(title, POSTS, current_id=2).level is Level.BLOCK
+
+
+def test_description_duplicates():
+    desc = "Cửa cuốn kẹt giữa chừng? Thợ Pro-Metal đến tận nơi kiểm tra"
+    assert check_description_duplicates(desc, POSTS).level is Level.BLOCK
+    near = "Cửa cuốn kẹt giữa chừng? Thợ Pro-Metal đến tận nơi kiểm tra kỹ"
+    assert check_description_duplicates(near, POSTS).level is Level.WARN
+    # bài để trống description thì không so (không báo trùng với chuỗi rỗng)
+    assert check_description_duplicates("Mô tả hoàn toàn khác", POSTS).level is Level.GOOD
+
+
+def test_empty_value_never_duplicate():
+    assert check_title_duplicates("", POSTS).level is Level.GOOD
+    assert check_description_duplicates("!!!", POSTS).level is Level.GOOD
+    assert check_slug_duplicates("", [SitePost(id=1)]).level is Level.GOOD
+
+
+def test_slug_duplicate_blocked():
+    assert check_slug_duplicates("sua-cua-cuon", POSTS).level is Level.BLOCK
+    assert check_slug_duplicates(" SUA-CUA-CUON ", POSTS).level is Level.BLOCK
+    assert check_slug_duplicates("sua-cua-cuon", POSTS, current_id=1).level is Level.GOOD
+    assert check_slug_duplicates("sua-cua-cuon-quan-7", POSTS).level is Level.GOOD
+    encoded = [SitePost(id=5, title="x", slug="/cua-s%E1%BA%AFt/")]
+    assert check_slug_duplicates("cua-sắt", encoded).level is Level.BLOCK
+
+
+def test_many_duplicates_named_briefly():
+    posts = [SitePost(id=i, title=f"Bài {i}", meta_title="Cửa sắt đẹp") for i in range(10)]
+    message = check_title_duplicates("Cửa sắt đẹp", posts).messages[0]
+    assert "«Bài 0»" in message and "«Bài 2»" in message
+    assert "«Bài 3»" not in message
+    assert "và 7 bài khác" in message
+
+
+def test_post_without_title_named_by_id():
+    message = check_slug_duplicates("abc", [SitePost(id=42, slug="abc")]).messages[0]
+    assert "bài #42" in message
+
+
+def test_duplicate_check_is_linear_in_post_count():
+    def make_posts(n):
+        return [
+            SitePost(
+                id=i,
+                title=f"Bài số {i} về cửa sắt cửa cuốn",
+                meta_title=f"Sửa cửa cuốn quận {i} nhanh gọn",
+                meta_description=f"Mô tả bài {i}: cửa cuốn kẹt, thợ đến tận nơi.",
+                slug=f"bai-{i}",
+            )
+            for i in range(n)
+        ]
+
+    lists = {k * 400: make_posts(k * 400) for k in (1, FACTOR)}
+
+    def run(text):
+        posts = lists[len(text)]
+        check_title_duplicates("Sửa cửa cuốn bị kẹt tại nhà", posts)
+        check_description_duplicates(DESC_140, posts)
+        check_slug_duplicates("sua-cua-cuon", posts)
+
+    assert_scales_linearly(run, lambda k: "x" * (k * 400), label="kiểm trùng")
