@@ -460,7 +460,6 @@ def test_banned_phrase_from_config_nfd():
     "price",
     ["năm trăm nghìn", "hai triệu đồng", "vài trăm ngàn", "1tr5", "５００ｋ", "500 đô"],
 )
-@pytest.mark.xfail(strict=True, reason="SL-T036-5: giá viết bằng chữ / viết tắt / toàn khổ lọt")
 def test_price_in_words_dropped(price):
     assert mentions_price(f"Cửa sắt bị xệ sửa chỉ {price} tại nhà", KEYWORD)
 

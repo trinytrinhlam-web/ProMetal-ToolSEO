@@ -410,9 +410,23 @@ _LINK = re.compile(
     re.IGNORECASE,
 )
 # Nêu giá dưới mọi dạng (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt; "báo giá qua Zalo" thì
-# được). Xét trên chữ thường NFC, đã bỏ từ khóa chính (từ khóa có thể chứa chữ "giá").
+# được). Xét trên chữ NFKC ("５００ｋ" thành "500k"), chữ thường, đã bỏ từ khóa chính (từ khóa có
+# thể chứa chữ "giá"). Gồm: số + đơn vị tiền ("200.000đ", "500k", "1tr5", "500 đô"), chữ số viết
+# bằng chữ + đơn vị ("năm trăm nghìn", "hai triệu đồng", "vài trăm ngàn"), ký hiệu tiền, và các
+# cụm nói về giá. Đơn vị có loại trừ những từ ghép hay gặp không phải tiền ("đồng hồ", "đô thị",
+# "tỉ lệ") để không bỏ oan gợi ý (SL-T036-5).
+_MONEY_UNIT = (
+    r"(?:đồng(?!\s+(?:hồ|bộ|thời|loạt|đều|màu|nghiệp|ý|nát|tâm))|vnđ|vnd|đô(?:\s+la)?(?!\s+thị)"
+    r"|đ|k|nghìn|ngàn|triệu|tr|tỷ(?!\s+lệ)|tỉ(?!\s+lệ)|usd|xu)"
+)
+_NUMBER_WORD = (
+    r"(?:một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|bẩy|tám|chín|mười|mươi|trăm|chục|vài|mấy|rưỡi|nửa)"
+)
 _PRICE = re.compile(
-    r"\d[\d.,]*\s*(?:đ|đồng|vnđ|vnd|k|nghìn|ngàn|triệu|tr|tỷ|usd)\b|[$€₫]"
+    r"\d[\d.,]*\s*" + _MONEY_UNIT + r"\d*(?!\w)"
+    r"|\b" + _NUMBER_WORD + r"\s+" + _MONEY_UNIT + r"(?!\w)"
+    r"|\b(?:nghìn|ngàn|triệu|tỷ|tỉ)\s+đồng\b"
+    r"|[$€₫¥£]"
     r"|\b(?:giá|chi phí)\s+(?:rẻ|tốt|chỉ|từ|gốc|sỉ|ưu đãi|cạnh tranh|hợp lý|phải chăng|thấp"
     r"|mềm|bình dân|bao nhiêu)\b"
     r"|\b(?:rẻ|đắt|bảng giá|giảm giá|khuyến mãi|miễn phí|ưu đãi|trọn gói)\b"
@@ -437,8 +451,8 @@ def has_link(text: str) -> bool:
 
 
 def mentions_price(text: str, keyword: str = "") -> bool:
-    lowered = normalize_meta(text).lower()
-    kw = normalize_meta(keyword).lower()
+    lowered = unicodedata.normalize("NFKC", normalize_meta(text)).lower()
+    kw = unicodedata.normalize("NFKC", normalize_meta(keyword)).lower()
     if kw:
         lowered = lowered.replace(kw, " ")
     return _PRICE.search(lowered) is not None

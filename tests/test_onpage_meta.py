@@ -671,3 +671,34 @@ def test_ai_filters_linear_on_long_runs(make):
 def test_ai_title_with_old_brand_near_limit_still_accepted():
     base = "Cửa sắt bị xệ: 5 dấu hiệu sớm, nguyên nhân và cách xử lý gọn"  # 59 ký tự
     assert accept_ai_title(base + " | Pro Metal", KEYWORD) == base
+
+
+@pytest.mark.parametrize(
+    "price",
+    [
+        "năm trăm nghìn", "hai triệu đồng", "vài trăm ngàn", "mấy chục nghìn", "1tr5",
+        "５００ｋ", "500 đô", "50 đô la", "1,5 triệu", "200.000 VNĐ", "300 nghìn đồng",
+        "¥500", "ba tỷ",
+    ],
+)  # fmt: skip
+def test_price_words_and_abbreviations_detected(price):
+    """SL-T036-5: giá viết bằng chữ, viết tắt, chữ toàn khổ."""
+    assert mentions_price(f"Cửa sắt bị xệ sửa chỉ {price} tại nhà", KEYWORD)
+    assert accept_ai_title(f"Cửa sắt bị xệ: sửa chỉ {price} tại nhà", KEYWORD) is None
+
+
+@pytest.mark.parametrize(
+    "ok",
+    [
+        "Cửa sắt bị xệ sau 10 năm: 5 dấu hiệu cần gọi thợ",
+        "Cửa sắt bị xệ: chỉnh bản lề trong 30 phút với 2 cờ lê",
+        "Cửa sắt bị xệ? Kiểm tra đồng hồ điện trước khi sửa cổng",
+        "Cửa sắt bị xệ ở khu đô thị mới: nguyên nhân hay gặp",
+        "Cửa sắt bị xệ: tỉ lệ hỏng bản lề sau hai năm sử dụng",
+        "Cửa sắt bị xệ ba lần một tháng: báo giá qua Zalo",
+        "Cửa sắt bị xệ, cửa kéo 4 khung, 2 kg mỡ bò: làm gì?",
+        "Cửa sắt bị xệ: hai đồng nghiệp thợ cùng chỉnh trong 1 giờ",
+    ],
+)
+def test_not_price_common_phrases(ok):
+    assert not mentions_price(ok, KEYWORD)
