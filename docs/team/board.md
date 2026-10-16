@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 08:10 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 08:17 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -23,7 +23,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy → Soi Lỗi → Lá Chắn (`Lá Chắn · T-031 … (Opus tạm)`) | `team/T-031` | Thợ Máy xong (`192d9c5`). Soi Lỗi **ĐẠT** (`c6505ee`): bộ hiển thị thật dựng độc lập, 18.446 ca, 0 link; Linux 4.087 qua. Lỗi Thấp ngoài phạm vi SL-T031-1 → T-044. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) · [Soi Lỗi](reports/T-031-soi-loi.md) |
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) → Soi Lỗi (`Soi Lỗi · T-034 …`) | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`, Linux 3.383 qua). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-034-tho-may.md) |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-034 …`) → Thợ Máy lượt 2 | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`). Soi Lỗi **đạt có điều kiện** (`9f9de06`, Linux 3.565 qua): SL-T034-2 (đường dự phòng khi thư viện đổi cấu trúc, bắt buộc sửa), SL-T034-1 (biến thể có gạch nối sau số phiên bản còn lộ). **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
 | [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy (`Thợ Máy · T-043 Bộ lọc hồ sơ, lỗi Thấp sau T-032`) | `team/T-043` | Đã giao | |
 
 ## Chờ
