@@ -74,26 +74,16 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 
 > Trạng thái mới nhất giữa hai Chỉ Huy luôn nằm ở [`docs/team/dong-bo.md`](docs/team/dong-bo.md); mục này có thể cũ hơn.
 
-**Chờ anh quyết:** xem `TIEN-DO.md` mục 4, tóm tắt:
-
-- 4 câu hỏi Giai đoạn 4 (chi tiết ở `docs/team/reports/T-033-tho-may.md` mục 7):
-  1. Cách ghi SEO vào SiteSEO.
-  2. Tài khoản Biên tập viên riêng.
-  3. Đuôi "| Pro-Metal".
-  4. Dọn chỗ trùng trên website.
-
-  Anh dặn 16/10: phần mềm phải chạy ổn định khi chưa có câu trả lời. Đội làm theo phương án đề xuất ở chỗ đổi được bằng cấu hình; phần ghi SEO lên website tạm để anh chép tay.
-- Thư viện Pillow, khi bắt đầu Giai đoạn 3.
-- Nhờ người làm web kiểm tra 3 đường REST nhạy cảm của website.
+**Chờ anh quyết:** không còn câu nào. Ngày 16/10 anh trả lời 1A 2A 3A 4A 5A (mục 7.4). Việc anh làm trên website (bật Abilities, tạo tài khoản Biên tập viên, dọn 3 chỗ, nhờ kiểm 3 đường REST): `TIEN-DO.md` mục 4.
 
 **Việc tiếp theo theo thứ tự:**
 
 1. T-036: Soi Lỗi, rồi Lá Chắn, rồi gộp.
 2. T-037 (danh sách bài đã đăng + cache) và T-038 (schema FAQPage): chạy song song được.
 3. T-039 (liên kết nội bộ), rồi T-040 (lời dặn meta/anchor), rồi T-041 (bước SEO thật trên giao diện).
-4. T-042 (ghi SEO lên nháp WordPress): chờ anh trả lời câu 1, 2.
+4. T-042 (ghi SEO lên nháp WordPress qua Abilities): làm sau T-037. Thử thật cần anh bật Abilities và có tài khoản Biên tập viên.
 5. Dọn lỗi Thấp khi có chỗ: T-044 (Họa Sĩ), T-045 (Thợ Máy).
-6. Giai đoạn 3 (ảnh) và Giai đoạn 5 (kế hoạch, lịch, gửi bài). Giai đoạn 5 có danh sách bảo mật bắt buộc ở cuối `docs/team/board.md`.
+6. Giai đoạn 3 (ảnh; Pillow đã duyệt 16/10) và Giai đoạn 5 (kế hoạch, lịch, gửi bài). Giai đoạn 5 có danh sách bảo mật bắt buộc ở cuối `docs/team/board.md`.
 
 **Việc nhỏ còn treo:**
 
@@ -142,6 +132,7 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 - Thông tin doanh nghiệp đã soạn (từ website) nằm trong `config/business_profile.md` của **PR #3** (chưa gộp vào `main`): hotline 03.4444.07.17, trụ sở 728/1 Lê Trọng Tấn, Bình Tân, bảo hành 2 năm, gần 30 thợ, dịch vụ và kiến thức nghề. Dòng nào đánh dấu `[CẦN XÁC NHẬN]` thì AI không dùng.
 - PR #3 đang xung đột nhỏ với `main` ở `CLAUDE.md` (hai bên cùng thêm dòng Trạng thái, cách sửa là giữ cả hai). Có thẻ hỏi "gộp bản mới nhất vào PR #3" chưa được trả lời.
 - 2026-10-16: Chủ dự án 2026-10-16: chưa trả lời 4 câu hỏi Giai đoạn 4; yêu cầu phần mềm **vẫn chạy ổn định khi chưa có câu trả lời** và làm tiếp các việc khác. Phần nào cần câu trả lời thì để tùy chọn (mặc định an toàn, đổi trong cấu hình); ghi SEO lên website chờ câu 1, 2, trong lúc đó chép tay.
+- Chủ dự án trả lời 2026-10-16: **1A** (bật Abilities của SiteSEO để phần mềm ghi tiêu đề, mô tả, từ khóa chính vào bài nháp), **2A** (tạo tài khoản WordPress vai Biên tập viên riêng cho phần mềm), **3A** (đuôi " | Pro-Metal" khi tiêu đề còn chỗ, dưới 60 ký tự), **4A** (dọn khối Organization rỗng của SiteSEO, mô tả thừa "3 chi nhánh…" ở trang chủ, mức giá "$$"; chủ dự án hoặc người làm web làm), **5A** (đồng ý thêm thư viện Pillow cho Giai đoạn 3).
 
 ### 7.5 Tính năng và nội dung
 

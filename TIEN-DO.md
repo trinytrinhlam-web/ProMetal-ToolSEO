@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-16, 13:00 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-16, 13:10 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -16,7 +16,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 - Đã lên `main` 2026-10-16 sáng: bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai (T-032).
 - Đã lên `main` 2026-10-15 tối: test đo tốc độ không còn đỏ oan (T-025).
 - **Giai đoạn 2 xong** (2026-10-16): đủ 3 hãng AI, thử mù, bộ lọc hồ sơ chặt, chữ AI không còn thành link.
-- Giai đoạn 4: thiết kế xong (T-033), đã chia phiếu; phần meta (T-036) Thợ Máy làm xong, chờ kiểm. **Có 4 câu hỏi chờ anh** (mục 4).
+- Giai đoạn 4: thiết kế xong (T-033), đã chia phiếu; phần meta (T-036) Thợ Máy làm xong, chờ kiểm. Anh đã trả lời 4 câu (16/10); còn vài việc anh làm trên website (mục 4).
 - Còn lại: ảnh, tối ưu SEO on-page, kế hoạch và lịch đăng, đăng lên WordPress thật.
 - Bộ kiểm tra tự động trên `main`: 4.658 bài, đều qua trên Linux (lần chạy Windows gần nhất: 3.110 bài qua).
 
@@ -28,7 +28,7 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 1 | WordPress: kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện | ✅ Xong |
 | 2 | AI viết bài | ✅ Xong (2026-10-16; xem mục 3) |
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
-| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 📐 Thiết kế xong (T-033), đã lập phiếu T-036 → T-042; phần ghi lên site chờ anh trả lời 4 câu ở mục 4 |
+| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 🟡 Đang làm: thiết kế xong (T-033), phiếu T-036 → T-042; T-036 (meta) đang kiểm |
 | 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
 | 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
 
@@ -63,31 +63,26 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
-1. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung sau (mục 7 của `config/business_profile.md` có hướng dẫn điền).
-2. **Giai đoạn 4 (tối ưu SEO): 4 câu hỏi** (anh chưa trả lời, 16/10 dặn: phần mềm phải chạy ổn định khi chưa có câu trả lời. Đội làm theo phương án đề xuất ở chỗ đổi được bằng cấu hình; phần ghi SEO lên website tạm để anh chép tay), giải thích đầy đủ ở [`docs/team/reports/T-033-tho-may.md`](docs/team/reports/T-033-tho-may.md) mục 7. Anh trả lời bằng chữ cái, ví dụ "1A 2A 3A 4A".
-   - **Câu 1.** Phần mềm ghi tiêu đề và mô tả SEO vào SiteSEO bằng cách nào?
-     - **A (đề xuất):** anh bật công tắc **Abilities** trong SiteSEO;
-     - **B:** không bật gì, thử đường website đang mở sẵn;
-     - **C:** anh tự chép tay.
-   - **Câu 2.** Tạo tài khoản WordPress vai **Biên tập viên** riêng cho phần mềm?
-     - **A (đề xuất):** có;
-     - **B:** dùng tài khoản quản trị (không nên).
-   - **Câu 3.** Tiêu đề SEO có đuôi "| Pro-Metal" không?
-     - **A (đề xuất):** có, khi còn chỗ;
-     - **B:** không.
-   - **Câu 4.** Dọn hai chỗ trùng trên website:
-     - khối doanh nghiệp rỗng tên của SiteSEO;
-     - đoạn mô tả thừa ở trang chủ ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức";
-     - mức giá "$$".
+**Anh đã trả lời ngày 16/10: 1A 2A 3A 4A 5A.** Các việc anh cần làm trên website. Làm lúc nào cũng được, phần mềm vẫn chạy trong lúc chờ:
 
-     **A (đề xuất):** có, anh hoặc người làm web dọn. **B:** để sau.
-3. **Nên nhờ người làm web kiểm tra:** website có các đường REST `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Phần mềm sẽ không bao giờ gọi các đường này. Nhưng anh nên nhờ người làm web xác nhận chúng **bắt buộc đăng nhập quản trị** mới dùng được. Đội agent chỉ thấy tên đường trong danh sách công khai, chưa thử gọi.
-4. **Thư viện ảnh Pillow** (Giai đoạn 3: nén WebP, giữ GPS): 14/10 anh chọn "để sau"; khi bắt đầu Giai đoạn 3 cần anh đồng ý thêm thư viện này.
-5. **Chạy kiểm tra trên Windows:** khi mở máy Windows với Chỉ Huy A, nhờ A chạy `uv run pytest` một lượt (các phiếu gần đây mới chạy trên Linux).
+1. **Bật Abilities trong SiteSEO.** Vào trang quản trị WordPress → SiteSEO, tìm mục **Abilities** và bật lên. Phần mềm chỉ dùng tính năng này để ghi SEO cho bài **nháp do chính phần mềm tạo**.
+2. **Tạo tài khoản Biên tập viên riêng cho phần mềm.**
+   - Vào **Người dùng → Thêm mới**, đặt tên ví dụ `phan-mem-seo`, vai trò **Biên tập viên (Editor)**.
+   - Đăng nhập bằng tài khoản này, vào **Hồ sơ → Application Passwords** để tạo mật khẩu ứng dụng.
+   - Điền vào `.env` (`WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD`). Cách làm chi tiết ở README mục 6.
+3. **Dọn 3 chỗ trên website** (anh hoặc người làm web):
+   - tắt khối doanh nghiệp rỗng tên của SiteSEO (SiteSEO → Social → Knowledge Graph);
+   - bỏ đoạn mô tả thừa ở trang chủ ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức";
+   - cân nhắc bỏ mức giá "$$".
+4. **Nhờ người làm web kiểm tra:** website có các đường `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Nhờ họ xác nhận các đường này **bắt buộc đăng nhập quản trị**. Phần mềm không bao giờ gọi các đường này.
+5. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung khi rảnh (mục 7 của `config/business_profile.md` có hướng dẫn).
+6. **Chạy kiểm tra trên Windows:** khi mở máy Windows với Chỉ Huy A, nhờ A chạy `uv run pytest` một lượt.
+
+Đã trả lời 2026-10-16: 1A (ghi SEO qua Abilities của SiteSEO), 2A (tài khoản Biên tập viên riêng), 3A (đuôi "| Pro-Metal" khi còn chỗ), 4A (dọn chỗ trùng trên website), 5A (thêm thư viện Pillow cho Giai đoạn 3).
 
 Đã trả lời 2026-10-15: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); giữ Giai đoạn 6; đưa thư mục kế hoạch lên repo (`docs/plan/`); lập phiếu điều phối chung cho 2 Chỉ Huy (`docs/team/dong-bo.md`).
 
-Đã trả lời 2026-10-14: dùng thư viện chính hãng cho ChatGPT/Gemini; gộp PR #3 sau khi sửa; Pillow để sau; báo giá không nêu thời gian; không nói giá dưới dạng nào; khu vực gồm cả Bình Dương và Bà Rịa–Vũng Tàu cũ; mỗi agent một phiên con, mỗi phiếu một nhánh tạm.
+Đã trả lời 2026-10-14: dùng thư viện chính hãng cho ChatGPT/Gemini; gộp PR #3 sau khi sửa; báo giá không nêu thời gian; không nói giá dưới dạng nào; khu vực gồm cả Bình Dương và Bà Rịa–Vũng Tàu cũ; mỗi agent một phiên con, mỗi phiếu một nhánh tạm.
 
 ## 5. Việc bắt buộc khi làm phần đăng bài lên WordPress (Giai đoạn 5)
 

@@ -28,26 +28,31 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Không ai giữ** (Chỉ Huy B trả quyền lúc 2026-10-16 13:00, theo yêu cầu chủ dự án).
+**Chỉ Huy B**, nhận lại lúc 2026-10-16 13:10 (chủ dự án trả lời câu hỏi và nói "Tiếp đi").
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 13:00 lúc bàn giao. Không còn phiên con nào đang chạy; mọi việc đã đẩy lên GitHub.
+Chỉ Huy B, cập nhật 2026-10-16 13:10.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`9cde0b1`) | Thợ Máy xong (Linux 4.431 qua). **Chưa giao Soi Lỗi** | Giao Soi Lỗi (chú ý: bộ dò giá/link là danh sách mẫu; ngưỡng Dice 0.8; chỉ nhận gợi ý trong ngưỡng Cảnh báo), rồi Lá Chắn (A1: khung `<de_bai>` chưa có trong `DATA_RULES`; A2), gộp |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md), [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) (GĐ4) | chưa có | Phiếu đã lập | Giao Thợ Máy, song song được với T-036 |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập | Theo thứ tự trong phiếu |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chờ chủ dự án trả lời câu 1, 2 | — |
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện Lá Chắn T-043) | Giao Thợ Máy, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 13:10 · Chỉ Huy B nhận lại quyền
+
+- **Quyết định chủ dự án:** Chủ dự án trả lời 2026-10-16: **1A** (bật Abilities của SiteSEO để phần mềm ghi tiêu đề, mô tả, từ khóa chính vào bài nháp), **2A** (tạo tài khoản WordPress vai Biên tập viên riêng cho phần mềm), **3A** (đuôi " | Pro-Metal" khi tiêu đề còn chỗ, dưới 60 ký tự), **4A** (dọn khối Organization rỗng của SiteSEO, mô tả thừa "3 chi nhánh…" ở trang chủ, mức giá "$$"; chủ dự án hoặc người làm web làm), **5A** (đồng ý thêm thư viện Pillow cho Giai đoạn 3). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `TIEN-DO.md` mục 4, `BAN-GIAO.md` 7.4, phiếu T-036, T-042.
+- Làm tiếp: Soi Lỗi T-036; Thợ Máy T-037, T-038 (tối đa 3 phiên).
 
 ### 2026-10-16 13:00 · Chỉ Huy B trả quyền (chủ dự án yêu cầu bàn giao)
 

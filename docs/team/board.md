@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 13:00 (Chỉ Huy B bàn giao, **không ai giữ quyền**; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 13:10 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -36,10 +36,10 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | **Chủ dự án trả lời câu 1, 2 của [T-033](reports/T-033-tho-may.md)**; T-037 |
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | T-037 (chủ dự án đã trả lời 1A, 2A ngày 16/10; thử thật cần anh bật Abilities và tạo tài khoản Biên tập viên) |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
-| Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án chọn "để sau" (2026-10-14), hỏi lại khi tới Giai đoạn 3 |
+| Giai đoạn 3 | Ảnh: khai báo thư viện Pillow | Thợ Máy | Chủ dự án **đồng ý** thêm Pillow (2026-10-16); lập phiếu khi bắt đầu Giai đoạn 3 |
 
 ## Việc đang làm ngoài hệ thống phiếu
 

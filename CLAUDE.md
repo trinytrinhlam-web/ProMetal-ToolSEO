@@ -28,6 +28,8 @@ Người dùng là chủ dự án: hiểu khái niệm lập trình nhưng ít d
   - Có AI kiểm tra văn phong: thân thiện, tự nhiên (không máy móc), dễ đọc, cụ thể, chuẩn SEO; tô câu có vấn đề ngay trong bài, kèm gợi ý và nút Áp dụng / Bỏ qua.
   - Bài đánh dấu chỗ cần ảnh ngay trong từng phần; mỗi chỗ chọn ảnh thật (từ thư mục) hoặc ảnh AI — ảnh AI luôn kèm prompt xem/sửa/sao chép được.
   - Trang Kế hoạch nhận kế hoạch người dùng cung cấp (tải file, dán chữ, link Google Sheets); AI đề xuất thay đổi, người dùng tick duyệt rồi mới cập nhật. Có "thông tin nền doanh nghiệp" dùng cho mọi bài.
+- SEO trên website (chốt 2026-10-16): phần mềm ghi tiêu đề, mô tả, từ khóa chính vào SiteSEO qua **Abilities** (chủ dự án bật trong SiteSEO), chỉ cho bài nháp do app tạo; dùng tài khoản WordPress vai **Biên tập viên** riêng; tiêu đề SEO thêm đuôi " | Pro-Metal" khi còn chỗ (dưới 60 ký tự).
+- Thư viện ảnh **Pillow** được duyệt cho Giai đoạn 3 (chốt 2026-10-16).
 
 ## Bí mật và bảo mật
 
@@ -94,7 +96,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 ## Câu hỏi còn mở (hỏi người dùng khi tới giai đoạn liên quan)
 
-- Chờ chủ dự án (2026-10-15): 4 câu hỏi Giai đoạn 4 (cách ghi SEO vào SiteSEO, tài khoản Biên tập viên, đuôi "| Pro-Metal", dọn schema/mô tả trùng trên site): `TIEN-DO.md` mục 4, chi tiết `docs/team/reports/T-033-tho-may.md` mục 7.
+- Đã trả lời 2026-10-16: 4 câu Giai đoạn 4 và Pillow (1A 2A 3A 4A 5A, xem "Quyết định đã chốt"). Việc chủ dự án làm trên website: `TIEN-DO.md` mục 4.
 - Đã chốt 2026-10-14: plugin SEO là **SiteSEO** (ghi meta/schema theo SiteSEO). Tên miền suachuacuasat.com. **Không có staging**: làm việc trực tiếp trên site chính thức, nên mọi bài thử phải là nháp.
 
 ## Cách làm việc
@@ -153,3 +155,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-16: Gộp T-031 vào `main`: địa chỉ trần, `www.`, email trong chữ AI và chữ ngoài không còn thành link (chèn ký tự rộng 0; Giai đoạn 5 phải gỡ trước khi gửi WordPress). Lá Chắn ĐẠT (Opus tạm).
 - 2026-10-16: Gộp T-043 vào `main`: bộ lọc hồ sơ nhận nhãn có ký tự lạ chen vào (`[**CẦN XÁC NHẬN**]`, `[⚠ …]`), nửa nhãn qua dòng trống, tiêu đề thụt lề. Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (Opus tạm), 3 lỗi Thấp theo dõi ở T-045.
 - 2026-10-16: Gộp T-034 vào `main` (7 lỗi Thấp lớp AI và thử mù; chặn `*_CUSTOM_HEADERS` bằng khung nhìn `os` đã lọc thay vì gỡ biến môi trường). Lá Chắn ĐẠT (Opus tạm). **Xong Giai đoạn 2.** Linux 4.658 test qua.
+- 2026-10-16: Chủ dự án trả lời 2026-10-16: **1A** (bật Abilities của SiteSEO để phần mềm ghi tiêu đề, mô tả, từ khóa chính vào bài nháp), **2A** (tạo tài khoản WordPress vai Biên tập viên riêng cho phần mềm), **3A** (đuôi " | Pro-Metal" khi tiêu đề còn chỗ, dưới 60 ký tự), **4A** (dọn khối Organization rỗng của SiteSEO, mô tả thừa "3 chi nhánh…" ở trang chủ, mức giá "$$"; chủ dự án hoặc người làm web làm), **5A** (đồng ý thêm thư viện Pillow cho Giai đoạn 3).
