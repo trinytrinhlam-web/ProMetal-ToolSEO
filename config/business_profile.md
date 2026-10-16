@@ -1,10 +1,15 @@
 # Hồ sơ doanh nghiệp — Cơ khí Pro-Metal (suachuacuasat.com)
 
 > CÁCH ĐỌC FILE NÀY (dành cho chủ dự án, AI không thấy phần này):
-> - File được đưa vào prompt mỗi khi AI nghiên cứu và viết bài, TRỪ hai thứ:
+> - File được đưa vào prompt mỗi khi AI nghiên cứu và viết bài, TRỪ ba thứ:
 >   1. Dòng ghi chú bắt đầu bằng dấu `>` (như các dòng này).
 >   2. Ý có nhãn `[CẦN XÁC NHẬN — lý do]`: nhãn đặt ở dòng nào của ý (kể cả
->      dòng xuống hàng bên dưới) thì AI bỏ cả ý đó. Viết hoa hay thường đều được.
+>      dòng xuống hàng bên dưới) thì AI bỏ cả ý đó. Viết hoa hay thường, có dấu
+>      hay không dấu, ngoặc vuông `[ ]` hay ngoặc tròn `( )` đều được. Nhớ gõ
+>      dấu mở ngoặc: chữ "cần xác nhận" không có ngoặc là câu thường, AI vẫn thấy.
+>   3. Cả mục có nhãn trên tiêu đề (ví dụ `## 7. … [CẦN XÁC NHẬN]`): AI bỏ tiêu
+>      đề đó và mọi dòng bên dưới, kể cả mục con `###`, tới tiêu đề cùng cấp kế
+>      tiếp (`## 8.`).
 > - Chỉ ghi điều có thật. Ý nào chưa chắc thì thêm nhãn trên; khi đã xác nhận
 >   thì xóa nhãn đi.
 > - Lưu file bằng Notepad: chọn Mã hóa (Encoding) UTF-8.

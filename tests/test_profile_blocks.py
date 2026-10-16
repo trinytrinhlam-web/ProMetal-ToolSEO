@@ -117,9 +117,10 @@ def test_heading_is_own_block():
     assert confirmed_profile(text) == "## 2. Năng lực\n## 3. Khu vực\n- Bình Tân"
 
 
-def test_tag_in_heading_drops_only_heading():
-    text = f"## Chi nhánh {TAG}\n- Bình Tân"
-    assert confirmed_profile(text) == "- Bình Tân"
+def test_tag_in_heading_drops_whole_section():
+    # T-032: nhãn trên tiêu đề giấu cả mục, tới tiêu đề cùng cấp kế tiếp.
+    text = f"## Chi nhánh {TAG}\n- Bình Tân\n## Khu vực\n- Thủ Đức"
+    assert confirmed_profile(text) == "## Khu vực\n- Thủ Đức"
 
 
 def test_paragraph_right_after_heading_is_separate_block():
@@ -185,9 +186,11 @@ def test_several_blank_lines_and_notes_inside_item():
 
 
 def test_blank_then_indented_after_heading_is_not_merged_into_heading():
-    text = f"## Mục {TAG}\n\n  đoạn thụt lề sau tiêu đề"
-    # Tiêu đề luôn đứng riêng: dòng thụt lề sau nó không bị bỏ theo (strip() bỏ khoảng trắng đầu).
-    assert confirmed_profile(text) == "đoạn thụt lề sau tiêu đề"
+    # Tiêu đề luôn đứng riêng một khối: nhãn ở đoạn thụt lề sau nó không giấu tiêu đề.
+    text = f"## Mục\n\n  đoạn thụt lề sau tiêu đề {TAG}\n\n- B"
+    assert confirmed_profile(text) == "## Mục\n\n\n- B"
+    # T-032: tiêu đề có nhãn thì đoạn thụt lề bên dưới bị giấu theo mục.
+    assert confirmed_profile(f"## Mục {TAG}\n\n  đoạn thụt lề sau tiêu đề") == ""
 
 
 def test_invisible_char_kept_in_output():
@@ -196,8 +199,9 @@ def test_invisible_char_kept_in_output():
     assert confirmed_profile(text) == text
 
 
-def test_glued_tag_still_not_recognised_but_invisible_separator_is():
-    assert confirmed_profile("- Email x [CẦNXÁC NHẬN]") == "- Email x [CẦNXÁC NHẬN]"
+def test_glued_tag_and_invisible_separator_both_recognised():
+    # T-032: nhãn gõ dính chữ giờ cũng được nhận.
+    assert confirmed_profile("- Email x [CẦNXÁC NHẬN]\n- B") == "- B"
     assert confirmed_profile("- Email x [CẦN​XÁC NHẬN]\n- B") == "- B"
     assert confirmed_profile("- Email x [C‍ẦN XÁC NHẬN]\n- B") == "- B"
 
