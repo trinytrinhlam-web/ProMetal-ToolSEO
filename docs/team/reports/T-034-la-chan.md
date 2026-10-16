@@ -104,7 +104,7 @@ Tăng theo bình phương, không có dạng tăng theo hàm mũ (các nhóm l�
 | detect-secrets (các file trong diff) | 4 cảnh báo | Có, đều báo nhầm |
 | Soát lịch sử git | Không có khóa thật trong `699d7ba..931e976` | Có |
 | pytest | 3.599 qua, 4 bỏ qua, 7 xfail (các xfail còn lại thuộc phiếu khác), 0 hỏng | Có |
-| `tests/test_soi_loi_t028.py` chạy riêng 30 lần | KẾT_QUẢ_30_LẦN | Có |
+| `tests/test_soi_loi_t028.py` chạy riêng 30 lần | 30/30 lần qua, 0 hỏng (Linux) | Có |
 | ruff | All checks passed! | Có |
 
 ## Báo nhầm đã loại
