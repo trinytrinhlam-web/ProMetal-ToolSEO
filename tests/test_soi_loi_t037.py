@@ -453,10 +453,9 @@ def test_name_check_would_catch_new_publish_methods():
 
 
 def test_status_publish_or_future_only_in_list_published():
-    """Chuỗi ``publish``/``future`` gắn với khóa ``status`` chỉ được nằm trong hàm đọc."""
+    """Khóa ``status`` khác ``draft`` (publish, future…) chỉ được nằm trong hàm đọc."""
     source = (PROJECT_ROOT / "seo_app" / "wordpress" / "client.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
-    risky = {"publish", "future", "private"}
     offenders = []
     for func in ast.walk(tree):
         if not isinstance(func, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -471,11 +470,12 @@ def test_status_publish_or_future_only_in_list_published():
                 ]
             elif isinstance(node, ast.Assign):
                 for target in node.targets:
-                    if isinstance(target, ast.Subscript) and isinstance(
-                        target.slice, ast.Constant
+                    if (
+                        isinstance(target, ast.Subscript)
+                        and isinstance(target.slice, ast.Constant)
+                        and target.slice.value == "status"
                     ):
-                        if target.slice.value == "status":
-                            values.append(node.value)
+                        values.append(node.value)
             for value in values:
                 if not (isinstance(value, ast.Constant) and value.value == "draft"):
                     offenders.append((func.name, ast.unparse(value)))
