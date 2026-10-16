@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 12:52 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 12:55 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -23,7 +23,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 → Lá Chắn (`Lá Chắn · T-034 … (Opus tạm)`) | `team/T-034` | Thợ Máy 2 lượt (`3b151ba`). Soi Lỗi lượt 2 **ĐẠT** (`931e976`, Linux 3.599 qua; `test_soi_loi_t028.py` 30/30 cả lúc máy bận). **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
-| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy (`Thợ Máy · T-036 Meta title, description, slug`) | `team/T-036` | Đã giao | |
+| [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy (`Thợ Máy · T-036 Meta title, description, slug`) | `team/T-036` | Thợ Máy **xong** (`9cde0b1`, Linux 4.431 qua; 130 test mới). `seo_app/onpage/meta.py`, `ContentWriter.meta`, `[tasks.meta]` trong `config/ai.toml`; đuôi " \| Pro-Metal" là tham số mặc định. **Chờ Soi Lỗi** (chưa giao, Chỉ Huy B đang bàn giao) | [Thợ Máy](reports/T-036-tho-may.md) |
 
 ## Chờ
 

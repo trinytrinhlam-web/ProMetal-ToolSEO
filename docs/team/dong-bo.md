@@ -34,14 +34,14 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 12:52. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 12:55. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Tên site từ WordPress hiện an toàn | chưa có | Phiếu đã lập, chờ T-031 | Giao Họa Sĩ |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (`931e976`) | Soi Lỗi lượt 2 ĐẠT (Linux 3.599 qua). Lá Chắn (Opus tạm) đang kiểm (`_OsWithoutIgnored`, đường dự phòng, ReDoS che tên) | ĐẠT thì gộp; Thư Ký thêm "ở trang Soạn bài" vào dòng README 7.6 "(Claude)" khi tiện |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện của Lá Chắn T-043), chưa giao | Giao Thợ Máy khi có chỗ, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
-| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (từ `main` `4968a68`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn (A1, A2), gộp. Sau đó T-037, T-038 (song song được), T-039 → T-041; T-042 chờ chủ dự án |
+| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`9cde0b1`) | Thợ Máy xong (Linux 4.431 qua). **Chưa giao Soi Lỗi** | Giao Soi Lỗi (điểm cần chú ý trong báo cáo Thợ Máy: bộ dò giá/link là danh sách mẫu, ngưỡng Dice 0.8, chỉ nhận gợi ý trong ngưỡng Cảnh báo), rồi Lá Chắn (A1: khung `<de_bai>` chưa có trong `DATA_RULES`; A2), gộp. Sau đó T-037, T-038 song song |
 
 ## Nhật ký bàn giao
 
