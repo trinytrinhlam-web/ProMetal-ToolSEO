@@ -323,10 +323,6 @@ def test_two_refreshes_at_once_both_succeed(tmp_path):
     assert ids in ([i.id for i in sets[0]], [i.id for i in sets[1]])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T037-1: file đang bị khóa lâu hơn timeout bị coi là hỏng và bị xóa",
-)
 def test_locked_file_is_busy_not_corrupt(store, monkeypatch):
     store.refresh(Source([published(1)]))
     monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
@@ -443,7 +439,14 @@ def test_client_instance_publish_names_case_insensitive(wp_client):
 
 
 def test_client_module_publish_names_are_read_only_helpers():
-    allowed = {"PublishedItem", "PUBLISHED_TYPES", "_PUBLISHED_FIELDS", "_published_from"}
+    # PublishedList: kiểu kết quả chỉ đọc của list_published (T-037 lượt 2, SL-T037-2).
+    allowed = {
+        "PublishedItem",
+        "PublishedList",
+        "PUBLISHED_TYPES",
+        "_PUBLISHED_FIELDS",
+        "_published_from",
+    }
     assert _publish_names(dir(client_module)) <= allowed
 
 

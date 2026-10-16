@@ -134,6 +134,16 @@ class PublishedItem:
             raise ValueError("thiếu link")
 
 
+class PublishedList(list[PublishedItem]):
+    """Kết quả ``list_published``: một ``list`` bình thường, thêm cờ ``truncated``.
+
+    ``truncated`` đúng khi site báo nhiều trang kết quả hơn ``MAX_PAGES`` nên danh sách chưa
+    đủ (SL-T037-2). Khi đó đừng kết luận "link hỏng" chỉ vì link không có trong danh sách.
+    """
+
+    truncated: bool = False
+
+
 @dataclass(frozen=True)
 class Media:
     id: int
@@ -247,7 +257,7 @@ class WordPressClient:
             for item in self._get_all_pages(path, params)
         ]
 
-    def list_published(self) -> list[PublishedItem]:
+    def list_published(self) -> PublishedList:
         """Mọi bài và trang ĐÃ ĐĂNG (``publish``) trên site, kèm meta SiteSEO nếu site mở.
 
         Chỉ đọc (``GET``), đúng hai đường cố định ``/wp/v2/posts`` và ``/wp/v2/pages``. Dữ liệu
@@ -256,7 +266,8 @@ class WordPressClient:
         - ``link`` phải là ``https://`` và đúng tên máy (và cổng) của ``WORDPRESS_URL``;
         - tiêu đề và meta bỏ thẻ, gộp khoảng trắng, cắt theo giới hạn độ dài;
         - mục sai khuôn (thiếu id, link lạ…) bị bỏ, không làm hỏng cả danh sách.
-        Meta SiteSEO không có trong kết quả thì để rỗng.
+        Meta SiteSEO không có trong kết quả thì để rỗng. Site có quá ``MAX_PAGES`` trang kết
+        quả thì phần thừa không được đọc và ``truncated`` của kết quả là ``True``.
         """
         params = {
             "status": "publish",
@@ -265,16 +276,43 @@ class WordPressClient:
             "order": "asc",
             "_fields": _PUBLISHED_FIELDS,
         }
-        items: list[PublishedItem] = []
+        items = PublishedList()
         seen: set[tuple[str, int]] = set()
         for kind, path in (("post", "/wp/v2/posts"), ("page", "/wp/v2/pages")):
-            for raw in self._get_all_pages(path, params):
+            raws, truncated = self._get_pages_checked(path, params)
+            items.truncated = items.truncated or truncated
+            for raw in raws:
                 item = _published_from(raw, kind, self.base_url)
                 if item is None or (item.type, item.id) in seen:
                     continue
                 seen.add((item.type, item.id))
                 items.append(item)
         return items
+
+    def _get_pages_checked(
+        self, path: str, params: dict[str, Any]
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """Như ``_get_all_pages`` (giới hạn ``MAX_PAGES``), thêm cờ "còn trang chưa đọc".
+
+        Hàm riêng để không đổi ``_get_all_pages`` đang dùng cho chuyên mục/thẻ (phạm vi T-037).
+        """
+        items: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            response = self._request("GET", path, params={**params, "page": page})
+            data = self._json(response)
+            if not isinstance(data, list):
+                raise WordPressError("WordPress trả về dữ liệu không đúng dạng danh sách.")
+            items.extend(data)
+            try:
+                total_pages = int(response.headers.get("X-WP-TotalPages", "1"))
+            except ValueError:
+                total_pages = 1
+            if page >= total_pages or not data:
+                return items, False
+            if page >= MAX_PAGES:
+                return items, True
+            page += 1
 
     def _get_all_pages(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []

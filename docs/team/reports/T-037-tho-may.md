@@ -97,3 +97,24 @@ All checks passed!
   - 2 ability SiteSEO (`GET …/siteseo-posts/seo-data-get/run`, `POST …/siteseo-posts/seo-data-update/run`).
   So khớp toàn chuỗi bằng regex, chặn `..`, `%2e`, `//`, và mọi namespace khác (`code-snippets/v1`, `prometal/v1`…). Kèm test liệt kê đúng các đường trên và test mọi đường ngoài danh sách bị từ chối **trước khi** gửi request.
 - Soi Lỗi: thử cache khi hai tab cùng `refresh` (khóa SQLite) và trên Windows (xóa file khi kết nối vừa đóng).
+
+## Lượt 2 (2026-10-16) · sửa theo Soi Lỗi
+
+| Mã | Mức | Đã làm |
+|---|---|---|
+| SL-T037-1 | Trung bình | `_is_healthy` gặp lỗi `locked`/`busy` thì **ném lại** thay vì coi file là hỏng; `_prepare` đổi thành `SiteIndexError` "đang bận". File và `-journal` của giao dịch đang chạy không bị xóa; `refresh` vẫn trả danh sách vừa tải kèm `cache_error` "đang bận". Hàm `_is_busy` dùng chung cho cả `_connect` và `_db_message` (nhận cả chữ `busy`). Đã bỏ `xfail` của `test_locked_file_is_busy_not_corrupt`; thêm `test_locked_file_is_not_deleted_and_says_busy` |
+| SL-T037-2 | Thấp | Có cờ `truncated`. `list_published()` trả `PublishedList` (là `list` bình thường, thêm `truncated`), đúng khi site báo nhiều trang kết quả hơn `MAX_PAGES`. `SiteIndex.truncated` được lưu vào bảng `info` (`"0"`/`"1"`; thiếu hoặc giá trị lạ = cache hỏng, tải lại). `SCHEMA_VERSION` lên `"2"`, nên cache ghi ở lượt 1 tự bị bỏ và tải lại |
+
+Ghi chú:
+- Để không đổi `_get_all_pages` (đang dùng cho chuyên mục/thẻ, ngoài phạm vi phiếu), `list_published` dùng hàm mới `_get_pages_checked`, cùng cách đọc và cùng giới hạn `MAX_PAGES`, thêm cờ "còn trang chưa đọc". Lặp khoảng 15 dòng; T-042 có thể gộp hai hàm khi làm lại client.
+- Đúng `MAX_PAGES` trang thì **không** bật cờ; hơn mới bật (`test_exactly_max_pages_is_not_truncated`, `test_truncated_when_site_has_more_than_max_pages`).
+- Sửa danh sách cho phép trong `tests/test_soi_loi_t037.py::test_client_module_publish_names_are_read_only_helpers`: thêm `PublishedList` (kiểu kết quả chỉ đọc). Test vẫn chặn mọi tên khác.
+- Giai đoạn 5 (kiểm link hỏng): khi `index.truncated` thì không được báo "link hỏng" chỉ vì link không có trong danh sách.
+
+```
+$ uv run pytest
+4858 passed, 4 skipped, 16 xfailed, 1 warning in 211.89s
+
+$ uv run ruff check .
+All checks passed!
+```

@@ -303,3 +303,36 @@ def test_published_item_validates_itself(field, value):
     good = {"id": 1, "type": "post", "slug": "a", "link": f"{BASE_URL}/a/", "title": "A"}
     with pytest.raises(ValueError):
         PublishedItem(**{**good, field: value})
+
+
+# ---------------------------------------------------------------- lượt 2: cờ truncated
+
+
+def test_not_truncated_when_all_pages_read(fake_wp, wp_client):
+    serve(fake_wp, posts=[item(1)])
+    result = wp_client.list_published()
+    assert result.truncated is False
+
+
+def test_truncated_when_site_has_more_than_max_pages(fake_wp, wp_client):
+    def posts(request):
+        page = int(query(request)["page"][0])
+        return 200, [item(page)], {"X-WP-TotalPages": str(MAX_PAGES + 10)}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", posts)
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
+    result = wp_client.list_published()
+    assert len(result) == MAX_PAGES
+    assert result.truncated is True
+    assert len(fake_wp.requests) == MAX_PAGES + 1  # 50 trang bài + 1 trang "trang"
+
+
+def test_exactly_max_pages_is_not_truncated(fake_wp, wp_client):
+    def pages(request):
+        page = int(query(request)["page"][0])
+        return 200, [item(page, kind="page")], {"X-WP-TotalPages": str(MAX_PAGES)}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", [])
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", pages)
+    result = wp_client.list_published()
+    assert len(result) == MAX_PAGES and result.truncated is False

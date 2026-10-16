@@ -370,3 +370,52 @@ def test_works_with_wordpress_client(store, fake_wp):
     assert store.get(client).from_cache
     assert len(fake_wp.requests) == 2
     assert {r.method for r in fake_wp.requests} == {"GET"}
+
+
+# ---------------------------------------------------------------- lượt 2
+
+
+class TruncatedSource(Source):
+    def list_published(self):
+        from seo_app.wordpress import PublishedList
+
+        result = PublishedList(super().list_published())
+        result.truncated = True
+        return result
+
+
+def test_truncated_flag_is_kept_in_cache(store):
+    source = TruncatedSource()
+    assert store.refresh(source).truncated is True
+    assert store.load(BASE_URL).truncated is True
+    assert store.refresh(Source()).truncated is False
+    assert store.load(BASE_URL).truncated is False
+
+
+@pytest.mark.parametrize("value", ["2", "", "true"])
+def test_bad_truncated_value_drops_cache(store, value):
+    store.refresh(Source())
+    raw_sql(store.path, "UPDATE info SET value = ? WHERE key = 'truncated'", (value,))
+    assert store.load(BASE_URL) is None
+
+
+def test_missing_truncated_drops_cache(store):
+    store.refresh(Source())
+    raw_sql(store.path, "DELETE FROM info WHERE key = 'truncated'")
+    assert store.load(BASE_URL) is None
+
+
+def test_locked_file_is_not_deleted_and_says_busy(store, monkeypatch):
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    holder = sqlite3.connect(store.path, isolation_level=None)
+    try:
+        holder.execute("BEGIN EXCLUSIVE")
+        index = store.refresh(Source([published(2)]))
+        assert [i.id for i in index.items] == [2]
+        assert "đang bận" in index.cache_error
+        assert store.reset_count == 0
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    assert [i.id for i in store.load(BASE_URL).items] == [1]

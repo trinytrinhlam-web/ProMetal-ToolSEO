@@ -36,7 +36,7 @@ from seo_app.wordpress.client import (
 DEFAULT_SITE_INDEX_FILE = PROJECT_ROOT / "data" / "site_index.sqlite"
 DEFAULT_MAX_AGE_HOURS = 6.0
 MAX_ITEMS = 2 * PER_PAGE * MAX_PAGES  # bài + trang, đúng mức client đọc tối đa
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"  # 2: thêm "truncated" trong bảng info (T-037 lượt 2)
 # Một chữ tiếng Việt UTF-8 tối đa 4 byte: chặn dòng quá to trước khi đọc vào bộ nhớ.
 _MAX_FIELD_BYTES = 4 * max(MAX_LINK_CHARS, MAX_META_CHARS, MAX_TITLE_CHARS, MAX_SLUG_CHARS)
 _MAX_INFO_CHARS = 2048
@@ -66,6 +66,7 @@ class SiteIndex:
     items: tuple[PublishedItem, ...]
     from_cache: bool = False  # True: đọc từ file; False: vừa tải từ site
     cache_error: str = ""  # tải được nhưng không ghi được file (vẫn dùng được danh sách)
+    truncated: bool = False  # site có hơn MAX_PAGES trang kết quả: danh sách chưa đủ
 
     def by_link(self) -> dict[str, PublishedItem]:
         return {item.link: item for item in self.items}
@@ -101,7 +102,12 @@ class SiteIndexStore:
         """
         items = source.list_published()
         fetched_at = self._now()
-        index = SiteIndex(site=source.base_url, fetched_at=fetched_at, items=tuple(items))
+        index = SiteIndex(
+            site=source.base_url,
+            fetched_at=fetched_at,
+            items=tuple(items),
+            truncated=bool(getattr(items, "truncated", False)),
+        )
         try:
             self.save(index)
         except SiteIndexError as exc:
@@ -110,6 +116,7 @@ class SiteIndexStore:
                 fetched_at=fetched_at,
                 items=index.items,
                 cache_error=str(exc),
+                truncated=index.truncated,
             )
         return index
 
@@ -156,6 +163,7 @@ class SiteIndexStore:
                         ("schema_version", SCHEMA_VERSION),
                         ("site", index.site),
                         ("fetched_at", index.fetched_at.isoformat()),
+                        ("truncated", "1" if index.truncated else "0"),
                     ],
                 )
         except sqlite3.DatabaseError as exc:
@@ -200,6 +208,9 @@ class SiteIndexStore:
         if info.get("site") != site:
             return None  # cache của site khác (đổi WORDPRESS_URL): tải lại, ghi đè
         fetched_at = _parse_time(info.get("fetched_at"), self.timezone)
+        truncated = {"0": False, "1": True}.get(info.get("truncated", ""))
+        if truncated is None:
+            raise _Corrupt
 
         count, biggest = conn.execute(
             "SELECT COUNT(*), MAX(MAX("
@@ -222,7 +233,13 @@ class SiteIndexStore:
             if not is_site_link(item.link, site):
                 raise _Corrupt
             items.append(item)
-        return SiteIndex(site=site, fetched_at=fetched_at, items=tuple(items), from_cache=True)
+        return SiteIndex(
+            site=site,
+            fetched_at=fetched_at,
+            items=tuple(items),
+            from_cache=True,
+            truncated=truncated,
+        )
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
@@ -233,7 +250,7 @@ class SiteIndexStore:
                 conn.text_factory = _decode_text
                 yield conn
         except sqlite3.DatabaseError as exc:
-            if isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower():
+            if _is_busy(exc):
                 raise SiteIndexError(_db_message(exc)) from None
             raise
 
@@ -304,13 +321,23 @@ def _is_healthy(path: Path) -> bool:
                 return False
             pages = {row[1] for row in conn.execute("PRAGMA table_info(pages)")}
             info = {row[1] for row in conn.execute("PRAGMA table_info(info)")}
-    except sqlite3.DatabaseError:
+    except sqlite3.DatabaseError as exc:
+        if _is_busy(exc):
+            # Chương trình khác đang giữ file (SL-T037-1): file không hỏng, đừng xóa.
+            # ``_prepare`` đổi lỗi này thành SiteIndexError "đang bận".
+            raise
         return False
     return (not pages or pages == set(_COLUMNS)) and (not info or info == {"key", "value"})
 
 
+def _is_busy(exc: sqlite3.DatabaseError) -> bool:
+    """File đang bị kết nối khác khóa (không phải hỏng)."""
+    text = str(exc).lower()
+    return isinstance(exc, sqlite3.OperationalError) and ("locked" in text or "busy" in text)
+
+
 def _db_message(exc: sqlite3.DatabaseError) -> str:
-    if isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower():
+    if _is_busy(exc):
         return "File lưu tạm danh sách bài đang bận. Thử lại sau giây lát."
     return "File lưu tạm danh sách bài bị lỗi nên không đọc/ghi được. Thử tải lại."
 
