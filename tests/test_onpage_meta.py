@@ -26,6 +26,7 @@ from seo_app.onpage.meta import (
     check_title_duplicates,
     filter_ai_titles,
     has_keyword,
+    has_link,
     make_slug,
     mentions_price,
     meta_length,
@@ -740,3 +741,46 @@ def test_strip_brand_many_tails_is_linear():
     assert_scales_linearly(
         strip_brand, lambda k: "Cửa sắt" + " | Pro Metal" * (k * 2000), label="hậu tố lặp"
     )
+
+
+@pytest.mark.parametrize(
+    "link",
+    ["bit.ly/abc", "pro-metal.shop", "abc.store/x", "abc.asia", "x1.top", "ＡＢＣ．ｓｈｏｐ"],
+)
+def test_bare_domain_any_tld_is_link(link):
+    """SL-T036-6: tên miền trần đuôi ngoài danh sách cố định."""
+    assert has_link(f"Cửa sắt bị xệ xem {link}")
+    assert accept_ai_title(f"Cửa sắt bị xệ: xem {link} để biết cách sửa", KEYWORD) is None
+
+
+@pytest.mark.parametrize(
+    "ok",
+    [
+        "Cửa sắt bị xệ tại TP.HCM: 5 dấu hiệu sớm",
+        "Cửa sắt bị xệ ở tp.hcm: 5 dấu hiệu sớm",
+        "Thép dày 1.2mm có làm cửa sắt bị xệ không?",
+        "Cửa sắt bị xệ, chỉnh xong.tiếp theo là gì",
+        "Cửa sắt bị xệ v.v. và cách sửa",
+        "Cửa sắt bị xệ? Q.7, Q.8 đều có thợ",
+    ],
+)
+def test_not_domain_common_text(ok):
+    assert not has_link(ok)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "Cửa sắt bị xệ &amp; cách sửa tại nhà nhanh gọn",
+        "Cửa sắt bị xệ &#38; cách sửa tại nhà nhanh gọn",
+        "Cửa sắt bị xệ &amp;amp; cách sửa tại nhà nhanh",
+        "Cửa sắt bị xệ ％％post_title％％ cách sửa nhanh",
+    ],
+)
+def test_ai_entity_and_fullwidth_percent_dropped(bad):
+    """SL-T036-7: mã ký tự HTML và «％％» toàn khổ trong gợi ý AI."""
+    assert accept_ai_title(bad, KEYWORD) is None
+
+
+def test_ai_plain_ampersand_kept():
+    assert accept_ai_title("Cửa sắt bị xệ & cách sửa tại nhà nhanh gọn", KEYWORD) is not None

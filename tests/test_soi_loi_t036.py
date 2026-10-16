@@ -454,7 +454,6 @@ def test_price_in_words_dropped(price):
 
 
 @pytest.mark.parametrize("link", ["bit.ly/abc", "pro-metal.shop", "abc.store/x", "abc.asia"])
-@pytest.mark.xfail(strict=True, reason="SL-T036-6: tên miền trần đuôi ngoài danh sách lọt")
 def test_bare_domain_other_tld_dropped(link):
     assert has_link(f"Cửa sắt bị xệ xem {link}")
 

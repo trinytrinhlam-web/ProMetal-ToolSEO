@@ -474,8 +474,20 @@ def has_keyword(text: str, keyword: str) -> bool:
     return not key.strip() or key in _plain_words(text)
 
 
+# Tên miền trần có đuôi bất kỳ ("bit.ly/abc", "pro-metal.shop", "abc.asia", SL-T036-6). Phân
+# biệt hoa thường (đuôi chữ thường) để "TP.HCM" không bị coi là tên miền; nhãn phải có chữ cái
+# để "1.2mm" không bị bắt; chữ ngay sau đuôi không được là chữ cái (kể cả chữ có dấu), để câu
+# thiếu dấu cách kiểu "xong.tiếp" không bị bắt.
+_BARE_DOMAIN = re.compile(
+    r"(?<![\w.])(?=[A-Za-z0-9-]*[A-Za-z])[A-Za-z0-9-]+\.(?!hcm(?![\w-]))[a-z]{2,12}(?![\w-])"
+)
+# Mã ký tự HTML ("&amp;", "&#38;", "&#x26;"): SiteSEO/WordPress có thể in nguyên văn (SL-T036-7).
+_ENTITY = re.compile(r"&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);", re.IGNORECASE)
+
+
 def has_link(text: str) -> bool:
-    return _LINK.search(unicodedata.normalize("NFKC", normalize_meta(text))) is not None
+    visible = unicodedata.normalize("NFKC", normalize_meta(text))
+    return _LINK.search(visible) is not None or _BARE_DOMAIN.search(visible) is not None
 
 
 def mentions_price(text: str, keyword: str = "") -> bool:
@@ -498,7 +510,8 @@ def _ai_text(raw: object, keyword: str, banned, max_length: int) -> str | None:
     value = normalize_meta(raw)
     if not value or len(value) > max_length:
         return None
-    if "%%" in value or has_link(value):
+    folded = unicodedata.normalize("NFKC", value)  # "％％" toàn khổ cũng là "%%" (SL-T036-7)
+    if "%%" in folded or _ENTITY.search(folded) or has_link(value):
         return None
     if find_banned(value, tuple(banned)) or mentions_price(value, keyword):
         return None
