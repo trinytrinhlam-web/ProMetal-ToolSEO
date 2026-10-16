@@ -405,8 +405,8 @@ def test_journal_leftover_does_not_break(store):
 # ================================================================ 4. MAX_PAGES
 
 
-def test_more_than_max_pages_is_cut_silently(fake_wp, wp_client):
-    """Ghi nhận hành vi hiện tại (SL-T037-2, đề xuất): bị cắt mà không có dấu hiệu nào."""
+def test_more_than_max_pages_is_cut_but_flagged(fake_wp, wp_client):
+    """SL-T037-2 (đã sửa lượt 2): vẫn chỉ đọc ``MAX_PAGES`` trang nhưng có cờ ``truncated``."""
 
     def posts(request):
         page = int(query(request)["page"][0])
@@ -416,7 +416,8 @@ def test_more_than_max_pages_is_cut_silently(fake_wp, wp_client):
     fake_wp.on("GET", "/wp-json/wp/v2/posts", posts)
     fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
     items = wp_client.list_published()
-    assert len(items) == 2 * MAX_PAGES  # 20 mục của 10 trang cuối bị bỏ, không báo
+    assert len(items) == 2 * MAX_PAGES  # 20 mục của 10 trang cuối không được đọc
+    assert items.truncated is True
 
 
 def test_server_ignoring_per_page_gives_cache_error_not_crash(store):
@@ -532,3 +533,201 @@ def test_cache_save_load_5000_is_linear(tmp_path):
         assert len(loaded.items) == len(items)
 
     assert_scales_linearly(round_trip, make, label="cache 5000")
+
+
+# ================================================================ Lượt 2 (sau khi Thợ Máy sửa)
+
+
+def _paged(total, per=1):
+    def handler(request):
+        page = int(query(request)["page"][0])
+        start = (page - 1) * per
+        rows = [raw_item(start + i + 1) for i in range(per)]
+        return 200, rows, {"X-WP-TotalPages": str(total)}
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    ("posts_total", "pages_total", "expected"),
+    [
+        (1, 1, False),
+        (MAX_PAGES - 1, 1, False),
+        (MAX_PAGES, MAX_PAGES, False),  # đúng bằng giới hạn: đủ, không bật
+        (MAX_PAGES + 1, 1, True),
+        (1, MAX_PAGES + 1, True),  # chỉ phía trang vượt cũng bật
+        (10**9, 1, True),
+    ],
+)
+def test_r2_truncated_flag_boundaries(fake_wp, wp_client, posts_total, pages_total, expected):
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", _paged(posts_total))
+
+    def pages(request):
+        page = int(query(request)["page"][0])
+        return 200, [raw_item(100000 + page)], {"X-WP-TotalPages": str(pages_total)}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", pages)
+    items = wp_client.list_published()
+    assert items.truncated is expected
+    assert len(fake_wp.requests) <= 2 * MAX_PAGES
+    assert {r.method for r in fake_wp.requests} == {"GET"}
+
+
+def test_r2_truncated_round_trips_through_cache(store, fake_wp, wp_client):
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", _paged(MAX_PAGES + 5))
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
+    fresh = store.get(wp_client)
+    assert fresh.truncated is True and fresh.from_cache is False
+    cached = store.get(wp_client)
+    assert cached.from_cache is True and cached.truncated is True
+    assert len(cached.items) == MAX_PAGES
+
+
+def test_r2_not_truncated_round_trips_as_false(store):
+    store.refresh(Source([published(1)]))  # nguồn trả list thường: không có cờ
+    assert store.load(BASE_URL).truncated is False
+
+
+def test_r2_truncated_kept_when_cache_cannot_be_written(store, monkeypatch):
+    def refuse(*_args, **_kwargs):
+        raise sqlite3.OperationalError("unable to open database file")
+
+    items = client_module.PublishedList([published(1)])
+    items.truncated = True
+
+    class Direct(Source):
+        def list_published(self):
+            return self.items  # giữ nguyên PublishedList (list(...) sẽ làm mất cờ)
+
+    monkeypatch.setattr(site_index.sqlite3, "connect", refuse)
+    index = store.refresh(Direct(items))
+    assert index.cache_error and index.truncated is True
+
+
+@pytest.mark.parametrize("value", ["2", "true", "True", "", " 1", "1 ", "yes", "0.0", None])
+def test_r2_odd_or_missing_truncated_value_drops_cache(store, value):
+    store.refresh(Source([published(1)]))
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        if value is None:
+            conn.execute("DELETE FROM info WHERE key = 'truncated'")
+        else:
+            conn.execute("UPDATE info SET value = ? WHERE key = 'truncated'", (value,))
+    assert store.load(BASE_URL) is None
+    assert store.reset_count == 1
+
+
+def test_r2_truncated_integer_is_text_by_column_affinity(store):
+    """Cột ``value`` kiểu TEXT: số 1 ghi tay thành chuỗi "1", đọc ra đúng (không phải lỗi)."""
+    store.refresh(Source([published(1)]))
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        conn.execute("UPDATE info SET value = 1 WHERE key = 'truncated'")
+    assert store.load(BASE_URL).truncated is True
+
+
+def test_r2_schema_v1_cache_is_dropped_and_rebuilt(store):
+    """Cache ghi ở lượt 1 (``schema_version`` 1, chưa có ``truncated``) bị bỏ và tạo lại."""
+    store.refresh(Source([published(1)]))
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        conn.execute("UPDATE info SET value = '1' WHERE key = 'schema_version'")
+        conn.execute("DELETE FROM info WHERE key = 'truncated'")
+    source = Source([published(7)])
+    index = store.get(source)
+    assert source.calls == 1 and [i.id for i in index.items] == [7]
+    assert store.reset_count == 1
+    assert [i.id for i in store.load(BASE_URL).items] == [7]
+    with closing(sqlite3.connect(store.path)) as conn:
+        (version,) = conn.execute("SELECT value FROM info WHERE key = 'schema_version'").fetchone()
+    assert version == site_index.SCHEMA_VERSION == "2"
+
+
+def _hold_lock_with_journal(path):
+    """Kết nối khác mở giao dịch ghi dở (có file -journal) và giữ khóa độc quyền."""
+    holder = sqlite3.connect(path, isolation_level=None)
+    holder.execute("BEGIN EXCLUSIVE")
+    holder.execute("DELETE FROM pages")
+    return holder
+
+
+def test_r2_locked_file_and_journal_are_not_deleted(store, monkeypatch):
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    journal = store.path.with_name(store.path.name + "-journal")
+    holder = _hold_lock_with_journal(store.path)
+    try:
+        assert journal.exists()
+        inode = store.path.stat().st_ino
+        journal_bytes = journal.read_bytes()
+        assert store.load(BASE_URL) is None
+        assert store.is_stale(BASE_URL) is True
+        index = store.refresh(Source([published(2)]))
+        assert [i.id for i in index.items] == [2]
+        assert "bận" in index.cache_error
+        assert store.reset_count == 0
+        assert store.path.exists() and store.path.stat().st_ino == inode
+        assert journal.exists() and journal.read_bytes() == journal_bytes
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    # Nhả khóa: giao dịch dở được hoàn tác, cache cũ đọc lại bình thường.
+    loaded = store.load(BASE_URL)
+    assert [i.id for i in loaded.items] == [1]
+    assert store.reset_count == 0
+
+
+def test_r2_after_lock_released_refresh_writes_normally(store, monkeypatch):
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    holder = _hold_lock_with_journal(store.path)
+    try:
+        assert store.refresh(Source([published(2)])).cache_error
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    index = store.refresh(Source([published(3)]))
+    assert index.cache_error == ""
+    assert [i.id for i in store.load(BASE_URL).items] == [3]
+
+
+def test_r2_get_under_lock_raises_nothing(store, monkeypatch):
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    holder = _hold_lock_with_journal(store.path)
+    try:
+        source = Source([published(5)])
+        index = store.get(source)  # không ném lỗi: tải từ site, báo cache đang bận
+        assert source.calls == 1 and [i.id for i in index.items] == [5]
+        assert "bận" in index.cache_error
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+
+
+def test_r2_real_corruption_still_resets(store):
+    """Sửa SL-T037-1 không được làm mất việc dọn file hỏng thật."""
+    store.refresh(Source([published(1)]))
+    store.path.write_bytes(b"SQLite format 3\x00" + b"\xff" * 4096)
+    assert store.load(BASE_URL) is None
+    assert store.reset_count == 1
+    assert store.refresh(Source([published(2)])).cache_error == ""
+
+
+def test_r2_published_list_is_plain_read_only_data():
+    """``PublishedList`` chỉ là ``list`` có thêm cờ ``truncated``: không có hàm nào mới."""
+    cls = client_module.PublishedList
+    assert issubclass(cls, list)
+    extra = set(vars(cls)) - {"__module__", "__doc__", "__dict__", "__weakref__"}
+    extra -= {"__annotations__", "__annotate__", "__annotate_func__", "__static_attributes__"}
+    extra -= {"__firstlineno__", "__orig_bases__", "__qualname__"}
+    assert extra == {"truncated"}
+    assert cls.truncated is False
+    assert not any(callable(getattr(cls, n)) for n in extra)
+
+
+def test_r2_allowlist_still_blocks_other_names(monkeypatch):
+    allowed_test = test_client_module_publish_names_are_read_only_helpers
+    for name in ["publish_post", "PublishNow", "_publish_draft", "PublishedWriter"]:
+        monkeypatch.setattr(client_module, name, lambda: None, raising=False)
+        with pytest.raises(AssertionError):
+            allowed_test()
+        monkeypatch.delattr(client_module, name)
+    allowed_test()

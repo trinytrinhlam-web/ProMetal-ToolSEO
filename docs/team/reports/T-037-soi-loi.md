@@ -91,3 +91,18 @@ All checks passed!
 - Thợ Máy sửa SL-T037-1 (nhỏ, 1 hàm) rồi bỏ dấu `xfail`.
 - Lá Chắn: xem mục 5 (test tên `publish`) và đề xuất danh sách đường gọi cố định của Thợ Máy cho T-042.
 - SL-T037-2: ghi vào phiếu Giai đoạn 5 (kiểm link hỏng).
+
+## Lượt 2 (2026-10-16) · **CHƯA XONG** (dừng theo yêu cầu bàn giao)
+
+Kiểm lại commit `1fd1415` của Thợ Máy. Đã thêm 26 test `test_r2_*` vào `tests/test_soi_loi_t037.py`, chạy riêng file này: **113 qua, 0 hỏng**. `uv run ruff check .`: sạch.
+
+Đã kiểm (đều đạt):
+- **SL-T037-1:** khi file bị khóa và có giao dịch ghi dở (`-journal`), file và `-journal` **không bị xóa** (inode và nội dung giữ nguyên). `reset_count` = 0. `load` trả `None`. `refresh`/`get` vẫn trả danh sách, kèm `cache_error` "đang bận", không ném lỗi. Nhả khóa xong, cache cũ đọc lại bình thường và `refresh` ghi bình thường. File hỏng thật vẫn bị dọn như trước. Thân test `test_locked_file_is_busy_not_corrupt` không đổi, chỉ bỏ dòng `xfail`.
+- **SL-T037-2:** cờ `truncated` bật khi bài **hoặc** trang vượt `MAX_PAGES`, **không** bật khi đúng bằng `MAX_PAGES`. Số request luôn tối đa 2 × `MAX_PAGES`, chỉ `GET`. Cờ lưu vào cache rồi đọc lại đúng (cả `True` lẫn `False`). Cờ vẫn giữ khi không ghi được cache. Giá trị lạ (`"2"`, `"true"`, `""`, có khoảng trắng, `"yes"`…) hoặc thiếu thì cache bị coi là hỏng. Cache `SCHEMA_VERSION` 1 bị bỏ, tạo lại thành 2. Ghi chú: ghi tay số `1` vào cột `TEXT` thì SQLite tự đổi thành chuỗi `"1"`, đọc ra `True`; đây là đúng, không phải lỗi. Đã sửa test cũ `…cut_silently` thành `…cut_but_flagged`.
+- **Danh sách cho phép:** `PublishedList` là lớp con của `list`, chỉ thêm một thuộc tính dữ liệu `truncated` (mặc định `False`), không có hàm mới. Test cấp module vẫn chặn `publish_post`, `PublishNow`, `_publish_draft`, `PublishedWriter`.
+- Lưu ý cho phiếu sau: `list(items)` làm mất cờ `truncated`. Nơi dùng nên đọc `SiteIndex.truncated`, đừng tự chép danh sách.
+
+**Còn thiếu:**
+- Chưa chạy lại toàn bộ `uv run pytest` sau khi Thợ Máy gộp `main`. Thợ Máy báo 4.858 qua; Soi Lỗi chưa tự xác nhận.
+- Chưa có kết luận cuối. Theo phần đã kiểm thì nghiêng về **ĐẠT**, chờ kết quả chạy toàn bộ.
+- Chưa gửi tin cho Chỉ Huy B (theo yêu cầu dừng).
