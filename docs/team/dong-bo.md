@@ -34,12 +34,12 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 14:07.
+Chỉ Huy B, cập nhật 2026-10-16 14:12.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`c0ca3b7`) | Thợ Máy lượt 2 xong (Linux 5.019 qua). Soi Lỗi kiểm lại (phiên cũ) | Lá Chắn (A1, A2), gộp |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` (`2b2b3f9`) | Thợ Máy xong (Linux 4.762 qua). Soi Lỗi đang kiểm | Lá Chắn (W4, F1, D2; xác nhận việc sửa test `test_client_has_no_publish_function`), gộp; rồi T-042 |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` | Soi Lỗi đạt có điều kiện (SL-T037-1 bắt buộc). Thợ Máy lượt 2 đang sửa (phiên cũ) | Soi Lỗi kiểm lại (phiên `Soi Lỗi · T-037` còn mở), Lá Chắn, gộp; rồi T-042 |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) (GĐ4) | `team/T-038` (`365251c`) | Soi Lỗi đạt có điều kiện (SL-T038-1, -2 chuyển T-041, ghi trong phiếu T-041). Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập | Theo thứ tự trong phiếu |
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
