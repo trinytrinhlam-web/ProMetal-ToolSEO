@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 08:17 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 08:26 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -10,7 +10,7 @@ _Cập nhật: 2026-10-16 08:17 (Chỉ Huy B giữ quyền điều phối; xem [
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-032.
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-035.
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -22,7 +22,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy → Soi Lỗi → Lá Chắn (`Lá Chắn · T-031 … (Opus tạm)`) | `team/T-031` | Thợ Máy xong (`192d9c5`). Soi Lỗi **ĐẠT** (`c6505ee`): bộ hiển thị thật dựng độc lập, 18.446 ca, 0 link; Linux 4.087 qua. Lỗi Thấp ngoài phạm vi SL-T031-1 → T-044. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) · [Soi Lỗi](reports/T-031-soi-loi.md) |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-034 …`) → Thợ Máy lượt 2 | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`). Soi Lỗi **đạt có điều kiện** (`9f9de06`, Linux 3.565 qua): SL-T034-2 (đường dự phòng khi thư viện đổi cấu trúc, bắt buộc sửa), SL-T034-1 (biến thể có gạch nối sau số phiên bản còn lộ). **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
 | [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-043 …`) | `team/T-043` | Thợ Máy xong (`9167776`, Linux 3.605 qua; hồ sơ thật AI thấy không đổi). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-043-tho-may.md) |
 
@@ -30,7 +29,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Tên site, tên người dùng từ WordPress hiện an toàn trên trang Kết nối WordPress (SL-T031-1) | Họa Sĩ | T-031 gộp |
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Tên site, tên người dùng từ WordPress hiện an toàn trên trang Kết nối WordPress (SL-T031-1) | Họa Sĩ | Chỗ trống (T-031 đã gộp) |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
@@ -54,6 +53,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI và chữ ngoài không thành link (chèn ký tự rộng 0); sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-031-tho-may.md) · [Soi Lỗi](reports/T-031-soi-loi.md): đạt · Lá Chắn: [**ĐẠT**](reports/T-031-la-chan.md) (Opus tạm; 48.977 ca, 0 link). Gộp vào `main`: Linux 4.301 qua, 0 hỏng. Cần chạy lại trên Windows |
 | [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký | 2026-10-16 | [Thư Ký](reports/T-035-thu-ky.md) · Chỉ Huy B soát câu lỗi: khớp code · Lá Chắn rút gọn: [**ĐẠT**](reports/T-035-la-chan.md) (Opus tạm). Gộp vào `main` `4a5480b` |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-032-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-032-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-032-la-chan.md) (Opus tạm), 3 lỗi Thấp → T-043. Gộp vào `main` `cbfe37a`: Linux 3.558 qua, 0 hỏng |
 | [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4: SiteSEO lưu meta ở đâu, ghi qua REST (Abilities / meta đã mở), schema site đang có, chia phiếu | Thợ Máy | 2026-10-15 | [Báo cáo](reports/T-033-tho-may.md) (chỉ tài liệu, 8 lần GET công khai). Gộp vào `main`. Lập T-036 → T-042; 4 câu hỏi chờ chủ dự án |
@@ -97,5 +97,7 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Đúng một đường đi tới `publish`/`future`, có bước xác nhận và có test.
 - Từ khóa lấy từ Google Sheets phải được vô hiệu thẻ khung (SL-7).
 - URL trần `https://…` trong thân bài có thể bị Markdown kiểu GFM tự biến thành link: bộ chuyển Markdown sang HTML không bật autolink, hoặc màn hình xác nhận liệt kê cả các URL này ([T-015-soi-loi.md](reports/T-015-soi-loi.md)).
+- Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
+- Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
 ## Số phiếu tiếp theo: T-045
