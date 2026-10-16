@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 08:26 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 08:28 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -22,8 +22,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-034 …`) → Thợ Máy lượt 2 | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`). Soi Lỗi **đạt có điều kiện** (`9f9de06`, Linux 3.565 qua): SL-T034-2 (đường dự phòng khi thư viện đổi cấu trúc, bắt buộc sửa), SL-T034-1 (biến thể có gạch nối sau số phiên bản còn lộ). **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
-| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-043 …`) | `team/T-043` | Thợ Máy xong (`9167776`, Linux 3.605 qua; hồ sơ thật AI thấy không đổi). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-043-tho-may.md) |
+| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-034 …`) → Thợ Máy lượt 2 | `team/T-034` | Thợ Máy 2 lượt (`3b151ba`, Linux 3.570 qua; sửa SL-T034-1, -2). **Soi Lỗi đang kiểm lại**, rồi Lá Chắn | [Thợ Máy](reports/T-034-tho-may.md) · [Soi Lỗi](reports/T-034-soi-loi.md) |
+| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy → Soi Lỗi → Lá Chắn (`Lá Chắn · T-043 … (Opus tạm)`) | `team/T-043` | Thợ Máy xong (`9167776`). Soi Lỗi **đạt có điều kiện** (`7bf10a5`, Linux 3.660 qua): 2 lỗi Thấp mới SL-T043-1 (5+ ký tự lạ trong nhãn), SL-T043-2; Chỉ Huy nghiêng về ghi nhận, không thêm lượt. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-043-tho-may.md) · [Soi Lỗi](reports/T-043-soi-loi.md) |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy (`Thợ Máy · T-036 Meta title, description, slug`) | `team/T-036` | Đã giao | |
 
 ## Chờ
