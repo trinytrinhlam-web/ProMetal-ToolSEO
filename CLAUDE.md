@@ -86,9 +86,9 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 - [x] Giai đoạn 0 — Bộ khung: `pyproject.toml` (uv), app Streamlit có màn hình đăng nhập, đọc cấu hình từ `.env`, `.env.example`, `run.bat` + `run.command`, SessionStart hook trong `.claude/settings.json` chạy `uv sync` khi `CLAUDE_CODE_REMOTE=true`, pytest + ruff, README tiếng Việt hướng dẫn cài trên Windows và Mac.
 - [x] Giai đoạn 1 — WordPress: kiểm tra kết nối, lấy chuyên mục/thẻ, tạo bài nháp, tải ảnh lên thư viện, đặt ảnh đại diện.
-- [ ] Giai đoạn 2 — AI viết bài: lớp provider, quy trình nội dung ở trên, nút viết lại từng phần, AI kiểm tra văn phong, thử mù mô hình (trong Cài đặt). Đã xong: lớp provider + Anthropic, OpenAI, Gemini; quy trình, viết lại từng phần, kiểm tra văn phong trên trang Soạn bài; kiểm tra khóa 3 hãng trong Cài đặt; thử mù mô hình (T-019), nội dung hỏng từ máy chủ AI (T-028). bộ lọc hồ sơ nhận nhãn gõ sai (T-032). README 3 hãng AI và thử mù (T-035). link trần trong chữ AI (T-031). lỗi Thấp bộ lọc hồ sơ (T-043). Còn: lỗi Thấp lớp AI (T-034, đang qua Lá Chắn); phiếu theo dõi T-045, T-044 (mức Thấp, không chặn đóng giai đoạn).
+- [x] Giai đoạn 2 — AI viết bài: lớp provider (Anthropic, OpenAI, Gemini), quy trình nội dung ở trên, nút viết lại từng phần, AI kiểm tra văn phong, thử mù mô hình (trong Cài đặt), kiểm tra khóa 3 hãng. Xong 2026-10-16. Còn 2 phiếu dọn lỗi Thấp không chặn: T-044, T-045.
 - [ ] Giai đoạn 3 — Ảnh: chỗ cần ảnh trong bài; chọn ảnh từ thư mục đã khai báo (USB / Drive), nén WebP, đổi tên chuẩn SEO, **giữ nguyên vị trí GPS trong ảnh** (người dùng chốt 2026-10-14: có chủ đích; khi nén WebP phải chép lại EXIF), viết alt bằng AI; ảnh AI kèm prompt, tạo ảnh bằng AI.
-- [ ] Giai đoạn 4 — Tối ưu on-page: meta, schema JSON-LD, liên kết nội bộ dựa trên danh sách bài trên WordPress.
+- [ ] Giai đoạn 4 — Tối ưu on-page: meta, schema JSON-LD, liên kết nội bộ dựa trên danh sách bài trên WordPress. Thiết kế xong (T-033), phiếu T-036 → T-042; T-036 (meta) Thợ Máy xong, chờ Soi Lỗi.
 - [ ] Giai đoạn 5 — Kế hoạch & lịch: nhận kế hoạch người dùng cung cấp (file / dán / Google Sheets), AI đề xuất cập nhật để duyệt, đồng bộ Google Sheets, hẹn giờ đăng.
 - [ ] Giai đoạn 6 — Theo dõi: Search Console (từ khóa, vị trí, lượt click) theo từng bài. *(Chủ dự án chốt 2026-10-15: **giữ**. Giao diện demo hiện chưa có trang này; khi làm thì hỏi chủ dự án đặt ở đâu trong menu.)*
 
@@ -152,3 +152,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-16: Gộp T-032 vào `main`: bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng); nhãn trên tiêu đề giấu cả mục. Lá Chắn ĐẠT (Opus tạm).
 - 2026-10-16: Gộp T-031 vào `main`: địa chỉ trần, `www.`, email trong chữ AI và chữ ngoài không còn thành link (chèn ký tự rộng 0; Giai đoạn 5 phải gỡ trước khi gửi WordPress). Lá Chắn ĐẠT (Opus tạm).
 - 2026-10-16: Gộp T-043 vào `main`: bộ lọc hồ sơ nhận nhãn có ký tự lạ chen vào (`[**CẦN XÁC NHẬN**]`, `[⚠ …]`), nửa nhãn qua dòng trống, tiêu đề thụt lề. Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (Opus tạm), 3 lỗi Thấp theo dõi ở T-045.
+- 2026-10-16: Gộp T-034 vào `main` (7 lỗi Thấp lớp AI và thử mù; chặn `*_CUSTOM_HEADERS` bằng khung nhìn `os` đã lọc thay vì gỡ biến môi trường). Lá Chắn ĐẠT (Opus tạm). **Xong Giai đoạn 2.** Linux 4.658 test qua.

@@ -28,24 +28,46 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, nhận lúc 2026-10-15 18:02 (chủ dự án: "tiếp tục từ chỗ đã dừng"); giữ tiếp sáng 2026-10-16 07:42 (chủ dự án: "Thử lại").
+**Không ai giữ** (Chỉ Huy B trả quyền lúc 2026-10-16 13:00, theo yêu cầu chủ dự án).
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 12:55. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 13:00 lúc bàn giao. Không còn phiên con nào đang chạy; mọi việc đã đẩy lên GitHub.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Tên site từ WordPress hiện an toàn | chưa có | Phiếu đã lập, chờ T-031 | Giao Họa Sĩ |
-| [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (`931e976`) | Soi Lỗi lượt 2 ĐẠT (Linux 3.599 qua). Lá Chắn (Opus tạm) đang kiểm (`_OsWithoutIgnored`, đường dự phòng, ReDoS che tên) | ĐẠT thì gộp; Thư Ký thêm "ở trang Soạn bài" vào dòng README 7.6 "(Claude)" khi tiện |
-| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện của Lá Chắn T-043), chưa giao | Giao Thợ Máy khi có chỗ, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
-| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`9cde0b1`) | Thợ Máy xong (Linux 4.431 qua). **Chưa giao Soi Lỗi** | Giao Soi Lỗi (điểm cần chú ý trong báo cáo Thợ Máy: bộ dò giá/link là danh sách mẫu, ngưỡng Dice 0.8, chỉ nhận gợi ý trong ngưỡng Cảnh báo), rồi Lá Chắn (A1: khung `<de_bai>` chưa có trong `DATA_RULES`; A2), gộp. Sau đó T-037, T-038 song song |
+| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`9cde0b1`) | Thợ Máy xong (Linux 4.431 qua). **Chưa giao Soi Lỗi** | Giao Soi Lỗi (chú ý: bộ dò giá/link là danh sách mẫu; ngưỡng Dice 0.8; chỉ nhận gợi ý trong ngưỡng Cảnh báo), rồi Lá Chắn (A1: khung `<de_bai>` chưa có trong `DATA_RULES`; A2), gộp |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md), [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) (GĐ4) | chưa có | Phiếu đã lập | Giao Thợ Máy, song song được với T-036 |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập | Theo thứ tự trong phiếu |
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chờ chủ dự án trả lời câu 1, 2 | — |
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
+| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện Lá Chắn T-043) | Giao Thợ Máy, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 13:00 · Chỉ Huy B trả quyền (chủ dự án yêu cầu bàn giao)
+
+**Đã xong trong phiên B (15/10 18:02 → 16/10 13:00), đều đã lên `main`:**
+- Gộp: T-025, T-019, T-033 (thiết kế GĐ4, chỉ tài liệu), T-032, T-035, T-031, T-043, T-034. **Giai đoạn 2 xong**, đã đánh dấu [x] trong `CLAUDE.md`.
+- `main` = `49f57c9` + tài liệu. Linux: 4.658 qua, 0 hỏng; ruff sạch.
+- Lập phiếu: T-032, T-033, T-034, T-035, T-036 → T-042 (Giai đoạn 4), T-043, T-044, T-045. Số phiếu tiếp theo: **T-046**.
+- Quyết định chủ dự án 16/10: chưa trả lời 4 câu GĐ4; phần mềm phải chạy ổn định khi chưa có câu trả lời (đã ghi ở `TIEN-DO.md` mục 4, `BAN-GIAO.md` 7.4, phiếu T-036, T-041, T-042).
+
+**Dở dang:** chỉ có T-036. Thợ Máy xong, chưa giao Soi Lỗi (bảng trên).
+
+**Việc cho A:**
+1. Chạy `uv run pytest` trên Windows với `main` mới. Các phiếu T-019, T-025, T-031, T-032, T-034, T-043 mới chạy trên Linux. Riêng T-031 chèn ký tự U+200B, T-034 đổi cách chặn `*_CUSTOM_HEADERS`.
+2. Xóa nhánh đã gộp: `team/T-019`, `T-025`, `T-031`, `T-032`, `T-033`, `T-034`, `T-035`, `T-043`.
+3. Làm tiếp T-036 (Soi Lỗi → Lá Chắn → gộp), rồi T-037, T-038.
+
+**Lưu ý vận hành:**
+- Tài khoản B: giới hạn 5 tiếng chạm 2 lần (15/10 19:03, 16/10 khoảng 08:40). Giới hạn **7 ngày** đang báo sắp chạm, mở lại khoảng 20/10 01:00.
+- Agent phải đẩy lên GitHub sau mỗi phần nhỏ. T-031 và T-034 từng mất việc chưa đẩy khi chạm giới hạn.
+- Lá Chắn của B vẫn chạy tạm bằng Opus 5.5. Danh sách kiểm lại bằng Fable ở đầu `board.md`.
 
 ### 2026-10-16 12:52 · Chỉ Huy B
 

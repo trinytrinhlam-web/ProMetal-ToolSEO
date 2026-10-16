@@ -6,19 +6,18 @@ Toàn bộ code, tài liệu, phiếu việc, báo cáo và hồ sơ agent đề
 
 ## 1. Trạng thái lúc bàn giao
 
-_Cập nhật 2026-10-15, 08:00 giờ Việt Nam. Trạng thái mới hơn: xem [`docs/team/dong-bo.md`](docs/team/dong-bo.md) và [`TIEN-DO.md`](TIEN-DO.md)._
+_Cập nhật 2026-10-16, 13:00 giờ Việt Nam (Chỉ Huy B). Trạng thái mới hơn: xem [`docs/team/dong-bo.md`](docs/team/dong-bo.md) và [`TIEN-DO.md`](TIEN-DO.md)._
 
 - `main` chỉ chứa việc đã qua kiểm định bảo mật. Việc làm xong nhưng chưa qua Lá Chắn nằm ở các **nhánh tạm** `team/T-xxx` trên GitHub, không mất.
+- **Giai đoạn 2 xong** (2026-10-16). Còn 2 phiếu dọn lỗi mức Thấp, không chặn: T-044, T-045.
 - Đang dở (chi tiết ở [`docs/team/board.md`](docs/team/board.md)):
 
   | Nhánh | Phiếu | Còn lại |
   |---|---|---|
-  | `team/T-023` (đã gộp `team/T-018`) | T-018 ChatGPT/Gemini, T-023 nút Kiểm tra khóa | Lá Chắn đang kiểm; ĐẠT thì gộp vào `main` |
-  | `team/T-024` (đã gộp `team/T-022`) | T-022 hồ sơ doanh nghiệp, T-024 bộ lọc hồ sơ | Soi Lỗi kiểm lại lượt 2, rồi Lá Chắn |
-  | `team/T-025` | T-025 ổn định test đo tốc độ | Soi Lỗi đang làm |
+  | `team/T-036` | T-036 meta title/description/slug (Giai đoạn 4) | Thợ Máy xong. Còn Soi Lỗi, rồi Lá Chắn, rồi gộp |
 
-- Các agent chạy ở **phiên con dưới phiên "Điều phối"** trên Claude Code cloud (thanh bên app Claude). Phiên "Điều phối" mở được từ bất kỳ máy nào đăng nhập cùng tài khoản: vào app Claude → Code → chọn "Điều phối".
-- `main`: 1.871 bài kiểm tra đều qua, `ruff` sạch.
+- Các agent chạy ở **phiên con dưới phiên "Điều phối"** của Chỉ Huy đang giữ quyền. Hai Chỉ Huy phối hợp qua `docs/team/dong-bo.md`.
+- `main`: 4.658 bài kiểm tra qua trên Linux, `ruff` sạch. Lần chạy Windows gần nhất là 3.110 bài; cần chạy lại.
 - Việc tiếp theo và quyết định đang chờ: mục 6 bên dưới.
 
 ## 2. Những thứ phải tự mang sang (không có trên GitHub)
@@ -73,26 +72,35 @@ Mac làm tương tự với `run.command` và `set_password.command` (xem `READM
 
 ## 6. Việc tiếp theo và quyết định đang chờ
 
-**Chờ anh quyết:** không còn câu nào. Ngày 2026-10-15 anh chốt: không có hãng AI mặc định (đủ 3 hãng, anh tự đổi khi cần); **giữ** Giai đoạn 6.
-
 > Trạng thái mới nhất giữa hai Chỉ Huy luôn nằm ở [`docs/team/dong-bo.md`](docs/team/dong-bo.md); mục này có thể cũ hơn.
 
-Đã trả lời 2026-10-14: thư viện chính hãng `openai` + `google-genai` (T-018); gộp PR #3 sau khi sửa (đã gộp, sửa tiếp ở T-022); Pillow để sau (hỏi lại ở Giai đoạn 3).
+**Chờ anh quyết:** xem `TIEN-DO.md` mục 4, tóm tắt:
+
+- 4 câu hỏi Giai đoạn 4 (chi tiết ở `docs/team/reports/T-033-tho-may.md` mục 7):
+  1. Cách ghi SEO vào SiteSEO.
+  2. Tài khoản Biên tập viên riêng.
+  3. Đuôi "| Pro-Metal".
+  4. Dọn chỗ trùng trên website.
+
+  Anh dặn 16/10: phần mềm phải chạy ổn định khi chưa có câu trả lời. Đội làm theo phương án đề xuất ở chỗ đổi được bằng cấu hình; phần ghi SEO lên website tạm để anh chép tay.
+- Thư viện Pillow, khi bắt đầu Giai đoạn 3.
+- Nhờ người làm web kiểm tra 3 đường REST nhạy cảm của website.
 
 **Việc tiếp theo theo thứ tự:**
 
-1. Gộp `team/T-023` (T-018 + T-023) và `team/T-024` (T-022 + T-024) vào `main` khi Lá Chắn ĐẠT, rồi xóa các nhánh tạm.
-2. Ngòi Bút sửa chú thích đầu `config/ai.toml` (có thêm openai, gemini); Thư Ký cập nhật README.
-3. T-019: thử mù mô hình trong Cài đặt.
-3. Giai đoạn 3: ảnh (giữ nguyên GPS trong ảnh, khi nén WebP phải chép lại EXIF).
-4. Giai đoạn 4: meta, schema, liên kết nội bộ (plugin SiteSEO).
-5. Giai đoạn 5: kế hoạch, lịch, gửi bài lên WordPress. Có danh sách bảo mật bắt buộc ở cuối `docs/team/board.md`.
+1. T-036: Soi Lỗi, rồi Lá Chắn, rồi gộp.
+2. T-037 (danh sách bài đã đăng + cache) và T-038 (schema FAQPage): chạy song song được.
+3. T-039 (liên kết nội bộ), rồi T-040 (lời dặn meta/anchor), rồi T-041 (bước SEO thật trên giao diện).
+4. T-042 (ghi SEO lên nháp WordPress): chờ anh trả lời câu 1, 2.
+5. Dọn lỗi Thấp khi có chỗ: T-044 (Họa Sĩ), T-045 (Thợ Máy).
+6. Giai đoạn 3 (ảnh) và Giai đoạn 5 (kế hoạch, lịch, gửi bài). Giai đoạn 5 có danh sách bảo mật bắt buộc ở cuối `docs/team/board.md`.
 
 **Việc nhỏ còn treo:**
 
-- Lá Chắn kiểm lại bằng Fable 5.1 sau ngày 01/11 các phiếu đã chạy tạm bằng Opus: T-013 → T-021, T-018, T-022, T-023, T-024 (ngày 15/10 thử Fable vẫn báo giới hạn tới 01/11).
-- Thư Ký cập nhật `README.md`: dòng trạng thái đầu file đã cũ; mục xử lý sự cố còn bảo sửa `.env` bằng tay (nay nhập khóa trong Cài đặt → Kết nối); thêm ChatGPT/Gemini sau khi T-018 lên `main`.
-- Meta title/description chưa được lưu vào nháp (làm ở Giai đoạn 4).
+- Sau ngày 01/11, Lá Chắn kiểm lại bằng Fable 5.1 các phiếu đã chạy tạm bằng Opus. Danh sách ở đầu `board.md`.
+- Chạy `uv run pytest` trên Windows (Chỉ Huy A). Các phiếu gần đây mới chạy trên Linux.
+- Xóa các nhánh tạm đã gộp: `team/T-019`, `T-025`, `T-031`, `T-032`, `T-033`, `T-034`, `T-035`, `T-043`. Phiên cloud của B không xóa được nhánh.
+- README 7.6, dòng "(Claude)": Thư Ký thêm chữ "ở trang Soạn bài" (đề xuất của Thợ Máy T-034).
 
 ## 7. Mọi trao đổi và quyết định của chủ dự án (không được bỏ sót)
 
