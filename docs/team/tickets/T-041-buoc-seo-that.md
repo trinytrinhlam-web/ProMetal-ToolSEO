@@ -56,3 +56,7 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
   - có nút chép (copy) title, description, slug để chủ dự án dán tay vào hộp SiteSEO;
   - không hiện lỗi hay nút hỏng khi chưa cấu hình ghi SEO;
   - không có kết nối WordPress thì danh sách bài (liên kết nội bộ, kiểm trùng) báo nhẹ "chưa kết nối", các phần còn lại vẫn dùng được.
+- 2026-10-16 (Chỉ Huy B), điều kiện của Soi Lỗi T-038, `docs/team/reports/T-038-soi-loi.md`: phần Thợ Máy của phiếu này **được sửa thêm `seo_app/onpage/schema.py`** trước khi Họa Sĩ làm giao diện.
+  - SL-T038-2 (Trung bình): bỏ Markdown nội dòng (`**đậm**`, link, `` `mã` ``) ở **cả** bài lẫn câu trả lời trước khi so nguyên văn. JSON-LD không được mang dấu Markdown.
+  - SL-T038-1 (Thấp): chặn ký tự surrogate lẻ (loại Cs).
+  - Bỏ `xfail` tương ứng trong `tests/test_soi_loi_t038.py`.

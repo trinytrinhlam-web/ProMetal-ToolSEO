@@ -24,7 +24,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 | `team/T-036` | Soi Lỗi **đạt có điều kiện** (`a8de5c9`): SL-T036-1 (Cao: thẻ HTML giấu ký tự vô hình lọt kiểm title/description), SL-T036-9 (bộ lọc chậm bình phương), SL-T036-5 (giá viết bằng chữ lọt) + 5 lỗi Thấp. SL-T036-8 ("quận 7"/"quận 8" bị Cảnh báo giống) Chỉ Huy giữ nguyên. **Thợ Máy lượt 2 đang sửa** | [Thợ Máy](reports/T-036-tho-may.md) · [Soi Lỗi](reports/T-036-soi-loi.md) |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-037 Danh sách bài đã đăng, cache`) | `team/T-037` | Thợ Máy xong (`2b2b3f9`, Linux 4.762 qua; 104 test mới). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-037-tho-may.md) |
-| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng | Thợ Máy → Soi Lỗi (`Soi Lỗi · T-038 Schema FAQPage`) | `team/T-038` | Thợ Máy xong (`94c9eb5`, Linux 4.740 qua; 82 test mới). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-038-tho-may.md) |
+| [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng | Thợ Máy → Soi Lỗi → Lá Chắn (`Lá Chắn · T-038 Schema FAQPage (Opus tạm)`) | `team/T-038` | Thợ Máy xong (`94c9eb5`). Soi Lỗi **đạt có điều kiện** (`365251c`, Linux 4.867 qua): SL-T038-2 (Markdown nội dòng trong câu trả lời) và SL-T038-1 (surrogate lẻ) chuyển sang T-041. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-038-tho-may.md) · [Soi Lỗi](reports/T-038-soi-loi.md) |
 
 ## Chờ
 
