@@ -52,3 +52,8 @@ A2 (kết quả AI là dữ liệu chưa tin cậy), U1.
 ## Ghi chú của Chỉ Huy
 
 - Làm trên nhánh tạm `team/T-031`, tạo từ `main` sau khi T-019 đã gộp.
+- 2026-10-16 07:45 (Chỉ Huy B): **mở rộng phạm vi** theo đề nghị của Thợ Máy (commit dở `adacf9d`).
+  - (b) `seo_app/content/workflow.py::clean_flags`, 1 dòng: câu bị tô vẫn khớp bài sau khi chèn ký tự ngắt.
+  - (c) `seo_app/text.py::markdown_link`, 1 dòng. Đây là **lỗi bảo mật có từ trước**: tên bài đối thủ có `https\://…` vẫn thành link trong remark-gfm.
+  - (a) Được sửa chuỗi mong đợi trong các test cũ, nhưng không nới kiểm tra bảo mật.
+  - Thêm việc cho Giai đoạn 5: gỡ ký tự ngắt trước khi chuyển sang HTML gửi WordPress.
