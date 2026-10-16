@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 08:03 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-16 08:05 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -24,13 +24,12 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) | Địa chỉ trần, `www.`, email trong chữ AI không thành link bấm được | Thợ Máy (`Thợ Máy · T-031 Địa chỉ trần, email không thành link`) → Soi Lỗi (`Soi Lỗi · T-031 …`) | `team/T-031` | Thợ Máy xong (`192d9c5`, Linux 3.434 qua): chèn ký tự rộng 0 vào `://`, `www.`, `@`; sửa thêm `clean_flags` và lỗi có sẵn ở `markdown_link` (tên bài đối thủ có địa chỉ vẫn thành link). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-031-tho-may.md) |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp còn lại của lớp AI và thử mù (SL-T019-3/4/5, LC-T028-1/3, LC-T019-1/2) | Thợ Máy (`Thợ Máy · T-034 Lỗi Thấp lớp AI sau T-019`) → Soi Lỗi (`Soi Lỗi · T-034 …`) | `team/T-034` | Thợ Máy xong 7/7 (`df6e97e`, Linux 3.383 qua). **Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-034-tho-may.md) |
-| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký (`Thư Ký · T-035 README 3 hãng AI, thử mù`) → Lá Chắn rút gọn | `team/T-035` | Thư Ký xong (README mục 7 viết lại 7.1–7.6; `ai.toml` chỉ đổi dòng `#`). Chỉ Huy B soát câu lỗi: khớp code. **Lá Chắn rút gọn đang kiểm** | [Thư Ký](reports/T-035-thu-ky.md) |
+| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 | Thợ Máy (`Thợ Máy · T-043 Bộ lọc hồ sơ, lỗi Thấp sau T-032`) | `team/T-043` | Đã giao | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-032 (SL-T032-4, -5, LC-T032-1: ký tự lạ chen trong nhãn) | Thợ Máy | Chỗ trống |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy | Chỗ trống |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy | Chỗ trống |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (chưa đưa lên site) | Thợ Máy | Chỗ trống |
@@ -54,6 +53,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) | README mục 7 và chú thích `config/ai.toml`: 3 hãng AI, thử mù, bảng lỗi | Thư Ký | 2026-10-16 | [Thư Ký](reports/T-035-thu-ky.md) · Chỉ Huy B soát câu lỗi: khớp code · Lá Chắn rút gọn: [**ĐẠT**](reports/T-035-la-chan.md) (Opus tạm). Gộp vào `main` `4a5480b` |
 | [T-032](tickets/T-032-loc-ho-so-nhan-go-sai.md) | Bộ lọc hồ sơ nhận nhãn gõ sai (dính chữ, không dấu, ngoặc tròn, vắt dòng) và nhãn trên tiêu đề | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-032-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-032-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-032-la-chan.md) (Opus tạm), 3 lỗi Thấp → T-043. Gộp vào `main` `cbfe37a`: Linux 3.558 qua, 0 hỏng |
 | [T-033](tickets/T-033-thiet-ke-giai-doan-4.md) | Thiết kế Giai đoạn 4: SiteSEO lưu meta ở đâu, ghi qua REST (Abilities / meta đã mở), schema site đang có, chia phiếu | Thợ Máy | 2026-10-15 | [Báo cáo](reports/T-033-tho-may.md) (chỉ tài liệu, 8 lần GET công khai). Gộp vào `main`. Lập T-036 → T-042; 4 câu hỏi chờ chủ dự án |
 | [T-019](tickets/T-019-thu-mu-mo-hinh.md) | Thử mù mô hình AI trong Cài đặt (việc cuối của Giai đoạn 2) | Thợ Máy, Họa Sĩ | 2026-10-15 | [Thợ Máy](reports/T-019-tho-may.md) (2 lượt) · [Họa Sĩ](reports/T-019-hoa-si.md) · [Soi Lỗi](reports/T-019-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-019-la-chan.md) (Opus tạm), 5 lỗi Thấp → T-034. Gộp vào `main` `7d8f6f3`: Linux 3.344 qua, 0 hỏng |

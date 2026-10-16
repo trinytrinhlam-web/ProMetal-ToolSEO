@@ -34,19 +34,23 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 08:03. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
+Chỉ Huy B, cập nhật 2026-10-16 08:05. Chủ dự án dặn chạy tự động tới khi hết hạn mức, không hỏi lại. Agent là phiên con dưới phiên "Điều phối" của B trên cloud; mọi việc đẩy lên nhánh.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-031](tickets/T-031-dia-chi-tran-thanh-link.md) Địa chỉ trần, email thành link | `team/T-031` (`192d9c5`) | Thợ Máy xong (Linux 3.434 qua; chèn U+200B vào `://`, `www.`, `@`; kiểm bằng remark-gfm). Soi Lỗi đang kiểm | Lá Chắn, gộp. Cần chạy trên Windows sau khi gộp |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) Lỗi Thấp lớp AI sau T-019 (7 lỗi) | `team/T-034` (`df6e97e`) | Thợ Máy xong 7/7 (Linux 3.383 qua; `test_soi_loi_t028.py` 30/30). SL-T019-5 đổi cơ chế: trỏ tạm `os` của thư viện sang khung nhìn đã lọc, không gỡ biến môi trường. Soi Lỗi đang kiểm | Lá Chắn (S2, W4) soát kỹ cơ chế mới, gộp |
-| [T-035](tickets/T-035-readme-ai-3-hang-thu-mu.md) README 3 hãng AI, thử mù | `team/T-035` (`21cf502`+báo cáo) | Thư Ký xong; Chỉ Huy B soát câu lỗi (khớp code). Lá Chắn rút gọn đang kiểm | ĐẠT thì gộp. Lưu ý: T-034 đổi câu lỗi Claude bị cắt; gộp T-034 sau thì soát lại dòng README "AI trả về dữ liệu không đúng khuôn…" |
-| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) Bộ lọc hồ sơ, 3 lỗi Thấp sau T-032 | chưa có | Phiếu đã lập | Giao Thợ Máy khi có chỗ |
+| [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) Bộ lọc hồ sơ, 3 lỗi Thấp sau T-032 | `team/T-043` (từ `main` `4a5480b`) | Thợ Máy đang làm | Soi Lỗi, Lá Chắn (A1, A3), gộp |
 | [T-036](tickets/T-036-meta-title-description-slug.md) → [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Giai đoạn 4 | chưa có | Thiết kế T-033 xong, đã gộp `main`. Đã lập phiếu | T-036, T-037, T-038 chạy song song khi có chỗ (sau T-034); T-042 chờ chủ dự án trả lời câu 1, 2 |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-16 08:05 · Chỉ Huy B
+
+- Lá Chắn T-035 rút gọn **ĐẠT** (`df63b95`). Gộp T-035 vào `main` (`4a5480b`, chỉ tài liệu). Giao T-043 cho Thợ Máy.
+- **Khi gộp T-034:** soát lại dòng README mục 7.6 "AI trả về dữ liệu không đúng khuôn (có thể bài bị cắt…)" (Claude), vì T-034 đổi câu này thành câu giới hạn token.
 
 ### 2026-10-16 08:03 · Chỉ Huy B
 

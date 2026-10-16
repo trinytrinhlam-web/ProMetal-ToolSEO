@@ -1,6 +1,6 @@
 # Tiến độ dự án SEO App (Pro-Metal, suachuacuasat.com)
 
-_Cập nhật: 2026-10-16, 07:58 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
+_Cập nhật: 2026-10-16, 08:05 giờ Việt Nam. Người ghi: Chỉ Huy B (Claude). Chuyển máy hoặc project mới: đọc [`BAN-GIAO.md`](BAN-GIAO.md). Hai Chỉ Huy phối hợp qua [`docs/team/dong-bo.md`](docs/team/dong-bo.md)._
 
 File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm gì, còn lại gì. Chi tiết từng phiếu xem ở [`docs/team/board.md`](docs/team/board.md).
 
@@ -55,8 +55,8 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | Địa chỉ trần, email trong chữ AI không thành link (T-031) | 🔎 Thợ Máy xong, Soi Lỗi đang kiểm (nhánh `team/T-031`) |
 | Bộ lọc hồ sơ nhận cả nhãn `[CẦN XÁC NHẬN]` gõ sai và nhãn đặt trên tiêu đề (T-032) | ✅ Xong, đã lên `main` |
 | 7 lỗi Thấp còn lại của lớp AI và thử mù (T-034) | 🔎 Thợ Máy xong, Soi Lỗi đang kiểm (nhánh `team/T-034`) |
-| README: hướng dẫn 3 hãng AI và thử mù (T-035) | ✍️ Thư Ký đang làm (nhánh `team/T-035`) |
-| 3 lỗi Thấp còn lại của bộ lọc hồ sơ (T-043) | ⏳ Phiếu đã lập |
+| README: hướng dẫn 3 hãng AI và thử mù (T-035) | ✅ Xong, đã lên `main` (README mục 7) |
+| 3 lỗi Thấp còn lại của bộ lọc hồ sơ (T-043) | 🔧 Thợ Máy đang làm (nhánh `team/T-043`) |
 
 Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là **bản demo**. Trang Tổng quan, Kế hoạch và 3 tab đầu của Cài đặt cũng vẫn là demo.
 
