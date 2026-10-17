@@ -80,7 +80,7 @@ Không phát hiện lỗi Nghiêm trọng, Cao hay Trung bình.
 | Soát lịch sử git | Nhánh: sạch. Toàn lịch sử: chỉ khóa giả có từ trước (xem S1) | Có |
 | pytest / ruff | `uv run ruff check .`: `All checks passed!`. pytest: xem dòng dưới | Có |
 
-pytest toàn bộ trên Windows 11 (`uv run pytest`, worktree `wt-T-036`, HEAD `560fc3f` + biên bản): `5082 passed, 10 skipped, 26 xfailed, 1 warning in 588.54s`, **0 hỏng**. Cảnh báo duy nhất là cảnh báo pydantic có từ trước ở `tests/test_soi_loi_t028.py` (dữ liệu hỏng cố ý). 26 `xfail` gồm 4 của SL-T036-10/11/12 (`tests/test_soi_loi_t036.py:665`, `:681`, `:743`) và các `xfail` có từ trước của phiếu khác.
+pytest toàn bộ trên Windows 11 (`uv run pytest`, worktree `wt-T-036`, HEAD `560fc3f` + biên bản): `5082 passed, 10 skipped, 26 xfailed, 1 warning in 588.54s`, **0 hỏng**. Cảnh báo duy nhất là cảnh báo pydantic có từ trước ở `tests/test_soi_loi_t028.py` (dữ liệu hỏng cố ý). Riêng 2 file test của phiếu: `424 passed, 10 xfailed`; 10 `xfail` đó là SL-T036-10/11/12 (`tests/test_soi_loi_t036.py:665`, `:681`, `:743`, có tham số). 16 `xfail` còn lại có từ trước, của phiếu khác.
 
 ## Báo nhầm đã loại
 
