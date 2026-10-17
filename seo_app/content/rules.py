@@ -97,13 +97,25 @@ def confirmed_profile(text: str) -> str:
     hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
     pending: tuple[str, int] | None = None  # tiêu đề có nửa nhãn ở cuối, chờ dòng kế
     pending_blanks: list[str] = []  # dòng trống giữa tiêu đề chờ và dòng kế (SL-T032-4)
+    block_tagged = False  # khối đang mở đã biết là có nhãn (thêm dòng vẫn còn nhãn)
 
     def close_block() -> None:
-        if block and not _is_unconfirmed(" ".join(block)):
+        nonlocal block_tagged
+        if block and not (block_tagged or _is_unconfirmed(" ".join(block))):
             kept.extend(block)
         block.clear()
+        block_tagged = False
         kept.extend(blanks)
         blanks.clear()
+
+    def block_is_tagged() -> bool:
+        # Nhớ kết quả «có nhãn»: khối có nhãn chỉ dài thêm cho tới khi đóng, nên không phải dò
+        # lại cả khối ở mỗi dòng (giữ bộ lọc tuyến tính). Khối chưa có nhãn chỉ dò một lần rồi
+        # bị đóng ngay (dòng đang xét tách ra thành tiêu đề).
+        nonlocal block_tagged
+        if block and not block_tagged:
+            block_tagged = _is_unconfirmed(" ".join(block))
+        return block_tagged
 
     for line in text.splitlines():
         visible = _visible(line)
@@ -139,10 +151,14 @@ def confirmed_profile(text: str) -> str:
             if _is_unconfirmed(line):
                 # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2).
                 heading = True
-            elif _ends_with_partial_tag(line) and not (block and _ends_with_partial_tag(block[-1])):
+            elif _ends_with_partial_tag(line) and not (
+                block and (_ends_with_partial_tag(block[-1]) or block_is_tagged())
+            ):
                 # Tiêu đề lỡ thụt lề có nửa nhãn ở cuối: chờ dòng kế như tiêu đề thường
                 # (SL-T032-5). Dòng trước còn nửa nhãn thì dòng này có thể là nửa sau của nhãn
-                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt.
+                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt. Khối
+                # trước đã có nhãn thì cũng không tách: tách ra thì các dòng thụt lề phía sau
+                # (vẫn thuộc ý có nhãn) thành khối mới không nhãn và tới AI (LC-T043-1).
                 heading = True
         if blanks and not indented:
             close_block()
