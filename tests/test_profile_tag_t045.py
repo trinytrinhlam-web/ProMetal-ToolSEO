@@ -62,3 +62,37 @@ def test_lc_t043_1_linear_on_long_tagged_item():
         lambda k: "- x [CAN XAC NHAN]\n" + "  y\n  ## b [CAN\n" * 2500 * k,
         label="LC-T043-1",
     )
+
+
+# --- SL-T043-2: nửa sau của nhãn nằm trên dòng trông như tiêu đề («## NHẬN]») -----------------
+
+
+@pytest.mark.parametrize(
+    ("first", "rest"),
+    [
+        ("## 7 [CẦN XÁC", "## NHẬN]"),
+        ("## 7 [CẦN", "## XÁC NHẬN]"),
+        ("## 7 [CẦN XÁC", "# NHẬN]"),  # cấp cao hơn cũng không kết thúc mục
+        ("## 7 (chưa", "## xác nhận)"),
+        ("## 7 [**CẦN XÁC", "## NHẬN**]"),
+    ],
+)
+def test_sl_t043_2_rest_of_tag_on_heading_line_hides_section(first, rest):
+    text = f"## 6\n- A\n{first}\n{rest}\n- BIMAT\n### 7.1\n- BIMAT 2\n## 8\n- B"
+    assert confirmed_profile(text) == "## 6\n- A\n## 8\n- B"
+
+
+def test_sl_t043_2_with_blank_lines_between_halves():
+    text = "## 7 [CẦN XÁC\n\n## NHẬN]\n- BIMAT\n## 8\n- B"
+    assert confirmed_profile(text) == "## 8\n- B"
+
+
+def test_sl_t043_2_indented_half_heading_then_heading_rest():
+    text = "- trước\n  ## 7 [CẦN XÁC\n## NHẬN]\n- BIMAT\n## 8\n- B"
+    assert confirmed_profile(text) == "- trước\n## 8\n- B"
+
+
+def test_sl_t043_2_next_heading_not_part_of_tag_still_kept():
+    # Dòng kế là tiêu đề thường, không ghép thành nhãn: giữ cả hai tiêu đề như cũ.
+    text = "## 7 [CẦN\n## 8\n- B"
+    assert confirmed_profile(text) == text

@@ -131,12 +131,17 @@ def confirmed_profile(text: str) -> str:
                 continue
             head, head_level = pending
             pending = None
-            if _is_unconfirmed(f"{head} {line}"):
-                hidden_level = head_level  # dòng này (nửa sau của nhãn) bị giấu cùng mục
-            else:
+            joined = _is_unconfirmed(f"{head} {line}")
+            if not joined:
                 kept.append(head)
                 kept.extend(pending_blanks)
             pending_blanks.clear()
+            if joined:
+                # Dòng này (nửa sau của nhãn) bị giấu cùng mục. Bỏ qua luôn, kể cả khi nó trông
+                # như tiêu đề cùng cấp («## 7 [CẦN XÁC» rồi «## NHẬN]»): nó là một phần của nhãn,
+                # không được kết thúc mục đang giấu (SL-T043-2).
+                hidden_level = head_level
+                continue
         if hidden_level:
             if not heading or level > hidden_level or not _REAL_HEADING.match(stripped):
                 continue

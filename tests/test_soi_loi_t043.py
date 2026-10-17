@@ -117,10 +117,6 @@ def test_sl_t043_1_heading_half_tag_five_symbols():
     assert "bí mật" not in confirmed_profile(text)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T043-2: nửa sau của nhãn gõ thành tiêu đề «## NHẬN]»: tiêu đề đầu bị giấu, mục lọt",
-)
 def test_sl_t043_2_rest_of_tag_on_heading_line():
     text = "## 7 [CẦN XÁC\n## NHẬN]\n- bí mật\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)
