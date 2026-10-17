@@ -42,7 +42,8 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | `team/T-037` (`3fb9aaf`) | ✅ Soi Lỗi lượt 2 ĐẠT (3 lỗi Thấp mới SL-T037-3/4/5). ⏳ **Lá Chắn (A, Opus tạm) đang kiểm** | ĐẠT thì gộp; SL-T037-3/4/5 vào T-042 (SL-T037-3 phải xong trước GĐ5); rồi giao T-039, T-042 |
 | [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | đã gộp (`de65bdb`), nhánh đã xóa | ✅ 07:48 Lá Chắn rút gọn ĐẠT, gộp vào `main` | **Chờ chủ dự án trả lời 5 câu** (mục 8 báo cáo T-046) rồi lập phiếu G3-1 → G3-10 (số thật từ T-047), kèm 11 góp ý của Lá Chắn (`T-046-la-chan.md`) |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md), [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Phiếu đã lập | T-039 sau khi T-036, T-037 gộp; T-042 sau T-037 |
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md), [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | chưa có | Phiếu đã lập | Giao Họa Sĩ (T-044), Thợ Máy (T-045) khi còn chỗ |
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress hiện an toàn | `team/T-044` (từ `main` `b5ff3b3`) | ⏳ 08:01 **Họa Sĩ (A) đang làm** | Soi Lỗi rút gọn, Lá Chắn rút gọn (U1), gộp |
+| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ sau T-043 | `team/T-045` (từ `main` `b5ff3b3`) | ⏳ 08:01 **Thợ Máy (A) đang làm** (sửa cả 3 lỗi; chủ dự án chưa nói muốn ghi sổ rủi ro thay vì sửa) | Soi Lỗi, Lá Chắn, gộp |
 | `main` trên Windows | `a23f764` | ✅ 07:43: **4.867 qua, 0 hỏng**, 10 bỏ qua (chỉ chạy trên Mac/Linux), 21 xfail; ruff sạch. Các phiếu B gộp (T-019, T-025, T-031, T-032, T-034, T-043) đều chạy được trên Windows | Không cần làm gì |
 
 ## Nhật ký bàn giao

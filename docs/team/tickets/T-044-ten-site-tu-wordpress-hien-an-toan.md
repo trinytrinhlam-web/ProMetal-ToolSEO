@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 2 (dọn lỗi giao diện) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-031, T-034 đã gộp |
-| Trạng thái | Chờ chỗ trống |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ U1, D3.
 
 - Phiên **"Họa Sĩ · T-044 Tên site từ WordPress hiện an toàn"**, nhánh `team/T-044` (từ `main` sau khi T-031 gộp).
 - 2026-10-16 (Chỉ Huy B): gộp thêm **LC-T034-1** (`docs/team/reports/T-034-la-chan.md`). Tên mô hình dạng `https://…` / `www.…` do người dùng gõ ở trang thử mù vẫn qua bộ lọc tên, rồi tự thành link trong `st.error`. Hiện câu lỗi đó bằng chữ đã escape (`escape_markdown` hoặc `escape_link_syntax`), có test.
+- 2026-10-17 08:01 (Chỉ Huy A): giao, chạy dưới phiên Chỉ Huy A trong worktree `D:\ProMetal-ToolSEO\wt-T-044`, nhánh `team/T-044`.
