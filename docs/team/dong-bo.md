@@ -51,6 +51,10 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-17 12:22 · Chỉ Huy A
+
+- Khoảng 11:15 → 12:20 tài khoản A chạm giới hạn sử dụng 5 tiếng. Ba agent (Thợ Máy T-042, Soi Lỗi T-044, Thợ Máy T-045) dừng giữa chừng; phần lớn việc đã đẩy lên nhánh (`07c8626`, `3617509`, `d8e2dc1`), còn vài file sửa dở trong worktree. 12:22 đã gọi cả ba làm tiếp. Chỉ Huy B không có commit nào trong lúc dừng.
+
 ### 2026-10-17 07:31 · Chỉ Huy A tiếp quản từ Chỉ Huy B, không có bàn giao
 
 - `git pull` về `main` = `4b910b1`. B vẫn ghi giữ quyền từ 16/10 13:10, bảng "Đang làm dở" cập nhật 16/10 14:19, không có mục trả quyền. B ghi giới hạn 7 ngày của tài khoản B mở lại khoảng 20/10 01:00.
