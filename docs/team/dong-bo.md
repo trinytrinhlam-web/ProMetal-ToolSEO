@@ -34,17 +34,16 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-16 14:19.
+Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi agent một git worktree trên máy chủ dự án (`D:\ProMetal-ToolSEO\wt-T-xxx`), đẩy lên nhánh `team/T-xxx`.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`560fc3f`) | Soi Lỗi lượt 2 ĐẠT (Linux 5.082 qua). Lá Chắn (Opus tạm) đang kiểm | ĐẠT thì gộp; ghi SL-T036-10/11/12 vào T-041 (nếu Lá Chắn đồng ý), câu hỏi thực thể HTML vào T-042 |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) (GĐ4) | `team/T-037` (`1fd1415`) | Thợ Máy lượt 2 xong (Linux 4.858 qua). Soi Lỗi kiểm lại (phiên cũ) | Lá Chắn (W4, F1, D2; allowlist tên "publish"), gộp; rồi T-042 |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập. T-041 có thêm 3 điều kiện bắt buộc của Lá Chắn T-038 (ghi trong phiếu) | T-039 sau khi T-036, T-037 gộp |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Chủ dự án đã trả lời 1A, 2A | Giao sau T-037 |
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress và tên mô hình hiện an toàn | chưa có | Phiếu đã lập (gộp LC-T034-1) | Giao Họa Sĩ |
-| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ, theo dõi sau T-043 | chưa có | Phiếu đã lập (điều kiện Lá Chắn T-043) | Giao Thợ Máy, hoặc ghi sổ rủi ro nếu chủ dự án không muốn sửa |
-| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | `team/T-046` (từ `main`) | Thợ Máy đang làm (chỉ báo cáo, không code) | Chỉ Huy đọc, gộp báo cáo, hỏi chủ dự án các câu trong báo cáo, lập phiếu code |
+| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | `team/T-036` (`560fc3f`) | Soi Lỗi lượt 2 đạt. ⏳ **Lá Chắn (A, Opus tạm) đang kiểm từ đầu** | ĐẠT thì gộp; SL-T036-10/11/12 → T-041 nếu Lá Chắn đồng ý |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | `team/T-037` (`09069b4`) | Thợ Máy lượt 2 xong. ⏳ **Soi Lỗi (A) làm nốt lượt 2** (phiên B dừng giữa chừng) | Lá Chắn (W2, W4, F1, D2), gộp; rồi T-042 |
+| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | `team/T-046` (chưa có commit) | Thợ Máy của B chưa đẩy gì | A giao lại Thợ Máy khi còn chỗ (tối đa 3 agent) |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md), [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Phiếu đã lập | T-039 sau khi T-036, T-037 gộp; T-042 sau T-037 |
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md), [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | chưa có | Phiếu đã lập | Giao Họa Sĩ (T-044), Thợ Máy (T-045) khi còn chỗ |
+| `main` trên Windows | | ⏳ A đang chạy toàn bộ test (B nhờ: T-019, T-025, T-031, T-032, T-034, T-043 mới chạy trên Linux) | Đỏ thì lập phiếu |
 
 ## Nhật ký bàn giao
 
