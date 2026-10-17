@@ -15,7 +15,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing, contextmanager, suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -42,6 +42,12 @@ _MAX_FIELD_BYTES = 4 * max(MAX_LINK_CHARS, MAX_META_CHARS, MAX_TITLE_CHARS, MAX_
 _MAX_INFO_CHARS = 2048
 _CLOCK_SKEW = timedelta(minutes=5)  # thời điểm tải "ở tương lai" quá mức này = cache cũ
 _SQLITE_TIMEOUT = 5
+# Kiểm file trước khi dùng: chờ ngắn thôi; file bận lâu hơn thì báo "đang bận" (SL-T037-5).
+_HEALTH_TIMEOUT = 1
+# Mã lỗi SQLite chắc chắn là file hỏng (SL-T037-4). Lỗi khác (không mở được, lỗi đọc/ghi,
+# bận, khóa, chỉ đọc…) thì KHÔNG xóa file: có thể chương trình khác đang giữ file.
+_SQLITE_CORRUPT = 11
+_SQLITE_NOTADB = 26
 _COLUMNS = ("id", "type", "slug", "link", "title", "meta_title", "meta_desc", "modified_gmt")
 
 
@@ -90,7 +96,10 @@ class SiteIndexStore:
 
         Lỗi mạng/WordPress khi tải lại được ném ra (``WordPressError``) để giao diện báo.
         """
-        cached = self.load(source.base_url)
+        cached, busy = self._load_checked(source.base_url)
+        if busy:
+            # File đang bị giữ: tải từ site nhưng không chờ ghi thêm lần nữa (SL-T037-5).
+            return self._fetch(source, cache_error=busy)
         if cached is not None and not self._is_stale(cached, now):
             return cached
         return self.refresh(source)
@@ -100,24 +109,11 @@ class SiteIndexStore:
 
         Ghi file lỗi thì vẫn trả danh sách vừa tải, kèm ``cache_error``.
         """
-        items = source.list_published()
-        fetched_at = self._now()
-        index = SiteIndex(
-            site=source.base_url,
-            fetched_at=fetched_at,
-            items=tuple(items),
-            truncated=bool(getattr(items, "truncated", False)),
-        )
+        index = self._fetch(source)
         try:
             self.save(index)
         except SiteIndexError as exc:
-            return SiteIndex(
-                site=index.site,
-                fetched_at=fetched_at,
-                items=index.items,
-                cache_error=str(exc),
-                truncated=index.truncated,
-            )
+            return replace(index, cache_error=str(exc))
         return index
 
     def is_stale(self, site: str, *, now: datetime | None = None) -> bool:
@@ -130,16 +126,10 @@ class SiteIndexStore:
     def load(self, site: str) -> SiteIndex | None:
         """Đọc cache của ``site``. Không có, của site khác hoặc hỏng: ``None`` (không ném lỗi).
 
-        Cache hỏng thì bỏ file luôn, để lần ghi sau tạo lại sạch.
+        Cache **chắc chắn** hỏng thì bỏ file luôn, để lần ghi sau tạo lại sạch. File bận hoặc
+        không mở được (chương trình khác đang giữ) thì để yên (SL-T037-4).
         """
-        try:
-            with self._connect() as conn:
-                return self._read(conn, site)
-        except (_Corrupt, sqlite3.DatabaseError):
-            self._reset_quietly()
-            return None
-        except (SiteIndexError, OSError):
-            return None
+        return self._load_checked(site)[0]
 
     def save(self, index: SiteIndex) -> None:
         """Ghi đè toàn bộ cache bằng ``index`` trong một giao dịch."""
@@ -167,7 +157,7 @@ class SiteIndexStore:
                     ],
                 )
         except sqlite3.DatabaseError as exc:
-            raise SiteIndexError(_db_message(exc)) from None
+            raise _db_error(exc) from None
         except OSError as exc:
             raise SiteIndexError(
                 f"Không ghi được file lưu tạm danh sách bài ({exc.strerror or 'lỗi đọc/ghi'})."
@@ -183,6 +173,34 @@ class SiteIndexStore:
             ) from None
 
     # ------------------------------------------------------------ nội bộ
+
+    def _fetch(self, source: PublishedSource, *, cache_error: str = "") -> SiteIndex:
+        """Tải danh sách từ site (không ghi file)."""
+        items = source.list_published()
+        return SiteIndex(
+            site=source.base_url,
+            fetched_at=self._now(),
+            items=tuple(items),
+            cache_error=cache_error,
+            truncated=bool(getattr(items, "truncated", False)),
+        )
+
+    def _load_checked(self, site: str) -> tuple[SiteIndex | None, str]:
+        """Như ``load``, thêm câu báo "đang bận" (rỗng nếu file không bận)."""
+        try:
+            with self._connect() as conn:
+                return self._read(conn, site), ""
+        except _Corrupt:
+            self._reset_quietly()
+            return None, ""
+        except _BusyError as exc:
+            return None, str(exc)
+        except sqlite3.DatabaseError as exc:
+            if _is_corrupt(exc):
+                self._reset_quietly()
+            return None, ""
+        except (SiteIndexError, OSError):
+            return None, ""
 
     def _now(self) -> datetime:
         return datetime.now(ZoneInfo(self.timezone))
@@ -251,7 +269,7 @@ class SiteIndexStore:
                 yield conn
         except sqlite3.DatabaseError as exc:
             if _is_busy(exc):
-                raise SiteIndexError(_db_message(exc)) from None
+                raise _db_error(exc) from None
             raise
 
     def _prepare(self) -> None:
@@ -273,7 +291,7 @@ class SiteIndexStore:
                     "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
                 )
         except sqlite3.DatabaseError as exc:
-            raise SiteIndexError(_db_message(exc)) from None
+            raise _db_error(exc) from None
         except OSError as exc:
             raise SiteIndexError(
                 f"Không tạo được file lưu tạm danh sách bài ({exc.strerror or 'lỗi đọc/ghi'})."
@@ -292,6 +310,10 @@ class SiteIndexStore:
 
 class _Corrupt(Exception):
     """Nội dung cache sai khuôn (nội bộ)."""
+
+
+class _BusyError(SiteIndexError):
+    """File đang bị kết nối/chương trình khác khóa (nội bộ; vẫn là ``SiteIndexError``)."""
 
 
 def _decode_text(data: bytes) -> str:
@@ -314,19 +336,22 @@ def _parse_time(value: object, timezone: str) -> datetime:
 
 
 def _is_healthy(path: Path) -> bool:
-    """File là SQLite đọc được, và bảng nào đã có thì đúng cột."""
+    """File là SQLite đọc được, và bảng nào đã có thì đúng cột.
+
+    ``False`` chỉ khi **chắc chắn** hỏng: SQLite báo hỏng / không phải cơ sở dữ liệu,
+    ``quick_check`` khác ``ok``, hoặc sai cột. Lỗi khác (bận, khóa, không mở được, lỗi đọc/ghi)
+    được ném lại để ``_prepare`` báo ``SiteIndexError`` mà không xóa file (SL-T037-1, -4).
+    """
     try:
-        with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT)) as conn:
+        with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
             if conn.execute("PRAGMA quick_check").fetchone() != ("ok",):
                 return False
             pages = {row[1] for row in conn.execute("PRAGMA table_info(pages)")}
             info = {row[1] for row in conn.execute("PRAGMA table_info(info)")}
     except sqlite3.DatabaseError as exc:
-        if _is_busy(exc):
-            # Chương trình khác đang giữ file (SL-T037-1): file không hỏng, đừng xóa.
-            # ``_prepare`` đổi lỗi này thành SiteIndexError "đang bận".
-            raise
-        return False
+        if _is_corrupt(exc):
+            return False
+        raise
     return (not pages or pages == set(_COLUMNS)) and (not info or info == {"key", "value"})
 
 
@@ -336,10 +361,29 @@ def _is_busy(exc: sqlite3.DatabaseError) -> bool:
     return isinstance(exc, sqlite3.OperationalError) and ("locked" in text or "busy" in text)
 
 
+def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:
+    """SQLite báo chắc chắn file hỏng (``SQLITE_CORRUPT``, ``SQLITE_NOTADB``, kể cả mã mở rộng)."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return code & 0xFF in (_SQLITE_CORRUPT, _SQLITE_NOTADB)
+    text = str(exc).lower()  # phòng khi lỗi không kèm mã
+    return "not a database" in text or "malformed" in text
+
+
+def _db_error(exc: sqlite3.DatabaseError) -> SiteIndexError:
+    message = _db_message(exc)
+    return _BusyError(message) if _is_busy(exc) else SiteIndexError(message)
+
+
 def _db_message(exc: sqlite3.DatabaseError) -> str:
     if _is_busy(exc):
         return "File lưu tạm danh sách bài đang bận. Thử lại sau giây lát."
-    return "File lưu tạm danh sách bài bị lỗi nên không đọc/ghi được. Thử tải lại."
+    if _is_corrupt(exc):
+        return "File lưu tạm danh sách bài bị lỗi nên không đọc/ghi được. Thử tải lại."
+    return (
+        "Không mở được file lưu tạm danh sách bài (có thể chương trình khác đang giữ file, "
+        "hoặc không có quyền ghi). Danh sách vừa tải vẫn dùng được."
+    )
 
 
 __all__ = [

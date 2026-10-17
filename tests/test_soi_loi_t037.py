@@ -1026,7 +1026,6 @@ def test_r2_missing_total_pages_header_is_not_silently_complete(fake_wp, wp_clie
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="chế độ chia sẻ file chỉ có trên Windows")
-@pytest.mark.xfail(strict=True, reason="SL-T037-4: không mở được (CANTOPEN) bị coi là hỏng")
 def test_r2_file_opened_by_other_program_share_delete_is_not_deleted(store):
     """Chương trình khác mở file với chế độ chỉ cho xóa (không cho đọc/ghi): SQLite báo
     "unable to open", ``_is_healthy`` coi là hỏng và xóa được file người khác đang mở."""
