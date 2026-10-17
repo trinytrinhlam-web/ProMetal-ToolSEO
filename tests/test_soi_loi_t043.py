@@ -102,16 +102,11 @@ LEAK_FIVE_PLUS = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T043-1: từ 5 ký tự lạ trở lên (emoji ghép, cờ, ❗ lặp + **) nhãn không được nhận",
-)
 @pytest.mark.parametrize("tag", LEAK_FIVE_PLUS)
 def test_sl_t043_1_five_or_more_symbols_hidden(tag):
     assert _item_hidden(tag)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T043-1: nửa nhãn trên tiêu đề có 5 ký tự lạ")
 def test_sl_t043_1_heading_half_tag_five_symbols():
     text = "## 7 [❗❗❗ **CẦN\nXÁC NHẬN**]\n- bí mật\n## 8\n- ok"
     assert "bí mật" not in confirmed_profile(text)

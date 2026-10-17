@@ -96,3 +96,100 @@ def test_sl_t043_2_next_heading_not_part_of_tag_still_kept():
     # Dòng kế là tiêu đề thường, không ghép thành nhãn: giữ cả hai tiêu đề như cũ.
     text = "## 7 [CẦN\n## 8\n- B"
     assert confirmed_profile(text) == text
+
+
+# --- SL-T043-1: nhãn có từ 5 ký tự lạ trở lên ---------------------------------------------------
+
+FIVE_PLUS_TAGS = [
+    "[*****CẦN XÁC NHẬN]",
+    "[❗❗❗ **CẦN XÁC NHẬN**]",
+    "[🇻🇳🇻🇳🇻🇳 **CẦN XÁC NHẬN**]",
+    "[⚠️👨‍👩‍👧‍👦 CẦN XÁC NHẬN]",
+    "[CẦN ** ⚠️ ** XÁC ~~**~~ NHẬN]",
+    "[" + "*" * 200 + "CẦN XÁC NHẬN]",
+    "[CẦN" + " -" * 100 + " XÁC NHẬN]",
+    "(«««« chưa ···· xác ···· nhận »»»»)",
+    "[[[[CẦN XÁC NHẬN]]]]",
+    "[(**CẦN XÁC NHẬN**)]",
+    "[CẦN (XÁC NHẬN]",  # ngoặc mở giữa nhãn: vẫn nhận như T-043
+    "[CẦN [** XÁC ** NHẬN]",
+]
+
+
+@pytest.mark.parametrize("tag", FIVE_PLUS_TAGS)
+def test_sl_t043_1_many_symbols_inside_tag_hidden(tag):
+    text = f"- công khai\n- bí mật {tag} lý do\n- ok"
+    assert confirmed_profile(text) == "- công khai\n- ok"
+
+
+@pytest.mark.parametrize(
+    ("half", "rest"),
+    [
+        ("[❗❗❗ **CẦN", "XÁC NHẬN**]"),
+        ("[" + "*" * 200 + "CẦN XÁC", "NHẬN]"),
+        ("[" + "[(" * 300 + "**CHƯA", "XÁC NHẬN]"),
+        ("[CẦN" + " ⚠️" * 100, "XÁC NHẬN]"),
+        ("[CẦN (", "XÁC NHẬN]"),
+        ("[🇻🇳🇻🇳🇻🇳", "CẦN XÁC NHẬN]"),
+    ],
+)
+def test_sl_t043_1_heading_half_tag_with_many_symbols(half, rest):
+    # Nửa nhãn dài hơn cửa sổ 64 ký tự trước khi thu dải ký tự lạ vẫn được nhận.
+    text = f"## 6\n- A\n## 7 {half}\n{rest}\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 6\n- A\n## 8\n- ok"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "- khách cần xác nhận lịch trước khi thợ tới",
+        "- [*] cần xác nhận lịch",
+        "- [ ] cần xác nhận lịch",
+        "- [] cần xác nhận lịch",
+        "- (*) cần xác nhận lịch",
+        "- (xem bảng) cần xác nhận",
+        "- [1] cần xác nhận lịch",
+        "- [CẦN XÁC 1 NHẬN]",
+        "- [CẦN] xác nhận",
+        "- (cần) xác nhận lịch",
+        "- [CẦN *** ] XÁC NHẬN",
+        "- [ghi chú ***** cần xác nhận]",
+    ],
+)
+def test_sl_t043_1_plain_sentences_still_kept(line):
+    assert confirmed_profile(line) == line
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "- " + "[" * 50000 * k,
+        lambda k: "- " + "(" * 50000 * k + "CAN XAC",
+        lambda k: "- [" + "*" * 50000 * k + "CAN",
+        lambda k: "- [CAN" + "*" * 50000 * k + "XAC",
+        lambda k: "- [CAN" + "[" * 50000 * k,
+        lambda k: "- [CAN XAC" + "(" * 50000 * k,
+        lambda k: "- " + "[CAN[" * 10000 * k,
+        lambda k: "- " + "[CAN*XAC*" * 6000 * k,
+        lambda k: "- " + "[*(*" * 12000 * k,
+        lambda k: "## " + "[ * ( " * 8000 * k + "\n- ok",
+        lambda k: "## 7 [CAN" + "*" * 50000 * k + "\nXAC NHAN]\n- x",
+        lambda k: ("## 7 [" + "*" * 100 + "CAN\nXAC NHAN]\n- x\n## 8\n") * 100 * k,
+    ],
+    ids=[
+        "brackets",
+        "parens-then-words",
+        "stars-after-bracket",
+        "stars-between-words",
+        "brackets-between-words",
+        "parens-after-xac",
+        "repeated-can-bracket",
+        "repeated-starred-words",
+        "mixed-brackets-stars",
+        "heading-mixed",
+        "heading-long-half",
+        "many-long-half-headings",
+    ],
+)
+def test_sl_t043_1_unbounded_symbols_still_linear(make):
+    assert_scales_linearly(confirmed_profile, make, label="SL-T043-1")

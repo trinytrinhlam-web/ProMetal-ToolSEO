@@ -19,21 +19,31 @@ BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
 # («[CẦNXÁC NHẬN]»), không dấu («[CAN XAC NHAN]»), ngoặc tròn, «CHƯA XÁC NHẬN». An toàn khi nghi
 # ngờ: thà giấu thừa còn hơn để lọt. Vẫn bắt buộc có ngoặc mở để câu thường như «khách cần xác
 # nhận lịch» không bị giấu.
-# Giữa ngoặc mở và chữ, giữa các chữ: khoảng trắng tùy ý và tối đa 4 ký tự không phải chữ/số
-# («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[⚠ CẦN»,  «[CẦN-XÁC_NHẬN]», Lá Chắn LC-T032-1), trừ dấu
-# đóng ngoặc. Giới hạn {0,4} là bắt buộc: «[» cũng là ký tự không phải chữ, dùng «*» thì chuỗi
-# «[[[[…» chạy bậc hai. Hai nhánh trong nhóm không trùng nhau với «\s», nên không quay lui bùng nổ.
-_GAP = r"\s*(?:(?:[^\w\s\])]|_)\s*){0,4}"
-_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
+# Giữa ngoặc mở và chữ, giữa các chữ: bao nhiêu khoảng trắng và ký tự không phải chữ/số cũng
+# được («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[❗❗❗ **CẦN»,  «[CẦN-XÁC_NHẬN]», emoji ghép nhiều điểm
+# mã; LC-T032-1, SL-T043-1), trừ dấu đóng ngoặc.
+# Chống chạy bậc hai (ReDoS) khi không giới hạn số ký tự: ngay sau ngoặc mở (``_LEAD_GAP``)
+# không cho thêm ngoặc mở nào, nên với «[[[[…» mỗi điểm bắt đầu chỉ quét tới ngoặc kế tiếp
+# (nhãn «[[CẦN…» vẫn khớp, tính từ ngoặc cuối). Giữa các chữ (``_GAP``) thì cho ngoặc mở
+# («[CẦN (XÁC NHẬN]»): trước mỗi chữ «CAN»/«CHUA» chỉ có đúng một điểm bắt đầu khớp được (ngoặc
+# mở gần nhất), và các dải chen không chứa chữ, nên mỗi dải chỉ bị quét một lần. Mỗi nhóm là
+# MỘT lớp ký tự (không lồng lượng từ) và dùng lượng từ chiếm hữu ``*+``: không quay lui.
+_LEAD_GAP = r"(?:[^\w\[\]()]|_)*+"
+_GAP = r"(?:[^\w\])]|_)*+"
+_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_LEAD_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
 # Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
 _BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
 # Tiêu đề "thật" như Markdown: 1–6 dấu «#» rồi khoảng trắng hoặc hết dòng. Chỉ tiêu đề thật mới
 # kết thúc mục đang giấu; «#suachuacuasat» hay «#1 khu vực» thì không (Soi Lỗi SL-T032-1).
 _REAL_HEADING = re.compile(r"#{1,6}(?:\s|$)")
-# Phần sau ngoặc mở của nửa nhãn: chỉ chữ cái (đã bỏ dấu), khoảng trắng, «_» và ký tự không
-# phải chữ/số trừ dấu đóng ngoặc (như ``_GAP``).
-_PARTIAL_TAG_REST = re.compile(r"(?:[A-Z\s_]|[^\w\s\])])*")
-# Nửa nhãn dài nhất sau khi gộp khoảng trắng: ngoặc, 11 chữ, 4 khoảng × (4 ký tự + dấu cách).
+# Dải ký tự chen trong nhãn (như ``_GAP``: khoảng trắng, «_», ký tự không phải chữ/số trừ dấu
+# đóng ngoặc). ``_ends_with_partial_tag`` thu mỗi dải về một ký tự: «[» nếu dải có ngoặc mở,
+# không thì dấu cách.
+_PARTIAL_GAP_RUN = re.compile(r"(?:[^\w\])]|_)++")
+# Phần sau ngoặc mở của nửa nhãn, trên chữ đã thu dải: chỉ chữ cái (đã bỏ dấu), dấu cách và «[».
+_PARTIAL_TAG_REST = re.compile(r"[A-Z \[]*")
+# Cửa sổ cuối dòng được xét. Sau khi thu dải, nửa nhãn dài nhất là ngoặc rồi 11 chữ, mỗi chữ
+# cách nhau tối đa một ký tự: 23 ký tự, nên bao nhiêu ký tự lạ cũng không đẩy nửa nhãn ra ngoài.
 _PARTIAL_TAG_MAX = 64
 _TAG_WORDS = ("CANXACNHAN", "CHUAXACNHAN")
 
@@ -207,16 +217,25 @@ def _tag_text(text: str) -> str:
     return bare.replace("Đ", "D")
 
 
+def _squeeze_gap(match: re.Match[str]) -> str:
+    run = match.group()
+    return "[" if "[" in run or "(" in run else " "
+
+
 def _ends_with_partial_tag(text: str) -> bool:
     """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[**CẦN», «[» (nhãn bị xuống
     dòng).
 
-    Chỉ xét đoạn cuối dài ``_PARTIAL_TAG_MAX`` ký tự (sau khi gộp khoảng trắng), nên mỗi dòng
-    tốn thời gian cố định dù có hàng nghìn ngoặc. Thử từng ngoặc mở trong đoạn đó.
+    Mỗi dải ký tự chen (khoảng trắng, «*», emoji…) được thu về một ký tự trước (``[`` nếu dải
+    có ngoặc mở, không thì dấu cách): mọi ngoặc mở trong cùng một dải cho cùng một kết quả, nên
+    thu lại không đổi kết quả mà nửa nhãn luôn ngắn. Sau đó chỉ xét đoạn cuối dài
+    ``_PARTIAL_TAG_MAX`` ký tự, nên phần so khớp tốn thời gian cố định dù dòng có hàng nghìn
+    ngoặc. Thử từng ngoặc mở trong đoạn đó.
     """
-    tail = " ".join(_tag_text(text).split())[-_PARTIAL_TAG_MAX:]
+    squeezed = _PARTIAL_GAP_RUN.sub(_squeeze_gap, _tag_text(text))
+    tail = squeezed[-_PARTIAL_TAG_MAX:]
     for start, ch in enumerate(tail):
-        if ch not in "[(":
+        if ch != "[":
             continue
         rest = tail[start + 1 :]
         if not _PARTIAL_TAG_REST.fullmatch(rest):
