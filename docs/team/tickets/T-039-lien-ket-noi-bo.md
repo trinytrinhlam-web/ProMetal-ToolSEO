@@ -83,3 +83,8 @@ A1, A2, W3 (không nới bộ lọc nào), U1, D3. Test chứng minh AI không c
 ## Ghi chú của Chỉ Huy
 
 - Phiên **"Thợ Máy · T-039 Liên kết nội bộ"**, nhánh `team/T-039` (từ `main` sau khi T-036, T-037 gộp).
+- 2026-10-17 (Chỉ Huy A): **Điều kiện của Lá Chắn T-037** cho mọi phiếu dùng dữ liệu bài đã đăng (`site_index`):
+  - Link ghép vào `href` phải qua `html.escape(quote=True)` và qua bộ lọc HTML (`security.md` mục 2.3).
+  - Tiêu đề, meta lấy từ site hiện trên giao diện phải là chữ thuần hoặc đã escape; đưa vào prompt AI thì phải nằm trong khung dữ liệu.
+  - Khi `truncated` bật thì không được kết luận "link hỏng"; chuẩn hóa link trước khi so bằng `by_link()`.
+  - Nếu phiếu này nối `get()` vào giao diện trước T-042 thì phải sửa SL-T037-5 (file cache bận làm treo khoảng 14 giây).

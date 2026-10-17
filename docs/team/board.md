@@ -22,7 +22,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy → Soi Lỗi → Lá Chắn | `team/T-037` | Thợ Máy 2 lượt; Soi Lỗi lượt 2 **ĐẠT** (`3fb9aaf`, Windows 4.904 qua, 0 hỏng; 3 lỗi Thấp mới SL-T037-3/4/5). **Lá Chắn đang kiểm** (phiên Chỉ Huy A, Opus tạm) | [Thợ Máy](reports/T-037-tho-may.md) · [Soi Lỗi](reports/T-037-soi-loi.md) |
 
 ## Chờ
 
@@ -50,6 +49,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | Danh sách bài/trang đã đăng + cache SQLite (GĐ4) | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-037-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-037-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-037-la-chan.md) (Opus tạm); điều kiện ghi vào T-042 (SL-T037-3/4/5, LC-T037-1, danh sách đường gọi cố định) và T-039, T-041. Gộp vào `main` `914ac68`: Windows 5.537 qua, 0 hỏng |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | Meta title, description, slug (GĐ4, phần logic) | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-036-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-036-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-036-la-chan.md) (Opus tạm); điều kiện ghi vào T-041 (LC-T036-1, SL-T036-10/11/12) và T-042 (chặn thực thể HTML). Gộp vào `main` `f11ba28`: Windows 5.291 qua, 0 hỏng |
 | [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) | Thiết kế Giai đoạn 3 (ảnh), chỉ tài liệu | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-046-tho-may.md): nén WebP kèm `exif=` giữ được GPS (đã thử); Pillow không đọc HEIC; 10 phiếu G3-1 → G3-10; 5 câu hỏi chủ dự án · Lá Chắn rút gọn: [**ĐẠT**](reports/T-046-la-chan.md) (Opus tạm), 11 góp ý cho phiếu code. Gộp vào `main` `de65bdb` |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (`seo_app/onpage/schema.py`) | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-038-tho-may.md) · [Soi Lỗi](reports/T-038-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-038-la-chan.md) (Opus tạm): 3 điều kiện chuyển T-041. Gộp vào `main`: Linux 4.867 qua, 0 hỏng |

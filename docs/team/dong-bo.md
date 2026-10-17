@@ -39,7 +39,7 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | đã gộp (`f11ba28`), nhánh đã xóa | ✅ 08:00 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.291 qua, 0 hỏng) | Điều kiện đã ghi vào phiếu T-041 (có ngoại lệ sửa `meta.py`) và T-042 |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | `team/T-037` (`3fb9aaf`) | ✅ Soi Lỗi lượt 2 ĐẠT (3 lỗi Thấp mới SL-T037-3/4/5). ⏳ **Lá Chắn (A, Opus tạm) đang kiểm** | ĐẠT thì gộp; SL-T037-3/4/5 vào T-042 (SL-T037-3 phải xong trước GĐ5); rồi giao T-039, T-042 |
+| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | đã gộp (`914ac68`), nhánh đã xóa | ✅ 08:11 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.537 qua, 0 hỏng) | Điều kiện đã ghi vào T-042, T-039, T-041 |
 | [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | đã gộp (`de65bdb`), nhánh đã xóa | ✅ 07:48 Lá Chắn rút gọn ĐẠT, gộp vào `main` | **Chờ chủ dự án trả lời 5 câu** (mục 8 báo cáo T-046) rồi lập phiếu G3-1 → G3-10 (số thật từ T-047), kèm 11 góp ý của Lá Chắn (`T-046-la-chan.md`) |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md), [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Phiếu đã lập | T-039 sau khi T-036, T-037 gộp; T-042 sau T-037 |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress hiện an toàn | `team/T-044` (từ `main` `b5ff3b3`) | ⏳ 08:01 **Họa Sĩ (A) đang làm** | Soi Lỗi rút gọn, Lá Chắn rút gọn (U1), gộp |

@@ -73,3 +73,8 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
   3. SL-T036-12: giao diện không gọi `has_link` / `mentions_price` với chữ chưa cắt độ dài, hoặc cắt độ dài ngay trong hai hàm này.
   4. SL-T036-11, LC-T036-2 (bộ dò link sót vài dạng tên miền lạ): ghi nhận, không bắt buộc.
   5. Phần Họa Sĩ: hiện `FieldCheck.messages` (có tên bài lấy từ site) bằng chữ thuần hoặc đã escape, không dùng `unsafe_allow_html`.
+- 2026-10-17 (Chỉ Huy A): **Điều kiện của Lá Chắn T-037** cho mọi phiếu dùng dữ liệu bài đã đăng (`site_index`):
+  - Link ghép vào `href` phải qua `html.escape(quote=True)` và qua bộ lọc HTML (`security.md` mục 2.3).
+  - Tiêu đề, meta lấy từ site hiện trên giao diện phải là chữ thuần hoặc đã escape; đưa vào prompt AI thì phải nằm trong khung dữ liệu.
+  - Khi `truncated` bật thì không được kết luận "link hỏng"; chuẩn hóa link trước khi so bằng `by_link()`.
+  - Nếu phiếu này nối `get()` vào giao diện trước T-042 thì phải sửa SL-T037-5 (file cache bận làm treo khoảng 14 giây).
