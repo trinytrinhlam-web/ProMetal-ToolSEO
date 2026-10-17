@@ -24,7 +24,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-036](tickets/T-036-meta-title-description-slug.md) | GĐ4: meta title/description/slug: kiểm độ dài (NFC), kiểm trùng, AI gợi ý + kiểm | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 → Lá Chắn (`Lá Chắn · T-036 … (Opus tạm)`) | `team/T-036` | Soi Lỗi lượt 2 **ĐẠT** (`560fc3f`, Linux 5.082 qua). 3 lỗi Thấp mới (SL-T036-10: "7 xu hướng" bị coi là giá; -11; -12) dự định chuyển T-041. **Lá Chắn đang kiểm** | [Thợ Máy](reports/T-036-tho-may.md) · [Soi Lỗi](reports/T-036-soi-loi.md) |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | GĐ4: danh sách bài/trang đã đăng + cache SQLite | Thợ Máy → Soi Lỗi → Thợ Máy lượt 2 → Soi Lỗi lượt 2 | `team/T-037` | Thợ Máy lượt 2 **xong** (`1fd1415`, đã gộp `main`; Linux 4.858 qua): cache bị khóa không còn bị xóa; thêm cờ `truncated`. **Soi Lỗi đang kiểm lại** | [Thợ Máy](reports/T-037-tho-may.md) · [Soi Lỗi](reports/T-037-soi-loi.md) |
-| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) | GĐ3: thiết kế xử lý ảnh (đọc thư mục, WebP giữ GPS, alt AI, ảnh AI, gắn thẻ), chia phiếu. Không sửa code | Thợ Máy (`Thợ Máy · T-046 Thiết kế Giai đoạn 3`) | `team/T-046` | Đã giao | |
 
 ## Chờ
 
@@ -52,6 +51,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) | Thiết kế Giai đoạn 3 (ảnh), chỉ tài liệu | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-046-tho-may.md): nén WebP kèm `exif=` giữ được GPS (đã thử); Pillow không đọc HEIC; 10 phiếu G3-1 → G3-10; 5 câu hỏi chủ dự án · Lá Chắn rút gọn: [**ĐẠT**](reports/T-046-la-chan.md) (Opus tạm), 11 góp ý cho phiếu code. Gộp vào `main` `de65bdb` |
 | [T-038](tickets/T-038-schema-faqpage-kiem-hop-le.md) | GĐ4: dựng và kiểm schema FAQPage không cần mạng (`seo_app/onpage/schema.py`) | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-038-tho-may.md) · [Soi Lỗi](reports/T-038-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-038-la-chan.md) (Opus tạm): 3 điều kiện chuyển T-041. Gộp vào `main`: Linux 4.867 qua, 0 hỏng |
 | [T-034](tickets/T-034-loi-thap-lop-ai-sau-t019.md) | 7 lỗi Thấp lớp AI và thử mù: che số phiên bản và biến thể, Claude bị cắt, `_OsWithoutIgnored` thay gỡ biến môi trường, `RLock`, gzip hỏng, tên mô hình lạ, đường dẫn trong câu lỗi | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-034-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-034-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT**](reports/T-034-la-chan.md) (Opus tạm), 3 lỗi Thấp ghi sổ. Gộp vào `main` `49f57c9`: Linux 4.658 qua, 0 hỏng |
 | [T-043](tickets/T-043-loc-ho-so-loi-thap-sau-t032.md) | Bộ lọc hồ sơ: nhãn có ký tự lạ chen vào, nửa nhãn qua dòng trống, tiêu đề thụt lề có nửa nhãn | Thợ Máy | 2026-10-16 | [Thợ Máy](reports/T-043-tho-may.md) · [Soi Lỗi](reports/T-043-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-043-la-chan.md) (Opus tạm): gộp được ngay, mở phiếu theo dõi T-045. Gộp vào `main`: Linux 4.403 qua, 0 hỏng |
