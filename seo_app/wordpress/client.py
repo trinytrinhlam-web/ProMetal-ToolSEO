@@ -37,6 +37,8 @@ _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_TOTAL_PAGES_PATTERN = re.compile(r"[0-9]+")
+_PAGE_OUT_OF_RANGE = "rest_post_invalid_page_number"  # WordPress: xin trang quá số trang
 
 # ---------------------------------------------------------------- đường REST được phép gọi
 # Danh sách CỐ ĐỊNH (T-042, điều kiện Lá Chắn T-037): ``_request`` so khớp toàn chuỗi cặp
@@ -339,45 +341,47 @@ class WordPressClient:
     def _get_pages_checked(
         self, path: str, params: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], bool]:
-        """Như ``_get_all_pages`` (giới hạn ``MAX_PAGES``), thêm cờ "còn trang chưa đọc".
+        """Đọc mọi trang kết quả (tối đa ``MAX_PAGES``), kèm cờ "còn trang chưa đọc".
 
-        Hàm riêng để không đổi ``_get_all_pages`` đang dùng cho chuyên mục/thẻ (phạm vi T-037).
+        - Header ``X-WP-TotalPages`` đọc được (số nguyên ≥ 1): đọc đúng số trang đó.
+        - Header thiếu hoặc sai (proxy/plugin bỏ header, SL-T037-3): trang trả đủ ``PER_PAGE``
+          mục thì đọc tiếp, dừng ở trang thiếu mục, trang rỗng, hoặc khi WordPress báo "quá số
+          trang" (``rest_post_invalid_page_number``). Máy chủ bỏ qua tham số ``page`` (trả lại
+          y hệt trang trước) thì dừng và coi là chưa đủ.
+        - Tới ``MAX_PAGES`` mà vẫn còn trang: cờ là ``True`` (danh sách chưa đủ).
         """
         items: list[dict[str, Any]] = []
+        previous: list[Any] | None = None
         page = 1
         while True:
-            response = self._request("GET", path, params={**params, "page": page})
+            try:
+                response = self._request("GET", path, params={**params, "page": page})
+            except WordPressError as exc:
+                if page > 1 and exc.status_code == 400 and exc.code == _PAGE_OUT_OF_RANGE:
+                    return items, False  # header thiếu và trang trước vừa đủ PER_PAGE mục
+                raise
             data = self._json(response)
             if not isinstance(data, list):
                 raise WordPressError("WordPress trả về dữ liệu không đúng dạng danh sách.")
+            total_pages = _total_pages(response.headers.get("X-WP-TotalPages"))
+            if total_pages is None and data and data == previous:
+                return items, True  # máy chủ không phân trang: không biết còn bao nhiêu
             items.extend(data)
-            try:
-                total_pages = int(response.headers.get("X-WP-TotalPages", "1"))
-            except ValueError:
-                total_pages = 1
-            if page >= total_pages or not data:
+            if not data:
+                return items, False
+            if total_pages is None:
+                if len(data) < PER_PAGE:
+                    return items, False
+            elif page >= total_pages:
                 return items, False
             if page >= MAX_PAGES:
                 return items, True
+            previous = data
             page += 1
 
     def _get_all_pages(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
-        items: list[dict[str, Any]] = []
-        page = 1
-        while page <= MAX_PAGES:
-            response = self._request("GET", path, params={**params, "page": page})
-            data = self._json(response)
-            if not isinstance(data, list):
-                raise WordPressError("WordPress trả về dữ liệu không đúng dạng danh sách.")
-            items.extend(data)
-            try:
-                total_pages = int(response.headers.get("X-WP-TotalPages", "1"))
-            except ValueError:
-                total_pages = 1
-            if page >= total_pages or not data:
-                break
-            page += 1
-        return items
+        """Như ``_get_pages_checked`` nhưng bỏ cờ (chuyên mục, thẻ)."""
+        return self._get_pages_checked(path, params)[0]
 
     # ------------------------------------------------------------------ ghi
 
@@ -597,6 +601,16 @@ class WordPressClient:
         else:
             message = f"WordPress báo lỗi (mã {status})."
         return WordPressError(message + detail, status_code=status, code=code)
+
+
+def _total_pages(value: object) -> int | None:
+    """Giá trị header ``X-WP-TotalPages``; ``None`` nếu thiếu, sai dạng hoặc nhỏ hơn 1."""
+    if not isinstance(value, str) or not _TOTAL_PAGES_PATTERN.fullmatch(value.strip()):
+        return None
+    digits = value.strip().lstrip("0")
+    if len(digits) > 9:  # số rất lớn: chắc chắn hơn MAX_PAGES (không đổi chuỗi dài ra số)
+        return 10**9
+    return int(digits) if digits else None  # "0", "000": coi như thiếu
 
 
 def is_site_link(link: object, base_url: str) -> bool:

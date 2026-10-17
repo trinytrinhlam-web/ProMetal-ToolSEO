@@ -1007,7 +1007,6 @@ def test_r2_error_mid_pagination_keeps_old_cache(store, fake_wp, wp_client, fail
     assert store.reset_count == 0
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T037-3: thiếu X-WP-TotalPages thì cắt lặng lẽ")
 @pytest.mark.parametrize("header", [None, "", "abc", "60.0"])
 def test_r2_missing_total_pages_header_is_not_silently_complete(fake_wp, wp_client, header):
     """Proxy/plugin bỏ header ``X-WP-TotalPages`` mà trang đầy (100 mục): không được vừa thiếu
