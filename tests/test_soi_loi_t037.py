@@ -7,7 +7,11 @@ Lỗi chưa sửa đánh ``xfail(strict=True)`` kèm mã ``SL-T037-n`` (xem
 from __future__ import annotations
 
 import ast
+import os
 import sqlite3
+import stat
+import subprocess
+import sys
 import threading
 from contextlib import closing
 from datetime import datetime, timedelta
@@ -731,3 +735,181 @@ def test_r2_allowlist_still_blocks_other_names(monkeypatch):
             allowed_test()
         monkeypatch.delattr(client_module, name)
     allowed_test()
+
+
+# ======================================== Lượt 2 (tiếp): khóa thật, quyền, phân trang
+
+_HOLDER_SCRIPT = (
+    "import sqlite3, sys\n"
+    "conn = sqlite3.connect(sys.argv[1], isolation_level=None)\n"
+    "conn.execute('BEGIN EXCLUSIVE')\n"
+    "conn.execute('DELETE FROM pages')\n"
+    "print('locked', flush=True)\n"
+    "sys.stdin.readline()\n"
+    "conn.execute('ROLLBACK')\n"
+    "conn.close()\n"
+)
+
+
+def test_r2_lock_held_by_another_process_is_left_alone(store, monkeypatch):
+    """SL-T037-1 với tiến trình khác thật (như DB Browser đang mở file, chưa lưu)."""
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    journal = store.path.with_name(store.path.name + "-journal")
+    holder = subprocess.Popen(
+        [sys.executable, "-c", _HOLDER_SCRIPT, str(store.path)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert holder.stdout.readline().strip() == "locked"
+        assert journal.exists()
+        before = store.path.read_bytes()
+        assert store.load(BASE_URL) is None
+        index = store.get(Source([published(2)]))
+        assert [i.id for i in index.items] == [2]
+        assert "bận" in index.cache_error
+        assert store.reset_count == 0
+        assert store.path.read_bytes() == before
+        assert journal.exists()
+    finally:
+        holder.communicate("\n", timeout=30)
+    assert holder.returncode == 0
+    assert [i.id for i in store.load(BASE_URL).items] == [1]
+    assert store.reset_count == 0
+
+
+def test_r2_short_lock_in_other_thread_is_waited_out(store):
+    """Khóa ngắn hơn timeout (5 giây): chờ rồi đọc được, không báo bận, không xóa."""
+    store.refresh(Source([published(1)]))
+    locked, release = threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+
+    def hold():
+        try:
+            conn = sqlite3.connect(store.path, isolation_level=None)
+            conn.execute("BEGIN EXCLUSIVE")
+            locked.set()
+            release.wait(10)
+            conn.execute("ROLLBACK")
+            conn.close()
+        except BaseException as exc:  # pragma: no cover - chỉ để báo
+            errors.append(exc)
+            locked.set()
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    assert locked.wait(10)
+    timer = threading.Timer(0.3, release.set)
+    timer.start()
+    try:
+        loaded = store.load(BASE_URL)
+    finally:
+        release.set()
+        timer.cancel()
+        thread.join(10)
+    assert errors == []
+    assert loaded is not None and [i.id for i in loaded.items] == [1]
+    assert store.reset_count == 0
+
+
+def test_r2_long_lock_in_other_thread_is_busy_not_deleted(store, monkeypatch):
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    locked, release = threading.Event(), threading.Event()
+
+    def hold():
+        conn = sqlite3.connect(store.path, isolation_level=None)
+        conn.execute("BEGIN EXCLUSIVE")
+        conn.execute("DELETE FROM pages")
+        locked.set()
+        release.wait(10)
+        conn.execute("ROLLBACK")
+        conn.close()
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    try:
+        assert locked.wait(10)
+        assert store.load(BASE_URL) is None
+        assert store.is_stale(BASE_URL) is True
+        assert "bận" in store.refresh(Source([published(2)])).cache_error
+        with pytest.raises(site_index.SiteIndexError, match="bận"):
+            store.save(store.refresh(Source([published(3)])))
+    finally:
+        release.set()
+        thread.join(10)
+    assert store.reset_count == 0
+    assert [i.id for i in store.load(BASE_URL).items] == [1]
+
+
+def test_r2_lock_taken_between_health_check_and_read(store, monkeypatch):
+    """Kết nối khác chiếm khóa ngay sau ``_prepare`` (khe giữa kiểm và đọc): vẫn không xóa."""
+    store.refresh(Source([published(1)]))
+    monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
+    original = SiteIndexStore._prepare
+    holders: list[sqlite3.Connection] = []
+
+    def prepare_then_lock(self):
+        original(self)
+        holder = sqlite3.connect(self.path, isolation_level=None)
+        holder.execute("BEGIN EXCLUSIVE")
+        holders.append(holder)
+
+    monkeypatch.setattr(SiteIndexStore, "_prepare", prepare_then_lock)
+    try:
+        assert store.load(BASE_URL) is None
+        with pytest.raises(site_index.SiteIndexError, match="bận"):
+            store.save(_index_of(published(2)))
+    finally:
+        for holder in holders:
+            holder.execute("ROLLBACK")
+            holder.close()
+        monkeypatch.setattr(SiteIndexStore, "_prepare", original)
+    assert store.reset_count == 0
+    assert [i.id for i in store.load(BASE_URL).items] == [1]
+
+
+def _index_of(*items):
+    return site_index.SiteIndex(site=BASE_URL, fetched_at=datetime.now(TZ), items=items)
+
+
+@pytest.fixture
+def read_only_cache(store):
+    """File cache chỉ đọc thật (Windows: thuộc tính Read-only; Mac/Linux: chmod 444)."""
+    store.refresh(Source([published(1)]))
+    os.chmod(store.path, stat.S_IREAD)
+    try:
+        if os.access(store.path, os.W_OK):  # chạy bằng root: chmod vô hiệu
+            pytest.skip("máy này vẫn ghi được file chỉ đọc (root)")
+        yield store
+    finally:
+        os.chmod(store.path, stat.S_IREAD | stat.S_IWRITE)
+
+
+def test_r2_read_only_cache_is_read_and_kept(read_only_cache):
+    store = read_only_cache
+    assert [i.id for i in store.load(BASE_URL).items] == [1]
+    index = store.refresh(Source([published(2)]))
+    assert [i.id for i in index.items] == [2]  # vẫn dùng được danh sách vừa tải
+    assert index.cache_error
+    assert store.reset_count == 0
+    assert [i.id for i in store.load(BASE_URL).items] == [1]  # cache cũ nguyên vẹn
+
+
+def test_r2_read_only_old_schema_cache_does_not_crash(read_only_cache):
+    """Cache cũ (schema 1) và chỉ đọc: không xóa được, không ghi được, vẫn không chết."""
+    store = read_only_cache
+    os.chmod(store.path, stat.S_IREAD | stat.S_IWRITE)
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        conn.execute("UPDATE info SET value = '1' WHERE key = 'schema_version'")
+    os.chmod(store.path, stat.S_IREAD)
+    assert store.load(BASE_URL) is None
+    source = Source([published(3)])
+    index = store.get(source)
+    assert source.calls == 1 and [i.id for i in index.items] == [3]
+    # Windows không xóa được file chỉ đọc: báo không ghi được. Mac/Linux xóa được (thư mục
+    # ghi được) nên tạo lại sạch. Cả hai đều không chết.
+    os.chmod(store.path, stat.S_IREAD | stat.S_IWRITE)
+    assert index.cache_error or [i.id for i in store.load(BASE_URL).items] == [3]
