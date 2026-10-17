@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_LINK_UNSAFE = frozenset("\"'<>`")  # không được có trần trong link lấy từ site
 _TOTAL_PAGES_PATTERN = re.compile(r"[0-9]+")
 _PAGE_OUT_OF_RANGE = "rest_post_invalid_page_number"  # WordPress: xin trang quá số trang
 
@@ -173,8 +175,8 @@ class PublishedItem:
             value = getattr(self, name)
             if not isinstance(value, str) or len(value) > limit:
                 raise ValueError(f"{name} sai kiểu hoặc quá dài")
-            if _CONTROL_CHARS.search(value):
-                raise ValueError(f"{name} có ký tự điều khiển")
+            if _CONTROL_CHARS.search(value) or _has_invisible(value):
+                raise ValueError(f"{name} có ký tự điều khiển hoặc ký tự vô hình")
         if self.slug and not _SLUG_PATTERN.fullmatch(self.slug):
             raise ValueError("slug có ký tự lạ")
         if self.modified_gmt and not _MODIFIED_PATTERN.fullmatch(self.modified_gmt):
@@ -617,11 +619,16 @@ def is_site_link(link: object, base_url: str) -> bool:
     """``link`` là địa chỉ ``https://`` trên đúng tên máy (và cổng) của ``base_url``.
 
     Từ chối: ``http://``, tên máy khác (kể cả tên miền con), có tên/mật khẩu trong địa chỉ,
-    khoảng trắng hoặc ký tự điều khiển, cổng sai dạng, quá dài.
+    khoảng trắng hoặc ký tự điều khiển, dấu ``" ' < > ` `` để trần, ký tự vô hình (loại Cf),
+    cổng sai dạng, quá dài.
     """
     if not isinstance(link, str) or not link or len(link) > MAX_LINK_CHARS:
         return False
     if _CONTROL_CHARS.search(link) or any(ch.isspace() for ch in link) or "\\" in link:
+        return False
+    # LC-T037-1 (a): WordPress chuẩn luôn mã hóa % các dấu này trong permalink; còn để trần
+    # thì link có thể thoát khỏi thuộc tính href khi phiếu sau ghép vào HTML.
+    if any(ch in _LINK_UNSAFE for ch in link) or _has_invisible(link):
         return False
     try:
         got, want = urlsplit(link), urlsplit(base_url)
@@ -682,7 +689,13 @@ def _clean_text(value: object, limit: int) -> str:
     if not isinstance(value, str):
         return ""
     text = _CONTROL_CHARS.sub(" ", _plain(value[: limit * 20]))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")  # LC-T037-1 (b)
     return " ".join(text.split())[:limit].rstrip()
+
+
+def _has_invisible(text: str) -> bool:
+    """Có ký tự vô hình loại Cf (U+200B rộng 0, U+202E đảo chiều, BOM, gạch nối mềm…)."""
+    return any(unicodedata.category(ch) == "Cf" for ch in text)
 
 
 def _plain(text: str) -> str:
