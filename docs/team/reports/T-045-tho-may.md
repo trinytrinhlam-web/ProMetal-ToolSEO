@@ -58,7 +58,7 @@ tuyến tính với đầu vào xấu cỡ 1 MB.
 
 ```
 $ uv run pytest            (commit 9782dc0)
-<điền ở dưới: mục "Kết quả chạy cuối">
+5390 passed, 10 skipped, 23 xfailed, 1 warning in 475.05s (0:07:55)
 
 $ uv run ruff check .
 All checks passed!
@@ -69,7 +69,7 @@ $ uv run pytest -q tests/test_profile_tag_t045.py tests/test_soi_loi_t043.py tes
 572 passed in 28.45s
 ```
 
-Lần chạy toàn bộ trước đó (commit `d8e2dc1`, đủ mọi test; sau đó chỉ thêm docstring và bộ nhớ
+Lần chạy toàn bộ trước đó (commit `d8e2dc1`; sau đó chỉ thêm docstring và bộ nhớ
 đệm): `5390 passed, 10 skipped, 23 xfailed, 1 warning in 528.24s`. Cảnh báo là của pydantic trong
 test lớp AI, có từ trước.
 
