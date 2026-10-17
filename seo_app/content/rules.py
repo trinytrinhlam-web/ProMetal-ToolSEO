@@ -105,7 +105,8 @@ def confirmed_profile(text: str) -> str:
     block: list[str] = []
     blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
     hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
-    pending: tuple[str, int] | None = None  # tiêu đề có nửa nhãn ở cuối, chờ dòng kế
+    # Tiêu đề có nửa nhãn ở cuối, chờ dòng kế: (dòng, số «#», đã nằm trong khối đang mở chưa).
+    pending: tuple[str, int, bool] | None = None
     pending_blanks: list[str] = []  # dòng trống giữa tiêu đề chờ và dòng kế (SL-T032-4)
     block_tagged = False  # khối đang mở đã biết là có nhãn (thêm dòng vẫn còn nhãn)
 
@@ -135,25 +136,36 @@ def confirmed_profile(text: str) -> str:
         indented = bool(stripped) and visible[0].isspace()
         heading = bool(stripped) and not indented and stripped.startswith("#")
         level = len(stripped) - len(stripped.lstrip("#"))
+        # Dòng có thể mở mục: tiêu đề không thụt lề, hoặc tiêu đề thật lỡ thụt lề (SL-T032-2).
+        heading_like = heading or (indented and _REAL_HEADING.match(stripped) is not None)
         if pending is not None:
             if not stripped:
                 pending_blanks.append(line)  # nửa sau của nhãn có thể nằm sau dòng trống
                 continue
-            head, head_level = pending
+            head, head_level, head_in_block = pending
             pending = None
             joined = _is_unconfirmed(f"{head} {line}")
-            if not joined:
-                kept.append(head)
-                kept.extend(pending_blanks)
-            pending_blanks.clear()
             if joined:
+                if head_in_block:
+                    # Khối chứa tiêu đề chờ, và tiêu đề đó cùng dòng này thành nhãn: bỏ cả khối.
+                    block_tagged = True
+                    close_block()
+                pending_blanks.clear()
                 # Dòng này (nửa sau của nhãn) bị giấu cùng mục. Bỏ qua luôn, kể cả khi nó trông
                 # như tiêu đề cùng cấp («## 7 [CẦN XÁC» rồi «## NHẬN]»): nó là một phần của nhãn,
                 # không được kết thúc mục đang giấu (SL-T043-2).
-                hidden_level = head_level
+                hidden_level = _tagged_heading_level(line, heading_like, level, head_level)
                 continue
+            if head_in_block:
+                # Tiêu đề chờ đã nằm trong khối: dòng trống sau nó xử lý như sau dòng thường.
+                blanks.extend(pending_blanks)
+            else:
+                kept.append(head)
+                kept.extend(pending_blanks)
+            pending_blanks.clear()
         if hidden_level:
             if not heading or level > hidden_level or not _REAL_HEADING.match(stripped):
+                hidden_level = _tagged_heading_level(line, heading_like, level, hidden_level)
                 continue
             hidden_level = 0
         if not stripped:
@@ -162,22 +174,26 @@ def confirmed_profile(text: str) -> str:
             else:
                 kept.append(line)
             continue
+        join_block = False  # tiêu đề thụt lề vẫn nằm trong khối trước (không tách khối)
         if indented and _REAL_HEADING.match(stripped):
+            prev_half = bool(block) and _ends_with_partial_tag(block[-1])
             if _is_unconfirmed(line):
-                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2).
+                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2). Dòng trước còn
+                # nửa nhãn thì dòng này có thể là nửa sau của nhãn đó: giấu luôn khối trước.
                 heading = True
-            elif _ends_with_partial_tag(line) and not (
-                block and (_ends_with_partial_tag(block[-1]) or block_is_tagged())
-            ):
+                join_block = prev_half
+            elif _ends_with_partial_tag(line):
                 # Tiêu đề lỡ thụt lề có nửa nhãn ở cuối: chờ dòng kế như tiêu đề thường
-                # (SL-T032-5). Dòng trước còn nửa nhãn thì dòng này có thể là nửa sau của nhãn
-                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt. Khối
-                # trước đã có nhãn thì cũng không tách: tách ra thì các dòng thụt lề phía sau
-                # (vẫn thuộc ý có nhãn) thành khối mới không nhãn và tới AI (LC-T043-1).
+                # (SL-T032-5). Nhưng không tách khối khi dòng trước còn nửa nhãn (dòng này có
+                # thể là nửa sau của nhãn đó, tách ra thì khối trước lọt) hay khối trước đã có
+                # nhãn (tách ra thì các dòng thụt lề phía sau, vẫn thuộc ý có nhãn, thành khối
+                # mới không nhãn và tới AI: LC-T043-1). Khi đó dòng này vừa nằm trong khối, vừa
+                # chờ dòng kế.
                 heading = True
+                join_block = prev_half or block_is_tagged()
         if blanks and not indented:
             close_block()
-        if heading or (not indented and _BULLET.match(stripped)):
+        if (heading and not join_block) or (not indented and _BULLET.match(stripped)):
             close_block()
         block.extend(blanks)
         blanks.clear()
@@ -185,7 +201,9 @@ def confirmed_profile(text: str) -> str:
             if _is_unconfirmed(line):
                 hidden_level = level
             elif _ends_with_partial_tag(line):
-                pending = (line, level)  # SL-T032-3
+                if join_block:
+                    block.append(line)
+                pending = (line, level, join_block)  # SL-T032-3
                 continue
             block.append(line)
             close_block()
@@ -194,6 +212,25 @@ def confirmed_profile(text: str) -> str:
     # Hết file mà tiêu đề còn nửa nhãn: an toàn khi nghi ngờ, bỏ tiêu đề đó.
     close_block()
     return "\n".join(kept).strip()
+
+
+def _tagged_heading_level(line: str, heading_like: bool, level: int, hidden_level: int) -> int:
+    """Mức giấu mới khi gặp ``line`` lúc đang giấu mục cấp ``hidden_level``.
+
+    Dòng có thể mở mục (tiêu đề không thụt lề, hoặc tiêu đề thật lỡ thụt lề) mà ít «#» hơn
+    (cấp cao hơn) và chính nó có nhãn hay nửa nhãn ở cuối thì phần giấu mở rộng tới cấp của
+    nó, như khi gặp nó lúc không giấu. Không vậy thì nhãn của nó bị nuốt cùng mục đang giấu và
+    mục của nó lọt (ví dụ «#x [CẦN XÁC NHẬN]» hay «  ## [CẦN XÁC NHẬN]» không kết thúc mục đang
+    giấu). Nửa nhãn cũng tính, vì không thể chờ dòng kế cho một dòng đã bị giấu: an toàn khi
+    nghi ngờ.
+    """
+    if (
+        heading_like
+        and level < hidden_level
+        and (_is_unconfirmed(line) or _ends_with_partial_tag(line))
+    ):
+        return level
+    return hidden_level
 
 
 def _visible(line: str) -> str:

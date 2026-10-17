@@ -49,9 +49,25 @@ def test_lc_t043_1_untagged_item_half_heading_not_joined_kept():
 
 
 def test_lc_t043_1_tagged_item_then_indented_half_heading_completed():
-    # Dòng tiêu đề thụt lề nối vào ý có nhãn; dòng kế hoàn thành nhãn của nó cũng nằm trong ý.
-    text = "- giá [CẦN XÁC NHẬN]\n  ## 7 [CẦN XÁC\n  NHẬN]\n  BIMAT\n- ok"
-    assert confirmed_profile(text) == "- ok"
+    # Dòng tiêu đề thụt lề nằm trong ý có nhãn, dòng kế hoàn thành nhãn của nó: giấu cả ý lẫn
+    # mục của tiêu đề đó (như ``main`` làm với tiêu đề thụt lề ghép được nhãn, SL-T032-5).
+    text = "- giá [CẦN XÁC NHẬN]\n  ## 7 [CẦN XÁC\n  NHẬN]\n  BIMAT\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
+
+
+@pytest.mark.parametrize("rest", ["NHẬN] lý do", "  NHẬN]", "\n\nNHẬN]"])
+def test_lc_t043_1_tagged_item_half_heading_still_hides_its_section(rest):
+    # Ca fuzz tìm ra khi sửa LC-T043-1: dòng «  ## … (» trong ý có nhãn vẫn phải chờ dòng kế
+    # như ở ``main``; ghép được nhãn thì mục của nó bị giấu.
+    text = f"- a [CẦN XÁC NHẬN]\n  ## 7 ghi chú [CẦN XÁC\n{rest}\n- bí mật\n### 7.1\n- bí mật\n## 8"
+    assert confirmed_profile(text) == "## 8"
+
+
+def test_lc_t043_1_indented_tagged_heading_after_half_tag_hides_previous_item():
+    # Dòng trước còn nửa nhãn, tiêu đề thụt lề có nhãn: dòng này có thể là nửa sau của nhãn
+    # dòng trước, nên giấu cả ý trước (an toàn khi nghi ngờ) lẫn mục.
+    text = "- BIMAT [⚠ CẦN\n  ## 7 [❗❗❗ **CẦN XÁC NHẬN**]\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
 
 
 def test_lc_t043_1_linear_on_long_tagged_item():
@@ -193,3 +209,67 @@ def test_sl_t043_1_plain_sentences_still_kept(line):
 )
 def test_sl_t043_1_unbounded_symbols_still_linear(make):
     assert_scales_linearly(confirmed_profile, make, label="SL-T043-1")
+
+
+# --- Ca fuzz tìm ra khi so với bộ lọc trước T-045 (không được lùi) ---------------------------
+
+
+@pytest.mark.parametrize(
+    "inner",
+    [
+        "##x [CẦN XÁC NHẬN] ghi chú",  # «##x» không phải tiêu đề thật, không kết thúc mục
+        "  ## [CẦN XÁC NHẬN] thụt lề",  # tiêu đề thụt lề có nhãn (SL-T032-2)
+        "##x ghi chú [CẦN",  # nửa nhãn: không chờ được dòng kế của dòng đã giấu
+    ],
+)
+def test_tagged_higher_heading_inside_hidden_section_widens_hiding(inner):
+    # Đang giấu mục «###», gặp dòng cấp cao hơn («##») có nhãn của riêng nó: phần giấu mở rộng
+    # tới cấp đó, như khi gặp nó lúc không giấu.
+    text = (
+        f"## 6\n- A\n### 6.1 [CẦN XÁC NHẬN]\n- bí mật\n{inner}\n- bí mật\n"
+        "### 6.2\n- bí mật\n## 8\n- ok"
+    )
+    assert confirmed_profile(text) == "## 6\n- A\n## 8\n- ok"
+
+
+def test_tagged_level_one_line_inside_hidden_section_hides_to_next_level_one():
+    # «#x …» có cấp 1: giấu tới tiêu đề «#» kế tiếp, như ở ``main`` khi không đang giấu.
+    text = "### 6.1 [CẦN XÁC NHẬN]\n#x [CẦN XÁC NHẬN]\n## 8\n- bí mật\n# 9\n- ok"
+    assert confirmed_profile(text) == "# 9\n- ok"
+
+
+def test_joined_rest_heading_with_own_tag_widens_hiding():
+    # Dòng nửa sau của nhãn là tiêu đề cấp cao hơn và có nhãn riêng: giấu tới cấp của nó.
+    text = "## 7 [CẦN XÁC\n# NHẬN] [CẦN XÁC NHẬN]\n- bí mật\n## 8\n- bí mật\n# 9\n- ok"
+    assert confirmed_profile(text) == "# 9\n- ok"
+
+
+def test_hidden_section_without_tagged_heading_unchanged():
+    # Dòng «#x» không nhãn trong mục giấu: không đổi gì, mục kết thúc ở tiêu đề thật cùng cấp.
+    text = "### 6.1 [CẦN XÁC NHẬN]\n#x thường\n- bí mật\n### 6.2\n- ok"
+    assert confirmed_profile(text) == "### 6.2\n- ok"
+
+
+def test_indented_half_heading_after_half_line_also_waits_for_next_line():
+    # «  ## … (» sau dòng còn nửa nhãn: vừa nối vào khối trước, vừa chờ dòng kế; ghép được nhãn
+    # thì giấu cả khối trước lẫn mục của nó.
+    text = "- BIMAT [CẦN\n  ## b [CẦN\nXÁC NHẬN]\n- bí mật\n## 8\n- ok"
+    assert confirmed_profile(text) == "## 8\n- ok"
+
+
+def test_indented_half_heading_after_half_line_not_joined_kept():
+    text = "- trước [CẦN\n  ## b (\n- ok"
+    assert confirmed_profile(text) == text
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "### a [CAN XAC NHAN]\n" + "#x b [CAN\n  ## c [CAN XAC NHAN]\n" * 3000 * k,
+        lambda k: "- a [CAN\n" + "  ## b [CAN\n" * 5000 * k + "- ok",
+        lambda k: ("- a [CAN XAC NHAN]\n  ## b [CAN\nXAC NHAN]\n- x\n## 8\n") * 800 * k,
+    ],
+    ids=["hidden-many-tagged", "chained-half-headings", "in-block-pending"],
+)
+def test_new_paths_linear(make):
+    assert_scales_linearly(confirmed_profile, make, label="T-045")
