@@ -67,3 +67,9 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
      - ảnh: bỏ, hoặc chỉ giữ alt;
      - **không bao giờ** đổi sang HTML.
   3. Giao diện hiện `json_ld` bằng `st.code`, không dùng `unsafe_allow_html`.
+- 2026-10-17 (Chỉ Huy A): **Điều kiện của Lá Chắn T-036** (`docs/team/reports/T-036-la-chan.md`, ĐẠT CÓ ĐIỀU KIỆN). Phải xong trước khi T-042 gửi meta lên site, hạn chót cuối Giai đoạn 4. Phiếu này **được thêm ngoại lệ**: phần Thợ Máy được sửa `seo_app/onpage/meta.py` cho các điểm 1–3.
+  1. LC-T036-1: `normalize_meta` (`meta.py:74-85`) bỏ hoặc Chặn ký tự Cc (NUL, ESC…), Cs, Co, Cn, ở cả chữ AI lẫn chữ người dùng gõ; có test.
+  2. SL-T036-10: chỉ loại trừ đúng chữ "xu hướng", không nới các đơn vị khác.
+  3. SL-T036-12: giao diện không gọi `has_link` / `mentions_price` với chữ chưa cắt độ dài, hoặc cắt độ dài ngay trong hai hàm này.
+  4. SL-T036-11, LC-T036-2 (bộ dò link sót vài dạng tên miền lạ): ghi nhận, không bắt buộc.
+  5. Phần Họa Sĩ: hiện `FieldCheck.messages` (có tên bài lấy từ site) bằng chữ thuần hoặc đã escape, không dùng `unsafe_allow_html`.
