@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import re
 import tomllib
 import unicodedata
@@ -263,6 +264,9 @@ def _squeeze_gap(match: re.Match[str]) -> str:
     return "[" if "[" in run or "(" in run else " "
 
 
+# Bộ nhớ đệm nhỏ: cùng một dòng thường được xét vài lần liên tiếp (dòng đang xét, rồi là
+# «dòng trước» của dòng kế). Chuỗi Python nhớ sẵn mã băm nên tra lại gần như không tốn gì.
+@functools.lru_cache(maxsize=8)
 def _ends_with_partial_tag(text: str) -> bool:
     """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[**CẦN», «[» (nhãn bị xuống
     dòng).
@@ -287,6 +291,7 @@ def _ends_with_partial_tag(text: str) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=8)
 def _is_unconfirmed(text: str) -> bool:
     """Đoạn chữ có nhãn [CẦN XÁC NHẬN], kể cả khi gõ sai (xem ``_UNCONFIRMED_PATTERN``) hay có
     ký tự vô hình chen vào nhãn. Ký tự vô hình bị bỏ hẳn: mẫu nhãn cho phép giữa các chữ có hay
