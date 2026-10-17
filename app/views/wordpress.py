@@ -1,9 +1,15 @@
-"""Trang WordPress: kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp."""
+"""Trang WordPress: kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp.
+
+Mọi chữ lấy từ WordPress (tên site, tên tài khoản, vai trò, tiêu đề bài, địa chỉ ảnh, câu lỗi có
+chữ của máy chủ) đều qua ``escape_markdown`` trước khi vào Markdown: không thành link, không thành
+định dạng, không thành HTML (T-044, SL-T031-1). Bảng chuyên mục/thẻ dùng ``st.dataframe`` (chữ
+thường, không đọc Markdown). Trang này không dùng ``unsafe_allow_html``.
+"""
 
 import streamlit as st
 
 from seo_app.config import load_settings
-from seo_app.text import paragraphs_to_html
+from seo_app.text import escape_markdown, paragraphs_to_html
 from seo_app.wordpress import WordPressClient, WordPressError
 
 settings = load_settings()
@@ -14,12 +20,15 @@ try:
     client = WordPressClient.from_settings(settings)
 except WordPressError as exc:
     st.warning(
-        f"{exc}\n\nCách làm: xem mục **Kết nối WordPress** trong README.md. Điền xong thì tắt "
-        "app rồi mở lại."
+        f"{escape_markdown(str(exc))}\n\nCách làm: xem mục **Kết nối WordPress** trong "
+        "README.md. Điền xong thì tắt app rồi mở lại."
     )
     st.stop()
 
-st.caption(f"Website: {client.base_url} · Tài khoản: {settings.wordpress_username}")
+st.caption(
+    f"Website: {escape_markdown(client.base_url)} · "
+    f"Tài khoản: {escape_markdown(settings.wordpress_username)}"
+)
 if not client.uses_https:
     st.warning(
         "Địa chỉ website đang dùng http (không bảo mật). WordPress thường chỉ cho dùng "
@@ -34,13 +43,17 @@ if st.button("Kiểm tra kết nối"):
             st.session_state["wp_info"] = client.check_connection()
         except WordPressError as exc:
             st.session_state.pop("wp_info", None)
-            st.error(str(exc))
+            st.error(escape_markdown(str(exc)))
 
 info = st.session_state.get("wp_info")
 if info:
-    st.success(f"Kết nối thành công tới **{info.site_name}** ({info.site_url}).")
+    roles = ", ".join(escape_markdown(role) for role in info.roles) or "không rõ"
+    st.success(
+        f"Kết nối thành công tới **{escape_markdown(info.site_name)}** "
+        f"({escape_markdown(info.site_url)})."
+    )
     st.markdown(
-        f"- Tài khoản: **{info.user_name}** — vai trò: {', '.join(info.roles) or 'không rõ'}\n"
+        f"- Tài khoản: **{escape_markdown(info.user_name)}** — vai trò: {roles}\n"
         f"- Viết bài: {'✅' if info.can_edit_posts else '❌'} · "
         f"Đăng bài: {'✅' if info.can_publish_posts else '❌'} · "
         f"Tải ảnh lên: {'✅' if info.can_upload_files else '❌'}"
@@ -59,7 +72,7 @@ if st.button("Tải chuyên mục và thẻ"):
             st.session_state["wp_categories"] = client.list_categories()
             st.session_state["wp_tags"] = client.list_tags()
         except WordPressError as exc:
-            st.error(str(exc))
+            st.error(escape_markdown(str(exc)))
 
 categories = st.session_state.get("wp_categories")
 tags = st.session_state.get("wp_tags")
@@ -114,9 +127,9 @@ if submitted:
                 featured_media=media.id if media else None,
             )
     except WordPressError as exc:
-        st.error(str(exc))
+        st.error(escape_markdown(str(exc)))
     else:
-        st.success(f"Đã tạo bài nháp #{post.id}: **{post.title}**")
+        st.success(f"Đã tạo bài nháp #{post.id}: **{escape_markdown(post.title)}**")
         if media:
-            st.write(f"Ảnh đại diện đã tải lên: {media.source_url}")
+            st.markdown(f"Ảnh đại diện đã tải lên: {escape_markdown(media.source_url)}")
         st.link_button("Mở bài trong trang quản trị WordPress", post.edit_link)
