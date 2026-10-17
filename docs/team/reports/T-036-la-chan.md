@@ -1,7 +1,5 @@
 # Biên bản bảo mật T-036 · Meta title, meta description, slug
 
-> **ĐANG KIỂM, chưa kết luận chính thức**: còn chờ kết quả pytest toàn bộ.
-
 > **Lưu ý về model:** lần kiểm định này chạy **tạm bằng Opus 5.5** (`claude-opus-5-5`), vì tài khoản hiện không dùng được Fable 5.1. Chủ dự án đã duyệt cho Lá Chắn chạy tạm Opus 5.5. **Sau 01/11 phải kiểm lại bằng Fable** (Chỉ Huy giữ việc này trên bảng việc).
 
 | Mục | Nội dung |
@@ -82,7 +80,7 @@ Không phát hiện lỗi Nghiêm trọng, Cao hay Trung bình.
 | Soát lịch sử git | Nhánh: sạch. Toàn lịch sử: chỉ khóa giả có từ trước (xem S1) | Có |
 | pytest / ruff | `uv run ruff check .`: `All checks passed!`. pytest: xem dòng dưới | Có |
 
-pytest toàn bộ trên Windows: **đang chạy**, sẽ cập nhật.
+pytest toàn bộ trên Windows 11 (`uv run pytest`, worktree `wt-T-036`, HEAD `560fc3f` + biên bản): `5082 passed, 10 skipped, 26 xfailed, 1 warning in 588.54s`, **0 hỏng**. Cảnh báo duy nhất là cảnh báo pydantic có từ trước ở `tests/test_soi_loi_t028.py` (dữ liệu hỏng cố ý). 26 `xfail` gồm 4 của SL-T036-10/11/12 (`tests/test_soi_loi_t036.py:665`, `:681`, `:743`) và các `xfail` có từ trước của phiếu khác.
 
 ## Báo nhầm đã loại
 
