@@ -16,6 +16,7 @@ import threading
 from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -913,3 +914,146 @@ def test_r2_read_only_old_schema_cache_does_not_crash(read_only_cache):
     # ghi được) nên tạo lại sạch. Cả hai đều không chết.
     os.chmod(store.path, stat.S_IREAD | stat.S_IWRITE)
     assert index.cache_error or [i.id for i in store.load(BASE_URL).items] == [3]
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        " publish",
+        "publish ",
+        "PUBLISH",
+        "publish\x00",
+        "publіsh",
+        ["publish"],
+        None,
+        1,
+        True,
+        {"raw": "publish"},
+        "missing",
+    ],
+)
+def test_r2_status_allowlist_is_exact_publish(fake_wp, wp_client, status):
+    bad = raw_item(2, status=status)
+    if status == "missing":
+        del bad["status"]
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", [raw_item(1), bad])
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [dict(bad, id=3)])
+    assert [i.id for i in wp_client.list_published()] == [1]
+
+
+def test_r2_every_page_request_is_get_publish_on_fixed_paths(fake_wp, wp_client):
+    """Phân trang mới (``_get_pages_checked``): mọi trang đều GET, ``status=publish``, lọc lại."""
+
+    def posts(request):
+        page = int(query(request)["page"][0])
+        rows = [raw_item(page * 10 + 1)]
+        if page == 2:
+            rows += [
+                raw_item(90, status="future"),
+                raw_item(91, status="draft"),
+                raw_item(92, link="https://example.com.evil.tld/x/"),
+                raw_item(93, link="http://example.com/x/"),
+            ]
+        return 200, rows, {"X-WP-TotalPages": "3"}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", posts)
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", _paged(2))
+    items = wp_client.list_published()
+    assert [(i.type, i.id) for i in items] == [
+        ("post", 11),
+        ("post", 21),
+        ("post", 31),
+        ("page", 1),
+        ("page", 2),
+    ]
+    assert items.truncated is False
+    assert len(fake_wp.requests) == 5
+    paths = []
+    for request in fake_wp.requests:
+        assert request.method == "GET" and request.body is None
+        params = query(request)
+        assert params["status"] == ["publish"]
+        assert "context" not in params
+        assert params["_fields"] == [client_module._PUBLISHED_FIELDS]
+        paths.append((urlsplit(request.url).path, params["page"][0]))
+    assert paths == [
+        ("/wp-json/wp/v2/posts", "1"),
+        ("/wp-json/wp/v2/posts", "2"),
+        ("/wp-json/wp/v2/posts", "3"),
+        ("/wp-json/wp/v2/pages", "1"),
+        ("/wp-json/wp/v2/pages", "2"),
+    ]
+
+
+@pytest.mark.parametrize("failure", [500, 401, "not-a-list"])
+def test_r2_error_mid_pagination_keeps_old_cache(store, fake_wp, wp_client, failure):
+    """Trang 2 lỗi: không ghi danh sách dở vào cache, cache cũ còn nguyên, lỗi báo lên."""
+    store.refresh(Source([published(1)]))
+
+    def posts(request):
+        page = int(query(request)["page"][0])
+        if page == 2:
+            if failure == "not-a-list":
+                return 200, {"code": "x"}, {"X-WP-TotalPages": "3"}
+            return failure, {"code": "err", "message": "lỗi"}, {}
+        return 200, [raw_item(page * 10)], {"X-WP-TotalPages": "3"}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", posts)
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
+    later = datetime.now(TZ) + timedelta(hours=7)
+    with pytest.raises(client_module.WordPressError):
+        store.get(wp_client, now=later)
+    assert [i.id for i in store.load(BASE_URL).items] == [1]
+    assert store.reset_count == 0
+
+
+@pytest.mark.xfail(strict=True, reason="SL-T037-3: thiếu X-WP-TotalPages thì cắt lặng lẽ")
+@pytest.mark.parametrize("header", [None, "", "abc", "60.0"])
+def test_r2_missing_total_pages_header_is_not_silently_complete(fake_wp, wp_client, header):
+    """Proxy/plugin bỏ header ``X-WP-TotalPages`` mà trang đầy (100 mục): không được vừa thiếu
+    mục vừa báo ``truncated=False`` (Giai đoạn 5 sẽ báo nhầm "link hỏng")."""
+
+    def posts(request):
+        page = int(query(request)["page"][0])
+        rows = (
+            [raw_item((page - 1) * PER_PAGE + k + 1) for k in range(PER_PAGE)] if page <= 3 else []
+        )
+        return 200, rows, {} if header is None else {"X-WP-TotalPages": header}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", posts)
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
+    items = wp_client.list_published()
+    assert len(items) == 3 * PER_PAGE or items.truncated is True
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="chế độ chia sẻ file chỉ có trên Windows")
+@pytest.mark.xfail(strict=True, reason="SL-T037-4: không mở được (CANTOPEN) bị coi là hỏng")
+def test_r2_file_opened_by_other_program_share_delete_is_not_deleted(store):
+    """Chương trình khác mở file với chế độ chỉ cho xóa (không cho đọc/ghi): SQLite báo
+    "unable to open", ``_is_healthy`` coi là hỏng và xóa được file người khác đang mở."""
+    import ctypes
+    from ctypes import wintypes
+
+    store.refresh(Source([published(1)]))
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    generic_read, file_share_delete, open_existing = 0x80000000, 0x4, 3
+    handle = kernel32.CreateFileW(
+        str(store.path), generic_read, file_share_delete, None, open_existing, 0, None
+    )
+    assert handle not in (None, wintypes.HANDLE(-1).value), ctypes.get_last_error()
+    try:
+        store.load(BASE_URL)
+        store.refresh(Source([published(2)]))
+    finally:
+        kernel32.CloseHandle(handle)
+    assert store.reset_count == 0
