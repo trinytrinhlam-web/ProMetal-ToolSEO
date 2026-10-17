@@ -56,3 +56,9 @@ provider = "anthropic"
 model = "claude-opus-5-5"
 effort = "medium"
 max_tokens = 16000
+
+[tasks.meta]  # gợi ý meta title, meta description (bước SEO)
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "low"
+max_tokens = 2000
