@@ -96,8 +96,12 @@ def confirmed_profile(text: str) -> str:
     cùng cấp hoặc cao hơn (số dấu ``#`` bằng hoặc ít hơn; ``## 7. …`` giấu qua ``### 7.1`` tới
     ``## 8.``). Chỉ tiêu đề thật (``#`` rồi khoảng trắng) mới kết thúc mục đang giấu. Tiêu đề lỡ
     thụt lề mà có nhãn cũng giấu cả mục. Tiêu đề kết thúc bằng nửa nhãn (``## 7. … [CẦN XÁC``)
-    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4). Dòng ghi chú (ký tự nhìn
-    thấy đầu tiên là ``>``) luôn bị bỏ và không cắt khối.
+    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4); dòng kế đó là nửa sau của
+    nhãn nên bị giấu theo, kể cả khi trông như tiêu đề (``## NHẬN]``, SL-T043-2). Đang giấu mà
+    gặp tiêu đề cấp cao hơn có nhãn của riêng nó thì giấu tới cấp của tiêu đề đó. Tiêu đề lỡ
+    thụt lề có nửa nhãn nằm trong ý đã có nhãn thì không tách ý ra (LC-T043-1), nhưng vẫn chờ
+    dòng kế như tiêu đề. Dòng ghi chú (ký tự nhìn thấy đầu tiên là ``>``) luôn bị bỏ và không
+    cắt khối.
     Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc và nhãn (SL-024-2). Các dòng giữ lại
     y nguyên như trong file.
     """
