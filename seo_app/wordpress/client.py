@@ -38,6 +38,53 @@ _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
+# ---------------------------------------------------------------- đường REST được phép gọi
+# Danh sách CỐ ĐỊNH (T-042, điều kiện Lá Chắn T-037): ``_request`` so khớp toàn chuỗi cặp
+# (phương thức, đường) với danh sách này và từ chối mọi đường khác TRƯỚC KHI gửi. Site có những
+# đường nhạy cảm (``/code-snippets/v1`` chạy mã PHP, ``/prometal/v1/deploy-files``,
+# ``/prometal/v1/purge``): không bao giờ được gọi. Muốn thêm đường phải sửa ở đây và qua Lá Chắn.
+_ID = r"[1-9][0-9]{0,18}"  # mã bài/ảnh: số nguyên dương, chỉ chữ số ASCII
+# Ability ghi SEO của SiteSEO (T-033 mục 1.4), mở qua Abilities API của WordPress 6.9.
+SITESEO_ABILITY = "siteseo-posts/seo-data-update"
+SITESEO_ABILITY_PATH = f"/wp-abilities/v1/abilities/{SITESEO_ABILITY}"
+SITESEO_ABILITY_RUN_PATH = f"{SITESEO_ABILITY_PATH}/run"
+ALLOWED_ROUTES: tuple[tuple[str, str], ...] = (
+    ("GET", r"/"),  # kiểm tra REST API (check_connection)
+    ("GET", r"/wp/v2/users/me"),  # quyền của tài khoản
+    ("GET", r"/wp/v2/categories"),
+    ("GET", r"/wp/v2/tags"),
+    ("GET", r"/wp/v2/posts"),  # danh sách bài đã đăng (list_published)
+    ("GET", r"/wp/v2/pages"),
+    ("GET", rf"/wp/v2/posts/{_ID}"),  # kiểm bài còn là nháp trước khi ghi SEO
+    ("POST", r"/wp/v2/posts"),  # tạo nháp (create_draft)
+    ("POST", rf"/wp/v2/posts/{_ID}"),  # ảnh đại diện, meta SEO dự phòng (chỉ bài app tạo)
+    ("POST", r"/wp/v2/media"),
+    ("POST", rf"/wp/v2/media/{_ID}"),
+    ("GET", re.escape(SITESEO_ABILITY_PATH)),  # dò Abilities của SiteSEO đã bật chưa
+    ("POST", re.escape(SITESEO_ABILITY_RUN_PATH)),  # ghi SEO (chỉ bài app tạo)
+)
+_ALLOWED_ROUTES = tuple((method, re.compile(pattern)) for method, pattern in ALLOWED_ROUTES)
+# Chặn thêm (phòng khi ai đó nới biểu thức ở trên): đi ngược thư mục, mã hóa "%", "//", "\",
+# và các namespace nhạy cảm của site. So trên chữ thường.
+_FORBIDDEN_IN_PATH = ("..", "%", "//", "\\", "code-snippets", "prometal")
+
+
+def is_allowed_route(method: object, path: object) -> bool:
+    """``(method, path)`` có trong ``ALLOWED_ROUTES`` (so khớp toàn chuỗi, phân biệt hoa thường).
+
+    ``path`` là phần sau ``/wp-json``, không có ``?`` hay ``#`` (tham số đi qua ``params``).
+    """
+    if not isinstance(method, str) or not isinstance(path, str):
+        return False
+    lowered = path.lower()
+    if any(part in lowered for part in _FORBIDDEN_IN_PATH):
+        return False
+    return any(
+        method == allowed_method and pattern.fullmatch(path)
+        for allowed_method, pattern in _ALLOWED_ROUTES
+    )
+
+
 IMAGE_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -455,9 +502,20 @@ class WordPressClient:
         )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+        if not is_allowed_route(method, path):
+            # Từ chối TRƯỚC KHI gửi: không có request nào đi ra (T-042). Câu cố định, không
+            # chép đường bị từ chối.
+            raise WordPressError(
+                "Phần mềm chặn một lệnh gọi WordPress không có trong danh sách được phép. "
+                "Không có gì được gửi lên website."
+            )
         url = f"{self.base_url}/wp-json{path}"
         try:
-            response = self._session.request(method, url, timeout=self.timeout, **kwargs)
+            # Không đi theo chuyển hướng: máy chủ không được đưa lệnh gọi sang đường khác ngoài
+            # danh sách (ví dụ chuyển POST sang bài khác hay sang /code-snippets).
+            response = self._session.request(
+                method, url, timeout=self.timeout, allow_redirects=False, **kwargs
+            )
         except requests.exceptions.SSLError as exc:
             raise WordPressError(
                 "Lỗi chứng chỉ bảo mật (SSL) của website. Kiểm tra website có mở được bằng "
@@ -478,6 +536,13 @@ class WordPressClient:
                 f"Lỗi mạng khi gọi WordPress ({type(exc).__name__}). Kiểm tra WORDPRESS_URL "
                 "rồi thử lại."
             ) from exc
+        if 300 <= response.status_code < 400:
+            raise WordPressError(
+                "WordPress trả lời bằng một lệnh chuyển hướng sang địa chỉ khác; phần mềm không "
+                "đi theo. Kiểm tra WORDPRESS_URL trong .env có đúng địa chỉ website không (có "
+                "hay không có www, có https).",
+                status_code=response.status_code,
+            )
         if response.status_code >= 400:
             raise self._error_from(response)
         return response
