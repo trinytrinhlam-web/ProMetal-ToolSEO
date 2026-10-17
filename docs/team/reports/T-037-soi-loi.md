@@ -4,8 +4,8 @@
 |---|---|
 | Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 |
 | Phiếu | [T-037](../tickets/T-037-danh-sach-bai-da-dang-cache.md) |
-| Ngày nộp | 2026-10-16 |
-| Kết quả | Hoàn thành · **ĐẠT CÓ ĐIỀU KIỆN** |
+| Ngày nộp | 2026-10-16 (lượt 1) · 2026-10-17 (lượt 2) |
+| Kết quả | Lượt 1: **ĐẠT CÓ ĐIỀU KIỆN** · Lượt 2: **ĐẠT** (3 lỗi Thấp mới, không chặn) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -92,17 +92,104 @@ All checks passed!
 - Lá Chắn: xem mục 5 (test tên `publish`) và đề xuất danh sách đường gọi cố định của Thợ Máy cho T-042.
 - SL-T037-2: ghi vào phiếu Giai đoạn 5 (kiểm link hỏng).
 
-## Lượt 2 (2026-10-16) · **CHƯA XONG** (dừng theo yêu cầu bàn giao)
+## Lượt 2 (2026-10-16 → 2026-10-17) · **ĐẠT**
 
-Kiểm lại commit `1fd1415` của Thợ Máy. Đã thêm 26 test `test_r2_*` vào `tests/test_soi_loi_t037.py`, chạy riêng file này: **113 qua, 0 hỏng**. `uv run ruff check .`: sạch.
+Kiểm lại commit `1fd1415` của Thợ Máy (diff `git diff ac5ed8a 1fd1415 -- seo_app`). Phiên Soi Lỗi đầu (Chỉ Huy B) viết phần A rồi dừng ở `09069b4`; phiên sau (Chỉ Huy A) làm phần B, chạy toàn bộ trên Windows và kết luận.
 
-Đã kiểm (đều đạt):
-- **SL-T037-1:** khi file bị khóa và có giao dịch ghi dở (`-journal`), file và `-journal` **không bị xóa** (inode và nội dung giữ nguyên). `reset_count` = 0. `load` trả `None`. `refresh`/`get` vẫn trả danh sách, kèm `cache_error` "đang bận", không ném lỗi. Nhả khóa xong, cache cũ đọc lại bình thường và `refresh` ghi bình thường. File hỏng thật vẫn bị dọn như trước. Thân test `test_locked_file_is_busy_not_corrupt` không đổi, chỉ bỏ dòng `xfail`.
-- **SL-T037-2:** cờ `truncated` bật khi bài **hoặc** trang vượt `MAX_PAGES`, **không** bật khi đúng bằng `MAX_PAGES`. Số request luôn tối đa 2 × `MAX_PAGES`, chỉ `GET`. Cờ lưu vào cache rồi đọc lại đúng (cả `True` lẫn `False`). Cờ vẫn giữ khi không ghi được cache. Giá trị lạ (`"2"`, `"true"`, `""`, có khoảng trắng, `"yes"`…) hoặc thiếu thì cache bị coi là hỏng. Cache `SCHEMA_VERSION` 1 bị bỏ, tạo lại thành 2. Ghi chú: ghi tay số `1` vào cột `TEXT` thì SQLite tự đổi thành chuỗi `"1"`, đọc ra `True`; đây là đúng, không phải lỗi. Đã sửa test cũ `…cut_silently` thành `…cut_but_flagged`.
-- **Danh sách cho phép:** `PublishedList` là lớp con của `list`, chỉ thêm một thuộc tính dữ liệu `truncated` (mặc định `False`), không có hàm mới. Test cấp module vẫn chặn `publish_post`, `PublishNow`, `_publish_draft`, `PublishedWriter`.
-- Lưu ý cho phiếu sau: `list(items)` làm mất cờ `truncated`. Nơi dùng nên đọc `SiteIndex.truncated`, đừng tự chép danh sách.
+### Tóm tắt (cho chủ dự án)
 
-**Còn thiếu:**
-- Chưa chạy lại toàn bộ `uv run pytest` sau khi Thợ Máy gộp `main`. Thợ Máy báo 4.858 qua; Soi Lỗi chưa tự xác nhận.
-- Chưa có kết luận cuối. Theo phần đã kiểm thì nghiêng về **ĐẠT**, chờ kết quả chạy toàn bộ.
-- Chưa gửi tin cho Chỉ Huy B (theo yêu cầu dừng).
+Hai lỗi lượt 1 đã sửa đúng, kể cả trên Windows: file tạm đang bị chương trình khác mở thì để yên, không xóa; site quá dài thì có cờ báo "danh sách chưa đủ". Tìm thêm **3 lỗi mức Thấp**, không chặn gộp: cờ "chưa đủ" không bật nếu máy chủ giấu số trang; một kiểu mở file hiếm trên Windows vẫn làm file bị xóa; khi file bị khóa, app chờ tới khoảng 14 giây. Cả ba chỉ đụng tới file tạm trên máy, không đụng website.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t037.py` | Phần A (`09069b4`): 26 test `test_r2_*`, sửa `…cut_silently` thành `…cut_but_flagged`. Phần B (`17209ab`, `0f82302`): thêm 26 test (21 qua, 5 `xfail strict`: SL-T037-3 × 4, SL-T037-4 × 1) |
+| `docs/team/reports/T-037-soi-loi.md` | Mục này |
+
+Không sửa code ứng dụng.
+
+### Bằng chứng (Windows 11, Git Bash)
+
+```
+$ uv run pytest tests/test_soi_loi_t037.py tests/test_site_index.py -q   (trước phần B)
+167 passed, 1 skipped in 21.86s
+
+$ uv run pytest tests/test_soi_loi_t037.py -q   (sau phần B)
+134 passed, 5 xfailed in 16.73s
+
+$ uv run pytest
+4904 passed, 11 skipped, 21 xfailed, 1 warning in 468.38s (0:07:48)
+(0 hỏng, 0 lỗi; 21 xfail = 16 có từ trước + 5 của SL-T037-3/4)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+`1 skipped` của `tests/test_site_index.py` là test symlink (Windows không cho tạo symlink khi chưa bật Developer Mode), có từ lượt 1.
+
+### Đối chiếu việc được giao
+
+**A. Đã kiểm ở phiên trước (đều đạt, chạy lại trên Windows vẫn qua):**
+- **SL-T037-1:** file bị khóa (kết nối khác trong cùng tiến trình, có `-journal` giao dịch dở) không bị xóa, nội dung và `-journal` giữ nguyên, `reset_count` = 0; `load` trả `None`; `refresh`/`get` vẫn trả danh sách kèm `cache_error` "đang bận". Nhả khóa xong đọc và ghi lại bình thường. File hỏng thật vẫn bị dọn.
+- **SL-T037-2:** cờ `truncated` bật khi bài **hoặc** trang vượt `MAX_PAGES`, không bật khi đúng bằng. Tối đa 2 × `MAX_PAGES` request, chỉ `GET`. Cờ qua cache đúng (`True`/`False`), giữ cả khi không ghi được cache. Giá trị lạ hoặc thiếu = cache hỏng. Cache `SCHEMA_VERSION` 1 bị bỏ, tạo lại thành 2.
+- **Danh sách cho phép:** `PublishedList` là `list` có thêm đúng một thuộc tính dữ liệu `truncated`, không có hàm mới. Test cấp module vẫn chặn `publish_post`, `PublishNow`, `_publish_draft`, `PublishedWriter`.
+
+**B. Kiểm thêm ở phiên này:**
+
+| Tình huống | Kết quả |
+|---|---|
+| Khóa bởi **tiến trình khác thật** (`subprocess` chạy `sqlite3`, `BEGIN EXCLUSIVE` + `DELETE`, có `-journal`) | Đạt: file và `-journal` giữ nguyên từng byte; `get` trả danh sách mới kèm "đang bận"; nhả khóa thì đọc lại bài cũ; `reset_count` = 0 |
+| Khóa ở **luồng khác**, ngắn hơn timeout (0,3 giây) | Đạt: chờ rồi đọc được, không báo bận, không xóa |
+| Khóa ở luồng khác, lâu hơn timeout | Đạt: `load` = `None`, `is_stale` = `True`, `refresh` báo bận, `save` ném `SiteIndexError` "bận" |
+| Khóa bị chiếm **ngay sau** bước kiểm file (khe giữa `_prepare` và lúc đọc) | Đạt: lỗi bận đổi thành `SiteIndexError`, không rơi vào nhánh "hỏng", không xóa |
+| File **chỉ đọc thật** (Windows: thuộc tính Read-only) | Đạt: đọc được cache; `refresh` trả danh sách mới kèm `cache_error`; file không bị xóa |
+| Chỉ đọc + cache cũ (schema 1) | Đạt: không chết; Windows không xóa được nên báo không ghi được, Mac/Linux tạo lại sạch |
+| Windows: chương trình khác mở file, chia sẻ "không cho gì" / "chỉ đọc" / "đọc-ghi-xóa" | Đạt: không xóa ("không cho gì" → báo không mở được; "chỉ đọc" → SQLite tự mở chế độ chỉ đọc). Đo tay bằng `CreateFileW` |
+| Windows: chương trình khác mở file, chia sẻ **chỉ cho xóa** | **Lỗi SL-T037-4** |
+| Trạng thái chỉ nhận đúng `"publish"`: thử `" publish"`, `"publish "`, `"PUBLISH"`, `"publish\x00"`, `"publіsh"` (chữ `і` Kirin), `["publish"]`, `None`, `1`, `True`, `{"raw": "publish"}`, thiếu khóa | Đạt: tất cả bị bỏ, ở cả bài và trang |
+| Phân trang mới (`_get_pages_checked`), 3 trang bài + 2 trang trang | Đạt: đúng 5 request, mọi request `GET`, không body, `status=publish`, đúng `_fields`, không `context=edit`, chỉ `/wp/v2/posts` và `/wp/v2/pages`; mục `future`/`draft`/sai tên miền/`http://` ở trang 2 bị bỏ |
+| Trang 2 lỗi 500 / 401 / không phải danh sách, khi cache đã cũ | Đạt: `get` ném `WordPressError`, **không** ghi danh sách dở, cache cũ nguyên vẹn |
+| Máy chủ không gửi / gửi sai `X-WP-TotalPages` | **Lỗi SL-T037-3** |
+| Thời gian chờ khi file bị khóa | **Lỗi SL-T037-5** |
+
+### Lỗi tìm thấy (lượt 2)
+
+#### SL-T037-3 · Thấp · Thiếu header số trang thì danh sách bị cắt mà cờ `truncated` vẫn `False`
+
+- **Tái hiện:** `test_r2_missing_total_pages_header_is_not_silently_complete` (`xfail strict`, 4 trường hợp). Site có 300 bài (3 trang đầy, mỗi trang 100); máy chủ không gửi `X-WP-TotalPages`, hoặc gửi `""`, `"abc"`, `"60.0"`.
+- **Mong đợi:** đọc tiếp tới trang rỗng (trong giới hạn `MAX_PAGES`), hoặc bật `truncated`. Không được vừa thiếu mục vừa báo "đủ".
+- **Thực tế:** `_get_pages_checked` coi header thiếu/sai là 1 trang → đọc 100 mục rồi dừng, `truncated = False`. Đo tay thêm `"-5"`, `"0"`, `"1e2"`: cũng vậy.
+- **Khi nào xảy ra:** plugin bảo mật hoặc proxy/CDN bỏ các header `X-WP-*`. Site hiện 29 URL (< 100) nên **chưa** ảnh hưởng.
+- **Hậu quả:** Giai đoạn 5 tin cờ `truncated` sẽ báo nhầm "link hỏng"; T-036/T-039 bỏ sót bài.
+- **Gợi ý sửa:** header thiếu/không đọc được mà trang trả đủ `PER_PAGE` mục thì đọc tiếp trang sau (dừng ở trang rỗng; tới `MAX_PAGES` mà vẫn đầy thì bật `truncated`); tối thiểu là bật `truncated`. `_get_all_pages` (chuyên mục/thẻ) có cùng hành vi từ trước, ngoài phạm vi phiếu.
+
+#### SL-T037-4 · Thấp · Windows: file đang được chương trình khác mở (chế độ "chỉ cho xóa") vẫn bị xóa
+
+- **Tái hiện:** `test_r2_file_opened_by_other_program_share_delete_is_not_deleted` (chỉ chạy trên Windows, `xfail strict`). Mở file cache bằng `CreateFileW(GENERIC_READ, FILE_SHARE_DELETE)` rồi gọi `load` và `refresh`.
+- **Mong đợi:** file đang được mở thì để yên (như SL-T037-1).
+- **Thực tế:** SQLite không mở được (`unable to open database file`, không có chữ `locked`/`busy`) → `_is_healthy` trả `False` → `_reset` xóa được file (Windows cho xóa vì có `FILE_SHARE_DELETE`) → `reset_count` = 1, tạo file mới.
+- **Khi nào xảy ra:** hiếm; phần lớn phần mềm diệt virus/sao lưu mở với "đọc-ghi-xóa" (đã thử, đạt).
+- **Hậu quả:** chỉ mất file tạm, tải lại được.
+- **Gợi ý sửa:** đảo cách kiểm trong `_is_healthy`: chỉ coi là hỏng khi chắc chắn hỏng (`sqlite_errorname` là `SQLITE_NOTADB`/`SQLITE_CORRUPT`, `quick_check` khác `ok`, hoặc sai cột); lỗi khác (`SQLITE_CANTOPEN`, `SQLITE_IOERR`, `SQLITE_BUSY`, `SQLITE_LOCKED`) thì báo `SiteIndexError`, không xóa. Không gấp.
+
+#### SL-T037-5 · Thấp (đề xuất) · File bị khóa làm `get()` treo khoảng 14 giây
+
+- **Tái hiện (đo tay, Windows, timeout mặc định 5 giây, tiến trình khác giữ `BEGIN EXCLUSIVE`):** `load` mất **7,05 giây**; `get` mất **14,17 giây** rồi trả đúng danh sách kèm "đang bận". Cách đo: tiến trình con giữ khóa như `_HOLDER_SCRIPT` trong file test, gọi `store.load(...)` và `store.get(...)`, đo bằng `time.monotonic()`.
+- **Nguyên nhân:** `get` chờ hết timeout ở `load` (`_is_healthy`), rồi `refresh` → `save` → `_prepare` → `_is_healthy` chờ thêm lần nữa. Trên Windows mỗi lần chờ khoảng 7 giây.
+- **Hậu quả:** giao diện đứng khoảng 14 giây mỗi lần gọi `get` khi người dùng đang mở file bằng DB Browser; mỗi lần còn tải lại danh sách từ site.
+- **Gợi ý:** `load` đã báo bận thì `refresh` bỏ bước ghi (trả `cache_error` ngay), hoặc giảm timeout của `_is_healthy`. Không viết test (đo thời gian dễ chập chờn); ghi lại để T-036/T-039 biết khi gọi `get` lúc vẽ trang.
+
+### Rủi ro và lưu ý cho phiếu sau
+
+- `list(items)` làm mất cờ `truncated`; nơi dùng nên đọc `SiteIndex.truncated`.
+- Câu báo khi file **chỉ đọc** là "bị lỗi… Thử tải lại", trong khi tải lại không giúp được; nên nói "không ghi được". Khi file bị chương trình khác giữ hẳn, câu báo chép `strerror` tiếng Anh của Windows ("The process cannot access the file…"): không lộ bí mật, chỉ lẫn tiếng Anh.
+- `PublishedSource.list_published` vẫn khai báo trả `list[PublishedItem]`; `refresh` đọc cờ bằng `getattr`, nên nguồn trả `list` thường luôn ra `truncated = False`. Nguồn mới muốn báo cắt phải trả `PublishedList`.
+
+### Kết luận lượt 2
+
+**ĐẠT.** SL-T037-1 và SL-T037-2 sửa đúng, có test, chạy đúng trên Windows với khóa từ tiến trình và luồng khác. Ba lỗi mới đều Thấp, chỉ đụng file tạm, không chặn gộp:
+- SL-T037-3: nên sửa trước Giai đoạn 5 (kiểm link hỏng); ghi vào phiếu đó hoặc T-042.
+- SL-T037-4, SL-T037-5: để T-042 hoặc phiếu dọn lỗi Thấp.
+
+Chuyển Lá Chắn (W2, W4, F1, D2).
