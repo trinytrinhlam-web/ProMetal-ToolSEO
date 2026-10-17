@@ -53,7 +53,7 @@ _Mục mới nhất ở trên cùng._
 
 ### 2026-10-17 12:22 · Chỉ Huy A
 
-- Khoảng 11:15 → 12:20 tài khoản A chạm giới hạn sử dụng 5 tiếng. Ba agent (Thợ Máy T-042, Soi Lỗi T-044, Thợ Máy T-045) dừng giữa chừng; phần lớn việc đã đẩy lên nhánh (`07c8626`, `3617509`, `d8e2dc1`), còn vài file sửa dở trong worktree. 12:22 đã gọi cả ba làm tiếp. Chỉ Huy B không có commit nào trong lúc dừng.
+- Sau 08:30 (giờ commit cuối của agent) tài khoản A chạm giới hạn sử dụng 5 tiếng, mở lại 12:20. Ba agent (Thợ Máy T-042, Soi Lỗi T-044, Thợ Máy T-045) dừng giữa chừng; phần lớn việc đã đẩy lên nhánh (`07c8626`, `3617509`, `d8e2dc1`), còn vài file sửa dở trong worktree. 12:22 đã gọi cả ba làm tiếp. Chỉ Huy B không có commit nào trong lúc dừng.
 
 ### 2026-10-17 07:31 · Chỉ Huy A tiếp quản từ Chỉ Huy B, không có bàn giao
 
