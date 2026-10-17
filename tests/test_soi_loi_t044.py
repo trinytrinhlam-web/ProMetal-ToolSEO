@@ -299,10 +299,7 @@ def test_upload_error_with_hostile_filename_is_plain(project_root, fake_wp, monk
     assert not [r for r in fake_wp.requests if "/wp/v2/" in r.url]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T044-1: 'home' không phải chuỗi thì escape_markdown(info.site_url) làm trang hỏng",
-)
+# SL-T044-1: đã sửa ở T-044 lượt 2 (Họa Sĩ), bỏ xfail.
 @pytest.mark.parametrize("home", [123, ["https://evil.example"]], ids=["so", "danh-sach"])
 def test_non_string_site_url_does_not_crash_page(project_root, fake_wp, home):
     fake_wp.on("GET", "/wp-json/", {**ROOT, "home": home})
@@ -313,10 +310,7 @@ def test_non_string_site_url_does_not_crash_page(project_root, fake_wp, home):
     assert_page_plain(at)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T044-2: 'source_url' null thì escape_markdown(media.source_url) làm trang hỏng",
-)
+# SL-T044-2: đã sửa ở T-044 lượt 2 (Họa Sĩ), bỏ xfail.
 def test_null_source_url_does_not_crash_page(project_root, fake_wp, monkeypatch):
     media = {"id": 9, "source_url": None}
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, media, {}))

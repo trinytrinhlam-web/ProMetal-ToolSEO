@@ -186,6 +186,28 @@ def test_wordpress_error_with_site_text_is_plain(project_root, monkeypatch, acti
 
 
 @pytest.mark.usefixtures("wp_env")
+def test_wrong_types_from_wordpress_do_not_crash_page(project_root, monkeypatch):
+    # Lượt 2 (SL-T044-1, SL-T044-2): mọi trường lấy từ WordPress sai kiểu vẫn hiện được.
+    info = ConnectionInfo(None, ["www.evil.example"], 7, (1, None, "editor"), True, True, True)
+    monkeypatch.setattr(WordPressClient, "check_connection", lambda self: info)
+
+    def fake_create_draft(self, title, content, **kwargs):
+        return Post(42, "draft", None, "", self.edit_link(42))
+
+    monkeypatch.setattr(WordPressClient, "create_draft", fake_create_draft)
+    at = open_wordpress_page(project_root)
+    button(at, "Kiểm tra kết nối").click().run()
+    next(t for t in at.text_input if t.label == "Tiêu đề").input("Bài thử")
+    button(at, "Tạo bài nháp").click().run()
+
+    assert_no_links(at)
+    shown = "\n".join(seen(el.value) for el in markdown_elements(at))
+    assert "(['www.evil.example'])" in shown
+    assert "Tài khoản: **7** — vai trò: 1, , editor" in shown
+    assert any(b.label == "Mở bài trong trang quản trị WordPress" for b in at.get("link_button"))
+
+
+@pytest.mark.usefixtures("wp_env")
 def test_bad_wordpress_url_message_is_plain(project_root, monkeypatch):
     # Câu lỗi cấu hình chép lại WORDPRESS_URL: địa chỉ đó cũng không thành link.
     monkeypatch.setenv("WORDPRESS_URL", "www.evil.example")
