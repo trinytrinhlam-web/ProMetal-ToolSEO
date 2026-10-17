@@ -28,7 +28,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, nhận lại lúc 2026-10-16 13:10 (chủ dự án trả lời câu hỏi và nói "Tiếp đi").
+**Chỉ Huy A**, từ 2026-10-17 07:31 (chủ dự án yêu cầu A làm tiếp việc dở của B). Tiếp quản **không có bàn giao**: B dừng sau 2026-10-16 14:19, bảng "Đang làm dở" bên dưới vẫn là bảng của B.
 
 ## Đang làm dở
 
@@ -49,6 +49,15 @@ Chỉ Huy B, cập nhật 2026-10-16 14:19.
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-17 07:31 · Chỉ Huy A tiếp quản từ Chỉ Huy B, không có bàn giao
+
+- `git pull` về `main` = `4b910b1`. B vẫn ghi giữ quyền từ 16/10 13:10, bảng "Đang làm dở" cập nhật 16/10 14:19, không có mục trả quyền. B ghi giới hạn 7 ngày của tài khoản B mở lại khoảng 20/10 01:00.
+- Đối chiếu nhánh với bảng của B:
+  - `team/T-036` (`560fc3f`): Soi Lỗi lượt 2 đạt; **chưa có biên bản Lá Chắn** trên nhánh. Lá Chắn của B coi như dừng, giao lại từ đầu.
+  - `team/T-037` (`09069b4`): Soi Lỗi lượt 2 **dở** ("CHƯA XONG: test SL-T037-1/2 và allowlist, dừng để bàn giao"). Giao Soi Lỗi làm nốt.
+  - `team/T-046`: không có commit nào ngoài `main`; Thợ Máy của B chưa đẩy gì. Giao lại.
+  - Đã gộp hết, xóa được: `team/T-019`, `T-025`, `T-031`, `T-032`, `T-033`, `T-034`, `T-035`, `T-038`, `T-043`.
 
 ### 2026-10-16 14:16 · Chỉ Huy B
 
