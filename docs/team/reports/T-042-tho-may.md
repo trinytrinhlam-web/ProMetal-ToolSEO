@@ -114,3 +114,113 @@ $ uv run pytest tests/test_site_index.py tests/test_soi_loi_t037.py -q   (sau kh
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-19) · sửa theo Soi Lỗi (`T-042-soi-loi.md`) và LC-T044-1
+
+### Tóm tắt (cho chủ dự án)
+
+Sửa đủ 7 lỗi Soi Lỗi tìm thấy và 1 lỗi Lá Chắn chuyển sang từ T-044:
+- Danh sách bài đã đăng không còn bị thiếu lặng lẽ khi website có bộ đệm trang.
+- Ảnh đại diện cũng phải hỏi lại website "bài còn là nháp không" trước khi ghi.
+- Phần mềm chỉ báo "Đã ghi SEO" khi SiteSEO xác nhận rõ. Tôi đã đọc mã nguồn SiteSEO 1.4.2 để biết đúng khuôn câu trả lời.
+- Website trả dữ liệu lạ thì app báo câu tiếng Việt, không còn hiện màn hình lỗi kỹ thuật.
+
+### Bước 0
+
+`git pull` (đã mới nhất, `5df3266`), `git merge origin/main` (merge, không rebase) → `6eac892`, `uv sync`, push.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/wordpress/client.py` | Toàn bộ sửa mục 1–8 và phần "nên làm" (chi tiết ở bảng đối chiếu) |
+| `tests/test_wordpress_round2_t042.py` | Mới, 138 test: SL-T042-2…7, LC-T044-1, khe kiểm-rồi-ghi |
+| `tests/test_wordpress_paging_t042.py` | Thêm 3 test SL-T042-1 |
+| `tests/test_soi_loi_t042.py`, `tests/test_soi_loi_t042_paging_cache.py` | **Chỉ bỏ dấu `xfail`** (danh sách dưới) |
+| `tests/test_wordpress_client.py` (`test_set_featured_image`), `tests/test_phase2_fixes.py` (`test_featured_image_allowed_only_for_own_draft`), `tests/test_safety.py` (`test_every_write_request_to_posts_never_publishes`) | Mỗi test **thêm đúng 1 dòng** `fake_wp.on("GET", "/wp-json/wp/v2/posts/<id>", {"id": …, "status": "draft"})`. Lý do: mục 3 bắt `set_featured_image` hỏi lại site trước khi ghi, mà site giả của các test cũ không có đường đó (trả 404). Không đổi điều gì các test này kiểm |
+| `tests/test_wordpress_seo_meta_t042.py`, `tests/test_wordpress_routes_t042.py` (test của tôi) | Theo thứ tự mới (dò Abilities trước): đổi 1 dòng kiểm "không gọi ability" thành "không gọi lệnh ghi `run`". Thêm route `GET` bài nháp. Bỏ trường hợp `[]` ở test meta: trường hợp này giờ báo `error` thay vì `unavailable`, đã có test riêng ở file lượt 2 |
+
+**Các `xfail` đã bỏ** (36 trường hợp, 8 dấu):
+- `tests/test_soi_loi_t042_paging_cache.py`:
+  - `test_valid_header_but_server_ignores_page_is_not_silently_complete` (SL-T042-1, 3 trường hợp)
+  - `test_site_link_refuses_ignorable_not_cf` (SL-T042-7, 7 trường hợp)
+  - `test_clean_text_drops_ignorable_not_cf` (SL-T042-7, 7 trường hợp)
+- `tests/test_soi_loi_t042.py`:
+  - `test_create_draft_odd_id_answer_is_not_recorded` (SL-T042-4, 5 trường hợp)
+  - `test_featured_image_is_not_set_on_post_published_after_creation` (SL-T042-5, 1 trường hợp)
+  - `test_base_url_cannot_turn_allowed_route_into_another` (SL-T042-3, 3 trường hợp)
+  - `test_legacy_entities_without_semicolon_are_blocked` (SL-T042-2, 4 trường hợp)
+  - `test_ability_answer_without_confirmation_is_not_written` (SL-T042-6, 6 trường hợp)
+
+Hai file test của Soi Lỗi giờ không còn `xfail` nào.
+
+### Đối chiếu mục 1–8
+
+1. **SL-T042-1** (Trung bình): `_get_pages_checked` so `data == previous` **bất kể có header hay không**. Trùng thì dừng và bật `truncated`. Thêm: lỗi `rest_post_invalid_page_number` chỉ được coi là "đã hết" khi trang trước **thiếu** header; header nói còn trang mà máy chủ báo quá số trang thì báo lỗi. `_get_all_pages` dùng chung hàm này. Test: `test_valid_header_but_page_ignored_flags_truncated` (header 2, 3, 50, 999), `test_categories_with_header_and_page_ignored_do_not_repeat`, `test_out_of_range_with_known_header_still_raises`.
+2. **SL-T042-4**: hàm mới `_positive_id` (đúng kiểu `int`, không phải `bool`, > 0).
+   - `_post_from` (dùng cho `create_draft`, `set_featured_image`): id sai thì `WordPressError` câu cố định, không ghi nhận gì.
+   - `upload_media`: id sai thì báo lỗi **trước** lệnh `POST /wp/v2/media/<id>`.
+   - Test: `test_create_draft_with_odd_id_raises_and_records_nothing` (10 kiểu id), `test_upload_media_with_odd_id_raises_without_second_request`.
+3. **SL-T042-5**: `set_featured_image` làm theo thứ tự:
+   - kiểm `type(post_id) is int` và có trong `_created_post_ids`;
+   - mã ảnh phải là số nguyên dương;
+   - gọi `_own_draft` ngay trước lệnh ghi. Bài không còn nháp thì từ chối và bỏ id; không hỏi được site thì báo câu cố định riêng cho ảnh.
+   - Test: `test_featured_image_refused_when_post_no_longer_draft` (5 trạng thái), `test_featured_image_still_works_on_own_draft` (thứ tự `GET` rồi `POST`), `test_featured_image_post_id_must_be_int`, `test_featured_image_media_id_must_be_positive_int`, `test_featured_image_check_failure_has_fixed_message`.
+4. **SL-T042-6**: đọc mã nguồn SiteSEO 1.4.2 (`plugins.svn.wordpress.org/siteseo/tags/1.4.2/main/abilitiesregister.php`, hàm `update_post_seo_data`):
+   - Thành công: trả `{"updated": true, "post": post_snapshot}`; `post_snapshot` có `title`, `description`, `focus_keyphrase`…, không có `id` hay `status`.
+   - Lỗi: trả `WP_Error` `invalid_post` / `forbidden`.
+   - `_ability_confirms` chỉ coi là đã ghi khi câu trả lời là dict, không có `code`, có `updated is True` (hoặc `success is True`, giữ để tương thích). Có `post` thì mọi trường đã gửi phải bằng đúng giá trị đã lưu. Còn lại là `reason="error"`, câu cố định.
+   - Test: `test_ability_confirmed_answer_is_written`, `test_ability_answer_not_confirming_is_not_written` (12 trường hợp: `"true"`, `1`, `false`, `code`, giá trị lưu khác, thiếu trường, `post` không phải dict…), `test_ability_snapshot_must_match_every_sent_field`.
+5. **SL-T042-2**: `_LEGACY_ENTITY` dựng từ các tên trong `html.entities.html5` **không có** `;` (106 tên, phân biệt hoa thường). Kiểm trên chữ gốc, chữ đã chuẩn hóa và dạng NFKC. Test: `test_legacy_entities_without_semicolon_blocked` (9 chuỗi). `R&D`, `AT&T`, `Q&A`, `P&G`, `&Lt` vẫn qua (`test_plain_ampersand_still_passes`).
+6. **SL-T042-3**: `_is_plain_site_url` kiểm trong `__init__`. Chỉ nhận `https://tên-máy[:cổng][/thư-mục]`; từ chối:
+   - tên/mật khẩu trong địa chỉ;
+   - `?`, `#`, `%`, `\`, khoảng trắng;
+   - đoạn `.` / `..`, `//`;
+   - `wp-json`, `code-snippets`, `prometal`, `wp-admin`.
+   - Câu lỗi không chép địa chỉ. Test: `test_odd_wordpress_url_is_refused` (19 địa chỉ), `test_normal_wordpress_url_is_accepted` (8 địa chỉ, gồm thư mục con, cổng, punycode).
+7. **SL-T042-7**: `_has_invisible` / `_drop_invisible` xét cả loại Cf lẫn `IGNORABLE_NOT_CF` của `seo_app/content/rules.py` (nhập muộn, cùng quy ước với `normalize_meta`). Dùng ở `is_site_link`, `_clean_text`, `PublishedItem`. Test: `test_ignorable_not_cf_is_dropped_and_refused` (9 ký tự).
+8. **LC-T044-1**: dữ liệu sai kiểu không làm vỡ trang nữa:
+   - `_plain` nhận mọi kiểu: chữ giữ nguyên; số nguyên/thực đổi thành chữ; `bool`, `None`, list, dict thành `""`.
+   - `check_connection`: `namespaces` phải là list; `me` không phải dict thì `WordPressError` câu cố định; `capabilities` không phải dict thì coi như rỗng, quyền chỉ tính khi đúng `True`; `roles` chỉ giữ phần tử là chữ; `site_url` chỉ lấy khi là chữ.
+   - `_list_terms`: bỏ mục không phải dict hoặc id sai; `count`/`parent` sai kiểu thành 0.
+   - `_post_from`, `upload_media`: như mục 2; `status`, `link`, `source_url`, `alt_text` sai kiểu thành giá trị mặc định.
+   - Test: `test_check_connection_odd_names_do_not_crash` (6 kiểu), `test_check_connection_me_not_dict_raises_fixed_error`, `test_check_connection_namespaces_must_be_a_list`, `test_check_connection_odd_fields_are_safe`, `test_check_connection_roles_not_list`, `test_terms_with_odd_items_are_skipped_or_coerced`, `test_post_answer_odd_fields_are_safe`, `test_upload_media_odd_fields_are_safe`, `test_create_draft_with_odd_answer_raises`.
+
+**Phần "nên làm" (đã làm):**
+- `set_seo_meta` giờ dò Abilities trước, rồi gọi `_own_draft` ngay trước lệnh ghi (`test_draft_check_is_the_last_request_before_writing`, cả 2 đường).
+- Đường dự phòng: câu trả lời của lệnh ghi phải đúng `id` và `status == "draft"`, không thì `reason="error"` (`test_meta_route_write_answer_must_be_same_draft`, 5 trường hợp).
+
+### Bằng chứng (lượt 2)
+
+Windows 11, Git Bash, worktree `wt-T-042`.
+
+```
+$ uv run pytest
+6465 passed, 11 skipped, 30 xfailed, 1 warning in 661.80s (0:11:01)
+(0 hỏng, 0 lỗi. Không còn xfail nào của T-042: 2 file test Soi Lỗi T-042 không còn dấu xfail. 30 xfail còn lại có từ trước trên main, ở file của phiếu khác. 1 warning pydantic có từ trước)
+
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest tests/test_wordpress_round2_t042.py -q
+138 passed in 13.41s
+
+$ uv run pytest tests/ -q -k "wordpress or soi_loi_t042 or phase2 or safety or t031 or t044 or site_index or t037 or app or config"
+2154 passed, 1 skipped, 4299 deselected in 204.73s (0:03:24)
+```
+
+Commit lượt 2:
+- `6eac892`: gộp main
+- `e382fb7`: SL-T042-1
+- `5e66aeb`: SL-T042-4, -5, -6, khe kiểm-rồi-ghi, LC-T044-1
+- `5684fa8`: SL-T042-2, -3, -7
+- cộng commit báo cáo này
+
+### Rủi ro còn lại (lượt 2)
+
+- Vẫn còn khe rất ngắn giữa lệnh kiểm nháp và lệnh ghi (2 request liền nhau). Đường dự phòng phát hiện được sau khi ghi (câu trả lời có `status`). Đường Abilities thì không, vì câu trả lời của SiteSEO không có `status`.
+- `{"success": true}` vẫn được nhận như "đã ghi" để tương thích với site giả của bộ test. Khuôn thật của SiteSEO là `updated`. Phiếu thử thật nên ghi lại câu trả lời thật để bỏ nhánh `success` nếu không cần.
+- `_LEGACY_ENTITY` chặn cả chữ ghép hiếm như `&notice` (bắt đầu bằng tên cũ `not`). Người dùng chỉ cần thêm dấu cách sau `&` là gửi được.
+- `WORDPRESS_URL` có `/wp-admin` hay `/wp-json` giờ bị từ chối ngay khi mở app: báo câu tiếng Việt, không chạy tiếp.
