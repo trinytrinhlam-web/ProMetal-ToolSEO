@@ -7,11 +7,14 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
   không có trong kết quả trả về, ``repr`` hay câu báo lỗi.
 - Đường dẫn tương đối là dữ liệu chưa tin cậy (có thể đến từ nháp đã lưu): từ chối ``..``,
   ``.``, phần rỗng, gốc tuyệt đối, ổ đĩa (``C:``), đường dẫn mạng UNC, dấu gạch ngược, dấu hai
-  chấm, ký tự điều khiển, tên thiết bị của Windows (``CON``, ``NUL``…), tên kết thúc bằng dấu
-  chấm hoặc khoảng trắng.
+  chấm, ký tự điều khiển, surrogate lẻ, ký tự điều khiển hướng chữ, tên thiết bị của Windows
+  (``CON``, ``NUL``…), tên kết thúc bằng dấu chấm hoặc khoảng trắng.
 - Không đi qua liên kết: từng phần của đường dẫn được ``lstat`` và từ chối nếu là symlink hay
   junction Windows (``os.scandir`` coi junction là thư mục thường nên phải kiểm riêng). Sau đó
-  ``resolve(strict=True)`` và bắt buộc ``is_relative_to(gốc)``.
+  ``resolve(strict=True)`` và bắt buộc ``is_relative_to(gốc)``. Mục ẩn/hệ thống và tên ngắn
+  8.3 cũng bị từ chối, để ``ImageRef`` theo đúng luật của lúc quét.
+- Khi quét, thư mục được "giữ" để không bị tráo giữa lúc kiểm và lúc đọc (xem phần "giữ thư
+  mục trong lúc quét").
 - Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``.
 - Quét có ngân sách (số mục, số giây), phân trang; vượt ngân sách thì dừng và báo "còn nữa".
 - Chỉ đọc: module không tạo, sửa, đổi tên hay xóa gì trong thư mục ảnh (quyết định 3A).
@@ -48,7 +51,7 @@ DEFAULT_MAX_DEPTH = 8  # số tầng thư mục con tối đa khi quét cả câ
 _FORBIDDEN_CHARS = frozenset('\\/:<>"|?*')
 # Ký tự điều khiển hướng chữ (LRE, RLE, PDF, LRO, RLO, LRI, RLI, FSI, PDI): tên ảnh thật không
 # cần, chỉ dùng để hiện tên đánh lừa (``anh<RLO>gpj.exe`` hiện thành ``anhexe.jpg``).
-_BIDI_CONTROLS = frozenset("‪‫‬‭‮⁦⁧⁨⁩")
+_BIDI_CONTROLS = frozenset("\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069")
 # Loại ký tự bị từ chối: Cc (điều khiển) và Cs (surrogate lẻ: tên UTF-16 lẻ cặp trên NTFS, tên
 # sai UTF-8 trên Linux). Surrogate không mã hóa được UTF-8 nên giao diện sẽ lỗi khi hiện (L2).
 _FORBIDDEN_CATEGORIES = frozenset({"Cc", "Cs"})

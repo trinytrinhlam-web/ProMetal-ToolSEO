@@ -176,9 +176,9 @@ def test_image_ref_accepts_normal_relative_paths(rel):
         "a\x7fb.jpg",
         "x\ud800y.jpg",  # surrogate lẻ (L2, lượt 2)
         "a\udcff/b.jpg",
-        "anh‮gpj.jpg",  # ký tự điều khiển hướng chữ (lượt 2)
-        "a⁦b.jpg",
-        "a⁩/b.jpg",
+        "anh\u202egpj.jpg",  # ký tự điều khiển hướng chữ (lượt 2)
+        "a\u2066b.jpg",
+        "a\u2069/b.jpg",
         "x?.jpg",
         "*.jpg",
         "a<b.jpg",
