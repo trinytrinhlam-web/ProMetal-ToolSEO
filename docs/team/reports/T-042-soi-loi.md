@@ -18,7 +18,7 @@
 
 | File | Thay đổi |
 |---|---|
-| `tests/test_soi_loi_t042.py` | Mới: `set_seo_meta`/`_own_draft` (trạng thái đổi giữa các bước, câu trả lời lạ, `post_id` lạ, lớp con của `int`), đường dự phòng meta, câu lỗi cố định (8 nhánh lỗi, không lộ lời máy chủ/mật khẩu), 47 đường xấu, chuyển hướng 300–399 ở cả 4 bước, chặn chữ SEO (18 chuỗi × 3 trường), `xfail` SL-T042-2…6 |
+| `tests/test_soi_loi_t042.py` | Mới: `set_seo_meta`/`_own_draft` (trạng thái đổi giữa các bước, câu trả lời lạ, `post_id` lạ, lớp con của `int`), đường dự phòng meta, câu lỗi cố định (8 nhánh lỗi, không lộ lời máy chủ/mật khẩu), 45 đường xấu, chuyển hướng 300–399 ở cả 4 bước, chặn chữ SEO (18 chuỗi × 3 trường), `xfail` SL-T042-2…6 |
 | `tests/test_soi_loi_t042_paging_cache.py` | Mới: phân trang (header lạ, header lặp bị gộp, máy chủ trả trang xoay vòng, trang 2 hỏng), `_total_pages`, ký tự vô hình loại Cf và ngoài Cf, cache bị chương trình khác giữ trên Windows (7 chế độ chia sẻ + khóa vùng byte, mở thật bằng `CreateFileW`/`LockFileEx`), `xfail` SL-T042-1, SL-T042-7 |
 | `docs/team/reports/T-042-soi-loi.md` | Báo cáo này |
 
@@ -33,13 +33,14 @@ $ uv run ruff check .
 All checks passed!
 
 $ uv run pytest            (trước khi thêm test, HEAD 6a02005)
-BASELINE_RESULT
+5952 passed, 11 skipped, 31 xfailed, 1 warning in 740.08s (0:12:20)
 
 $ uv run pytest            (sau khi thêm test)
-FINAL_RESULT
+6199 passed, 11 skipped, 67 xfailed, 1 warning in 613.08s (0:10:13)
+(0 hỏng. +247 qua, +36 xfail đều của Soi Lỗi T-042; 31 xfail cũ và 1 warning pydantic có từ trước)
 
 $ uv run pytest tests/test_soi_loi_t042.py tests/test_soi_loi_t042_paging_cache.py -q
-247 passed, 36 xfailed
+247 passed, 36 xfailed in 23.6s (cộng 2 lượt chạy riêng: 196+19 và 51+17)
 ```
 
 36 `xfail` mới = 7 lỗi dưới đây (SL-T042-1: 3, -2: 4, -3: 3, -4: 5, -5: 1, -6: 6, -7: 14). Mọi `xfail` đều `strict=True`: Thợ Máy sửa xong thì test báo XPASS, phải bỏ dấu.
@@ -103,7 +104,7 @@ $ uv run pytest tests/test_soi_loi_t042.py tests/test_soi_loi_t042_paging_cache.
 - **Ghi bài đã đăng qua `set_seo_meta`:** nháp lúc tạo, đã đăng lúc ghi (5 trạng thái × 2 đường); đăng sau lần ghi đầu (lần 2 bị chặn, bỏ id, ảnh đại diện cũng bị chặn); site trả `id` `42.0`, `False`, `None`, list, dict, `status` list/dict/`DRAFT`/`draft`+U+200B, thân rỗng/list/số/HTML: đều từ chối, không request ghi nào. `post_id` `42.5`, số phức, `"0x2a"`, bytes, tuple, set, `2**63+42`, lớp con của `int` có `__str__` giả đường `code-snippets`: từ chối trước khi gửi. Client khác không ghi được bài client này tạo. `create_draft` trả `status` `"draft "`, `auto-draft`, rỗng, list, số: không ghi nhận.
 - **Đường dự phòng:** chỉ gửi `{"meta": {2 khóa}}`, không có từ khóa chính, báo "chép tay"; so lại chính xác (thừa dấu cách, hoa/thường, list, `None` đều thành `unavailable`); lỗi mạng/HTML/timeout không ném lỗi; dò Abilities lỗi 5xx thì dùng đường dự phòng, không gọi ability.
 - **Câu lỗi:** 8 nhánh lỗi (kiểm nháp 500/403, ability 500/403/`success:false`, meta 500/403, chuyển hướng 302): không chứa lời máy chủ, `wp-config`, `<b>`, mật khẩu, `code-snippets`, tên khóa meta.
-- **Danh sách đường:** 47 đường xấu thêm (gạch cuối, số 0 đầu, chữ số toàn khổ/Ả Rập, `;`, `\n`, `\x00`, `?`, `#`, revisions/autosaves, application-passwords, settings, plugins, DELETE/PUT/PATCH/OPTIONS/HEAD, phương thức chữ thường, đường rỗng, gạch chéo Unicode, `seo-data-get`, GET lên `run`, `%2F`, `..`, `Code-Snippets`, `PROMETAL`, `\`, `//host`, khoảng trắng, U+200B, U+202E): đều bị chặn. Chuyển hướng 300, 301, 302, 303, 304, 307, 308, 399 ở 4 bước (kiểm nháp, dò, ghi ability, ghi meta): không request thứ hai, không ghi.
+- **Danh sách đường:** 45 đường xấu thêm (gạch cuối, số 0 đầu, chữ số toàn khổ/Ả Rập, `;`, `\n`, `\x00`, `?`, `#`, revisions/autosaves, application-passwords, settings, plugins, DELETE/PUT/PATCH/OPTIONS/HEAD, phương thức chữ thường, đường rỗng, gạch chéo Unicode, `seo-data-get`, GET lên `run`, `%2F`, `..`, `Code-Snippets`, `PROMETAL`, `\`, `//host`, khoảng trắng, U+200B, U+202E): đều bị chặn. Chuyển hướng 300, 301, 302, 303, 304, 307, 308, 399 ở 4 bước (kiểm nháp, dò, ghi ability, ghi meta): không request thứ hai, không ghi.
 - **Chặn chữ SEO:** `&#037;`, `&#x0025;`, `&#x25`, `&percnt;`, `&LT;`, `＆#37;`, `&＃37;`, `&#３７;`, `%`+U+200B+`%`, `%`+gạch nối mềm+`%`, `﹪﹪`, `%`+U+3164+`%`, `<`+U+3164/U+00AD+`script>`, `﹤script﹥`, `\x07`, `\x1b`, `\x9b`: đều chặn trước khi gửi, câu lỗi không chép chữ. `\x1c`–`\x1f`, U+2028 thành dấu cách (vô hại).
 - **SL-T037-3:** header `"3, 3"` (proxy gộp header lặp), `+3`, `Infinity`, `３`: đọc tiếp tới trang thiếu, đủ bài. Header cực lớn: dừng ở `MAX_PAGES`, bật `truncated`. Trang xoay vòng 1, 2, 1, 2 không header: dừng, bật `truncated`. Trang 2 lỗi 404/500/HTML/không phải list: báo lỗi, không trả thiếu như đủ.
 - **SL-T037-4/5 (Windows, mở file thật):** chương trình khác giữ file độc quyền, chỉ cho đọc, đọc+xóa, chỉ xóa, chỉ ghi, đọc+ghi (không cho xóa), khóa vùng byte khóa đọc của SQLite: **không lần nào xóa file**, cache cũ còn nguyên sau khi đóng. Khóa vùng byte: `get` báo "đang bận" sau ~1,7 giây (trước đây ~14 giây).
