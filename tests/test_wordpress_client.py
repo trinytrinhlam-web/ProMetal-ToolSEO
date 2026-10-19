@@ -265,6 +265,7 @@ def test_set_featured_image(fake_wp, wp_client):
     # T-006: chỉ được đặt ảnh cho bài nháp client vừa tạo.
     fake_wp.on("POST", "/wp-json/wp/v2/posts", {"id": 42, "status": "draft", "title": "A"})
     wp_client.create_draft("A", "B")
+    fake_wp.on("GET", "/wp-json/wp/v2/posts/42", {"id": 42, "status": "draft"})  # T-042 lượt 2
     fake_wp.on(
         "POST",
         "/wp-json/wp/v2/posts/42",

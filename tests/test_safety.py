@@ -51,6 +51,7 @@ def test_requests_without_fake_adapter_cannot_reach_internet():
 def test_every_write_request_to_posts_never_publishes(fake_wp, wp_client):
     fake_wp.on("POST", "/wp-json/wp/v2/posts", {"id": 1, "status": "draft", "title": "A"})
     fake_wp.on("POST", "/wp-json/wp/v2/posts/1", {"id": 1, "status": "draft", "title": "A"})
+    fake_wp.on("GET", "/wp-json/wp/v2/posts/1", {"id": 1, "status": "draft"})  # T-042 lượt 2
     wp_client.create_draft("Tiêu đề", "<p>Nội dung</p>", slug="publish", excerpt="future")
     wp_client.set_featured_image(1, 9)
     import json
