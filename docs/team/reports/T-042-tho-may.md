@@ -224,3 +224,48 @@ Commit lượt 2:
 - `{"success": true}` vẫn được nhận như "đã ghi" để tương thích với site giả của bộ test. Khuôn thật của SiteSEO là `updated`. Phiếu thử thật nên ghi lại câu trả lời thật để bỏ nhánh `success` nếu không cần.
 - `_LEGACY_ENTITY` chặn cả chữ ghép hiếm như `&notice` (bắt đầu bằng tên cũ `not`). Người dùng chỉ cần thêm dấu cách sau `&` là gửi được.
 - `WORDPRESS_URL` có `/wp-admin` hay `/wp-json` giờ bị từ chối ngay khi mở app: báo câu tiếng Việt, không chạy tiếp.
+
+---
+
+## Lượt 3 (2026-10-19) · sửa theo Soi Lỗi lượt 2 (SL-T042-8…11)
+
+### Tóm tắt (cho chủ dự án)
+
+Sửa thêm 4 lỗi nhỏ:
+- Phần mềm không báo "Đã ghi SEO" khi câu trả lời của SiteSEO tự mâu thuẫn.
+- Đặt ảnh đại diện mà website trả lời về một bài khác (hay bài đã đăng) thì báo bất thường.
+- Địa chỉ website trong `.env` có tab, xuống dòng, hay trỏ vào một file `.php` thì bị từ chối ngay.
+
+### Đối chiếu
+
+1. **SL-T042-8:** `_ability_confirms` trả `False` khi câu trả lời có `updated is False` hoặc `success is False`, trước khi xét khóa còn lại. Test: `test_ability_self_contradicting_answer_is_not_written` (3 trường hợp).
+2. **SL-T042-11:** `set_featured_image` soát câu trả lời của lệnh ghi bằng `_is_own_draft_answer`. Sai `id` (kể cả `"42"` dạng chữ hay thiếu `id`), hoặc `status` khác `draft`, thì ném `WordPressError` câu cố định `_IMAGE_ODD_ANSWER`. Test: `test_featured_image_odd_write_answer_raises` (4 trường hợp).
+3. **SL-T042-9:** `_is_plain_site_url` xét **chuỗi gốc** trước `urlsplit`: có ký tự khoảng trắng (gồm tab, xuống dòng, U+00A0, U+3000) hoặc ký tự điều khiển ở bất kỳ đâu thì từ chối. Khoảng trắng ở **đầu/cuối** vẫn được `__init__` cắt như trước, nên dòng `.env` có dấu cách thừa ở cuối vẫn dùng được.
+4. **SL-T042-10:** không nhận đoạn đường chứa `.php`, `.phtml`, `.phar` (không phân biệt hoa thường).
+   - **Không chừa `index.php`.** Website đang dùng đường dẫn tĩnh (`/wp-json/` gọi được, T-033 GET #2), nên không cần kiểu `/index.php/wp-json/`.
+   - Chừa thêm một ngoại lệ là thêm một đường cho lệnh gọi chạy file PHP. Khi nào site cần thì mới mở, và phải qua Lá Chắn.
+   - Test: `test_round3_wordpress_url_refused` (12 địa chỉ, gồm cả mục 3).
+
+**Các `xfail` đã bỏ** (4 dấu, 10 trường hợp, trong `tests/test_soi_loi_t042_round2.py`; file này giờ không còn `xfail` nào):
+- `test_ability_explicit_false_wins` (SL-T042-8)
+- `test_featured_image_answer_for_other_or_published_post_is_reported` (SL-T042-11)
+- `test_wordpress_url_with_inner_tab_or_newline_is_refused` (SL-T042-9)
+- `test_wordpress_url_pointing_at_php_file_is_refused` (SL-T042-10)
+
+### Bằng chứng (lượt 3)
+
+Windows 11, Git Bash, worktree `wt-T-042`, `git pull` trước khi làm (`d36cce1`).
+
+```
+$ uv run pytest
+6984 passed, 11 skipped, 30 xfailed, 1 warning in 959.35s (0:15:59)
+(0 hỏng, 0 lỗi. Không còn xfail nào của T-042; 30 xfail có từ trước ở file phiếu khác; 1 warning pydantic có từ trước)
+
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest tests/test_wordpress_round2_t042.py tests/test_soi_loi_t042_round2.py -q
+657 passed in 22.11s
+```
+
+Commit: `6c75512` (code và test), cộng commit báo cáo này.
