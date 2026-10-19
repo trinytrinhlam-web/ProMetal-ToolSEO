@@ -287,10 +287,11 @@ $ uv run ruff check .
 All checks passed!
 
 $ uv run pytest            (HEAD 0dc2464, trước khi thêm test lượt 2)
-R2_BASE
+6465 passed, 11 skipped, 30 xfailed, 1 warning in 612.40s (0:10:12)
 
 $ uv run pytest            (sau khi thêm tests/test_soi_loi_t042_round2.py)
-R2_FINAL
+6954 passed, 11 skipped, 40 xfailed, 1 warning in 993.13s (0:16:33)
+(0 hỏng. +489 qua, +10 xfail đều của Soi Lỗi lượt 2; 30 xfail cũ và 1 warning pydantic có từ trước)
 
 $ uv run pytest tests/test_soi_loi_t042_round2.py -q
 489 passed, 10 xfailed in 16.77s
