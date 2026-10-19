@@ -53,7 +53,7 @@ _Mục mới nhất ở trên cùng._
 
 ### 2026-10-19 18:03 · Chỉ Huy A làm tiếp sau giới hạn sử dụng
 
-- Khoảng 14:00 → 18:00 tài khoản A chạm giới hạn; 3 agent dừng (Lá Chắn T-047, Thợ Máy T-048 lượt 2, Thợ Máy T-042 lượt 3). Chỉ Huy B không có commit nào.
+- Sau 13:57 (giờ commit cuối của agent) tài khoản A chạm giới hạn, mở lại 18:00; 3 agent dừng (Lá Chắn T-047, Thợ Máy T-048 lượt 2, Thợ Máy T-042 lượt 3). Chỉ Huy B không có commit nào.
 - T-042 lượt 3 đã xong trước khi dừng (`dab6e86`: 6.984 qua, 0 hỏng; 10 trường hợp xfail của Soi Lỗi nay qua). Giao **Lá Chắn T-042** kiểm bản cuối.
 - Gọi tiếp Lá Chắn T-047 (chưa có biên bản) và Thợ Máy T-048 lượt 2 (`172ebf5` có L3, L4; đang làm L5).
 
