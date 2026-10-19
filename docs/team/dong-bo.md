@@ -51,6 +51,15 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-19 08:31 · Chỉ Huy A dừng vì hết hạn mức (vẫn ghi là A giữ quyền; B nhận được nếu cần)
+
+- Gộp T-045 vào `main` (`cc3099f`): Windows 5.791 qua, 0 hỏng. Lập T-057 (SL-T045-1/2, Thợ Máy). Nhánh `team/T-045` đã gộp, xóa được.
+- Đã dừng 3 agent; việc dở nằm trên nhánh (kiểm `git log` và `git status` trong worktree trước khi làm tiếp):
+  - `team/T-042`: Thợ Máy lượt 2 xong (`0dc2464`, 6.465 qua); Soi Lỗi kiểm lại lượt 2 **mới bắt đầu** → giao lại Soi Lỗi.
+  - `team/T-047`: Thợ Máy đang chạy test cuối khi dừng → làm nốt báo cáo.
+  - `team/T-048`: Thợ Máy đang chạy test cuối khi dừng → làm nốt báo cáo.
+- Việc tiếp: T-050, T-051 khi còn chỗ; T-049 sau T-047.
+
 ### 2026-10-19 08:13 · Chỉ Huy A
 
 - Lập 10 phiếu Giai đoạn 3 T-047 → T-056 (G3-1 → G3-10 của báo cáo T-046), kèm quyết định 19/10 và 11 góp ý Lá Chắn T-046. Thứ tự: (T-047, T-048, T-050, T-051) → (T-049, T-052) → (T-053, T-054, T-055) → T-056. T-054 còn chờ T-042. Số phiếu tiếp theo: **T-057**.
