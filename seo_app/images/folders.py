@@ -44,6 +44,12 @@ DEFAULT_MAX_SECONDS = 10.0  # số giây tối đa mỗi lần quét
 DEFAULT_MAX_DEPTH = 8  # số tầng thư mục con tối đa khi quét cả cây
 
 _FORBIDDEN_CHARS = frozenset('\\/:<>"|?*')
+# Ký tự điều khiển hướng chữ (LRE, RLE, PDF, LRO, RLO, LRI, RLI, FSI, PDI): tên ảnh thật không
+# cần, chỉ dùng để hiện tên đánh lừa (``anh<RLO>gpj.exe`` hiện thành ``anhexe.jpg``).
+_BIDI_CONTROLS = frozenset("‪‫‬‭‮⁦⁧⁨⁩")
+# Loại ký tự bị từ chối: Cc (điều khiển) và Cs (surrogate lẻ: tên UTF-16 lẻ cặp trên NTFS, tên
+# sai UTF-8 trên Linux). Surrogate không mã hóa được UTF-8 nên giao diện sẽ lỗi khi hiện (L2).
+_FORBIDDEN_CATEGORIES = frozenset({"Cc", "Cs"})
 _WINDOWS_DEVICE_NAMES = frozenset(
     {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
     | {f"{dev}{n}" for dev in ("COM", "LPT") for n in (*"123456789", "¹", "²", "³")}
@@ -75,7 +81,11 @@ def _is_safe_name(name: str) -> bool:
         # khoảng trắng cuối (hai tên khác nhau trỏ cùng một file).
         return False
     for ch in name:
-        if ch in _FORBIDDEN_CHARS or unicodedata.category(ch) == "Cc":
+        if (
+            ch in _FORBIDDEN_CHARS
+            or ch in _BIDI_CONTROLS
+            or unicodedata.category(ch) in _FORBIDDEN_CATEGORIES
+        ):
             return False
     return name.split(".")[0].rstrip(" ").upper() not in _WINDOWS_DEVICE_NAMES
 

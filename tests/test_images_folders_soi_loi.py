@@ -235,11 +235,6 @@ def _make_undecodable_name(folder: Path) -> str:
         pytest.skip("hệ thống file này không cho tạo tên sai UTF-8 (ví dụ APFS)")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="L2 (soi-loi): tên có surrogate lẻ (loại Cs) lọt vào kết quả, giao diện sẽ lỗi "
-    "UnicodeEncodeError khi hiện (protobuf/JSON UTF-8)",
-)
 def test_listing_never_returns_names_that_cannot_be_utf8_encoded(tmp_path):
     root = tmp_path / "anh"
     write(root / "a.jpg")
@@ -252,9 +247,6 @@ def test_listing_never_returns_names_that_cannot_be_utf8_encoded(tmp_path):
     assert listing.skipped.bad_names == 1
 
 
-@pytest.mark.xfail(
-    strict=True, reason="L2 (soi-loi): ImageRef nhận đường dẫn có surrogate lẻ (loại Cs)"
-)
 @pytest.mark.parametrize("rel", ["x\ud800y.jpg", "a\udcff/b.jpg"])
 def test_image_ref_rejects_lone_surrogates(rel):
     with pytest.raises(ImageFolderError):
@@ -289,7 +281,8 @@ def test_bidi_and_zero_width_cannot_disguise_extension(tmp_path, name):
     write(root / name)
     listing = ImageLibrary([root]).list_folder(0)
     assert listed_names(listing) == ["that.jpg"]
-    assert listing.skipped.other_files == 1
+    # Lượt 2 (Thợ Máy): tên có ký tự điều khiển hướng chữ bị loại sớm hơn, đếm vào bad_names.
+    assert listing.skipped.other_files + listing.skipped.bad_names == 1
     with pytest.raises(ImageFolderError):
         ImageRef(0, name)
 
