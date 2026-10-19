@@ -146,3 +146,160 @@ Yêu cầu chính của phiếu (chỉ bài app tạo, còn nháp; không `null`
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-19) · kiểm lại sau khi Thợ Máy sửa (nhánh `0dc2464`)
+
+### Kết luận: **ĐẠT CÓ ĐIỀU KIỆN** (điều kiện nhẹ, không chặn gộp)
+
+Cả 7 lỗi lượt 1 và LC-T044-1 đã được sửa đúng. Hai việc "nên làm" cũng đã làm. Tôi thử phá từng chỗ sửa và tìm thêm **4 lỗi, đều Thấp**:
+- Không lỗi nào mở đường ghi vào bài đã đăng, hay để code gọi đường REST ngoài danh sách.
+- Hai lỗi chỉ xảy ra khi chủ máy tự khai sai `WORDPRESS_URL` trong `.env`.
+
+Điều kiện:
+- Sửa SL-T042-8 và SL-T042-11 trước phiếu giao diện nối `set_seo_meta` / `set_featured_image` vào app.
+- SL-T042-9, -10 sửa khi tiện.
+
+### Tóm tắt (cho chủ dự án)
+
+- Đã sửa xong:
+  - Danh sách bài đã đăng không còn bị thiếu khi website có bộ đệm.
+  - Đặt ảnh đại diện cũng hỏi lại website "bài còn là nháp không" trước khi ghi.
+  - Phần mềm chỉ báo "Đã ghi SEO" khi SiteSEO xác nhận.
+  - Website trả dữ liệu lạ cũng không làm vỡ trang (tôi thử 374 trường hợp dữ liệu sai).
+- Còn 4 lỗi nhỏ:
+  - Câu trả lời mâu thuẫn của website vẫn được báo là thành công.
+  - Kiểm `WORDPRESS_URL` chưa thật chặt.
+
+### Soát thay đổi của Thợ Máy trong test
+
+- `tests/test_soi_loi_t042.py`, `tests/test_soi_loi_t042_paging_cache.py`: Thợ Máy **chỉ bỏ đúng 8 dấu `xfail`**, không sửa thân test nào (`git diff 6eac892 0dc2464`). 8 dấu đó ứng với 36 trường hợp: SL-T042-1: 3, -2: 4, -3: 3, -4: 5, -5: 1, -6: 6, -7: 14.
+- 3 test cũ về ảnh đại diện (`test_set_featured_image`, `test_featured_image_allowed_only_for_own_draft`, `test_every_write_request_to_posts_never_publishes`) **không bị làm yếu**:
+  - Mỗi test chỉ thêm đúng 1 dòng: site giả trả lời `GET` bài nháp với `status: draft`.
+  - Không assert nào bị xóa hay nới.
+  - Các test vẫn kiểm đủ điều cũ: ảnh chỉ đặt cho bài app tạo, không có `publish`/`future` trong lệnh ghi.
+  - `test_public_methods_only_use_allowed_routes` cũng thêm 1 dòng như vậy.
+- Test của chính Thợ Máy có 2 chỗ đổi, đều chấp nhận được:
+  - `test_post_no_longer_draft_on_site_is_refused`: điều kiện "không gọi ability" đổi thành "không gọi lệnh ghi `run`". Hợp lý vì giờ app dò Abilities trước. Test vẫn kiểm không có lệnh ghi.
+  - `test_meta_route_not_saved_is_not_reported_as_written`: bỏ trường hợp `[]`. Trường hợp này giờ ra `error` và đã được kiểm ở `test_meta_route_write_answer_must_be_same_draft` (file lượt 2).
+
+### Lỗi lượt 2
+
+#### SL-T042-8 · Thấp · Câu trả lời ability tự mâu thuẫn vẫn báo "đã ghi"
+
+- **Tái hiện:** `run` trả `{"updated": false, "success": true}` hoặc `{"updated": true, "success": false}`.
+- **Mong đợi:** có khóa nói rõ `false` thì không coi là đã ghi.
+- **Thực tế:** `written=True`. Lý do: `_ability_confirms` dùng `updated is True or success is True`.
+- **Test:** `test_ability_explicit_false_wins` (2 trường hợp).
+
+#### SL-T042-9 · Thấp · Tab/xuống dòng **giữa** `WORDPRESS_URL` vẫn qua
+
+- **Tái hiện:** `WordPressClient("https://example.com/blo\tg", …)` được nhận. Request thật đi tới `https://example.com/blo%09g/wp-json/wp/v2/posts`. Cũng nhận `https://exa\tmple.com`, `https://exam\nple.com`.
+- **Mong đợi:** từ chối, như báo cáo Thợ Máy mô tả ("từ chối khoảng trắng").
+- **Thực tế:** `urlsplit` âm thầm bỏ `\t`, `\n`, `\r`, nên `_is_plain_site_url` xét một chuỗi khác với chuỗi được dùng để gọi.
+- **Mức Thấp** vì hiện vô hại: tên máy lạ thì requests báo lỗi, thư mục lạ thì website trả 404.
+- **Test:** `test_wordpress_url_with_inner_tab_or_newline_is_refused` (3 trường hợp).
+- **Gợi ý sửa:** từ chối khi `any(ch.isspace() or ord(ch) < 32 for ch in base_url)`.
+
+#### SL-T042-10 · Thấp · `WORDPRESS_URL` trỏ thẳng vào một file `.php`
+
+- **Tái hiện:** `https://example.com/wp-content/plugins/x/run.php` được nhận (cả `/xmlrpc.php`, `/wp-login.php`). Request thật là `POST …/run.php/wp-json/wp/v2/posts`: nó chạy file PHP đó, không phải REST API của WordPress.
+- **Mong đợi:** thư mục con chỉ gồm tên thư mục, không có đoạn `*.php`. Có thể chừa `index.php` nếu muốn hỗ trợ đường dẫn tĩnh kiểu PATH_INFO.
+- Chỉ xảy ra qua `.env`.
+- **Test:** `test_wordpress_url_pointing_at_php_file_is_refused` (3 trường hợp).
+
+#### SL-T042-11 · Thấp · `set_featured_image` không soát câu trả lời của lệnh ghi
+
+- **Tái hiện:** `POST /wp/v2/posts/42` trả `{"id": 43, …}` hoặc `{"id": 42, "status": "publish", …}`.
+- **Mong đợi:** báo bất thường (`WordPressError`). Đường meta dự phòng đã làm việc này ở lượt 2, bằng `_is_own_draft_answer`.
+- **Thực tế:** hàm trả `Post` của bài 43, hay của bài đã đăng, như thành công.
+- **Test:** `test_featured_image_answer_for_other_or_published_post_is_reported` (2 trường hợp).
+
+### Đã thử, không thấy lỗi (lượt 2)
+
+**`_get_pages_checked`**
+- Trang trùng: dừng và bật `truncated`, dù có header (`2`, `50`, `999`) hay không. Chỉ tốn 2 request.
+- Lỗi `rest_post_invalid_page_number`: header nói còn trang thì báo lỗi; không có header thì coi là hết trang.
+- Ghi nhận, không tính lỗi: máy chủ trả xoay vòng trang 1, 2, 1 kèm header `3` thì thiếu trang 3 mà không báo. Tình huống này quá giả tạo.
+
+**`_positive_id`**
+- Từ chối `True`, `False`, `0`, số âm, lớp con của `int`, chuỗi, số thực, `None`, list, dict.
+- Không có giới hạn trên, nhưng vô hại:
+  - `2**70` qua được `_positive_id`, nhưng đường có hơn 19 chữ số bị danh sách đường chặn.
+  - `set_featured_image(42, 2**70)` vẫn gửi `GET` kiểm nháp rồi `POST`; WordPress sẽ từ chối. Ghi nhận.
+
+**`set_featured_image`**
+- Bài đổi sang `publish`, `future`, `private`, `pending`, `trash` hoặc `None` giữa lúc tạo và lúc đặt ảnh: từ chối, không `POST`, bỏ id.
+- `media_id` hay `post_id` lạ: từ chối trước mọi request.
+- Request ngay trước lệnh ghi là `GET` kiểm nháp. Thân lệnh ghi chỉ có `{"featured_media": 7}`.
+
+**`_ability_confirms`**
+- Khuôn SiteSEO `{"updated": true, "post": {...}}`, kể cả có trường thừa: tính là đã ghi.
+- Tính là chưa ghi: trường không khớp (thừa dấu cách, sai tên trường), `post` không phải dict, có `code` (kể cả `null`), `"true"`, `1`, `null`, `{}`.
+- Từ khóa được so đúng tên trường `focus_keyphrase`.
+
+**`_LEGACY_ENTITY`**
+- Đúng 106 tên, và cả 106 đều bị chặn.
+- Vẫn qua: `R&D`, `AT&T`, `Q&A`, `P&G`, `H&M`, `M&E`, `Sale&off`, `Cửa&cổng`, `Sắt&Inox`, `Mua&bán`, `&Lt`, `&Notice`.
+- Biến thể bị chặn: `&` + U+200B + `lt`, `＆lt`, `&ETH`, `&ltd`.
+- **Đánh giá việc chặn `&notice`:** về mặt kỹ thuật không phải chặn oan. Trong nội dung HTML (kể cả `<title>`), trình duyệt giải mã `&not` + chữ thành `¬ice`, nên nếu SiteSEO in nguyên văn thì khách thấy chữ sai. Chữ kiểu này hiếm trong tiêu đề tiếng Việt, và câu báo đã chỉ cách sửa. **Chấp nhận.**
+
+**`_is_plain_site_url`**
+- Từ chối 26 địa chỉ xấu: `wp-admin`/`wp-json` ở mọi kiểu hoa thường, `;`, `.`/`..`, `.well-known`, `//`, tên/mật khẩu, `\@`, `%2F@`, tên miền Unicode chưa đổi sang punycode, `[::1]`, dấu chấm cuối, cổng rỗng hoặc là chữ, khoảng trắng, `?`, `#`, `Code-Snippets`, `ProMetal`, `http`, `ftp`.
+- Câu lỗi không chép lại địa chỉ.
+- Vẫn nhận 8 địa chỉ bình thường: thư mục con, `~user`, có cổng, IP, punycode.
+
+**`_has_invisible` / `_drop_invisible`**
+- Test lượt 1 qua hết (7 ký tự ngoài Cf, 11 ký tự Cf).
+
+**LC-T044-1**
+- Thử 17 kiểu dữ liệu sai: `None`, bool, số âm, `nan`, `10**30`, chuỗi, HTML, list, dict…
+- Ở 22 vị trí:
+  - `check_connection`: 10 vị trí, gồm câu trả lời dò Abilities.
+  - Chuyên mục: 6 vị trí.
+  - Câu trả lời tạo nháp / ảnh đại diện / tải ảnh: 6 vị trí.
+- Kết quả 374 test: chỉ có `WordPressError` câu cố định, không lọt lỗi Python nào. Quyền chỉ được tính khi đúng `True`.
+
+**Nhánh `{"success": true}`: khuyên giữ đến phiếu thử thật**
+- Rủi ro báo nhầm thấp: muốn được nhận phải là đúng `true` kiểu bool, không có `code`, và nếu có `post` thì phải khớp từng chữ.
+- Phiếu thử thật ghi lại câu trả lời thật của `seo-data-update/run`. Nếu đúng khuôn `updated` thì bỏ nhánh `success`, và đổi site giả trong test (của Thợ Máy và Soi Lỗi) sang `{"updated": true}`.
+- Sửa SL-T042-8 trước việc này.
+
+### Rủi ro còn lại (lượt 2)
+
+- App so giá trị `post` trong câu trả lời của SiteSEO với chữ đã gửi.
+  - Nếu SiteSEO làm sạch chữ khi lưu (ví dụ `sanitize_text_field` đổi `<` lẻ thành `&lt;`, bỏ `%ab`), app sẽ báo "không thành công" dù đã ghi.
+  - Lỗi này theo chiều an toàn: người dùng sẽ chép tay.
+  - Phiếu thử thật nên thử một tiêu đề có `< 5 triệu` và `10%`.
+- Khe "kiểm rồi ghi" vẫn còn (2 request liền nhau); Thợ Máy đã ghi rõ.
+
+### Test lượt 2
+
+`tests/test_soi_loi_t042_round2.py` (mới): 499 test, 489 qua, 10 `xfail` strict cho SL-T042-8…11.
+
+### Bằng chứng (lượt 2)
+
+Windows 11, Git Bash, worktree `wt-T-042`.
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest            (HEAD 0dc2464, trước khi thêm test lượt 2)
+R2_BASE
+
+$ uv run pytest            (sau khi thêm tests/test_soi_loi_t042_round2.py)
+R2_FINAL
+
+$ uv run pytest tests/test_soi_loi_t042_round2.py -q
+489 passed, 10 xfailed in 16.77s
+```
+
+### Việc cần Thợ Máy sửa (lượt 3, nhỏ)
+
+- SL-T042-8: `_ability_confirms` trả `False` khi `updated is False` hoặc `success is False`.
+- SL-T042-11: `set_featured_image` soát câu trả lời bằng `_is_own_draft_answer`; sai thì ném `WordPressError` câu cố định.
+- SL-T042-9: từ chối `WORDPRESS_URL` có khoảng trắng hoặc ký tự điều khiển ở bất kỳ đâu.
+- SL-T042-10: đoạn thư mục không được là file `.php` (cân nhắc chừa `index.php`).
+- Sửa xong thì bỏ các dấu `xfail` tương ứng trong `tests/test_soi_loi_t042_round2.py`.
