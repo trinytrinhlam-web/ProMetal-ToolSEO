@@ -7,9 +7,9 @@ import os
 import re
 import threading
 import traceback
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -440,7 +440,219 @@ class TaskConfig:
     max_tokens: int = 16000
 
 
-class AIProvider(Protocol):
-    """Một hãng AI. Mỗi lần gọi trả về dữ liệu đúng khuôn ``schema`` (đã kiểm tra)."""
+# ------------------------------------------------------------------ ảnh gửi kèm (T-050)
 
-    def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T: ...
+# Chỉ nhận 3 định dạng cả 3 hãng đều đọc được (T-046 mục 3). Không nhận GIF (có thể là ảnh động),
+# HEIC (chỉ Gemini đọc được): ảnh gửi AI là bản đã chuẩn bị sẵn (T-049), thường là JPEG.
+IMAGE_MIMES = ("image/jpeg", "image/png", "image/webp")
+_MIME_ALIASES = {"image/jpg": "image/jpeg", "image/pjpeg": "image/jpeg"}
+# Giới hạn trước khi gửi (bản gửi AI khoảng 1024 px, thường vài trăm KB):
+# - mỗi ảnh tối đa 5 MB: dưới giới hạn 10 MB/ảnh (sau base64) của Anthropic;
+# - tối đa 4 ảnh, tổng tối đa 10 MB: base64 làm dài thêm 1/3, nên tổng yêu cầu vẫn dưới 20 MB
+#   (giới hạn gửi thẳng của Gemini).
+MAX_IMAGES = 4
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_TOTAL_IMAGE_BYTES = 10 * 1024 * 1024
+
+IMAGE_TYPE_MESSAGE = (
+    "Ảnh gửi AI phải là dữ liệu ảnh đã chuẩn bị sẵn trong bộ nhớ; phần mềm không gửi tên file "
+    "hay đường dẫn."
+)
+IMAGE_MIME_MESSAGE = "Ảnh gửi AI chỉ nhận JPEG, PNG hoặc WebP."
+IMAGE_EMPTY_MESSAGE = "Ảnh gửi AI bị rỗng (không có dữ liệu)."
+IMAGE_BROKEN_MESSAGE = "Ảnh gửi AI bị hỏng hoặc không đúng định dạng đã khai báo."
+IMAGE_METADATA_MESSAGE = (
+    "Ảnh gửi AI vẫn còn thông tin kèm theo (EXIF, XMP hoặc chú thích, có thể có vị trí GPS). "
+    "Phần mềm không gửi ảnh này cho AI."
+)
+
+
+@dataclass(frozen=True)
+class ImageInput:
+    """Một ảnh gửi kèm lời gọi AI: chỉ có bytes ảnh và kiểu MIME.
+
+    Cố ý không có tên file, đường dẫn hay thẻ (security A3): tên thư mục có thể chứa tên, địa
+    chỉ khách. Bytes phải là bản gửi AI đã bỏ hết metadata (T-049); ``prepare_images`` kiểm lại.
+    ``repr`` không in bytes (ảnh vài trăm KB làm ngập log, traceback).
+    """
+
+    data: bytes = field(repr=False)
+    mime: str
+
+    def __repr__(self) -> str:
+        size = len(self.data) if isinstance(self.data, (bytes, bytearray)) else "?"
+        return f"ImageInput(mime={self.mime!r}, {size} bytes)"
+
+
+def _mb(size: int) -> str:
+    return f"{size / (1024 * 1024):.1f}".replace(".", ",")
+
+
+def prepare_images(images: Sequence[ImageInput]) -> tuple[ImageInput, ...]:
+    """Kiểm ảnh trước khi gửi AI; trả bản sao bất biến (bytes) để gửi đúng thứ đã kiểm.
+
+    Báo ``AIError`` (câu tiếng Việt cố định, không chép dữ liệu ảnh) khi: không phải
+    ``ImageInput`` (ví dụ chuỗi đường dẫn), quá ``MAX_IMAGES`` ảnh, ảnh rỗng, quá
+    ``MAX_IMAGE_BYTES`` / ``MAX_TOTAL_IMAGE_BYTES``, MIME ngoài ``IMAGE_MIMES``, nội dung không
+    đúng MIME hoặc hỏng cấu trúc, hoặc còn metadata (EXIF, XMP, chú thích).
+    Ảnh là dữ liệu chưa tin cậy: chỉ đọc cấu trúc khối, không giải nén ảnh.
+    """
+    if isinstance(images, (str, bytes, bytearray, memoryview, ImageInput)) or not isinstance(
+        images, Sequence
+    ):
+        raise AIError(IMAGE_TYPE_MESSAGE)
+    if len(images) > MAX_IMAGES:
+        raise AIError(f"Mỗi lần chỉ gửi AI tối đa {MAX_IMAGES} ảnh.")
+    prepared: list[ImageInput] = []
+    total = 0
+    for image in images:
+        if not isinstance(image, ImageInput) or not isinstance(image.mime, str):
+            raise AIError(IMAGE_TYPE_MESSAGE)
+        if not isinstance(image.data, (bytes, bytearray)):
+            raise AIError(IMAGE_TYPE_MESSAGE)
+        data = bytes(image.data)  # chép ra: bytearray bị sửa sau khi kiểm cũng không ảnh hưởng
+        mime = image.mime.strip().lower()
+        mime = _MIME_ALIASES.get(mime, mime)
+        if mime not in IMAGE_MIMES:
+            raise AIError(IMAGE_MIME_MESSAGE)
+        if not data:
+            raise AIError(IMAGE_EMPTY_MESSAGE)
+        if len(data) > MAX_IMAGE_BYTES:
+            raise AIError(
+                f"Ảnh gửi AI quá lớn ({_mb(len(data))} MB, tối đa {_mb(MAX_IMAGE_BYTES)} MB). "
+                "Dùng bản ảnh thu nhỏ để gửi AI."
+            )
+        total += len(data)
+        if total > MAX_TOTAL_IMAGE_BYTES:
+            raise AIError(
+                f"Tổng dung lượng ảnh gửi AI quá lớn (tối đa {_mb(MAX_TOTAL_IMAGE_BYTES)} MB "
+                "mỗi lần). Gửi ít ảnh hơn."
+            )
+        problem = _IMAGE_CHECKS[mime](data)
+        if problem == "metadata" or (problem is None and _has_metadata_marker(data)):
+            raise AIError(IMAGE_METADATA_MESSAGE)
+        if problem is not None:
+            raise AIError(IMAGE_BROKEN_MESSAGE)
+        prepared.append(ImageInput(data=data, mime=mime))
+    return tuple(prepared)
+
+
+# Dấu hiệu của khối metadata ở bất kỳ đâu trong file (kể cả ảnh thứ hai nối sau ảnh chính, như
+# ảnh MPO): đầu khối EXIF trong JPEG/WebP, gói XMP. Xác suất dữ liệu ảnh nén tình cờ chứa đúng
+# các chuỗi này là không đáng kể; nếu có thì chỉ là từ chối nhầm (an toàn).
+_METADATA_MARKERS = (b"Exif\x00\x00", b"http://ns.adobe.com/xap/1.0/", b"<x:xmpmeta")
+
+
+def _has_metadata_marker(data: bytes) -> bool:
+    return any(marker in data for marker in _METADATA_MARKERS)
+
+
+# JPEG: APP1 (EXIF, XMP), APP13 (Photoshop/IPTC: tên người, địa điểm), COM (chú thích tự do).
+_JPEG_METADATA = frozenset({0xE1, 0xED, 0xFE})
+_JPEG_STANDALONE = frozenset({0x01, *range(0xD0, 0xD8)})
+
+
+def _check_jpeg(data: bytes) -> str | None:
+    """Đi qua các khối JPEG từ đầu tới khối ảnh (SOS). ``"format"``: sai cấu trúc;
+    ``"metadata"``: có khối metadata; ``None``: ổn."""
+    if not data.startswith(b"\xff\xd8\xff"):
+        return "format"
+    i, n = 2, len(data)
+    while True:
+        if i >= n or data[i] != 0xFF:
+            return "format"
+        while i < n and data[i] == 0xFF:  # byte đệm 0xFF trước mã khối
+            i += 1
+        if i >= n:
+            return "format"
+        marker = data[i]
+        i += 1
+        if marker in _JPEG_STANDALONE:
+            continue
+        if marker in (0x00, 0xD8, 0xD9):  # hết ảnh (EOI) trước khối ảnh, hay mã sai chỗ
+            return "format"
+        if i + 2 > n:
+            return "format"
+        length = int.from_bytes(data[i : i + 2], "big")
+        if length < 2 or i + length > n:
+            return "format"
+        if marker in _JPEG_METADATA:
+            return "metadata"
+        if marker == 0xDA:  # SOS: phía sau là dữ liệu ảnh nén
+            return None
+        i += length
+
+
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# eXIf: EXIF; tEXt/zTXt/iTXt: chữ tự do (tác giả, chú thích, XMP, cả EXIF dạng chữ).
+_PNG_METADATA = frozenset({b"eXIf", b"tEXt", b"zTXt", b"iTXt"})
+
+
+def _check_png(data: bytes) -> str | None:
+    """Đi qua các chunk PNG tới ``IEND``; chunk đầu phải là ``IHDR``."""
+    if not data.startswith(_PNG_SIGNATURE):
+        return "format"
+    i, n, first = len(_PNG_SIGNATURE), len(data), True
+    while i + 12 <= n:
+        length = int.from_bytes(data[i : i + 4], "big")
+        kind = data[i + 4 : i + 8]
+        if not kind.isalpha() or i + 12 + length > n:
+            return "format"
+        if first and kind != b"IHDR":
+            return "format"
+        if kind in _PNG_METADATA:
+            return "metadata"
+        if kind == b"IEND":
+            return None
+        first = False
+        i += 12 + length
+    return "format"
+
+
+_WEBP_IMAGE_CHUNKS = frozenset({b"VP8 ", b"VP8L", b"VP8X"})
+_WEBP_METADATA = frozenset({b"EXIF", b"XMP "})
+
+
+def _check_webp(data: bytes) -> str | None:
+    """Đi qua các chunk RIFF của WebP; chunk đầu phải là ``VP8 ``/``VP8L``/``VP8X``."""
+    if len(data) < 20 or data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return "format"
+    end = 8 + int.from_bytes(data[4:8], "little")
+    if end > len(data) or end < 20:
+        return "format"
+    i, first = 12, True
+    while i < end:
+        if i + 8 > end:
+            return "format"
+        kind = data[i : i + 4]
+        size = int.from_bytes(data[i + 4 : i + 8], "little")
+        if i + 8 + size > end:
+            return "format"
+        if first and kind not in _WEBP_IMAGE_CHUNKS:
+            return "format"
+        if kind in _WEBP_METADATA:
+            return "metadata"
+        first = False
+        i += 8 + size + (size & 1)  # chunk lẻ có 1 byte đệm
+    return None
+
+
+_IMAGE_CHECKS = {"image/jpeg": _check_jpeg, "image/png": _check_png, "image/webp": _check_webp}
+
+
+class AIProvider(Protocol):
+    """Một hãng AI. Mỗi lần gọi trả về dữ liệu đúng khuôn ``schema`` (đã kiểm tra).
+
+    ``images``: ảnh gửi kèm (bytes + MIME, xem ``ImageInput``), gửi thẳng trong yêu cầu, không
+    qua Files API hay đường dẫn URL. Mỗi hãng gọi ``prepare_images`` trước khi gửi.
+    """
+
+    def generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: Sequence[ImageInput] = (),
+    ) -> T: ...
