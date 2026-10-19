@@ -29,7 +29,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
 | [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | Thợ Máy xong (`3d46574`); Soi Lỗi rút gọn **đạt** (`82b37ce`, 5.643 qua). **Lá Chắn đang kiểm** (CVE thư viện C đi kèm, giấy phép GPLv2 của x265) |
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`, Windows 5.756 qua, 0 hỏng; 3 lớp chặn đọc ra ngoài). **Soi Lỗi đang kiểm** |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi **đạt có điều kiện** (`6cb1f52`, 5.826 qua; không đọc được nội dung file ngoài gốc; L1, L2 Trung bình, L3–L5 Thấp). **Thợ Máy sửa lượt 2** (13:49) |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-047 |
 | [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Còn chỗ |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Còn chỗ |
