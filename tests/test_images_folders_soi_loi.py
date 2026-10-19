@@ -720,11 +720,6 @@ def _short_name(path: Path) -> str | None:
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="L5 (soi-loi): thư mục ẩn/hệ thống bị bỏ khi quét nhưng vẫn đọc được qua ImageRef "
-    "(ví dụ $RECYCLE.BIN khi gốc là ổ USB)",
-)
 def test_hidden_directory_cannot_be_reached_by_crafted_ref(tmp_path):
     root = tmp_path / "anh"
     write(root / "an" / "q.jpg", b"HIDDEN")
@@ -736,11 +731,6 @@ def test_hidden_directory_cannot_be_reached_by_crafted_ref(tmp_path):
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="L5 (soi-loi): tên ngắn 8.3 (SECRET~1) đi vòng qua luật bỏ tên bắt đầu bằng dấu "
-    "chấm và tạo hai ImageRef khác nhau cho cùng một file",
-)
 def test_short_8dot3_alias_cannot_reach_dot_directory(tmp_path):
     root = tmp_path / "anh"
     write(root / ".bi-mat" / "p.jpg", b"HIDDEN")

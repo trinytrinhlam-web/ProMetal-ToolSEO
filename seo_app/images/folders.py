@@ -66,6 +66,8 @@ _MSG_NOT_FOUND = (
 _MSG_LINK = "Đường dẫn đi qua liên kết tắt (symlink/junction), app không đọc qua liên kết."
 _MSG_OUTSIDE = "Đường dẫn nằm ngoài thư mục ảnh được phép."
 _MSG_UNREADABLE = "Không đọc được mục này (không có quyền hoặc ổ đĩa vừa bị ngắt)."
+_MSG_HIDDEN = "App không đọc thư mục hay file ẩn, file hệ thống."
+_MSG_ALIAS = "Đường dẫn ảnh không hợp lệ (tên ngắn hoặc tên khác của cùng một mục)."
 
 
 class ImageFolderError(Exception):
@@ -112,6 +114,11 @@ def _parse_rel(rel_path: object, *, allow_empty: bool) -> tuple[str, ...]:
     if not all(_is_safe_name(part) for part in parts):
         raise ImageFolderError(_MSG_BAD_PATH)
     return parts
+
+
+def _name_key(name: str) -> str:
+    """Khóa so tên: không phân biệt hoa thường, cùng dạng Unicode (Mac lưu tên dạng NFD)."""
+    return unicodedata.normalize("NFC", name).casefold()
 
 
 def _is_image_name(name: str) -> bool:
@@ -316,6 +323,10 @@ class ImageLibrary:
             # ``lstat`` không đi theo symlink, junction; ``_is_link_stat`` bắt cả hai.
             if _is_link_stat(last) or current.is_junction():
                 raise ImageFolderError(_MSG_LINK)
+            # Theo đúng luật của quét: quét bỏ qua mục ẩn/hệ thống (ví dụ ``$RECYCLE.BIN``)
+            # thì ``ImageRef`` gõ sẵn cũng không đi qua được (L5).
+            if _is_hidden_stat(last):
+                raise ImageFolderError(_MSG_HIDDEN)
         try:
             resolved = current.resolve(strict=True)
             if last is None:
@@ -326,6 +337,14 @@ class ImageLibrary:
             raise ImageFolderError(_MSG_UNREADABLE) from None
         if not resolved.is_relative_to(root):
             raise ImageFolderError(_MSG_OUTSIDE)
+        # Tên thật trên ổ phải trùng tên đã gõ (không phân biệt hoa thường). Chặn tên ngắn 8.3
+        # của Windows (``SECRET~1`` cho ``.secret``): đi vòng luật tên và làm một file có hai
+        # ``ImageRef`` (L5).
+        actual = resolved.relative_to(root).parts
+        if len(actual) != len(parts) or any(
+            _name_key(a) != _name_key(b) for a, b in zip(actual, parts, strict=False)
+        ):
+            raise ImageFolderError(_MSG_ALIAS)
         return resolved, last
 
     # ----- xem thư mục -------------------------------------------------------------------
