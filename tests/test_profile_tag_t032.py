@@ -323,7 +323,6 @@ def test_t043_symbols_inside_tag(tag):
     "line",
     [
         "- khách cần xác nhận lịch trước khi thợ tới",
-        "- [*****CẦN XÁC NHẬN]",  # 5 ký tự: quá giới hạn, coi là câu thường
         "- [1] cần xác nhận lịch",
         "- giá (xem bảng) cần xác nhận với khách",
         "- (*) cần xác nhận lịch",

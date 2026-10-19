@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import re
 import tomllib
 import unicodedata
@@ -19,21 +20,31 @@ BUSINESS_PROFILE_FILE = PROJECT_ROOT / "config" / "business_profile.md"
 # («[CẦNXÁC NHẬN]»), không dấu («[CAN XAC NHAN]»), ngoặc tròn, «CHƯA XÁC NHẬN». An toàn khi nghi
 # ngờ: thà giấu thừa còn hơn để lọt. Vẫn bắt buộc có ngoặc mở để câu thường như «khách cần xác
 # nhận lịch» không bị giấu.
-# Giữa ngoặc mở và chữ, giữa các chữ: khoảng trắng tùy ý và tối đa 4 ký tự không phải chữ/số
-# («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[⚠ CẦN»,  «[CẦN-XÁC_NHẬN]», Lá Chắn LC-T032-1), trừ dấu
-# đóng ngoặc. Giới hạn {0,4} là bắt buộc: «[» cũng là ký tự không phải chữ, dùng «*» thì chuỗi
-# «[[[[…» chạy bậc hai. Hai nhánh trong nhóm không trùng nhau với «\s», nên không quay lui bùng nổ.
-_GAP = r"\s*(?:(?:[^\w\s\])]|_)\s*){0,4}"
-_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
+# Giữa ngoặc mở và chữ, giữa các chữ: bao nhiêu khoảng trắng và ký tự không phải chữ/số cũng
+# được («[**CẦN XÁC NHẬN**]», «["CẦN"]», «[❗❗❗ **CẦN»,  «[CẦN-XÁC_NHẬN]», emoji ghép nhiều điểm
+# mã; LC-T032-1, SL-T043-1), trừ dấu đóng ngoặc.
+# Chống chạy bậc hai (ReDoS) khi không giới hạn số ký tự: ngay sau ngoặc mở (``_LEAD_GAP``)
+# không cho thêm ngoặc mở nào, nên với «[[[[…» mỗi điểm bắt đầu chỉ quét tới ngoặc kế tiếp
+# (nhãn «[[CẦN…» vẫn khớp, tính từ ngoặc cuối). Giữa các chữ (``_GAP``) thì cho ngoặc mở
+# («[CẦN (XÁC NHẬN]»): trước mỗi chữ «CAN»/«CHUA» chỉ có đúng một điểm bắt đầu khớp được (ngoặc
+# mở gần nhất), và các dải chen không chứa chữ, nên mỗi dải chỉ bị quét một lần. Mỗi nhóm là
+# MỘT lớp ký tự (không lồng lượng từ) và dùng lượng từ chiếm hữu ``*+``: không quay lui.
+_LEAD_GAP = r"(?:[^\w\[\]()]|_)*+"
+_GAP = r"(?:[^\w\])]|_)*+"
+_UNCONFIRMED_PATTERN = re.compile(rf"[\[(]{_LEAD_GAP}(?:CAN|CHUA){_GAP}XAC{_GAP}NHAN")
 # Gạch đầu dòng: «- », «* », «+ », «1. », «1) ».
 _BULLET = re.compile(r"(?:[-*+]|\d+[.)])(?:\s|$)")
 # Tiêu đề "thật" như Markdown: 1–6 dấu «#» rồi khoảng trắng hoặc hết dòng. Chỉ tiêu đề thật mới
 # kết thúc mục đang giấu; «#suachuacuasat» hay «#1 khu vực» thì không (Soi Lỗi SL-T032-1).
 _REAL_HEADING = re.compile(r"#{1,6}(?:\s|$)")
-# Phần sau ngoặc mở của nửa nhãn: chỉ chữ cái (đã bỏ dấu), khoảng trắng, «_» và ký tự không
-# phải chữ/số trừ dấu đóng ngoặc (như ``_GAP``).
-_PARTIAL_TAG_REST = re.compile(r"(?:[A-Z\s_]|[^\w\s\])])*")
-# Nửa nhãn dài nhất sau khi gộp khoảng trắng: ngoặc, 11 chữ, 4 khoảng × (4 ký tự + dấu cách).
+# Dải ký tự chen trong nhãn (như ``_GAP``: khoảng trắng, «_», ký tự không phải chữ/số trừ dấu
+# đóng ngoặc). ``_ends_with_partial_tag`` thu mỗi dải về một ký tự: «[» nếu dải có ngoặc mở,
+# không thì dấu cách.
+_PARTIAL_GAP_RUN = re.compile(r"(?:[^\w\])]|_)++")
+# Phần sau ngoặc mở của nửa nhãn, trên chữ đã thu dải: chỉ chữ cái (đã bỏ dấu), dấu cách và «[».
+_PARTIAL_TAG_REST = re.compile(r"[A-Z \[]*")
+# Cửa sổ cuối dòng được xét. Sau khi thu dải, nửa nhãn dài nhất là ngoặc rồi 11 chữ, mỗi chữ
+# cách nhau tối đa một ký tự: 23 ký tự, nên bao nhiêu ký tự lạ cũng không đẩy nửa nhãn ra ngoài.
 _PARTIAL_TAG_MAX = 64
 _TAG_WORDS = ("CANXACNHAN", "CHUAXACNHAN")
 
@@ -86,8 +97,12 @@ def confirmed_profile(text: str) -> str:
     cùng cấp hoặc cao hơn (số dấu ``#`` bằng hoặc ít hơn; ``## 7. …`` giấu qua ``### 7.1`` tới
     ``## 8.``). Chỉ tiêu đề thật (``#`` rồi khoảng trắng) mới kết thúc mục đang giấu. Tiêu đề lỡ
     thụt lề mà có nhãn cũng giấu cả mục. Tiêu đề kết thúc bằng nửa nhãn (``## 7. … [CẦN XÁC``)
-    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4). Dòng ghi chú (ký tự nhìn
-    thấy đầu tiên là ``>``) luôn bị bỏ và không cắt khối.
+    được xét nối với dòng kế (bỏ qua dòng trống ở giữa, SL-T032-4); dòng kế đó là nửa sau của
+    nhãn nên bị giấu theo, kể cả khi trông như tiêu đề (``## NHẬN]``, SL-T043-2). Đang giấu mà
+    gặp tiêu đề cấp cao hơn có nhãn của riêng nó thì giấu tới cấp của tiêu đề đó. Tiêu đề lỡ
+    thụt lề có nửa nhãn nằm trong ý đã có nhãn thì không tách ý ra (LC-T043-1), nhưng vẫn chờ
+    dòng kế như tiêu đề. Dòng ghi chú (ký tự nhìn thấy đầu tiên là ``>``) luôn bị bỏ và không
+    cắt khối.
     Ký tự vô hình (U+200B, BOM…) bị bỏ qua khi xét cấu trúc và nhãn (SL-024-2). Các dòng giữ lại
     y nguyên như trong file.
     """
@@ -95,15 +110,28 @@ def confirmed_profile(text: str) -> str:
     block: list[str] = []
     blanks: list[str] = []  # dòng trống chưa biết thuộc khối trước hay nằm giữa hai khối
     hidden_level = 0  # > 0: đang giấu mục của tiêu đề có nhãn với số «#» này
-    pending: tuple[str, int] | None = None  # tiêu đề có nửa nhãn ở cuối, chờ dòng kế
+    # Tiêu đề có nửa nhãn ở cuối, chờ dòng kế: (dòng, số «#», đã nằm trong khối đang mở chưa).
+    pending: tuple[str, int, bool] | None = None
     pending_blanks: list[str] = []  # dòng trống giữa tiêu đề chờ và dòng kế (SL-T032-4)
+    block_tagged = False  # khối đang mở đã biết là có nhãn (thêm dòng vẫn còn nhãn)
 
     def close_block() -> None:
-        if block and not _is_unconfirmed(" ".join(block)):
+        nonlocal block_tagged
+        if block and not (block_tagged or _is_unconfirmed(" ".join(block))):
             kept.extend(block)
         block.clear()
+        block_tagged = False
         kept.extend(blanks)
         blanks.clear()
+
+    def block_is_tagged() -> bool:
+        # Nhớ kết quả «có nhãn»: khối có nhãn chỉ dài thêm cho tới khi đóng, nên không phải dò
+        # lại cả khối ở mỗi dòng (giữ bộ lọc tuyến tính). Khối chưa có nhãn chỉ dò một lần rồi
+        # bị đóng ngay (dòng đang xét tách ra thành tiêu đề).
+        nonlocal block_tagged
+        if block and not block_tagged:
+            block_tagged = _is_unconfirmed(" ".join(block))
+        return block_tagged
 
     for line in text.splitlines():
         visible = _visible(line)
@@ -113,20 +141,36 @@ def confirmed_profile(text: str) -> str:
         indented = bool(stripped) and visible[0].isspace()
         heading = bool(stripped) and not indented and stripped.startswith("#")
         level = len(stripped) - len(stripped.lstrip("#"))
+        # Dòng có thể mở mục: tiêu đề không thụt lề, hoặc tiêu đề thật lỡ thụt lề (SL-T032-2).
+        heading_like = heading or (indented and _REAL_HEADING.match(stripped) is not None)
         if pending is not None:
             if not stripped:
                 pending_blanks.append(line)  # nửa sau của nhãn có thể nằm sau dòng trống
                 continue
-            head, head_level = pending
+            head, head_level, head_in_block = pending
             pending = None
-            if _is_unconfirmed(f"{head} {line}"):
-                hidden_level = head_level  # dòng này (nửa sau của nhãn) bị giấu cùng mục
+            joined = _is_unconfirmed(f"{head} {line}")
+            if joined:
+                if head_in_block:
+                    # Khối chứa tiêu đề chờ, và tiêu đề đó cùng dòng này thành nhãn: bỏ cả khối.
+                    block_tagged = True
+                    close_block()
+                pending_blanks.clear()
+                # Dòng này (nửa sau của nhãn) bị giấu cùng mục. Bỏ qua luôn, kể cả khi nó trông
+                # như tiêu đề cùng cấp («## 7 [CẦN XÁC» rồi «## NHẬN]»): nó là một phần của nhãn,
+                # không được kết thúc mục đang giấu (SL-T043-2).
+                hidden_level = _tagged_heading_level(line, heading_like, level, head_level)
+                continue
+            if head_in_block:
+                # Tiêu đề chờ đã nằm trong khối: dòng trống sau nó xử lý như sau dòng thường.
+                blanks.extend(pending_blanks)
             else:
                 kept.append(head)
                 kept.extend(pending_blanks)
             pending_blanks.clear()
         if hidden_level:
             if not heading or level > hidden_level or not _REAL_HEADING.match(stripped):
+                hidden_level = _tagged_heading_level(line, heading_like, level, hidden_level)
                 continue
             hidden_level = 0
         if not stripped:
@@ -135,18 +179,26 @@ def confirmed_profile(text: str) -> str:
             else:
                 kept.append(line)
             continue
+        join_block = False  # tiêu đề thụt lề vẫn nằm trong khối trước (không tách khối)
         if indented and _REAL_HEADING.match(stripped):
+            prev_half = bool(block) and _ends_with_partial_tag(block[-1])
             if _is_unconfirmed(line):
-                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2).
+                # Tiêu đề lỡ thụt lề mà có nhãn: vẫn giấu cả mục (SL-T032-2). Dòng trước còn
+                # nửa nhãn thì dòng này có thể là nửa sau của nhãn đó: giấu luôn khối trước.
                 heading = True
-            elif _ends_with_partial_tag(line) and not (block and _ends_with_partial_tag(block[-1])):
+                join_block = prev_half
+            elif _ends_with_partial_tag(line):
                 # Tiêu đề lỡ thụt lề có nửa nhãn ở cuối: chờ dòng kế như tiêu đề thường
-                # (SL-T032-5). Dòng trước còn nửa nhãn thì dòng này có thể là nửa sau của nhãn
-                # đó: để nó nối vào khối trước như cũ, không tách ra làm khối trước lọt.
+                # (SL-T032-5). Nhưng không tách khối khi dòng trước còn nửa nhãn (dòng này có
+                # thể là nửa sau của nhãn đó, tách ra thì khối trước lọt) hay khối trước đã có
+                # nhãn (tách ra thì các dòng thụt lề phía sau, vẫn thuộc ý có nhãn, thành khối
+                # mới không nhãn và tới AI: LC-T043-1). Khi đó dòng này vừa nằm trong khối, vừa
+                # chờ dòng kế.
                 heading = True
+                join_block = prev_half or block_is_tagged()
         if blanks and not indented:
             close_block()
-        if heading or (not indented and _BULLET.match(stripped)):
+        if (heading and not join_block) or (not indented and _BULLET.match(stripped)):
             close_block()
         block.extend(blanks)
         blanks.clear()
@@ -154,7 +206,9 @@ def confirmed_profile(text: str) -> str:
             if _is_unconfirmed(line):
                 hidden_level = level
             elif _ends_with_partial_tag(line):
-                pending = (line, level)  # SL-T032-3
+                if join_block:
+                    block.append(line)
+                pending = (line, level, join_block)  # SL-T032-3
                 continue
             block.append(line)
             close_block()
@@ -163,6 +217,25 @@ def confirmed_profile(text: str) -> str:
     # Hết file mà tiêu đề còn nửa nhãn: an toàn khi nghi ngờ, bỏ tiêu đề đó.
     close_block()
     return "\n".join(kept).strip()
+
+
+def _tagged_heading_level(line: str, heading_like: bool, level: int, hidden_level: int) -> int:
+    """Mức giấu mới khi gặp ``line`` lúc đang giấu mục cấp ``hidden_level``.
+
+    Dòng có thể mở mục (tiêu đề không thụt lề, hoặc tiêu đề thật lỡ thụt lề) mà ít «#» hơn
+    (cấp cao hơn) và chính nó có nhãn hay nửa nhãn ở cuối thì phần giấu mở rộng tới cấp của
+    nó, như khi gặp nó lúc không giấu. Không vậy thì nhãn của nó bị nuốt cùng mục đang giấu và
+    mục của nó lọt (ví dụ «#x [CẦN XÁC NHẬN]» hay «  ## [CẦN XÁC NHẬN]» không kết thúc mục đang
+    giấu). Nửa nhãn cũng tính, vì không thể chờ dòng kế cho một dòng đã bị giấu: an toàn khi
+    nghi ngờ.
+    """
+    if (
+        heading_like
+        and level < hidden_level
+        and (_is_unconfirmed(line) or _ends_with_partial_tag(line))
+    ):
+        return level
+    return hidden_level
 
 
 def _visible(line: str) -> str:
@@ -186,16 +259,28 @@ def _tag_text(text: str) -> str:
     return bare.replace("Đ", "D")
 
 
+def _squeeze_gap(match: re.Match[str]) -> str:
+    run = match.group()
+    return "[" if "[" in run or "(" in run else " "
+
+
+# Bộ nhớ đệm nhỏ: cùng một dòng thường được xét vài lần liên tiếp (dòng đang xét, rồi là
+# «dòng trước» của dòng kế). Chuỗi Python nhớ sẵn mã băm nên tra lại gần như không tốn gì.
+@functools.lru_cache(maxsize=8)
 def _ends_with_partial_tag(text: str) -> bool:
     """Cuối dòng là nửa đầu của nhãn, ví dụ «[CẦN XÁC», «(chưa», «[**CẦN», «[» (nhãn bị xuống
     dòng).
 
-    Chỉ xét đoạn cuối dài ``_PARTIAL_TAG_MAX`` ký tự (sau khi gộp khoảng trắng), nên mỗi dòng
-    tốn thời gian cố định dù có hàng nghìn ngoặc. Thử từng ngoặc mở trong đoạn đó.
+    Mỗi dải ký tự chen (khoảng trắng, «*», emoji…) được thu về một ký tự trước (``[`` nếu dải
+    có ngoặc mở, không thì dấu cách): mọi ngoặc mở trong cùng một dải cho cùng một kết quả, nên
+    thu lại không đổi kết quả mà nửa nhãn luôn ngắn. Sau đó chỉ xét đoạn cuối dài
+    ``_PARTIAL_TAG_MAX`` ký tự, nên phần so khớp tốn thời gian cố định dù dòng có hàng nghìn
+    ngoặc. Thử từng ngoặc mở trong đoạn đó.
     """
-    tail = " ".join(_tag_text(text).split())[-_PARTIAL_TAG_MAX:]
+    squeezed = _PARTIAL_GAP_RUN.sub(_squeeze_gap, _tag_text(text))
+    tail = squeezed[-_PARTIAL_TAG_MAX:]
     for start, ch in enumerate(tail):
-        if ch not in "[(":
+        if ch != "[":
             continue
         rest = tail[start + 1 :]
         if not _PARTIAL_TAG_REST.fullmatch(rest):
@@ -206,6 +291,7 @@ def _ends_with_partial_tag(text: str) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=8)
 def _is_unconfirmed(text: str) -> bool:
     """Đoạn chữ có nhãn [CẦN XÁC NHẬN], kể cả khi gõ sai (xem ``_UNCONFIRMED_PATTERN``) hay có
     ký tự vô hình chen vào nhãn. Ký tự vô hình bị bỏ hẳn: mẫu nhãn cho phép giữa các chữ có hay
