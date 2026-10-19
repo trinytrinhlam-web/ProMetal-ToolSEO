@@ -7,8 +7,8 @@
 | Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 (tạm thay Fable) |
 | Phiếu được kiểm | [T-044](../tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) |
 | Phạm vi | Kiểm định rút gọn (U1): diff `origin/main...team/T-044` tại `9af9e43` (main `6306343`): `app/views/wordpress.py`, `app/views/settings.py`, `tests/test_app_t044_safe_text.py`, `tests/test_soi_loi_t044.py`, `tests/test_app_wordpress.py`, `tests/test_soi_loi_t031.py` |
-| Ngày | 2026-10-17 |
-| **Kết luận** | **ĐẠT** (dự kiến, chờ pytest) |
+| Ngày | 2026-10-17 (pytest chạy lại xong 2026-10-19) |
+| **Kết luận** | **ĐẠT** |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -54,7 +54,7 @@ Ghi nhận ngoài phạm vi (không chặn T-044, chuyển phiếu khác):
 | bandit | Không chạy (rút gọn; diff chỉ thêm escape ở giao diện) | — |
 | detect-secrets (8 file đổi) | 0 phát hiện | Có |
 | Soát lịch sử git (`origin/main..team/T-044`) | Chỉ giá trị giả trong test | Có |
-| `uv run pytest` (Windows 11, `9af9e43`) | Đang chạy lại (phiên trước bị dừng ở 51%) | Có |
+| `uv run pytest` (Windows 11, `9af9e43`) | 5378 passed, 10 skipped, 30 xfailed, 1 warning in 693.83s; 0 hỏng (khớp số Họa Sĩ báo) | Có |
 | `uv run ruff check .` | All checks passed! | Có |
 
 ## Báo nhầm đã loại
