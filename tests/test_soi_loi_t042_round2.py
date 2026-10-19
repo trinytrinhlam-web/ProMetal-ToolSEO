@@ -136,7 +136,6 @@ def test_normal_wordpress_urls_are_accepted(url):
     assert _is_plain_site_url(url.rstrip("/"))
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-9: tab/xuống dòng giữa WORDPRESS_URL vẫn qua")
 @pytest.mark.parametrize(
     "url", ["https://exa\tmple.com", "https://exam\nple.com", "https://example.com/blo\tg"]
 )
@@ -149,7 +148,6 @@ def test_wordpress_url_with_inner_tab_or_newline_is_refused(url):
         WordPressClient(url, "lam", "abcd")
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-10: WORDPRESS_URL trỏ thẳng vào một file .php")
 @pytest.mark.parametrize(
     "url",
     [
@@ -235,7 +233,6 @@ def test_featured_image_check_is_the_request_right_before_write(fake_wp):
     assert json.loads(fake_wp.requests[-1].body) == {"featured_media": 7}
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-11: câu trả lời của lệnh đặt ảnh không được soát")
 @pytest.mark.parametrize(
     "answer",
     [
@@ -304,7 +301,6 @@ def test_ability_snapshot_checks_keyword_field_name():
                                  {"focus_keyword": "k"})
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-8: false rõ ràng bị true ở khóa kia lấn át")
 @pytest.mark.parametrize(
     "answer", [{"updated": False, "success": True}, {"updated": True, "success": False}]
 )

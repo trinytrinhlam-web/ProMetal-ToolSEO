@@ -128,6 +128,10 @@ _SEO_NOT_DRAFT = (
     "không sửa bài đã đăng (không ghi SEO, không đổi ảnh đại diện); nếu cần, sửa tay trong "
     "trang quản trị WordPress."
 )
+_IMAGE_ODD_ANSWER = (
+    "WordPress trả lời lệnh đặt ảnh đại diện không khớp với bài nháp vừa tạo (bài khác, hoặc "
+    "bài không còn là nháp). Hãy mở bài trong trang quản trị WordPress để kiểm tra."
+)
 _IMAGE_CHECK_FAILED = (
     "Không kiểm được bài nháp trên WordPress trước khi đặt ảnh đại diện{code}. Chưa ghi gì; "
     "thử lại sau."
@@ -718,6 +722,9 @@ class WordPressClient:
         data = self._json(
             self._request("POST", f"/wp/v2/posts/{post_id}", json={"featured_media": media_id})
         )
+        if not _is_own_draft_answer(data, post_id):
+            # SL-T042-11: câu trả lời nói về bài khác, hay bài không còn nháp: bất thường.
+            raise WordPressError(_IMAGE_ODD_ANSWER)
         return self._post_from(data)
 
     def upload_media(
@@ -1063,6 +1070,9 @@ _SITE_PATH_FORBIDDEN = ("wp-json", "code-snippets", "prometal", "wp-admin")
 def _is_plain_site_url(base_url: str) -> bool:
     """``https://tên-máy[:cổng][/thư-mục]``: không tên/mật khẩu, không ``?``, ``#``, ``%``,
     không đoạn ``.``/``..``, không ``wp-json``, ``code-snippets``, ``prometal`` (SL-T042-3)."""
+    # SL-T042-9: xét chuỗi GỐC trước ``urlsplit`` (hàm này âm thầm bỏ tab, xuống dòng).
+    if any(ch.isspace() or _CONTROL_CHARS.match(ch) for ch in base_url):
+        return False
     try:
         parts = urlsplit(base_url)
     except ValueError:
@@ -1074,7 +1084,12 @@ def _is_plain_site_url(base_url: str) -> bool:
     if not _SITE_PATH.fullmatch(parts.path):
         return False
     lowered = parts.path.lower()
-    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
+    if any(word in lowered for word in _SITE_PATH_FORBIDDEN):
+        return False
+    # SL-T042-10: thư mục con không được là file PHP (``/xmlrpc.php``, ``/run.php``…): lệnh
+    # gọi sẽ chạy file đó thay vì REST API. Không chừa cả ``index.php``: website dùng đường
+    # dẫn tĩnh (``/wp-json/`` chạy được, T-033), không cần kiểu ``/index.php/wp-json/``.
+    return not any(ext in lowered for ext in (".php", ".phtml", ".phar"))
 
 
 def _positive_id(value: object) -> int | None:
@@ -1108,6 +1123,8 @@ def _ability_confirms(data: object, fields: dict[str, str]) -> bool:
     """
     if not isinstance(data, dict) or "code" in data:
         return False
+    if data.get("updated") is False or data.get("success") is False:
+        return False  # SL-T042-8: một khóa nói rõ "chưa ghi" thì không tin khóa kia
     if data.get("updated") is not True and data.get("success") is not True:
         return False
     snapshot = data.get("post")

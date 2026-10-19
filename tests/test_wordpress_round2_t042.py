@@ -413,3 +413,60 @@ def test_ignorable_not_cf_is_dropped_and_refused(char):
     assert not is_site_link(f"{BASE_URL}/cua{char}sat/", BASE_URL)
     with pytest.raises(ValueError):
         PublishedItem(id=1, type="post", slug="a", link=f"{BASE_URL}/a/", title=f"A{char}B")
+
+
+# ------------------------------------------------------------ lượt 3
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"updated": False, "success": True},
+        {"updated": True, "success": False},
+        {"updated": True, "success": False, "post": {"title": TITLE}},
+    ],
+)
+def test_ability_self_contradicting_answer_is_not_written(fake_wp, client, answer):
+    draft_site(fake_wp, run=answer)
+    client.create_draft("A", "B")
+    assert client.set_seo_meta(42, title=TITLE).reason == "error"
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"id": 43, "status": "draft", "featured_media": 9},
+        {"id": 42, "status": "publish", "featured_media": 9},
+        {"id": "42", "status": "draft", "featured_media": 9},
+        {"status": "draft", "featured_media": 9},
+    ],
+)
+def test_featured_image_odd_write_answer_raises(fake_wp, client, answer):
+    draft_site(fake_wp)
+    fake_wp.on("POST", POST_42, answer)
+    client.create_draft("A", "B")
+    with pytest.raises(WordPressError, match="không khớp"):
+        client.set_featured_image(42, 9)
+
+
+ROUND3_BAD_URLS = [
+    "https://exa" + chr(9) + "mple.com",
+    "https://example.com/blo" + chr(10) + "g",
+    "https://example.com/bl" + chr(13) + "og",  # khoảng trắng ĐẦU/CUỐI vẫn được cắt như cũ
+    "https://example.com/a" + chr(0) + "b",
+    "https://example.com/a" + chr(0x7F) + "b",
+    "https://example.com/a" + chr(0xA0) + "b",
+    "https://example.com/a" + chr(0x3000) + "b",
+    "https://example.com/xmlrpc.php",
+    "https://example.com/index.php",
+    "https://example.com/wp-login.PHP",
+    "https://example.com/a.php/b",
+    "https://example.com/x.phtml",
+    "https://example.com/x.phar",
+]
+
+
+@pytest.mark.parametrize("url", ROUND3_BAD_URLS)
+def test_round3_wordpress_url_refused(url):
+    with pytest.raises(WordPressError):
+        WordPressClient(url, "lam", "abcd")
