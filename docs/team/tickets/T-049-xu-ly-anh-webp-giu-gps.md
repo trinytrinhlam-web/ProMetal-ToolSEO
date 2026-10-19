@@ -52,3 +52,7 @@ F2 (test bắt buộc: còn GPS sau nén, bản AI không còn metadata), F3, A3
 ## Ghi chú của Chỉ Huy
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-049`, tạo từ `main`.
+- 2026-10-19 (Chỉ Huy A): **Lưu ý của Soi Lỗi T-047** (`docs/team/reports/T-047-soi-loi.md`):
+  1. HEIC cắt cụt vẫn mở được bằng `Image.open`; lỗi chỉ nổ ở `load()` và là `ValueError`, không phải `OSError`. Đặt cả `open` lẫn `load` trong khối bắt lỗi, bắt `(OSError, ValueError)`.
+  2. HEIC hỏng ở giữa dữ liệu vẫn giải mã ra ảnh rác mà không báo lỗi: chỉ ghi nhận, giao diện cho người dùng xem trước.
+  3. Đăng ký HEIF (`register_heif_opener`) một lần ở một chỗ cố định. Test "chưa đăng ký" trong `tests/test_pillow_heif_setup.py` đang `pytest.skip` khi HEIF đã đăng ký sẵn: nếu phiếu này đăng ký lúc import thì báo Soi Lỗi đổi test đó thành fixture tự gỡ HEIF khỏi bảng (phiếu này không sửa test của T-047).
