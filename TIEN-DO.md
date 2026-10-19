@@ -63,6 +63,8 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+**Anh đã trả lời ngày 19/10 năm câu Giai đoạn 3 (ảnh): 1A 2A 3A 4A 5A.** Chi tiết trong `CLAUDE.md`, mục "Quyết định đã chốt".
+
 **Anh đã trả lời ngày 16/10: 1A 2A 3A 4A 5A.** Các việc anh cần làm trên website. Làm lúc nào cũng được, phần mềm vẫn chạy trong lúc chờ:
 
 1. **Bật Abilities trong SiteSEO.** Vào trang quản trị WordPress → SiteSEO, tìm mục **Abilities** và bật lên. Phần mềm chỉ dùng tính năng này để ghi SEO cho bài **nháp do chính phần mềm tạo**.

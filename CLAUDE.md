@@ -30,6 +30,7 @@ Người dùng là chủ dự án: hiểu khái niệm lập trình nhưng ít d
   - Trang Kế hoạch nhận kế hoạch người dùng cung cấp (tải file, dán chữ, link Google Sheets); AI đề xuất thay đổi, người dùng tick duyệt rồi mới cập nhật. Có "thông tin nền doanh nghiệp" dùng cho mọi bài.
 - SEO trên website (chốt 2026-10-16): phần mềm ghi tiêu đề, mô tả, từ khóa chính vào SiteSEO qua **Abilities** (chủ dự án bật trong SiteSEO), chỉ cho bài nháp do app tạo; dùng tài khoản WordPress vai **Biên tập viên** riêng; tiêu đề SEO thêm đuôi " | Pro-Metal" khi còn chỗ (dưới 60 ký tự).
 - Thư viện ảnh **Pillow** được duyệt cho Giai đoạn 3 (chốt 2026-10-16).
+- Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Hải Châu/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ).
 
 ## Bí mật và bảo mật
 
@@ -157,3 +158,4 @@ Người dùng chạy Claude Code ngay trên máy của mình để vừa làm v
 - 2026-10-16: Gộp T-034 vào `main` (7 lỗi Thấp lớp AI và thử mù; chặn `*_CUSTOM_HEADERS` bằng khung nhìn `os` đã lọc thay vì gỡ biến môi trường). Lá Chắn ĐẠT (Opus tạm). **Xong Giai đoạn 2.** Linux 4.658 test qua.
 - 2026-10-16: Chủ dự án trả lời 2026-10-16: **1A** (bật Abilities của SiteSEO để phần mềm ghi tiêu đề, mô tả, từ khóa chính vào bài nháp), **2A** (tạo tài khoản WordPress vai Biên tập viên riêng cho phần mềm), **3A** (đuôi " | Pro-Metal" khi tiêu đề còn chỗ, dưới 60 ký tự), **4A** (dọn khối Organization rỗng của SiteSEO, mô tả thừa "3 chi nhánh…" ở trang chủ, mức giá "$$"; chủ dự án hoặc người làm web làm), **5A** (đồng ý thêm thư viện Pillow cho Giai đoạn 3).
 - 2026-10-16: Gộp T-038 vào `main`: dựng và kiểm schema FAQPage không cần mạng (`seo_app/onpage/schema.py`; không xuất Article/Breadcrumb/LocalBusiness vì site đã tự có). Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (Opus tạm), 3 điều kiện làm ở T-041.
+- 2026-10-19: Chủ dự án trả lời 5 câu Giai đoạn 3 (1A 2A 3A 4A 5A, xem "Quyết định đã chốt"). Chỉ Huy A gộp T-036, T-037 (Giai đoạn 4, logic), T-044, T-046 (thiết kế Giai đoạn 3); lập phiếu code Giai đoạn 3.
