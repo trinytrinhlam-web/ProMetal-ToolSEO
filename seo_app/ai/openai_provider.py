@@ -21,6 +21,8 @@ Tìm web: công cụ ``web_search`` chính hãng dùng được cùng lúc với
 
 from __future__ import annotations
 
+import base64
+from collections.abc import Sequence
 from typing import Any
 
 import openai
@@ -30,6 +32,7 @@ from seo_app.ai.base import (
     LIBRARY_ERRORS,
     OPENAI_URL,
     AIError,
+    ImageInput,
     T,
     TaskConfig,
     bad_request_error,
@@ -37,6 +40,7 @@ from seo_app.ai.base import (
     caused_by_decoding,
     ignoring_custom_headers,
     library_error,
+    prepare_images,
     token_limit_error,
     unreadable_error,
 )
@@ -64,9 +68,21 @@ class OpenAIProvider:
                 )
         self._client = client
 
-    def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+    def generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: Sequence[ImageInput] = (),
+    ) -> T:
+        # Kiểm ảnh trước mọi lời gọi mạng (giới hạn, định dạng, không còn metadata).
+        prepared = prepare_images(images)
         try:
-            return self._generate(task, system=system, prompt=prompt, schema=schema)
+            return self._generate(
+                task, system=system, prompt=prompt, schema=schema, images=prepared
+            )
         except AIError:
             raise
         except Exception as exc:
@@ -81,11 +97,19 @@ class OpenAIProvider:
                 raise library_error(LABEL) from exc
             raise
 
-    def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+    def _generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: tuple[ImageInput, ...] = (),
+    ) -> T:
         params: dict[str, Any] = {
             "model": task.model,
             "instructions": system,
-            "input": prompt,
+            "input": user_input(prompt, images),
             "max_output_tokens": task.max_tokens,
             "text": {"format": text_format(schema)},
             "reasoning": {"effort": task.effort},
@@ -136,6 +160,27 @@ class OpenAIProvider:
             raise AIError(f"Lỗi khi gọi OpenAI ({type(exc).__name__}). Bấm thử lại.") from exc
 
         return _parse(response, task, schema)
+
+
+def user_input(prompt: str, images: tuple[ImageInput, ...]) -> str | list[dict[str, Any]]:
+    """Tham số ``input`` của Responses API. Không có ảnh: giữ nguyên chuỗi như trước.
+
+    Có ảnh: một lượt ``user`` gồm các khối ``input_image`` (ảnh base64 trong ``data:`` URL, gửi
+    thẳng trong yêu cầu; không ``file_id``, không địa chỉ ảnh trên mạng) rồi tới lời dặn.
+    """
+    if not images:
+        return prompt
+    content: list[dict[str, Any]] = [
+        {
+            "type": "input_image",
+            "detail": "auto",
+            "image_url": f"data:{image.mime};base64,"
+            + base64.b64encode(image.data).decode("ascii"),
+        }
+        for image in images
+    ]
+    content.append({"type": "input_text", "text": prompt})
+    return [{"role": "user", "content": content}]
 
 
 def text_format(schema: type[T]) -> dict[str, Any]:

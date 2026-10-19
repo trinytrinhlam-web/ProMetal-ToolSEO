@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from typing import Any
 
 import httpx
@@ -44,11 +45,13 @@ from seo_app.ai.base import (
     GEMINI_URL,
     LIBRARY_ERRORS,
     AIError,
+    ImageInput,
     T,
     TaskConfig,
     bad_request_error,
     bad_response_message,
     library_error,
+    prepare_images,
     token_limit_error,
 )
 
@@ -121,14 +124,34 @@ class GeminiProvider:
             debug_config=no_debug_config(),
         )
 
-    def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+    def generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: Sequence[ImageInput] = (),
+    ) -> T:
+        # Kiểm ảnh trước mọi lời gọi mạng (giới hạn, định dạng, không còn metadata).
+        prepared = prepare_images(images)
         try:
-            return self._generate(task, system=system, prompt=prompt, schema=schema)
+            return self._generate(
+                task, system=system, prompt=prompt, schema=schema, images=prepared
+            )
         except LIBRARY_ERRORS as exc:
             # Thư viện lệch phiên bản (đổi tên hằng, hàm, tham số): báo tiếng Việt.
             raise library_error(LABEL) from exc
 
-    def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+    def _generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: tuple[ImageInput, ...] = (),
+    ) -> T:
         try:
             if task.web_search and is_legacy_model(task.model):
                 notes = self._call(
@@ -137,17 +160,23 @@ class GeminiProvider:
                     prompt=prompt + SEARCH_NOTES_PROMPT,
                     schema=None,
                     search=True,
+                    images=images,
                 )
                 text = _text(notes, task)
                 if not text.strip():
                     raise AIError("AI tìm web nhưng không ghi chép được gì. Bấm thử lại.")
                 prompt = prompt + FORMAT_PROMPT.format(notes=_frame(text))
                 response = self._call(
-                    task, system=system, prompt=prompt, schema=schema, search=False
+                    task, system=system, prompt=prompt, schema=schema, search=False, images=images
                 )
             else:
                 response = self._call(
-                    task, system=system, prompt=prompt, schema=schema, search=task.web_search
+                    task,
+                    system=system,
+                    prompt=prompt,
+                    schema=schema,
+                    search=task.web_search,
+                    images=images,
                 )
         except errors.APIError as exc:
             raise _api_error(exc, task) from exc
@@ -168,8 +197,16 @@ class GeminiProvider:
         return _parse(response, task, schema)
 
     def _call(
-        self, task: TaskConfig, *, system: str, prompt: str, schema: type[T] | None, search: bool
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T] | None,
+        search: bool,
+        images: tuple[ImageInput, ...] = (),
     ) -> Any:
+        contents = _contents(prompt, images)
         config: dict[str, Any] = {
             "system_instruction": system,
             "max_output_tokens": task.max_tokens,
@@ -184,7 +221,7 @@ class GeminiProvider:
             config["tools"] = [{"google_search": {}}]
         try:
             return self._client.models.generate_content(
-                model=task.model, contents=prompt, config=_content_config(config)
+                model=task.model, contents=contents, config=_content_config(config)
             )
         except errors.ClientError as exc:
             if exc.code != 400 or "thinking" not in str(exc.message or "").lower():
@@ -192,7 +229,7 @@ class GeminiProvider:
             # Mô hình không suy nghĩ / không nhận mức này: bỏ qua, gọi lại một lần.
             config.pop("thinking_config")
             return self._client.models.generate_content(
-                model=task.model, contents=prompt, config=_content_config(config)
+                model=task.model, contents=contents, config=_content_config(config)
             )
 
 
@@ -214,6 +251,24 @@ def _content_config(config: dict[str, Any]) -> types.GenerateContentConfig:
     """
     try:
         return types.GenerateContentConfig(**config)
+    except pydantic.ValidationError as exc:
+        raise library_error(LABEL) from exc
+
+
+def _contents(prompt: str, images: tuple[ImageInput, ...]) -> Any:
+    """Tham số ``contents``. Không có ảnh: giữ nguyên chuỗi như trước.
+
+    Có ảnh: một lượt ``user`` gồm các phần ảnh ``inline_data`` (bytes gửi thẳng trong yêu cầu,
+    ``Part.from_bytes``; không Files API, không ``file_uri``, không tên hiển thị) rồi tới lời
+    dặn. Thư viện kiểm bằng pydantic: bản google-genai khác đổi tên trường thì báo "uv sync"
+    (không để lọt ``ValidationError``, vốn bị hiểu là máy chủ trả dữ liệu lạ).
+    """
+    if not images:
+        return prompt
+    try:
+        parts = [types.Part.from_bytes(data=image.data, mime_type=image.mime) for image in images]
+        parts.append(types.Part.from_text(text=prompt))
+        return [types.Content(role="user", parts=parts)]
     except pydantic.ValidationError as exc:
         raise library_error(LABEL) from exc
 
