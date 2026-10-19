@@ -440,25 +440,32 @@ class WordPressClient:
         - Header ``X-WP-TotalPages`` đọc được (số nguyên ≥ 1): đọc đúng số trang đó.
         - Header thiếu hoặc sai (proxy/plugin bỏ header, SL-T037-3): trang trả đủ ``PER_PAGE``
           mục thì đọc tiếp, dừng ở trang thiếu mục, trang rỗng, hoặc khi WordPress báo "quá số
-          trang" (``rest_post_invalid_page_number``). Máy chủ bỏ qua tham số ``page`` (trả lại
-          y hệt trang trước) thì dừng và coi là chưa đủ.
+          trang" (``rest_post_invalid_page_number``).
+        - Máy chủ bỏ qua tham số ``page`` (bộ đệm trang, CDN: trả lại y hệt trang trước, **kể
+          cả khi header đúng**, SL-T042-1) thì dừng và coi là chưa đủ.
         - Tới ``MAX_PAGES`` mà vẫn còn trang: cờ là ``True`` (danh sách chưa đủ).
         """
         items: list[dict[str, Any]] = []
         previous: list[Any] | None = None
+        previous_total: int | None = None
         page = 1
         while True:
             try:
                 response = self._request("GET", path, params={**params, "page": page})
             except WordPressError as exc:
-                if page > 1 and exc.status_code == 400 and exc.code == _PAGE_OUT_OF_RANGE:
+                if (
+                    page > 1
+                    and previous_total is None
+                    and exc.status_code == 400
+                    and exc.code == _PAGE_OUT_OF_RANGE
+                ):
                     return items, False  # header thiếu và trang trước vừa đủ PER_PAGE mục
                 raise
             data = self._json(response)
             if not isinstance(data, list):
                 raise WordPressError("WordPress trả về dữ liệu không đúng dạng danh sách.")
             total_pages = _total_pages(response.headers.get("X-WP-TotalPages"))
-            if total_pages is None and data and data == previous:
+            if data and data == previous:
                 return items, True  # máy chủ không phân trang: không biết còn bao nhiêu
             items.extend(data)
             if not data:
@@ -470,7 +477,7 @@ class WordPressClient:
                 return items, False
             if page >= MAX_PAGES:
                 return items, True
-            previous = data
+            previous, previous_total = data, total_pages
             page += 1
 
     def _get_all_pages(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:

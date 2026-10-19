@@ -48,7 +48,6 @@ def site_with(total, *, header, ignore_page=False, cycle=False):
 # ================================================================ SL-T037-3, phân trang
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-1: header đúng + máy chủ bỏ qua page: thiếu lặng")
 @pytest.mark.parametrize("header", ["2", "3", "5"])
 def test_valid_header_but_server_ignores_page_is_not_silently_complete(
     fake_wp, wp_client, header

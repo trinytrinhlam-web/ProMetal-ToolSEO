@@ -127,3 +127,38 @@ def test_categories_read_on_without_header(fake_wp, wp_client, header):
 def test_tags_with_valid_header(fake_wp, wp_client):
     fake_wp.on("GET", "/wp-json/wp/v2/tags", paged(150, term, header="2"))
     assert len(wp_client.list_tags()) == 150
+
+
+# ------------------------------------------------------------ lượt 2: SL-T042-1
+
+
+@pytest.mark.parametrize("header", ["2", "3", "50", "999"])
+def test_valid_header_but_page_ignored_flags_truncated(fake_wp, wp_client, header):
+    """Bộ đệm trang trả lại trang 1 (kèm header đúng) cho mọi ``page``: dừng, bật cờ."""
+    rows = [raw_post(i + 1) for i in range(PER_PAGE)]
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", (200, rows, {"X-WP-TotalPages": header}))
+    fake_wp.on("GET", "/wp-json/wp/v2/pages", [])
+    items = wp_client.list_published()
+    assert len(items) == PER_PAGE
+    assert items.truncated is True
+    assert len(fake_wp.requests) == 3  # bài trang 1, bài trang 2 (trùng: dừng), "trang"
+
+
+def test_categories_with_header_and_page_ignored_do_not_repeat(fake_wp, wp_client):
+    rows = [term(i + 1) for i in range(PER_PAGE)]
+    fake_wp.on("GET", "/wp-json/wp/v2/categories", (200, rows, {"X-WP-TotalPages": "4"}))
+    assert [t.id for t in wp_client.list_categories()] == list(range(1, PER_PAGE + 1))
+    assert len(fake_wp.requests) == 2
+
+
+def test_out_of_range_with_known_header_still_raises(fake_wp, wp_client):
+    """Header nói 3 trang mà trang 2 báo "quá số trang": mâu thuẫn, báo lỗi (không coi là đủ)."""
+
+    def handler(request):
+        if int(query(request)["page"][0]) == 2:
+            return 400, {"code": "rest_post_invalid_page_number", "message": "x"}, {}
+        return 200, [raw_post(i + 1) for i in range(PER_PAGE)], {"X-WP-TotalPages": "3"}
+
+    fake_wp.on("GET", "/wp-json/wp/v2/posts", handler)
+    with pytest.raises(WordPressError):
+        wp_client.list_published()
