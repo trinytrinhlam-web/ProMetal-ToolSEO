@@ -378,10 +378,11 @@ class ImageLibrary:
 
         notice = ""
         if scan.stop_reason == "entries":
+            count = f"{self._max_entries:,}".replace(",", ".")  # 5.000 (chỉ đổi dấu trong số)
             notice = (
-                f"Thư mục có rất nhiều mục: mới xem {self._max_entries:,} mục đầu, còn nữa chưa "
-                "xem. Hãy chọn một thư mục con nhỏ hơn."
-            ).replace(",", ".")
+                f"Thư mục có rất nhiều mục: mới xem {count} mục đầu, còn nữa chưa xem. "
+                "Hãy chọn một thư mục con nhỏ hơn."
+            )
         elif scan.stop_reason == "time":
             notice = (
                 f"Quét quá {self._max_seconds:g} giây nên đã tạm dừng, còn nữa chưa xem (ổ mạng "
@@ -491,16 +492,20 @@ class _Scan:
     def skip_counts(self) -> SkipCounts:
         return SkipCounts(**self.counts)
 
-    def _out_of_budget(self) -> bool:
+    def _time_is_up(self) -> bool:
+        if self.clock() > self.deadline:
+            self.stop_reason = "time"
+        return self.stop_reason is not None
+
+    def _entries_used_up(self) -> bool:
+        """Gọi khi **còn** mục chưa xem: đã xem đủ ngân sách thì dừng và báo "còn nữa"."""
         if self.examined >= self.max_entries:
             self.stop_reason = "entries"
-        elif self.clock() > self.deadline:
-            self.stop_reason = "time"
         return self.stop_reason is not None
 
     def run(self, directory: Path, parts: tuple[str, ...]) -> None:
         pending: deque[tuple[Path, tuple[str, ...], int]] = deque([(directory, parts, 0)])
-        while pending and not self._out_of_budget():
+        while pending and not self._entries_used_up() and not self._time_is_up():
             path, dir_parts, depth = pending.popleft()
             try:
                 iterator = os.scandir(path)
@@ -512,13 +517,17 @@ class _Scan:
                 self.counts["unreadable"] += 1
                 continue
             with iterator:
-                while not self._out_of_budget():
+                while not self._time_is_up():
                     try:
                         entry = next(iterator)
                     except StopIteration:
                         break
                     except OSError:
                         self.counts["unreadable"] += 1
+                        break
+                    # Lấy mục kế tiếp trước rồi mới kiểm ngân sách số mục: thư mục có đúng
+                    # ``max_entries`` mục không bị báo "còn nữa" (L4).
+                    if self._entries_used_up():
                         break
                     self.examined += 1
                     child = self._visit(entry, dir_parts, depth)

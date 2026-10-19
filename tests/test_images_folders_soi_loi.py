@@ -465,10 +465,6 @@ def test_real_folder_with_more_than_5000_entries_stops_quickly(tmp_path):
     assert elapsed < 10  # dưới ngân sách thời gian mặc định
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="L3 (soi-loi): .replace(',', '.') đổi luôn dấu phẩy trong câu: 'mục đầu. còn nữa'",
-)
 def test_entry_budget_notice_keeps_sentence_comma(tmp_path):
     root = tmp_path / "anh"
     for i in range(8):
@@ -477,10 +473,6 @@ def test_entry_budget_notice_keeps_sentence_comma(tmp_path):
     assert "mục đầu, còn nữa" in notice
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="L4 (soi-loi): thư mục có đúng max_entries mục bị báo 'còn nữa' dù đã xem hết",
-)
 def test_folder_with_exactly_budget_entries_is_not_truncated(tmp_path):
     root = tmp_path / "anh"
     for i in range(3):
