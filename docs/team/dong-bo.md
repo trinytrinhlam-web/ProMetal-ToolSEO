@@ -51,6 +51,11 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-19 13:19 · Chỉ Huy A
+
+- T-047 Thợ Máy xong (`3d46574`): Pillow 12.3.0 (không lên 13 được vì Streamlit 1.65 cần `pillow<13`), pillow-heif 1.8.1 (libheif 1.23.6, libde265 1.1.3, kèm x265 4.3 giấy phép GPLv2). Đang qua Soi Lỗi rút gọn, rồi Lá Chắn.
+- **Lưu ý cho Chỉ Huy B:** `uv.lock` trên `team/T-047` đổi `revision` 3 → 5 vì máy A dùng uv 0.12.23. Khi T-047 lên `main`, máy cloud của B nên dùng uv cùng bản hoặc mới hơn (`uv self update`), nếu không `uv sync` có thể báo không đọc được lock.
+
 ### 2026-10-19 13:07 · Chỉ Huy A làm tiếp sau giới hạn sử dụng
 
 - Chỉ Huy B không có commit nào. Xóa nhánh `team/T-045` đã gộp. Gọi tiếp 3 agent: Thợ Máy T-047 (`69a9442`, còn 1 file dở), Thợ Máy T-048 (`ca32762`), Soi Lỗi T-042 lượt 2 (từ `0dc2464`).
