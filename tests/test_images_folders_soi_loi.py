@@ -347,11 +347,6 @@ def test_read_detects_file_replaced_by_directory_junction(tree, monkeypatch):
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="L1 (soi-loi): list_folder kiểm thư mục rồi mới scandir; thư mục bị tráo thành "
-    "junction ở giữa thì liệt kê tên, cỡ, ngày sửa của file NGOÀI gốc",
-)
 def test_list_folder_dir_swapped_to_junction_after_check(tree, monkeypatch):
     root, outside = tree["root"], tree["outside"]
     lib = ImageLibrary([root])
@@ -398,11 +393,6 @@ class _SwapWhenDone:
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="L1 (soi-loi): quét cả cây, thư mục con đã kiểm (không phải junction) bị tráo thành "
-    "junction trước khi được quét thì app liệt kê file ngoài gốc",
-)
 def test_recursive_scan_subdir_swapped_to_junction_before_its_turn(tree, monkeypatch):
     root, outside = tree["root"], tree["outside"]
     lib = ImageLibrary([root])

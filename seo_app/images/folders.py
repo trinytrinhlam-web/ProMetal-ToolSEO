@@ -22,13 +22,15 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
 from __future__ import annotations
 
 import contextlib
+import ctypes
+import functools
 import math
 import os
 import stat
 import time
 import unicodedata
 from collections import deque
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
@@ -72,6 +74,17 @@ _MSG_ALIAS = "Đường dẫn ảnh không hợp lệ (tên ngắn hoặc tên k
 
 class ImageFolderError(Exception):
     """Lỗi đọc thư mục ảnh; câu tiếng Việt hiện thẳng được, không chứa đường dẫn tuyệt đối."""
+
+
+class _LinkError(ImageFolderError):
+    """Đường dẫn đi qua liên kết hoặc ra ngoài gốc (khi quét: đếm vào ``skipped.links``)."""
+
+
+class _ChangedError(_LinkError):
+    """Thư mục bị tráo giữa lúc kiểm và lúc quét (L1)."""
+
+    def __init__(self) -> None:
+        super().__init__("Thư mục vừa bị thay đổi trong lúc đọc, hãy thử lại.")
 
 
 def _is_safe_name(name: str) -> bool:
@@ -140,6 +153,159 @@ def _is_hidden_stat(st: os.stat_result) -> bool:
     if attributes & (stat.FILE_ATTRIBUTE_HIDDEN | stat.FILE_ATTRIBUTE_SYSTEM):
         return True
     return bool(_UF_HIDDEN and getattr(st, "st_flags", 0) & _UF_HIDDEN)
+
+
+def _same_file(a: os.stat_result, b: os.stat_result) -> bool:
+    """Hai kết quả ``stat`` là cùng một mục trên ổ (ổ không có số inode thì không so được)."""
+    if not a.st_ino or not b.st_ino:
+        return True
+    return (a.st_dev, a.st_ino) == (b.st_dev, b.st_ino)
+
+
+# ----- giữ thư mục trong lúc quét (L1) ------------------------------------------------------
+#
+# Kiểm đường dẫn rồi mới ``scandir`` theo tên thì có khe: thư mục bị tráo thành junction ở giữa
+# sẽ bị quét xuyên ra ngoài gốc. Cách đóng khe:
+# - Mac/Linux: mở từng tầng từ gốc xuống bằng ``openat(fd_cha, tên, O_DIRECTORY | O_NOFOLLOW)``
+#   rồi ``os.scandir(fd)``: quét đúng thư mục đã mở qua toàn thư mục thật, tráo tên sau đó không
+#   còn tác dụng.
+# - Windows: ``os.scandir`` không nhận fd. Mở handle thư mục (không đi theo reparse point) với
+#   quyền đọc danh sách và KHÔNG cho chia sẻ quyền xóa: trong lúc giữ handle, Windows không cho
+#   đổi tên hay xóa chính thư mục đó lẫn mọi thư mục cha (đã thử trên NTFS: lỗi 32 và 5). Rồi
+#   hỏi chính handle đường dẫn thật của nó (``GetFinalPathNameByHandleW``): trùng ``gốc/parts``
+#   thì thư mục đang giữ nằm trong gốc và cả đường đi bị khóa cho tới khi nhả.
+# - Ổ không cho giữ thư mục (Windows, ổ lạ): kiểm cả đường đi trước và sau khi quét, so định danh.
+
+_SCANDIR_BY_FD = os.scandir in os.supports_fd  # Mac/Linux có, Windows không
+_FILE_LIST_DIRECTORY = 0x0001
+_FILE_READ_ATTRIBUTES = 0x0080
+_FILE_SHARE_READ_WRITE = 0x0001 | 0x0002  # cố ý không có FILE_SHARE_DELETE (0x0004)
+_OPEN_EXISTING = 3
+_FILE_FLAG_BACKUP_SEMANTICS = 0x02000000  # cần để mở thư mục
+_FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000  # mở chính junction, không đi theo
+_FILE_ATTRIBUTE_TAG_INFO = 9  # FILE_INFO_BY_HANDLE_CLASS.FileAttributeTagInfo
+_FINAL_PATH_CHARS = 32768
+
+
+class _FileAttributeTagInfo(ctypes.Structure):
+    _fields_ = [("FileAttributes", ctypes.c_uint32), ("ReparseTag", ctypes.c_uint32)]
+
+
+@functools.cache
+def _kernel32():  # chỉ gọi trên Windows
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32.CloseHandle.restype = wintypes.BOOL
+    k32.GetFileInformationByHandleEx.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+    ]
+    k32.GetFileInformationByHandleEx.restype = wintypes.BOOL
+    k32.GetFinalPathNameByHandleW.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+    ]
+    k32.GetFinalPathNameByHandleW.restype = wintypes.DWORD
+    return k32
+
+
+@contextlib.contextmanager
+def _win_hold_dir(path: Path) -> Iterator[int | None]:
+    """Mở và giữ thư mục trên Windows; trả fd, hoặc None nếu ổ không cho mở kiểu này."""
+    import msvcrt
+
+    k32 = _kernel32()
+    handle = k32.CreateFileW(
+        str(path),
+        _FILE_LIST_DIRECTORY | _FILE_READ_ATTRIBUTES,
+        _FILE_SHARE_READ_WRITE,
+        None,
+        _OPEN_EXISTING,
+        _FILE_FLAG_BACKUP_SEMANTICS | _FILE_FLAG_OPEN_REPARSE_POINT,
+        None,
+    )
+    fd = None
+    if handle not in (None, 0, ctypes.c_void_p(-1).value):
+        try:
+            fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
+        except OSError:
+            k32.CloseHandle(handle)
+    try:
+        yield fd
+    finally:
+        if fd is not None:
+            os.close(fd)  # đóng luôn handle
+
+
+def _win_handle_is_link(fd: int) -> bool:
+    """Thư mục đang giữ là reparse point trỏ đi chỗ khác (junction, kể cả đặt tại chỗ)."""
+    import msvcrt
+
+    info = _FileAttributeTagInfo()
+    ok = _kernel32().GetFileInformationByHandleEx(
+        msvcrt.get_osfhandle(fd), _FILE_ATTRIBUTE_TAG_INFO, ctypes.byref(info), ctypes.sizeof(info)
+    )
+    if not ok:  # không hỏi được: có thuộc tính reparse là coi như liên kết (an toàn trước)
+        attributes = getattr(os.fstat(fd), "st_file_attributes", 0)
+        return bool(attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+    if not info.FileAttributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+        return False
+    return bool(info.ReparseTag & _REPARSE_NAME_SURROGATE)
+
+
+def _win_final_path(fd: int) -> str | None:
+    """Đường dẫn thật của thư mục đang giữ (hỏi từ chính handle, không theo tên)."""
+    import msvcrt
+
+    buffer = ctypes.create_unicode_buffer(_FINAL_PATH_CHARS)
+    length = _kernel32().GetFinalPathNameByHandleW(
+        msvcrt.get_osfhandle(fd), buffer, _FINAL_PATH_CHARS, 0
+    )
+    if not 0 < length < _FINAL_PATH_CHARS:
+        return None
+    return buffer.value
+
+
+def _path_key(path: str) -> str:
+    """Khóa so đường dẫn Windows: bỏ tiền tố đường dẫn dài, không phân biệt hoa thường."""
+    if path.startswith("\\\\?\\UNC\\"):
+        path = "\\\\" + path[8:]
+    elif path.startswith("\\\\?\\"):
+        path = path[4:]
+    return _name_key(path.rstrip("\\"))
+
+
+def _posix_open_dir(root: Path, parts: tuple[str, ...]) -> int:
+    """Mở thư mục ``gốc/parts`` từng tầng một, không đi theo liên kết nào (Mac/Linux)."""
+    flags = os.O_RDONLY
+    for name in ("O_DIRECTORY", "O_NOFOLLOW", "O_CLOEXEC", "O_NONBLOCK"):
+        flags |= getattr(os, name, 0)
+    fd = os.open(root, flags)
+    try:
+        for part in parts:
+            child = os.open(part, flags, dir_fd=fd)
+            os.close(fd)
+            fd = child
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
 
 
 def _format_mb(size: int) -> str:
@@ -320,9 +486,10 @@ class ImageLibrary:
                 raise ImageFolderError(_MSG_NOT_FOUND) from None
             except OSError:
                 raise ImageFolderError(_MSG_UNREADABLE) from None
-            # ``lstat`` không đi theo symlink, junction; ``_is_link_stat`` bắt cả hai.
-            if _is_link_stat(last) or current.is_junction():
-                raise ImageFolderError(_MSG_LINK)
+            # ``lstat`` không đi theo symlink, junction. ``_is_link_stat`` bắt cả hai: nó đọc
+            # reparse tag như ``Path.is_junction()`` nhưng không tốn thêm một lần ``lstat``.
+            if _is_link_stat(last):
+                raise _LinkError(_MSG_LINK)
             # Theo đúng luật của quét: quét bỏ qua mục ẩn/hệ thống (ví dụ ``$RECYCLE.BIN``)
             # thì ``ImageRef`` gõ sẵn cũng không đi qua được (L5).
             if _is_hidden_stat(last):
@@ -336,7 +503,7 @@ class ImageLibrary:
         except (OSError, RuntimeError):
             raise ImageFolderError(_MSG_UNREADABLE) from None
         if not resolved.is_relative_to(root):
-            raise ImageFolderError(_MSG_OUTSIDE)
+            raise _LinkError(_MSG_OUTSIDE)
         # Tên thật trên ổ phải trùng tên đã gõ (không phân biệt hoa thường). Chặn tên ngắn 8.3
         # của Windows (``SECRET~1`` cho ``.secret``): đi vòng luật tên và làm một file có hai
         # ``ImageRef`` (L5).
@@ -385,8 +552,10 @@ class ImageLibrary:
             clock=self._clock,
             recursive=recursive,
             max_depth=max_depth,
+            root=root,
+            verify=lambda dir_parts: self._resolve_inside(root, dir_parts),
         )
-        scan.run(directory, parts)
+        scan.run(parts)
 
         images = sorted(scan.images, key=lambda e: (e.ref.rel_path.casefold(), e.ref.rel_path))
         subfolders = sorted(scan.subfolders, key=lambda s: (s.name.casefold(), s.name))
@@ -494,8 +663,12 @@ class _Scan:
         clock: Callable[[], float],
         recursive: bool,
         max_depth: int,
+        root: Path,
+        verify: Callable[[tuple[str, ...]], tuple[Path, os.stat_result]],
     ) -> None:
         self.root_index = root_index
+        self.root = root  # gốc đã resolve
+        self.verify = verify  # kiểm đường đi (không liên kết, nằm trong gốc), trả (path, lstat)
         self.max_file_bytes = max_file_bytes
         self.max_entries = max_entries
         self.deadline = deadline
@@ -522,40 +695,111 @@ class _Scan:
             self.stop_reason = "entries"
         return self.stop_reason is not None
 
-    def run(self, directory: Path, parts: tuple[str, ...]) -> None:
-        pending: deque[tuple[Path, tuple[str, ...], int]] = deque([(directory, parts, 0)])
+    def run(self, parts: tuple[str, ...]) -> None:
+        pending: deque[tuple[tuple[str, ...], int]] = deque([(parts, 0)])
         while pending and not self._entries_used_up() and not self._time_is_up():
-            path, dir_parts, depth = pending.popleft()
+            dir_parts, depth = pending.popleft()
             try:
-                iterator = os.scandir(path)
-            except OSError:
+                children = self._scan_dir(dir_parts, depth)
+            except _LinkError:
                 if depth == 0:
-                    raise ImageFolderError(
-                        "Không đọc được thư mục này (không có quyền hoặc ổ đĩa vừa bị ngắt)."
-                    ) from None
+                    raise
+                self.counts["links"] += 1
+                continue
+            except ImageFolderError:
+                if depth == 0:
+                    raise
                 self.counts["unreadable"] += 1
                 continue
-            with iterator:
-                while not self._time_is_up():
-                    try:
-                        entry = next(iterator)
-                    except StopIteration:
-                        break
-                    except OSError:
-                        self.counts["unreadable"] += 1
-                        break
-                    # Lấy mục kế tiếp trước rồi mới kiểm ngân sách số mục: thư mục có đúng
-                    # ``max_entries`` mục không bị báo "còn nữa" (L4).
-                    if self._entries_used_up():
-                        break
-                    self.examined += 1
-                    child = self._visit(entry, dir_parts, depth)
-                    if child is not None:
-                        pending.append(child)
+            pending.extend(children)
+
+    def _scan_dir(self, parts: tuple[str, ...], depth: int) -> list[tuple[tuple[str, ...], int]]:
+        """Quét một thư mục, không để khe giữa lúc kiểm và lúc đọc (L1, xem phần "giữ thư mục").
+
+        Lỗi giữa chừng thì trả lại đúng trạng thái trước khi quét thư mục này (kết quả của nó
+        bị bỏ hết), chỉ giữ số mục đã tiêu vào ngân sách.
+        """
+        path = self.root.joinpath(*parts)
+        saved = (len(self.images), len(self.subfolders), dict(self.counts))
+        try:
+            if _SCANDIR_BY_FD:
+                children = self._scan_by_fd(parts, depth)
+            else:
+                children = self._scan_held(path, parts, depth)
+        except ImageFolderError:
+            del self.images[saved[0] :]
+            del self.subfolders[saved[1] :]
+            self.counts = saved[2]
+            raise
+        return children
+
+    def _scan_by_fd(self, parts: tuple[str, ...], depth: int) -> list[tuple[tuple[str, ...], int]]:
+        try:
+            fd = _posix_open_dir(self.root, parts)
+        except FileNotFoundError:
+            raise ImageFolderError(_MSG_NOT_FOUND) from None
+        except (NotADirectoryError, PermissionError):
+            raise ImageFolderError(_MSG_UNREADABLE) from None
+        except OSError:  # ELOOP: một tầng là symlink
+            raise _ChangedError() from None
+        try:
+            return self._read_entries(fd, parts, depth)
+        finally:
+            os.close(fd)
+
+    def _scan_held(
+        self, path: Path, parts: tuple[str, ...], depth: int
+    ) -> list[tuple[tuple[str, ...], int]]:
+        with _win_hold_dir(path) as fd:
+            final = None if fd is None else _win_final_path(fd)
+            if fd is not None and final is not None:
+                if _win_handle_is_link(fd) or _path_key(final) != _path_key(str(path)):
+                    raise _ChangedError()
+                children = self._read_entries(path, parts, depth)
+                if _win_handle_is_link(fd):  # bị đặt junction tại chỗ trong lúc quét
+                    raise _ChangedError()
+                return children
+            # Không giữ được thư mục: kiểm cả đường đi trước và sau khi quét, so định danh.
+            _path, expected = self.verify(parts)
+            if not stat.S_ISDIR(expected.st_mode):
+                raise _ChangedError()
+            children = self._read_entries(path, parts, depth)
+            if not _same_file(self.verify(parts)[1], expected):
+                raise _ChangedError()
+            return children
+
+    def _read_entries(
+        self, target: int | Path, parts: tuple[str, ...], depth: int
+    ) -> list[tuple[tuple[str, ...], int]]:
+        try:
+            iterator = os.scandir(target)
+        except OSError:
+            raise ImageFolderError(
+                "Không đọc được thư mục này (không có quyền hoặc ổ đĩa vừa bị ngắt)."
+            ) from None
+        children = []
+        with iterator:
+            while not self._time_is_up():
+                try:
+                    entry = next(iterator)
+                except StopIteration:
+                    break
+                except OSError:
+                    self.counts["unreadable"] += 1
+                    break
+                # Lấy mục kế tiếp trước rồi mới kiểm ngân sách số mục: thư mục có đúng
+                # ``max_entries`` mục không bị báo "còn nữa" (L4).
+                if self._entries_used_up():
+                    break
+                self.examined += 1
+                child = self._visit(entry, parts, depth)
+                if child is not None:
+                    children.append(child)
+        return children
 
     def _visit(
         self, entry: os.DirEntry, dir_parts: tuple[str, ...], depth: int
-    ) -> tuple[Path, tuple[str, ...], int] | None:
+    ) -> tuple[tuple[str, ...], int] | None:
         name = entry.name
         try:
             # ``is_junction`` phải kiểm riêng: ``os.scandir`` báo junction là thư mục thường.
@@ -585,7 +829,7 @@ class _Scan:
             if depth + 1 > self.max_depth:
                 self.counts["too_deep"] += 1
                 return None
-            return Path(entry.path), child_parts, depth + 1
+            return child_parts, depth + 1
         if not stat.S_ISREG(st.st_mode) or not _is_image_name(name):
             self.counts["other_files"] += 1
             return None

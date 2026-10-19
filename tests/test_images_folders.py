@@ -818,3 +818,145 @@ def test_resolve_check_alone_blocks_symlink_outside(tree, monkeypatch):
     lib = ImageLibrary([tree["root"]])
     exc = raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "tat.jpg")), tree["tmp"])
     assert "ngoài thư mục" in str(exc)
+
+
+# ----- lượt 2 · L1: thư mục bị tráo giữa lúc kiểm và lúc quét (Windows) ----------------------
+
+
+def _swap_to_junction(directory: Path, target: Path, park: Path) -> None:
+    os.rename(directory, park)
+    make_junction(directory, target)
+
+
+@pytest.fixture
+def swap_tree(tmp_path):
+    root = tmp_path / "anh"
+    write(root / "album" / "a.jpg", b"AAAA")
+    write(root / "khac" / "b.jpg", b"BB")
+    write(tmp_path / "ngoai" / "bi-mat.jpg", b"SECRET")
+    return root, tmp_path / "ngoai", tmp_path
+
+
+@windows_only
+def test_held_directory_and_parents_cannot_be_renamed_during_scan(swap_tree, monkeypatch):
+    """Trong lúc quét, Windows không cho đổi tên thư mục đang quét lẫn thư mục cha."""
+    root, _outside, tmp = swap_tree
+    real_scandir = os.scandir
+    attempts = []
+
+    def try_renames(path):
+        for src in (root / "album", root):
+            try:
+                os.rename(src, tmp / f"doi-{src.name}")
+            except OSError as exc:
+                attempts.append(exc.winerror)
+            else:
+                attempts.append("đổi được")
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", try_renames)
+    listing = ImageLibrary([root]).list_folder(0, "album")
+    assert attempts == [32, 5]  # đang dùng / bị từ chối
+    assert [e.name for e in listing.images] == ["a.jpg"]
+
+
+@windows_only
+def test_fallback_without_hold_discards_swapped_directory(swap_tree, monkeypatch):
+    """Ổ không giữ được thư mục: kiểm trước/sau khi quét vẫn bắt được thư mục bị tráo."""
+    import contextlib
+
+    root, outside, tmp = swap_tree
+
+    @contextlib.contextmanager
+    def no_hold(path):
+        yield None
+
+    monkeypatch.setattr("seo_app.images.folders._win_hold_dir", no_hold)
+    real_scandir = os.scandir
+
+    def swap_then_scandir(path):
+        if Path(path).name == "album":
+            monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+            _swap_to_junction(root / "album", outside, tmp / "album-cu")
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", swap_then_scandir)
+    lib = ImageLibrary([root])
+    exc = raises_safely(lambda: lib.list_folder(0, "album"), tmp)
+    assert "thay đổi" in str(exc) or "liên kết" in str(exc)
+
+
+@windows_only
+def test_fallback_recursive_keeps_other_folders(swap_tree, monkeypatch):
+    """Quét cả cây: thư mục bị tráo bị bỏ hết kết quả, thư mục khác vẫn còn."""
+    import contextlib
+
+    root, outside, tmp = swap_tree
+
+    @contextlib.contextmanager
+    def no_hold(path):
+        yield None
+
+    monkeypatch.setattr("seo_app.images.folders._win_hold_dir", no_hold)
+    real_scandir = os.scandir
+
+    class SwapAfter:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self.inner.close()
+            _swap_to_junction(root / "album", outside, tmp / "album-cu")
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self.inner)
+
+    def scandir(path):
+        if Path(path).name == "album":
+            monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+            return SwapAfter(real_scandir(path))
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", scandir)
+    listing = ImageLibrary([root]).list_folder(0, recursive=True)
+    names = [e.ref.rel_path for e in listing.images]
+    assert names == ["khac/b.jpg"]  # a.jpg của album (quét trước khi tráo) cũng bị bỏ
+    assert listing.skipped.links == 1
+
+
+@windows_only
+def test_held_directory_with_other_final_path_is_refused(swap_tree, monkeypatch):
+    root, _outside, tmp = swap_tree
+    monkeypatch.setattr("seo_app.images.folders._win_final_path", lambda fd: str(tmp / "ngoai"))
+    raises_safely(lambda: ImageLibrary([root]).list_folder(0, "album"), tmp)
+
+
+@windows_only
+def test_junction_set_in_place_during_scan_is_refused(swap_tree, monkeypatch):
+    """Thư mục đang giữ bị đặt junction tại chỗ trong lúc quét: bỏ kết quả."""
+    root, _outside, tmp = swap_tree
+    answers = iter([False, True])
+    monkeypatch.setattr("seo_app.images.folders._win_handle_is_link", lambda fd: next(answers))
+    raises_safely(lambda: ImageLibrary([root]).list_folder(0, "album"), tmp)
+
+
+@windows_only
+def test_scan_of_deep_tree_is_fast(tmp_path):
+    """Kiểm đường đi mỗi thư mục là O(1) lệnh hệ thống trên Windows, cây sâu không chậm."""
+    import time
+
+    root = tmp_path / "anh"
+    deep = root
+    for _ in range(100):
+        deep = deep / "d"
+    write(deep / "day.jpg")
+    started = time.perf_counter()
+    listing = ImageLibrary([root]).list_folder(0, recursive=True, max_depth=1000)
+    assert listing.total_images == 1 and not listing.truncated
+    assert time.perf_counter() - started < 5
