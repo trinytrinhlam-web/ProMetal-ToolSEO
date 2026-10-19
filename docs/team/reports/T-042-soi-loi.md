@@ -39,8 +39,11 @@ $ uv run pytest            (sau khi thêm test)
 6199 passed, 11 skipped, 67 xfailed, 1 warning in 613.08s (0:10:13)
 (0 hỏng. +247 qua, +36 xfail đều của Soi Lỗi T-042; 31 xfail cũ và 1 warning pydantic có từ trước)
 
-$ uv run pytest tests/test_soi_loi_t042.py tests/test_soi_loi_t042_paging_cache.py -q
-247 passed, 36 xfailed in 23.6s (cộng 2 lượt chạy riêng: 196+19 và 51+17)
+$ uv run pytest tests/test_soi_loi_t042.py -q
+196 passed, 19 xfailed in 4.68s
+
+$ uv run pytest tests/test_soi_loi_t042_paging_cache.py -q
+51 passed, 17 xfailed in 32.77s
 ```
 
 36 `xfail` mới = 7 lỗi dưới đây (SL-T042-1: 3, -2: 4, -3: 3, -4: 5, -5: 1, -6: 6, -7: 14). Mọi `xfail` đều `strict=True`: Thợ Máy sửa xong thì test báo XPASS, phải bỏ dấu.
