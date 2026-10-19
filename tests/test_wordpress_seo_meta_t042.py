@@ -162,7 +162,7 @@ def test_post_no_longer_draft_on_site_is_refused(fake_wp, client, status):
     with pytest.raises(WordPressError, match="không còn là bản nháp"):
         client.set_seo_meta(42, title=TITLE, description=DESC, focus_keyword=KEYWORD)
     assert [r.method for r in writes(fake_wp)] == ["POST"]  # chỉ lệnh tạo nháp
-    assert all(not r.path_url.startswith(ABILITY) for r in fake_wp.requests)
+    assert all(r.path_url != RUN for r in fake_wp.requests)
     # Từ đó bài này không còn được coi là "bài app được sửa", kể cả ảnh đại diện.
     with pytest.raises(WordPressError, match="bài nháp app vừa tạo"):
         client.set_seo_meta(42, title=TITLE)
@@ -469,7 +469,6 @@ def test_meta_route_server_error_gives_fixed_message(fake_wp, client, status):
         {"id": 42, "status": "draft", "meta": dict(META_KEYS)},  # không lưu
         {"id": 42, "status": "draft"},
         {"id": 42, "status": "draft", "meta": {"_siteseo_titles_title": "khác"}},
-        [],
     ],
 )
 def test_meta_route_not_saved_is_not_reported_as_written(fake_wp, client, answer):

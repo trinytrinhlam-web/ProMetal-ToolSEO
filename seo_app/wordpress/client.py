@@ -112,7 +112,17 @@ _SEO_NOT_OWN = (
 )
 _SEO_NOT_DRAFT = (
     "Bài này không còn là bản nháp trên website (có thể đã được đăng hoặc bị xóa). Phần mềm "
-    "không ghi SEO vào bài đã đăng; nếu cần, chép tay trong trang quản trị WordPress."
+    "không sửa bài đã đăng (không ghi SEO, không đổi ảnh đại diện); nếu cần, sửa tay trong "
+    "trang quản trị WordPress."
+)
+_IMAGE_CHECK_FAILED = (
+    "Không kiểm được bài nháp trên WordPress trước khi đặt ảnh đại diện{code}. Chưa ghi gì; "
+    "thử lại sau."
+)
+# Dữ liệu WordPress trả về sai kiểu (LC-T044-1): câu cố định, không chép dữ liệu.
+_BAD_DATA = (
+    "WordPress trả về dữ liệu {what} không đúng dạng. Thử lại sau; nếu vẫn lỗi, có thể một "
+    "plugin trên website đang làm sai câu trả lời của REST API."
 )
 _SEO_CHECK_FAILED = (
     "Không kiểm được bài nháp trên WordPress trước khi ghi SEO{code}. Chưa ghi gì; bài nháp "
@@ -356,22 +366,32 @@ class WordPressClient:
         giờ làm hỏng kết quả kiểm tra: dò lỗi thì ``siteseo_writable`` là ``None``.
         """
         root = self._json(self._request("GET", "/"))
-        if not isinstance(root, dict) or "wp/v2" not in root.get("namespaces", []):
+        namespaces = root.get("namespaces") if isinstance(root, dict) else None
+        if not isinstance(namespaces, list) or "wp/v2" not in namespaces:
             raise WordPressError(
                 "Website trả lời nhưng không có REST API của WordPress (wp/v2). "
                 "Kiểm tra WORDPRESS_URL, hoặc plugin bảo mật có đang tắt REST API không."
             )
         siteseo = self._siteseo_abilities()
         me = self._json(self._request("GET", "/wp/v2/users/me", params={"context": "edit"}))
-        capabilities = me.get("capabilities") or {}
+        if not isinstance(me, dict):  # LC-T044-1: dữ liệu sai kiểu thì báo lỗi, không vỡ trang
+            raise WordPressError(_BAD_DATA.format(what="tài khoản"))
+        capabilities = me.get("capabilities")
+        if not isinstance(capabilities, dict):
+            capabilities = {}
+        roles = me.get("roles")
+        site_url = next(
+            (v for v in (root.get("home"), root.get("url")) if isinstance(v, str) and v),
+            self.base_url,
+        )
         return ConnectionInfo(
             site_name=_plain(root.get("name", "")),
-            site_url=root.get("home") or root.get("url") or self.base_url,
+            site_url=site_url,
             user_name=_plain(me.get("name", "")),
-            roles=tuple(me.get("roles") or ()),
-            can_edit_posts=bool(capabilities.get("edit_posts")),
-            can_publish_posts=bool(capabilities.get("publish_posts")),
-            can_upload_files=bool(capabilities.get("upload_files")),
+            roles=tuple(r for r in roles if isinstance(r, str)) if isinstance(roles, list) else (),
+            can_edit_posts=capabilities.get("edit_posts") is True,
+            can_publish_posts=capabilities.get("publish_posts") is True,
+            can_upload_files=capabilities.get("upload_files") is True,
             siteseo_writable=siteseo,
         )
 
@@ -389,16 +409,22 @@ class WordPressClient:
             "hide_empty": "false",
             "_fields": "id,name,slug,count,parent",
         }
-        return [
-            Term(
-                id=int(item["id"]),
-                name=_plain(item.get("name", "")),
-                slug=item.get("slug", ""),
-                count=int(item.get("count", 0)),
-                parent=int(item.get("parent", 0) or 0),
+        terms: list[Term] = []
+        for item in self._get_all_pages(path, params):
+            # LC-T044-1: mục sai kiểu (không phải dict, id lạ) bị bỏ, không làm vỡ cả danh sách.
+            if not isinstance(item, dict) or type(item.get("id")) is not int or item["id"] < 0:
+                continue
+            slug = item.get("slug")
+            terms.append(
+                Term(
+                    id=item["id"],
+                    name=_plain(item.get("name", "")),
+                    slug=slug if isinstance(slug, str) else "",
+                    count=_non_negative(item.get("count")),
+                    parent=_non_negative(item.get("parent")),
+                )
             )
-            for item in self._get_all_pages(path, params)
-        ]
+        return terms
 
     def list_published(self) -> PublishedList:
         """Mọi bài và trang ĐÃ ĐĂNG (``publish``) trên site, kèm meta SiteSEO nếu site mở.
@@ -561,13 +587,18 @@ class WordPressClient:
         fields = {name: value for name, value in values.items() if value}
         if not fields:
             raise WordPressError(_SEO_EMPTY)
+        # Dò đường TRƯỚC, kiểm còn nháp NGAY TRƯỚC lệnh ghi: khe "kiểm rồi ghi" ngắn nhất.
+        abilities = self._siteseo_abilities()
         draft = self._own_draft(post_id)
-        if self._siteseo_abilities():
+        if abilities:
             return self._seo_via_abilities(post_id, fields)
         return self._seo_via_meta(post_id, fields, draft)
 
-    def _own_draft(self, post_id: int) -> dict[str, Any]:
-        """Hỏi site bài ``post_id`` còn là nháp không (chỉ đọc). Không phải nháp: từ chối."""
+    def _own_draft(self, post_id: int, *, failed: str = "") -> dict[str, Any]:
+        """Hỏi site bài ``post_id`` còn là nháp không (chỉ đọc). Không phải nháp: từ chối.
+
+        ``failed``: câu báo khi không hỏi được (mặc định câu của ghi SEO).
+        """
         try:
             data = self._json(
                 self._request(
@@ -579,14 +610,9 @@ class WordPressClient:
         except WordPressError as exc:
             code = f" (mã {exc.status_code})" if exc.status_code else ""
             raise WordPressError(
-                _SEO_CHECK_FAILED.format(code=code), status_code=exc.status_code
+                (failed or _SEO_CHECK_FAILED).format(code=code), status_code=exc.status_code
             ) from None
-        if (
-            not isinstance(data, dict)
-            or type(data.get("id")) is not int
-            or data["id"] != post_id
-            or data.get("status") != "draft"
-        ):
+        if not _is_own_draft_answer(data, post_id):
             # Bài đã bị đăng/xóa ngoài app: thôi coi là "bài app được sửa" (cả ảnh đại diện).
             self._created_post_ids.discard(post_id)
             raise WordPressError(_SEO_NOT_DRAFT)
@@ -621,7 +647,7 @@ class WordPressClient:
             data = self._json(self._request("POST", SITESEO_ABILITY_RUN_PATH, json=payload))
         except WordPressError as exc:
             return _seo_error("abilities", exc.status_code)
-        if isinstance(data, dict) and data.get("success") is False:
+        if not _ability_confirms(data, fields):
             return _seo_error("abilities", None)
         return SeoWriteResult(True, "abilities", tuple(fields), message=_SEO_WRITTEN)
 
@@ -645,7 +671,10 @@ class WordPressClient:
                     False, "meta", reason="unavailable", message=_SEO_UNAVAILABLE
                 )
             return _seo_error("meta", exc.status_code)
-        saved = data.get("meta") if isinstance(data, dict) else None
+        if not _is_own_draft_answer(data, post_id):
+            # Câu trả lời của lệnh ghi nói về bài khác, hay bài không còn nháp: bất thường.
+            return _seo_error("meta", None)
+        saved = data.get("meta")
         if not isinstance(saved, dict) or any(saved.get(k) != v for k, v in send.items()):
             # Máy chủ trả 200 nhưng không lưu (đoạn code mở khóa meta không cho ghi).
             return SeoWriteResult(False, "meta", reason="unavailable", message=_SEO_UNAVAILABLE)
@@ -656,13 +685,17 @@ class WordPressClient:
     def set_featured_image(self, post_id: int, media_id: int) -> Post:
         """Đặt ảnh đại diện, CHỈ cho bài nháp mà client này vừa tạo bằng ``create_draft``.
 
-        Bài đã có sẵn trên website không bao giờ bị sửa (R3, security.md 2.2).
+        Bài đã có sẵn trên website không bao giờ bị sửa (R3, security.md 2.2). Như
+        ``set_seo_meta``, hỏi lại site bài còn là nháp ngay trước khi ghi (SL-T042-5).
         """
-        if post_id not in self._created_post_ids:
+        if type(post_id) is not int or post_id not in self._created_post_ids:
             raise WordPressError(
                 "Chỉ được đặt ảnh đại diện cho bài nháp app vừa tạo, không sửa bài đã có trên "
                 "website."
             )
+        if _positive_id(media_id) is None:
+            raise WordPressError("Mã ảnh đại diện không hợp lệ.")
+        self._own_draft(post_id, failed=_IMAGE_CHECK_FAILED)
         data = self._json(
             self._request("POST", f"/wp/v2/posts/{post_id}", json={"featured_media": media_id})
         )
@@ -697,7 +730,11 @@ class WordPressClient:
             },
         )
         media = self._json(response)
-        media_id = int(media["id"])
+        # SL-T042-4, LC-T044-1: chỉ nhận id là số nguyên dương thật (``True``, ``"7"``, ``7.9``
+        # không được thành ảnh 1 hay ảnh 7 của người khác).
+        media_id = _positive_id(media.get("id") if isinstance(media, dict) else None)
+        if media_id is None:
+            raise WordPressError(_BAD_DATA.format(what="ảnh vừa tải lên"))
 
         extra = {
             key: value
@@ -705,12 +742,16 @@ class WordPressClient:
             if value
         }
         if extra:
-            media = self._json(self._request("POST", f"/wp/v2/media/{media_id}", json=extra))
+            updated = self._json(self._request("POST", f"/wp/v2/media/{media_id}", json=extra))
+            if isinstance(updated, dict):
+                media = updated
 
+        source_url = media.get("source_url")
+        saved_alt = media.get("alt_text")
         return Media(
             id=media_id,
-            source_url=media.get("source_url", ""),
-            alt_text=media.get("alt_text", alt_text),
+            source_url=source_url if isinstance(source_url, str) else "",
+            alt_text=saved_alt if isinstance(saved_alt, str) else alt_text,
         )
 
     def upload_media_file(self, path: Path, **kwargs: Any) -> Media:
@@ -721,18 +762,23 @@ class WordPressClient:
     def edit_link(self, post_id: int) -> str:
         return f"{self.base_url}/wp-admin/post.php?post={post_id}&action=edit"
 
-    def _post_from(self, data: dict[str, Any]) -> Post:
+    def _post_from(self, data: object) -> Post:
+        """Câu trả lời về một bài -> ``Post``. Sai kiểu (LC-T044-1, SL-T042-4) thì
+        ``WordPressError`` câu cố định: không bao giờ đoán id (``int(True)`` là bài 1)."""
+        post_id = _positive_id(data.get("id")) if isinstance(data, dict) else None
+        if post_id is None:
+            raise WordPressError(_BAD_DATA.format(what="bài viết"))
         title = data.get("title")
         if isinstance(title, dict):
             title = title.get("raw") or title.get("rendered") or ""
-        post_id = int(data["id"])
+        status, link = data.get("status"), data.get("link")
         return Post(
             id=post_id,
-            status=data.get("status", ""),
+            status=status if isinstance(status, str) else "",
             title=_plain(title or ""),
-            link=data.get("link", ""),
+            link=link if isinstance(link, str) else "",
             edit_link=self.edit_link(post_id),
-            featured_media=int(data.get("featured_media") or 0),
+            featured_media=_non_negative(data.get("featured_media")),
         )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
@@ -972,6 +1018,53 @@ def _has_invisible(text: str) -> bool:
     return any(unicodedata.category(ch) == "Cf" for ch in text)
 
 
-def _plain(text: str) -> str:
-    """Bỏ thẻ HTML và giải mã ký tự (&amp; -> &) trong chuỗi WordPress trả về."""
-    return html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
+def _positive_id(value: object) -> int | None:
+    """``value`` nếu là số nguyên dương thật (``int``, không phải ``bool``, chữ, số thực)."""
+    return value if type(value) is int and value > 0 else None
+
+
+def _non_negative(value: object) -> int:
+    """Số đếm / mã cha từ site: số nguyên ≥ 0 thật, còn lại là 0 (LC-T044-1)."""
+    return value if type(value) is int and value >= 0 else 0
+
+
+def _is_own_draft_answer(data: object, post_id: int) -> bool:
+    """Câu trả lời của site nói đúng bài ``post_id`` và bài đó đang là nháp (đúng chữ)."""
+    return (
+        isinstance(data, dict)
+        and type(data.get("id")) is int
+        and data["id"] == post_id
+        and data.get("status") == "draft"
+    )
+
+
+def _ability_confirms(data: object, fields: dict[str, str]) -> bool:
+    """Câu trả lời 200 của ability ghi SEO có xác nhận rõ là đã ghi không (SL-T042-6).
+
+    Khuôn SiteSEO 1.4.2 (``update_post_seo_data`` trong ``main/abilitiesregister.php``):
+    ``{"updated": true, "post": {"title", "description", "focus_keyphrase", ...}}``; lỗi là
+    ``WP_Error`` (``invalid_post``, ``forbidden``). Nhận thêm ``{"success": true}``. Đúng
+    ``True`` (bool) mới tính; ``"false"``, ``0``, ``[]``, ``"ok"``, ``null``, thân lỗi
+    WordPress (``code``) đều là chưa ghi. Có ``post`` thì giá trị đã lưu phải đúng chữ đã gửi.
+    """
+    if not isinstance(data, dict) or "code" in data:
+        return False
+    if data.get("updated") is not True and data.get("success") is not True:
+        return False
+    snapshot = data.get("post")
+    if snapshot is None:
+        return True
+    if not isinstance(snapshot, dict):
+        return False
+    return all(snapshot.get(_ABILITY_FIELDS[name]) == value for name, value in fields.items())
+
+
+def _plain(text: object) -> str:
+    """Bỏ thẻ HTML và giải mã ký tự (&amp; -> &) trong chuỗi WordPress trả về.
+
+    Không phải chữ (site trả số, ``null``, danh sách…, LC-T044-1): số nguyên/thực thành chữ,
+    còn lại là chuỗi rỗng. Không bao giờ ném lỗi.
+    """
+    if isinstance(text, bool) or not isinstance(text, str | int | float):
+        return ""
+    return html.unescape(re.sub(r"<[^>]+>", "", str(text))).strip()

@@ -180,6 +180,7 @@ def test_public_methods_only_use_allowed_routes(fake_wp, wp_client):
         fake_wp.on("GET", f"/wp-json/wp/v2/{path}", [])
     fake_wp.on("POST", "/wp-json/wp/v2/posts", {"id": 42, "status": "draft", "title": "A"})
     fake_wp.on("POST", "/wp-json/wp/v2/posts/42", {"id": 42, "status": "draft"})
+    fake_wp.on("GET", "/wp-json/wp/v2/posts/42", {"id": 42, "status": "draft"})
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 9, "source_url": "u"}, {}))
     fake_wp.on("POST", "/wp-json/wp/v2/media/9", {"id": 9, "source_url": "u"})
 

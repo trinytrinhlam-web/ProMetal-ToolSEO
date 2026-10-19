@@ -174,7 +174,6 @@ def test_create_draft_odd_status_answer_is_not_recorded(fake_wp, client, status)
     assert client._created_post_ids == set()
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-4: create_draft nhận id bool/chữ/số thực")
 @pytest.mark.parametrize("answer_id", [True, "7", " 8 ", 7.9, "0042"])
 def test_create_draft_odd_id_answer_is_not_recorded(fake_wp, client, answer_id):
     """Site trả ``id`` sai kiểu: ``int(True)`` là 1, ``int(7.9)`` là 7, nên bài 1 hay bài 7
@@ -185,7 +184,6 @@ def test_create_draft_odd_id_answer_is_not_recorded(fake_wp, client, answer_id):
     assert client._created_post_ids == set()
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-5: set_featured_image không hỏi lại còn nháp")
 def test_featured_image_is_not_set_on_post_published_after_creation(fake_wp, client):
     """Báo cáo Thợ Máy: "không có đường nào ghi vào bài đã đăng". ``set_featured_image`` vẫn
     ``POST /wp/v2/posts/<id>`` mà không hỏi lại bài còn là nháp."""
@@ -494,7 +492,6 @@ def test_whitespace_like_control_chars_become_spaces_not_sent_raw(fake_wp, clien
 # ================================================================ kết quả Abilities mơ hồ
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-6: kết quả ability không xác nhận vẫn báo đã ghi")
 @pytest.mark.parametrize(
     "answer",
     [
