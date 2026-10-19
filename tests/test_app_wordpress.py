@@ -4,6 +4,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from seo_app.auth import hash_password
+from seo_app.text import escape_markdown
 from seo_app.wordpress import ConnectionInfo, Media, Post, Term, WordPressClient, WordPressError
 
 PASSWORD = "mat-khau-thu-123"
@@ -59,7 +60,8 @@ def test_check_connection_error_is_shown(project_root, monkeypatch):
 
     button(at, "Kiểm tra kết nối").click().run()
 
-    assert at.error[0].value == "WordPress từ chối đăng nhập."
+    # Câu lỗi có thể chứa chữ của máy chủ nên được escape Markdown (T-044); chữ hiện ra y hệt.
+    assert at.error[0].value == escape_markdown("WordPress từ chối đăng nhập.")
 
 
 def test_create_draft_from_form(project_root, monkeypatch):

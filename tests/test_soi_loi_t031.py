@@ -501,10 +501,7 @@ def test_competitor_title_from_research_is_not_a_link():
 # --------------------------------------------- chữ ngoài AI hiện trên trang WordPress
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T031-1: tên website / tên tài khoản từ WordPress hiện bằng Markdown không escape",
-)
+# SL-T031-1: đã sửa ở T-044 (Họa Sĩ), bỏ xfail.
 def test_wordpress_site_name_is_not_a_link(project_root, monkeypatch):
     monkeypatch.setenv("APP_PASSWORD_HASH", hash_password(PASSWORD, iterations=1_000))
     monkeypatch.setenv("APP_TIMEZONE", "Asia/Ho_Chi_Minh")
