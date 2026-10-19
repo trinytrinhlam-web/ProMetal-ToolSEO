@@ -19,7 +19,7 @@ Dự án đã khai báo hai thư viện ảnh: **Pillow 12.3.0** (đã có sẵn
 | `uv.lock` | Thêm gói `pillow-heif 1.8.1`; `pillow` giữ 12.3.0, nay là phụ thuộc trực tiếp; `revision` 3 → 5 (do uv 0.12.23 ghi) |
 | `tests/test_pillow_heif_setup.py` | 3 test: có bộ giải mã libde265; chưa đăng ký thì Pillow không mở được HEIC; đăng ký rồi mở ảnh HEIC giả đúng kích thước |
 
-Commit: `b9e4b64` (thư viện), `69a9442` (test), commit báo cáo ngay sau.
+Commit: `b9e4b64` (thư viện), `69a9442` (test), `784f3d5` (nháp báo cáo), commit báo cáo hoàn chỉnh ngay sau.
 
 ## Thông tin thư viện
 
@@ -74,10 +74,11 @@ test_dang_ky_roi_mo_lai_heic_dung_kich_thuoc PASSED
 (chạy ngược thứ tự: đăng ký trước, "chưa đăng ký" sau → vẫn 2 passed, chứng tỏ bảng định dạng được trả lại)
 
 $ uv run pytest
-__PYTEST__
+5627 passed, 11 skipped, 35 xfailed, 1 warning in 551.55s (0:09:11)
+(cảnh báo duy nhất: Pydantic trong test lớp AI tests/test_soi_loi_t028.py, không liên quan Pillow)
 
 $ uv run ruff check .
-__RUFF__
+All checks passed!
 ```
 
 ## Đối chiếu tiêu chí xong
