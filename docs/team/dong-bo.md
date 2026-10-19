@@ -51,6 +51,11 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-19 08:13 · Chỉ Huy A
+
+- Lập 10 phiếu Giai đoạn 3 T-047 → T-056 (G3-1 → G3-10 của báo cáo T-046), kèm quyết định 19/10 và 11 góp ý Lá Chắn T-046. Thứ tự: (T-047, T-048, T-050, T-051) → (T-049, T-052) → (T-053, T-054, T-055) → T-056. T-054 còn chờ T-042. Số phiếu tiếp theo: **T-057**.
+- Giao T-047 (Thợ Máy).
+
 ### 2026-10-19 08:10 · Chỉ Huy A
 
 - **Quyết định chủ dự án:** Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Hải Châu/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4. Lập phiếu code Giai đoạn 3 từ T-047.
