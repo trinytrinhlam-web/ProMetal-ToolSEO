@@ -82,3 +82,8 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
   - Công tắc "Ghi SEO lên website" (mặc định **tắt**). Sau khi tạo nháp thì gọi `WordPressClient.set_seo_meta`, hiện `result.message` bằng widget chữ thường.
   - Trang Kết nối WordPress hiện thêm `info.siteseo_status` ("SiteSEO: ghi được / chưa bật").
   - Tiêu đề truyền vào `set_seo_meta` phải gắn sẵn đuôi " | Pro-Metal" bằng `with_brand` (client không tự gắn).
+- 2026-10-19 (Chỉ Huy A): **Điều kiện của Lá Chắn T-042** (`docs/team/reports/T-042-la-chan.md`) cho phần nối `set_seo_meta` / `set_featured_image` vào app:
+  - `write_seo` mặc định **tắt**, công tắc trong app.
+  - Không tự nạp id vào `_created_post_ids`. Muốn giữ client qua các lần bấm thì giữ cả client trong `st.session_state`, **không** dùng `st.cache_resource`.
+  - Hiện câu báo bằng widget chữ thường hoặc `escape_markdown`.
+  - LC-T042-2: ghi qua Abilities xong thì hỏi lại trạng thái bài; không còn nháp thì báo người dùng.
