@@ -408,7 +408,6 @@ def test_redirects_in_seo_steps_are_never_followed(fake_wp, client, status, step
         "https://example.com/wp-json/prometal/v1/purge?",
     ],
 )
-@pytest.mark.xfail(strict=True, reason="SL-T042-3: WORDPRESS_URL có ?/# đổi đường thật đã kiểm")
 def test_base_url_cannot_turn_allowed_route_into_another(base_url):
     """Đường được kiểm là phần ghép SAU ``base_url``; ``base_url`` có ``#`` hay ``?`` thì
     phần đó thành fragment/query và request thật đi tới đường nhạy cảm."""
@@ -461,7 +460,6 @@ def test_more_bad_text_is_blocked_before_any_request(fake_wp, client, text, fiel
     assert text not in str(err.value)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-2: &lt / &gt thiếu ';' lọt bộ chặn thực thể")
 @pytest.mark.parametrize("text", ["Cửa &ltscript&gt", "Cửa &lt b &gt", "Giá &amp rẻ", "&copy 2026"])
 def test_legacy_entities_without_semicolon_are_blocked(fake_wp, client, text):
     """Trình duyệt vẫn giải mã ``&lt``, ``&gt``, ``&amp``, ``&copy``… thiếu ``;`` (danh sách

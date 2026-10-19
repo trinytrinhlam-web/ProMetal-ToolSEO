@@ -324,3 +324,92 @@ def test_post_answer_odd_fields_are_safe(fake_wp, client, answer):
     assert post.id == 42
     assert isinstance(post.title, str) and isinstance(post.link, str)
     assert post.featured_media == 0
+
+
+# ------------------------------------------------------------ SL-T042-3
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/?rest_route=/code-snippets/v1/snippets",
+        "https://example.com/wp-json/code-snippets/v1/snippets#",
+        "https://example.com/#",
+        "https://example.com?",
+        "https://example.com/a%2e%2e",
+        "https://example.com/../x",
+        "https://example.com/./x",
+        "https://example.com/wp-json",
+        "https://example.com/WP-JSON",
+        "https://example.com/prometal/v1/purge",
+        "https://example.com/code-snippets",
+        "https://example.com/wp-admin",
+        "https://lam:abcd@example.com",
+        "https://example.com@evil.com",
+        "https://example.com//evil",
+        "https://example.com/a b",
+        "https://example.com/a\b",
+        "https://exa_mple.com",
+        "https://example.com:99999x",
+    ],
+)
+def test_odd_wordpress_url_is_refused(url):
+    with pytest.raises(WordPressError) as err:
+        WordPressClient(url, "lam", "abcd")
+    assert "abcd" not in str(err.value)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com",
+        "https://example.com/",
+        "HTTPS://Example.COM/",
+        "https://www.suachuacuasat.com",
+        "https://example.com:8443",
+        "https://example.com/blog",
+        "https://example.com/blog/wp",
+        "https://xn--sa-cua-st-8za.vn",
+    ],
+)
+def test_normal_wordpress_url_is_accepted(url):
+    assert WordPressClient(url, "lam", "abcd").uses_https
+
+
+# ------------------------------------------------------------ SL-T042-2
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Cửa &ltscript&gt", "&LT;b", "Giá &amp rẻ", "&copy 2026", "&nbspCửa", "&quot", "&reg",
+     "&frac12 giá", "&AMP"],
+)
+def test_legacy_entities_without_semicolon_blocked(fake_wp, client, text):
+    draft_site(fake_wp, run={"updated": True})
+    client.create_draft("A", "B")
+    before = len(fake_wp.requests)
+    with pytest.raises(WordPressError, match="mã ký tự HTML"):
+        client.set_seo_meta(42, title=text)
+    assert len(fake_wp.requests) == before
+
+
+@pytest.mark.parametrize("text", ["R&D", "AT&T", "A & B", "Q&A", "P&G", "Cửa & cổng", "&Lt"])
+def test_plain_ampersand_still_passes(fake_wp, client, text):
+    draft_site(fake_wp, run={"updated": True})
+    client.create_draft("A", "B")
+    assert client.set_seo_meta(42, title=text).written
+
+
+# ------------------------------------------------------------ SL-T042-7
+
+
+@pytest.mark.parametrize("char", ["ㅤ", "ᅟ", "ᅠ", "ﾠ", "͏", "️",
+                                  "᠋", "឴", "\U000e0100"])
+def test_ignorable_not_cf_is_dropped_and_refused(char):
+    from seo_app.wordpress import PublishedItem, is_site_link
+    from seo_app.wordpress.client import _clean_text
+
+    assert _clean_text(f"Cửa{char} sắt", 50) == "Cửa sắt"
+    assert not is_site_link(f"{BASE_URL}/cua{char}sat/", BASE_URL)
+    with pytest.raises(ValueError):
+        PublishedItem(id=1, type="post", slug="a", link=f"{BASE_URL}/a/", title=f"A{char}B")

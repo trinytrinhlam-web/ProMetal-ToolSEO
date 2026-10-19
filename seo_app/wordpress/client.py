@@ -8,6 +8,7 @@ Không có hàm nào đăng bài công khai. Mật khẩu không bao giờ xuấ
 from __future__ import annotations
 
 import html
+import html.entities
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -105,6 +106,18 @@ _ABILITY_FIELDS = {
 _META_FIELDS = {"title": SITESEO_TITLE_KEY, "description": SITESEO_DESC_KEY}
 # Mã ký tự HTML dạng số thiếu dấu ";" (trình duyệt vẫn giải mã "&#37" thành "%").
 _NUMERIC_REF = re.compile(r"&#(?:[0-9]|x[0-9a-f])", re.IGNORECASE)
+# Tên thực thể HTML cũ trình duyệt vẫn giải mã khi THIẾU ";" (``&lt``, ``&amp``, ``&copy``…;
+# SL-T042-2). Phân biệt hoa thường như HTML (``&LT`` có, ``&Lt`` không). "R&D", "AT&T" vẫn qua.
+_LEGACY_ENTITY = re.compile(
+    "&(?:"
+    + "|".join(
+        re.escape(name)
+        for name in sorted(
+            (n for n in html.entities.html5 if not n.endswith(";")), key=len, reverse=True
+        )
+    )
+    + ")"
+)
 
 _SEO_NOT_OWN = (
     "Chỉ được ghi SEO cho bài nháp app vừa tạo trong lần làm việc này, không sửa bài đã có "
@@ -315,6 +328,12 @@ class WordPressClient:
             raise WordPressError(
                 "WORDPRESS_URL phải bắt đầu bằng https:// để mật khẩu không bị gửi qua mạng "
                 "dưới dạng không mã hóa. Sửa trong file .env, ví dụ: https://example.com"
+            )
+        if not _is_plain_site_url(base_url):
+            # SL-T042-3: base_url có ?, #, %, .., wp-json… làm đường thật khác đường đã kiểm.
+            raise WordPressError(
+                "WORDPRESS_URL chỉ được là địa chỉ website, ví dụ https://example.com (không có "
+                "dấu ?, #, %, @, đoạn /wp-json hay /.. ). Sửa trong file .env."
             )
         if not username or not app_password:
             raise WordPressError("Thiếu tên đăng nhập hoặc Application Password của WordPress.")
@@ -963,7 +982,7 @@ def _clean_text(value: object, limit: int) -> str:
     if not isinstance(value, str):
         return ""
     text = _CONTROL_CHARS.sub(" ", _plain(value[: limit * 20]))
-    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")  # LC-T037-1 (b)
+    text = _drop_invisible(text)  # LC-T037-1 (b), SL-T042-7
     return " ".join(text.split())[:limit].rstrip()
 
 
@@ -988,7 +1007,8 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
     folded = unicodedata.normalize("NFKC", value)
     if has_html(raw) or has_html(value) or has_html(folded):
         raise WordPressError(f"{label} có thẻ HTML (dấu < ngay trước chữ). Bỏ thẻ đi rồi gửi lại.")
-    if any(pattern.search(text) for pattern in (_ENTITY, _NUMERIC_REF) for text in (raw, folded)):
+    patterns = (_ENTITY, _NUMERIC_REF, _LEGACY_ENTITY)
+    if any(pattern.search(text) for pattern in patterns for text in (raw, value, folded)):
         raise WordPressError(
             f"{label} có mã ký tự HTML (dạng &…;). Gõ thẳng ký tự (ví dụ «%» thay cho «&#37;») "
             "rồi gửi lại."
@@ -1013,9 +1033,48 @@ def _seo_error(route: str, status_code: int | None) -> SeoWriteResult:
     )
 
 
+def _ignorable_not_cf() -> re.Pattern[str]:
+    """Ký tự "mặc định bỏ qua" không thuộc loại Cf (U+3164, U+FE0F…), dùng chung với
+    ``normalize_meta``. Nhập muộn: ``seo_app.content`` kéo theo lớp AI."""
+    from seo_app.content.rules import IGNORABLE_NOT_CF
+
+    return IGNORABLE_NOT_CF
+
+
 def _has_invisible(text: str) -> bool:
-    """Có ký tự vô hình loại Cf (U+200B rộng 0, U+202E đảo chiều, BOM, gạch nối mềm…)."""
-    return any(unicodedata.category(ch) == "Cf" for ch in text)
+    """Có ký tự vô hình: loại Cf (U+200B rộng 0, U+202E đảo chiều, BOM, gạch nối mềm…) hoặc
+    ký tự mặc định bỏ qua khác (U+3164 trắng Hangul, U+FE0F, U+034F…; SL-T042-7)."""
+    return any(unicodedata.category(ch) == "Cf" for ch in text) or bool(
+        _ignorable_not_cf().search(text)
+    )
+
+
+def _drop_invisible(text: str) -> str:
+    """Bỏ mọi ký tự vô hình (như ``_has_invisible``)."""
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+    return _ignorable_not_cf().sub("", text)
+
+
+_SITE_HOST = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?")
+_SITE_PATH = re.compile(r"(?:/[A-Za-z0-9_~-][A-Za-z0-9._~-]*)*")
+_SITE_PATH_FORBIDDEN = ("wp-json", "code-snippets", "prometal", "wp-admin")
+
+
+def _is_plain_site_url(base_url: str) -> bool:
+    """``https://tên-máy[:cổng][/thư-mục]``: không tên/mật khẩu, không ``?``, ``#``, ``%``,
+    không đoạn ``.``/``..``, không ``wp-json``, ``code-snippets``, ``prometal`` (SL-T042-3)."""
+    try:
+        parts = urlsplit(base_url)
+    except ValueError:
+        return False
+    if parts.scheme.lower() != "https" or "?" in base_url or "#" in base_url:
+        return False
+    if parts.query or parts.fragment or not _SITE_HOST.fullmatch(parts.netloc):
+        return False
+    if not _SITE_PATH.fullmatch(parts.path):
+        return False
+    lowered = parts.path.lower()
+    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
 
 
 def _positive_id(value: object) -> int | None:

@@ -147,13 +147,11 @@ def test_bad_second_page_without_header_raises_not_silent(fake_wp, wp_client, an
 IGNORABLE_NOT_CF = ["ㅤ", "ᅟ", "ᅠ", "ﾠ", "͏", "️", "᠋"]
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-7: ký tự vô hình không thuộc Cf lọt link từ site")
 @pytest.mark.parametrize("char", IGNORABLE_NOT_CF)
 def test_site_link_refuses_ignorable_not_cf(char):
     assert not is_site_link(f"{BASE_URL}/cua{char}sat/", BASE_URL)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T042-7: ký tự vô hình không thuộc Cf còn trong chữ")
 @pytest.mark.parametrize("char", IGNORABLE_NOT_CF)
 def test_clean_text_drops_ignorable_not_cf(char):
     assert _clean_text(f"Cửa{char} sắt", 50) == "Cửa sắt"
