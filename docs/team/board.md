@@ -28,7 +28,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
-| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | **Thợ Máy đang làm** (phiên Chỉ Huy A, worktree `wt-T-047`) |
+| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | Thợ Máy xong (`3d46574`: Pillow 12.3.0, pillow-heif 1.8.1, pip-audit sạch, Windows 5.627 qua). **Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn (CVE thư viện C đi kèm, giấy phép GPLv2 của x265) |
 | [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | **Thợ Máy đang làm** (phiên Chỉ Huy A, worktree `wt-T-048`) |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-047 |
 | [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Còn chỗ |
