@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Cao (mở đường cho Giai đoạn 3) |
 | Phụ thuộc | Không |
-| Trạng thái | Mới |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 

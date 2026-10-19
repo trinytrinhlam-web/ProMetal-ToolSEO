@@ -27,7 +27,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | **Đang giao** (phiên Chỉ Huy A) |
+| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | **Thợ Máy đang làm** (phiên Chỉ Huy A, worktree `wt-T-047`) |
 | [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Còn chỗ (chạy song song T-050, T-051) |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-047 |
 | [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Còn chỗ |
