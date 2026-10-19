@@ -8,6 +8,7 @@ from seo_app.ai.base import EFFORTS, redact_secrets
 from seo_app.ai.registry import PROVIDERS
 from seo_app.config import load_settings
 from seo_app.content import blind_test, load_rules
+from seo_app.sanitize import escape_link_syntax
 
 S = st.session_state
 
@@ -292,7 +293,13 @@ def _show_reveal() -> None:
     st.dataframe(rows, hide_index=True)
     for label, info in reveal.items():
         if info.error:
-            st.error(f"Bài {label} ({info.provider_label} · {info.model}): {info.error}")
+            # Tên mô hình do người dùng gõ (có thể là "https://…", "www.…", email): không để thành
+            # link trong câu lỗi (Lá Chắn LC-T034-1, T-044).
+            st.error(
+                escape_link_syntax(
+                    f"Bài {label} ({info.provider_label} · {info.model}): {info.error}"
+                )
+            )
 
     best = next((r for r in rows if r["Điểm"] is not None), None)
     if best is None:
@@ -381,7 +388,7 @@ def blind_models_tab(settings) -> None:
         "của từng hãng. Mỗi bài ngắn, không tìm web."
     )
     if problem:
-        st.caption(f"Chưa chạy được: {problem}")
+        st.caption(f"Chưa chạy được: {escape_link_syntax(problem)}")
     if st.button(
         f"▶️ Chạy thử mù (gọi AI {calls} lần)",
         key="blind-run",
@@ -395,7 +402,7 @@ def blind_models_tab(settings) -> None:
                     keyword, note, cands, settings, load_rules()
                 )
             except AIError as exc:
-                st.error(str(exc))
+                st.error(escape_link_syntax(str(exc)))
             else:
                 for entry in entries:
                     S.pop(f"blind-score-{entry.label}", None)

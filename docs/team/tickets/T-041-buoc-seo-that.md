@@ -78,3 +78,7 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
   - Tiêu đề, meta lấy từ site hiện trên giao diện phải là chữ thuần hoặc đã escape; đưa vào prompt AI thì phải nằm trong khung dữ liệu.
   - Khi `truncated` bật thì không được kết luận "link hỏng"; chuẩn hóa link trước khi so bằng `by_link()`.
   - Nếu phiếu này nối `get()` vào giao diện trước T-042 thì phải sửa SL-T037-5 (file cache bận làm treo khoảng 14 giây).
+- 2026-10-17 (Chỉ Huy A): **Phần giao diện cho T-042** (Thợ Máy T-042 không được sửa `app/**`, đề xuất giao Họa Sĩ trong phiếu này):
+  - Công tắc "Ghi SEO lên website" (mặc định **tắt**). Sau khi tạo nháp thì gọi `WordPressClient.set_seo_meta`, hiện `result.message` bằng widget chữ thường.
+  - Trang Kết nối WordPress hiện thêm `info.siteseo_status` ("SiteSEO: ghi được / chưa bật").
+  - Tiêu đề truyền vào `set_seo_meta` phải gắn sẵn đuôi " | Pro-Metal" bằng `with_brand` (client không tự gắn).

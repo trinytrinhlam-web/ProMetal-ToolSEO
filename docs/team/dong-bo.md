@@ -41,14 +41,24 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 | [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | đã gộp (`f11ba28`), nhánh đã xóa | ✅ 08:00 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.291 qua, 0 hỏng) | Điều kiện đã ghi vào phiếu T-041 (có ngoại lệ sửa `meta.py`) và T-042 |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | đã gộp (`914ac68`), nhánh đã xóa | ✅ 08:11 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.537 qua, 0 hỏng) | Điều kiện đã ghi vào T-042, T-039, T-041 |
 | [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | đã gộp (`de65bdb`), nhánh đã xóa | ✅ 07:48 Lá Chắn rút gọn ĐẠT, gộp vào `main` | **Chờ chủ dự án trả lời 5 câu** (mục 8 báo cáo T-046) rồi lập phiếu G3-1 → G3-10 (số thật từ T-047), kèm 11 góp ý của Lá Chắn (`T-046-la-chan.md`) |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md), [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) (GĐ4) | chưa có | Phiếu đã lập | T-039 sau khi T-036, T-037 gộp; T-042 sau T-037 |
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress hiện an toàn | `team/T-044` (từ `main` `b5ff3b3`) | ⏳ 08:01 **Họa Sĩ (A) đang làm** | Soi Lỗi rút gọn, Lá Chắn rút gọn (U1), gộp |
-| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ sau T-043 | `team/T-045` (từ `main` `b5ff3b3`) | ⏳ 08:01 **Thợ Máy (A) đang làm** (sửa cả 3 lỗi; chủ dự án chưa nói muốn ghi sổ rủi ro thay vì sửa) | Soi Lỗi, Lá Chắn, gộp |
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Ghi meta SEO lên nháp (GĐ4) | `team/T-042` (từ `main` `a1a2377`) | ✅ Thợ Máy xong (`6a02005`). ✅ Soi Lỗi **đạt có điều kiện** (`5df3266`, Windows 6.199 qua, 0 hỏng; không tìm được đường ghi vào bài đã đăng hay gọi đường ngoài danh sách; 7 lỗi: SL-T042-1 Trung bình, 6 Thấp). ⏳ 07:54 **Thợ Máy sửa lượt 2** (7 lỗi + LC-T044-1) | Soi Lỗi, Lá Chắn (soát kỹ chặn ghi bài đã đăng), gộp; sau đó phiếu thử thật một bài nháp với chủ dự án |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập; đã ghi điều kiện Lá Chắn T-036, T-037 | T-039 giao sau khi T-045 gộp (cùng thư mục `seo_app/content/`) |
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress hiện an toàn | đã gộp (`cb9cd47`), nhánh đã xóa | ✅ 07:53 Lá Chắn rút gọn ĐẠT, gộp vào `main` (Windows 5.624 qua, 0 hỏng) | LC-T044-1 (client hỏng khi dữ liệu sai kiểu) đã ghi vào T-042 |
+| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ sau T-043 | `team/T-045` (`f23a78b`) | ✅ Thợ Máy xong; Soi Lỗi **ĐẠT** (fuzz 300.000 tài liệu: 0 dòng có nhãn tới AI; 2 lỗi Thấp có từ trước SL-T045-1/2). ⏳ 07:53 **Lá Chắn đang kiểm** | ĐẠT thì gộp; SL-T045-1/2: phiếu theo dõi hoặc sổ rủi ro theo Lá Chắn |
 | `main` trên Windows | `a23f764` | ✅ 07:43: **4.867 qua, 0 hỏng**, 10 bỏ qua (chỉ chạy trên Mac/Linux), 21 xfail; ruff sạch. Các phiếu B gộp (T-019, T-025, T-031, T-032, T-034, T-043) đều chạy được trên Windows | Không cần làm gì |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-19 07:30 · Chỉ Huy A
+
+- Phiên Claude Code của A kết thúc chiều 17/10 khi 3 agent đang chạy: Soi Lỗi T-042 (chưa đẩy gì), Lá Chắn T-044 (đã đẩy biên bản dở `49f0533`), Soi Lỗi T-045 (chưa đẩy gì). Chỉ Huy B không có commit nào từ 16/10. 2026-10-19 07:30 đã gọi cả ba làm tiếp.
+- Đã nhắc lại chủ dự án 5 câu Giai đoạn 3 (mục 8 báo cáo T-046). Các câu này không ảnh hưởng T-042, T-044, T-045.
+
+### 2026-10-17 12:22 · Chỉ Huy A
+
+- Sau 08:30 (giờ commit cuối của agent) tài khoản A chạm giới hạn sử dụng 5 tiếng, mở lại 12:20. Ba agent (Thợ Máy T-042, Soi Lỗi T-044, Thợ Máy T-045) dừng giữa chừng; phần lớn việc đã đẩy lên nhánh (`07c8626`, `3617509`, `d8e2dc1`), còn vài file sửa dở trong worktree. 12:22 đã gọi cả ba làm tiếp. Chỉ Huy B không có commit nào trong lúc dừng.
 
 ### 2026-10-17 07:31 · Chỉ Huy A tiếp quản từ Chỉ Huy B, không có bàn giao
 

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-037 đã gộp (cùng sửa `seo_app/wordpress/client.py`). Chủ dự án đã trả lời 2026-10-16: **1A** (Abilities là đường chính), **2A** (tài khoản Biên tập viên riêng) |
-| Trạng thái | Chờ T-037 |
+| Trạng thái | Đã giao |
 
 ## Mục tiêu
 
@@ -49,3 +49,5 @@ W1, W2, W3, W4, S2, D3. Lá Chắn soát kỹ nhất phần chặn ghi bài đã
   3. LC-T037-1 (a)(b): `is_site_link` từ chối `" ' < >` và ký tự vô hình (U+202E, U+200B…); `_clean_text` bỏ ký tự vô hình.
   4. SL-T037-4: chỉ xóa file cache khi chắc chắn hỏng (`SQLITE_NOTADB` / `SQLITE_CORRUPT`, `quick_check` lỗi, sai cột); sửa cả `site_index.py` khoảng dòng 138 (`load`) lẫn khoảng dòng 324.
   5. SL-T037-5: khi `load` đã thấy file bận thì `refresh` bỏ bước ghi, hoặc giảm thời gian chờ (hiện treo khoảng 14 giây). Nếu T-039 hoặc T-041 nối `get()` vào giao diện trước phiếu này thì phiếu đó sửa.
+- 2026-10-17 08:12 (Chỉ Huy A): giao, chạy dưới phiên Chỉ Huy A trong worktree `D:\ProMetal-ToolSEO\wt-T-042`, nhánh `team/T-042`.
+- 2026-10-19 (Chỉ Huy A): **Thêm LC-T044-1 của Lá Chắn T-044** (`docs/team/reports/T-044-la-chan.md`) vào lượt sau của phiếu này, vì cùng sửa `seo_app/wordpress/client.py`. Client hỏng khi WordPress trả dữ liệu sai kiểu, trang hiện traceback: `_plain` với `name` không phải chuỗi (khoảng dòng 156, 158), `me` không phải dict (khoảng 154), `_list_terms` (khoảng 181-185), `int(media["id"])` (khoảng 292), `_post_from` (khoảng 319-324). Cách sửa: ép kiểu an toàn, gói lỗi thành `WordPressError` câu cố định, có test bằng `fake_wordpress`. Phải xong trước khi hết Giai đoạn 4.

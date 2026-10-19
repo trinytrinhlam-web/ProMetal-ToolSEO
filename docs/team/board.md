@@ -29,7 +29,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | Bộ lọc hồ sơ: theo dõi 3 lỗi Thấp sau T-043 (LC-T043-1 lùi so với trước, SL-T043-1, -2). Điều kiện của Lá Chắn T-043 | Thợ Máy | Chỗ trống |
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Tên site, tên người dùng từ WordPress hiện an toàn trên trang Kết nối WordPress (SL-T031-1) | Họa Sĩ | Chỗ trống (T-031 đã gộp) |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
@@ -49,6 +48,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Chữ lấy từ WordPress và tên mô hình hiện an toàn | Họa Sĩ | 2026-10-19 | [Họa Sĩ](reports/T-044-hoa-si.md) (2 lượt) · [Soi Lỗi](reports/T-044-soi-loi.md) rút gọn: đạt có điều kiện (SL-T044-1/2 đã sửa) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-044-la-chan.md) (Opus tạm); LC-T044-1 → T-042. Gộp vào `main` `cb9cd47`: Windows 5.624 qua, 0 hỏng |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | Danh sách bài/trang đã đăng + cache SQLite (GĐ4) | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-037-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-037-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-037-la-chan.md) (Opus tạm); điều kiện ghi vào T-042 (SL-T037-3/4/5, LC-T037-1, danh sách đường gọi cố định) và T-039, T-041. Gộp vào `main` `914ac68`: Windows 5.537 qua, 0 hỏng |
 | [T-036](tickets/T-036-meta-title-description-slug.md) | Meta title, description, slug (GĐ4, phần logic) | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-036-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-036-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-036-la-chan.md) (Opus tạm); điều kiện ghi vào T-041 (LC-T036-1, SL-T036-10/11/12) và T-042 (chặn thực thể HTML). Gộp vào `main` `f11ba28`: Windows 5.291 qua, 0 hỏng |
 | [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) | Thiết kế Giai đoạn 3 (ảnh), chỉ tài liệu | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-046-tho-may.md): nén WebP kèm `exif=` giữ được GPS (đã thử); Pillow không đọc HEIC; 10 phiếu G3-1 → G3-10; 5 câu hỏi chủ dự án · Lá Chắn rút gọn: [**ĐẠT**](reports/T-046-la-chan.md) (Opus tạm), 11 góp ý cho phiếu code. Gộp vào `main` `de65bdb` |
