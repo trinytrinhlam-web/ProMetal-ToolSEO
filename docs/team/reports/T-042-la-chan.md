@@ -207,7 +207,7 @@ Câu chặn chữ SEO không chép chữ người dùng. Test của Thợ Máy v
 | detect-secrets | `--all-files`: 3 kết quả (`.pytest_cache/CACHEDIR.TAG`, `.ruff_cache/CACHEDIR.TAG`, `tests/test_config.py:34`), không có trong file của diff | Có (báo nhầm) |
 | Soát lịch sử git | Mục S1: chỉ khóa giả | Có |
 | ruff | `uv run ruff check .`: **All checks passed!** | Có |
-| pytest | _(đang chạy, cập nhật khi xong)_ | |
+| pytest | `uv run pytest` (Windows 11, worktree `wt-T-042`, HEAD `dab6e86` + biên bản): **6984 passed, 11 skipped, 30 xfailed, 1 warning in 1230.21s**, 0 hỏng, 0 lỗi. Khớp số Thợ Máy báo ở lượt 3. 30 xfail ở file của phiếu khác, có từ trước; không còn xfail nào của T-042. 1 warning pydantic có từ trước | Có |
 | Thử tay (không mạng) | 3 script trong thư mục tạm, tự chặn socket: 272 cặp (phương thức, đường); 50 `WORDPRESS_URL`; luồng `set_seo_meta` (2 đường, bài đổi trạng thái, `post_id` lạ, `write_seo` lạ); 11 câu trả lời ability; 38 chữ SEO; khe kiểm-rồi-ghi; `params` lạ | Có, kết quả ở các mục trên |
 
 ## Báo nhầm đã loại
