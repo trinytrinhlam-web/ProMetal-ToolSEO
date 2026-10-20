@@ -18,6 +18,29 @@ PROVIDERS = {
 }
 SUPPORTED = {"anthropic", "openai", "gemini"}
 
+# Việc mới thêm sau, có thể chưa có trong config/ai.toml của máy đang dùng (file do người dùng
+# sửa, máy kia có thể chưa cập nhật): câu báo nói rõ việc đó là gì và ghi mẫu để chép vào.
+# Mẫu theo quyết định 4A (2026-10-19: alt bằng Claude Sonnet).
+TASK_EXAMPLES = {
+    "alt": (
+        "viết alt cho ảnh",
+        'provider = "anthropic", model = "claude-sonnet-5-5", effort = "low", max_tokens = 2000',
+    ),
+}
+
+
+def missing_task_message(task_name: str) -> str:
+    """Câu báo thiếu mục ``[tasks.<task_name>]`` trong config/ai.toml (tiếng Việt, không sập)."""
+    example = TASK_EXAMPLES.get(task_name)
+    if example is None:
+        return f"config/ai.toml thiếu mục [tasks.{task_name}]."
+    label, sample = example
+    return (
+        f"config/ai.toml chưa có mục [tasks.{task_name}] (mô hình AI dùng để {label}). Mở file "
+        f"config/ai.toml, thêm mục [tasks.{task_name}] với {sample} (mỗi thông số một dòng), "
+        "lưu lại rồi tải lại trang."
+    )
+
 
 def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
     """Mô hình cho từng việc. Báo ``AIError`` (tiếng Việt) nếu file viết sai."""
@@ -120,6 +143,6 @@ class AIRouter:
 
     def get(self, task_name: str) -> tuple[AIProvider, TaskConfig]:
         if task_name not in self.tasks:
-            raise AIError(f"config/ai.toml thiếu mục [tasks.{task_name}].")
+            raise AIError(missing_task_message(task_name))
         task = self.tasks[task_name]
         return self._providers[task.provider], task

@@ -50,3 +50,4 @@ F1, F3, A3; góp ý Lá Chắn T-046 số 3 (số 10 không áp dụng vì chọ
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-052`, tạo từ `main`.
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048** (`docs/team/reports/T-048-la-chan.md`, LC-T048-4 mục a): tên thư mục và tên file từ `seo_app/images/folders.py` là dữ liệu chưa tin cậy; `_is_safe_name` còn cho qua ký tự vô hình/ngắt dòng (U+2028, U+2029, U+200B, U+200F, U+061C, U+FEFF, U+FFF9, khối ký tự thẻ U+E0000–E007F). Thẻ chỉ nhận khi khớp danh sách cố định (góp ý Lá Chắn T-046 số 3); bỏ ký tự Cf, Zl, Zp trước khi so.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-050** (điều kiện 5): chỉ đưa vào thẻ phần tên thư mục **bên dưới** thư mục ảnh đã khai báo (không `Users/…`, `My Drive/…`); khu vực đối chiếu danh sách quận/huyện cố định. Lớp lọc của T-050 cho qua thẻ có một dấu `/` (SL-T050-4), nên không thay được việc này.
