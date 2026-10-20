@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 14:37. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 14:53. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -44,13 +44,19 @@ Chỉ Huy B, cập nhật 2026-10-20 14:37. Bảng cũ của A (cập nhật 17/
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | đã gộp (`57fc6b9`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 11:41 gộp và đẩy `main` | Điều kiện đã chép: C1–C6 → T-062, C7–C9 → T-053, C10 → T-065. T-065 giao được |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | đã gộp (`3f90489`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 14:37 gộp và đẩy `main` | Điều kiện đã chép; T-067 giao được; Chỉ Huy thử 3–5 ảnh thật trước khi gộp T-054 |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (`f771a0e`) | ✅ 14:15 **Thợ Máy lượt 2 xong**: sửa đủ SL-T052-1 → -8 (test liên quan 849 qua, 0 hỏng) | ⏳ **Soi Lỗi kiểm lại lượt 2** (phiên "Soi Lỗi · T-052 lượt 2 kiểm lại thẻ ảnh", giao sau 14:20), rồi Lá Chắn |
-| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | `team/T-062` (`1e953d4`) | ✅ 14:15 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (3 lỗi Thấp SL-T062-1 → -3 ở bước code tự sửa alt ảnh AI) | ⏳ **Lá Chắn rút gọn đang kiểm** (phiên "Lá Chắn · T-062 kiểm nhanh cấu hình ảnh", giao sau 14:20); SL-T062-1 → -3 sửa ở lượt nhỏ hoặc phiếu dọn theo Lá Chắn; dòng README LC-T050-4 cho Thư Ký |
-| Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-068** |
+| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) Dọn lỗi Thấp xử lý ảnh (GĐ3) | `team/T-067` (từ `6ed41e2`) | ⏳ **Thợ Máy đang làm** (phiên "Thợ Máy · T-067 dọn lỗi Thấp xử lý ảnh", giao sau 14:37), worktree `wt-T-067` | Soi Lỗi rút gọn, Lá Chắn rút gọn |
+| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | `team/T-062` (`0f01c1e`) | ✅ 14:31 **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (C1–C6 đạt; 1 lỗi Thấp LC-T062-1). Điều kiện đã chép vào T-053, T-056, T-065; lập T-068 (SL-T062-1 → -3), T-069 (README) | **Gộp vào `main`** khi chủ dự án cho |
+| Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-070** |
 | `main` | `3f90489` + tài liệu | Windows sau gộp T-049: **8.278 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 14:53 · Chỉ Huy B
+
+- Chủ dự án cho giao **T-067** (Thợ Máy): nhánh `team/T-067` từ `main` `6ed41e2`, worktree `wt-T-067`, đã đẩy; đã đặt mức Tối đa và chế độ nhanh.
+- **Lá Chắn T-062 rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`0f01c1e`): C1–C6 đều đạt; 1 lỗi Thấp LC-T062-1 (quy tắc và ví dụ `[alt]` đi nguyên văn tới hãng AI, `config/` chưa ghi chú điều này) → thêm vào T-065. Chép điều kiện vào T-053, T-056; lập **T-068** (Thợ Máy, SL-T062-1 → -3) và **T-069** (Thư Ký, README: ảnh gửi hãng AI, cách đặt thư mục ảnh). Số phiếu tiếp theo: **T-070**. T-062 chờ chủ dự án cho gộp.
 
 ### 2026-10-20 14:37 · Chỉ Huy B
 
@@ -63,7 +69,7 @@ _Mục mới nhất ở trên cùng._
 - **Lá Chắn T-049 ĐẠT CÓ ĐIỀU KIỆN** (`ca39d12`): 4 lỗi Thấp (LC-T049-1 → -3 = SL-T049-1 → -3; LC-T049-4: `detect-secrets` trên Windows bỏ qua lặng lẽ file có chữ tiếng Việt). Chép điều kiện vào T-053, T-054, T-056, T-062; sửa `docs/team/security.md` mục 5 (chạy với `PYTHONUTF8=1`); lập **T-067** (dọn LC-T049-1/-2/-3; LC-T049-1 chặn gộp T-054, -2/-3 chặn gộp T-056). Việc của Chỉ Huy: thử 3–5 ảnh thật trước khi gộp T-054. T-049 chờ chủ dự án cho gộp.
 - **Thợ Máy T-052 lượt 2 xong** (`f771a0e`): sửa đủ SL-T052-1 → -8, đặt `trusted_schema = OFF`; test liên quan 849 qua, 0 hỏng. Chờ Soi Lỗi kiểm lại.
 - **Soi Lỗi T-062 ĐẠT CÓ ĐIỀU KIỆN** (`1e953d4`): 3 lỗi Thấp SL-T062-1 → -3 (bước code tự sửa alt ảnh AI). Chờ Lá Chắn rút gọn.
-- Số phiếu tiếp theo: **T-068**. Không còn phiên con nào đang chạy.
+- Số phiếu tiếp theo: **T-070**. Không còn phiên con nào đang chạy.
 
 ### 2026-10-20 13:52 · Chỉ Huy B
 
@@ -115,7 +121,7 @@ _Mục mới nhất ở trên cùng._
 
 - **Lá Chắn T-050 ĐẠT CÓ ĐIỀU KIỆN** (`c5c57fc`): 4 lỗi Thấp (LC-T050-1/-2: bộ kiểm ảnh gửi AI chưa chặn hồ sơ màu và khối dựng cố ý; LC-T050-3: chú thích nói quá; LC-T050-4: khóa Gemini miễn phí cho Google dùng ảnh). Bản gộp `main` + T-050: 7.911 qua, 0 hỏng. Chép điều kiện vào T-049 (bắt buộc: bản gửi AI không kèm hồ sơ màu, không dùng `ImageCms`; đã nhắn phiên Thợ Máy T-049 để sửa gợi ý "đổi về sRGB" trong lời giao), T-052, T-054, T-056, T-062; lập **T-066** (dọn LC-T050-1/-2/-3). T-050 chờ chủ dự án cho gộp.
 - Chủ dự án cho giao **T-052** (Thợ Máy): nhánh `team/T-052` từ `main` `c00b2e1`, worktree `wt-T-052`, đã đẩy nhánh; phiên "Thợ Máy · T-052 thẻ ảnh từ tên thư mục" đang làm.
-- Số phiếu tiếp theo: **T-068**. Đang chạy: Thợ Máy T-049, Thợ Máy T-052.
+- Số phiếu tiếp theo: **T-070**. Đang chạy: Thợ Máy T-049, Thợ Máy T-052.
 
 ### 2026-10-20 11:41 · Chỉ Huy B
 
