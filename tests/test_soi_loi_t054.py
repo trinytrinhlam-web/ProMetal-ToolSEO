@@ -69,7 +69,7 @@ POSTS = "/wp-json/wp/v2/posts"
 MEDIA = "/wp-json/wp/v2/media"
 UPLOADS = f"{BASE_URL}/wp-content/uploads/2026/10/"
 FIRST_ID = 101
-PASSWORD = "abcd efgh ijkl"  # khóa giả của fixture ``wp_client``
+KHOA_GIA = "abcd efgh ijkl"  # khóa giả của fixture ``wp_client``
 CUSTOMER = ("Tuấn", "Tuan", "Lê Lợi", "IMG_1234", "SN987654321", "CT012 - Nhà")
 
 
@@ -651,7 +651,7 @@ STEPS = {
     "kiểm nháp": ("GET", f"{POSTS}/42"),
     "ảnh đại diện": ("POST", f"{POSTS}/42"),
 }
-AUTH = base64.b64encode(f"lam:{PASSWORD.replace(' ', '')}".encode()).decode()
+AUTH = base64.b64encode(f"lam:{KHOA_GIA.replace(' ', '')}".encode()).decode()
 
 
 @pytest.mark.parametrize("code", [401, 403, 404, 500])
@@ -678,7 +678,7 @@ def test_loi_http_o_tung_buoc(fake_wp, wp_client, site, web, step, code):
             assert creates(fake_wp) == []
         text = str(err)
     assert {r.method for r in fake_wp.requests} <= {"GET", "POST"}  # không xóa gì (W2)
-    for secret in (PASSWORD, PASSWORD.replace(" ", ""), AUTH):
+    for secret in (KHOA_GIA, KHOA_GIA.replace(" ", ""), AUTH):
         assert secret not in text
 
 

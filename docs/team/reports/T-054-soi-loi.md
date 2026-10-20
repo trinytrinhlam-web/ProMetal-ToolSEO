@@ -23,7 +23,7 @@
 | `tests/test_soi_loi_t054.py` | Mới: 30 hàm test, 116 trường hợp (110 qua, 6 `xfail(strict=True)` cho SL-T054-1…3). Site giả, ảnh giả tạo trong bộ nhớ, không mạng |
 | `docs/team/reports/T-054-soi-loi.md` | Báo cáo này |
 
-Không sửa code ứng dụng, không sửa test cũ. Commit trên `team/T-054`: `a9167b6` (test), `bc3d851` và commit cuối (báo cáo).
+Không sửa code ứng dụng, không sửa test cũ. Commit trên `team/T-054`: `a9167b6` (test), `bc3d851`, `c827d86` (báo cáo) và commit cuối (đổi tên biến khóa giả để `detect-secrets` không báo nhầm). `PYTHONUTF8=1 uvx detect-secrets scan tests/test_soi_loi_t054.py docs/team/reports/T-054-soi-loi.md`: `"results": {}`.
 
 ## Bằng chứng
 
