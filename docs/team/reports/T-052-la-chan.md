@@ -7,8 +7,8 @@
 | Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 (tạm, xem trên) |
 | Phiếu được kiểm | [T-052](../tickets/T-052-the-anh-theo-ten-thu-muc.md) |
 | Phạm vi | diff `origin/main...team/T-052` (gốc chung `132a73d`, HEAD `497aa45`; `main` lúc kiểm `5441a68`): `seo_app/images/tags.py` (mới, 906 dòng), `seo_app/storage/image_tags.py` (mới, 540 dòng), `tests/test_images_tags.py`, `tests/test_soi_loi_t052.py`, 2 báo cáo. Code ứng dụng tại `f771a0e` (lượt 2 của Thợ Máy, không đổi tới `497aa45`). Code xung quanh: `seo_app/images/folders.py` (`ImageRef`, T-048), `seo_app/images/alt.py` (T-050), `seo_app/storage/drafts.py`, `app/views/write.py` |
-| Ngày | 2026-10-20 (bắt đầu 15:00, phần 1 lúc 15:31 +07) |
-| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** (chi tiết ở mục Kết luận, viết ở phần 3) |
+| Ngày | 2026-10-20 (15:00–15:40 +07) |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, 1 Trung bình (LC-T052-1), 4 Thấp (LC-T052-2 → -5). Gộp `main` được ngay; điều kiện → phiếu dọn mới (trước T-056), T-055, T-056, T-063, T-069, sổ rủi ro |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -93,3 +93,61 @@ Script nằm ngoài repo (thư mục tạm của phiên), không sửa code hay 
 | T12 | **YC4 qua `get`**: lưu thẻ sửa tay "ảnh thật" (CT012, Quận 7) cho `…/genai/x.png`, rồi hỏi bằng `…/GenAI/x.png` (cùng khóa vì không phân biệt hoa thường; thẻ tự đọc của tên mới là ảnh AI) | `resolve` đúng: ảnh AI, chỉ giữ hạng mục. **`get` trả `source='that'`, `CT012`, `Quận 7`.** Xem LC-T052-3 |
 | T13 | Câu báo lỗi của kho (`_db_message` với lỗi khóa, hỏng, không mở được; file rác bị đổi tên) | Không câu nào chứa đường dẫn. `recovered_from` là **đường dẫn tuyệt đối** (`image_tags.py:156`, `:381`): hiện tại không hiện ra đâu; điều kiện cho T-056 |
 | T14 | Symlink | Không tạo được (lỗi 1314). Chưa chạy |
+
+## Đánh giá 3 lỗi còn mở của Soi Lỗi (SL-T052-9 → -11)
+
+Hôm nay **không có code nào trong `app/` gọi** `ImageTagStore` hay `tags_for_image` (grep `app`, `seo_app` trên nhánh và trên `main`: 0 chỗ ngoài hai module của phiếu). Lỗi chỉ thành thật khi giao diện T-056 dùng tới. Vì vậy không cần giữ T-052 lại (T-055 đang chờ T-052), nhưng phải sửa **trước khi gộp T-056**.
+
+| Mã | Soi Lỗi xếp | Lá Chắn | Sửa ở đâu |
+|---|---|---|---|
+| SL-T052-9 (`manual_tags` là khung nhìn đệ quy → treo) | Thấp | **Thấp, đúng mức**, nhưng lỗ **rộng hơn**: `info` là khung nhìn thì chính `_is_healthy` treo, trigger thì `set` treo (LC-T052-2). Không nâng lên Trung bình kể cả khi T-056 giữ kho trong `st.cache_resource`: muốn khai thác vẫn phải có chương trình lạ ghi vào `data/`, hậu quả chỉ là treo, không lộ dữ liệu, không ghi ra ngoài | Phiếu dọn mới, gộp trước T-056, sửa chung với LC-T052-2 (kiểm `sqlite_master` khớp đúng) |
+| SL-T052-10 (SQLite hợp lệ thiếu bảng thay vào lúc chạy → kẹt) | Thấp | **Thấp, đúng mức.** Cùng gốc với LC-T052-2 (c), (d), mà (c), (d) còn nặng hơn: kẹt cả sau khi khởi động lại app | Phiếu dọn mới, cùng cách sửa (đặt lại `_ready` khi lỗi "no such table/column") |
+| SL-T052-11 ("trí tuệ nhân tạo" không nhận là ảnh AI) | Thấp | Riêng cụm này thì Thấp là đúng, nhưng nó là **một phần của LC-T052-1 (Trung bình)**: cùng lỗ còn những cách gọi hay gặp hơn, nhất là "Ảnh minh họa" | Phiếu dọn mới, gộp trước T-056, cùng các dấu hiệu khác của LC-T052-1 |
+
+Kiểm lại 8 lỗi lượt 1: 28 ca của Soi Lỗi nay qua mà điều kiện kiểm không đổi (Soi Lỗi đã đối chiếu `git diff 0848316..f771a0e`: chỉ gỡ 74 dòng `xfail`). Tôi đọc lại chỗ sửa và thử độc lập SL-T052-1 (T3: các tên trong lượt 1 nay đều là ảnh AI), SL-T052-7, -8 (T9, T10), SL-T052-5, -6 (`image_tags.py:459-468`, `:134-137`): sửa thật. Góp ý lượt 1 về `trusted_schema` đã làm (`:481`).
+
+## Báo nhầm đã loại
+
+- **bandit B311** (`tests/test_images_tags.py:902`, `:924`): `random.Random(hạt giống cố định)` để sinh tên thư mục thử ngẫu nhiên, không dùng cho mật mã.
+- **bandit B608** (`tests/test_soi_loi_t052.py:580`): test dựng file SQLite độc bằng chuỗi f ghép **tên cột cố định** trong test; không có dữ liệu ngoài.
+- **Chuỗi f trong câu SQL của `image_tags.py`** (`:215`, `:249-250`, `:303`; bandit không báo): tôi đọc từng chỗ, chỉ ghép hằng (`_SELECT`, `_COLUMNS`, `" WHERE root_index = ?"`) và dãy dấu `?`; mọi giá trị đi qua tham số.
+- **detect-secrets** toàn lịch sử: 84 mục đều là khóa, mật khẩu giả của test cũ hay câu mô tả mẫu khóa trong biên bản cũ (đã liệt kê theo file; các biên bản T-049, T-050 cũng đã xác minh).
+- **grep lịch sử** (`security.md` mục 5): 21 dòng đều là tên hàm `_tokens` hoặc biến `secrets` chứa chữ riêng **giả** dùng để kiểm không lọt.
+- Điểm Soi Lỗi lượt 1 nêu "`quick_check` chạy trên file chưa tin cậy mà chưa đặt `trusted_schema = OFF`": đã sửa (`image_tags.py:481`, `tests/test_images_tags.py:1461`); phần còn lại của lo ngại này nằm ở LC-T052-2.
+
+## Ghi nhận (không thành lỗi)
+
+- **Nhận nhầm ảnh thật thành ảnh AI** (T5: `Nha chi Ai`, `Công ty AI Việt`, `Gemini Tower`, `Lô A, I`, `GPT Plaza`): hướng an toàn, ảnh chỉ mất thẻ, không lộ chữ; muốn sửa thì đổi tên thư mục. T-056 nên nói lý do ("tên thư mục hoặc tên file có chữ AI"). Thêm "minh họa" (LC-T052-1) sẽ làm ảnh thật trong thư mục tên "minh họa" bị gắn "(AI)": vẫn là hướng an toàn (nói ít hơn sự thật, không nói quá).
+- **Chữ giả dạng** (`АІ` bằng chữ Kirin): không nhận là AI. Tên thư mục do người trong công ty đặt, không phải đối thủ cố lách, nên không tính là lỗi.
+- **Mã công trình** `CT` + 1–6 chữ số chỉ đi vào tên file (T-049), không vào prompt; 6 chữ số không chứa được số điện thoại 10 số; `CT 0909 123` không được đoán (`tags.py:498-535`).
+- **Đổi thứ tự `IMAGE_FOLDERS`** thì thẻ sửa tay đi theo số thứ tự gốc (Thợ Máy đã nêu): có thể gắn nhầm thẻ cho ảnh cùng đường dẫn ở gốc khác. Thẻ gắn nhầm vẫn chỉ là giá trị trong danh sách và vẫn bị ép ảnh AI theo ảnh được hỏi (khi dùng `resolve`).
+- **`ImageTags` là dataclass "đóng băng"** nhưng code vẫn sửa được bằng `object.__setattr__`; `set` dựng lại trước khi ghi (`image_tags.py:233-242`), còn `reference()` thì không. Không có đường đi từ dữ liệu ngoài, chỉ là lỗi lập trình nếu xảy ra.
+- **Giới hạn 64 MB và 20.000 thẻ chưa khớp nhau** với đường dẫn rất dài (Soi Lỗi): chuyện sẵn sàng, không phải bảo mật.
+- **Thời gian xấu nhất** 9,3 ms/ảnh với đường dẫn 1.009 ký tự (T8): không có đường làm chậm app qua tên thư mục.
+
+## Điều kiện (ĐẠT CÓ ĐIỀU KIỆN)
+
+Gộp T-052 vào `main` được ngay (Chỉ Huy chạy toàn bộ test khi gộp). Các điều kiện sau Chỉ Huy chép vào phiếu nhận:
+
+1. **Phiếu dọn mới cho thẻ ảnh** (Chỉ Huy lập số; Thợ Máy; phạm vi `seo_app/images/tags.py`, `seo_app/storage/image_tags.py`, `tests/test_images_tags.py`, gỡ `xfail` ở `tests/test_soi_loi_t052.py`). **Phải gộp trước T-056.** Soi Lỗi rút gọn, Lá Chắn rút gọn.
+   - LC-T052-1 (a)–(d) và SL-T052-11: thêm dấu hiệu ảnh AI `minh họa`, `trí tuệ nhân tạo`, `GenAI` (dạng liền), Copilot, Designer, Bing Image Creator, Leonardo, Ideogram, Flux, Grok, Kling, Dreamina, ComfyUI, Runway, Krea, Seedream (Canva: cân nhắc); có test cả tên thư mục lẫn tên file mặc định của các công cụ. Thêm hàm công khai `is_ai_name(name) -> bool` cho LC-T052-1 (e).
+   - LC-T052-2, SL-T052-9, SL-T052-10: `_is_healthy` kiểm `sqlite_master` khớp đúng trước mọi truy vấn khác (chỉ 2 bảng, đúng câu `CREATE TABLE`, không VIEW/TRIGGER/bảng ảo/`WITHOUT ROWID`); đặt lại `_ready` khi lỗi "no such table/column"; cân nhắc `set_progress_handler`. Test thêm ca `info` là khung nhìn, trigger, `WITHOUT ROWID` (truy vấn có giới hạn để test không treo).
+   - LC-T052-3: `get_many` áp `_keep_ai` theo từng `ref` được hỏi; test ca đổi tên chỉ khác hoa thường.
+   - Nếu chủ dự án chọn cách (b) của LC-T052-5: `PRAGMA journal_mode = MEMORY`.
+2. **T-056** (giao diện chỗ cần ảnh), thêm vào ghi chú phiếu:
+   - (a) Lấy thẻ dùng cho ảnh bằng `resolve`/`resolve_many`, **không** bằng `get`/`get_many` (LC-T052-3).
+   - (b) Hiện rõ "Ảnh thật / Ảnh AI" của từng ảnh **trước** khi viết alt; một bấm để đổi một ảnh sang ảnh AI (`ImageTagStore.set` với `source="ai"`). `ai_generated` của `suggest_alt` và `naming.image_file_name` lấy từ thẻ sau bước này (LC-T052-1). Có test: ảnh người dùng đánh dấu AI ra alt «Minh họa…» và tên file `minh-hoa-ai-…`.
+   - (c) Thư mục gốc có tên cuối mang dấu hiệu AI (`is_ai_name`, chỉ đúng/sai) thì mọi ảnh trong gốc là ảnh AI, hoặc Cài đặt cảnh báo rõ (LC-T052-1 e).
+   - (d) `ImageTagStore.recovered_from` chỉ hiện `.name`, không hiện đường dẫn tuyệt đối (S2; như kho nháp `app/views/write.py:868`).
+   - (e) `FolderTags.unmatched` chỉ hiện dạng số ("N phần tên thư mục không dùng"), không hiện chữ bị bỏ; chữ từ `clean_folder_name` hay tên thư mục hiện bằng chữ đã escape, cô lập hướng chữ (điều kiện T-048 đã có).
+   - (f) Thêm fixture tự động trong `tests/conftest.py` trỏ `seo_app.storage.image_tags.DEFAULT_IMAGE_TAGS_FILE` sang thư mục tạm, để test giao diện không ghi vào `data/` thật (Chỉ Huy cho phép sửa `conftest.py`, hoặc làm ở phiếu dọn).
+3. **T-055** (nháp lưu lựa chọn ảnh): thẻ hay nguồn ảnh lưu trong nháp là dữ liệu chưa tin cậy. Khi mở nháp: dựng lại qua `ImageTags(...)` (tự kiểm), và nguồn ảnh theo hướng an toàn: là ảnh AI nếu nháp ghi AI **hoặc** `resolve` hiện tại nói AI; nháp không bao giờ kéo ảnh AI về "ảnh thật". `ImageRef` có số gốc ngoài khoảng thì kho thẻ coi như không có thẻ sửa tay (đã có, `image_tags.py:134-137`).
+4. **T-069** (README, mục "Đặt thư mục ảnh"): ảnh AI để trong thư mục con có chữ "AI" (ví dụ `Ảnh AI`) **bên dưới** thư mục đã khai báo; chưa khai báo thư mục ảnh AI làm một mục `IMAGE_FOLDERS` cho tới khi T-056 làm điều kiện 2 (c); thư mục ảnh thật không có chữ "AI" đứng riêng hay tên công cụ AI (ảnh sẽ mất thẻ); không đặt thư mục app (chứa `data/`) trong Drive hay trong thư mục ảnh (LC-T052-4); thẻ sửa tay chỉ nhớ trên máy đang dùng.
+5. **T-063** (Soi Lỗi trên Linux/Mac, đang chặn T-056): chạy thêm `uv run pytest tests/test_images_tags.py tests/test_soi_loi_t052.py -rs` để 2 ca symlink (`tests/test_images_tags.py:1339`, `tests/test_soi_loi_t052.py:529`) chạy thật, không bị bỏ qua; nếu có máy Mac thì thử tên NFD thật từ ổ Mac. Ghi vào báo cáo T-063.
+6. **Sổ rủi ro** (chủ dự án quyết, Chỉ Huy hỏi): LC-T052-5. Khuyên mở rộng dòng LC-T048-6 (hard link) cho file trong `data/`; nếu không chấp nhận thì làm cách (b) ở phiếu dọn (điều kiện 1).
+
+## Kết luận
+
+**ĐẠT CÓ ĐIỀU KIỆN.** 0 Nghiêm trọng, 0 Cao; 1 Trung bình (LC-T052-1, sửa ở phiếu dọn mới và T-056, trước khi gộp T-056); 4 Thấp (LC-T052-2 → -5). Trọng tâm bảo mật của phiếu đạt: chữ riêng trong tên thư mục không ra khỏi module (A3), chỉ đọc phần dưới thư mục gốc, bỏ ký tự vô hình/hướng chữ trước khi so, không ghi vào thư mục ảnh, kho thẻ chỉ ghi trong `data/` và gỡ symlink/junction/hard link ở mỗi lần mở, đọc file an toàn (không `pickle`/`eval`, tham số `?`, giới hạn ô). 8 lỗi lượt 1 của Soi Lỗi đã sửa thật; SL-T052-9 → -11 giữ mức Thấp, gom vào phiếu dọn (SL-T052-11 thuộc LC-T052-1).
+
+Chưa chạy: ca symlink và tên NFD thật trên Mac/Linux (điều kiện 5). Biên bản này chạy tạm bằng Claude Opus 5.5; **kiểm lại bằng Claude Fable sau 01/11**.
