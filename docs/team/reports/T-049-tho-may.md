@@ -20,18 +20,18 @@
 |---|---|
 | `seo_app/images/process.py` | Mới: mở ảnh an toàn, `make_web_image` (WebP giữ GPS), `make_ai_image` (bản gửi AI sạch), `make_preview` + `PreviewCache` (ảnh xem trước, cache trong `data/`), `jpeg_layout`/`webp_chunks` (kiểm khối của file ra) |
 | `seo_app/images/naming.py` | Mới: `image_file_name` (tên file không dấu theo thẻ hoặc alt, tối đa 60 ký tự, tránh trùng, tiền tố ảnh AI) |
-| `tests/test_images_process.py` | Mới: 63 hàm test, 109 trường hợp (ảnh giả tạo trong bộ nhớ/thư mục tạm, không mạng) |
+| `tests/test_images_process.py` | Mới: 64 hàm test, 113 trường hợp (ảnh giả tạo trong bộ nhớ/thư mục tạm, không mạng) |
 | `docs/team/reports/T-049-tho-may.md` | Báo cáo này |
 
 Không sửa `seo_app/images/__init__.py`, `folders.py`, `app/**`, `config/**`, `seo_app/ai/**`, test của phiếu khác, không thêm thư viện (`git diff --stat c1b21dc..HEAD` chỉ có 4 file trên).
 
-Commit trên `team/T-049`: `a293a1c` (naming), `9aa6596` (process lõi), `98096e7` (test + chặn WebP khai khung lớn), `d015789` (chỉnh nhỏ), `c373c1c` (báo cáo nháp), `93d7630` (khối GPS không có tọa độ thì bỏ, không báo hỏng; tọa độ ngoài phạm vi thì bỏ và báo), và commit báo cáo này.
+Commit trên `team/T-049`: `a293a1c` (naming), `9aa6596` (process lõi), `98096e7` (test + chặn WebP khai khung lớn), `d015789` (chỉnh nhỏ), `c373c1c` (báo cáo nháp), `93d7630` (khối GPS không có tọa độ thì bỏ, không báo hỏng; tọa độ ngoài phạm vi thì bỏ và báo), `3052a96` (test bắt buộc của Lá Chắn T-050 điều kiện 2), và các commit báo cáo.
 
 ## Bằng chứng
 
 ```
-$ uv run pytest tests/test_images_process.py -q            (tại 93d7630)
-109 passed in 19.12s
+$ uv run pytest tests/test_images_process.py -q            (tại 3052a96)
+113 passed in 17.80s
 
 $ uv run pytest tests/test_images_process.py tests/test_pillow_heif_setup.py tests/test_soi_loi_t047.py \
     tests/test_soi_loi_t058.py tests/test_pillow_version_t058.py tests/test_images_folders.py -q -rs
@@ -47,6 +47,8 @@ All checks passed!
 ```
 
 **Bản gửi AI qua bộ kiểm của T-050** (code `seo_app/ai/` lấy từ `origin/team/T-050` `2327c75` bằng `git archive` vào thư mục tạm, không đụng worktree `wt-T-050`): ảnh nhiễu 1600×1200 lưu dưới dạng JPEG (có EXIF + GPS + ICC + COM + XMP), PNG RGBA (EXIF + ICC), WebP (EXIF + ICC + XMP), PNG xám 16 bit, HEIC (EXIF + GPS) → `make_ai_image` và `make_preview` → `prepare_images([ImageInput(data, "image/jpeg")])`: **10/10 QUA** (bản AI ~374 KB với ảnh nhiễu, trường hợp nặng nhất; giới hạn T-050 là 5 MB).
+
+Lượt 2 với T-050 bản cuối `c5c57fc` (Lá Chắn T-050 điều kiện 2): nguồn JPEG, PNG, WebP, HEIC có EXIF + GPS + XMP (+ COM) và **hồ sơ màu ICC chở chữ** `GPS 16.0544N 108.2022E; Nha anh Tuan 12 Le Loi` trong thẻ `desc` (dựng bằng `_nguon_co_icc_chu` của file test) → bản AI và ảnh xem trước: **8/8 QUA**. Đối chứng: bản đăng web WebP (có GPS và ICC, đúng thiết kế) đưa thẳng vào `prepare_images` thì **bị từ chối 4/4** ("vẫn còn thông tin kèm theo"), tức bộ kiểm của T-050 đang chạy thật. Cách thử lại: `git archive c5c57fc seo_app | tar -x -C <thư mục tạm>`, rồi gọi `seo_app.ai.base.prepare_images` từ thư mục đó với byte do `make_ai_image` tạo.
 
 **EXIF hỏng ngẫu nhiên** (thử ngoài test, 4 × 3.000 file JPEG có EXIF bị sửa 1–8 byte hoặc cắt cụt): 12.000/12.000 xử lý xong, 0 lỗi thô lọt ra (lượt cuối tại `93d7630`: 933 giữ GPS, 849 báo GPS hỏng, 1.218 không có GPS). Lần đầu có 114/3.000 ca báo "Không nén được" vì hãng/đời máy có ký tự ngoài ASCII (Pillow ghi thành `?`, lớp kiểm sau nén bắt lệch) → đã sửa: chỉ giữ chữ ASCII in được, ký tự lạ thì bỏ thẻ đó. Trong test có bản thu nhỏ (150 ca, hạt giống cố định): `test_exif_hong_ngau_nhien_khong_lam_sap`.
 
@@ -102,7 +104,13 @@ All checks passed!
 
 **Góp ý Lá Chắn T-046**: [x] số 1 (bản AI dựng lại từ điểm ảnh, test đủ loại metadata); [x] số 2 (so giá trị GPS; số seri, `CameraOwnerName`, MakerNote, IFD1 bị bỏ); [x] số 3 (tên file không nhận tên thư mục, mã công trình chỉ mẫu `CT\d{1,6}`); [x] số 9 (cache, ảnh xem trước không EXIF, câu lỗi không có đường dẫn).
 
-**SL-T050-5 / Lá Chắn T-050**: bản gửi AI không kèm hồ sơ màu, không đổi màu bằng ImageCms (cách (a)); test bản AI chỉ có khối trong danh sách cho phép (đề xuất điểm 4 của Soi Lỗi T-050).
+**Điều kiện Lá Chắn T-050 số 2 (bắt buộc, Chỉ Huy B chuyển 2026-10-20)**
+
+- [x] Bản gửi AI dựng lại từ điểm ảnh: `Image.frombytes` tạo ảnh mới không `info` (`process.py:543-565`), lưu JPEG chỉ với `quality` (`:661-677`): không `icc_profile`, `exif`, `comment`, `pnginfo`. App không lưu PNG nào nên không dính việc Pillow tự chép hồ sơ màu khi lưu PNG.
+- [x] **Không** dùng `ImageCms` (không đổi hồ sơ màu sang sRGB; bỏ gợi ý "đổi về sRGB" trong lời giao theo Chỉ Huy B): test dò mã nguồn `seo_app/` không có chữ `ImageCms`.
+- [x] Test bắt buộc `test_f2_ban_ai_bo_ho_so_mau_co_chu_ban_web_giu_ho_so_va_gps[JPEG/PNG/WEBP/HEIF]`: ảnh gốc có EXIF + GPS + XMP (+ COM ở JPEG) và ICC chở chữ trong thẻ `desc` → bản AI không có `ICC_PROFILE`, `iCCP`, `ICCP`, `acsp`, `GPS`, `16.0544`, `Le Loi`; qua `prepare_images` của T-050 (Bằng chứng, lượt 2).
+- [x] Bản đăng web (WebP 1600 px) giữ hồ sơ màu và GPS: cùng test, `ICCP` còn đúng byte, GPS đúng từng giá trị.
+- Thêm (đề xuất điểm 4 của Soi Lỗi T-050): bản AI chỉ có khối trong danh sách cho phép, kiểm cả trong code (`jpeg_layout`) lẫn trong test (bộ đếm khối riêng của test).
 
 - [x] `uv run pytest` và `uv run ruff check .`: xem Bằng chứng
 - [x] Báo cáo tại `docs/team/reports/T-049-tho-may.md`
@@ -114,7 +122,7 @@ All checks passed!
    - **Không gọi thẳng `ImageOps.exif_transpose`**: hàm này ghi lại toàn bộ EXIF gốc vào ảnh trả về và nổ `struct.error`/`TypeError`/`AttributeError` với EXIF hỏng (24/4.000 ca khi thử). Dùng đúng bảng xoay của nó (`process.py:249-260`), có test so khớp 8 hướng với `ImageOps.exif_transpose`.
    - **Bỏ 2 thẻ GPS chữ tự do** (`GPSProcessingMethod`, `GPSAreaInformation`): chở được chữ bất kỳ (kể cả địa chỉ gõ tay), điện thoại hầu như không ghi. Vị trí (vĩ độ, kinh độ, độ cao, giờ GPS…) giữ đủ.
    - Thêm bước **đọc kích thước khung WebP trước `Image.open`** (`:160-181`): bộ mở WebP của Pillow cấp bộ nhớ cả khung ngay lúc mở và chỉ chặn khi vượt gấp đôi giới hạn chung (tới ~179 triệu điểm ảnh, ~700 MB RAM). Test bằng 3 kiểu đầu WebP (`VP8X`, `VP8L`, `VP8 `) khai 90 triệu điểm ảnh.
-2. **Ảnh web giữ hồ sơ màu ICC** (chỉ hồ sơ RGB, đúng khuôn phần đầu, ≤ 1 MB) để màu ảnh iPhone (Display P3) không nhạt đi trên web, đúng thiết kế T-046 bước 4. SL-T050-5 cho thấy hồ sơ màu chở được chữ tùy ý; ở đây là ảnh của chính doanh nghiệp, công khai trên web. Nhờ Lá Chắn quyết: giữ (như hiện tại) hay bỏ cả ở ảnh web.
+2. **Ảnh web giữ hồ sơ màu ICC** (chỉ hồ sơ RGB, đúng khuôn phần đầu, ≤ 1 MB) để màu ảnh iPhone (Display P3) không nhạt đi trên web, theo thiết kế T-046 bước 4 và Lá Chắn T-050 điều kiện 2. Hồ sơ màu được chép nguyên byte, nên chữ tùy ý trong hồ sơ (nếu có, SL-T050-5) cũng lên web cùng ảnh của chính doanh nghiệp.
 3. `warnings.catch_warnings()` không an toàn khi nhiều luồng (Streamlit chạy mỗi phiên một luồng): hai phiên mở ảnh cùng lúc có thể để lại bộ lọc "cảnh báo bom giải nén thành lỗi" cho cả chương trình (chặt hơn, vô hại) hoặc làm mất nó trong chốc lát. Lớp chặn thật là phép so `rộng × cao` của module (không phụ thuộc bộ lọc); đây là suy luận, chưa thử với 2 phiên thật.
 4. **Chưa thử với ảnh thật** (iPhone HEIC thật, ảnh Android, MakerNote thật, ảnh MPO của iPhone). Mọi test dùng ảnh giả. Dung lượng WebP thật (mục tiêu 150–400 KB) chưa đo. Nén WebP `method=6` mất khoảng 2 giây với ảnh nhiễu 1600×1200 (trường hợp nặng nhất); ảnh thật nhanh hơn.
 5. HEIC chỉ có `nclx` (không ICC) thì ảnh web không có hồ sơ màu: màu rộng có thể hơi nhạt. Chấp nhận.
@@ -124,7 +132,7 @@ All checks passed!
 ## Đề xuất
 
 - **Soi Lỗi:** (a) điều kiện 6 Lá Chắn T-047: thay `pytest.skip` ở `tests/test_pillow_heif_setup.py:46-47` bằng fixture tự gỡ `HEIF` khỏi bảng định dạng. Phiếu này đăng ký HEIF lúc mở ảnh lần đầu (không lúc import) và test của phiếu tự trả nguyên bảng, nên hiện test đó vẫn chạy; nhưng phiếu giao diện (T-056) mở ảnh trong AppTest sẽ để HEIF đăng ký sẵn. (b) Thử thêm: ảnh có EXIF cả ở PNG `eXIf` lẫn chunk `Raw profile type exif`, ảnh WebP động, JPEG CMYK đảo màu (Adobe), JPEG có nhiều khối APP1 EXIF, ảnh rất dẹt (1 × 10000).
-- **Lá Chắn:** quyết điểm 2 (ICC ở ảnh web); soát `_webp_canvas_pixels`, `jpeg_layout`, `_cache_dir_is_ignored`, `_KeptExif` (danh sách cho phép 2A).
+- **Lá Chắn:** soát `_webp_canvas_pixels`, `jpeg_layout`, `_cache_dir_is_ignored`, `_KeptExif` (danh sách cho phép 2A); khi kiểm phiếu dọn T-050 (`prepare_images` từ chối mọi hồ sơ màu, chỉ nhận SOF0/1/2) thì bản AI của phiếu này vẫn qua (SOF0, không ICC).
 - **T-064 (dọn thư mục ảnh) hoặc Chỉ Huy:** bỏ `.avif` khỏi `folders.IMAGE_EXTENSIONS`, hoặc mở phiếu thêm AVIF vào `ALLOWED_FORMATS` (Lá Chắn xét thư viện libavif/dav1d).
 - **T-053 (ảnh AI):** dùng `make_web_image` cho ảnh AI trả về (không có GPS); phần đánh dấu EXIF `ImageDescription`/`Software` của ảnh AI (thiết kế T-046 mục 4) chưa có: phiếu đó cần thêm tham số vào `make_web_image` (sửa `process.py`). Tên file: `image_file_name(..., ai_generated=True)`.
 - **T-054 (chèn ảnh vào nháp):** tải lên đúng `WebImage.data` (không sửa byte) để GPS tới WordPress; tên file từ `naming.image_file_name`.
