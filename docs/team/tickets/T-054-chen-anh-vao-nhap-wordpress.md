@@ -50,3 +50,4 @@ W1–W4, `security.md` 2.3 (Lá Chắn soát riêng thay đổi ở `sanitize.py
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-054`, tạo từ `main`.
 - 2026-10-20 (Chỉ Huy A): lưu ý của Thợ Máy T-050 (`docs/team/reports/T-050-tho-may.md`): alt/caption do `suggest_alt` trả về đã qua `clean_ai_text` nên có ký tự ngắt rộng 0 chống autolink. Trước khi ghi alt/caption vào HTML gửi WordPress phải gỡ bằng `unbreak_autolinks`, rồi escape thuộc tính.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-050** (điều kiện 4): trước khi ghi alt/chú thích vào HTML: `unbreak_autolinks`, gỡ escape Markdown mà `clean_ai_text` thêm (`]\(`…), rồi `html.escape(…, quote=True)`; `<figure>` dựng bằng code và qua `sanitize_html` lần cuối (góp ý Lá Chắn T-046 số 7). `alt_text` gửi qua REST cũng dùng chữ đã gỡ ký tự rộng 0.
