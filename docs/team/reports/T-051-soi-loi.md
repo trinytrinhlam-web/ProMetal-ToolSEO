@@ -142,8 +142,8 @@ examples joined 2208 total 4263
 $ uv run pytest                 # lần 1, test của tôi ở bản fd6e335 (35 qua, 5 xfail)
 5845 passed, 11 skipped, 37 xfailed, 1 warning in 734.34s (0:12:14)
 
-$ uv run pytest                 # lần 2, bản cuối của nhánh
-LẦN 2 ĐANG CHẠY
+$ uv run pytest                 # lần 2, commit fadb77c (test giống hệt bản cuối; sau đó chỉ sửa báo cáo)
+5846 passed, 11 skipped, 37 xfailed, 1 warning in 630.62s (0:10:30)
 
 $ uv run ruff check .
 All checks passed!
@@ -151,7 +151,7 @@ All checks passed!
 
 Máy chạy: Windows 11 Pro, Python 3.12 (uv). Lần chạy riêng file đầu tiên mất 4 phút 15 giây vì máy đang chạy test của agent khác song song; các lần sau khoảng 20 giây.
 
-So với báo cáo Ngòi Bút (5810 qua, 11 bỏ qua, 32 xfail): thêm đúng 35 qua và 5 xfail của file test mới; 11 test bỏ qua có từ trước (không do tôi thêm). 0 hỏng, 0 lỗi, 0 XPASS. Cảnh báo duy nhất là cảnh báo Pydantic có sẵn trong `test_soi_loi_t028.py` (test cố ý đưa nội dung hỏng).
+So với báo cáo Ngòi Bút (5810 qua, 11 bỏ qua, 32 xfail): thêm đúng 36 qua và 5 xfail của file test mới (lần 1: 35 qua, trước khi thêm `test_enable_helper_also_works_when_block_is_already_on`); 11 test bỏ qua có từ trước (không do tôi thêm). 0 hỏng, 0 lỗi, 0 XPASS. Cảnh báo duy nhất là cảnh báo Pydantic có sẵn trong `test_soi_loi_t028.py` (test cố ý đưa nội dung hỏng).
 
 ## Đối chiếu tiêu chí xong (phần Soi Lỗi)
 
