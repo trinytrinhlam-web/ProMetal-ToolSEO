@@ -208,3 +208,50 @@ def test_blind_test_keeps_model_shared_with_a_writing_task(tmp_path):
     )
     rows = blind_test.task_models(_ai_toml(tmp_path, body))
     assert blind_test.model_suggestions(rows)["openai"] == ["gpt-x"]
+
+
+# ------------------------------------------------------- bật [tasks.image] trong file thật
+
+
+def _enabled_real_ai_toml(tmp_path, provider: str = "gemini"):
+    """Bản sao config/ai.toml với khối [tasks.image] đã bỏ dấu # (như chú thích trong file)."""
+    rows = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8").split("\n")
+    start = next(i for i, row in enumerate(rows) if row.lstrip("# ").startswith("[tasks.image]"))
+    for i in range(start, start + 4):
+        rows[i] = rows[i].lstrip("# ")
+        if rows[i].startswith("provider"):
+            rows[i] = f'provider = "{provider}"'
+    return _ai_toml(tmp_path, "\n".join(rows))
+
+
+def test_enabling_real_image_block_needs_gemini_key_only_for_images(tmp_path):
+    tasks = load_ai_config(_enabled_real_ai_toml(tmp_path))
+    assert tasks[IMAGE_TASK].provider == "gemini"
+    router = AIRouter(tasks, Settings(anthropic_api_key=FAKE_KEY))
+    for name in (*WRITING_TASKS, "meta", "alt"):
+        router.get(name)
+    with pytest.raises(AIError, match="GEMINI_API_KEY") as info:
+        router.get(IMAGE_TASK)
+    assert FAKE_KEY not in str(info.value)
+
+
+def test_enabling_real_image_block_with_claude_is_refused(tmp_path):
+    with pytest.raises(AIError, match="Claude không tạo được ảnh"):
+        load_ai_config(_enabled_real_ai_toml(tmp_path, provider="anthropic"))
+
+
+def test_write_page_with_image_enabled_and_only_claude_key(project_root, tmp_path, monkeypatch):
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
+    monkeypatch.setattr(
+        ai_registry.load_ai_config, "__defaults__", (_enabled_real_ai_toml(tmp_path),)
+    )
+    at = AppTest.from_file(str(project_root / "app" / "main.py"), default_timeout=30)
+    at.session_state["authenticated"] = True
+    at.switch_page("views/write.py").run()
+    assert not at.exception
+    assert not [w.value for w in at.warning if "API_KEY" in w.value]
+    at.text_input(key="keyword").input("sửa cửa cuốn bị kẹt").run()
+    analyze = next(b for b in at.button if b.label == "🔎 Phân tích từ khóa")
+    assert not analyze.disabled
