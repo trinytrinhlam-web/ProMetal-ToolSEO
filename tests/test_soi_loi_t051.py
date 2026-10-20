@@ -58,17 +58,28 @@ def _alt() -> dict:
     return tomllib.loads(_content_text())["alt"]
 
 
-def enable_image_block(text: str, lines: int = len(IMAGE_LINES), keep_space: bool = False) -> str:
-    """Làm như chú thích trong ai.toml: xóa dấu # ở đầu ``lines`` dòng đầu của khối
-    ``[tasks.image]``. ``keep_space``: chỉ xóa «#», để lại dấu cách đầu dòng (người dùng hay xóa
-    như vậy trong Notepad)."""
+def enable_image_block(
+    text: str,
+    lines: int = len(IMAGE_LINES),
+    keep_space: bool = False,
+    provider: str | None = None,
+) -> str:
+    """Làm như chú thích trong ai.toml: xóa dấu # ở ``lines`` dòng đầu của khối ``[tasks.image]``
+    (các dòng sau để tắt). ``keep_space``: chỉ xóa «#», để lại dấu cách đầu dòng (người dùng hay
+    xóa như vậy trong Notepad). ``provider``: đổi hãng của việc ảnh.
+
+    Khối đã bật sẵn (sau T-053) cũng dùng được: hàm chỉ đặt lại dấu # theo ``lines``."""
     rows = text.split("\n")
-    starts = [i for i, row in enumerate(rows) if row.startswith("# [tasks.image]")]
-    assert len(starts) == 1, "ai.toml phải có đúng một dòng «# [tasks.image]»"
-    for offset, prefix in enumerate(IMAGE_LINES[:lines]):
+    starts = [i for i, row in enumerate(rows) if row.lstrip("# ").startswith("[tasks.image]")]
+    assert len(starts) == 1, "ai.toml phải có đúng một dòng «[tasks.image]» (bật hay tắt)"
+    for offset, prefix in enumerate(IMAGE_LINES):
         row = rows[starts[0] + offset]
-        assert row.startswith(f"# {prefix}"), f"dòng thứ {offset + 1} của khối ảnh: {row!r}"
-        rows[starts[0] + offset] = row[1:] if keep_space else row[2:]
+        body = row.lstrip("# ")
+        assert body.startswith(prefix), f"dòng thứ {offset + 1} của khối ảnh: {row!r}"
+        if prefix == "provider" and provider is not None:
+            body = f'provider = "{provider}"'
+        on = (" " if keep_space else "") + body
+        rows[starts[0] + offset] = on if offset < lines else f"# {body}"
     return "\n".join(rows)
 
 
@@ -123,10 +134,19 @@ def test_image_task_never_forces_an_extra_key_for_writing():
         router.get(name)
 
 
-def test_image_block_is_written_exactly_as_the_comment_says():
+def test_image_block_has_the_four_lines_the_comment_names():
+    # Chú thích bảo «xóa dấu # ở 4 dòng [tasks.image], provider, model, max_tokens»: khối phải
+    # có đúng 4 dòng đó, liền nhau, đúng thứ tự (hàm enable_image_block kiểm từng dòng).
     text = _ai_text()
-    assert "\n[tasks.image]" not in text  # đang tắt
-    enable_image_block(text)  # đủ 4 dòng, đúng thứ tự, mỗi dòng bắt đầu bằng «# »
+    assert "dấu # ở 4 dòng [tasks.image], provider, model, max_tokens" in text
+    enable_image_block(text)
+
+
+def test_enable_helper_also_works_when_block_is_already_on():
+    # Sau T-053 khối ảnh bật thật: các test dưới vẫn chạy được, không phải viết lại.
+    once = enable_image_block(_ai_text())
+    assert enable_image_block(once) == once
+    assert enable_image_block(once, lines=2) == enable_image_block(_ai_text(), lines=2)
 
 
 @pytest.mark.parametrize(
@@ -176,10 +196,7 @@ def test_sl_t051_1_enabled_image_needs_gemini_key_only_when_called(tmp_path):
     reason=f"SL-T051-2, {T062}: chưa từ chối Claude cho việc tạo ảnh",
 )
 def test_sl_t051_2_image_task_on_anthropic_is_refused(tmp_path):
-    gemini = 'provider = "gemini"\nmodel = "gemini-nano-banana-2.1"'
-    text = enable_image_block(_ai_text())
-    assert text.count(gemini) == 1
-    text = text.replace(gemini, gemini.replace('"gemini"', '"anthropic"', 1))
+    text = enable_image_block(_ai_text(), provider="anthropic")
     with pytest.raises(AIError, match="Claude không tạo được ảnh"):
         load_ai_config(_write(tmp_path, "ai.toml", text))
 
