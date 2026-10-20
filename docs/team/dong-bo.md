@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 13:03. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 13:44. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -42,15 +42,22 @@ Chỉ Huy B, cập nhật 2026-10-20 13:03. Bảng cũ của A (cập nhật 17/
 | [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | đã gộp (`c1aa0ce`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 12:15 gộp và đẩy `main` | Điều kiện đã chép vào T-049, T-052, T-054, T-056, T-062; T-066 (dọn). T-062 giao được |
 | [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3) | đã gộp (`0481f7e`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; mở app thật xem mọi trang: không lỗi; 11:21 gộp và đẩy `main` | Điều kiện đã ghi vào T-049, T-056. T-049 giao được |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | đã gộp (`57fc6b9`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 11:41 gộp và đẩy `main` | Điều kiện đã chép: C1–C6 → T-062, C7–C9 → T-053, C10 → T-065. T-065 giao được |
-| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | `team/T-049` (`8e76b54`, đã gộp `main` mới) | Thợ Máy xong (7.592 qua). ⏳ **Soi Lỗi đang kiểm** (phiên "Soi Lỗi · T-049 kiểm xử lý ảnh", giao sau 12:48) | Lá Chắn; thử 3–5 ảnh thật của chủ dự án trên máy (không commit ảnh) |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (`2d481c0`, đã gộp `main` mới) | Thợ Máy xong (7.753 qua). ⏳ **Soi Lỗi đang kiểm** (phiên "Soi Lỗi · T-052 kiểm thẻ ảnh", giao sau 12:48) | Lá Chắn |
-| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | `team/T-062` (từ `132a73d`) | ⏳ **Thợ Máy đang làm** (phiên "Thợ Máy · T-062 đọc cấu hình việc ảnh", giao sau 12:48), worktree `wt-T-062` | Soi Lỗi, rồi Lá Chắn rút gọn |
+| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | `team/T-049` (`1f2f403`) | ✅ 13:43 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (3 lỗi Thấp, `xfail`; toàn bộ 8.278 qua, 0 hỏng). Chưa thử ảnh thật | **Lá Chắn**; thử 3–5 ảnh thật của chủ dự án trên máy (không commit ảnh) |
+| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (`0848316`) | ✅ 13:42 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN**: 1 Trung bình (SL-T052-1: ảnh AI trong thư mục đặt tên khác danh sách mang thẻ công trình thật), 7 Thấp (SL-T052-7 F1 hard link ghi ra ngoài `data/`) | **Thợ Máy lượt 2** (SL-T052-1 bắt buộc trước T-056; nên sửa luôn các lỗi Thấp cùng file), rồi Soi Lỗi kiểm lại, Lá Chắn |
+| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | `team/T-062` (từ `132a73d`) | ⏳ **Thợ Máy đang làm** (code, test, báo cáo nháp đã đẩy `400bde4`; đang chạy test liên quan) (phiên "Thợ Máy · T-062 đọc cấu hình việc ảnh", giao sau 12:48), worktree `wt-T-062` | Soi Lỗi, rồi Lá Chắn rút gọn |
 | Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-067** |
 | `main` | `c1aa0ce` + tài liệu | Windows sau gộp T-050: **8.009 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 13:44 · Chỉ Huy B
+
+- **Soi Lỗi T-049 ĐẠT CÓ ĐIỀU KIỆN** (`1f2f403`): 3 lỗi Thấp (SL-T049-1 chữ hướng GPS sai khuôn bị bỏ lặng lẽ; SL-T049-2 cache xem trước không kiểm Pillow ≥ 13; SL-T049-3 bộ lọc cảnh báo không an toàn nhiều luồng), giữ bằng `xfail`. Toàn bộ 8.278 qua, 0 hỏng. Chờ Lá Chắn.
+- **Soi Lỗi T-052 ĐẠT CÓ ĐIỀU KIỆN** (`0848316`): 1 Trung bình SL-T052-1 (ảnh AI trong thư mục đặt tên khác danh sách bị coi là ảnh thật, mang thẻ công trình), 7 Thấp. Đề xuất Thợ Máy lượt 2. Test liên quan 753 qua.
+- Thợ Máy T-062: code và báo cáo nháp đã đẩy (`400bde4`), đang chạy test liên quan.
+- Chưa giao vòng mới: chờ chủ dự án cho làm tiếp.
 
 ### 2026-10-20 13:39 · Chỉ Huy B
 
