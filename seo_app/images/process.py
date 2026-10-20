@@ -314,6 +314,20 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSDifferential: "short01",
     ExifTags.GPS.GPSHPositioningError: "rational",
 }
+# Thẻ "Ref" cho biết nghĩa của thẻ đi kèm: bán cầu, trên hay dưới mặt biển, đơn vị, hướng thật hay
+# hướng từ. Thiếu thẻ Ref thì trình đọc ảnh hiểu theo mặc định (Bắc, Đông, trên mặt biển, km/h…).
+_GPS_REF_TAGS = (
+    ExifTags.GPS.GPSLatitudeRef,
+    ExifTags.GPS.GPSLongitudeRef,
+    ExifTags.GPS.GPSAltitudeRef,
+    ExifTags.GPS.GPSSpeedRef,
+    ExifTags.GPS.GPSTrackRef,
+    ExifTags.GPS.GPSImgDirectionRef,
+    ExifTags.GPS.GPSDestLatitudeRef,
+    ExifTags.GPS.GPSDestLongitudeRef,
+    ExifTags.GPS.GPSDestBearingRef,
+    ExifTags.GPS.GPSDestDistanceRef,
+)
 _GPS_LOCATION_TAGS = (ExifTags.GPS.GPSLatitude, ExifTags.GPS.GPSLongitude)
 _GPS_COORDINATE_TAGS = (
     ExifTags.GPS.GPSLatitudeRef,
@@ -454,6 +468,12 @@ class _KeptExif:
             )
         except _EXIF_ERRORS:
             return cls({}, {}, {}, notice=_NOTICE_EXIF_UNREADABLE)
+        if any(tag in gps_ifd and tag not in kept.gps for tag in _GPS_REF_TAGS):
+            # LC-T049-1: ảnh gốc có thẻ Ref mà sai khuôn (``"s"``, ``"w"`` chữ thường;
+            # GPSAltitudeRef sai kiểu…). Bỏ riêng thẻ đó thì giá trị đi kèm bị hiểu theo mặc định
+            # (Nam thành Bắc, dưới mặt biển thành trên), mà đoán lại thì có thể sai: coi cả khối
+            # GPS hỏng, không đăng tọa độ có thể sai, và báo người dùng.
+            return cls(kept.base, kept.exif, {}, notice=_NOTICE_GPS_BROKEN)
         if _coordinates(kept.gps) is None:
             # Không có vĩ độ và kinh độ đúng kiểu, đúng phạm vi thì không có "vị trí" nào để giữ:
             # bỏ hết phần GPS còn lại (giờ GPS đứng một mình không có ích). Chỉ báo người dùng khi

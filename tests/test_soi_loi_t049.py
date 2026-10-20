@@ -372,11 +372,7 @@ def test_anh_dang_web_co_gps_khong_bao_gio_qua_bo_kiem_gui_ai():
         prepare_images([ImageInput(data=web.data, mime=web.mime)])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-1: GPSLatitudeRef/GPSLongitudeRef sai khuôn (chữ thường 's', 'w') bị bỏ "
-    "lặng lẽ, tọa độ còn lại bị hiểu là Bắc/Đông (đổi bán cầu), không báo người dùng",
-)
+# SL-T049-1 (GPSLatitudeRef/GPSLongitudeRef chữ thường bị bỏ lặng lẽ, đổi bán cầu): sửa ở T-067.
 def test_gps_ref_sai_khuon_khong_lang_le_doi_ban_cau():
     data = _nguon("JPEG", _exif_gps("s", "w").tobytes())
     assert _gps(data)[1] == "s"  # ảnh gốc ghi Nam/Tây bằng chữ thường (sai chuẩn EXIF)

@@ -812,6 +812,66 @@ def test_toa_do_ngoai_pham_vi_thi_bo_va_bao():
     assert _gps_doc_lai(web.data) == {}
 
 
+def _exif_nam_tay_duoi_mat_bien():
+    """Ảnh chụp ở bán cầu Nam/Tây, dưới mặt biển; có thêm vĩ độ đích và tốc độ (đủ loại thẻ Ref)."""
+    exif = _exif_day_du()
+    gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
+    gps[1], gps[3], gps[5] = "S", "W", b"\x01"
+    gps[12], gps[13] = "K", R(0, 1)
+    gps[19], gps[20] = "S", GPS_LAT
+    return exif
+
+
+def _altitude_ref_kieu_short(exif_bytes):
+    """GPSAltitudeRef ghi kiểu SHORT thay vì BYTE (sai chuẩn EXIF; Pillow luôn ghi đúng kiểu)."""
+    byte = struct.pack(">HHI", ExifTags.GPS.GPSAltitudeRef, 1, 1) + b"\x01\x00\x00\x00"
+    short = struct.pack(">HHI", ExifTags.GPS.GPSAltitudeRef, 3, 1) + b"\x00\x01\x00\x00"
+    assert exif_bytes.count(byte) == 1
+    return exif_bytes.replace(byte, short)
+
+
+def test_the_ref_gps_dung_khuon_giu_nguyen_ban_cau_va_do_cao():
+    data = _jpeg_voi_exif_tho(_exif_nam_tay_duoi_mat_bien().tobytes())
+    web = process.make_web_image(data)
+    assert web.notice == ""
+    assert web.gps == process.GpsCoordinates(latitude=-16.0554417, longitude=-108.2022)
+    goc = _gps_doc_lai(data)
+    assert _gps_doc_lai(web.data) == {k: v for k, v in goc.items() if k != 27}
+    assert (goc[1], goc[3], goc[5], goc[12], goc[19]) == ("S", "W", b"\x01", "K", "S")
+
+
+@pytest.mark.parametrize(
+    ("the", "gia_tri", "doc_lai"),
+    [
+        (ExifTags.GPS.GPSLatitudeRef, "s", "s"),
+        (ExifTags.GPS.GPSLongitudeRef, "w", "w"),
+        (ExifTags.GPS.GPSLatitudeRef, "n", "n"),
+        (ExifTags.GPS.GPSLongitudeRef, "EW", "EW"),
+        (ExifTags.GPS.GPSAltitudeRef, b"\x02", b"\x02"),
+        (ExifTags.GPS.GPSAltitudeRef, "SHORT", 1),
+        (ExifTags.GPS.GPSSpeedRef, "k", "k"),
+        (ExifTags.GPS.GPSDestLatitudeRef, "s", "s"),
+    ],
+)
+def test_the_ref_gps_sai_khuon_thi_bo_ca_khoi_gps_va_bao(the, gia_tri, doc_lai):
+    # LC-T049-1: thẻ Ref sai khuôn không bị bỏ lặng lẽ (tọa độ còn lại sẽ bị hiểu là Bắc/Đông,
+    # trên mặt biển); cũng không đoán lại (có thể sai). Bỏ cả khối GPS, báo người dùng.
+    exif = _exif_nam_tay_duoi_mat_bien()
+    if gia_tri == "SHORT":
+        data = _jpeg_voi_exif_tho(_altitude_ref_kieu_short(exif.tobytes()))
+    else:
+        exif.get_ifd(ExifTags.IFD.GPSInfo)[the] = gia_tri
+        data = _jpeg_voi_exif_tho(exif.tobytes())
+    assert _gps_doc_lai(data)[the] == doc_lai  # ảnh gốc mang đúng thẻ sai khuôn
+    web = process.make_web_image(data)
+    assert web.gps is None and not web.has_gps
+    assert web.notice == process._NOTICE_GPS_BROKEN
+    assert _gps_doc_lai(web.data) == {}
+    exif_ra = _mo(web.data).getexif()
+    assert exif_ra[ExifTags.Base.Make] == "Apple"  # phần còn lại vẫn giữ
+    assert ExifTags.IFD.GPSInfo not in exif_ra
+
+
 def test_che_do_mau_va_ho_so_mau():
     icc = _icc_srgb()
     # RGB có hồ sơ màu RGB: ảnh web giữ hồ sơ (màu không lệch), bản AI thì không.
