@@ -24,7 +24,7 @@ SUPPORTED = {"anthropic", "openai", "gemini"}
 TASK_EXAMPLES = {
     "alt": (
         "viết alt cho ảnh",
-        'provider = "anthropic", model = "claude-sonnet-5-5", effort = "low", max_tokens = 1000',
+        'provider = "anthropic", model = "claude-sonnet-5-5", effort = "low", max_tokens = 2000',
     ),
 }
 
