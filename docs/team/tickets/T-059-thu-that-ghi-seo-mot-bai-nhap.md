@@ -35,3 +35,4 @@ R2, R3, W1–W4, S1 (không ghi khóa, mật khẩu vào báo cáo).
 ## Ghi chú của Chỉ Huy
 
 - Giao diện công tắc "Ghi SEO lên website" thuộc T-041; phiếu này có thể thử bằng lệnh Python nhỏ do Chỉ Huy hướng dẫn nếu T-041 chưa xong.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-054** (điều kiện 6), khi thử thật một bài nháp có ảnh (sau T-056, T-061): tải file ảnh từ web về kiểm còn GPS; nguồn trang không có `srcset` cho ảnh; plugin nén ảnh/CDN không đổi file hay tên miền của `src`; chú thích `[caption]thu[/caption]` hiện nguyên văn trong nguồn trang.

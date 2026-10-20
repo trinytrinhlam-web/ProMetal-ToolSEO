@@ -39,3 +39,10 @@ A2, W3, `security.md` 2.3.
 ## Kiểm thử và kiểm định
 
 - Soi Lỗi: Có. Lá Chắn: Có (A2, 2.3).
+
+## Ghi chú của Chỉ Huy
+
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-054** (`docs/team/reports/T-054-la-chan.md`, LC-T054-1 mức **Trung bình**, điều kiện 2). Hạn mới: **trước khi gộp T-056** (trước khi có nút Gửi nháp kèm ảnh). Ba điểm phải xử lý:
+  - WordPress chạy shortcode **ngay trong lệnh tạo nháp** (`content.rendered` qua `the_content` → `do_shortcode`), kể cả shortcode trong thuộc tính có dấu nháy: "chỉ là nháp" không ngăn được.
+  - Ký tự rộng 0 / đảo chiều chen trong tên shortcode bị `plain_image_text` gỡ, nên chữ người duyệt thấy lộn xộn lại thành shortcode liền mạch: lọc **sau** khi gỡ ký tự vô hình.
+  - `sanitize_html` giải mã `&#91;` thành `[` trần, cả trong thuộc tính: vô hiệu `[`/`]` ở **bước in ra** của `sanitize_html`, phủ chữ và mọi thuộc tính, chạy lại không đổi; xét cả trường Media REST (`alt_text`, `title`, `caption`); nên thêm `_fields` cố định cho lệnh tạo nháp và đặt ảnh đại diện. Gỡ `xfail` SL-T054-2 khi xong. Lá Chắn soát riêng thay đổi ở `sanitize.py`.
