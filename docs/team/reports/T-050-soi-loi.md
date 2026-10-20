@@ -103,3 +103,121 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-20, kiểm lại sau Thợ Máy lượt 2)
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
+| Việc | Xác nhận SL-T050-1 → -4 đã sửa; tìm cách lách bản sửa mới (`seo_app/ai/base.py:552–790`, `seo_app/images/alt.py:96–143`) |
+| Kết quả | Hoàn thành · Kết luận: **ĐẠT** (chuyển Lá Chắn được). 4 lỗi lượt 1 đã sửa thật; 2 lỗi mới đều mức **Thấp** |
+
+### Tóm tắt (cho chủ dự án)
+
+Bốn lỗi lượt trước đã được sửa thật: thẻ ảnh viết bằng ký tự "toàn chiều rộng" không còn tới AI thành đường dẫn, ảnh có khối lạ chứa GPS bị từ chối, từ khóa "24/7" không còn bị bỏ, ký tự điều khiển bị bỏ. Ảnh sạch thật không bị chặn nhầm (thử 965 ảnh do Pillow tạo và ảnh iPhone HEIC), chữ tiếng Việt đủ dấu và thẻ kiểu `CT012 - Cổng inox - Tân Phú/truoc` được giữ nguyên. Tìm ra 2 chỗ hở nhỏ (Thấp): ai **cố tình dựng** ảnh vẫn giấu được chữ hay tọa độ GPS trong hồ sơ màu của ảnh, hoặc trong vài khối kỹ thuật được phép lặp lại. Ảnh bình thường (kể cả ảnh gốc từ điện thoại) không tự sinh ra những khối này, nên không cần chặn việc chuyển sang Lá Chắn.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t050.py` | Thêm mục 6 "lượt 2" (dòng 692 tới hết): 72 test qua + 15 `xfail(strict=True)` cho SL-T050-5 (6 ca) và SL-T050-6 (9 ca). Dùng lại ảnh giả của `tests/test_ai_images.py` và fixture `heif_registry_restored` của `tests/test_pillow_heif_setup.py` (trả nguyên bảng định dạng của Pillow sau test) |
+| `docs/team/reports/T-050-soi-loi.md` | Mục "Lượt 2" này |
+
+Không sửa code ứng dụng. Commit trên `team/T-050`: `c43a321` (test) và commit báo cáo này.
+
+### Xác nhận 4 mã lượt 1
+
+`git diff 8ea45df..HEAD -- tests/test_soi_loi_t050.py`: Thợ Máy chỉ bỏ các dấu `xfail` (`SL1`, `SL2`, 2 dấu SL-T050-3, 1 dấu SL-T050-4) và thêm dòng chú thích "Thợ Máy lượt 2 đã sửa"; không đổi điều kiện kiểm hay dữ liệu thử nào. 39 test trước đây `xfail` nay qua:
+
+| Mã | Test (số ca) | Kết quả |
+|---|---|---|
+| SL-T050-1 | `test_fullwidth_or_lookalike_path_tags_are_dropped` (8), `test_fullwidth_path_keyword_is_dropped` (3), `test_fullwidth_path_tag_never_reaches_ai_as_ascii_path` (1, thư viện anthropic thật, mạng giả) | qua |
+| SL-T050-2 | `test_jpeg_other_app_segments_with_private_data_are_rejected` (11), `test_png_unknown_chunks_with_raw_exif_are_rejected` (4), `test_webp_unknown_chunks_with_private_data_are_rejected` (4) | qua |
+| SL-T050-3 | `test_control_characters_are_removed_from_alt` (4), `test_control_characters_are_removed_from_tags` (1) | qua |
+| SL-T050-4 | `test_ordinary_text_with_slash_is_kept` (3) | qua |
+
+### Bằng chứng
+
+```
+$ git pull --ff-only        (đầu phiên, worktree wt-T-050, HEAD c3910e0)
+Already up to date.
+
+$ uv run pytest tests/test_soi_loi_t050.py tests/test_ai_images.py      (tại c3910e0, trước khi thêm test)
+418 passed in 90.67s (0:01:30)
+
+$ uv run pytest            (tại c3910e0, chạy song song với các script thử nên chậm)
+7588 passed, 11 skipped, 27 xfailed, 1 warning in 1227.08s (0:20:27)
+
+$ uv run pytest            (tại c43a321, có test lượt 2)
+(đang chạy khi commit bản nháp báo cáo; kết quả ghi ở commit sau)
+
+$ uv run pytest tests/test_soi_loi_t050.py --runxfail -k "outside_tag_table or longer_than_shape"
+15 failed  (cả 15 hỏng đúng ở "assert not accepted(data, mime)": ảnh độc được nhận)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Lỗi mới
+
+#### SL-T050-5 · Thấp · Hồ sơ màu ICC chỉ được kiểm phần đầu: chở được EXIF có GPS, XMP, chữ tùy ý (A3, lớp kiểm cuối)
+
+- **Tái hiện:** hồ sơ màu = 132 byte đầu hợp lệ (khai đúng độ dài, chữ ký `acsp`, bảng thẻ rỗng) + EXIF thô `MM\0*…GPS 16.0544N 108.2022E; D:/Anh/Nha anh Tuan 12 Le Loi/IMG_0001.jpg`. Đặt vào JPEG APP2 `ICC_PROFILE`, PNG `iCCP` tên `ICC Profile`, hay WebP `ICCP`, rồi gọi `prepare_images`.
+- **Mong đợi:** từ chối như các khối metadata khác; chú thích `seo_app/ai/base.py:552–553` hứa "khối được nhận phải đúng khuôn của nó (không còn chỗ nhét chữ tự do)".
+- **Thực tế:** qua ở cả 3 định dạng. `_icc_ok` (`base.py:563–569`) chỉ so độ dài khai báo và chữ ký, không đọc bảng thẻ, nên mọi byte sau phần đầu đều được nhận. Ở PNG còn tệ hơn: hồ sơ được nén zlib nên cả gói `Exif\0\0…` hay XMP đầy đủ cũng qua mắt bộ dò chuỗi `_has_metadata_marker` (`base.py:545–549`). Ở JPEG, tách `Ex|if\0\0` qua 2 khối APP2 cũng qua.
+- **Đánh giá:** Pillow chỉ chép hồ sơ màu có sẵn của ảnh gốc; hồ sơ của máy ảnh, điện thoại là hồ sơ chuẩn (sRGB, Display P3), không chứa GPS. Rủi ro còn lại là suy luận, chưa thử với file thật: ảnh đã qua phần mềm chỉnh sửa có thể mang hồ sơ màu của màn hình đã cân màu, loại này có thể có thẻ riêng ghi tên, đời hay số seri màn hình. Vì vậy mức Thấp.
+- **Gợi ý sửa (Chỉ Huy chọn):**
+  - (a) Đơn giản nhất: T-049 đổi bản gửi AI về sRGB và **không** kèm hồ sơ màu (AI viết alt không cần); `prepare_images` từ chối mọi hồ sơ màu. Khi đó phải đổi các test đang yêu cầu ảnh có ICC được qua (`test_clean_pillow_images_with_icc_pass`, `test_pillow_images_of_every_kind_pass`, `test_allowed_blocks_in_right_shape_pass`…), cần Chỉ Huy duyệt vì đổi thiết kế T-046.
+  - (b) Kiểm bảng thẻ: số thẻ hợp lý, mỗi thẻ nằm trong hồ sơ, **mọi byte sau bảng thẻ thuộc một thẻ** (chỉ cho tối đa 3 byte đệm 0), chỉ nhận thẻ màu chuẩn (`desc cprt wtpt bkpt rXYZ gXYZ bXYZ rTRC gTRC bTRC kTRC chad chrm lumi meas tech dmnd dmdd view A2B* B2A*`…), thẻ chữ ngắn. Cách này làm 6 test xfail qua, nhưng vẫn để lọt khoảng một câu chữ trong thẻ mô tả `desc`.
+- **Test:** `test_icc_profile_with_data_outside_tag_table_is_rejected` (6 ca, `tests/test_soi_loi_t050.py:767`). Đối chứng `test_icc_builders_without_tail_pass` (3 ca): cùng cách dựng, hồ sơ không có đuôi thì qua, tức test xfail hỏng vì đuôi chứ không vì khuôn ảnh.
+
+#### SL-T050-6 · Thấp · Khối được nhận lặp lại hoặc dài hơn khuôn, chở được chữ tùy ý
+
+- **Tái hiện:** JPEG có 9 khối APP0 `JFIF\0` + 7 byte chữ + `\0\0` (mỗi khối đúng 14 byte, phần mật độ điểm ảnh là chữ: ghép lại được cả câu `SECRET`); tương tự 9 khối APP14 `Adobe`; khung ảnh SOF, DRI, DNL, đầu lượt quét SOS có chữ nối sau phần khuôn. PNG ảnh RGB có `PLTE` 63 byte chữ, `tRNS` 60 byte chữ, `cHRM` đúng 32 byte `GPS 16.0544N 108.2022E Le Loi 12`.
+- **Mong đợi:** từ chối. Pillow ghi mỗi khối một lần, đúng độ dài, không ghi PLTE cho ảnh RGB, không ghi cHRM.
+- **Thực tế:** qua. `_jpeg_app_ok` (`base.py:593–606`) kiểm khuôn từng khối APP0/APP14 nhưng không đếm số lần; khối giải mã (`base.py:651–656`) không kiểm độ dài; PNG chỉ kiểm độ dài **tối đa** (`_PNG_ALLOWED`, `base.py:690–693`), không theo loại màu. Chú thích `base.py:686–687` ("độ dài cố định và nhỏ, không chứa chữ tự do") chưa đúng: `cHRM` 32 byte đủ chứa một tọa độ GPS.
+- **Đánh giá:** chỉ ảnh dựng cố ý mới có; không phần mềm nào tự sinh. Thấp; sửa rẻ.
+- **Gợi ý sửa:** APP0 và APP14 tối đa một lần; SOF đúng 6 + 3·(số thành phần) byte, SOS đúng 4 + 2·(số thành phần), DRI và DNL đúng 2 byte; PNG: `PLTE` chỉ khi loại màu 3 (độ dài chia hết cho 3), `tRNS` đúng độ dài theo loại màu (2 / 6 byte, hoặc ≤ số màu), bỏ `cHRM`, `sBIT`, `bKGD` khỏi danh sách (khi lưu bản gửi AI, Pillow 12.3 chỉ ghi chúng nếu được truyền `pnginfo`: `PngImagePlugin._save`). Sửa lại 2 chú thích trên cho đúng.
+- **Test:** `test_allowed_blocks_repeated_or_longer_than_shape_are_rejected` (9 ca, `:817`). Đối chứng `test_decode_segments_in_right_shape_pass` (2 ca: SOF, DRI đúng khuôn phải qua, để bản sửa không chặn nhầm).
+
+### Đã thử, chạy đúng (có test) hoặc chỉ ghi nhận
+
+**Khối ảnh**
+
+- **Bị từ chối đúng:** JFIF có ảnh nhỏ 1×1, `JFXX`; PNG `iCCP` tên khác `ICC Profile`, `iCCP` lặp; hồ sơ màu chứa nguyên chuỗi `Exif\0\0` ở JPEG và WebP (bộ dò chuỗi bắt).
+- **Bom giải nén, ảnh to:** `iCCP` bom 1 GB bị từ chối sau 0,03 giây (giải nén dừng ở 5 MB); hồ sơ giải nén đúng 5 MB qua, 5 MB + 1 byte bị từ chối; `IDAT` bom 1 GB không bị giải nén (0,00 giây). Đo 2 ảnh × 5 MB (máy đang chạy bộ test toàn phần song song nên số thật nhỏ hơn), trường hợp chậm nhất: dữ liệu nén toàn byte `FF FF…` 7,7 giây; `FF 00` 3,1 giây; mã RST 3,7 giây; khoảng 1,3 triệu khối DHT rỗng mỗi ảnh 4,3 giây; khoảng 480 nghìn lượt quét mỗi ảnh 2,5 giây; khoảng 290 nghìn khối JFIF mỗi ảnh 1,6 giây. Không treo, không tràn đệ quy; bản gửi AI thật chỉ vài trăm KB. Test: `test_png_iccp_decompression_bomb_is_rejected` (bom 64 MB).
+- **Ảnh sạch thật không bị chặn nhầm:** Pillow 12.3.0 (bản trong `uv.lock`, giống `main`): ma trận 965 ảnh (5 cỡ từ 1×1 tới 1024×768, 8 chế độ màu, 17 kiểu lưu JPEG gồm progressive, optimize, restart marker, `qtables`, subsampling, ICC, dpi, `keep_rgb`; 8 kiểu PNG; 9 kiểu WebP) → 0 ảnh bị từ chối. 22 kiểu chưa có trong test của Thợ Máy đưa vào `test_more_clean_pillow_images_pass` (ảnh có nhiễu để dữ liệu nén có đủ loại byte).
+- **Ảnh HEIC qua pillow-heif 1.8.1** (libheif 1.23.6): HEIC có EXIF + GPS, XMP, hồ sơ màu (và loại không có ICC, chỉ `nclx`), mở bằng Pillow, thu nhỏ, lưu JPEG/PNG/WebP chỉ kèm `icc_profile` → qua; lưu mặc định với `info` của HEIC → qua (Pillow 12.3 không tự chép `exif`/`xmp` sang 3 định dạng này); lỡ kèm `exif=` → từ chối "còn thông tin kèm theo". Test: `test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy` (3).
+- **Ghi nhận cho T-049** (Pillow 12.3): lưu lại một JPEG gốc có chú thích (COM) thành JPEG mà **không** truyền `comment` thì Pillow vẫn tự chép chú thích (lớp kiểm từ chối, đúng); lưu PNG thì Pillow tự chép hồ sơ màu từ `im.info`. T-049 nên xóa `info` của ảnh trước khi lưu bản gửi AI và chỉ truyền đúng thứ cần. Test: `test_pillow_resaved_jpeg_with_comment_is_rejected_if_comment_is_copied` (đúng với mọi bản Pillow: còn chú thích thì phải bị từ chối).
+- **Chỉ ghi nhận, không viết test xfail** (dữ liệu nằm trong phần ảnh nén hay bảng giải mã, không kiểm được nếu không giải mã, Thợ Máy đã nêu): giá trị bảng lượng tử DQT, bảng mã DHT; dữ liệu nén JPEG; dữ liệu thừa sau dòng zlib trong `IDAT` (kể cả EXIF nén trong `IDAT`); CRC chunk PNG không được kiểm (4 byte mỗi chunk); WebP: 3 byte dành riêng của `VP8X`, nội dung `ALPH`, dữ liệu thừa trong `VP8L`, byte đệm khác 0. WebP `VP8X` bật cờ EXIF/XMP/ảnh động mà không có chunk: qua, vô hại (chỉ là cờ 1 bit). JPEG không có khung ảnh SOF, PNG không có `IDAT`: qua (ảnh không giải mã được, không lộ gì).
+
+**Thẻ và từ khóa**
+
+- **Chữ kiểm = chữ gửi:** chèn lần lượt cả 1.112.064 ký tự Unicode vào giữa một thẻ: không ký tự nào làm chữ được nhận khác chữ tới AI (`_neutralize` không đổi gì, chạy lại không đổi); 200.000 chuỗi ngẫu nhiên: 0 lệch. Test: `test_random_tags_reach_ai_exactly_as_checked` (3.000 chuỗi trộn chữ tách dấu, ký tự toàn chiều rộng, vô hình, điều khiển, `/`, `:`; hạt giống cố định).
+- **Ký tự giả còn lọt:** 1.124 ký tự ngoài ASCII qua danh sách cho phép, đều là chữ Latin. Vài chữ trông như dấu câu: `ǀ ǁ ǃ` (chữ "click" Latin, trông như `|`, `||`, `!`), `ꞏ` (trông như `·`), `ʔ`. Không chữ nào trông như `/`, `\` hay `:`, nên không ghép được thành đường dẫn thật (`ǀǀmay-chuǀchia-se` được giữ nhưng không phải đường dẫn nào trên máy). Ghi nhận.
+- **Không chặn nhầm tiếng Việt:** 23 thẻ/từ khóa (đủ dấu, chữ hoa, `Đ/đ`, chữ tách dấu kiểu Mac, `TP.HCM`, `P.12, Q.Gò Vấp`, `5×20 m`, `90°`, `Bước 1: tháo lò xo`, thẻ 3A `CT012 - Cổng inox - Tân Phú/truoc` và `/trước`) đều giữ nguyên, ở cả vị trí thẻ lẫn từ khóa. Test: `test_common_vietnamese_tags_and_keywords_are_kept` (23).
+- **Đường dẫn thật bị bỏ:** Google Drive for Desktop trên Windows (`G:/My Drive/…`, `G:\My Drive\…`) và Mac (`/Users/…/CloudStorage/GoogleDrive-…@gmail.com/…`), OneDrive, NAS `\\NAS\…`, `~/Pictures`, USB `/Volumes/…`, thẻ nhớ `E:/DCIM/…`, `file:///`, bản toàn chiều rộng `Ｇ：／My Drive／…`, 3 cấp `My Drive/CT012…/truoc`, tên file `IMG_0001 (1).jpg`, `.jpg.webp`, `.HEIC`, tên ảnh chụp màn hình tiếng Việt và tiếng Anh; ở nhãn, giá trị lẫn từ khóa. Test: `test_real_paths_and_file_names_are_dropped` (16).
+- **Được giữ theo thiết kế SL-T050-4** (một dấu `/`; ghi nhận cho T-052): `Users/Lam`, `Lam/Desktop`, `My Drive/CT012`, `OneDrive - Personal/Anh`, `Anh/IMG_0001` (tên file đã bỏ đuôi), `%USERPROFILE%/Anh`, `facebook.com/nhaanhtuan`. Không có ổ đĩa hay gốc thư mục, nhưng `Users/Lam` lộ tên tài khoản máy. T-052 nên chỉ đưa vào thẻ phần tên thư mục **bên dưới** thư mục ảnh đã khai báo (đúng như 3A), không đưa phần đầu đường dẫn.
+- **Bị bỏ âm thầm (chặn nhầm nhẹ, ghi nhận):** ngày `15/10/2026` và `Cổng/cửa/hàng rào` (từ 2 dấu `/` liền chữ: đúng như gợi ý lượt 1 của chính Soi Lỗi), `A: cổng chính` (giống ổ đĩa), `Giá 1.500.000₫` (`₫`), `Cửa 1½ cánh` (NFKC đổi thành `1⁄2`), `Cổng • Hàng rào`, `Cổng · inox`, `Cửa cuốn ~2m`, `Bảo hành 12 tháng*`, `Cửa «Đài Loan»`, `Cổng /hàng rào` (dấu cách trước `/`). Thẻ từ tên thư mục khó gặp các dạng này (Windows cấm `* : |` trong tên thư mục), từ khóa chính hiếm khi có. Nếu muốn nới: coi `số/số/số` là ngày, thêm `₫ • · « »` vào danh sách.
+
+### Rủi ro và điểm cần chú ý
+
+1. Lớp kiểm này chỉ là **lớp cuối**: dữ liệu giấu trong phần ảnh nén (JPEG, `IDAT`, `VP8L`, `ALPH`) và trong bảng giải mã không thể thấy nếu không giải mã. T-049 vẫn phải dựng bản gửi AI lại từ điểm ảnh, và xóa `info` (chú thích JPEG, hồ sơ màu PNG được Pillow tự chép) trước khi lưu.
+2. Số đo thời gian ở trên lấy khi máy đang chạy bộ test toàn phần, chỉ để thấy "không treo"; không viết test đo tốc độ (dễ đỏ oan, xem T-025).
+3. Các điểm "Rủi ro" lượt 1 không thuộc 4 mã lỗi (số 1, 2, 3, 5, 7, 8) chưa đổi; Thợ Máy đã ghi chưa làm.
+
+### Kết luận
+
+**ĐẠT**: chuyển Lá Chắn được. 4 lỗi lượt 1 đã sửa thật (39 test qua, không đổi điều kiện); không còn lỗi Trung bình trở lên. 2 lỗi mới SL-T050-5 và SL-T050-6 đều **Thấp** (chỉ ảnh dựng cố ý mới lợi dụng được; bản gửi AI của T-049 dựng lại từ điểm ảnh). Chỉ Huy chọn sửa luôn ở một lượt nhỏ hoặc gom vào phiếu dọn lỗi Thấp; 15 test `xfail(strict=True)` sẽ báo XPASS khi sửa xong để gỡ dấu.
+
+### Đề xuất
+
+- Lá Chắn soát A3 sau lượt 2: xem SL-T050-5 (chọn cách a hay b) và 2 chú thích `base.py:552–556`, `:686–687` đang nói quá khả năng của lớp kiểm.
+- T-049: bản gửi AI không mang `info` của ảnh gốc (chú thích JPEG, hồ sơ màu PNG được Pillow tự chép); nếu chọn cách (a) của SL-T050-5 thì đổi màu về sRGB và không kèm hồ sơ màu.
+- T-052: chỉ đưa vào thẻ phần tên thư mục bên dưới thư mục ảnh đã khai báo (thẻ một dấu `/` như `Users/Lam` giờ được gửi AI).
+
+### Câu hỏi cho chủ dự án
+
+Không có.
