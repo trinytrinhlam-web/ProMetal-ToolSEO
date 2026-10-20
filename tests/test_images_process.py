@@ -963,6 +963,37 @@ def test_the_ref_gps_sai_khuon_thi_bo_ca_khoi_gps_va_bao(the, gia_tri, doc_lai):
     assert ExifTags.IFD.GPSInfo not in exif_ra
 
 
+@pytest.mark.parametrize(
+    ("the", "gia_tri", "giu"),
+    [
+        (ExifTags.GPS.GPSMapDatum, "WGS-84", True),
+        (ExifTags.GPS.GPSMapDatum, "WGS 84", True),
+        (ExifTags.GPS.GPSMapDatum, "TOKYO", True),
+        (ExifTags.GPS.GPSMapDatum, "Nha anh Tuan 12 Le Loi", False),  # quá 16 ký tự
+        (ExifTags.GPS.GPSMapDatum, "12 Le Loi, Q1", False),
+        (ExifTags.GPS.GPSSatellites, "05", True),
+        (ExifTags.GPS.GPSSatellites, "04,07,12", True),
+        (ExifTags.GPS.GPSSatellites, "Nha anh Tuan", False),
+        (ExifTags.GPS.GPSSatellites, "0903 123 456", False),
+    ],
+)
+def test_the_gps_chu_chi_nhan_dang_may_that_ghi(the, gia_tri, giu):
+    # N1 (Lá Chắn T-049): GPSMapDatum, GPSSatellites không chở được chữ tự do. Thẻ sai dạng thì
+    # chỉ bỏ thẻ đó, vị trí vẫn giữ, không báo "GPS hỏng".
+    exif = _exif_day_du()
+    exif.get_ifd(ExifTags.IFD.GPSInfo)[the] = gia_tri
+    data = _jpeg_voi_exif_tho(exif.tobytes())
+    assert _gps_doc_lai(data)[the] == gia_tri
+    web = process.make_web_image(data)
+    assert web.gps is not None and web.notice == ""
+    ra = _gps_doc_lai(web.data)
+    if giu:
+        assert ra[the] == gia_tri
+    else:
+        assert the not in ra
+    assert ra[2] == GPS_MONG_DOI[2] and ra[4] == GPS_MONG_DOI[4]
+
+
 def test_che_do_mau_va_ho_so_mau():
     icc = _icc_srgb()
     # RGB có hồ sơ màu RGB: ảnh web giữ hồ sơ (màu không lệch), bản AI thì không.

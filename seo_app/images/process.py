@@ -280,6 +280,10 @@ _POINTER_TAGS = frozenset({ExifTags.IFD.Exif, ExifTags.IFD.GPSInfo, ExifTags.IFD
 _DATE_TIME = re.compile(r"\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}")
 _UTC_OFFSET = re.compile(r"[+-]\d{2}:\d{2}")
 _GPS_DATE = re.compile(r"\d{4}:\d{2}:\d{2}")
+# N1 (Lá Chắn T-049): hai thẻ chữ còn giữ của GPS chỉ nhận đúng dạng máy thật ghi ("WGS-84", "05"),
+# không chở được chữ tự do (địa chỉ viết tay…).
+_GPS_MAP_DATUM = re.compile(r"[A-Za-z0-9 -]{1,16}")
+_GPS_SATELLITES = re.compile(r"[0-9,]{1,64}")
 _MAX_TEXT_CHARS = 64
 
 # Quyết định 2A: giữ hãng, đời máy, ngày chụp. Danh sách cho phép: thẻ nào không có ở đây thì bỏ
@@ -308,7 +312,7 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSAltitudeRef: "byte01",
     ExifTags.GPS.GPSAltitude: "rational",
     ExifTags.GPS.GPSTimeStamp: "rational3",
-    ExifTags.GPS.GPSSatellites: "text",
+    ExifTags.GPS.GPSSatellites: "satellites",
     ExifTags.GPS.GPSStatus: "AV",
     ExifTags.GPS.GPSMeasureMode: "23",
     ExifTags.GPS.GPSDOP: "rational",
@@ -318,7 +322,7 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSTrack: "rational",
     ExifTags.GPS.GPSImgDirectionRef: "TM",
     ExifTags.GPS.GPSImgDirection: "rational",
-    ExifTags.GPS.GPSMapDatum: "text",
+    ExifTags.GPS.GPSMapDatum: "datum",
     ExifTags.GPS.GPSDestLatitudeRef: "NS",
     ExifTags.GPS.GPSDestLatitude: "rational3",
     ExifTags.GPS.GPSDestLongitudeRef: "EW",
@@ -383,6 +387,10 @@ def _valid(kind: str, value: object) -> bool:
         return isinstance(value, str) and _UTC_OFFSET.fullmatch(value) is not None
     if kind == "gpsdate":
         return isinstance(value, str) and _GPS_DATE.fullmatch(value) is not None
+    if kind == "datum":
+        return isinstance(value, str) and _GPS_MAP_DATUM.fullmatch(value) is not None
+    if kind == "satellites":
+        return isinstance(value, str) and _GPS_SATELLITES.fullmatch(value) is not None
     if kind == "rational":
         return _is_rational(value)
     if kind == "rational3":
