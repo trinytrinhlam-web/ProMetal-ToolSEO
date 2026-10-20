@@ -10,7 +10,7 @@ _Cập nhật: 2026-10-20 08:42 (Chỉ Huy B giữ quyền điều phối từ 0
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-038, T-043.
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-038, T-043, T-036, T-037, T-044, T-045, T-046, T-047, T-042, T-048 (Chỉ Huy B bổ sung 20/10 các phiếu A gộp từ 17/10).
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -22,9 +22,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn | Lá Chắn · T-048 đọc thư mục ảnh an toàn | `team/T-048` | 09:15 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`7c1574d`; 1 Trung bình LC-T048-1: chưa chạy test trên Mac/Linux; 5 Thấp). Chờ gộp | [Soi Lỗi](reports/T-048-soi-loi.md) lượt 2: đạt có điều kiện · [Lá Chắn](reports/T-048-la-chan.md) (Opus tạm) |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh | `team/T-050` | 09:13 Thợ Máy lượt 2 **xong** (`c3910e0`: SL-T050-1 → -4 đã sửa, 7.588 qua, 0 hỏng). Chờ Soi Lỗi kiểm lại, rồi Lá Chắn. Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 | [Thợ Máy](reports/T-050-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-050-soi-loi.md): đạt có điều kiện |
-| [T-058](tickets/T-058-nang-pillow-13.md) | Nâng Pillow 13 (chặn T-049) | Soi Lỗi · T-058 kiểm Pillow 13 | `team/T-058` | 09:01 Soi Lỗi rút gọn **ĐẠT** (`bda4dfc`: 60 test mới, 7.232 qua, 0 hỏng). Chờ Lá Chắn | [Thợ Máy](reports/T-058-tho-may.md): Pillow 13.0.0 · [Soi Lỗi](reports/T-058-soi-loi.md): đạt |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Soi Lỗi · T-050 lượt 2 kiểm lại | `team/T-050` | 09:13 Thợ Máy lượt 2 **xong** (`c3910e0`: SL-T050-1 → -4 đã sửa, 7.588 qua, 0 hỏng). ⏳ **Soi Lỗi kiểm lại lượt 2** (giao sau 09:17), rồi Lá Chắn. Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 (Lá Chắn T-048 đã thử gộp: sạch) | [Thợ Máy](reports/T-050-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-050-soi-loi.md): đạt có điều kiện |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Nâng Pillow 13 (chặn T-049) | Lá Chắn · T-058 kiểm Pillow 13 | `team/T-058` | 09:01 Soi Lỗi rút gọn **ĐẠT** (`bda4dfc`: 60 test mới, 7.232 qua, 0 hỏng). ⏳ **Lá Chắn đang kiểm** (D1; giao sau 09:17) | [Thợ Máy](reports/T-058-tho-may.md): Pillow 13.0.0 · [Soi Lỗi](reports/T-058-soi-loi.md): đạt |
+| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Soi Lỗi · T-051 kiểm cấu hình alt, ảnh | `team/T-051` | Ngòi Bút xong (`fc39367`; `[tasks.image]` ghi sẵn nhưng tắt, chờ T-062). ⏳ **Soi Lỗi rút gọn đang kiểm** (giao sau 09:17), rồi Lá Chắn rút gọn | [Ngòi Bút](reports/T-051-ngoi-but.md) |
 
 ## Chờ
 
@@ -36,12 +36,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-058 (chủ dự án chọn cách xử lý Pillow) |
-| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Ngòi Bút xong (`fc39367`, 5.810 qua; `[tasks.image]` ghi sẵn nhưng tắt, chờ T-062). **Chờ Soi Lỗi rút gọn, Lá Chắn rút gọn** |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy | T-048 |
+| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy | Còn chỗ (T-048 đã gộp; điều kiện LC-T048-4a đã ghi vào phiếu) |
+| [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) | Chạy test đọc thư mục ảnh trên Mac/Linux (LC-T048-1, Trung bình). **Chặn gộp T-056** | Soi Lỗi | Cần máy Linux/Mac: phiên Claude Code cloud |
+| [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | Sau T-063; trước khi hết GĐ3 |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | T-049, T-050 |
 | [T-054](tickets/T-054-chen-anh-vao-nhap-wordpress.md) | GĐ3 · G3-8: tải ảnh, chèn `<figure>` vào nháp | Thợ Máy | T-049, T-042 |
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy | T-052 |
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-048 → T-055 |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-049 → T-055; **T-063** (điều kiện Lá Chắn T-048) |
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
@@ -61,6 +62,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-048-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-048-soi-loi.md) (2 lượt): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-048-la-chan.md) (Opus tạm): LC-T048-1 Trung bình → T-063 (chặn gộp T-056); lỗi Thấp → T-064; điều kiện ghi vào T-049, T-052, T-055, T-056; LC-T048-6 chờ chủ dự án (sổ rủi ro). Gộp vào `main` `f37ffd6`: Windows 7.420 qua, 1 hỏng vì quá tải (`test_app.py` quá 30 giây khi 4 bộ test chạy cùng lúc; chạy riêng lại 5/5 qua). Lá Chắn chạy đúng bản gộp: 7.421 qua, 0 hỏng |
 | [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | Ghi meta SEO (SiteSEO) lên bài nháp (GĐ4) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-042-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-042-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-042-la-chan.md) (Opus tạm); lỗi Thấp → T-060, T-061; giao diện → T-041; thử thật → T-059. Gộp vào `main` `81381c5`: Windows 7.170 qua, 0 hỏng |
 | [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | Khai báo Pillow 12.3.0, pillow-heif 1.8.1 (GĐ3) | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-047-tho-may.md) · [Soi Lỗi](reports/T-047-soi-loi.md) rút gọn: đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-047-la-chan.md) (Opus tạm): Pillow 12.3.0 có 53 khuyến cáo mới, vá ở 13 → T-058; điều kiện mở ảnh ghi vào T-049. Gộp vào `main` `d350aec`: Windows 5.810 qua, 0 hỏng |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-043 | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-045-tho-may.md) · [Soi Lỗi](reports/T-045-soi-loi.md): đạt (fuzz 300.000 tài liệu, 0 dòng có nhãn tới AI) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-045-la-chan.md) (Opus tạm); SL-T045-1/2 → T-057. Gộp vào `main` `cc3099f`: Windows 5.791 qua, 0 hỏng |
@@ -118,4 +120,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-063
+## Số phiếu tiếp theo: T-065

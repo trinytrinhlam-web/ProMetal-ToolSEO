@@ -48,3 +48,4 @@ F1, F3; góp ý Lá Chắn T-046 số 11.
 ## Ghi chú của Chỉ Huy
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-055`, tạo từ `main`.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048**: `ImageRef` đọc từ nháp phải tạo lại bằng `ImageRef(...)` rồi đi qua `ImageLibrary.stat_image`/`read_image_bytes`, không tin số thứ tự gốc lưu trong nháp (góp ý Lá Chắn T-046 số 11); khóa lựa chọn theo `ImageRef` của kết quả quét.

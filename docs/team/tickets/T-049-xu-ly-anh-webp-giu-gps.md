@@ -64,3 +64,4 @@ F2 (test bắt buộc: còn GPS sau nén, bản AI không còn metadata), F3, A3
   5. Nếu vẫn dùng Pillow 12.x (T-058 chọn B): không `thumbnail()`/`draft()`, không `seek()`, không ghi JPEG.
   6. Báo Soi Lỗi thay `pytest.skip` trong test "chưa đăng ký" của T-047 bằng fixture tự gỡ HEIF.
 - 2026-10-20 (Chỉ Huy A): theo Thợ Máy T-058, Pillow 13.0.0 còn 1 khuyến cáo chưa vá (GHSA-654x-cwwv-5j9c, lộ vùng nhớ khi xuất ảnh sang Arrow, chỉ xảy ra khi đặt `PILLOW_ALIGNMENT` > 1). Phiếu này: **không** xuất ảnh sang Arrow, **không** đặt `PILLOW_ALIGNMENT`. Nếu T-058 đã gộp thì điều kiện 5 (tránh `thumbnail()`/`draft()`…) không còn bắt buộc.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048**: kiểm nội dung bằng Pillow `formats=…`, không tin đuôi file; thư mục cache ảnh xem trước phải nằm trong `.gitignore` (góp ý Lá Chắn T-046 số 9). Đọc ảnh qua `ImageLibrary.read_image_bytes` (`seo_app/images/folders.py`).

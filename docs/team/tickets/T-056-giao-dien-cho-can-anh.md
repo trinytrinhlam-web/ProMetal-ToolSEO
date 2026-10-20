@@ -51,3 +51,9 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-056`, tạo từ `main`.
 - 2026-10-19 (Chỉ Huy A): **Điều kiện từ Soi Lỗi T-048** (`docs/team/reports/T-048-soi-loi.md`): tên file/thư mục lấy từ máy là dữ liệu chưa tin cậy. Hiện tên bằng chữ đã escape và **cô lập hướng chữ** (ký tự RLO U+202E, ký tự rộng 0 có thể làm tên trông khác thật). Giữ kết quả quét trong phiên (hiện mỗi lần chuyển trang quét lại từ đầu). Chạy quét trong luồng riêng để thư mục Drive chậm không làm treo giao diện (báo cáo Thợ Máy T-048 điểm 7).
 - 2026-10-20 (Chỉ Huy A): theo Soi Lỗi T-050: chữ trong ảnh (biển hiệu, giấy dán) có thể khiến AI chép số điện thoại hay tên người vào alt. Giao diện **luôn hiện alt để người dùng duyệt** trước khi dùng, không tự áp alt AI.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048** (`docs/team/reports/T-048-la-chan.md`):
+  - **Chặn gộp:** trước khi gộp phiếu này (phiếu giao diện đầu tiên gọi `ImageLibrary`), T-063 phải xong: test T-048 đã chạy thật trên Mac hoặc Linux (LC-T048-1, Trung bình).
+  - Hiện tên bằng chữ đã escape, cô lập hướng chữ (LC-T048-4 mục b).
+  - Không dùng `ImageLibrary._folders`; không hiện đường dẫn tuyệt đối (dùng `roots()`).
+  - Chỉ quét khi người dùng mở thư mục hoặc bấm quét lại.
+  - Báo cho người dùng khi thư mục gốc đi qua lối tắt (mục "Ghi nhận" của biên bản).

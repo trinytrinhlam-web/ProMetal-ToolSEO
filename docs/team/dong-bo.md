@@ -34,20 +34,28 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 09:17. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 09:54. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | ✅ 09:15 **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`7c1574d`): 0 Nghiêm trọng/Cao, 1 Trung bình (LC-T048-1: nhánh Mac/Linux chưa chạy test lần nào), 5 Thấp | **Gộp vào `main`** (lấy `seo_app/images/__init__.py` bản T-048), chạy test Windows; ghi điều kiện vào T-052, T-056; hỏi chủ dự án LC-T048-2/-3/-6 (sửa ở phiếu dọn hay ghi sổ rủi ro); rồi giao T-052 |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`c3910e0`) | ✅ 09:13 **Thợ Máy lượt 2 xong**: sửa SL-T050-1 → -4, gỡ `xfail` 39 test; 7.588 qua, 0 hỏng; ruff sạch. Không sửa `seo_app/images/__init__.py` | **Soi Lỗi kiểm lại lượt 2**, rồi Lá Chắn (soát A3: `base.py:552–790`, `alt.py:96–143`) |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`bda4dfc`) | ✅ 09:01 **Soi Lỗi rút gọn ĐẠT**: 60 test mới, 7.232 qua, 0 hỏng; SL-T058-1 Thấp có từ trước (`st.image` ảnh xám 16 bit) | **Lá Chắn T-058** (D1); gộp xong Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
-| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong | Soi Lỗi rút gọn, Lá Chắn rút gọn khi có chỗ trống |
-| Chờ phiếu trước | | T-049 (sau T-058), T-052 (sau T-048), T-062 (sau T-050, T-051), T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | |
-| `main` | `ffaa1e6` | Windows 7.170 qua, 0 hỏng (sau gộp T-042) | |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | đã gộp (`f37ffd6`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 09:54 gộp vào `main` | Điều kiện đã ghi vào T-049, T-052, T-055, T-056; lập T-063 (test Mac/Linux, chặn gộp T-056), T-064 (dọn lỗi Thấp). LC-T048-6 chờ chủ dự án (sổ rủi ro) |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`c3910e0`) | Thợ Máy lượt 2 xong (7.588 qua). ⏳ **Soi Lỗi kiểm lại lượt 2** (phiên "Soi Lỗi · T-050 lượt 2 kiểm lại", giao sau 09:17) | Lá Chắn (soát A3: `base.py:552–790`, `alt.py:96–143`) |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`bda4dfc`) | Soi Lỗi rút gọn ĐẠT (7.232 qua). ⏳ **Lá Chắn đang kiểm** (phiên "Lá Chắn · T-058 kiểm Pillow 13", giao sau 09:17) | ĐẠT thì gộp, chạy test, Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
+| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong. ⏳ **Soi Lỗi rút gọn đang kiểm** (phiên "Soi Lỗi · T-051 kiểm cấu hình alt, ảnh", giao sau 09:17) | Lá Chắn rút gọn |
+| Chờ phiếu trước | | T-052 (còn chỗ), T-063 (cần máy Linux/Mac), T-049 (sau T-058), T-062 (sau T-050, T-051), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-065** |
+| `main` | `f37ffd6` + tài liệu | Windows sau gộp T-048: 7.420 qua, 1 hỏng vì quá tải (`test_app.py` quá 30 giây khi 4 bộ test chạy cùng lúc; chạy riêng lại 5/5 qua). Lá Chắn chạy đúng bản gộp: 7.421 qua, 0 hỏng. ruff sạch | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 09:54 · Chỉ Huy B
+
+- Chủ dự án cho làm tiếp. Gọi 3 phiên con (giao sau 09:17): Lá Chắn T-058, Soi Lỗi T-050 kiểm lại lượt 2, Soi Lỗi T-051 rút gọn.
+- **Gộp T-048 vào `main`** (`f37ffd6`). Windows: 7.420 qua, 1 hỏng (`tests/test_app.py::test_correct_password_opens_home_and_logout_works`: app thử nghiệm quá 30 giây vì máy chạy 4 bộ test cùng lúc; chạy riêng `tests/test_app.py` lại thì 5/5 qua trong 11,8 giây). T-048 không đụng `app/` hay test này. ruff sạch. Xóa nhánh `team/T-048` và worktree `wt-T-048`.
+- Ghi điều kiện Lá Chắn T-048 vào T-049, T-052, T-055, T-056. Lập **T-063** (Soi Lỗi chạy test T-048 trên Mac/Linux, chặn gộp T-056; máy Windows không làm được, cần phiên cloud) và **T-064** (Thợ Máy dọn lỗi Thấp: liệt kê thư mục qua handle, ký tự vô hình, `os.fstat`). Số phiếu tiếp theo: **T-065**.
+- Bổ sung danh sách kiểm lại bằng Fable sau 01/11 trong `board.md`: T-036, T-037, T-042, T-044, T-045, T-046, T-047, T-048.
+- **Lưu ý vận hành:** chạy pytest toàn bộ khi 3 agent cũng đang chạy test thì mất khoảng 23 phút và các test có giới hạn thời gian dễ hỏng oan. Hỏng kiểu "timed out" thì chạy riêng lại trước khi kết luận.
 
 ### 2026-10-20 09:17 · Chỉ Huy B
 
