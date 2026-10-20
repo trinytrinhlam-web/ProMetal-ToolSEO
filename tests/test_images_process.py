@@ -431,6 +431,8 @@ def test_ma_nguon_dang_ky_heif_mot_cho_khong_arrow_khong_alignment():
         for chu in ("__arrow_c_array__", "__arrow_c_schema__", "fromarrow", "pyarrow"):
             assert chu not in code, (path.name, chu)
         assert "PILLOW_ALIGNMENT" not in code, path.name
+        # Lá Chắn T-050 điều kiện 2: không đổi hồ sơ màu của ảnh gốc bằng ImageCms.
+        assert "ImageCms" not in code, path.name
     assert goi_dang_ky == ["process.py"]
     code = _ma_nguon_khong_chu_thich(seo_app / "images" / "process.py")
     # Không ghi file HEIC; "MPO" chỉ dùng để nhận diện ảnh đã mở, không có trong ``formats``.
@@ -914,6 +916,80 @@ def test_f2_ban_ai_tu_jpeg_day_du_khong_con_metadata():
 
 def test_f2_ban_ai_tu_png_co_chunk_chu():
     _kiem_ban_ai_sach(process.make_ai_image(_png_day_du()))
+
+
+CHU_TRONG_ICC = b"GPS 16.0544N 108.2022E; Nha anh Tuan 12 Le Loi"
+
+
+def _icc_co_chu(text=CHU_TRONG_ICC):
+    """Hồ sơ màu RGB đúng khuôn phần đầu, thẻ ``desc`` chở chữ tùy ý (SL-T050-5, LC-T050-1)."""
+    desc = b"desc\x00\x00\x00\x00" + (len(text) + 1).to_bytes(4, "big") + text + b"\x00"
+    desc += b"\x00" * (-len(desc) % 4)
+    offset = 128 + 4 + 12
+    header = b"".join(
+        (
+            (offset + len(desc)).to_bytes(4, "big"),
+            b"lcms",
+            b"\x02\x10\x00\x00",
+            b"mntr",
+            b"RGB ",
+            b"XYZ ",
+            b"\x00" * 12,
+            b"acsp",
+            b"MSFT",
+            b"\x00" * 24,
+            b"\x00\x00\xf6\xd6\x00\x01\x00\x00\x00\x00\xd3\x2d",
+            b"\x00" * 48,
+        )
+    )
+    assert len(header) == 128
+    tags = (1).to_bytes(4, "big") + b"desc" + offset.to_bytes(4, "big")
+    return header + tags + len(desc).to_bytes(4, "big") + desc
+
+
+def _nguon_co_icc_chu(dinh_dang):
+    icc = _icc_co_chu()
+    image = _anh_bon_mau((600, 400))
+    exif = _exif_day_du(6).tobytes()
+    if dinh_dang == "JPEG":
+        return _jpeg_day_du((600, 400), 6, icc=icc)
+    if dinh_dang == "PNG":
+        info = PngImagePlugin.PngInfo()
+        info.add_itxt("XML:com.adobe.xmp", XMP.decode())
+        info.add_text("Comment", "PNG-TEXT-BI-MAT")
+        return _luu(image, "PNG", pnginfo=info, exif=exif, icc_profile=icc)
+    if dinh_dang == "WEBP":
+        return _luu(image, "WEBP", exif=exif, xmp=XMP, icc_profile=icc)
+    image.info["icc_profile"] = icc
+    buffer = io.BytesIO()
+    pillow_heif.from_pillow(image).save(buffer, quality=90, exif=exif, xmp=XMP)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("dinh_dang", ["JPEG", "PNG", "WEBP", "HEIF"])
+def test_f2_ban_ai_bo_ho_so_mau_co_chu_ban_web_giu_ho_so_va_gps(dinh_dang):
+    """Lá Chắn T-050 điều kiện 2 (bắt buộc): ảnh gốc có EXIF + GPS + XMP (+ COM) và hồ sơ màu
+    ICC chở chữ trong thẻ ``desc``. Bản gửi AI không còn hồ sơ màu, không còn chữ GPS; bản
+    đăng web vẫn giữ hồ sơ màu và GPS như thiết kế."""
+    icc = _icc_co_chu()
+    data = _nguon_co_icc_chu(dinh_dang)
+    if dinh_dang == "HEIF":
+        pillow_heif.register_heif_opener()  # để test tự đọc ảnh gốc (fixture trả lại bảng)
+    assert _mo(data).info.get("icc_profile") == icc  # ảnh gốc mang đúng hồ sơ màu có chữ
+    assert {k: v for k, v in _gps_doc_lai(data).items() if k != 27} == GPS_MONG_DOI
+    if dinh_dang != "PNG":  # PNG nén hồ sơ màu bằng zlib nên không thấy chữ trong file
+        assert CHU_TRONG_ICC in data
+
+    ai = process.make_ai_image(data)
+    _kiem_ban_ai_sach(ai)
+    for chu in (b"ICC_PROFILE", b"iCCP", b"ICCP", b"acsp", b"GPS", b"16.0544", b"Le Loi"):
+        assert chu not in ai.data, chu
+
+    web = process.make_web_image(data)
+    assert b"ICCP" in _webp_chunks(web.data)
+    assert _mo(web.data).info.get("icc_profile") == icc
+    assert _gps_doc_lai(web.data) == GPS_MONG_DOI
+    assert web.gps == process.GpsCoordinates(latitude=16.0554417, longitude=108.2022)
 
 
 def test_f2_ban_ai_tu_heic_co_gps():
