@@ -36,14 +36,18 @@ $ uv run pytest tests/test_soi_loi_t052.py --runxfail -k sl_t052 --tb=line
 (mỗi xfail hỏng đúng lý do: OverflowError ở image_tags.py:419 và :199; khu vực/giai đoạn rỗng;
  file ngoài data/ bị đổi nội dung; câu lỗi "Không mở được file…" lặp lại)
 
-$ uv run pytest -q -p no:cacheprovider     (toàn bộ, tại 165fbb8, 2026-10-20 13:20–13:37 +07)
-8267 passed, 19 skipped, 78 xfailed, 1 warning in 1023.37s (0:17:03)
+$ uv run pytest tests/test_images_tags.py tests/test_soi_loi_t052.py tests/test_images_folders.py \
+    tests/test_images_folders_soi_loi.py tests/test_ai_images.py -q -p no:cacheprovider
+  (test liên quan tới phiếu, tại 13467e7, 2026-10-20 13:39–13:41 +07)
+753 passed, 8 skipped, 31 xfailed in 77.70s (0:01:17)
 
 $ uv run ruff check .
 All checks passed!
 ```
 
-Không test nào hỏng, không cần chạy lại riêng. Cảnh báo duy nhất là của test cũ `test_soi_loi_t028.py` (pydantic), không liên quan. 78 xfail = 50 của các phiếu trước (gồm 15 của T-050) + 28 của file này. Test nối `alt.py` của Thợ Máy (`test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text`) nay chạy và qua vì nhánh đã có `alt.py` (gộp `2d481c0`).
+**Toàn bộ test do Chỉ Huy chạy khi gộp vào `main`** (quy tắc mới của chủ dự án, 2026-10-20: agent chỉ chạy test liên quan tới phiếu). Bộ test liên quan gồm: test thẻ ảnh của Thợ Máy và của tôi, test đọc thư mục ảnh (`ImageLibrary`, T-048) và test lớp AI đọc ảnh (`alt.py`, T-050). 0 hỏng. 8 bỏ qua đều là ca symlink hay ca chỉ tạo được trên Mac/Linux (máy Windows này chưa bật Developer Mode); 31 xfail = 28 của file này + 3 ca đã ghi từ T-048 trong `test_images_folders_soi_loi.py` (R2-1, R2-2). Test nối `alt.py` của Thợ Máy (`test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text`) nay chạy và qua vì nhánh đã có `alt.py` (gộp `2d481c0`).
+
+Tham khảo: trước khi có quy tắc mới, tôi đã chạy toàn bộ một lượt tại `165fbb8` (cùng code ứng dụng, chỉ khác báo cáo): `uv run pytest -q -p no:cacheprovider` → **8267 passed, 19 skipped, 78 xfailed, 1 warning** trong 17 phút 3 giây (13:20–13:37), 0 hỏng. Cảnh báo duy nhất là của test cũ `test_soi_loi_t028.py` (pydantic), không liên quan.
 
 ## Lỗi tìm thấy
 
