@@ -98,8 +98,8 @@ SOS = jpeg_segment(0xDA, b"\x01\x01\x00\x00\x3f\x00")
 SCAN = b"\x12\x34\xff\x00\x56"  # dữ liệu nén giả (có byte đệm FF 00 như JPEG thật)
 
 
-def make_jpeg(*segments, tail=b""):
-    return b"\xff\xd8" + JFIF + b"".join(segments) + SOS + SCAN + b"\xff\xd9" + tail
+def make_jpeg(*segments, scan=SCAN, tail=b""):
+    return b"\xff\xd8" + JFIF + b"".join(segments) + SOS + scan + b"\xff\xd9" + tail
 
 
 def png_chunk(kind, data):
@@ -219,17 +219,17 @@ def test_prepare_rejects_empty_image():
 
 
 def test_prepare_rejects_too_big_image():
-    big = make_jpeg(tail=b"\x00" * (MAX_IMAGE_BYTES - len(JPEG) + 1))
+    big = make_jpeg(scan=SCAN + b"\x00" * (MAX_IMAGE_BYTES - len(JPEG) + 1))
     assert len(big) == MAX_IMAGE_BYTES + 1
     with pytest.raises(AIError) as info:
         prepare_images([jpeg_image(big)])
     assert "quá lớn" in str(info.value) and "5,0 MB" in str(info.value)
-    exact = make_jpeg(tail=b"\x00" * (MAX_IMAGE_BYTES - len(JPEG)))
+    exact = make_jpeg(scan=SCAN + b"\x00" * (MAX_IMAGE_BYTES - len(JPEG)))
     assert len(prepare_images([jpeg_image(exact)])) == 1
 
 
 def test_prepare_rejects_too_big_total():
-    four_mb = make_jpeg(tail=b"\x00" * (4 * 1024 * 1024))
+    four_mb = make_jpeg(scan=b"\x00" * (4 * 1024 * 1024))
     with pytest.raises(AIError, match="Tổng dung lượng"):
         prepare_images([jpeg_image(four_mb)] * 3)
     assert len(prepare_images([jpeg_image(four_mb)] * 2)) == 2
@@ -319,6 +319,54 @@ def test_prepare_rejects_whole_batch_if_one_image_is_bad():
         prepare_images([jpeg_image(), jpeg_image(make_jpeg(jpeg_segment(0xE1, EXIF_TIFF)))])
 
 
+DHT = jpeg_segment(0xC4, b"\x00" + b"\x01" + b"\x00" * 15 + b"\x00")
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        # Ảnh progressive: nhiều lượt quét, có bảng mã giữa các lượt; mã RST trong dữ liệu nén.
+        b"\xff\xd8" + JFIF + SOS + SCAN + DHT + SOS + b"\x01\xff\xd0\x02" + b"\xff\xd9",
+        make_jpeg(scan=b"\x01\xff\xd3\x02\xff\xff\xd7\x03"),
+        b"\xff\xd8\xff\xff" + JFIF[1:] + SOS + SCAN + b"\xff\xd9",  # byte đệm 0xFF trước mã
+    ],
+)
+def test_prepare_walks_whole_jpeg(data):
+    assert prepare_images([jpeg_image(data)])[0].data == data
+
+
+COMMENT_BETWEEN_SCANS = (
+    b"\xff\xd8" + JFIF + SOS + SCAN + jpeg_segment(0xFE, b"Nha anh Tuan") + SOS + SCAN + b"\xff\xd9"
+)
+APP1_AFTER_SCAN = b"\xff\xd8" + JFIF + SOS + SCAN + jpeg_segment(0xE1, b"x" * 10) + b"\xff\xd9"
+
+
+@pytest.mark.parametrize(
+    ("data", "mime", "message"),
+    [
+        # Khối metadata nằm sau khối ảnh đầu tiên (giữa hai lượt quét).
+        (COMMENT_BETWEEN_SCANS, "image/jpeg", IMAGE_METADATA_MESSAGE),
+        (APP1_AFTER_SCAN, "image/jpeg", IMAGE_METADATA_MESSAGE),
+        # Dữ liệu nối sau mã kết thúc: nơi giấu được bất cứ thứ gì.
+        (make_jpeg(tail=b"Nha anh Tuan"), "image/jpeg", IMAGE_BROKEN_MESSAGE),
+        (make_jpeg(tail=b"\xff\xd8\xff\xe0"), "image/jpeg", IMAGE_BROKEN_MESSAGE),
+        (make_jpeg(scan=b"\x01\x02"), "image/jpeg", None),  # đối chứng: hợp lệ
+        (b"\xff\xd8" + JFIF + SOS + SCAN, "image/jpeg", IMAGE_BROKEN_MESSAGE),  # thiếu EOI
+        (PNG + b"Nha anh Tuan", "image/png", IMAGE_BROKEN_MESSAGE),
+        (WEBP + b"Nha anh Tuan", "image/webp", IMAGE_BROKEN_MESSAGE),
+        (WEBP[:-1], "image/webp", IMAGE_BROKEN_MESSAGE),
+    ],
+)
+def test_prepare_rejects_hidden_or_trailing_data(data, mime, message):
+    image = ImageInput(data=data, mime=mime)
+    if message is None:
+        assert prepare_images([image])[0].data == data
+        return
+    with pytest.raises(AIError) as info:
+        prepare_images([image])
+    assert str(info.value) == message
+
+
 # ------------------------------------------------- ảnh Pillow thật (thư viện có sẵn trong uv.lock)
 
 
@@ -351,6 +399,12 @@ def test_pillow_images_with_gps_exif_are_rejected(fmt, mime):
     with pytest.raises(AIError) as info:
         prepare_images([ImageInput(data=data, mime=mime)])
     assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+def test_pillow_progressive_and_optimized_jpeg_pass():
+    for args in ({"progressive": True}, {"optimize": True}, {"progressive": True, "quality": 30}):
+        data = pillow_bytes("JPEG", **args)
+        assert prepare_images([jpeg_image(data)])[0].data == data
 
 
 def test_pillow_jpeg_comment_and_png_text_are_rejected():

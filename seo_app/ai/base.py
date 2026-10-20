@@ -529,7 +529,7 @@ def prepare_images(images: Sequence[ImageInput]) -> tuple[ImageInput, ...]:
                 "mỗi lần). Gửi ít ảnh hơn."
             )
         problem = _IMAGE_CHECKS[mime](data)
-        if problem == "metadata" or (problem is None and _has_metadata_marker(data)):
+        if problem == "metadata" or _has_metadata_marker(data):
             raise AIError(IMAGE_METADATA_MESSAGE)
         if problem is not None:
             raise AIError(IMAGE_BROKEN_MESSAGE)
@@ -553,11 +553,13 @@ _JPEG_STANDALONE = frozenset({0x01, *range(0xD0, 0xD8)})
 
 
 def _check_jpeg(data: bytes) -> str | None:
-    """Đi qua các khối JPEG từ đầu tới khối ảnh (SOS). ``"format"``: sai cấu trúc;
-    ``"metadata"``: có khối metadata; ``None``: ổn."""
+    """Đi qua mọi khối JPEG, kể cả giữa các lượt quét của ảnh progressive, tới mã kết thúc (EOI)
+    ở đúng cuối file. ``"format"``: sai cấu trúc hoặc có dữ liệu nối sau EOI; ``"metadata"``: có
+    khối metadata; ``None``: ổn."""
     if not data.startswith(b"\xff\xd8\xff"):
         return "format"
     i, n = 2, len(data)
+    seen_scan = False
     while True:
         if i >= n or data[i] != 0xFF:
             return "format"
@@ -567,20 +569,40 @@ def _check_jpeg(data: bytes) -> str | None:
             return "format"
         marker = data[i]
         i += 1
+        if marker == 0xD9:  # EOI: chỉ hợp lệ sau khối ảnh và ở đúng cuối file
+            return None if seen_scan and i == n else "format"
         if marker in _JPEG_STANDALONE:
             continue
-        if marker in (0x00, 0xD8, 0xD9):  # hết ảnh (EOI) trước khối ảnh, hay mã sai chỗ
-            return "format"
-        if i + 2 > n:
+        if marker in (0x00, 0xD8) or i + 2 > n:
             return "format"
         length = int.from_bytes(data[i : i + 2], "big")
         if length < 2 or i + length > n:
             return "format"
         if marker in _JPEG_METADATA:
             return "metadata"
-        if marker == 0xDA:  # SOS: phía sau là dữ liệu ảnh nén
-            return None
         i += length
+        if marker == 0xDA:  # SOS: tiếp theo là dữ liệu ảnh nén, đi tới mã khối kế tiếp
+            seen_scan = True
+            i = _skip_entropy(data, i)
+
+
+def _skip_entropy(data: bytes, i: int) -> int:
+    """Vị trí mã khối đầu tiên sau dữ liệu nén bắt đầu ở ``i`` (hoặc ``len(data)``).
+
+    Trong dữ liệu nén, 0xFF chỉ đứng trước 0x00 (byte đệm), mã RST (0xD0–0xD7) hoặc 0xFF khác.
+    """
+    n = len(data)
+    while True:
+        i = data.find(b"\xff", i)
+        if i < 0 or i + 1 >= n:
+            return n
+        following = data[i + 1]
+        if following == 0x00 or 0xD0 <= following <= 0xD7:
+            i += 2
+        elif following == 0xFF:
+            i += 1
+        else:
+            return i
 
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -603,7 +625,8 @@ def _check_png(data: bytes) -> str | None:
         if kind in _PNG_METADATA:
             return "metadata"
         if kind == b"IEND":
-            return None
+            # Không nhận dữ liệu nối sau IEND (chỗ giấu được bất cứ thứ gì).
+            return None if i + 12 + length == n else "format"
         first = False
         i += 12 + length
     return "format"
@@ -618,7 +641,7 @@ def _check_webp(data: bytes) -> str | None:
     if len(data) < 20 or data[:4] != b"RIFF" or data[8:12] != b"WEBP":
         return "format"
     end = 8 + int.from_bytes(data[4:8], "little")
-    if end > len(data) or end < 20:
+    if end != len(data) or end < 20:  # không nhận dữ liệu nối sau khối RIFF
         return "format"
     i, first = 12, True
     while i < end:
