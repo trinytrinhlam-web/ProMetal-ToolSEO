@@ -53,3 +53,4 @@ A2, S2, D1; góp ý Lá Chắn T-046 số 5, 6.
   - C7: T-062 đã gộp (provider chỉ tạo khi cần; từ chối `provider = "anthropic"` cho việc ảnh).
   - C8: xác minh tên mô hình tạo ảnh (tài liệu Google mới nhất, hoặc một lần gọi thử do chủ dự án làm ngoài bộ test) rồi sửa chú thích «CHƯA XÁC MINH». Không thêm `base_url` hay địa chỉ máy chủ nào vào `config/ai.toml`; client Gemini giữ địa chỉ chính thức cố định (T-026).
   - C9: chỉ tạo ảnh khi người dùng bấm, mỗi lần một ảnh; không tự tạo hàng loạt (chi phí).
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-049** (điều kiện 5): ảnh AI trả về đi qua `make_web_image` (mở an toàn, giới hạn điểm ảnh); tên file `image_file_name(..., ai_generated=True)`. Nếu thêm đánh dấu EXIF cho ảnh AI (`ImageDescription`/`Software`) thì đó là sửa danh sách cho phép 2A trong `process.py`: Lá Chắn soát riêng; đánh dấu chỉ là chữ cố định do code viết, không lấy từ prompt hay phản hồi AI.

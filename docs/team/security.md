@@ -134,6 +134,13 @@ git log -p | grep -inE "api[_-]?key|password|secret|token" | head   # soát nhan
 uv run pytest <test liên quan tới phiếu> && uv run ruff check .   # toàn bộ pytest do Chỉ Huy chạy khi gộp (chốt 2026-10-20)
 ```
 
+**Trên Windows** (Lá Chắn T-049, LC-T049-4): `detect-secrets` đọc file bằng bảng mã của máy (cp1252) nên **bỏ qua lặng lẽ** mọi file có chữ tiếng Việt mà vẫn báo "0 phát hiện". Luôn chạy với `PYTHONUTF8=1`:
+
+- Git Bash: `PYTHONUTF8=1 uvx detect-secrets scan --all-files`
+- PowerShell: `$env:PYTHONUTF8 = "1"; uvx detect-secrets scan --all-files`
+
+Khi thử xem công cụ có bắt được không, đặt chuỗi mồi (khóa giả) trong một file **có chữ tiếng Việt**, chạy xong thì xóa chuỗi mồi. Biên bản ghi rõ đã đặt `PYTHONUTF8=1`.
+
 Môi trường không có mạng thì ghi rõ "chưa quét được công cụ X" trong biên bản, **không được ghi là đạt**.
 
 ## 6. Sổ rủi ro đã chấp nhận
