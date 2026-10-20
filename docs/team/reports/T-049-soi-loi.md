@@ -10,7 +10,7 @@
 ## Tóm tắt (cho chủ dự án)
 
 - **Kết luận: ĐẠT CÓ ĐIỀU KIỆN, chuyển Lá Chắn được.** Không có lỗi Nghiêm trọng, Cao hay Trung bình. Tìm được 3 lỗi **Thấp** (SL-T049-1, 2, 3), không lỗi nào làm mất GPS của ảnh bình thường hay lọt metadata sang AI; Thợ Máy sửa trong phiếu này hoặc phiếu dọn đều được.
-- **Vị trí GPS giữ đúng từng con số** sau khi nén WebP với ảnh JPEG, PNG, WebP và HEIC (iPhone): 4 cặp bán cầu (Bắc/Nam × Đông/Tây), độ cao trên và dưới mặt biển, cả kiểu EXIF của iPhone lẫn Android, cả 3 cách máy ảnh viết tọa độ. Thông tin máy theo đúng lựa chọn 2A: giữ ngày chụp, hãng, đời máy; bỏ số seri, tên chủ máy, khối dữ liệu riêng của hãng, ảnh nhỏ nhúng.
+- **Vị trí GPS giữ đúng từng con số** sau khi nén WebP với ảnh JPEG, PNG, WebP và HEIC (iPhone): 4 cặp bán cầu (Bắc/Nam × Đông/Tây), độ cao trên và dưới mặt biển, cả hai cách xếp byte của EXIF (iPhone thường ghi kiểu "MM", nhiều máy Android kiểu "II"), cả 3 cách máy ảnh viết tọa độ. Thông tin máy theo đúng lựa chọn 2A: giữ ngày chụp, hãng, đời máy; bỏ số seri, tên chủ máy, khối dữ liệu riêng của hãng, ảnh nhỏ nhúng.
 - **Bản gửi AI sạch hoàn toàn** từ 11 loại ảnh nguồn (kể cả ảnh có hồ sơ màu chở chữ "địa chỉ khách"), qua được bộ kiểm của T-050 và tới đúng máy chủ (giả) của cả Claude, ChatGPT, Gemini mà không kèm GPS, tên máy hay chữ ẩn.
 - Ảnh hỏng, ảnh "bom" (file vài KB khai 81 triệu điểm ảnh), file giả đuôi, HEIC tải dở: đều báo câu tiếng Việt cố định, không treo, không lộ tên thư mục khách. **Chưa thử ảnh thật của chủ dự án** (Chỉ Huy sẽ làm riêng): mọi thử nghiệm dùng ảnh giả tạo trong test.
 
@@ -27,24 +27,30 @@ Không sửa code ứng dụng (`git diff --stat 8e76b54..HEAD`: chỉ 2 file te
 ## Bằng chứng
 
 ```
-$ uv run pytest                                   (toàn bộ, Windows, tại <HASH>)
-(đang chạy, điền sau)
+$ uv run pytest tests/test_images_process.py tests/test_soi_loi_t049.py \
+    tests/test_pillow_heif_setup.py tests/test_ai_images.py -q -rsX   (test liên quan, Windows, tại 8a178e7)
+516 passed, 3 xfailed in 45.80s
+(3 xfail đúng là SL-T049-1, 2, 3; 0 skip: test "chưa đăng ký HEIF" của T-047 chạy thật)
 
 $ uv run ruff check .
 All checks passed!
 
-$ uv run pytest tests/test_soi_loi_t049.py tests/test_pillow_heif_setup.py -q
-159 passed, 3 xfailed in 32.33s
+$ uv run pytest -q                                (toàn bộ, Windows, tại 8ffdbb8, 13:23:54–13:40:13)
+8278 passed, 17 skipped, 53 xfailed, 1 warning in 971.62s (0:16:11)
+(0 hỏng, 0 lỗi, không test nào quá giờ; 53 xfail gồm 3 của phiếu này; cảnh báo Pydantic ở
+ tests/test_soi_loi_t028.py có từ trước. 8a178e7 sau đó chỉ thêm báo cáo, không đổi test.)
 ```
+
+Theo quy tắc mới của chủ dự án (2026-10-20, Chỉ Huy B chuyển): agent chỉ cần chạy test liên quan tới phiếu; **toàn bộ test do Chỉ Huy chạy trên Windows khi gộp vào `main`**. Lượt toàn bộ ở trên đã chạy xong trước khi nhận quy tắc nên vẫn ghi lại.
 
 **Thử ngoài test** (script trong thư mục tạm, ảnh giả, không mạng; kết quả rút gọn đã đưa vào test):
 
 | Thử | Kết quả |
 |---|---|
 | Ma trận GPS: 4 định dạng × 4 bán cầu × 2 độ cao × 2 endian × 3 cách viết tọa độ, 16 thẻ GPS mỗi ảnh | 192/192 đúng từng giá trị đọc lại độc lập bằng Pillow, dấu tọa độ đúng |
-| Đột biến ngẫu nhiên cả file (đổi byte, cắt, chèn, xóa) JPEG/PNG/WebP/HEIC, 400 file mỗi loại × 3 hàm | 4.800 lượt: 0 lỗi thô lọt ra, mọi câu lỗi thuộc bộ câu cố định; mọi bản AI tạo được đều qua `prepare_images`; lâu nhất 0,26 s |
+| Đột biến ngẫu nhiên cả file (đổi byte, cắt, chèn, xóa) JPEG/PNG/WebP/HEIC, 400 file mỗi loại × 3 hàm | 4.800 lượt: 0 lỗi thô lọt ra, mọi câu lỗi là câu cố định của module (kể cả câu "quá nhiều điểm ảnh"); mọi bản AI tạo được đều qua `prepare_images`; lâu nhất 0,26 s |
 | Xoay 8 hướng × JPEG/PNG/WebP/HEIC × (ảnh web, bản AI, xem trước) | 96/96 đúng chiều |
-| Ảnh lạ: CMYK (Adobe), PNG 16 bit RGB/xám+trong suốt, WebP động, APNG, MPO, HEIC trong suốt/xám, ảnh dẹt 1×10000 và 2×16383, GIF giả đuôi | Xử lý đúng hoặc báo "không phải ảnh JPEG, PNG, WebP hoặc HEIC" |
+| Ảnh lạ: CMYK (Adobe), PNG 16 bit RGB/xám+trong suốt, WebP động, APNG, MPO, HEIC trong suốt/xám, ảnh dẹt 1×10000 và 2×16383, GIF giả đuôi | Xử lý đúng (trừ PNG xám 16 bit có màu trong suốt, xem Rủi ro 3) hoặc báo "không phải ảnh JPEG, PNG, WebP hoặc HEIC" |
 | Thời gian (máy Windows này) | JPEG 48 MP (8 MB) → WebP 1600 px: 2,45 s (199 KB); bản AI 0,26 s. HEIC 12 MP → WebP 2,43 s (211 KB); bản AI 1,1 s |
 
 ## Đối chiếu tiêu chí xong
@@ -52,7 +58,7 @@ $ uv run pytest tests/test_soi_loi_t049.py tests/test_pillow_heif_setup.py -q
 **7 yêu cầu của phiếu**
 
 - [x] **YC1 mở ảnh an toàn.** Kiểm dung lượng trước khi mở, tự so `rộng × cao` trước `load()`, đổi `DecompressionBombWarning` thành lỗi, bắt `(OSError, ValueError, SyntaxError, EOFError, struct.error)` + `DecompressionBombError` quanh cả `open` lẫn `load` (`process.py:184-219`); WebP đọc cỡ khung trước khi mở (`:160-181`); `formats` đúng 4 định dạng, không `"MPO"`. Test thêm: `test_bien_gioi_han_diem_anh_dung_bang_qua_mot_bi_chan` (đúng bằng giới hạn qua, hơn 1 điểm ảnh bị chặn, 4 định dạng), `test_bom_png_that_khong_doi_gioi_han_bi_chan_truoc_khi_giai_ma` (PNG 9.000 × 9.000 dưới 10 KB, `load()` không được gọi), `test_bom_jpeg_khai_kich_thuoc_lon_bi_chan`, `test_gia_duoi_qua_thu_vien_anh_nhan_theo_noi_dung_cau_loi_khong_lo_duong_dan` (qua `ImageLibrary`: PNG đuôi `.jpg` dùng được; GIF, BMP, chữ, HTML giả đuôi bị từ chối; câu lỗi không có tên thư mục khách, không có `/` hay `\`), `test_heic_cut_o_nhieu_diem_chi_bao_cau_co_dinh` (7 điểm cắt × 3 hàm), `test_dot_bien_ngau_nhien_ca_file_khong_lot_loi_tho` (4 định dạng).
-  - Bom HEIC: dùng test của Thợ Máy (hạ giới hạn, HEIC cụt chỉ hỏng lúc `load` mà vẫn ra câu "quá nhiều điểm ảnh", tức chặn trước khi giải mã). Không dựng được HEIC khai kích thước lớn rẻ: sửa hộp `ispe` thì pillow-heif vẫn lấy cỡ thật, ảnh bị báo hỏng (an toàn).
+  - Bom HEIC: dùng test của Thợ Máy (hạ giới hạn, HEIC cụt chỉ hỏng lúc `load` mà vẫn ra câu "quá nhiều điểm ảnh", tức chặn trước khi giải mã). Không dựng được HEIC khai kích thước lớn rẻ: sửa hộp `ispe` thành 10.000 × 9.000 thì pillow-heif vẫn báo cỡ thật 64 × 48, ảnh bị báo hỏng (an toàn).
 - [x] **YC2 xoay → Orientation = 1 → cạnh dài 1600 → WebP kèm EXIF lọc 2A.** `test_xoay_dung_ca_8_huong_voi_png_webp_heic` (24 trường hợp × 3 loại ảnh ra, bổ sung JPEG của Thợ Máy), `test_2a_giu_bo_dung_the_voi_moi_dinh_dang` (JPEG/PNG/WebP/HEIC: đếm đủ thẻ giữ, thẻ bỏ gồm số seri thân máy và ống kính, `CameraOwnerName`, MakerNote, IFD1, `Artist`, `Software`, `ImageDescription` có địa chỉ, `Copyright`, `HostComputer`, `UserComment`, `ImageUniqueID`, `LensModel`, 2 thẻ GPS chữ tự do).
 - [x] **YC3 / F2 GPS đúng giá trị sau nén.** `test_f2_gps_dung_tung_gia_tri_moi_dinh_dang_ban_cau_do_cao` (32 trường hợp: 17 thẻ GPS đọc lại độc lập phải **bằng** ảnh gốc; tọa độ báo cho người dùng đúng dấu), `test_f2_gps_dung_gia_tri_moi_cach_viet_exif` (24 trường hợp: EXIF MM/II, độ-phút-giây, phút thập phân, độ thập phân), `test_mpo_giu_gps_khung_dau_ban_ai_sach`. Lớp kiểm sau nén so giá trị (`process.py:695-721`). Một ngoại lệ hiếm: SL-T049-1.
 - [x] **YC4 / A3 bản AI dựng lại từ điểm ảnh, không metadata.** `Image.frombytes` (`:560`), lưu JPEG chỉ với `quality` (`:665`), kiểm danh sách khối (`jpeg_layout`). Test thêm: `test_ban_ai_moi_loai_nguon_qua_prepare_images` (11 loại nguồn: JPEG/PNG/WebP/HEIC có EXIF + GPS + XMP + COM + ICC chở chữ trong `desc`, CMYK, PNG 16 bit, MPO, WebP động, HEIC trong suốt, PNG bảng màu, ảnh chụp màn hình; bản AI và ảnh xem trước không có `Exif`, `ICC_PROFILE`, `acsp`, `GPS`, XMP, chữ trong hồ sơ màu), `test_ban_ai_toi_ca_3_hang_dung_byte_khong_metadata` (12 trường hợp: 4 nguồn × Claude/ChatGPT/Gemini, thư viện thật + mạng giả: byte tới máy chủ đúng bằng byte đã kiểm, phần còn lại của yêu cầu không có tọa độ, tên khách, số seri, hãng/đời máy), đối chứng `test_nguon_con_metadata_thi_bo_kiem_t050_tu_choi` và `test_anh_dang_web_co_gps_khong_bao_gio_qua_bo_kiem_gui_ai` (bộ kiểm T-050 chạy thật, không "cho qua hết").
@@ -83,7 +89,7 @@ $ uv run pytest tests/test_soi_loi_t049.py tests/test_pillow_heif_setup.py -q
 - **Tái hiện:** ảnh JPEG có `GPSLatitudeRef = "s"`, `GPSLongitudeRef = "w"` (chữ thường, sai chuẩn EXIF) kèm vĩ độ, kinh độ hợp lệ → `make_web_image`.
 - **Mong đợi:** giữ đúng bán cầu (chuẩn hóa thành `S`/`W`), hoặc bỏ cả GPS và báo `_NOTICE_GPS_BROKEN` như khi tọa độ hỏng.
 - **Thực tế:** `_valid` chỉ nhận chữ hoa (`process.py:366`), `_pick` bỏ 2 thẻ ref (`:385-386`); `_coordinates` coi thiếu ref là Bắc/Đông (`:412-431`); lớp kiểm sau nén so với **phần đã lọc** nên vẫn qua (`:718`). Ảnh ra có vĩ độ, kinh độ mà không có ref: mọi trình đọc hiểu là Bắc/Đông, `web.gps` báo `(10.776, 106.687)` thay vì `(-10.776, -106.687)`, `notice` rỗng.
-- **Ảnh hưởng:** chỉ với ảnh do phần mềm ghi sai chuẩn; ảnh ở Việt Nam (Bắc/Đông) không đổi nghĩa. Cùng loại: `GPSAltitudeRef` sai kiểu bị bỏ thì độ cao dưới mặt biển thành trên mặt biển.
+- **Ảnh hưởng:** chỉ với ảnh do phần mềm ghi sai chuẩn; ảnh ở Việt Nam (Bắc/Đông) không đổi nghĩa. Cùng loại (suy luận, chưa dựng được file thử vì Pillow luôn ghi thẻ này đúng kiểu): `GPSAltitudeRef` sai kiểu bị bỏ thì độ cao dưới mặt biển thành trên mặt biển.
 - **Gợi ý:** nếu ảnh gốc có thẻ ref (1, 3, 5) mà giá trị bị loại thì coi như GPS hỏng (bỏ cả khối, báo người dùng), hoặc chuẩn hóa chữ hoa trước khi kiểm.
 
 ### SL-T049-2 (Thấp): Pillow < 13 nhưng ảnh xem trước có sẵn trong cache vẫn được trả
@@ -98,19 +104,18 @@ $ uv run pytest tests/test_soi_loi_t049.py tests/test_pillow_heif_setup.py -q
 
 - **Tái hiện** (test điều khiển thứ tự 2 luồng bằng `threading.Event`, không phụ thuộc may rủi): luồng A vào khối `catch_warnings` ở `process.py:195`, luồng B vào khối, A ra khối, B ra khối.
 - **Mong đợi:** `warnings.filters` sau khi cả hai xong giống hệt trước.
-- **Thực tế:** còn thừa `('error', None, DecompressionBombWarning, None, 0)` cho **cả chương trình**: mọi chỗ khác dùng Pillow (ví dụ `st.image`) gặp ảnh 89–179 triệu điểm ảnh sẽ nổ lỗi thay vì cảnh báo. Trong lúc B còn trong khối, bộ lọc của B bị A gỡ mất.
-- **Ảnh hưởng:** Thợ Máy đã nêu là suy luận (Rủi ro số 3); nay tái hiện được. Không mở lỗ bảo mật: phép so `rộng × cao` với 80 triệu (`:199-201`) và đọc cỡ khung WebP trước (`:190-192`) vẫn chặn trước ngưỡng cảnh báo 89,5 triệu của Pillow. Streamlit chạy mỗi phiên trình duyệt một luồng, nên mở 2 tab cùng lúc là gặp.
+- **Thực tế:** còn thừa `('error', None, DecompressionBombWarning, None, 0)` cho **cả chương trình**: mọi chỗ khác dùng Pillow (ví dụ `st.image`) gặp ảnh 89–179 triệu điểm ảnh sẽ nổ lỗi thay vì cảnh báo. Ngoài ra (suy luận từ cách `catch_warnings` hoạt động): trong lúc B còn trong khối, bộ lọc của B bị A gỡ mất.
+- **Ảnh hưởng:** Thợ Máy đã nêu là suy luận (Rủi ro số 3); nay tái hiện được. Không mở lỗ bảo mật: phép so `rộng × cao` với 80 triệu (`:199-201`) và đọc cỡ khung WebP trước (`:190-192`) vẫn chặn trước ngưỡng cảnh báo 89,5 triệu của Pillow. Streamlit chạy mỗi phiên trình duyệt một luồng, nên 2 tab mở ảnh đúng cùng lúc là có thể gặp.
 - **Gợi ý:** bọc khối mở ảnh bằng một `threading.Lock` của module (vẫn giữ điều kiện 2 Lá Chắn T-047 "đổi cảnh báo thành lỗi"), hoặc Lá Chắn xét bỏ bộ lọc vì đã có phép so riêng.
 
 ## Rủi ro và điểm cần chú ý
 
 1. **Chưa thử ảnh thật của chủ dự án** (iPhone HEIC, ảnh Android, MakerNote thật, ảnh MPO của iPhone, dung lượng WebP thật): Chỉ Huy làm riêng trên máy, không commit ảnh.
-2. JPEG có **hai khối EXIF** (khối đầu không GPS, khối sau có GPS): app chỉ đọc khối đầu nên ảnh ra không GPS và không báo. Pillow, exiftool, WordPress đều đọc khối đầu nên đây là cách hiểu chuẩn; ghi lại để Chỉ Huy biết khi thử ảnh đã qua phần mềm sửa ảnh. Tương tự PNG có cả `eXIf` lẫn "Raw profile type exif": `eXIf` thắng.
-3. PNG **xám 16 bit có màu trong suốt** (`tRNS`): điểm trong suốt thành đen (không lót trắng) ở bản AI và mất trong suốt ở ảnh web. Rất hiếm (ảnh công trình không có dạng này), không lập lỗi.
+2. JPEG có **hai khối EXIF** (khối đầu không GPS, khối sau có GPS): app chỉ đọc khối đầu nên ảnh ra không GPS và không báo. Đây là cách Pillow đọc (đã thử); trình đọc khác (exiftool, WordPress) chưa thử. Ghi lại để Chỉ Huy biết khi thử ảnh đã qua phần mềm sửa ảnh. Tương tự PNG có cả `eXIf` lẫn "Raw profile type exif": `eXIf` thắng (PNG chỉ có "Raw profile type exif" thì GPS vẫn giữ, đã thử).
+3. PNG **xám 16 bit có màu trong suốt** (`tRNS`): điểm trong suốt thành màu đen ở cả ảnh web (mất trong suốt) lẫn bản AI (không lót trắng), đã thử. Rất hiếm (ảnh công trình không có dạng này), không lập lỗi.
 4. Thẻ GPS chữ tự do còn giữ: `GPSSatellites`, `GPSMapDatum` (≤ 64 ký tự ASCII); Thợ Máy đã bỏ `GPSProcessingMethod`, `GPSAreaInformation`. Máy thật ghi kiểu `WGS-84`, `05`; Lá Chắn xét có cần bỏ luôn không (2A giữ GPS).
 5. `_cache_dir_is_ignored` coi mọi thư mục **ngoài** thư mục dự án là an toàn để ghi cache. Hiện thư mục cache cố định trong `data/`; nếu phiếu giao diện/cấu hình (T-056, T-062) cho đặt thư mục cache thì phải chặn đặt vào thư mục ảnh (Drive), vì 3A: app không ghi gì vào Drive.
 6. Ghi cho người viết test sau: **Windows Defender chặn mở file** có chuỗi PHP kiểu webshell (`<?php system(...)`), `os.open` báo `Errno 22`; test giả đuôi trên ổ dùng chữ thường.
-7. Lượt chạy toàn bộ ở trên chạy cùng lúc với agent khác trên máy; xem mục Bằng chứng về test quá giờ (nếu có).
 
 ## Đề xuất
 
