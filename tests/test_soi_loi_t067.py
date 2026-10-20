@@ -95,7 +95,9 @@ REF_SAI = {
     "vi-do-la-so": (G.GPSLatitudeRef, "1"),
     "vi-do-hai-chu": (G.GPSLatitudeRef, "SS"),
     "vi-do-chu-khac": (G.GPSLatitudeRef, "X"),
-    "do-cao-2": (G.GPSAltitudeRef, b"\x02"),
+    # Không dùng 2, 3: ExifTool (bảng GPS hiện hành) ghi 2, 3 là "mức nước biển" (Exif 3.0), xem
+    # ghi nhận trong báo cáo Soi Lỗi T-067. 4 và 255 sai ở mọi phiên bản.
+    "do-cao-4": (G.GPSAltitudeRef, b"\x04"),
     "do-cao-ff": (G.GPSAltitudeRef, b"\xff"),
     "do-cao-hai-byte": (G.GPSAltitudeRef, b"\x00\x01"),
     "huong-di-t-thuong": (G.GPSTrackRef, "t"),
@@ -123,7 +125,7 @@ def test_ref_sai_khuon_nhieu_kieu_bo_ca_khoi_gps_va_bao(ten):
 
 @pytest.mark.parametrize("dinh_dang", ["PNG", "WEBP", "HEIF"])
 @pytest.mark.parametrize(
-    "ten", ["vi-do-s-thuong", "vi-do-co-dau-cach", "do-cao-2", "huong-di-t-thuong"]
+    "ten", ["vi-do-s-thuong", "vi-do-co-dau-cach", "do-cao-4", "huong-di-t-thuong"]
 )
 def test_ref_sai_khuon_moi_dinh_dang_bo_ca_khoi_gps_va_bao(dinh_dang, ten):
     _khong_con_gps(process.make_web_image(_nguon_ref_sai(dinh_dang, ten)))
@@ -191,6 +193,53 @@ def test_ref_ghi_kieu_ascii_mot_ky_tu_khong_null_van_giu():
     web = process.make_web_image(data)
     assert _gps(web.data) == goc
     _kiem_toa_do(web, goc)
+
+
+def _exif_khong_toa_do(the, gia_tri):
+    """Máy tắt định vị: khối GPS chỉ có phiên bản và một thẻ phụ (không có vĩ độ, kinh độ)."""
+    exif = Image.Exif()
+    exif[ExifTags.Base.Make] = "samsung"
+    g = exif.get_ifd(ExifTags.IFD.GPSInfo)
+    g[G.GPSVersionID] = b"\x02\x03\x00\x00"
+    g[the] = gia_tri
+    return exif.tobytes()
+
+
+def _gps_khong_toa_do(the, gia_tri):
+    data = _nguon("JPEG", _exif_khong_toa_do(the, gia_tri))
+    goc = _gps(data)
+    assert goc[the] == gia_tri
+    assert G.GPSLatitude not in goc and G.GPSLongitude not in goc
+    web = process.make_web_image(data)
+    assert web.gps is None and _gps(web.data) == {}  # không có vị trí nào để giữ
+    return web
+
+
+@pytest.mark.parametrize(("the", "gia_tri"), [(G.GPSAltitudeRef, b"\x00"), (G.GPSSpeedRef, "K")])
+def test_khong_co_toa_do_ref_phu_dung_khuon_khong_bao_hong(the, gia_tri):
+    assert _gps_khong_toa_do(the, gia_tri).notice == ""
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="SL-T067-1: ảnh không có tọa độ (máy tắt định vị) mà có thẻ Ref phụ sai khuôn bị báo "
+    "'GPS hỏng'; T-049 chỉ báo khi ảnh gốc có ghi tọa độ (process.py:502-507)",
+)
+@pytest.mark.parametrize(
+    ("the", "gia_tri"),
+    [
+        (G.GPSSpeedRef, "k"),
+        (G.GPSAltitudeRef, b"\x04"),
+        (G.GPSImgDirectionRef, "t"),
+        (G.GPSDestLatitudeRef, "s"),
+    ],
+)
+def test_khong_co_toa_do_ma_ref_phu_sai_khuon_khong_bao_hong(the, gia_tri):
+    # Như ``test_khoi_gps_khong_co_toa_do_thi_bo_khong_bao_hong`` (T-049): không có vị trí để giữ
+    # thì không báo "hỏng". Thẻ Ref phụ sai khuôn ở đây không làm sai vị trí nào (không có vị trí);
+    # câu "Thông tin GPS của ảnh gốc bị hỏng" làm chủ dự án tưởng máy ghi định vị lỗi.
+    assert _gps_khong_toa_do(the, gia_tri).notice == ""
 
 
 # ----- LC-T049-2: PreviewCache.get kiểm Pillow trước cache ------------------------------------
