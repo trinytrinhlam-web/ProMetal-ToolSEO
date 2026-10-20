@@ -9,7 +9,7 @@ Dự án có **hai Chỉ Huy** chạy ở **hai tài khoản Claude khác nhau**
 | Tên trong file này | Ở đâu |
 |---|---|
 | **Chỉ Huy A** | Claude Desktop (Code) trên máy chủ dự án, thư mục `D:\ProMetal-ToolSEO\ProMetal-ToolSEO` |
-| **Chỉ Huy B** | Tài khoản Claude thứ hai của chủ dự án. Phiên "Điều phối" trên Claude Code cloud (claude.ai/code), các agent là phiên con dưới nó |
+| **Chỉ Huy B** | Tài khoản Claude thứ hai của chủ dự án. Trước 2026-10-20: phiên "Điều phối" trên Claude Code cloud (claude.ai/code). **Từ 2026-10-20: Claude Desktop (Code) trên chính máy Windows của chủ dự án**, dùng chung repo `D:\ProMetal-ToolSEO\ProMetal-ToolSEO` và các worktree `D:\ProMetal-ToolSEO\wt-T-xxx` với A; agent là phiên con dưới phiên B |
 
 Nếu bạn là Chỉ Huy mới và không chắc mình là A hay B, hỏi chủ dự án rồi ghi vào bảng trên.
 
@@ -28,28 +28,32 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy A**, từ 2026-10-17 07:31 (chủ dự án yêu cầu A làm tiếp việc dở của B). Tiếp quản **không có bàn giao**: B dừng sau 2026-10-16 14:19, bảng "Đang làm dở" bên dưới vẫn là bảng của B.
+**Chỉ Huy B**, từ 2026-10-20 08:38 (chủ dự án báo A đã dừng, giao B nhận quyền). Tiếp quản **không có bàn giao**: commit cuối của A lúc 08:11, file sửa cuối trong worktree lúc 08:14.
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi agent một git worktree trên máy chủ dự án (`D:\ProMetal-ToolSEO\wt-T-xxx`), đẩy lên nhánh `team/T-xxx`.
+Chỉ Huy B, cập nhật 2026-10-20 08:38. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-036](tickets/T-036-meta-title-description-slug.md) Meta title, description, slug (GĐ4) | đã gộp (`f11ba28`), nhánh đã xóa | ✅ 08:00 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.291 qua, 0 hỏng) | Điều kiện đã ghi vào phiếu T-041 (có ngoại lệ sửa `meta.py`) và T-042 |
-| [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) Danh sách bài đã đăng, cache (GĐ4) | đã gộp (`914ac68`), nhánh đã xóa | ✅ 08:11 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, gộp vào `main` (Windows 5.537 qua, 0 hỏng) | Điều kiện đã ghi vào T-042, T-039, T-041 |
-| [T-046](tickets/T-046-thiet-ke-giai-doan-3.md) Thiết kế Giai đoạn 3 (ảnh) | đã gộp (`de65bdb`), nhánh đã xóa | ✅ 07:48 Lá Chắn rút gọn ĐẠT, gộp vào `main` | **Chờ chủ dự án trả lời 5 câu** (mục 8 báo cáo T-046) rồi lập phiếu G3-1 → G3-10 (số thật từ T-047), kèm 11 góp ý của Lá Chắn (`T-046-la-chan.md`) |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) Ghi meta SEO lên nháp (GĐ4) | `team/T-042` (`dab6e86`) | Thợ Máy 3 lượt (lượt 3: 6.984 qua, 0 hỏng); Soi Lỗi 2 lượt. ⏳ 18:03 **Lá Chắn đang kiểm bản cuối** | ĐẠT thì gộp; sau đó phiếu thử thật một bài nháp với chủ dự án |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) → [T-041](tickets/T-041-buoc-seo-that.md) (GĐ4) | chưa có | Phiếu đã lập; đã ghi điều kiện Lá Chắn T-036, T-037 | T-039 giao sau khi T-045 gộp (cùng thư mục `seo_app/content/`) |
-| [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) Chữ từ WordPress hiện an toàn | đã gộp (`cb9cd47`), nhánh đã xóa | ✅ 07:53 Lá Chắn rút gọn ĐẠT, gộp vào `main` (Windows 5.624 qua, 0 hỏng) | LC-T044-1 (client hỏng khi dữ liệu sai kiểu) đã ghi vào T-042 |
-| [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) Bộ lọc hồ sơ sau T-043 | `team/T-045` (`f23a78b`) | ✅ Thợ Máy xong; Soi Lỗi **ĐẠT** (fuzz 300.000 tài liệu: 0 dòng có nhãn tới AI; 2 lỗi Thấp có từ trước SL-T045-1/2). ⏳ 07:53 **Lá Chắn đang kiểm** | ĐẠT thì gộp; SL-T045-1/2: phiếu theo dõi hoặc sổ rủi ro theo Lá Chắn |
-| `main` trên Windows | `a23f764` | ✅ 07:43: **4.867 qua, 0 hỏng**, 10 bỏ qua (chỉ chạy trên Mac/Linux), 21 xfail; ruff sạch. Các phiếu B gộp (T-019, T-025, T-031, T-032, T-034, T-043) đều chạy được trên Windows | Không cần làm gì |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | Soi Lỗi lượt 2 đạt có điều kiện (`d1b6039`). Lá Chắn của A mới đẩy khung biên bản (08:02), chưa kiểm gì | B gọi lại **Lá Chắn T-048** |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`f947e30`) | Soi Lỗi đạt có điều kiện (SL-T050-1, -2 Trung bình). Thợ Máy lượt 2 của A đang sửa `seo_app/ai/base.py` thì dừng, chưa commit | B đẩy phần dở lên nhánh, gọi tiếp **Thợ Máy T-050 lượt 2** |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`7a4c581`) | Thợ Máy xong (7.172 qua). Soi Lỗi rút gọn của A đang viết `tests/test_soi_loi_t058.py` thì dừng, chưa commit | B đẩy phần dở lên nhánh, gọi tiếp **Soi Lỗi T-058**; rồi Lá Chắn; gộp xong Chỉ Huy mở app thử mọi trang |
+| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong | Soi Lỗi rút gọn, Lá Chắn rút gọn khi có chỗ trống |
+| Chờ phiếu trước | | T-049 (sau T-058), T-052 (sau T-048), T-062 (sau T-050, T-051), T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | |
+| `main` | `ffaa1e6` | Windows 7.170 qua, 0 hỏng (sau gộp T-042) | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 08:38 · Chỉ Huy B tiếp quản từ Chỉ Huy A, không có bàn giao
+
+- Chủ dự án báo A đã dừng, giao B nhận quyền. `main` = `ffaa1e6`, khớp GitHub.
+- **Đổi chỗ chạy của B:** từ hôm nay B chạy trong Claude Desktop trên chính máy Windows của chủ dự án (bảng "Hai Chỉ Huy" đã sửa). B dùng chung các worktree `wt-T-xxx` với A, chạy được test Windows, và thấy được file A sửa dở chưa commit.
+- Lúc nhận có 4 worktree: T-048 sạch; T-050 có `seo_app/ai/base.py` sửa dở (+47 −17, Thợ Máy lượt 2); T-058 có file mới `tests/test_soi_loi_t058.py` (Soi Lỗi rút gọn); T-051 sạch. B đẩy phần dở của T-050, T-058 lên nhánh rồi gọi tiếp Lá Chắn T-048, Thợ Máy T-050 lượt 2, Soi Lỗi T-058.
 
 ### 2026-10-20 07:46 · Chỉ Huy A
 
