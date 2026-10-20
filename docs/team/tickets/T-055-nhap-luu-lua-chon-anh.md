@@ -49,3 +49,4 @@ F1, F3; góp ý Lá Chắn T-046 số 11.
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-055`, tạo từ `main`.
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048**: `ImageRef` đọc từ nháp phải tạo lại bằng `ImageRef(...)` rồi đi qua `ImageLibrary.stat_image`/`read_image_bytes`, không tin số thứ tự gốc lưu trong nháp (góp ý Lá Chắn T-046 số 11); khóa lựa chọn theo `ImageRef` của kết quả quét.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-052** (điều kiện 3): thẻ hay nguồn ảnh lưu trong nháp là dữ liệu chưa tin cậy; khi mở nháp dựng lại qua `ImageTags(...)`; nguồn ảnh theo hướng an toàn: là ảnh AI nếu nháp ghi AI **hoặc** `resolve` hiện tại nói AI; nháp không bao giờ kéo ảnh AI về "ảnh thật".
