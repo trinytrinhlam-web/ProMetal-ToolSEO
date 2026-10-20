@@ -585,14 +585,6 @@ def _bounded_view_file(path: Path) -> None:
         conn.execute("INSERT INTO info VALUES ('schema_version', '1')")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-9: file lưu thẻ (dữ liệu chưa tin cậy) mà manual_tags là một VIEW, không phải "
-        "bảng, vẫn qua _is_healthy; view đệ quy không giới hạn làm resolve/list quét vô hạn "
-        "(treo). App chỉ bao giờ tạo manual_tags là TABLE, nên health check phải coi VIEW là hỏng"
-    ),
-)
 def test_sl_t052_9_health_check_rejects_view_posing_as_table(tmp_path):
     path = tmp_path / "image_tags.sqlite"
     _bounded_view_file(path)
@@ -605,14 +597,6 @@ def test_sl_t052_9_health_check_rejects_view_posing_as_table(tmp_path):
     assert _is_healthy(path) is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-10: file bị thay giữa lúc chạy bằng SQLite HỢP LỆ nhưng thiếu bảng manual_tags "
-        "('no such table') ra câu lỗi chung và KẸT mãi; _ready chỉ được đặt lại khi lỗi là 'hỏng', "
-        "nên không khôi phục như ca file rác (NOTADB) ở test_file_replaced_by_garbage..."
-    ),
-)
 def test_sl_t052_10_valid_sqlite_without_table_swapped_in_recovers(store):
     """Như ``test_file_replaced_by_garbage_while_running_recovers`` nhưng file mới là SQLite HỢP
     LỆ, chỉ thiếu bảng manual_tags: hiện 'no such table' ra câu lỗi chung và KẸT mãi (không khôi
