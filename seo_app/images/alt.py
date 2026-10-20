@@ -7,8 +7,8 @@ và bấm duyệt trước khi tải ảnh lên (giao diện làm ở phiếu sa
 An toàn (security.md A1–A3):
 
 - Chỉ gửi bytes của bản ảnh gửi AI (đã bỏ metadata ở T-049; ``prepare_images`` kiểm lại), không
-  gửi tên file, đường dẫn. Thẻ ảnh chỉ nhận chữ ngắn đã chuẩn hóa, bỏ giá trị trông như đường
-  dẫn hay tên file, đặt trong khung ``<du_lieu_tham_khao>``.
+  gửi tên file, đường dẫn. Thẻ ảnh chỉ nhận chữ ngắn đã chuẩn hóa NFKC (chữ Latin, số, vài dấu
+  câu), bỏ giá trị trông như đường dẫn hay tên file, đặt trong khung ``<du_lieu_tham_khao>``.
 - Chữ nhìn thấy trong ảnh (biển hiệu, giấy tờ) cũng là dữ liệu, không phải chỉ thị. Việc alt
   luôn chạy không có công cụ tìm web, dù ``config/ai.toml`` có bật ``web_search``.
 - Kết quả AI là dữ liệu chưa tin cậy: qua ``clean_ai_text`` (bỏ thẻ HTML, link), gộp một dòng,
@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+import unicodedata
 from collections.abc import Mapping
 from typing import Protocol
 
@@ -92,20 +93,52 @@ AI_IMAGE_NOTE = (
     "thật của Pro-Metal, không gắn địa điểm hay khách hàng."
 )
 
-# Giá trị thẻ trông như đường dẫn hay tên file: không gửi AI (tên thư mục, tên file có thể chứa
-# tên hoặc địa chỉ khách, security A3).
+# Ký tự điều khiển (Unicode loại Cc: NUL, BEL, ESC, DEL…): đổi thành dấu cách rồi mới gộp
+# khoảng trắng, cả trong thẻ gửi AI lẫn alt/chú thích AI trả về (Soi Lỗi SL-T050-3).
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+# Thẻ và từ khóa gửi AI (security A3): tên thư mục, tên file, đường dẫn có thể chứa tên hoặc địa
+# chỉ khách, tên tài khoản máy. Kiểm trên đúng chữ sẽ tới AI (Soi Lỗi SL-T050-1): khung dữ liệu
+# chạy NFKC, nên chuẩn hóa NFKC trước khi kiểm ("C：＼Users" toàn chiều rộng thành "C:\Users").
+# Ký tự theo DANH SÁCH CHO PHÉP: chữ Latin (gồm chữ tiếng Việt), số 0–9, dấu cách và vài dấu câu
+# thường gặp. Có ký tự nào khác thì bỏ cả thẻ: "\", "~", "@", "<", gạch chéo giả không đổi qua
+# NFKC ("∕ ⁄ ⧸ ╱"), dấu hai chấm/chấm giả, biểu tượng, chữ hệ khác…
+_TAG_PUNCTUATION = frozenset(" -–—,.:;()[]&+'\"‘’“”/#%!?_°×")
+# Trông như đường dẫn hay tên file (kiểm sau NFKC và danh sách ký tự): ổ đĩa ("C:", "D:/"),
+# địa chỉ ("https://", "file:/"), "/" mở đầu hay kết thúc một cụm ("/Users", "Anh/"), "./",
+# "../", đuôi file; và từ hai dấu "/" liền chữ trở lên ("Anh/Khach/IMG"). Một dấu "/" giữa hai
+# chữ ("24/7", "1/2 cánh", "Cổng/hàng rào") là chữ thường, được giữ (Soi Lỗi SL-T050-4).
 _PATH_LIKE = re.compile(
-    r"[\\/]|^[A-Za-z]:|^~|://|\.(?:jpe?g|png|webp|gif|heic|heif|tiff?|bmp|dng|raw|lnk)$",
+    r"^[a-z]:|:/|(?<!\S)/(?=\S)|(?<=\S)/(?!\S)|\.\.?/"
+    r"|\.(?:jpe?g|png|webp|gif|heic|heif|tiff?|bmp|dng|raw|lnk|pdf|docx?|xlsx?|mp4|mov|zip|rar)"
+    r"(?![a-z0-9])",
     re.IGNORECASE,
 )
+_TIGHT_SLASH = re.compile(r"(?<=\S)/(?=\S)")
+
+
+def _tag_char_ok(ch: str) -> bool:
+    if "0" <= ch <= "9" or ch in _TAG_PUNCTUATION:
+        return True
+    return ch.isalpha() and unicodedata.name(ch, "").startswith("LATIN ")
+
+
+def _looks_like_path(text: str) -> bool:
+    return bool(_PATH_LIKE.search(text)) or len(_TIGHT_SLASH.findall(text)) > 1
 
 
 def _short_text(value: object, limit: int) -> str:
-    """Chữ một dòng đã chuẩn hóa, bỏ nếu không phải chữ, trông như đường dẫn, hay dài quá."""
+    """Chữ một dòng đã chuẩn hóa NFKC (đúng chữ khung dữ liệu sẽ gửi AI). Bỏ nếu không phải chữ,
+    dài quá ``limit``, có ký tự ngoài danh sách cho phép, hay trông như đường dẫn, tên file."""
     if not isinstance(value, str):
         return ""
-    text = normalize_meta(value)
-    if not text or len(text) > limit or _PATH_LIKE.search(text):
+    text = normalize_meta(_CONTROL_CHARS.sub(" ", unicodedata.normalize("NFKC", value)))
+    if (
+        not text
+        or len(text) > limit
+        or not all(_tag_char_ok(ch) for ch in text)
+        or _looks_like_path(text)
+    ):
         return ""
     return text
 
@@ -182,11 +215,12 @@ def _cut(text: str, limit: int) -> str:
 
 
 def clean_alt_text(text: object, limit: int) -> str:
-    """Chữ AI viết cho alt/caption: chuẩn hóa (NFC, bỏ ký tự vô hình), ``clean_ai_text`` (bỏ thẻ
-    HTML, link; vô hiệu cú pháp link), gộp một dòng, cắt còn tối đa ``limit`` ký tự."""
+    """Chữ AI viết cho alt/caption: chuẩn hóa (NFC, bỏ ký tự vô hình, ký tự điều khiển thành dấu
+    cách), ``clean_ai_text`` (bỏ thẻ HTML, link; vô hiệu cú pháp link), gộp một dòng, cắt còn tối
+    đa ``limit`` ký tự."""
     if not isinstance(text, str):
         return ""
-    text = " ".join(clean_ai_text(normalize_meta(text)).split())
+    text = " ".join(clean_ai_text(normalize_meta(_CONTROL_CHARS.sub(" ", text))).split())
     if len(text) <= limit:
         return text
     # Lọc lại sau khi cắt (hàm lọc chạy lại không đổi gì), rồi chắc chắn không quá ``limit``.

@@ -387,25 +387,19 @@ FULLWIDTH_PATHS = [
     "Anh∕Nha anh Tuan∕IMG_0001",
     "Anh⁄Nha anh Tuan",
 ]
-SL1 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T050-1: lọc đường dẫn trong thẻ không NFKC, ký tự toàn chiều rộng lách qua",
-)
+# Thợ Máy lượt 2 đã sửa (NFKC trước khi lọc, danh sách cho phép ký tự): gỡ dấu xfail.
 
 
-@SL1
 @pytest.mark.parametrize("value", FULLWIDTH_PATHS)
 def test_fullwidth_or_lookalike_path_tags_are_dropped(value):
     assert reference_lines({"Thư mục": value}) == []
 
 
-@SL1
 @pytest.mark.parametrize("value", FULLWIDTH_PATHS[:3])
 def test_fullwidth_path_keyword_is_dropped(value):
     assert reference_lines(None, keyword=value) == []
 
 
-@SL1
 def test_fullwidth_path_tag_never_reaches_ai_as_ascii_path(network):  # noqa: F811
     network.reply = lambda request: ok_response(
         "anthropic", '{"alt": "Cổng inox hai cánh", "caption": ""}'
@@ -507,7 +501,7 @@ def test_non_text_tags_are_dropped(value):
 
 
 # --- SL-T050-4: bộ lọc bỏ mọi thẻ/từ khóa có dấu "/", kể cả chữ thường gặp, không báo gì.
-@pytest.mark.xfail(strict=True, reason="SL-T050-4: từ khóa/thẻ có '/' bị bỏ âm thầm")
+# Thợ Máy lượt 2 đã sửa: gỡ dấu xfail.
 @pytest.mark.parametrize(
     ("tags", "keyword"),
     [({}, "sửa cửa cuốn 24/7"), ({"Hạng mục": "Cổng/hàng rào inox"}, ""),
@@ -518,7 +512,7 @@ def test_ordinary_text_with_slash_is_kept(tags, keyword):
 
 
 # --- SL-T050-3: ký tự điều khiển (NUL, BEL, ESC…) không bị bỏ khỏi thẻ.
-@pytest.mark.xfail(strict=True, reason="SL-T050-3: ký tự điều khiển còn trong thẻ gửi AI")
+# Thợ Máy lượt 2 đã sửa: gỡ dấu xfail.
 def test_control_characters_are_removed_from_tags():
     (line,) = reference_lines({"Hạng mục": "Cổng\x00inox\x07\x1b[31m"})
     assert not any(unicodedata.category(ch) == "Cc" for ch in line)
@@ -586,7 +580,7 @@ def test_wrong_shape_from_provider_is_error(value):
 
 # --- SL-T050-3: ký tự điều khiển (NUL, BEL, ESC) AI trả về còn nguyên trong alt/caption.
 # Alt đi vào thuộc tính HTML và REST WordPress; schema (T-038) coi Cc là lỗi chặn.
-@pytest.mark.xfail(strict=True, reason="SL-T050-3: ký tự điều khiển còn trong alt/caption")
+# Thợ Máy lượt 2 đã sửa: gỡ dấu xfail.
 @pytest.mark.parametrize("text", ["Cổng\x00inox", "Cổng inox\x07", "Cổng \x1b[31minox", "Cổng\x7f"])
 def test_control_characters_are_removed_from_alt(text):
     for limit in (ALT_MAX_LENGTH, CAPTION_MAX_LENGTH):
