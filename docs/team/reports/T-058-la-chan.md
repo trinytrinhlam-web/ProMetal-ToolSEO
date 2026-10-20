@@ -2,7 +2,7 @@
 
 > **Model:** chạy tạm **Claude Opus 5.5** vì tài khoản này không dùng được Claude Fable (chủ dự án đã duyệt). Cần kiểm lại bằng Fable sau 01/11.
 >
-> **BẢN NHÁP (phần 1/3):** đã có nguồn gốc gói, đối chiếu khuyến cáo, lỗi phát hiện. Danh sách kiểm, kết quả công cụ và kết luận đang viết tiếp.
+> **BẢN NHÁP (phần 2/3):** đã có nguồn gốc gói, đối chiếu khuyến cáo, lỗi phát hiện, 19 dòng kiểm, kết quả công cụ. Kết luận và điều kiện đang viết tiếp (chờ pytest lượt 2).
 
 | Mục | Nội dung |
 |---|---|
@@ -69,3 +69,48 @@ Không có lỗi Nghiêm trọng, Cao hay Trung bình. Bốn lỗi Thấp, đề
 | LC-T058-4 | Thấp | Ép phiên bản để lại 3 điểm cần nhớ: (1) `<14` sẽ chặn Pillow 14 dù sau này 14 mới có bản vá; (2) `uv pip check` luôn báo 1 xung đột nên dễ quen mắt, bỏ sót xung đột Pillow thật về sau; (3) pip-audit, OSV và kho khuyến cáo chung GitHub **chưa có** khuyến cáo Pillow tháng 10 (mục 2), nên "pip-audit sạch" chưa đủ làm bằng chứng | `pyproject.toml:38` | Không phải lỗ hổng; là rủi ro bảo trì: bản vá mới ra mà không ai nâng | Lượt quét cuối Giai đoạn 3 và mỗi lần đổi `uv.lock`: tra thẳng `gh api repos/python-pillow/Pillow/security-advisories`, xem Streamlit đã cho Pillow 13 chưa (cho rồi thì bỏ override, giữ `pillow>=13.0.0`), xem có Pillow 14 chưa. `uv pip check` chỉ được phép báo đúng dòng `streamlit … <13` |
 
 Câu hỏi của Chỉ Huy "Streamlit gặp Pillow ngoài dải nó khai báo có mở ra lỗ bảo mật nào không": **không thấy lỗ mới.** Streamlit 1.65 chỉ dùng Pillow ở `image_utils.py` (`Image.open`, `fromarray`, `resize(BILINEAR)`, `save`) và ở băm `st.cache_data` (`runtime/caching/hashing.py:48`, `tobytes()` + `getpalette()`). Soi Lỗi đã chạy mọi nhánh này trên 13.0.0 với cảnh báo "sắp bỏ" đổi thành lỗi (60 test), kể cả hai ảnh khác bảng màu ra hai mã băm khác nhau (cache không nhầm ảnh). Ảnh rác vẫn ra `UnidentifiedImageError`, không treo. Chỗ đáng lưu ý duy nhất là LC-T058-2, có từ trước và không phụ thuộc phiên bản.
+
+## Danh sách kiểm tra
+
+Phiếu chỉ đổi `pyproject.toml`, `uv.lock`, thêm 2 file test và 2 báo cáo; **không đổi** `app/`, `seo_app/`, `scripts/`, `config/`, `.env.example`, `.gitignore`, `.streamlit/`, `run.*`, `tests/conftest.py`, `.claude/` (`git diff --stat origin/main...team/T-058 -- <các đường đó>` rỗng). Các dòng về WordPress, AI, đăng nhập vì vậy không áp dụng.
+
+| Mã | Kết quả | Bằng chứng / ghi chú |
+|---|---|---|
+| S1 | Đạt | detect-secrets trên 6 file của diff (kể cả `uv.lock`): 0 kết quả. `git log -p origin/main..team/T-058` lọc `api[_-]?key\|password\|secret\|token`: 0 dòng. Quét mọi file git đang theo dõi: 1 kết quả ở `tests/test_config.py:34` (`"abcd efgh"`, mật khẩu giả có từ trước, ngoài diff) |
+| S2 | Không áp dụng | Không đổi code ứng dụng, không thêm chỗ in lỗi. Ghi chú cho T-049: câu lỗi của Pillow 13 vẫn chứa đường dẫn file (`cannot identify image file '<đường dẫn>'`, như 12.3.0), nên điều kiện 1 của T-047 (báo một câu tiếng Việt cố định, không in đường dẫn hay câu lỗi gốc) vẫn giữ |
+| S3 | Không áp dụng | Không có biến cấu hình mới; `.env.example` không đổi. `PILLOW_ALIGNMENT` là biến của Pillow, **không được** thêm vào `.env.example` hay cấu hình (LC-T058-1) |
+| W1 | Không áp dụng | Không đổi code WordPress |
+| W2 | Không áp dụng | Như trên |
+| W3 | Không áp dụng | Như trên |
+| W4 | Không áp dụng | Như trên |
+| A1 | Không áp dụng | Không đổi prompt hay lớp AI |
+| A2 | Không áp dụng | Như trên |
+| A3 | Không áp dụng | Như trên. Bản ảnh gửi AI (không metadata) là việc của T-049 |
+| U1 | Không áp dụng | Diff không có `unsafe_allow_html`, `st.markdown`, `st.html` (grep phần thêm của `tests/`: 0 dòng) |
+| U2 | Đạt (không đổi) | `.streamlit/config.toml:5` vẫn `address = "localhost"`; không thêm trang. Test mới dựng trang tạm bằng `AppTest.from_function`, chạy trong tiến trình test, không mở cổng |
+| U3 | Không áp dụng | Không đổi đăng nhập |
+| F1 | Đạt (test) | Test mới chỉ ghi vào `tmp_path` (`tests/test_soi_loi_t058.py:285-287, 580-593, 617-628`); còn lại tạo ảnh trong bộ nhớ (`io.BytesIO`). Fixture `media_ra` (`:53-56`) chỉ đọc lại đúng file mà test đưa cho Streamlit. `ASSETS` (`:35`) là thư mục `app/assets` của repo. Code mở ảnh thật thuộc T-049 |
+| F2 | Đạt (đã thử trên 13.0.0) | `Image.MAX_IMAGE_PIXELS` mặc định không đổi (89.478.485, `:610-613`); vượt giới hạn thì cảnh báo, vượt gấp đôi thì lỗi, áp cả PNG lẫn HEIC (`:616-641`); `DecompressionBombError` vẫn **không** là con của `OSError` (`:613`). Pillow 13 thêm kiểm bom ở `seek()` của MPO/DCX/Spider (mục 2). WebP kèm `exif=` giữ đúng **giá trị** GPS, lọc được số seri, tên chủ máy, MakerNote theo 2A (`:449-530`) |
+| F3 | Đạt | Test mới không có `eval`, `exec`, `pickle`, `yaml.load`, `subprocess`; bandit chỉ báo `B101 assert`. File ảnh đọc/ghi dạng nhị phân (không cần `encoding`). Fixture `heif_dang_ky` (`:564-577`) trả lại bảng định dạng của Pillow sau mỗi test, không để HEIF đăng ký lọt sang test khác |
+| D1 | Đạt | Không có gói mới (70 gói, chỉ Pillow đổi bản); nâng Pillow 13 bằng override do chủ dự án chốt 2026-10-20 (`CLAUDE.md`, Quyết định đã chốt). Nguồn PyPI chính thức, mã băm 69/69 khớp, wheel do kho `python-pillow/Pillow` đăng qua Trusted Publishing, file cài nguyên vẹn (mục 1). 40/41 khuyến cáo của 12.3.0 vá ở 13.0.0, đã thấy bản vá trong mã cho các mục chạm đường T-049 (mục 2). pip-audit 0 lỗ hổng, nhưng cơ sở dữ liệu của nó chưa có khuyến cáo tháng 10 (LC-T058-4). Còn GHSA-654x chưa vá, không có đường đi (LC-T058-1) |
+| D2 | Đạt (không đổi) | `.gitignore` không đổi: `.env` (dòng 2), `.env.*` (3), `*service-account*.json` (5), `secrets/` (6), `.pytest_cache/`, `.ruff_cache/` (18-19), `*.sqlite`, `*.sqlite3` (23-24) |
+| D3 | Đạt | Bộ chặn mạng `autouse` (`tests/conftest.py:18-19`) áp cho mọi test, kể cả 62 test mới; grep `requests`, `urllib`, `http`, `socket` trong 2 file test mới: 0 dòng. AppTest chạy trang trong tiến trình test. (Các lệnh tra PyPI, GitHub, OSV ở mục 1–2 là Lá Chắn tự chạy để kiểm, không nằm trong test) |
+
+## Kết quả công cụ quét
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pip-audit 2.10.1 | `uv export --frozen --no-hashes --no-emit-project` → 69 gói ghim (có `pillow==13.0.0`, `pillow-heif==1.8.1`). Nguồn PyPI: `No known vulnerabilities found`. Nguồn OSV (`-s osv`): `No known vulnerabilities found`. Quét thẳng môi trường đã cài (`--path .venv/Lib/site-packages`): `No known vulnerabilities found` (bỏ qua `seo-app` vì là chính dự án) | Có. **Nhưng** cả ba nguồn đều chưa có khuyến cáo Pillow tháng 10 (cũng không báo gì cho 12.3.0), nên bằng chứng chính là tra thẳng kho Pillow (mục 2) |
+| bandit 1.9.4 | `seo_app app scripts` (7.504 dòng): 1 mức Thấp, `B101 assert` ở `seo_app/storage/drafts.py:203` (có từ trước, ngoài diff). 2 file test mới (492 dòng): 94 `B101 assert`, không gì khác | Báo nhầm, xem dưới |
+| detect-secrets 1.5.0 | 6 file của diff: 0. Mọi file git theo dõi: 1 (`tests/test_config.py:34`, giả, có từ trước). Lệnh `--all-files` đúng như `security.md` quét cả `.venv/` (không thuộc repo) và báo 126 file thư viện; đã chạy lại chỉ trên file git theo dõi | Có |
+| Soát lịch sử git | 9 commit của nhánh (`origin/main..HEAD`): 0 dòng khớp. Toàn lịch sử (`git log -p --all`) lọc dạng khóa thật (`sk-ant-`, `sk-proj-`, `AIza…`, `BEGIN … PRIVATE KEY`, `ghp_`, `gho_`): 82 dòng, đều là khóa giả có chữ `khoa-gia`/`KhoaGia` của các phiếu trước (đã xác minh ở các biên bản trước), không dòng nào thuộc T-058. File từng được thêm khớp `.env`/`.json`/`.sqlite`/`.pem`/`.key`: chỉ `.claude/settings.json` (cấu hình, không bí mật) | Có |
+| pytest (Windows) | **Lượt 1** (09:30–09:52, `uv run pytest -q`): `1 failed, 7231 passed, 11 skipped, 27 xfailed, 1 warning in 1334.73s (0:22:14)`. Hỏng: `tests/test_app.py::test_correct_password_opens_home_and_logout_works` → `RuntimeError: AppTest script run timed out after 30(s)` khi chuyển sang trang Cài đặt. Cùng lúc agent khác chạy pytest toàn bộ ở `wt-T-051` (thấy tiến trình khi kiểm), lượt chạy dài gần gấp đôi thường lệ (Soi Lỗi: 11 phút 39 giây). Chạy lại riêng test đó: `1 passed in 7.65s` (phần gọi mất 3,08 giây); cả `tests/test_app.py`: `5 passed in 25.75s`. Test Pillow/HEIC (`test_pillow_version_t058.py`, `test_soi_loi_t058.py`, `test_pillow_heif_setup.py`, `test_soi_loi_t047.py`): `81 passed in 45.28s`. **Lượt 2:** đang chạy | Có. Hỏng do máy quá tải (quá giới hạn 30 giây), không do Pillow: trang Cài đặt không dùng ảnh, chạy riêng qua ngay |
+| ruff 0.16.10 | `uv run ruff check .` → `All checks passed!` | Có |
+| Kiểm thêm (D1) | `uv lock --check` khớp; `uv sync --locked` không đổi gì; `uv pip check` đúng 1 xung đột cố ý (Streamlit `<13`); so mã băm lock với PyPI 69/69; chứng thực PyPI của wheel Windows; `RECORD` 121/121 (Pillow) và 27/27 (pillow-heif) | Có |
+
+## Báo nhầm đã loại
+
+- **bandit B101** (`assert`): cách viết test của pytest. Cảnh báo ở `seo_app/storage/drafts.py:203` có từ trước, không thuộc diff.
+- **detect-secrets `--all-files`**: 126 file báo đều nằm trong `.venv/` hoặc thư mục cache (`.pytest_cache`, `.ruff_cache`, đều bị `.gitignore` chặn), là mã của thư viện (ví dụ một chuỗi bị nhận nhầm là khóa AWS trong `PIL/ImageFont.py`), không thuộc repo.
+- **detect-secrets `tests/test_config.py:34`**: `"abcd efgh"` là mật khẩu giả trong test cấu hình, có từ trước.
+- **`uv pip check` báo `streamlit requires pillow<13`**: cố ý, đúng quyết định của chủ dự án (override).
