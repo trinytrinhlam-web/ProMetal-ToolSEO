@@ -172,3 +172,115 @@ Tham khảo: trước khi có quy tắc mới, tôi đã chạy toàn bộ một
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-20, kiểm lại bản sửa của Thợ Máy)
+
+| Mục | Nội dung |
+|---|---|
+| Kiểm trên | nhánh `team/T-052`, worktree `wt-T-052`, HEAD lượt 2 `937822e` (test lượt 2 đã đẩy) |
+| Code ứng dụng kiểm | `seo_app/images/tags.py`, `seo_app/storage/image_tags.py` tại `f771a0e` (bản sửa lượt 2) |
+
+### Tóm tắt (cho chủ dự án)
+
+Thợ Máy đã sửa **thật** cả 8 lỗi lượt 1: tất cả các bài kiểm "phải hỏng" của lượt 1 nay đều đạt, và Thợ Máy **không** sửa điều kiện kiểm nào của tôi (chỉ gỡ dấu "chờ sửa"). Tôi thử lách bản sửa mới ở mọi hướng phiếu yêu cầu: ảnh AI đặt tên lạ, tên khách có chữ "AI", viết hoa/không dấu/chữ rộng, tỉnh kèm quận, ngày tháng/số thứ tự, liên kết đặt giữa chừng, file SQLite độc, ngày lưu cực trị, số thứ tự gốc lớn.
+
+Tìm thêm **3 lỗi mới, đều Thấp, không có Nghiêm trọng hay Cao**:
+- Một file thẻ bị làm độc theo kiểu "bảng giả" (`manual_tags` là một "khung nhìn" đệ quy) vẫn qua cửa kiểm sức khỏe → có thể làm app treo. `trusted_schema = OFF` mà Thợ Máy thêm **không** chặn được kiểu này.
+- File thẻ bị thay giữa lúc chạy bằng một file SQLite hợp lệ nhưng thiếu bảng thì app kẹt báo lỗi mãi (phải tắt app mới hết), khác với ca file rác thì tự khỏi.
+- Thư mục đặt tên bằng cụm tiếng Việt của AI ("trí tuệ nhân tạo") vẫn bị coi là ảnh thật (danh sách chỉ bắt chữ "AI" và tên công cụ tiếng Anh) → đây là cùng kiểu với lỗi lượt 1 đã sửa, chỉ còn sót cách viết này.
+
+Không lỗi nào làm lộ chữ của tên thư mục ra ngoài. Kết luận: **ĐẠT CÓ ĐIỀU KIỆN** chuyển sang Lá Chắn.
+
+### 1) Xác nhận 8 lỗi lượt 1 đã sửa thật
+
+- **28 ca "phải hỏng" của lượt 1 (SL-T052-1 … 8) nay đều đạt.** Riêng file `tests/test_soi_loi_t052.py`: **51 qua, 1 bỏ qua (symlink), 5 xfail** (5 xfail là 3 lỗi mới bên dưới, SL-T052-9/10/11).
+- **Thợ Máy không đổi điều kiện kiểm của tôi.** `git diff 0848316..f771a0e -- tests/test_soi_loi_t052.py`: chỉ gỡ **8 khối `@pytest.mark.xfail(...)`** (74 dòng xoá, 0 dòng thêm); không một dòng `assert`, `parametrize` hay thân test nào bị thêm/sửa. Tức là các test lượt 1 nay qua bằng chính điều kiện cũ, không phải vì nới lỏng.
+- Đọc lại code sửa: SL-T052-1 nhận dấu hiệu ảnh AI ở mọi chỗ trong tên mọi thư mục dưới gốc và trong tên file (`tags.py:408` `_has_ai_marker`, `:775`, `:859`), có phân biệt dấu ("Ái" không phải AI); SL-T052-5 bắt thêm `OverflowError` khi đọc ngày (`image_tags.py:467`); SL-T052-6 chặn số thứ tự gốc ngoài khoảng SQLite (`_storable`, `:134`); SL-T052-7/8 kiểm symlink/junction/hard link (`st_nlink > 1`) ở **mỗi lần mở**, cả các file `-journal`/`-wal`/`-shm` (`_remove_links`, `:406`).
+
+### 2) Bằng chứng (lệnh + kết quả)
+
+Máy Windows 11, Python 3.12, worktree `wt-T-052`. Theo quy tắc mới, tôi chỉ chạy test liên quan tới phiếu; **toàn bộ pytest do Chỉ Huy chạy khi gộp**.
+
+```
+$ uv run pytest tests/test_images_tags.py tests/test_soi_loi_t052.py tests/test_images_folders*.py \
+    tests/test_ai_images.py -q -p no:cacheprovider -rs      (tại 937822e, 2026-10-20 14:47–14:48 +07)
+849 passed, 8 skipped, 8 xfailed in 47.79s
+
+$ uv run pytest tests/test_soi_loi_t052.py -q -p no:cacheprovider -rsx
+51 passed, 1 skipped, 5 xfailed in 18.28s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- **0 hỏng.** So với lượt 2 của Thợ Máy (849 qua, 8 bỏ qua, 3 xfail): y nguyên 849 qua, 8 bỏ qua; xfail tăng từ 3 lên **8** = 3 ca của T-048 (không thuộc phiếu) + **5 ca lỗi mới** của tôi. Số "qua" không đổi vì test mới đều là `xfail` (lỗi chưa sửa).
+- 8 bỏ qua: 2 ca symlink của phiếu (Windows chưa bật Developer Mode) + 6 ca của T-048 (symlink, tên chỉ tạo được trên Mac/Linux).
+
+### 3) Lỗi mới
+
+| Mã | Mức | Chỗ | Tóm tắt |
+|---|---|---|---|
+| SL-T052-9 | Thấp (F3/sẵn sàng) | `image_tags.py:471–500` (`_is_healthy`) | File thẻ có `manual_tags` là một VIEW (đệ quy) vẫn qua kiểm sức khỏe → `resolve`/`list` quét vô hạn (treo). `trusted_schema = OFF` không chặn |
+| SL-T052-10 | Thấp (sẵn sàng) | `image_tags.py:355–358`, `:370` | File bị thay giữa lúc chạy bằng SQLite hợp lệ thiếu bảng `manual_tags` → kẹt lỗi mãi, không tự khôi phục như ca file rác |
+| SL-T052-11 | Thấp (A3/YC4) | `tags.py:198–227` (`_AI_TOOLS`, `_AI_MARKER_TEXTS`) | Thư mục tên cụm tiếng Việt của AI ("trí tuệ nhân tạo") không nhận là ảnh AI → ảnh AI mang thẻ công trình thật (như SL-T052-1) |
+
+#### SL-T052-9 · Thấp · File thẻ "bảng giả" (VIEW) qua được cửa kiểm sức khỏe → treo
+
+- **Tái hiện:** dựng `data/image_tags.sqlite` là SQLite hợp lệ, trong đó `manual_tags` là một **khung nhìn (VIEW)** có đúng tên 10 cột, thân là truy vấn đệ quy không giới hạn (`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n) SELECT … FROM n`), kèm bảng `info` đúng phiên bản. Gọi `resolve`/`list_manual`.
+- **Mong đợi:** app chỉ bao giờ tạo `manual_tags` là **bảng**; file mà nó là khung nhìn là file lạ/độc → `_is_healthy` phải trả `False` để đổi tên sang một bên (như file hỏng).
+- **Thực tế:** `_is_healthy` trả **`True`** (xác nhận tất định: `sqlite_master` cho thấy `('view','manual_tags')` mà vẫn qua, vì `PRAGMA table_info` cũng liệt kê cột cho khung nhìn). Khi đó `CREATE TABLE IF NOT EXISTS manual_tags` thành không-làm-gì (tên đã tồn tại), rồi mọi `resolve`/`get`/`list` chạy `SELECT … FROM manual_tags` trên khung nhìn đệ quy → **quét vô hạn, ngốn CPU/bộ nhớ, treo**. `PRAGMA trusted_schema = OFF` (Thợ Máy thêm theo góp ý lượt 1) chỉ chặn hàm/bảng-ảo "không vô hại" trong view/trigger, **không** chặn một view đệ quy thuần.
+- **Vì sao Thấp:** phải ghi được file độc vào `data/` trên máy; nhưng chính module coi file này là **dữ liệu chưa tin cậy** (docstring `image_tags.py:11`), và cùng mô hình đó lượt 1 đã nhận SL-T052-5/6 (một dòng/khóa xấu làm sập) là lỗi. Treo nặng hơn sập đã-bắt: nếu T-056 giữ kho trong `st.cache_resource` thì treo luôn luồng Streamlit. Lá Chắn nên cân nhắc nâng mức.
+- **Gợi ý sửa:** `_is_healthy` kiểm `manual_tags` (và `info`) có `type='table'` trong `sqlite_master`; cân nhắc mở file kiểm ở chế độ chỉ-đọc kèm `PRAGMA cell_size_check`, hoặc đặt `progress_handler`/`interrupt` giới hạn khi chạy trên file chưa tin cậy.
+- **Test:** `test_sl_t052_9_health_check_rejects_view_posing_as_table` (dùng view **có giới hạn** để test không treo; khẳng định `_is_healthy` trả `False`). XFAIL.
+
+#### SL-T052-10 · Thấp · File bị thay bằng SQLite hợp lệ thiếu bảng → kẹt lỗi mãi
+
+- **Tái hiện:** `store.set(...)` một lần (file tạo xong, `_ready=True`), xóa file, tạo lại một SQLite **hợp lệ** nhưng chỉ có bảng lạ (`CREATE TABLE bang_la (x)`), rồi gọi `resolve` nhiều lần.
+- **Mong đợi:** như ca file rác (`test_file_replaced_by_garbage_while_running_recovers`, đang qua): tối đa một lần báo lỗi rồi tự khôi phục (`error == ""`, `set` lại được).
+- **Thực tế:** mọi `resolve` đều trả câu lỗi chung "Không mở được file lưu thẻ ảnh…" và **không bao giờ khôi phục**; `set` kẹt mãi (xác nhận: 4/4 lần lỗi, `recovered_from=None`). Nguyên nhân: `_prepare` thấy `_ready=True` và file tồn tại (không phải liên kết) nên **không kiểm lại**; truy vấn ra `OperationalError "no such table"` — `_is_corrupt` trả `False` (không phải NOTADB/CORRUPT) nên `_ready` **không** được đặt lại (`image_tags.py:355–358`). Ca file rác khỏi được vì rác → `NOTADB` → `_is_corrupt=True` → `_ready=False` → kiểm lại và đổi tên.
+- **Vì sao Thấp:** cần một tiến trình ngoài thay file trong `data/` bằng một SQLite khác cấu trúc (hiếm; thường gặp là rác → đã khỏi). Chỉ mất tạm thẻ sửa tay tới khi tắt app, không lộ dữ liệu.
+- **Gợi ý sửa:** khi truy vấn ném lỗi "no such table"/schema sai, đặt `_ready=False` để lần mở sau kiểm lại (sẽ tạo lại bảng qua `CREATE TABLE IF NOT EXISTS`, hoặc đổi tên nếu `_is_healthy=False`).
+- **Test:** `test_sl_t052_10_valid_sqlite_without_table_swapped_in_recovers`. XFAIL.
+
+#### SL-T052-11 · Thấp · Cụm tiếng Việt "trí tuệ nhân tạo" không nhận là ảnh AI
+
+- **Tái hiện:** `tags_for_image(ImageRef(0, "CT012 - Cổng inox - Quận 7/truoc/Ảnh trí tuệ nhân tạo/x.png"))`. Tương tự "trí tuệ nhân tạo", "Hình do trí tuệ nhân tạo tạo".
+- **Mong đợi:** ảnh AI (`source="ai"`), bỏ mã công trình/khu vực/trước-sau (như SL-T052-1).
+- **Thực tế:** `source="that"`, giữ nguyên `CT012`, `Cổng inox`, `Quận 7`, `truoc`; `reference()` gửi AI "Khu vực: Quận 7 / Giai đoạn: Trước khi làm" với `ai_generated=False` → AI tả ảnh AI như công trình thật. Danh sách dấu hiệu (`_AI_MARKER_TEXTS`, `_AI_TOOLS`) chỉ có "AI", "A.I." và tên công cụ tiếng Anh (Gemini, Midjourney, DALL-E…), **không** có cụm tiếng Việt "trí tuệ nhân tạo" — vốn là cách người Việt hay gõ nhất.
+- **Vì sao Thấp:** đúng cùng kiểu SL-T052-1 (sai hướng không an toàn, YC4) nhưng chỉ còn sót một cách viết; có người duyệt alt trước khi dùng nên chưa lên Trung bình. **Không lộ dữ liệu:** kiểm thêm cho thấy dù bị nhận nhầm ảnh thật thành AI, chữ tới AI vẫn chỉ là "nhãn: giá trị trong danh sách" (A3 giữ).
+- **Gợi ý sửa:** thêm "trí tuệ nhân tạo" (và cân nhắc các công cụ phổ biến còn thiếu ở mục ghi nhận bên dưới) vào `_AI_MARKER_TEXTS`/`_AI_TOOLS`; dài hạn nhận ảnh AI theo **nội dung** (C2PA, EXIF `Software`) như Thợ Máy đề xuất, để không phụ thuộc cách đặt tên.
+- **Test:** `test_sl_t052_11_vietnamese_ai_phrase_is_still_ai` (3 ca). XFAIL.
+
+### 4) Đã thử mà bản sửa chịu được (không thành lỗi)
+
+- **AI, tên thư mục đặt lạ nay bắt đúng:** "Ảnh do AI tạo", "AI images", "Ảnh A I", "Ảnh A.I", "ẢNHAI", "ANHAI", "GenAI", "AIGenerated", chữ rộng "Ａ Ｉ", chữ toán học "𝐀𝐈", NFD "Ảnh do AI tạo" → đều là ảnh AI. Tên file "Gemini_Generated_Image_…", "ChatGPT Image …", "DALL·E …" → ảnh AI; còn chuỗi ngẫu nhiên "xAI3kQ", "MAI_1", "IMG_0001", ảnh Zalo "z5432…" → **không** nhầm thành AI.
+- **Phân biệt dấu:** "Nhà chị Ái", "anh Thái", "chị Mai", "Hải" (có dấu) → **ảnh thật**, giữ thẻ. Đúng chủ ý.
+- **Tỉnh kèm quận:** "Thủ Đức, TP.HCM", "Quận 2, TP.HCM", "Phú Mỹ, BRVT", "Dĩ An Bình Dương", "Bà Rịa - Vũng Tàu", "Bà Rịa, Vũng Tàu" → lấy đúng quận/thành; "Dĩ An, TP.HCM" (mâu thuẫn thật), "Vũng Tàu - Bà Rịa" (ngược) → để trống. Không đọc nhầm.
+- **Số/ngày:** "45 Tân Phú", "12 Gò Vấp", "CT012 - Cổng - 45 Tân Phú", "2024-05-12 CT012 - …" → bỏ số, giữ thẻ khác. Các ca mất thẻ (số liền sau quận số/mã CT) là tradeoff đã ghi ở lượt 2 của Thợ Máy, không phải lỗi mới.
+- **Kho thẻ:** ngày lưu cực trị (năm 9999/năm 1, phần giây lẻ, lệch 23:59) → bỏ đúng dòng, đếm `skipped`, trang ảnh không sập; `saved_ts = inf/-inf/NaN/'abc'` → vẫn đọc được dòng (giờ lấy từ `saved_at`); `root_index = 2**63-1` dùng bình thường, `≥ 2**63` → `ImageTagStoreError` tiếng Việt; trigger độc chỉ sửa được giá trị **trong danh sách** (đọc lại vẫn hợp lệ) hoặc làm hỏng file → ra câu lỗi/đổi tên, không chèn được giá trị ngoài danh sách.
+
+### 5) Ghi nhận thêm (không dựng được test tất định, hoặc là đánh đổi có chủ ý)
+
+- **F1 · hard link vào file `-journal` lúc tranh chấp khóa (dư âm SL-T052-7):** bản sửa kiểm liên kết ở mỗi lần mở, nhưng SQLite tạo file `-journal` **sau** bước kiểm, khi thật sự ghi. Nếu kẻ tấn công đặt hard link vào `…-journal` đúng lúc một lượt `set` đang **chờ khóa** (cửa sổ tới `_SQLITE_TIMEOUT = 5s`), một lần dò thấy SQLite ghi dữ liệu nhật ký **ra** file ngoài `data/` (3/4 ca). Nhưng khi tôi đặt link ngay sau `_prepare` một cách tất định thì SQLite tự nhận "hot journal" rởm và xóa đi, **không** ghi ra ngoài — nên đây là điều kiện **đua tranh thời điểm**, tôi **không dựng được test ổn định** (test đua tranh sẽ chập chờn, trái nguyên tắc). Ghi lại để **Lá Chắn** cân nhắc F1: cửa sổ với file nhật ký rộng hơn và có thể **ghi ra** ngoài, không chỉ đọc. Cần ghi được vào `data/` mới lợi dụng được (nên nghiêng Thấp).
+- **Nhận nhầm ảnh thật thành ảnh AI (hướng an toàn, phiếu yêu cầu ghi rõ):** tên khách không dấu trùng "AI" ("Nha chi Ai" = chị Ái; "Công ty AI Việt"; "Gemini Tower"), hay hai chữ cái đứng tách "A I" trong địa chỉ ("Lô A, I", "Khu A I") → bị coi là ảnh AI, **mất thẻ công trình**. Không lộ dữ liệu (chữ tới AI vẫn rỗng/đúng danh sách). Đây là **đánh đổi có chủ ý** của Thợ Máy ("không chắc thì coi là ảnh AI"); tôi không dựng test đòi sửa, chỉ ghi để Họa Sĩ (T-056) hiện rõ lý do một ảnh bị coi là AI và cho người dùng ép "ảnh thật".
+- **Danh sách công cụ còn thiếu (hướng KHÔNG an toàn, cùng kiểu SL-T052-11):** nhiều công cụ tạo ảnh phổ biến chưa có trong `_AI_TOOLS` nên ảnh AI mang thẻ thật: Copilot, Bing Image Creator, Microsoft Designer, Canva, Leonardo, Ideogram, Flux, Grok, Kling, Dreamina, ComfyUI; và "Ảnh 3D"/"Phối cảnh 3D" (ảnh dựng, không phải ảnh chụp công trình). Tôi chỉ dựng test cho cụm tiếng Việt "trí tuệ nhân tạo" (SL-T052-11) vì rõ ràng nhất; các tên công cụ là việc bổ sung danh sách, để Thợ Máy/Chỉ Huy quyết, và củng cố đề xuất nhận ảnh AI theo nội dung.
+
+### Kết luận lượt 2
+
+**ĐẠT CÓ ĐIỀU KIỆN** chuyển sang Lá Chắn.
+
+- 8 lỗi lượt 1 đã sửa thật (28 ca qua, không nới điều kiện). Phần bảo mật trọng tâm (A3 không lộ chữ tên thư mục kể cả khi nhận nhầm AI, chỉ đọc phần dưới gốc, không ghi vào thư mục ảnh, đọc cache an toàn) vẫn đạt.
+- 3 lỗi mới **đều Thấp**, không có Nghiêm trọng/Cao.
+
+Điều kiện:
+1. **Lá Chắn** cân mức **SL-T052-9** (file độc kiểu "bảng giả" làm treo; `trusted_schema = OFF` chưa đủ) và dư âm **F1 hard-link-journal** ở mục ghi nhận; nếu kho giữ trong `st.cache_resource` (T-056) thì SL-T052-9 có thể lên Trung bình.
+2. **SL-T052-10, 11** và việc bổ sung danh sách công cụ AI dồn vào một phiếu dọn trước T-056.
+3. Ca symlink và tên NFD thật **chưa chạy** (Windows chưa bật Developer Mode): cần Soi Lỗi chạy trên Mac/Linux trước khi gộp giao diện (như điều kiện T-048).
+
+### Đề xuất (lượt 2)
+
+- **Thợ Máy (phiếu dọn):** `_is_healthy` buộc `manual_tags`/`info` là `type='table'` (SL-T052-9); đặt lại `_ready` khi gặp lỗi schema/no-such-table (SL-T052-10); thêm "trí tuệ nhân tạo" và các công cụ phổ biến vào danh sách AI (SL-T052-11).
+- **Lá Chắn:** soát SL-T052-9 (DoS trên file chưa tin cậy) và cửa sổ TOCTOU của file `-journal` (F1).
+- **Soi Lỗi (trên Mac/Linux):** chạy `tests/test_images_tags.py` và `tests/test_soi_loi_t052.py` để có kết quả symlink và NFD thật.
