@@ -5,7 +5,7 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-055](../tickets/T-055-nhap-luu-lua-chon-anh.md) |
 | Ngày nộp | 2026-10-20 |
-| Kết quả | Hoàn thành; còn **1 test cũ** cần sửa một dòng ngoài phạm vi phiếu (xem "Cần Chỉ Huy quyết") |
+| Kết quả | Hoàn thành (kèm sửa 1 dòng test cũ ngoài phạm vi, Chỉ Huy B duyệt) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -19,9 +19,10 @@ Nháp chỉ ghi "thư mục ảnh số mấy + đường dẫn bên trong thư m
 |---|---|
 | `seo_app/storage/drafts.py` | Khuôn ảnh đã chọn `DraftImage`, trường `DraftPart.chosen_image`, khuôn nháp lên 2 (khuôn 1 vẫn mở được), bỏ riêng ảnh hỏng khi đọc file, hàm kiểm lại ảnh trên máy `check_draft_images` / `check_chosen_image` |
 | `tests/test_drafts_images.py` | Mới: 150 test |
+| `tests/test_soi_loi_t016_t020.py` | **Sửa 1 dòng ngoài phạm vi, Chỉ Huy B duyệt** (2026-10-20): dòng 744 `{"schema_version": 2}` → `{"schema_version": 3}`. Lý do: ca này kiểm "phiên bản khuôn lạ thì báo lỗi"; từ phiếu này số 2 là phiên bản hợp lệ nên ca cũ hỏng (`DID NOT RAISE DraftError`). Ý của test giữ nguyên; test mới còn kiểm 0, 3, 999, -1, chữ, `null`, danh sách (`test_unknown_schema_versions_are_rejected`). Soi Lỗi xem lại dòng này khi kiểm |
 | `docs/team/reports/T-055-tho-may.md` | Báo cáo này |
 
-Không sửa `seo_app/images/**`, `seo_app/storage/__init__.py`, `app/**`, `config/**`, test cũ (`git diff --stat origin/main...HEAD` chỉ có 3 file trên). Không thêm thư viện.
+Không sửa `seo_app/images/**`, `seo_app/storage/__init__.py`, `app/**`, `config/**`; test cũ chỉ sửa đúng dòng trên (`git diff --stat origin/main...HEAD` chỉ có 4 file trên). Không thêm thư viện.
 
 ## Khuôn dữ liệu ảnh trong nháp (khuôn 2)
 
@@ -81,8 +82,8 @@ $ uv run pytest tests/test_drafts_images.py
 $ uv run pytest tests/test_drafts_images.py tests/test_storage_drafts.py tests/test_soi_loi_t016_t020.py
     tests/test_soi_loi_t021_t017.py tests/test_app_drafts.py tests/test_images_folders.py
     tests/test_images_tags.py tests/test_app_pages.py
-FAILED tests/test_soi_loi_t016_t020.py::test_wrong_shape_rows_give_draft_error[change7]
-1 failed, 801 passed, 14 skipped in 153.01s (0:02:33)
+802 passed, 14 skipped in 85.64s (0:01:25)
+(sau khi sửa dòng 744 của test cũ; lượt trước khi sửa: 1 failed, 801 passed, 14 skipped)
 (14 bỏ qua: 1 của file mới như trên; 13 có sẵn trong test cũ, đều vì máy Windows này không cho
 tạo symlink hoặc test quyền kiểu POSIX, ví dụ test_soi_loi_t016_t020.py:232, test_images_folders.py:62)
 
@@ -96,13 +97,9 @@ $ uvx bandit -q seo_app/storage/drafts.py
 1 Low: B101 assert ở drafts.py:453 (assert saved.saved_at có từ T-016, không thuộc phiếu này)
 ```
 
-Ca hỏng duy nhất: `tests/test_soi_loi_t016_t020.py::test_wrong_shape_rows_give_draft_error[change7]` (xem dưới).
+## Test cũ ghim số phiên bản (đã xử lý, Chỉ Huy B duyệt)
 
-## Cần Chỉ Huy quyết: một test cũ ghim số phiên bản
-
-`tests/test_soi_loi_t016_t020.py:744` (Soi Lỗi T-016) dùng `{"schema_version": 2}` làm ví dụ "phiên bản lạ, phải báo lỗi". Phiếu này tăng khuôn lên 2 đúng như yêu cầu 3, nên nháp khuôn 2 giờ là hợp lệ và ca đó hỏng (`DID NOT RAISE DraftError`). Ý của test (phiên bản chưa biết thì báo lỗi) vẫn đúng và đã có test mới cho 0, 3, 999, -1, chữ, `null` (`test_unknown_schema_versions_are_rejected`).
-
-Đề xuất: đổi đúng một dòng `{"schema_version": 2}` thành `{"schema_version": 3}` (hoặc `999`). File này ngoài phạm vi phiếu (chỉ được sửa `drafts.py` và test mới), nên tôi **chưa sửa**, chờ Chỉ Huy cho phép hoặc giao Soi Lỗi. Tôi không tránh bằng cách nhảy số phiên bản (lên 3) vì như vậy là lách test.
+`tests/test_soi_loi_t016_t020.py:744` (Soi Lỗi T-016) dùng `{"schema_version": 2}` làm ví dụ "phiên bản lạ, phải báo lỗi". Phiếu này tăng khuôn lên 2 đúng như yêu cầu 3, nên lượt chạy đầu có đúng 1 ca hỏng: `test_wrong_shape_rows_give_draft_error[change7]` (`DID NOT RAISE DraftError`; lượt đó 1 failed, 801 passed, 14 skipped). Tôi không lách bằng cách nhảy số phiên bản lên 3, mà hỏi Chỉ Huy B; Chỉ Huy B cho đổi đúng dòng đó thành `{"schema_version": 3}`. Ý của test giữ nguyên (phiên bản chưa biết thì báo lỗi), test mới kiểm thêm 0, 3, 999, -1, chữ, `null`, danh sách. Soi Lỗi xem lại dòng này khi kiểm.
 
 ## Đối chiếu tiêu chí xong
 
@@ -112,7 +109,7 @@ Ca hỏng duy nhất: `tests/test_soi_loi_t016_t020.py::test_wrong_shape_rows_gi
 - [x] Alt, chú thích, prompt là chữ chưa tin cậy: lọc, giới hạn độ dài, không chạy gì (`test_alt_and_caption_are_cleaned_one_line`, `test_text_limits`, `test_long_texts_in_file_are_cut_not_dropped`, `test_prompt_keeps_lines_and_drops_hidden_characters`, `test_prompt_is_kept_as_plain_text`)
 - [x] Yêu cầu 3: nháp khuôn 1 vẫn mở được, tăng `schema_version` (`test_v1_draft_still_opens_and_is_upgraded` dùng nguyên khuôn JSON của T-016; lưu lại thì ghi khuôn 2); nháp hỏng phần ảnh không mất chữ (`test_every_image_broken_still_opens_with_all_text`, `test_v1_draft_with_image_data_drops_only_the_image`)
 - [x] F3: đọc bằng `json` của pydantic, không `pickle`/`eval`; SQL vẫn dùng tham số `?` (không đổi)
-- [ ] Test liên quan qua hết: còn 1 ca test cũ ghim số phiên bản, chờ Chỉ Huy (mục trên)
+- [x] Test liên quan qua hết (phần Bằng chứng), sau khi sửa 1 dòng test cũ được Chỉ Huy B duyệt (mục trên)
 - [x] `uv run ruff check .` sạch; báo cáo đã đẩy lên `team/T-055`
 
 ## Rủi ro và điểm cần chú ý
@@ -126,12 +123,11 @@ Ca hỏng duy nhất: `tests/test_soi_loi_t016_t020.py::test_wrong_shape_rows_gi
 
 ## Đề xuất
 
-- **Chỉ Huy:** cho phép sửa một dòng ở `tests/test_soi_loi_t016_t020.py:744` (`2` → `3`), hoặc giao Soi Lỗi.
 - **T-056 (Họa Sĩ), cách dùng:**
   - Lưu: `DraftPart(..., chosen_image=DraftImage.from_library(entry, resolved.tags, alt=…, alt_approved=…, caption=…))` với `entry` lấy từ `FolderListing.images` (không tự gõ `ImageRef`); ảnh AI tạo mới: `DraftImage(source="ai", prompt=…, category=…, alt=…)`. Khi người dùng bấm "đổi sang ảnh AI", lưu cả `source="ai"` vào nháp.
   - Mở: sau `open_draft`, gọi `check_draft_images(snap, library, tag_store=ImageTagStore(), scanned=<ảnh đang quét nếu có>, ai_roots=<gốc có tên ảnh AI, dùng is_ai_name của T-070>)`. Dùng `checked.tags` (không dùng `image.source` hay `image.category` trực tiếp) cho `suggest_alt(ai_generated=…)` và `image_file_name`. Hiện `checked.message` khi `not checked.available` và không phải ảnh AI tạo mới; hiện `snap.dropped_images` nếu > 0 ("N ảnh đã chọn trong nháp bị hỏng nên đã bỏ; chữ của bài vẫn giữ").
   - Trước khi dùng alt đã duyệt: kiểm lại theo `load_alt_rules().max_chars` (nháp cho lưu tới 500 ký tự).
 - **T-054:** đọc ảnh bằng `library.read_image_bytes(checked.ref)`; alt/chú thích từ nháp đã ở dạng `clean_ai_text`, vẫn phải `unbreak_autolinks` và escape như điều kiện T-050.
 - **Thư Ký / Chỉ Huy:** nếu muốn `from seo_app.storage import DraftImage, check_draft_images` thì thêm vào `seo_app/storage/__init__.py` (ngoài phạm vi phiếu này; hiện import từ `seo_app.storage.drafts`).
-- **Soi Lỗi:** thử thêm nháp do bản app cũ (trước T-055) lưu thật trên máy chủ dự án; ảnh trùng tên khác hoa thường trên Mac (NFD); gốc là ổ FAT.
+- **Soi Lỗi:** xem lại dòng `tests/test_soi_loi_t016_t020.py:744` đã sửa; thử thêm nháp do bản app cũ (trước T-055) lưu thật trên máy của chủ dự án; ảnh trùng tên khác hoa thường trên Mac (NFD); gốc là ổ FAT.
 - **Lá Chắn:** soát `_safe_tags` (`drafts.py:682`) và đường bỏ ảnh hỏng (`:294`, `:342`) theo F1 và điều kiện T-048/T-052.
