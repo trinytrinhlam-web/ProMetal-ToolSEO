@@ -89,6 +89,8 @@ Kích thước lời dặn alt với `config/content.toml` hiện tại (đo b�
 - **C5 chặt hơn phiếu:** `max_edge_px` phải 16–4096 (khớp `seo_app/images/process.py` trên nhánh `team/T-049`, để báo lỗi ngay lúc đọc cấu hình kèm tên mục); `max_chars`, `caption_max_chars` phải ≥ 20 (đủ chỗ cho «Ảnh minh họa (AI)»). Nếu T-049 đổi giới hạn cạnh thì sửa `IMAGE_EDGE_MIN`/`IMAGE_EDGE_MAX` ở `rules.py:85-86` cho khớp.
 - **Ảnh thật mà AI viết «Minh họa…»:** code không gỡ (phiếu không yêu cầu). Người dùng duyệt tay từng alt ở T-056.
 - **Logo Pro-Metal:** khung cố định cấm «chữ trên biển hiệu», còn quy tắc `[alt]` cho ghi «Pro-Metal» khi logo nhìn thấy rõ. Khung cố định thắng (tiêu đề phần bổ sung ghi «không thay thế các quy tắc ở trên»): AI có thể bỏ chữ Pro-Metal cả khi logo rõ. Thiên về an toàn; Ngòi Bút xem lại nếu cần.
+- **Ví dụ xấu tới AI:** khi truyền `rules=load_alt_rules()`, 6 bản xấu trong `config/content.toml` (tên giả «anh Tuấn», «chị Lan», «Minh Phát», số «0909 xxx xxx») nằm trong lời dặn, gắn nhãn «Không nên viết» kèm lý do (C4) và tiêu đề «không chép … chi tiết của ví dụ». Test kiểu «chữ bí mật không tới AI» ở phiếu sau (T-056) nên dùng tên khác các tên giả này, hoặc so với lời dặn mặc định như `tests/test_soi_loi_t052.py` trên nhánh `team/T-052` đang làm (tôi đã chạy thử danh sách chữ bí mật của test đó với lời dặn mới: không trùng chữ nào).
+- **Nhánh `team/T-052`:** `tests/test_soi_loi_t052.py` gọi `suggest_alt(…, ai_generated=…)` không truyền `guidance`, nên tương thích với API mới.
 - Không có thư viện mới, không gọi mạng trong test, khóa trong test là chuỗi giả.
 
 ## Đề xuất
