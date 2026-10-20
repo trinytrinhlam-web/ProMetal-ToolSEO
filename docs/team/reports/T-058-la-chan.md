@@ -2,8 +2,6 @@
 
 > **Model:** chạy tạm **Claude Opus 5.5** vì tài khoản này không dùng được Claude Fable (chủ dự án đã duyệt). Cần kiểm lại bằng Fable sau 01/11.
 >
-> **BẢN NHÁP (phần 2/3):** đã có nguồn gốc gói, đối chiếu khuyến cáo, lỗi phát hiện, 19 dòng kiểm, kết quả công cụ. Kết luận và điều kiện đang viết tiếp (chờ pytest lượt 2).
-
 | Mục | Nội dung |
 |---|---|
 | Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 (tạm, thay Fable) |
@@ -11,7 +9,14 @@
 | Phạm vi | diff `origin/main...team/T-058` (gốc chung với `main` → `bda4dfc`): `pyproject.toml`, `uv.lock`, `tests/test_pillow_version_t058.py`, `tests/test_soi_loi_t058.py`, 2 báo cáo. Đọc thêm: `streamlit/elements/lib/image_utils.py`, `streamlit/dataframe_util.py`, mã Pillow 12.3.0 và 13.0.0 |
 | Máy kiểm | Windows 11, Python 3.12.15, uv 0.12.23, worktree `wt-T-058` |
 | Ngày | 2026-10-20 |
-| **Kết luận** | _(đang viết, xem phần 3)_ |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: không lỗi Nghiêm trọng/Cao/Trung bình; 4 lỗi Thấp (LC-T058-1…4). Gộp được sau khi Chỉ Huy mở app thật xem mọi trang (yêu cầu 3 của phiếu). Điều kiện còn lại ràng buộc T-049 và lượt quét cuối Giai đoạn 3 (mục **Điều kiện**) |
+
+## Tóm tắt (cho chủ dự án)
+
+- **Nâng lên Pillow 13.0.0 là an toàn và nên gộp.** Gói được tải đúng từ kho chính thức (mã kiểm tra khớp từng file, do chính nhóm làm Pillow đóng gói), không kéo thêm thư viện nào, và **40 trong 41** lỗ hổng của bản cũ đã được vá. Tôi đã mở tận mã nguồn để thấy bản vá của các lỗ hổng chạm tới việc xử lý ảnh sắp làm (thu nhỏ JPEG, đọc EXIF, ảnh nhiều khung).
+- **Còn 1 lỗ hổng mức trung bình chưa có bản vá**, nhưng nó chỉ xảy ra khi máy đặt một biến cấu hình đặc biệt của Pillow **và** phần mềm xuất ảnh sang dạng dữ liệu Arrow. Phần mềm không làm cả hai, nên hiện không bị ảnh hưởng. Bản cũ 12.3.0 cũng có lỗi này.
+- Không có lỗi phải sửa trong phiếu này. Có 4 điểm ghi nhận mức Thấp, chủ yếu là những việc phiếu xử lý ảnh T-049 phải giữ (ví dụ: chỉ đưa lên màn hình ảnh mà app đã kiểm). Con số "53 lỗ hổng" tôi báo hôm 19/10, hôm nay trang của nhóm Pillow chỉ còn 41 (có thể họ gộp các báo cáo trùng); kết luận không đổi.
+- Việc còn lại trước khi gộp: Chỉ Huy mở app thật xem mọi trang như phiếu yêu cầu. Nếu phải quay về Pillow 12.3.0 thì phải gọi lại Lá Chắn.
 
 ## 1. Bản Pillow được cài có đúng là bản thật từ PyPI không (D1)
 
@@ -114,3 +119,32 @@ Phiếu chỉ đổi `pyproject.toml`, `uv.lock`, thêm 2 file test và 2 báo c
 - **detect-secrets `--all-files`**: 126 file báo đều nằm trong `.venv/` hoặc thư mục cache (`.pytest_cache`, `.ruff_cache`, đều bị `.gitignore` chặn), là mã của thư viện (ví dụ một chuỗi bị nhận nhầm là khóa AWS trong `PIL/ImageFont.py`), không thuộc repo.
 - **detect-secrets `tests/test_config.py:34`**: `"abcd efgh"` là mật khẩu giả trong test cấu hình, có từ trước.
 - **`uv pip check` báo `streamlit requires pillow<13`**: cố ý, đúng quyết định của chủ dự án (override).
+- **pytest lượt 1 hỏng `test_correct_password_opens_home_and_logout_works`**: quá giới hạn 30 giây của AppTest khi máy đang chạy song song bộ test của agent khác; chạy lại riêng qua trong 3 giây. Không liên quan Pillow (xem dòng pytest).
+
+## Pillow-heif và thư viện HEIC (kiểm lại sau T-047)
+
+`pillow-heif` 1.8.1 không đổi bản, vẫn nhận Pillow 13 (`Requires-Dist: pillow>=11.1.0`, thư viện C libheif 1.23.6, libde265 1.1.3 không đổi). Tra lại 2026-10-20: kho `bigcat88/pillow_heif` vẫn 2 khuyến cáo (đã vá ở < 1.7.0 và < 1.2.1), `strukturag/libheif` vẫn 74 (mới nhất 2026-10-05, vá ở 1.23.6), `strukturag/libde265` vẫn 13 (mới nhất 2026-09-14, vá ở 1.1.3); bản phát hành mới nhất của cả ba trùng bản đang dùng. Không có gì mới so với biên bản T-047. Test HEIC chạy trên Pillow 13: `tests/test_pillow_heif_setup.py`, `tests/test_soi_loi_t047.py`, phần HEIC của `tests/test_soi_loi_t058.py` đều qua.
+
+## Điều kiện (ĐẠT CÓ ĐIỀU KIỆN)
+
+**1. Trước khi gộp T-058 vào `main` (Chỉ Huy):**
+- Mở app thật (`uv run streamlit run app/main.py`) xem mọi trang, theo yêu cầu 3 của phiếu. Đây là điều kiện của phiếu, không phải lỗi bảo mật.
+- Chạy `uv run pytest` trên Windows sau khi gộp; nếu lại có test AppTest quá 30 giây thì chạy lại khi máy rảnh (không agent nào khác đang chạy test) trước khi kết luận hỏng.
+
+**2. Chép vào phiếu T-049 (Chỉ Huy), Lá Chắn sẽ kiểm khi kiểm định T-049:**
+- **Điều kiện 5 của T-047** (tránh `thumbnail()`/`draft()`, `seek()`, ghi JPEG) **không còn bắt buộc** khi T-049 chạy trên Pillow 13.0.0: đã thấy bản vá trong mã (mục 2). Xác nhận ghi chú của Chỉ Huy A trên `main` (`docs/team/tickets/T-049-xu-ly-anh-webp-giu-gps.md:66`). Vẫn khuyên chỉ xử lý khung đầu của ảnh MPO (app không cần khung khác).
+- **Điều kiện 1–4, 6, 7 của T-047 giữ nguyên, không nới vì đã lên 13**: bắt lỗi quanh cả `open` lẫn `load` gồm `(OSError, ValueError, Image.DecompressionBombError)`; kiểm dung lượng trước khi mở, đặt `MAX_IMAGE_PIXELS` rõ ràng, đổi `DecompressionBombWarning` thành lỗi; đăng ký HEIF một chỗ; luôn mở với `formats=["JPEG","PNG","WEBP","HEIF"]`. Lý do: các lớp này chặn cả những lỗ hổng chưa ai biết.
+- **LC-T058-1 (GHSA-654x):** không xuất ảnh sang Arrow (`__arrow_c_array__`, `__arrow_c_schema__`, `Image.fromarrow`, đưa ảnh vào `pyarrow`), không đặt và không đọc `PILLOW_ALIGNMENT`. Đã có trong ghi chú Chỉ Huy A (`T-049…:66`).
+- **LC-T058-2:** chỉ đưa vào `st.image` ảnh Pillow **đã mở qua hàm mở an toàn** của module ảnh, hoặc byte WebP/JPEG **do app tạo ra**; không bao giờ đưa đường dẫn hay byte gốc của file trong `IMAGE_FOLDERS` (Streamlit sẽ tự mở bằng Pillow không giới hạn định dạng). Áp cho cả phiếu giao diện xem trước ảnh của Giai đoạn 3. Có test.
+- **LC-T058-3:** module ảnh từ chối xử lý ảnh khi Pillow < 13 (một dòng kiểm phiên bản, câu lỗi tiếng Việt cố định, có test), để nếu ai quay về 12.x mà quên điều kiện 5 thì app báo lỗi chứ không chạy âm thầm.
+- (Từ Soi Lỗi, không phải bảo mật) ảnh 16 bit đưa vào `st.image` phải đổi về 8 bit hoặc `output_format="PNG"` (SL-T058-1).
+
+**3. Nếu quay về Pillow 12.3.0** (báo cáo Thợ Máy mục "Cách quay về"): phải gọi lại Lá Chắn và chủ dự án ký chấp nhận rủi ro (lựa chọn B của phiếu), áp lại điều kiện 5 cho T-049 trước khi app mở ảnh thật (LC-T058-3).
+
+**4. Lượt quét cuối Giai đoạn 3 (Lá Chắn), LC-T058-1 và LC-T058-4:**
+- Tra thẳng `gh api repos/python-pillow/Pillow/security-advisories` (pip-audit/OSV có thể vẫn chưa có các mục tháng 10); có Pillow 13.0.1 (vá GHSA-654x hoặc mục mới) thì nâng.
+- Xem Streamlit đã cho Pillow 13 chưa: cho rồi thì bỏ `override-dependencies`, giữ `pillow>=13.0.0`. Có Pillow 14 có bản vá thì xét nới `<14`.
+- `uv pip check` chỉ được báo đúng một dòng `streamlit … pillow<13`.
+- Tra NVD cho thư viện C trong wheel Pillow (libjpeg-turbo 3.2.0, libwebp 1.6.0, zlib-ng 2.3.3, Little CMS 2.19.1, libtiff 4.7.2), phiếu này chưa tra.
+
+**5. Kiểm lại bằng Claude Fable sau 01/11** (biên bản này chạy tạm Opus 5.5).
