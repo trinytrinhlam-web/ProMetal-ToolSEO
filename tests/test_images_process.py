@@ -486,6 +486,18 @@ def test_kiem_dung_luong_truoc_khi_mo(monkeypatch):
     assert goi == []
 
 
+def test_kiem_dung_luong_memoryview_dem_theo_byte(monkeypatch):
+    # N4 (Lá Chắn T-049): memoryview có phần tử 4 byte, ``len`` chỉ đếm 1/4 số byte.
+    monkeypatch.setattr(process, "MAX_IMAGE_BYTES", 1000)
+    lon = memoryview(b"\xff\xd8" + b"\x00" * 1998).cast("I")
+    assert len(lon) == 500 and lon.nbytes == 2000
+    assert _loi(process.make_preview, lon).startswith("Ảnh quá lớn")
+    assert _loi(process.make_preview, memoryview(b"")) == process._MSG_EMPTY
+    monkeypatch.undo()
+    png = _luu(_anh_bon_mau((64, 48)), "PNG")
+    assert process.jpeg_layout(process.make_preview(memoryview(png))) == (64, 48)
+
+
 @pytest.mark.parametrize("sai", ["anh.jpg", Path("anh.jpg"), None, 123])
 def test_khong_nhan_duong_dan_chi_nhan_byte(sai):
     # Byte ảnh phải lấy qua ImageLibrary.read_image_bytes; module không tự mở đường dẫn.

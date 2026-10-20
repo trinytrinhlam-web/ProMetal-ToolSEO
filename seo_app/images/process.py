@@ -153,7 +153,8 @@ def _too_many_pixels(pixels: int | None = None) -> ImageProcessError:
 def _check_source_size(data: object) -> bytes:
     if not isinstance(data, bytes | bytearray | memoryview):
         raise ImageProcessError(_MSG_NOT_IMAGE)
-    size = len(data)
+    # N4 (Lá Chắn T-049): ``len`` của ``memoryview`` đếm phần tử, không đếm byte.
+    size = data.nbytes if isinstance(data, memoryview) else len(data)
     if size == 0:
         raise ImageProcessError(_MSG_EMPTY)
     if size > MAX_IMAGE_BYTES:
