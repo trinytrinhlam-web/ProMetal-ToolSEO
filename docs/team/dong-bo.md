@@ -34,22 +34,28 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 11:53. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 12:15. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | đã gộp (`f37ffd6`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 09:54 gộp vào `main` | Điều kiện đã ghi vào T-049, T-052, T-055, T-056; lập T-063 (test Mac/Linux, chặn gộp T-056), T-064 (dọn lỗi Thấp). LC-T048-6: chủ dự án chấp nhận, đã ghi sổ rủi ro |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`c5c57fc`) | ✅ 11:32 **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (4 lỗi Thấp; bản gộp `main` + T-050: 7.911 qua, 0 hỏng). Điều kiện đã chép vào T-049 (bắt buộc, đã nhắn phiên T-049), T-052, T-054, T-056, T-062; lập T-066 (dọn LC-T050-1/-2/-3) | **Gộp vào `main`** khi chủ dự án cho (lấy `seo_app/images/__init__.py` bản `main`) |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | đã gộp (`c1aa0ce`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 12:15 gộp và đẩy `main` | Điều kiện đã chép vào T-049, T-052, T-054, T-056, T-062; T-066 (dọn). T-062 giao được |
 | [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3) | đã gộp (`0481f7e`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; mở app thật xem mọi trang: không lỗi; 11:21 gộp và đẩy `main` | Điều kiện đã ghi vào T-049, T-056. T-049 giao được |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | đã gộp (`57fc6b9`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 11:41 gộp và đẩy `main` | Điều kiện đã chép: C1–C6 → T-062, C7–C9 → T-053, C10 → T-065. T-065 giao được |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | `team/T-049` (từ `c1b21dc`) | ⏳ **Thợ Máy đang làm** (phiên "Thợ Máy · T-049 xử lý ảnh WebP giữ GPS", giao sau 11:22), worktree `wt-T-049` | Soi Lỗi, rồi Lá Chắn |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (từ `c00b2e1`) | ⏳ **Thợ Máy đang làm** (phiên "Thợ Máy · T-052 thẻ ảnh từ tên thư mục", giao sau 11:41), worktree `wt-T-052` | Soi Lỗi, rồi Lá Chắn |
-| Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-062 (sau T-050), T-066 (sau T-050, T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-067** |
-| `main` | `57fc6b9` + tài liệu | Windows sau gộp T-051: **7.519 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
+| Chờ phiếu trước | | T-062 (còn chỗ), T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-067** |
+| `main` | `c1aa0ce` + tài liệu | Windows sau gộp T-050: **8.009 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 12:15 · Chỉ Huy B
+
+- Chủ dự án cho gộp **T-050**: gộp vào `main` (`c1aa0ce`), không xung đột; `seo_app/images/__init__.py` giữ bản T-048 (blob `04c33dd`). Windows 8.009 qua, 0 hỏng; ruff sạch. Đã đẩy, xóa nhánh `team/T-050` và worktree `wt-T-050`.
+- T-062 hết chờ (T-050, T-051 đã gộp). T-053 giờ chờ T-049, T-062.
+- Đang chạy: Thợ Máy T-049, Thợ Máy T-052.
 
 ### 2026-10-20 11:53 · Chỉ Huy B
 
