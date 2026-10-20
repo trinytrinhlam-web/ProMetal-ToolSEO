@@ -51,6 +51,28 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 07:46 · Chỉ Huy A
+
+- T-050 Thợ Máy xong (`f5f8b63`): giao Soi Lỗi. T-051 Ngòi Bút xong (`fc39367`): `[tasks.image]` để tắt vì bật lên làm trang Soạn bài đòi khóa Gemini; lập **T-062** (Thợ Máy) cho phần đọc cấu hình. T-051 chờ Soi Lỗi rút gọn, Lá Chắn rút gọn. Số phiếu tiếp theo: **T-063**.
+- Sửa ví dụ tên thư mục thẻ ảnh (quận Hải Châu là của Đà Nẵng) thành `Tân Phú` trong `CLAUDE.md`, `BAN-GIAO.md`.
+
+### 2026-10-20 07:43 · Chỉ Huy A
+
+- Gộp T-042 vào `main` (`81381c5`): Windows 7.170 qua, 0 hỏng. Đã đẩy lên, xóa nhánh `team/T-042`.
+- T-048 lượt 2 Thợ Máy xong (`69d6b6c`, 5.846 qua): chờ Soi Lỗi kiểm lại ở chỗ trống kế tiếp (sau T-058).
+- Giao **T-058** (Thợ Máy, nâng Pillow 13), worktree `wt-T-058`.
+
+### 2026-10-20 07:31 · Chỉ Huy A
+
+- Chỉ Huy B không có commit nào. Phiên trước của A kết thúc khi T-048 lượt 2, T-050, T-051 đang chạy: đã gọi tiếp cả ba. Lần chạy test sau khi gộp T-042 bị ngắt: đang chạy lại, `main` trên máy A có bản gộp T-042 **chưa đẩy** tới khi test đạt.
+- **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20 (phiếu T-058): **nâng lên Pillow 13** (lựa chọn A), dù Streamlit khóa `pillow<13`, để vá 53 khuyến cáo của Pillow 12.3.0 mà Lá Chắn T-047 tìm ra. Thợ Máy nâng bằng `override-dependencies`, chạy đủ test, Chỉ Huy mở app thử mọi trang; hỏng thì quay về bản cũ. Đã ghi vào `CLAUDE.md`, `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4, phiếu T-058. T-058 giao ngay khi có chỗ.
+
+### 2026-10-19 18:27 · Chỉ Huy A
+
+- Gộp T-047 vào `main` (`d350aec`): Windows 5.810 qua, 0 hỏng. Lá Chắn: Pillow 12.3.0 có 53 khuyến cáo mới, vá ở 13 (Streamlit khóa `<13`) → lập **T-058**, đã hỏi chủ dự án A (nâng Pillow 13) hay B (chấp nhận rủi ro). **T-049 chờ T-058.**
+- Lá Chắn T-042 **ĐẠT CÓ ĐIỀU KIỆN** (`da24ba8`). Lập T-059 (thử thật), T-060 (dọn lỗi Thấp client), T-061 (shortcode trong chữ AI); điều kiện giao diện ghi vào T-041. Đang gộp T-042.
+- Giao T-050 (Thợ Máy). Số phiếu tiếp theo: **T-062**.
+
 ### 2026-10-19 18:03 · Chỉ Huy A làm tiếp sau giới hạn sử dụng
 
 - Sau 13:57 (giờ commit cuối của agent) tài khoản A chạm giới hạn, mở lại 18:00; 3 agent dừng (Lá Chắn T-047, Thợ Máy T-048 lượt 2, Thợ Máy T-042 lượt 3). Chỉ Huy B không có commit nào.
@@ -82,7 +104,7 @@ _Mục mới nhất ở trên cùng._
 
 ### 2026-10-19 08:10 · Chỉ Huy A
 
-- **Quyết định chủ dự án:** Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Hải Châu/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4. Lập phiếu code Giai đoạn 3 từ T-047.
+- **Quyết định chủ dự án:** Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Tân Phú/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4. Lập phiếu code Giai đoạn 3 từ T-047.
 
 ### 2026-10-19 07:30 · Chỉ Huy A
 

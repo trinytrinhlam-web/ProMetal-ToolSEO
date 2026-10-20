@@ -133,6 +133,7 @@ def test_featured_image_refused_for_post_not_created_by_app(fake_wp, wp_client):
 def test_featured_image_allowed_only_for_own_draft(fake_wp, wp_client):
     fake_wp.on("POST", "/wp-json/wp/v2/posts", {"id": 7, "status": "draft", "title": "A"})
     fake_wp.on("POST", "/wp-json/wp/v2/posts/7", {"id": 7, "status": "draft", "featured_media": 9})
+    fake_wp.on("GET", "/wp-json/wp/v2/posts/7", {"id": 7, "status": "draft"})  # T-042 lượt 2
     wp_client.create_draft("A", "B")
     assert wp_client.set_featured_image(7, 9).featured_media == 9
     with pytest.raises(WordPressError):

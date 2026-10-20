@@ -27,12 +27,16 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
+| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: tạo provider khi cần (để bật `[tasks.image]`), chịu lỗi, nhãn hiển thị | Thợ Máy | T-050, T-051 gộp; trước T-053 |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). Thợ Máy xong (`7a4c581`: Pillow 13.0.0, pip-audit 0, 7.172 qua). **Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn |
+| [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
-| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | GĐ3 · G3-1: khai báo Pillow, pillow-heif (đã duyệt 19/10), quét lỗ hổng | Thợ Máy | Thợ Máy xong (`3d46574`); Soi Lỗi rút gọn **đạt** (`82b37ce`, 5.643 qua). **Lá Chắn đang kiểm** (CVE thư viện C đi kèm, giấy phép GPLv2 của x265) |
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi **đạt có điều kiện** (`6cb1f52`, 5.826 qua; không đọc được nội dung file ngoài gốc; L1, L2 Trung bình, L3–L5 Thấp). **Thợ Máy sửa lượt 2** (13:49) |
-| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-047 |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Còn chỗ |
-| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Còn chỗ |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi đạt có điều kiện (`6cb1f52`); Thợ Máy lượt 2 xong (`69d6b6c`); Soi Lỗi lượt 2 **đạt có điều kiện** (`d1b6039`, 5.875 qua; R2-1 khe rất hẹp lộ tên file, R2-2 hiển thị). **Lá Chắn đang kiểm** |
+| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-058 (chủ dự án chọn cách xử lý Pillow) |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Thợ Máy xong (`f5f8b63`); Soi Lỗi **đạt có điều kiện** (`8ea45df`, 6.072 qua; SL-T050-1, -2 Trung bình A3: thẻ toàn chiều rộng lách bộ lọc đường dẫn, metadata lạ lọt danh sách đen). **Thợ Máy sửa lượt 2** (Chỉ Huy chọn sửa, không chấp nhận rủi ro). Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 |
+| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Ngòi Bút xong (`fc39367`, 5.810 qua; `[tasks.image]` ghi sẵn nhưng tắt, chờ T-062). **Chờ Soi Lỗi rút gọn, Lá Chắn rút gọn** |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy | T-048 |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | T-049, T-050 |
 | [T-054](tickets/T-054-chen-anh-vao-nhap-wordpress.md) | GĐ3 · G3-8: tải ảnh, chèn `<figure>` vào nháp | Thợ Máy | T-049, T-042 |
@@ -42,7 +46,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | T-037 (chủ dự án đã trả lời 1A, 2A ngày 16/10; thử thật cần anh bật Abilities và tạo tài khoản Biên tập viên) |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
 
@@ -58,6 +61,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | Ghi meta SEO (SiteSEO) lên bài nháp (GĐ4) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-042-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-042-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-042-la-chan.md) (Opus tạm); lỗi Thấp → T-060, T-061; giao diện → T-041; thử thật → T-059. Gộp vào `main` `81381c5`: Windows 7.170 qua, 0 hỏng |
+| [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | Khai báo Pillow 12.3.0, pillow-heif 1.8.1 (GĐ3) | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-047-tho-may.md) · [Soi Lỗi](reports/T-047-soi-loi.md) rút gọn: đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-047-la-chan.md) (Opus tạm): Pillow 12.3.0 có 53 khuyến cáo mới, vá ở 13 → T-058; điều kiện mở ảnh ghi vào T-049. Gộp vào `main` `d350aec`: Windows 5.810 qua, 0 hỏng |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-043 | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-045-tho-may.md) · [Soi Lỗi](reports/T-045-soi-loi.md): đạt (fuzz 300.000 tài liệu, 0 dòng có nhãn tới AI) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-045-la-chan.md) (Opus tạm); SL-T045-1/2 → T-057. Gộp vào `main` `cc3099f`: Windows 5.791 qua, 0 hỏng |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Chữ lấy từ WordPress và tên mô hình hiện an toàn | Họa Sĩ | 2026-10-19 | [Họa Sĩ](reports/T-044-hoa-si.md) (2 lượt) · [Soi Lỗi](reports/T-044-soi-loi.md) rút gọn: đạt có điều kiện (SL-T044-1/2 đã sửa) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-044-la-chan.md) (Opus tạm); LC-T044-1 → T-042. Gộp vào `main` `cb9cd47`: Windows 5.624 qua, 0 hỏng |
 | [T-037](tickets/T-037-danh-sach-bai-da-dang-cache.md) | Danh sách bài/trang đã đăng + cache SQLite (GĐ4) | Thợ Máy | 2026-10-17 | [Thợ Máy](reports/T-037-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-037-soi-loi.md): đạt lượt 2 · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-037-la-chan.md) (Opus tạm); điều kiện ghi vào T-042 (SL-T037-3/4/5, LC-T037-1, danh sách đường gọi cố định) và T-039, T-041. Gộp vào `main` `914ac68`: Windows 5.537 qua, 0 hỏng |
@@ -113,4 +118,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-058
+## Số phiếu tiếp theo: T-063

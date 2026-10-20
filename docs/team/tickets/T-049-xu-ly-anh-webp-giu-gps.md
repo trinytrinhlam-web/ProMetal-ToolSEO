@@ -56,3 +56,11 @@ F2 (test bắt buộc: còn GPS sau nén, bản AI không còn metadata), F3, A3
   1. HEIC cắt cụt vẫn mở được bằng `Image.open`; lỗi chỉ nổ ở `load()` và là `ValueError`, không phải `OSError`. Đặt cả `open` lẫn `load` trong khối bắt lỗi, bắt `(OSError, ValueError)`.
   2. HEIC hỏng ở giữa dữ liệu vẫn giải mã ra ảnh rác mà không báo lỗi: chỉ ghi nhận, giao diện cho người dùng xem trước.
   3. Đăng ký HEIF (`register_heif_opener`) một lần ở một chỗ cố định. Test "chưa đăng ký" trong `tests/test_pillow_heif_setup.py` đang `pytest.skip` khi HEIF đã đăng ký sẵn: nếu phiếu này đăng ký lúc import thì báo Soi Lỗi đổi test đó thành fixture tự gỡ HEIF khỏi bảng (phiếu này không sửa test của T-047).
+- 2026-10-19 (Chỉ Huy A): **Điều kiện bắt buộc của Lá Chắn T-047** (`docs/team/reports/T-047-la-chan.md`). Phiếu này **phụ thuộc thêm T-058** (nâng Pillow 13 hoặc chủ dự án chấp nhận rủi ro); thiếu T-058 thì Lá Chắn kết luận KHÔNG ĐẠT (Cao).
+  1. Bắt lỗi quanh cả `open` lẫn `load`, gồm `(OSError, ValueError, Image.DecompressionBombError)` (`DecompressionBombError` **không** phải con của `OSError`).
+  2. Kiểm dung lượng file trước khi mở; đặt `MAX_IMAGE_PIXELS` rõ ràng và biến `DecompressionBombWarning` thành lỗi (Pillow chỉ báo lỗi khi vượt gấp đôi giới hạn; giới hạn có áp cho HEIC).
+  3. `register_heif_opener()` một lần ở chỗ cố định (tắt thumbnails, depth, aux); không gọi `load_libheif_plugin`, không bật `DISABLE_SECURITY_LIMITS`, không ghi file HEIC.
+  4. Luôn mở với `formats=["JPEG","PNG","WEBP","HEIF"]` (thêm AVIF nếu cần, ghi lý do).
+  5. Nếu vẫn dùng Pillow 12.x (T-058 chọn B): không `thumbnail()`/`draft()`, không `seek()`, không ghi JPEG.
+  6. Báo Soi Lỗi thay `pytest.skip` trong test "chưa đăng ký" của T-047 bằng fixture tự gỡ HEIF.
+- 2026-10-20 (Chỉ Huy A): theo Thợ Máy T-058, Pillow 13.0.0 còn 1 khuyến cáo chưa vá (GHSA-654x-cwwv-5j9c, lộ vùng nhớ khi xuất ảnh sang Arrow, chỉ xảy ra khi đặt `PILLOW_ALIGNMENT` > 1). Phiếu này: **không** xuất ảnh sang Arrow, **không** đặt `PILLOW_ALIGNMENT`. Nếu T-058 đã gộp thì điều kiện 5 (tránh `thumbnail()`/`draft()`…) không còn bắt buộc.

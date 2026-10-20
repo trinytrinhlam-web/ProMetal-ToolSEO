@@ -6,9 +6,11 @@ from seo_app.wordpress.client import (
     Post,
     PublishedItem,
     PublishedList,
+    SeoWriteResult,
     Term,
     WordPressClient,
     WordPressError,
+    is_allowed_route,
     is_site_link,
 )
 
@@ -18,8 +20,10 @@ __all__ = [
     "Post",
     "PublishedItem",
     "PublishedList",
+    "SeoWriteResult",
     "Term",
     "WordPressClient",
     "WordPressError",
+    "is_allowed_route",
     "is_site_link",
 ]
