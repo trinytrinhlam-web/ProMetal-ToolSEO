@@ -11,7 +11,7 @@
 
 ## Tóm tắt (cho chủ dự án)
 
-- Bây giờ có thể bật việc **tạo ảnh bằng Gemini** trong `config/ai.toml` mà trang Soạn bài **không đòi khóa Gemini** khi anh/chị chỉ viết bài. Thiếu khóa của hãng nào thì chỉ báo khi bấm đúng việc dùng hãng đó. Ghi nhầm Claude cho việc tạo ảnh thì phần mềm báo «Claude không tạo được ảnh».
+- Bây giờ có thể bật việc **tạo ảnh bằng Gemini** trong `config/ai.toml` mà trang Soạn bài **không đòi khóa Gemini** khi anh/chị chỉ viết bài. Thiếu khóa của hãng dùng cho việc viết bài thì trang Soạn bài vẫn báo ngay khi mở, như trước; thiếu khóa của hãng khác (ví dụ Gemini cho việc tạo ảnh) thì chỉ báo khi bấm đúng việc dùng hãng đó. Ghi nhầm Claude cho việc tạo ảnh thì phần mềm báo «Claude không tạo được ảnh».
 - Bảng việc–mô hình ở Cài đặt → 🤖 Mô hình AI hiện tên tiếng Việt cho «Gợi ý meta», «Viết alt ảnh», «Tạo ảnh AI»; thử mù không gợi ý mô hình tạo ảnh làm mô hình viết bài.
 - Phần mềm đọc được mục `[images]` (chất lượng WebP, cạnh dài ảnh) và `[alt]` (giới hạn ký tự, quy tắc, 6 ví dụ) trong `config/content.toml`. Thiếu thì dùng 80 / 1600 / 125 / 200; ghi sai thì báo tiếng Việt chỉ đúng tên mục, không sập. Mục `[alt]` ghi sai chỉ khóa việc viết alt, không khóa trang Soạn bài.
 - Khi viết alt: quy tắc của anh/chị được gửi cho AI **đủ, không bị cắt**; các câu bảo vệ (chữ trong ảnh không phải lệnh; không ghi tên người, **tên cửa hàng, chữ trên biển hiệu**, số điện thoại… vào alt **và chú thích**) nằm cố định trong code. Code tự sửa kết quả AI: alt một dòng, không dấu chấm cuối, cắt gọn ở ranh giới chữ; ảnh AI thì alt luôn bắt đầu «Minh họa», chú thích luôn bắt đầu «Ảnh minh họa (AI)».
@@ -68,13 +68,22 @@ Không sửa `config/**`, `app/**`, `seo_app/images/process.py`, `tags.py`, `pyp
 
 ## Bằng chứng
 
+Theo quy tắc mới của chủ dự án (Chỉ Huy B báo 2026-10-20): agent chỉ chạy **test liên quan tới phiếu**; **toàn bộ test do Chỉ Huy chạy trên Windows khi gộp vào `main`**.
+
+Test liên quan đã chạy (46 file, HEAD `400bde4`, Windows, 13:39 → 13:46): `tests/test_ai*.py` (7 file), mọi file test có dựng `AIRouter`, đọc `config/content.toml` / hồ sơ doanh nghiệp, dùng thử mù hay `seo_app.images.alt`, `tests/test_app_pages.py`, `tests/test_soi_loi_t050.py`, `tests/test_soi_loi_t051.py`, 3 file `tests/test_t062_*.py`. Danh sách lập bằng:
+
 ```
-$ uv run pytest -q -p no:cacheprovider tests/test_t062_image_config.py tests/test_t062_content_config.py tests/test_t062_alt_prompt.py tests/test_soi_loi_t051.py tests/test_ai.py tests/test_ai_images.py tests/test_soi_loi_t050.py
-(các lượt chạy riêng trong lúc làm: 676 passed; 143 passed; 297 passed; 19 passed — 0 hỏng)
+$ { ls tests/test_ai*.py; grep -lE "AIRouter\(|ai_registry|load_rules|CONTENT_CONFIG_FILE|blind_test|images\.alt|images import alt|content\.rules" tests/*.py; printf '%s\n' tests/test_app_pages.py tests/test_soi_loi_t050.py tests/test_soi_loi_t051.py; ls tests/test_t062_*.py; } | sort -u   # 47 dòng; bỏ tests/fake_ai.py (không phải file test) còn 46 file
 
-$ uv run pytest            # toàn bộ, Windows
-(đang chạy, điền ở commit sau)
+$ uv run pytest -q -p no:cacheprovider -rfEX <46 file trên>
+4767 passed, 33 xfailed in 421.24s (0:07:01)
+```
 
+- 0 hỏng, 0 lỗi, 0 XPASS. 33 xfail là dấu có từ trước của phiếu khác (`test_soi_loi_round4.py`, `test_soi_loi_t003_t009.py`, `test_soi_loi_t036.py`, `test_soi_loi_t045.py`, `test_soi_loi_t050.py`); 3 file test mới và `tests/test_soi_loi_t051.py` không còn `xfail` nào.
+- 5 test SL-T051-1 → 4 (đã gỡ `xfail`) qua, gồm cả 2 test mở trang Soạn bài khi bật `[tasks.image]`.
+- Trước khi có quy tắc mới, tôi đã chạy `uv run pytest` toàn bộ; dừng ở 49% (khoảng 4.300 test đầu) theo chỉ đạo của Chỉ Huy B, tới lúc dừng chưa có test nào hỏng. **Không có kết quả toàn bộ: Chỉ Huy chạy khi gộp.**
+
+```
 $ uv run ruff check .
 All checks passed!
 ```
