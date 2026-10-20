@@ -19,7 +19,8 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
   cần quyền quản trị) thì chỉ gỡ chính liên kết, không đụng file nó trỏ tới, rồi tạo file mới
   (F1). Kiểm ở **mỗi lần mở**, không chỉ lần đầu, nên liên kết đặt vào khi app đang chạy cũng bị
   gỡ trước khi SQLite ghi.
-- Ảnh trong thư mục ảnh AI luôn là ảnh AI: thẻ sửa tay không đổi được thành ảnh thật.
+- Ảnh trong thư mục ảnh AI (hay tên file có dấu hiệu ảnh AI, ``seo_app.images.tags``) luôn là ảnh
+  AI: thẻ sửa tay không đổi được thành ảnh thật.
 """
 
 from __future__ import annotations

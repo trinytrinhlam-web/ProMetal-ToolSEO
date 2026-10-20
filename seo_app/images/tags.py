@@ -759,11 +759,12 @@ def _split_parts(text: str) -> list[str]:
 
 
 def _joined_area(parts: Sequence[str], index: int) -> list[_Item] | None:
-    """Phần ``index`` và phần kế tiếp ghép lại là đúng một khu vực ("Bà Rịa – Vũng Tàu": dấu
-    " – " tách thành hai phần): trả mục khu vực đó."""
-    if index + 1 >= len(parts):
+    """Phần ``index`` và phần kế tiếp, mỗi phần tự khớp danh sách, ghép lại là đúng một khu vực
+    ("Bà Rịa – Vũng Tàu": dấu " – " tách thành "Bà Rịa" và "Vũng Tàu"): trả mục khu vực đó."""
+    pair = parts[index : index + 2]
+    if len(pair) < 2 or any(_segment(_words(part)) is None for part in pair):
         return None
-    items = _segment(_words(f"{parts[index]} {parts[index + 1]}"))
+    items = _segment(_words(" ".join(pair)))
     if items is not None and len(items) == 1 and items[0].kind == _AREA:
         return items
     return None

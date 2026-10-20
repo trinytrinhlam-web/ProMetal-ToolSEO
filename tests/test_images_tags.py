@@ -591,6 +591,9 @@ def test_province_with_its_district_and_real_conflicts():
     assert tags_for_folder("CT012 - Cổng - Sài Gòn - Gò Vấp").tags.area == "Gò Vấp"
     assert tags_for_folder("CT030 - Bà Rịa – Vũng Tàu - Phú Mỹ").tags.area == "Phú Mỹ"
     assert tags_for_folder("CT030 - Bà Rịa, Vũng Tàu").tags.area == "Bà Rịa – Vũng Tàu"
+    # Chỉ ghép hai phần khi mỗi phần tự khớp danh sách: "Q - 7 - 8" không thành Quận 7.
+    assert tags_for_folder("CT012 - Q - 7 - 8").tags.area == ""
+    assert tags_for_folder("CT012 - Tân - Phú").tags.area == ""
     for rel_dir in (
         "CT012 - Cổng - Quận 7 - Bình Dương",  # tỉnh không chứa quận đó
         "CT012 - Cổng - Dĩ An - Thuận An - Bình Dương",  # hai huyện
