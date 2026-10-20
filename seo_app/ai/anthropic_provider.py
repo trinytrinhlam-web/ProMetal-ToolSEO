@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+from collections.abc import Sequence
 from typing import Any
 
 import anthropic
@@ -11,6 +13,7 @@ from seo_app.ai.base import (
     ANTHROPIC_URL,
     LIBRARY_ERRORS,
     AIError,
+    ImageInput,
     T,
     TaskConfig,
     TokenLimitError,
@@ -20,6 +23,7 @@ from seo_app.ai.base import (
     ignoring_custom_headers,
     is_bad_response,
     library_error,
+    prepare_images,
     token_limit_error,
     unreadable_error,
 )
@@ -44,9 +48,21 @@ class AnthropicProvider:
                 client = anthropic.Anthropic(api_key=api_key, base_url=ANTHROPIC_URL, max_retries=3)
         self._client = client
 
-    def generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
+    def generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: Sequence[ImageInput] = (),
+    ) -> T:
+        # Kiểm ảnh trước mọi lời gọi mạng (giới hạn, định dạng, không còn metadata).
+        prepared = prepare_images(images)
         try:
-            return self._generate(task, system=system, prompt=prompt, schema=schema)
+            return self._generate(
+                task, system=system, prompt=prompt, schema=schema, images=prepared
+            )
         except AIError:
             raise
         except Exception as exc:
@@ -65,8 +81,16 @@ class AnthropicProvider:
                 raise library_error(LABEL) from exc
             raise
 
-    def _generate(self, task: TaskConfig, *, system: str, prompt: str, schema: type[T]) -> T:
-        messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
+    def _generate(
+        self,
+        task: TaskConfig,
+        *,
+        system: str,
+        prompt: str,
+        schema: type[T],
+        images: tuple[ImageInput, ...] = (),
+    ) -> T:
+        messages: list[dict[str, Any]] = [{"role": "user", "content": user_content(prompt, images)}]
         extra: dict[str, Any] = {"tools": [WEB_SEARCH_TOOL]} if task.web_search else {}
         try:
             for _ in range(MAX_CONTINUATIONS + 1):
@@ -130,6 +154,29 @@ class AnthropicProvider:
         if parsed is None:
             raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.")
         return parsed
+
+
+def user_content(prompt: str, images: tuple[ImageInput, ...]) -> str | list[dict[str, Any]]:
+    """Nội dung lượt của người dùng. Không có ảnh: giữ nguyên chuỗi như trước.
+
+    Có ảnh: mỗi ảnh là một khối ``image`` base64 gửi thẳng trong yêu cầu (không Files API, không
+    URL), đặt trước lời dặn như tài liệu Vision khuyên. Không kèm tên file hay đường dẫn.
+    """
+    if not images:
+        return prompt
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": image.mime,
+                "data": base64.b64encode(image.data).decode("ascii"),
+            },
+        }
+        for image in images
+    ]
+    blocks.append({"type": "text", "text": prompt})
+    return blocks
 
 
 def _error_type(exc: anthropic.APIStatusError) -> object:
