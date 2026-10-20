@@ -28,7 +28,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: tạo provider khi cần (để bật `[tasks.image]`), chịu lỗi, nhãn hiển thị | Thợ Máy | T-050, T-051 gộp; trước T-053 |
-| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). **Thợ Máy đang làm** (worktree `wt-T-058`) |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). Thợ Máy xong (`7a4c581`: Pillow 13.0.0, pip-audit 0, 7.172 qua). **Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
