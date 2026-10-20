@@ -452,10 +452,6 @@ def test_bad_current_tags_are_rebuilt_and_fall_back_to_ai(library, monkeypatch):
 
 
 @pytest.mark.parametrize("with_store", [False, True], ids=["khong-kho-the", "co-kho-the"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-1: nháp đổi hoa/thường đường dẫn (GenAI → genai) làm ảnh AI thành ảnh thật",
-)
 def test_sl_t055_1_case_variant_cannot_launder_ai_folder(library, root, tag_store, with_store):
     """SL-T055-1 (Trung bình). Thư mục "GenAI" là thư mục ảnh AI (T-052 tách chữ hoa). Nháp sửa tay
     ghi ``.../genai/cong.png``, nguồn "that": trên Windows/Mac ``stat_image`` vẫn tìm ra đúng file
@@ -470,10 +466,6 @@ def test_sl_t055_1_case_variant_cannot_launder_ai_folder(library, root, tag_stor
     assert result.tags.project_code == ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-1: đổi hoa/thường tên thư mục thành GenAI, nháp cũ vẫn ra ảnh thật",
-)
 def test_sl_t055_1_case_only_folder_rename_keeps_ai(store, library, root):
     """SL-T055-1, đường không cần sửa tay: chọn ảnh khi thư mục tên "Genai" (chưa nhận là AI), sau
     đó đổi tên thư mục thành "GenAI" (thành thư mục ảnh AI). Mở lại nháp, chưa quét: ra ảnh thật."""

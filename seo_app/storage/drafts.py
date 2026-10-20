@@ -17,7 +17,8 @@ hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
   khi đọc nháp. Khi mở nháp, ``check_draft_images`` dựng lại ``ImageRef`` rồi hỏi
   ``ImageLibrary.stat_image`` (thư mục gốc còn khai báo không, file còn không, có đi qua liên kết
   không), không tin số thứ tự gốc ghi trong nháp; nếu có kết quả quét thì dùng đúng ``ImageRef``
-  của kết quả quét làm khóa (một file có thể có nhiều ``ImageRef`` khác hoa thường).
+  của kết quả quét làm khóa (một file có thể có nhiều ``ImageRef`` khác hoa thường), không có thì
+  lấy tên thư mục thật trên ổ để thẻ không theo chữ hoa thường trong nháp (SL-T055-1).
 - Nháp là dữ liệu chưa tin cậy (góp ý Lá Chắn T-046 số 11, điều kiện Lá Chắn T-048 và T-052): thẻ
   dựng lại qua ``ImageTags(...)``; nguồn ảnh nghiêng về ảnh AI (nháp ghi AI **hoặc** thẻ hiện tại
   nói AI thì là ảnh AI; nháp không bao giờ kéo ảnh AI về ảnh thật); alt, chú thích, prompt là chữ
@@ -34,7 +35,7 @@ import unicodedata
 import uuid
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import closing, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -71,6 +72,7 @@ from seo_app.images.folders import (
     ImageFolderError,
     ImageLibrary,
     ImageRef,
+    SubFolder,
 )
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError, tags_for_image
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags, unescape_link_syntax
@@ -102,6 +104,11 @@ _RAW_TEXT_FACTOR = 4  # chữ thô dài hơn giới hạn × số này thì cắ
 _MAX_CATEGORY_CHARS = 300  # như ``seo_app.images.tags``: dài hơn thì không phải một thẻ
 # Khóa ``context`` khi đọc nháp từ file: ảnh hỏng thì bỏ ảnh và ghi vào danh sách này.
 _DROPPED_IMAGES = "dropped_images"
+# Không lấy được tên thật trên ổ của thư mục chứa ảnh (SL-T055-1): không có đường dẫn máy.
+_MSG_FOLDER_NAME = (
+    "Chưa kiểm được tên thư mục chứa ảnh này (thư mục có quá nhiều mục, ổ đang chậm hoặc thư mục "
+    "vừa đổi tên). Hãy mở thư mục chứa ảnh để app kiểm lại."
+)
 # Prompt: bỏ ký tự điều khiển (trừ xuống dòng, tab), ký tự vô hình/định dạng (kể cả ký tự đảo
 # hướng chữ), surrogate lẻ (không ghi được ra UTF-8).
 _PROMPT_DROP = frozenset({"Cc", "Cf", "Cs"})
@@ -692,8 +699,9 @@ class CheckedImage:
     - ``image``: ảnh đã chọn dựng lại từ nháp. Ảnh AI (theo ``tags``) thì alt, chú thích luôn có
       tiền tố ảnh AI; alt phải thêm tiền tố thì không còn "đã duyệt" (SL-T055-2). Giao diện dùng
       ``image`` này (không dùng ảnh trong nháp vừa mở) để hiện, duyệt và lưu lại.
-    - ``ref``: ảnh trong thư mục ảnh: ``ImageRef`` dựng lại từ nháp, hoặc đúng ``ImageRef`` của
-      kết quả quét nếu có; ảnh tạo bằng AI: ``None``.
+    - ``ref``: ảnh trong thư mục ảnh: đúng ``ImageRef`` của kết quả quét nếu có, không thì
+      ``ImageRef`` dựng lại từ nháp với tên thư mục viết như trên ổ (ảnh nháp ghi là ảnh thật);
+      ảnh tạo bằng AI: ``None``.
     - ``entry``: kết quả ``ImageLibrary.stat_image`` khi ảnh còn dùng được; ``None`` nếu không.
     - ``tags``: thẻ dùng cho ảnh, nguồn ảnh theo hướng an toàn (xem ``check_draft_images``).
     - ``message``: vì sao ảnh không dùng được (câu tiếng Việt của T-048, không chứa đường dẫn).
@@ -726,6 +734,58 @@ def _image_key(ref: ImageRef) -> tuple[int, str]:
     """Khóa so ảnh: cùng thư mục gốc, cùng đường dẫn không phân biệt hoa thường, cùng dạng Unicode
     (như ``seo_app.storage.image_tags.ref_key``)."""
     return ref.root_index, ref_key(ref)
+
+
+def _name_key(name: str) -> str:
+    """Khóa so một tên: không phân biệt hoa thường, cùng dạng Unicode (như ``ImageLibrary`` so tên
+    đã gõ với tên trên ổ)."""
+    return unicodedata.normalize("NFC", name).casefold()
+
+
+class _FolderNames:
+    """Tên thật trên ổ của các thư mục trên đường tới một ảnh (SL-T055-1).
+
+    Thẻ đọc từ tên thư mục phân biệt hoa thường ("GenAI" là thư mục ảnh AI nhờ tách chữ hoa,
+    "genai" thì không), còn ổ Windows, Mac và ``ImageLibrary.stat_image`` thì không: nháp ghi
+    ``…/genai/…`` (sửa tay, hay thư mục được đổi hoa thường sau khi chọn ảnh) vẫn trỏ tới thư mục
+    ``GenAI``. Lấy tên thật bằng ``library.list_folder`` từng tầng, từ thư mục gốc xuống: không đệ
+    quy, chỉ đọc tên và ``stat``, không mở file ảnh (Drive "chỉ trực tuyến" không bị tải về); mỗi
+    thư mục xem một lần cho cả nháp. Tên file không cần: tên file chỉ dùng để nhận ảnh AI và không
+    tách chữ hoa (``tags_for_image``).
+    """
+
+    def __init__(self, library: ImageLibrary) -> None:
+        self._library = library
+        self._subfolders: dict[tuple[int, str], tuple[SubFolder, ...] | str] = {}
+
+    def real_ref(self, ref: ImageRef) -> ImageRef:
+        """``ref`` với tên thư mục viết đúng như trên ổ. Không kiểm được: ``ImageFolderError``."""
+        real_dir = ""
+        for name in ref.parts[:-1]:
+            real_dir = self._child(ref.root_index, real_dir, name)
+        return ImageRef(ref.root_index, f"{real_dir}/{ref.name}") if real_dir else ref
+
+    def _child(self, root_index: int, rel_dir: str, name: str) -> str:
+        """Đường dẫn thật của thư mục con ``name`` trong ``rel_dir`` (đã là tên thật)."""
+        key = (root_index, rel_dir)
+        if key not in self._subfolders:
+            try:
+                listing = self._library.list_folder(root_index, rel_dir, page_size=1)
+            except ImageFolderError as exc:
+                self._subfolders[key] = str(exc)
+            else:
+                self._subfolders[key] = listing.subfolders
+        subfolders = self._subfolders[key]
+        if isinstance(subfolders, str):
+            raise ImageFolderError(subfolders)
+        # Trùng hẳn trước (ổ phân biệt hoa thường có thể có cả "GenAI" lẫn "genai": "genai" là
+        # một thư mục khác), rồi mới tới trùng không phân biệt hoa thường, phải đúng một.
+        same = [sub for sub in subfolders if sub.name == name] or [
+            sub for sub in subfolders if _name_key(sub.name) == _name_key(name)
+        ]
+        if len(same) != 1:  # thư mục quá nhiều mục, quét quá giờ, vừa đổi tên
+            raise ImageFolderError(_MSG_FOLDER_NAME)
+        return same[0].rel_path
 
 
 def _safe_tags(image: DraftImage, current: ImageTags, *, ai_root: bool) -> ImageTags:
@@ -766,13 +826,19 @@ def check_draft_images(
 
     - Mỗi ảnh được dựng lại (``DraftImage`` rồi ``ImageRef(...)``), rồi hỏi
       ``library.stat_image``: số thứ tự gốc không còn khai báo, file mất, đi qua liên kết, quá lớn…
-      thì ``entry`` là ``None`` kèm ``message``. Không quét thư mục, không mở file ảnh (Drive "chỉ
-      trực tuyến" không bị tải về). Đọc ảnh sau này cũng phải qua ``library.read_image_bytes(ref)``.
+      thì ``entry`` là ``None`` kèm ``message``. Không mở file ảnh (Drive "chỉ trực tuyến" không bị
+      tải về). Đọc ảnh sau này cũng phải qua ``library.read_image_bytes(ref)``.
     - ``scanned``: kết quả quét đang có trên giao diện (``FolderListing.images``). Ảnh trùng (không
       phân biệt hoa thường, dạng Unicode) thì dùng đúng ``ImageRef`` của kết quả quét làm khóa.
+    - Ảnh nháp ghi là ảnh thật mà không có trong ``scanned``: xem tên các thư mục trên đường tới
+      ảnh (``list_folder`` không đệ quy, mỗi thư mục một lần) để ``ref`` và thẻ theo đúng tên thư
+      mục trên ổ, không theo chữ hoa thường trong nháp (SL-T055-1). Không kiểm được (thư mục quá
+      nhiều mục, quét quá giờ) thì ảnh không dùng được, kèm ``message``; truyền ``scanned`` thì
+      không cần bước này.
     - Thẻ: ``tag_store.resolve_many`` (thẻ sửa tay hoặc tên thư mục), không có ``tag_store`` thì
       thẻ đọc từ tên thư mục. Nguồn ảnh theo hướng an toàn (``_safe_tags``); ``ai_roots``: số thứ
       tự các thư mục gốc mà mọi ảnh trong đó là ảnh AI (giao diện quyết, ví dụ theo tên gốc).
+    - Ảnh AI: alt, chú thích trong ``CheckedImage.image`` luôn có tiền tố ảnh AI (SL-T055-2).
     - Ảnh tạo bằng AI: ``ref`` và ``entry`` là ``None``, thẻ ảnh AI với hạng mục ghi trong nháp.
     """
     if not isinstance(snapshot, DraftSnapshot):
@@ -820,18 +886,40 @@ def _check_images(
             known.setdefault(_image_key(found), found)
     ai_root_set = frozenset(index for index in ai_roots if type(index) is int)
 
-    rebuilt: list[tuple[DraftImage, ImageRef | None]] = []
+    rebuilt: list[DraftImage] = []
     for image in images:
         if not isinstance(image, DraftImage):
             raise TypeError("Ảnh đã chọn phải là DraftImage.")
         # Dựng lại để chạy lại mọi kiểm tra (đối tượng có thể đã bị sửa sau khi tạo).
-        image = DraftImage.model_validate(image.model_dump())
-        ref = image.ref
-        if ref is not None:
-            ref = known.get(_image_key(ref), ref)
-        rebuilt.append((image, ref))
+        rebuilt.append(DraftImage.model_validate(image.model_dump()))
 
-    refs = [ref for _image, ref in rebuilt if ref is not None]
+    folder_names = _FolderNames(library)
+    found: list[tuple[DraftImage, ImageRef | None, ImageEntry | None, str]] = []
+    for image in rebuilt:
+        ref = image.ref
+        if ref is None:
+            found.append((image, None, None, ""))
+            continue
+        scanned_ref = known.get(_image_key(ref))
+        if scanned_ref is not None:
+            ref = scanned_ref
+        try:
+            entry, message = library.stat_image(ref), ""
+            # SL-T055-1: thẻ phải đọc từ tên thư mục thật trên ổ, không từ chữ trong nháp. Chỉ cần
+            # khi ảnh có thể ra ảnh thật: nháp ghi AI hay gốc AI thì đã là ảnh AI.
+            if (
+                scanned_ref is None
+                and image.source == SOURCE_REAL
+                and ref.root_index not in ai_root_set
+            ):
+                real = folder_names.real_ref(ref)
+                if real != ref:
+                    ref, entry = real, replace(entry, ref=real, name=real.name)
+        except ImageFolderError as exc:
+            entry, message = None, str(exc)
+        found.append((image, ref, entry, message))
+
+    refs = [ref for _image, ref, _entry, _message in found if ref is not None]
     current: dict[ImageRef, tuple[ImageTags, str]] = {}
     if tag_store is not None and refs:
         for ref, resolved in tag_store.resolve_many(refs).items():
@@ -841,7 +929,7 @@ def _check_images(
             current[ref] = (tags_for_image(ref).tags, "")
 
     results: list[CheckedImage] = []
-    for image, ref in rebuilt:
+    for image, ref, entry, message in found:
         if ref is None:
             results.append(
                 CheckedImage(
@@ -849,10 +937,6 @@ def _check_images(
                 )
             )
             continue
-        try:
-            entry, message = library.stat_image(ref), ""
-        except ImageFolderError as exc:
-            entry, message = None, str(exc)
         tags, tag_error = current[ref]
         tags = _safe_tags(image, tags, ai_root=ref.root_index in ai_root_set)
         results.append(
