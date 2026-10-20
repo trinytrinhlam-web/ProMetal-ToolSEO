@@ -157,12 +157,39 @@ def _check_source_size(data: object) -> bytes:
     return bytes(data)
 
 
+def _webp_canvas_pixels(data: bytes) -> int | None:
+    """Số điểm ảnh khai trong phần đầu file WebP (None nếu không phải WebP đọc được).
+
+    Bộ mở WebP của Pillow tạo bộ giải mã (cấp bộ nhớ cho cả khung ảnh) ngay trong ``Image.open``,
+    và lúc đó Pillow chỉ chặn ảnh vượt **gấp đôi** giới hạn chung. Nên phải so trước khi mở.
+    """
+    if len(data) < 30 or data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return None
+    chunk = data[12:16]
+    if chunk == b"VP8X":  # 24 bit rộng − 1, 24 bit cao − 1
+        width = int.from_bytes(data[24:27], "little") + 1
+        height = int.from_bytes(data[27:30], "little") + 1
+    elif chunk == b"VP8L" and data[20] == 0x2F:  # 14 bit rộng − 1, 14 bit cao − 1
+        bits = int.from_bytes(data[21:25], "little")
+        width = (bits & 0x3FFF) + 1
+        height = ((bits >> 14) & 0x3FFF) + 1
+    elif chunk == b"VP8 " and data[23:26] == b"\x9d\x01\x2a":  # 14 bit rộng, 14 bit cao
+        width = int.from_bytes(data[26:28], "little") & 0x3FFF
+        height = int.from_bytes(data[28:30], "little") & 0x3FFF
+    else:
+        return None
+    return width * height
+
+
 def _open(
     data: object, formats: tuple[str, ...] = ALLOWED_FORMATS, draft_edge: int | None = None
 ) -> Image.Image:
     """Mở và giải mã khung đầu của ảnh; mọi lỗi thành ``ImageProcessError``."""
     _require_pillow_13()
     data = _check_source_size(data)
+    canvas = _webp_canvas_pixels(data)
+    if canvas is not None and canvas > MAX_IMAGE_PIXELS:
+        raise _too_many_pixels(canvas)
     _register_heif()
     try:
         with warnings.catch_warnings():
