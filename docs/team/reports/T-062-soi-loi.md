@@ -7,7 +7,7 @@
 | Nhánh | `team/T-062` (worktree `D:\ProMetal-ToolSEO\wt-T-062`), kiểm trên HEAD `ea1f900` của Thợ Máy |
 | Ngày nộp | 2026-10-20 |
 | Máy chạy | Windows 11 Pro 10.0.26300, Python 3.12 (uv) |
-| Kết quả | Hoàn thành · **ĐẠT CÓ ĐIỀU KIỆN**, chuyển sang Lá Chắn rút gọn được |
+| Kết quả | Hoàn thành · **ĐẠT CÓ ĐIỀU KIỆN**: không lỗi chặn, chuyển sang Lá Chắn rút gọn được; điều kiện: 3 lỗi Thấp SL-T062-1 → 3 được sửa (gỡ `xfail`) trước khi giao diện duyệt alt T-056 gộp |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -31,7 +31,7 @@ Không sửa code ứng dụng, `config/`, test cũ.
 | 1 | `AIRouter` lười; thiếu khóa chỉ báo khi gọi đúng việc; bật `[tasks.image]` mà trang Soạn bài không đòi khóa Gemini | **Đạt** | `seo_app/ai/registry.py:151-186` (`prepare` mặc định `WRITING_TASKS` ở dòng 31, `_provider` tạo khi gọi và không nhớ lỗi). Test của tôi: `test_write_flow_with_image_enabled_never_builds_gemini` (trang thật, bấm đủ 3 bước, chỉ hãng `anthropic` được tạo, khóa giả không hiện), `test_unknown_task_names_are_lazy_too` (việc tên lạ `lam_video` dùng Gemini, việc ảnh dùng OpenAI: chỉ báo khi gọi), `test_unusual_prepare_values` (tên lạ, trùng, viết hoa, bộ sinh; trang tạo ảnh dựng sẵn `image` thì báo `GEMINI_API_KEY` ngay), `test_missing_key_message_never_shows_other_keys` (S2) |
 | 2 | Từ chối `anthropic` cho việc `image`, câu tiếng Việt | **Đạt** | `registry.py:88-92`; `test_write_page_with_image_on_claude_shows_vietnamese_error` (trang Soạn bài hiện «Claude không tạo được ảnh», không sập, không lộ khóa); Thợ Máy `test_image_task_on_claude_is_refused_in_vietnamese` |
 | 3 | Thử mù không gợi ý mô hình tạo ảnh; nhãn `alt`, `meta`, `image` | **Đạt** | `seo_app/content/blind_test.py:96-105, 211-221`; `test_models_tab_with_image_enabled_and_only_claude_key` (bảng có «Tạo ảnh AI», không còn tên thô, không cảnh báo khóa Gemini), `test_blind_test_candidates_never_prefilled_with_image_model` (Gemini và OpenAI làm hãng tạo ảnh: ô tên mô hình ứng viên không điền sẵn mô hình ảnh), `test_enabled_real_config_has_vietnamese_label_for_every_task` |
-| 4 | Đọc `[images]`, `[alt]` chịu lỗi; mặc định 80/1600/125/200; sai dạng báo tiếng Việt | **Đạt** | `seo_app/content/rules.py:356-366, 396-495`; `test_odd_toml_values_in_images_give_vietnamese_error` (inf, nan, -0, hex 0x65, `1_000`, ngày tháng, số thực, `[images]` lẫn `[[images]]`, khóa trùng), `test_odd_alt_shapes_give_vietnamese_error` (`[alt.examples]` một bảng, lồng 2 lớp, bảng con, danh sách thay chữ, `vi_sao` là số, inf, số thực, ngày giờ, `rules` lồng, `alt = []`), `test_empty_file_uses_defaults`, `test_folder_instead_of_file_gives_vietnamese_error`, `test_content_toml_saved_as_nfd_on_mac_reads_the_same`, `test_bad_alt_and_images_do_not_lock_write_page`. Mọi câu lỗi được kiểm có `config/content.toml`, không có thư mục tạm, dấu `\`, ổ đĩa `X:/` |
+| 4 | Đọc `[images]`, `[alt]` chịu lỗi; mặc định 80/1600/125/200; sai dạng báo tiếng Việt | **Đạt** | `seo_app/content/rules.py:356-366, 396-494`; `test_odd_toml_values_in_images_give_vietnamese_error` (inf, nan, -0, hex 0x65, `1_000`, ngày tháng, số thực, `[images]` lẫn `[[images]]`, khóa trùng), `test_odd_alt_shapes_give_vietnamese_error` (`[alt.examples]` một bảng, lồng 2 lớp, bảng con, danh sách thay chữ, `vi_sao` là số, inf, số thực, ngày giờ, `rules` lồng, `alt = []`), `test_empty_file_uses_defaults`, `test_folder_instead_of_file_gives_vietnamese_error`, `test_content_toml_saved_as_nfd_on_mac_reads_the_same`, `test_bad_alt_and_images_do_not_lock_write_page`. Mọi câu lỗi được kiểm có `config/content.toml`, không có thư mục tạm, dấu `\`, ổ đĩa `X:/` |
 | 5 | Code tự bảo đảm alt: một dòng, bỏ chấm cuối, cắt theo ranh giới từ; ảnh AI có tiền tố | **Đạt, có 3 lỗi Thấp** | `seo_app/images/alt.py:337-393`. Tiền tố luôn có (C6 bên dưới). Lỗi: SL-T062-1, SL-T062-2, SL-T062-3 |
 | 6 | Test cấu hình `[images]`, `[alt]`, bật `[tasks.image]` | **Đạt** | 3 file `tests/test_t062_*.py` của Thợ Máy (138 test) và file của tôi |
 | Ghi chú | Gỡ 5 dấu `xfail` SL-T051-1 → 4 đúng, không đổi điều kiện kiểm | **Đạt** | `git diff 132a73d..HEAD -- tests/test_soi_loi_t051.py`: 3 dòng thêm, 31 dòng xóa, chỉ là 5 khối `@pytest.mark.xfail(...)`, hằng `T062`, docstring và một chú thích; thân 5 test không đổi một dòng. Cả 5 test qua trong lần chạy dưới đây |
@@ -53,7 +53,7 @@ Không sửa code ứng dụng, `config/`, test cũ.
 |---|---|---|---|
 | SL-T062-1 | Thấp | Alt không có chữ hay số nào vẫn được nhận: ảnh AI ra «Minh họa ???», «Minh họa !!!», «Minh họa 🔥🔥»; ảnh thật ra «???». Trong khi «Minh họa.» thì bị báo «AI không viết được alt» (đúng ý Thợ Máy ghi: không dùng alt rỗng nghĩa). Phần ảnh thật có từ T-050 | Thợ Máy (`alt.py:387-389`) |
 | SL-T062-2 | Thấp | Tiền tố AI tự viết trong ngoặc hay dính dấu câu lạ không được nhận ra, nên bị lặp hoặc để thừa dấu: «Minh họa «Minh họa» cửa cuốn», «Ảnh minh họa (AI): «Ảnh minh họa (AI)» ray dưới», «Minh họa ! Cửa cuốn», «Minh họa … cửa cuốn». Dễ gặp, vì chính lời dặn gửi AI ghi tiền tố trong ngoặc góc (`AI_PREFIX_NOTE`, `alt.py:138-140`) | Thợ Máy (`_AI_PREFIX`, `alt.py:341-345`) |
-| SL-T062-3 | Thấp | `clean_suggestion` cắt alt theo giới hạn **trước** khi bỏ tiền tố AI tự viết («Hình ảnh minh họa», «Ảnh minh họa (AI):», tới 19 ký tự), rồi mới ghép tiền tố chuẩn «Minh họa» (8 ký tự). Phần chữ đáng lẽ vừa bị mất; giới hạn nhỏ (`max_chars` 20–30, bộ đọc cho phép từ 20) thì cả alt rỗng, báo «AI không viết được alt» | Thợ Máy (`alt.py:382-391`) |
+| SL-T062-3 | Thấp | `clean_suggestion` cắt alt theo giới hạn **trước** khi bỏ tiền tố AI tự viết («Hình ảnh minh họa», «Ảnh minh họa (AI):», tới 19 ký tự), rồi mới ghép tiền tố chuẩn «Minh họa» (8 ký tự). Phần chữ đáng lẽ vừa bị mất (mặc định 125: mất vài chữ cuối khi AI viết quá dài); giới hạn nhỏ (ví dụ `max_chars = 20`, bộ đọc cho phép từ 20) thì cả alt rỗng, báo «AI không viết được alt» | Thợ Máy (`alt.py:382-391`) |
 
 ### Cách tái hiện
 
@@ -73,7 +73,7 @@ Cả 3 lỗi tái hiện bằng `clean_suggestion` với `AltSuggestion` giả (
 
 - **G1 · `AIRouter(prepare="alt")`.** Truyền chuỗi thay vì bộ (`("alt",)`) thì Python tách thành từng chữ «a», «l», «t», không việc nào khớp, router không dựng sẵn gì và không báo lỗi. Trang viết alt (T-056) hay tạo ảnh (T-053) gõ nhầm như vậy sẽ mất cảnh báo thiếu khóa lúc mở trang (lỗi vẫn báo khi bấm). Thợ Máy có thể nhận `str` như một việc hoặc báo `TypeError`; nếu không, phiếu sau nhớ truyền bộ.
 - **G2 · Không có trần cho `max_chars`, `caption_max_chars`.** `max_chars = 1250` (gõ thừa số 0) hay `99999999999999999999999999` đều được nhận, lời dặn gửi AI ghi «tối đa 99999… ký tự». Đúng C5 (số nguyên dương), không sập. Nếu Chỉ Huy muốn chặn gõ nhầm thì đặt trần (ví dụ 1.000) như `max_edge_px`.
-- **G3 · Chú thích `config/ai.toml:80-83` đã lỗi thời.** Câu «Nếu bật sớm, trang Soạn bài sẽ đòi khóa Gemini ngay cả khi bạn chỉ viết bài» không còn đúng sau T-062 (test của tôi chứng minh ngược lại). Ngòi Bút sửa cùng lúc bật khối ở T-053 (cùng điều kiện C8).
+- **G3 · Chú thích `config/ai.toml:81-82` đã lỗi thời.** Câu «Nếu bật sớm, trang Soạn bài sẽ đòi khóa Gemini ngay cả khi bạn chỉ viết bài» không còn đúng sau T-062 (test của tôi chứng minh ngược lại). Ngòi Bút sửa cùng lúc bật khối ở T-053 (cùng điều kiện C8).
 - **G4 · `[tasks.image]` ghi sai vẫn khóa cả trang Soạn bài.** `load_ai_config` đọc mọi việc một lượt, nên ghi Claude hay quên `model` cho việc ảnh thì trang Soạn bài khóa nút AI (có câu tiếng Việt, không sập; `test_write_page_with_image_on_claude_shows_vietnamese_error`). Khác với `[alt]` của `content.toml` (ghi sai chỉ khóa việc alt). Đúng phạm vi phiếu (YC2 chỉ đòi câu tiếng Việt); ghi lại để T-053 cân nhắc tách nếu muốn.
 - **G5 · Lời dặn alt hơi ngược nhau với ảnh AI.** `ALT_SYSTEM` (`alt.py:126`) ghi «Không mở đầu bằng "Ảnh", "Hình ảnh"…» chung cho mọi trường, còn `AI_PREFIX_NOTE` bảo chú thích ảnh AI mở đầu «Ảnh minh họa (AI)». Code tự sửa nên không hại; Ngòi Bút có thể ghi rõ câu cấm chỉ áp cho alt.
 
@@ -102,11 +102,21 @@ $ uv run python -X utf8 <đo độ dài lời dặn alt>
 NFC rules len 2172 examples len 2405 system 5863
 NFD rules len 2669 examples len 2974 system 6929
 
-$ uv run pytest <test liên quan>   # đang chạy, điền khi xong
+$ uv run pytest -q -p no:cacheprovider -rfEX <26 file liên quan>   # HEAD e8a42d5, 14:07 → 14:11
+2362 passed, 43 xfailed in 217.76s (0:03:37)
+
+$ uv run pytest -q -rx <các file có xfail>       # nguồn 43 xfail
+     15 XFAIL tests/test_soi_loi_t050.py          # dấu cũ của T-050
+     10 XFAIL tests/test_soi_loi_t036.py          # dấu cũ của T-036
+                                                  # + 18 của tests/test_soi_loi_t062.py (lỗi mới)
+$ uv run pytest tests/test_soi_loi_t051.py -q
+41 passed in 29.66s                               # 36 cũ + 5 test SL-T051 đã gỡ xfail
 
 $ uv run ruff check .
 All checks passed!
 ```
+
+26 file test liên quan (theo quy tắc mới chỉ chạy test liên quan; toàn bộ pytest do Chỉ Huy chạy khi gộp): `test_ai.py`, `test_ai_images.py`, `test_ai_openai_gemini.py`, `test_ai_openai_gemini_soi_loi.py`, `test_ai_t026.py`, `test_ai_t028.py`, `test_ai_t034.py`, 3 file `test_t062_*.py`, `test_soi_loi_t050.py`, `test_soi_loi_t051.py`, `test_soi_loi_t062.py`, thử mù (`test_blind_test.py`, `test_settings_blind.py`, `test_soi_loi_t019.py`, `test_soi_loi_t019_luot2.py`, `test_soi_loi_t034.py`), đọc `config/content.toml` (`test_content_rules.py`, `test_content_edge_cases.py`, `test_config_tolerance.py`), dùng `AIRouter` (`test_content_workflow.py`, `test_onpage_meta.py`, `test_phase2_fixes.py`, `test_soi_loi_t036.py`) và `test_app_pages.py`. **0 hỏng, 0 lỗi, 0 XPASS.**
 
 ## Đối chiếu tiêu chí xong (phần Soi Lỗi)
 
