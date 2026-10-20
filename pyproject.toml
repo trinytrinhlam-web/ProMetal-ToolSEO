@@ -10,8 +10,9 @@ dependencies = [
     "google-genai>=2.30.1",
     "openai>=3.31.0",
     # Thư viện ảnh (chủ dự án duyệt 2026-10-16). Streamlit vốn đã cài sẵn, ghi tên vì app dùng
-    # trực tiếp ở Giai đoạn 3 (T-047). Streamlit 1.65 giới hạn pillow<13.
-    "pillow>=12.3",
+    # trực tiếp ở Giai đoạn 3 (T-047). Bản 13 vá 53 khuyến cáo của 12.3.0 (T-058, chốt 2026-10-20);
+    # Streamlit khai báo pillow<13 nên phải ép bằng override-dependencies ở [tool.uv] bên dưới.
+    "pillow>=13.0.0",
     # Đọc ảnh HEIC của iPhone, gắn vào Pillow (chủ dự án duyệt 2026-10-19, T-047).
     "pillow-heif>=1.8.1",
     # Khuôn dữ liệu kết quả AI (seo_app/content/models.py). Đã cài sẵn nhờ anthropic, ghi tên
@@ -30,6 +31,11 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
 ]
+
+[tool.uv]
+# T-058 (chủ dự án chốt 2026-10-20, lựa chọn A): ép Pillow 13 dù Streamlit khai báo pillow<13.
+# Quay về bản cũ: xóa dòng này, đổi khai báo trên về "pillow>=12.3", chạy `uv lock` rồi `uv sync`.
+override-dependencies = ["pillow>=13.0.0,<14"]
 
 [build-system]
 requires = ["hatchling"]
