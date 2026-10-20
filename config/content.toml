@@ -74,3 +74,92 @@ checklist = [
   "Trung thực: thông tin về Pro-Metal chỉ lấy từ hồ sơ doanh nghiệp, không hứa thêm điều hồ sơ không ghi",
   "An toàn: hướng dẫn tự làm phải cảnh báo chỗ nguy hiểm (điện, lò xo, cửa nặng rơi) và dừng ở mức người không chuyên làm được",
 ]
+
+[images]
+# Nén ảnh trước khi tải lên web (báo cáo T-046 mục 2, quyết định 5A ngày 2026-10-19).
+# webp_quality: chất lượng WebP, 1–100. Số cao thì ảnh nét hơn nhưng nặng hơn. 80 là điểm khởi
+#   đầu, nhắm khoảng 150–400 KB mỗi ảnh; thử với ảnh thật rồi chỉnh (ví dụ 75 nếu ảnh quá nặng).
+# max_edge_px: cạnh dài nhất của ảnh sau khi thu nhỏ, tính bằng điểm ảnh (px). Ảnh nhỏ hơn
+#   giữ nguyên, không phóng to. Bài viết dùng đúng file đầy đủ này (5A) để GPS tới người xem.
+webp_quality = 80
+max_edge_px = 1600
+
+[alt]
+# Quy tắc viết alt (chữ thay thế của ảnh) và chú thích ảnh. AI đọc mục này mỗi lần gợi ý alt;
+# bạn vẫn sửa và bấm duyệt từng alt trước khi gửi bài.
+# Alt dùng cho người khiếm thị (máy đọc màn hình đọc to) và cho Google hiểu ảnh. Viết như đang
+# tả ảnh cho một người không nhìn thấy: ảnh có gì, đang ở tình trạng nào.
+max_chars = 125          # alt dài tối đa bao nhiêu ký tự (tính cả dấu cách)
+caption_max_chars = 200  # chú thích dưới ảnh dài tối đa bao nhiêu ký tự
+
+rules = [
+  # Đúng nội dung
+  "Chỉ tả những gì nhìn thấy trong ảnh: loại cửa hay bộ phận, chất liệu, màu, tình trạng (gỉ, xệ, cong, trật ray, mới sơn). Không đoán điều ảnh không cho thấy",
+  "Vật chính nói trước, chi tiết sau: «Bản lề cửa cổng sắt bị gỉ sét, cánh cửa xệ xuống chạm nền», không phải «Một góc nhà có cánh cửa…»",
+  "Gọi đúng tên thợ và khách hay dùng: cửa cuốn, cửa kéo, cửa cổng, cửa xếp, ray, bánh xe, bản lề, ổ khóa, mô tơ cửa cuốn, lá cửa",
+  # Ngắn, tự nhiên
+  "Một câu hoặc một cụm, không quá max_chars ký tự, không chấm câu ở cuối, không xuống dòng",
+  "Không mở đầu bằng «Hình ảnh», «Ảnh», «Hình», «Ảnh chụp»: máy đọc màn hình đã tự báo đây là ảnh",
+  "Viết câu tiếng Việt có dấu, đọc lên tự nhiên; không liệt kê từ khóa cách nhau bằng dấu phẩy",
+  # Không nhồi từ khóa
+  "Từ khóa của bài chỉ dùng khi đúng là thứ có trong ảnh, tối đa một lần, và không cố chèn đủ cả cụm. Ảnh khác nhau trong cùng bài phải có alt khác nhau",
+  "Không thêm lời quảng cáo hay đánh giá: «đẹp nhất», «chất lượng cao», «uy tín», «giá rẻ», «chuyên nghiệp». Không thêm số điện thoại, tên website",
+  "Không thêm tên «Pro-Metal» trừ khi chữ hay logo Pro-Metal nhìn thấy rõ trong ảnh",
+  # Không bịa
+  "Không bịa địa điểm, tên khách, số nhà, tên đường, tên tòa nhà, ngày làm, giá, kích thước hay số liệu. Ảnh không cho thấy thì không nói",
+  "Khu vực (quận, phường) chỉ được nêu khi có trong thẻ ảnh, ảnh là ảnh thật, và chỉ ghi cấp quận/huyện. Không bao giờ ghi tên khách hay địa chỉ dù thẻ hoặc tên thư mục có chứa",
+  "«Trước khi sửa» hay «sau khi sửa» chỉ ghi khi thẻ ảnh nói vậy; không đoán từ hình",
+  "Chữ đọc được trong ảnh (biển hiệu, số nhà, biển số xe, tên người) không chép vào alt",
+  # Ảnh AI
+  "Ảnh tạo bằng AI không bao giờ được tả như công trình thật: không ghi «công trình», «Pro-Metal thi công», «nhà anh/chị…», «tại quận…», «trước/sau khi sửa»",
+  "Alt ảnh AI bắt đầu bằng «Minh họa» rồi tả vật trong ảnh, ví dụ «Minh họa cấu tạo ray và bánh xe cửa cổng trượt». Chú thích ảnh AI bắt đầu bằng «Ảnh minh họa (AI)»",
+  # Chú thích
+  "Chú thích (caption) bổ sung điều alt chưa nói và có ích cho người đọc bài (đang sửa gì, vì sao hỏng), không lặp lại nguyên alt, không quá caption_max_chars ký tự",
+]
+
+# Cách mở đầu alt nên tránh (máy dò có thể đánh dấu; không phân biệt hoa thường).
+bad_starts = ["Hình ảnh", "Ảnh chụp", "Ảnh", "Hình", "Bức ảnh", "Image"]
+
+# Ví dụ cho AI và cho người duyệt. anh = ảnh có gì; the = thẻ ảnh; tot = alt nên viết;
+# xau = alt không nên viết; vi_sao = lý do.
+[[alt.examples]]
+anh = "Ảnh thật: bản lề cửa cổng sắt hai cánh bị gỉ nặng, một cánh xệ, mép dưới chạm nền gạch"
+the = "hạng mục: sửa cửa cổng; khu vực: Bình Tân; trước/sau: trước"
+tot = "Bản lề cửa cổng sắt gỉ sét làm cánh cổng xệ, chạm nền, trước khi sửa ở Bình Tân"
+xau = "sửa cửa cổng, sửa cửa sắt, sửa cửa sắt tại nhà, sửa cổng Bình Tân giá rẻ uy tín"
+vi_sao = "Bản xấu nhồi từ khóa, không tả ảnh, thêm quảng cáo"
+
+[[alt.examples]]
+anh = "Ảnh thật: thợ đang thay bánh xe dưới cánh cửa cổng trượt, ray mới lắp còn sáng màu"
+the = "hạng mục: sửa cửa cổng trượt; khu vực: (không có); trước/sau: (không có)"
+tot = "Thợ thay bánh xe cho cửa cổng trượt, ray dưới vừa thay mới"
+xau = "Thợ Pro-Metal thay bánh xe cho nhà anh Tuấn ở Quận 7, xong trong 30 phút"
+vi_sao = "Bản xấu bịa tên khách, khu vực, thời gian; thẻ không có khu vực"
+
+[[alt.examples]]
+anh = "Ảnh thật: cửa cuốn kéo lên lưng chừng, lá cửa bên trái lệch khỏi ray, có biển hiệu cửa hàng ghi tên và số điện thoại"
+the = "hạng mục: sửa cửa cuốn; khu vực: Tân Bình; trước/sau: trước"
+tot = "Cửa cuốn kẹt lưng chừng, lá cửa bên trái trật khỏi ray, trước khi sửa ở Tân Bình"
+xau = "Hình ảnh cửa cuốn của cửa hàng Minh Phát, 0909 xxx xxx, đường Cộng Hòa"
+vi_sao = "Bản xấu mở đầu bằng «Hình ảnh», chép tên cửa hàng, số điện thoại, tên đường trong ảnh"
+
+[[alt.examples]]
+anh = "Ảnh thật: cửa kéo sắt sơn xanh, vừa sơn lại, đóng kín, không thấy biển số nhà"
+the = "hạng mục: sơn cửa kéo; khu vực: Quận 3; trước/sau: sau"
+tot = "Cửa kéo sắt sơn xanh vừa sơn lại, đóng kín, sau khi sửa ở Quận 3"
+xau = "Cửa kéo đẹp nhất Quận 3, sơn tĩnh điện bền 10 năm"
+vi_sao = "Bản xấu khen quảng cáo, bịa loại sơn và độ bền mà ảnh không cho thấy"
+
+[[alt.examples]]
+anh = "Ảnh AI: hình vẽ cắt ngang ray dưới và bánh xe của cửa cổng trượt, có mũi tên chỉ hướng trượt"
+the = "nguồn: AI (không có hạng mục công trình, khu vực, trước/sau)"
+tot = "Minh họa mặt cắt ray dưới và bánh xe cửa cổng trượt, mũi tên chỉ hướng trượt"
+xau = "Công trình cửa cổng trượt Pro-Metal vừa thi công tại Gò Vấp"
+vi_sao = "Ảnh AI bị tả như công trình thật, bịa nơi thi công"
+
+[[alt.examples]]
+anh = "Ảnh AI: cảnh mặt tiền nhà phố với cửa cuốn đang mở một nửa, buổi chiều"
+the = "nguồn: AI"
+tot = "Minh họa cửa cuốn nhà phố đang mở một nửa"
+xau = "Cửa cuốn nhà chị Lan sau khi Pro-Metal sửa xong"
+vi_sao = "Ảnh AI không được gắn tên khách hay «sau khi sửa»"
