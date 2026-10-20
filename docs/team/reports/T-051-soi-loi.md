@@ -133,20 +133,25 @@ E   Failed: DID NOT RAISE AIError
 E   AssertionError: assert ['meta', 'alt'] == []
 E   AssertionError: assert 'gemini-nano-banana-2.1' not in ['gemini-nano-banana-2.1']
 E   AssertionError: ['Chưa có khóa Google Gemini (GEMINI_API_KEY). Vào Cài đặt → 🔌 Kết nối để nhập khóa. Các bước dùng AI tạm khóa cho tới khi sửa xong.']
-5 failed, 35 deselected in 20.01s   # SL-T051-2 chạy lại sau khi sửa hàm bật thử: vẫn «DID NOT RAISE AIError»
+5 failed, 35 deselected in 20.01s   # bản fd6e335; SL-T051-2 chạy lại trên bản cuối: vẫn «DID NOT RAISE AIError»
 
 $ uv run python -X utf8 -c "<đo độ dài [alt]>"
 rules joined 2054
 examples joined 2208 total 4263
 
-$ uv run pytest
-ĐANG CHẠY (chưa có kết quả)
+$ uv run pytest                 # lần 1, test của tôi ở bản fd6e335 (35 qua, 5 xfail)
+5845 passed, 11 skipped, 37 xfailed, 1 warning in 734.34s (0:12:14)
+
+$ uv run pytest                 # lần 2, bản cuối của nhánh
+LẦN 2 ĐANG CHẠY
 
 $ uv run ruff check .
 All checks passed!
 ```
 
 Máy chạy: Windows 11 Pro, Python 3.12 (uv). Lần chạy riêng file đầu tiên mất 4 phút 15 giây vì máy đang chạy test của agent khác song song; các lần sau khoảng 20 giây.
+
+So với báo cáo Ngòi Bút (5810 qua, 11 bỏ qua, 32 xfail): thêm đúng 35 qua và 5 xfail của file test mới; 11 test bỏ qua có từ trước (không do tôi thêm). 0 hỏng, 0 lỗi, 0 XPASS. Cảnh báo duy nhất là cảnh báo Pydantic có sẵn trong `test_soi_loi_t028.py` (test cố ý đưa nội dung hỏng).
 
 ## Đối chiếu tiêu chí xong (phần Soi Lỗi)
 
@@ -156,7 +161,7 @@ Máy chạy: Windows 11 Pro, Python 3.12 (uv). Lần chạy riêng file đầu t
 - [x] Quy tắc `[alt]` và 6 ví dụ đạt yêu cầu phiếu, ví dụ không vi phạm chính quy tắc (mục 3)
 - [x] Tên mô hình khớp T-046, chỗ chưa xác minh được ghi rõ (mục 4)
 - [x] Có test cấu hình (`tests/test_soi_loi_t051.py`), không gọi mạng, khóa là chuỗi giả, không cần `.env`
-- [ ] `uv run pytest` toàn bộ: đang chạy
+- [x] `uv run pytest` toàn bộ: 0 hỏng, 0 lỗi trên Windows (mục Bằng chứng)
 - [x] `uv run ruff check .` sạch
 
 ## Đề xuất
