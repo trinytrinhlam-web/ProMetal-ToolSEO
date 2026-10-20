@@ -23,7 +23,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Soi Lỗi · T-052 lượt 2 kiểm lại thẻ ảnh | `team/T-052` | 12:46 Thợ Máy **xong** (`0bbc0b8`: `tags.py`, `storage/image_tags.py`; 7.753 qua, 0 hỏng; thẻ chỉ từ danh sách cố định, thẻ sửa tay trong `data/image_tags.sqlite`). Chỉ Huy gộp `main` mới vào nhánh (`2d481c0`, test nối `alt.py` nay chạy: qua). 13:42 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`0848316`: 1 Trung bình SL-T052-1 ảnh AI trong thư mục đặt tên khác danh sách bị coi là ảnh thật, 7 Thấp; test liên quan 753 qua). 14:15 Thợ Máy lượt 2 **xong** (`f771a0e`: sửa đủ SL-T052-1 → -8, đặt `trusted_schema = OFF`; test liên quan 849 qua, 0 hỏng). 14:54 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (`497aa45`: 8 lỗi lượt 1 sửa thật; 3 lỗi mới Thấp SL-T052-9 → -11, `xfail`; test liên quan 849 qua). **Chờ Lá Chắn** | [Thợ Máy](reports/T-052-tho-may.md) |
-| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) | Dọn lỗi Thấp xử lý ảnh (LC-T049-1/-2/-3) | Thợ Máy · T-067 dọn lỗi Thấp xử lý ảnh | `team/T-067` | ⏳ **Thợ Máy đang làm** (giao sau 14:37; nhánh tạo từ `main` `6ed41e2`) | |
+| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) | Dọn lỗi Thấp xử lý ảnh (LC-T049-1/-2/-3) | Thợ Máy · T-067 dọn lỗi Thấp xử lý ảnh | `team/T-067` | 15:09 Thợ Máy **xong** (`da9d6c8`: sửa LC-T049-1 → -3, làm thêm N1, N4, gỡ 3 `xfail`; test liên quan 688 qua, 0 hỏng). **Chờ Soi Lỗi rút gọn**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-067-tho-may.md) |
 
 ## Chờ
 
