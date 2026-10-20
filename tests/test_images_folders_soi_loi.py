@@ -1,0 +1,1193 @@
+"""Soi Lỗi kiểm thử T-048 (đọc thư mục ảnh an toàn): các đòn tấn công bổ sung.
+
+Bổ sung cho ``tests/test_images_folders.py`` (Thợ Máy). Mọi file thử nằm trong ``tmp_path``.
+Test ``xfail(strict=True)`` là lỗi đã ghi trong ``docs/team/reports/T-048-soi-loi.md``: khi
+sửa xong, test chuyển sang "XPASS" và báo hỏng, lúc đó bỏ dấu ``xfail``.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import os
+import sys
+import time
+from pathlib import Path
+
+import pytest
+
+from seo_app.images.folders import (
+    MAX_IMAGE_BYTES,
+    MAX_PAGE_SIZE,
+    FolderListing,
+    ImageEntry,
+    ImageFolderError,
+    ImageLibrary,
+    ImageRef,
+    RootInfo,
+    SkipCounts,
+    SubFolder,
+)
+
+IS_WINDOWS = os.name == "nt"
+windows_only = pytest.mark.skipif(not IS_WINDOWS, reason="junction chỉ có trên Windows")
+
+
+# ----- tiện ích ----------------------------------------------------------------------------
+
+
+def write(path: Path, data: bytes = b"\xff\xd8\xff fake jpeg") -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    return path
+
+
+def make_junction(link: Path, target: Path) -> None:
+    import _winapi
+
+    _winapi.CreateJunction(str(target), str(link))
+    assert link.is_junction()
+
+
+def abs_forms(*paths: Path) -> set[str]:
+    forms: set[str] = set()
+    for path in paths:
+        for p in (path, path.resolve()):
+            forms |= {str(p), p.as_posix()}
+            if IS_WINDOWS:
+                forms.add("\\\\?\\" + str(p))
+    return forms
+
+
+def assert_no_abs_path(text: str, *paths: Path) -> None:
+    for form in abs_forms(*paths):
+        assert form not in text, f"lộ đường dẫn tuyệt đối: {form!r}"
+
+
+def raises_safely(func, *paths: Path) -> ImageFolderError:
+    with pytest.raises(ImageFolderError) as info:
+        func()
+    exc = info.value
+    assert str(exc)
+    assert_no_abs_path(str(exc), *paths)
+    assert_no_abs_path(repr(exc), *paths)
+    assert exc.__cause__ is None
+    assert exc.__context__ is None or exc.__suppress_context__
+    return exc
+
+
+def listed_names(listing: FolderListing) -> list[str]:
+    return [entry.name for entry in listing.images]
+
+
+def swap_dir_for_junction(directory: Path, target: Path, park: Path) -> None:
+    """Đổi thư mục thật thành junction trỏ ra ngoài (người có quyền ghi vào thư mục ảnh)."""
+    os.rename(directory, park)
+    make_junction(directory, target)
+
+
+@pytest.fixture
+def tree(tmp_path: Path) -> dict[str, Path]:
+    root = tmp_path / "anh"
+    outside = tmp_path / "ngoai"
+    write(root / "album" / "a.jpg", b"AAAA")
+    write(outside / "bi-mat.jpg", b"SECRET")
+    write(outside / "a.jpg", b"SECRET-A")
+    return {"root": root, "outside": outside, "tmp": tmp_path}
+
+
+# ----- 1. Junction lồng nhau, mount point, đường dẫn dài, ổ ánh xạ ------------------------
+
+
+@windows_only
+def test_nested_junction_chain_is_refused(tree):
+    """j1 (junction trong gốc) → thư mục thật trong gốc chứa j2 → ngoài: đều bị chặn."""
+    root, outside = tree["root"], tree["outside"]
+    (root / "that").mkdir()
+    make_junction(root / "that" / "j2", outside)
+    make_junction(root / "j1", root / "that")
+    lib = ImageLibrary([root])
+    listing = lib.list_folder(0, recursive=True)
+    assert "bi-mat.jpg" not in listed_names(listing)
+    assert listing.skipped.links == 2
+    for rel in ("j1/j2/bi-mat.jpg", "that/j2/bi-mat.jpg", "j1/j2/a.jpg"):
+        raises_safely(lambda rel=rel: lib.read_image_bytes(ImageRef(0, rel)), tree["tmp"])
+    raises_safely(lambda: lib.list_folder(0, "that/j2"), tree["tmp"])
+
+
+def _volume_guid_path(drive: str) -> str | None:
+    buf = ctypes.create_unicode_buffer(100)
+    ok = ctypes.windll.kernel32.GetVolumeNameForVolumeMountPointW(drive, buf, 100)
+    return buf.value if ok else None
+
+
+@windows_only
+def test_volume_mount_point_style_junction_is_refused(tree):
+    """Junction trỏ thẳng vào ổ đĩa (``\\\\?\\Volume{...}\\``), cùng loại với mount point."""
+    root = tree["root"]
+    drive = Path(root.resolve().anchor)
+    volume = _volume_guid_path(str(drive))
+    if not volume:
+        pytest.skip("không lấy được tên volume GUID của ổ chứa tmp_path")
+    link = root / "o-dia"
+    make_junction(link, Path(volume))
+    try:
+        lib = ImageLibrary([root])
+        listing = lib.list_folder(0, recursive=True)
+        assert listing.skipped.links == 1
+        assert all(not n.startswith("o-dia") for n in (s.rel_path for s in listing.subfolders))
+        assert all(not e.ref.rel_path.startswith("o-dia/") for e in listing.images)
+        raises_safely(lambda: lib.list_folder(0, "o-dia"), tree["tmp"])
+        raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "o-dia/x.jpg")), tree["tmp"])
+    finally:
+        os.rmdir(link)  # chỉ gỡ junction, không đụng vào ổ đĩa
+
+
+@windows_only
+def test_path_longer_than_260_chars_works_or_fails_safely(tmp_path):
+    root = tmp_path / "anh"
+    parts: list[str] = []
+    deep = root
+    while len(str(deep)) < 420:
+        parts.append("thu-muc-dai-" + "d" * 40)
+        deep = deep / parts[-1]
+    try:
+        write(deep / "x.jpg", b"LONG")
+    except OSError:
+        pytest.skip("Windows này chưa bật đường dẫn dài (LongPathsEnabled)")
+    assert len(str(deep / "x.jpg")) > 260
+    lib = ImageLibrary([root])
+    rel = "/".join([*parts, "x.jpg"])
+    assert lib.read_image_bytes(ImageRef(0, rel)) == b"LONG"
+    listing = lib.list_folder(0, recursive=True, max_depth=50)
+    assert [e.ref.rel_path for e in listing.images] == [rel]
+    assert lib.list_folder(0, "/".join(parts)).total_images == 1
+    # Gốc nằm sẵn ở đường dẫn dài cũng dùng được.
+    deep_lib = ImageLibrary([deep])
+    assert deep_lib.roots()[0].available
+    assert deep_lib.read_image_bytes(ImageRef(0, "x.jpg")) == b"LONG"
+    raises_safely(lambda: deep_lib.read_image_bytes(ImageRef(0, "khong.jpg")), tmp_path)
+
+
+@windows_only
+def test_extended_length_prefixed_root(tmp_path):
+    """IMAGE_FOLDERS ghi dạng ``\\\\?\\C:\\...``: dùng được, câu lỗi không lộ đường dẫn."""
+    root = tmp_path / "anh"
+    write(root / "a.jpg", b"AAAA")
+    write(tmp_path / "ngoai" / "a.jpg", b"SECRET")
+    make_junction(root / "j", tmp_path / "ngoai")
+    lib = ImageLibrary(["\\\\?\\" + str(root.resolve())])
+    assert lib.roots()[0].available
+    assert lib.read_image_bytes(ImageRef(0, "a.jpg")) == b"AAAA"
+    raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "j/a.jpg")), tmp_path)
+    raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "khong.jpg")), tmp_path)
+
+
+def _admin_share(path: Path) -> str | None:
+    resolved = path.resolve()
+    if not resolved.drive.endswith(":"):
+        return None
+    unc = "\\\\localhost\\" + str(resolved).replace(":", "$", 1)
+    try:
+        return unc if os.path.isdir(unc) else None
+    except OSError:
+        return None
+
+
+@windows_only
+def test_unc_network_root_blocks_junction_and_hides_paths(tree):
+    """Gốc là đường dẫn mạng UNC (giống ổ mạng ánh xạ, resolve ra UNC)."""
+    root = tree["root"]
+    unc = _admin_share(root)
+    if unc is None:
+        pytest.skip("máy này không mở được ổ chia sẻ \\\\localhost\\C$ (cần quyền quản trị)")
+    make_junction(root / "j", tree["outside"])
+    lib = ImageLibrary([unc])
+    assert lib.roots()[0].available
+    assert lib.read_image_bytes(ImageRef(0, "album/a.jpg")) == b"AAAA"
+    listing = lib.list_folder(0, recursive=True)
+    assert listing.skipped.links == 1
+    assert "bi-mat.jpg" not in listed_names(listing)
+    for func in (
+        lambda: lib.read_image_bytes(ImageRef(0, "j/bi-mat.jpg")),
+        lambda: lib.list_folder(0, "j"),
+        lambda: lib.read_image_bytes(ImageRef(0, "khong.jpg")),
+    ):
+        exc = raises_safely(func, tree["tmp"])
+        assert "localhost" not in str(exc) and "C$" not in str(exc)
+
+
+# ----- 2. Ký tự Unicode đặc biệt trong tên -------------------------------------------------
+
+
+def _make_undecodable_name(folder: Path) -> str:
+    """Tạo file có tên không mã hóa được UTF-8 (surrogate lẻ); trả tên Python thấy khi quét."""
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        if IS_WINDOWS:
+            name = "x\ud800y.jpg"  # NTFS nhận UTF-16 lẻ cặp
+            (folder / name).write_bytes(b"S")
+            return name
+        raw = os.path.join(os.fsencode(folder), b"x\xffy.jpg")  # byte sai UTF-8
+        with open(raw, "wb") as handle:
+            handle.write(b"S")
+        return os.fsdecode(b"x\xffy.jpg")
+    except (OSError, UnicodeError):
+        pytest.skip("hệ thống file này không cho tạo tên sai UTF-8 (ví dụ APFS)")
+
+
+def test_listing_never_returns_names_that_cannot_be_utf8_encoded(tmp_path):
+    root = tmp_path / "anh"
+    write(root / "a.jpg")
+    _make_undecodable_name(root)
+    listing = ImageLibrary([root]).list_folder(0)
+    for entry in listing.images:
+        entry.name.encode("utf-8")
+        entry.ref.rel_path.encode("utf-8")
+    assert listed_names(listing) == ["a.jpg"]
+    assert listing.skipped.bad_names == 1
+
+
+@pytest.mark.parametrize("rel", ["x\ud800y.jpg", "a\udcff/b.jpg"])
+def test_image_ref_rejects_lone_surrogates(rel):
+    with pytest.raises(ImageFolderError):
+        ImageRef(0, rel)
+
+
+def test_lone_surrogate_name_is_still_safe_to_read_or_rejected(tmp_path):
+    """Dù tên lạ lọt qua, đọc vẫn không ra ngoài gốc và không lỗi lạ."""
+    root = tmp_path / "anh"
+    name = _make_undecodable_name(root)
+    lib = ImageLibrary([root])
+    try:
+        data = lib.read_image_bytes(ImageRef(0, name))
+    except ImageFolderError as exc:
+        assert_no_abs_path(str(exc), tmp_path)
+    else:
+        assert data == b"S"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "anh\u202egpj.exe",  # RLO: hiện thành "anhexe.jpg" nhưng đuôi thật là .exe
+        "anh\u202egnp.txt",
+        "a\u200b.jpg\u200b",  # ký tự rộng 0 sau đuôi
+        "anh.jpg\u202e",
+    ],
+)
+def test_bidi_and_zero_width_cannot_disguise_extension(tmp_path, name):
+    root = tmp_path / "anh"
+    write(root / "that.jpg")
+    write(root / name)
+    listing = ImageLibrary([root]).list_folder(0)
+    assert listed_names(listing) == ["that.jpg"]
+    # Lượt 2 (Thợ Máy): tên có ký tự điều khiển hướng chữ bị loại sớm hơn, đếm vào bad_names.
+    assert listing.skipped.other_files + listing.skipped.bad_names == 1
+    with pytest.raises(ImageFolderError):
+        ImageRef(0, name)
+
+
+def test_format_characters_in_names_stay_inside_root(tmp_path):
+    """Ký tự định dạng (Cf) và ký tự giống dấu chấm/gạch chéo không giúp thoát khỏi gốc."""
+    root = tmp_path / "anh"
+    write(root / "a.jpg")
+    write(tmp_path / "ngoai" / "bi-mat.jpg", b"SECRET")
+    lib = ImageLibrary([root])
+    for rel in (
+        "\uff0e\uff0e/ngoai/bi-mat.jpg",  # dấu chấm toàn khổ
+        "\u2024\u2024/ngoai/bi-mat.jpg",  # one dot leader
+        "\u202e../ngoai/bi-mat.jpg",
+        "\u200b../ngoai/bi-mat.jpg",
+        "x\u2215..\u2215ngoai\u2215bi-mat.jpg",  # division slash
+        "x\uff0f..\uff0fngoai\uff0fbi-mat.jpg",  # gạch chéo toàn khổ
+        "x\u29f5..\u29f5bi-mat.jpg",  # reverse solidus operator
+    ):
+        try:
+            ref = ImageRef(0, rel)
+        except ImageFolderError:
+            continue
+        raises_safely(lambda ref=ref: lib.read_image_bytes(ref), tmp_path)
+
+
+# ----- 3. Tráo thư mục/file giữa lúc kiểm và lúc dùng (TOCTOU) -----------------------------
+
+
+@windows_only
+def test_read_detects_parent_dir_swapped_to_junction_before_open(tree, monkeypatch):
+    """Thư mục ở giữa bị thay bằng junction ra ngoài ngay trước ``os.open``: phải báo lỗi."""
+    root, outside = tree["root"], tree["outside"]
+    lib = ImageLibrary([root])
+    real_open = os.open
+
+    def swap_then_open(path, flags, *args):
+        monkeypatch.setattr("seo_app.images.folders.os.open", real_open)
+        swap_dir_for_junction(root / "album", outside, tree["tmp"] / "album-cu")
+        return real_open(path, flags, *args)
+
+    monkeypatch.setattr("seo_app.images.folders.os.open", swap_then_open)
+    exc = raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "album/a.jpg")), tree["tmp"])
+    assert "SECRET" not in str(exc)
+
+
+@windows_only
+def test_read_detects_file_replaced_by_directory_junction(tree, monkeypatch):
+    """File ảnh bị đổi thành junction (tên ``a.jpg``) trỏ ra thư mục ngoài: không đọc được."""
+    root = tree["root"]
+    lib = ImageLibrary([root])
+    real_open = os.open
+
+    def swap_then_open(path, flags, *args):
+        monkeypatch.setattr("seo_app.images.folders.os.open", real_open)
+        os.rename(root / "album" / "a.jpg", tree["tmp"] / "a-cu.jpg")
+        make_junction(root / "album" / "a.jpg", tree["outside"])
+        return real_open(path, flags, *args)
+
+    monkeypatch.setattr("seo_app.images.folders.os.open", swap_then_open)
+    raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "album/a.jpg")), tree["tmp"])
+
+
+@windows_only
+def test_list_folder_dir_swapped_to_junction_after_check(tree, monkeypatch):
+    root, outside = tree["root"], tree["outside"]
+    lib = ImageLibrary([root])
+    real_scandir = os.scandir
+
+    def swap_then_scandir(path):
+        monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+        swap_dir_for_junction(root / "album", outside, tree["tmp"] / "album-cu")
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", swap_then_scandir)
+    try:
+        listing = lib.list_folder(0, "album")
+    except ImageFolderError as exc:
+        assert_no_abs_path(str(exc), tree["tmp"])
+        return
+    assert "bi-mat.jpg" not in listed_names(listing)
+
+
+class _SwapWhenDone:
+    """Bọc iterator của ``os.scandir``: đọc hết thì chạy ``action`` (tráo thư mục)."""
+
+    def __init__(self, inner, action):
+        self.inner = inner
+        self.action = action
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.inner.close()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return next(self.inner)
+        except StopIteration:
+            action, self.action = self.action, None
+            if action:
+                action()
+            raise
+
+
+@windows_only
+def test_recursive_scan_subdir_swapped_to_junction_before_its_turn(tree, monkeypatch):
+    root, outside = tree["root"], tree["outside"]
+    lib = ImageLibrary([root])
+    real_scandir = os.scandir
+    calls = []
+
+    def scandir(path):
+        calls.append(path)
+        inner = real_scandir(path)
+        if len(calls) == 1:  # lần đầu: thư mục gốc, chỉ có "album/"
+            return _SwapWhenDone(
+                inner,
+                lambda: swap_dir_for_junction(root / "album", outside, tree["tmp"] / "album-cu"),
+            )
+        return inner
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", scandir)
+    listing = lib.list_folder(0, recursive=True)
+    assert "bi-mat.jpg" not in listed_names(listing)
+
+
+# ----- 4. Hard link (ghi nhận giới hạn) -----------------------------------------------------
+
+
+def test_hard_link_limitation_is_documented(tmp_path):
+    """Hard link trỏ tới file ngoài gốc thì KHÔNG phát hiện được (giới hạn đã ghi nhận).
+
+    Test này chỉ ghi lại hành vi hiện tại để ai đổi cách xử lý (ví dụ từ chối ``st_nlink > 1``)
+    thì biết cập nhật báo cáo. Muốn tạo hard link phải có quyền ghi vào thư mục ảnh.
+    """
+    root = tmp_path / "anh"
+    root.mkdir()
+    secret = write(tmp_path / "ngoai" / "bi-mat.jpg", b"SECRET")
+    try:
+        os.link(secret, root / "lien-ket.jpg")
+    except OSError:
+        pytest.skip("hệ thống file không hỗ trợ hard link")
+    lib = ImageLibrary([root])
+    assert lib.read_image_bytes(ImageRef(0, "lien-ket.jpg")) == b"SECRET"
+    assert os.lstat(root / "lien-ket.jpg").st_nlink == 2
+
+
+# ----- 5. Ngân sách và tham số lạ ---------------------------------------------------------
+
+
+def test_real_folder_with_more_than_5000_entries_stops_quickly(tmp_path):
+    root = tmp_path / "anh"
+    root.mkdir()
+    for i in range(5005):
+        (root / f"anh-{i:05d}.jpg").write_bytes(b"x")
+    lib = ImageLibrary([root])
+    started = time.monotonic()
+    listing = lib.list_folder(0, page=10**9, page_size=MAX_PAGE_SIZE)
+    elapsed = time.monotonic() - started
+    assert listing.truncated
+    assert listing.total_images == 5000
+    assert listing.page == listing.page_count == 25
+    assert len(listing.images) == MAX_PAGE_SIZE
+    assert "5.000" in listing.notice and "còn nữa" in listing.notice
+    assert elapsed < 10  # dưới ngân sách thời gian mặc định
+
+
+def test_entry_budget_notice_keeps_sentence_comma(tmp_path):
+    root = tmp_path / "anh"
+    for i in range(8):
+        write(root / f"{i}.jpg")
+    notice = ImageLibrary([root], max_entries=5).list_folder(0).notice
+    assert "mục đầu, còn nữa" in notice
+
+
+def test_folder_with_exactly_budget_entries_is_not_truncated(tmp_path):
+    root = tmp_path / "anh"
+    for i in range(3):
+        write(root / f"{i}.jpg")
+    listing = ImageLibrary([root], max_entries=3).list_folder(0)
+    assert listing.total_images == 3
+    assert not listing.truncated
+    assert listing.notice == ""
+
+
+def test_folder_with_one_less_than_budget_is_not_truncated(tmp_path):
+    root = tmp_path / "anh"
+    for i in range(3):
+        write(root / f"{i}.jpg")
+    listing = ImageLibrary([root], max_entries=4).list_folder(0)
+    assert listing.total_images == 3 and not listing.truncated
+
+
+def test_very_deep_tree_does_not_recurse_or_hang(tmp_path):
+    root = tmp_path / "anh"
+    deep = root
+    for _ in range(120):
+        deep = deep / "d"
+    write(deep / "day.jpg")
+    write(root / "d" / "nong.jpg")
+    lib = ImageLibrary([root])
+    shallow = lib.list_folder(0, recursive=True)  # mặc định 8 tầng
+    assert [e.name for e in shallow.images] == ["nong.jpg"]
+    assert shallow.skipped.too_deep == 1
+    full = lib.list_folder(0, recursive=True, max_depth=10**9)
+    assert sorted(e.name for e in full.images) == ["day.jpg", "nong.jpg"]
+    assert not full.truncated
+    assert lib.list_folder(0, "/".join(["d"] * 120)).total_images == 1
+
+
+def test_rel_path_over_limit_in_deep_tree_is_skipped_not_crash(tmp_path):
+    root = tmp_path / "anh"
+    deep = root
+    for _ in range(110):  # 110 * 10 ký tự > 1024
+        deep = deep / "thu-muc-xx"
+    try:
+        write(deep / "xa.jpg")
+    except OSError:
+        pytest.skip("hệ điều hành không cho đường dẫn dài như vậy")
+    listing = ImageLibrary([root]).list_folder(0, recursive=True, max_depth=500)
+    assert listing.total_images == 0
+    assert listing.skipped.bad_names == 1
+
+
+def _sized_file(path: Path, size: int) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as handle:
+        handle.write(b"\xff\xd8")
+        handle.truncate(size)
+    return path
+
+
+def test_file_exactly_40mb_is_accepted_and_one_byte_more_is_not(tmp_path):
+    root = tmp_path / "anh"
+    _sized_file(root / "vua.jpg", MAX_IMAGE_BYTES)
+    _sized_file(root / "qua.jpg", MAX_IMAGE_BYTES + 1)
+    lib = ImageLibrary([root])
+    listing = lib.list_folder(0)
+    assert listed_names(listing) == ["vua.jpg"]
+    assert listing.skipped.too_large == 1
+    assert lib.stat_image(ImageRef(0, "vua.jpg")).size == MAX_IMAGE_BYTES
+    assert len(lib.read_image_bytes(ImageRef(0, "vua.jpg"))) == MAX_IMAGE_BYTES
+    exc = raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "qua.jpg")), tmp_path)
+    assert "40,0 MB" in str(exc)
+    raises_safely(lambda: lib.stat_image(ImageRef(0, "qua.jpg")), tmp_path)
+
+
+@pytest.fixture
+def small_lib(tmp_path):
+    root = tmp_path / "anh"
+    for i in range(5):
+        write(root / f"{i}.jpg")
+    write(root / "thu-muc" / "x.jpg")
+    return ImageLibrary([root])
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"page": False},
+        {"page": 1.0},
+        {"page": None},
+        {"page": -(10**30)},
+        {"page_size": -1},
+        {"page_size": True},
+        {"page_size": 10**30},
+        {"page_size": None},
+        {"page_size": "48"},
+        {"max_depth": True},
+        {"max_depth": 1.5},
+        {"max_depth": None},
+    ],
+)
+def test_more_bad_paging_arguments(small_lib, tmp_path, kwargs):
+    raises_safely(lambda: small_lib.list_folder(0, **kwargs), tmp_path)
+
+
+def test_huge_page_is_clamped(small_lib):
+    listing = small_lib.list_folder(0, page=10**30, page_size=2)
+    assert listing.page == listing.page_count == 3
+    assert listed_names(listing) == ["4.jpg"]
+    assert not listing.has_next_page and listing.has_previous_page
+
+
+@pytest.mark.parametrize("index", [-1, 1, 10**30, True, False, 0.0, "0", None, [0]])
+def test_bad_root_index_everywhere(small_lib, tmp_path, index):
+    raises_safely(lambda: small_lib.list_folder(index), tmp_path)
+    if type(index) is int and index >= 0:  # ImageRef nhận, thư viện từ chối
+        ref = ImageRef(index, "0.jpg")
+        raises_safely(lambda: small_lib.read_image_bytes(ref), tmp_path)
+        raises_safely(lambda: small_lib.stat_image(ref), tmp_path)
+    else:
+        with pytest.raises(ImageFolderError):
+            ImageRef(index, "0.jpg")
+
+
+@pytest.mark.parametrize(
+    "rel_dir",
+    [
+        "thu-muc/../thu-muc",
+        "./thu-muc",
+        "thu-muc/.",
+        "thu-muc//",
+        "thu-muc/",
+        "/thu-muc",
+        "C:thu-muc",
+        "C:",
+        "\\\\server\\share",
+        "//server/share",
+        "\\\\?\\C:\\",
+        "\\\\.\\PhysicalDrive0",
+        "//./PhysicalDrive0",
+        "CON",
+        "nul",
+        "thu-muc.",
+        "thu-muc ",
+        "thu-muc:stream",
+        "thu-muc\\x",
+        "CON/x",
+        "nul.txt",
+        "~",
+        "%USERPROFILE%",
+        "$HOME",
+        "\x00",
+    ],
+)
+def test_list_folder_rejects_odd_rel_dir(small_lib, tmp_path, rel_dir):
+    if rel_dir in ("~", "%USERPROFILE%", "$HOME"):
+        # Tên hợp lệ, không được khai triển thành thư mục nhà: chỉ là "không tìm thấy".
+        exc = raises_safely(lambda: small_lib.list_folder(0, rel_dir), tmp_path)
+        assert "Không tìm thấy" in str(exc)
+        return
+    raises_safely(lambda: small_lib.list_folder(0, rel_dir), tmp_path)
+
+
+def test_rel_dir_happy_path_and_case_variant(small_lib):
+    """Đối chứng cho test trên: tên thường dùng được (Windows không phân biệt hoa thường)."""
+    assert listed_names(small_lib.list_folder(0, "thu-muc")) == ["x.jpg"]
+    if IS_WINDOWS:
+        assert listed_names(small_lib.list_folder(0, "THU-MUC")) == ["x.jpg"]
+
+
+# ----- 6. repr/str không lộ đường dẫn tuyệt đối ---------------------------------------------
+
+
+def test_repr_and_str_of_every_result_object_hide_absolute_paths(tmp_path):
+    root = tmp_path / "anh"
+    write(root / "thu-muc" / "a.jpg", b"AAAA")
+    write(root / "b.jpg", b"BB")
+    lib = ImageLibrary([root, tmp_path / "khong-co", root / "b.jpg", "tuong-doi"])
+    listing = lib.list_folder(0, recursive=True)
+    entry = lib.stat_image(ImageRef(0, "thu-muc/a.jpg"))
+    objects: list[object] = [
+        lib,
+        listing,
+        entry,
+        entry.ref,
+        listing.skipped,
+        *listing.images,
+        *listing.subfolders,
+        *lib.roots(),
+    ]
+    assert {type(o) for o in objects} >= {
+        ImageLibrary,
+        FolderListing,
+        ImageEntry,
+        ImageRef,
+        SkipCounts,
+        SubFolder,
+        RootInfo,
+    }
+    for obj in objects:
+        assert_no_abs_path(repr(obj), tmp_path)
+        assert_no_abs_path(str(obj), tmp_path)
+    for index in (1, 2, 3):
+        raises_safely(lambda index=index: lib.list_folder(index), tmp_path)
+        assert_no_abs_path(lib.roots()[index].message, tmp_path)
+
+
+def test_error_messages_hide_paths_for_every_failure_kind(tmp_path, monkeypatch):
+    root = tmp_path / "anh"
+    write(root / "a.jpg", b"AAAA")
+    (root / "thu-muc.jpg").mkdir()
+    write(root / "rong.jpg", b"")
+    lib = ImageLibrary([root])
+    for func in (
+        lambda: lib.read_image_bytes(ImageRef(0, "khong.jpg")),
+        lambda: lib.read_image_bytes(ImageRef(0, "thu-muc.jpg")),
+        lambda: lib.read_image_bytes(ImageRef(0, "rong.jpg")),
+        lambda: lib.list_folder(0, "a.jpg"),
+        lambda: lib.list_folder(0, "khong"),
+    ):
+        raises_safely(func, tmp_path)
+
+    def denied(*args, **kwargs):
+        raise PermissionError(13, "Access is denied", str(root / "a.jpg"))
+
+    monkeypatch.setattr("seo_app.images.folders.os.open", denied)
+    raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "a.jpg")), tmp_path)
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", denied)
+    raises_safely(lambda: lib.list_folder(0), tmp_path)
+    monkeypatch.setattr("seo_app.images.folders.os.lstat", denied)
+    raises_safely(lambda: lib.stat_image(ImageRef(0, "a.jpg")), tmp_path)
+
+
+# ----- 7. Thư mục ẩn, tên 8.3 (Windows) -----------------------------------------------------
+
+
+def _set_hidden(path: Path) -> None:
+    FILE_ATTRIBUTE_HIDDEN = 0x2
+    assert ctypes.windll.kernel32.SetFileAttributesW(str(path), FILE_ATTRIBUTE_HIDDEN)
+
+
+def _short_name(path: Path) -> str | None:
+    buf = ctypes.create_unicode_buffer(1024)
+    if not ctypes.windll.kernel32.GetShortPathNameW(str(path), buf, 1024):
+        return None
+    short = Path(buf.value).name
+    return short if short != path.name else None
+
+
+@windows_only
+def test_hidden_directory_cannot_be_reached_by_crafted_ref(tmp_path):
+    root = tmp_path / "anh"
+    write(root / "an" / "q.jpg", b"HIDDEN")
+    _set_hidden(root / "an")
+    lib = ImageLibrary([root])
+    assert lib.list_folder(0).subfolders == ()  # quét: bị bỏ
+    with pytest.raises(ImageFolderError):
+        lib.read_image_bytes(ImageRef(0, "an/q.jpg"))
+
+
+@windows_only
+def test_short_8dot3_alias_cannot_reach_dot_directory(tmp_path):
+    root = tmp_path / "anh"
+    write(root / ".bi-mat" / "p.jpg", b"HIDDEN")
+    short = _short_name(root / ".bi-mat")
+    if short is None:
+        pytest.skip("ổ chứa tmp_path không tạo tên ngắn 8.3")
+    lib = ImageLibrary([root])
+    with pytest.raises(ImageFolderError):
+        lib.read_image_bytes(ImageRef(0, f"{short}/p.jpg"))
+
+
+def test_python_version_supports_is_junction():
+    """Code dùng ``Path.is_junction``/``DirEntry.is_junction`` (Python 3.12+)."""
+    assert sys.version_info >= (3, 12)
+
+
+# ===== Lượt 2: kiểm lại cách sửa L1–L5 =====================================================
+#
+# Các test dưới đây đặt junction **tại chỗ** lên một thư mục đang tồn tại (như kẻ có quyền
+# ghi làm bằng ``FSCTL_SET_REPARSE_POINT``), không cần đổi tên hay xóa thư mục, nên không bị
+# chặn bởi handle "không cho chia sẻ quyền xóa" của lượt 2.
+
+_FSCTL_SET_REPARSE_POINT = 0x000900A4
+_FSCTL_DELETE_REPARSE_POINT = 0x000900AC
+_IO_REPARSE_TAG_MOUNT_POINT = 0xA0000003
+
+
+def _win_open_for_reparse(directory: Path):
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.DeviceIoControl.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPVOID,
+    ]
+    k32.DeviceIoControl.restype = wintypes.BOOL
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    generic_write = 0x40000000
+    share_all = 0x1 | 0x2 | 0x4
+    flags = 0x02000000 | 0x00200000  # BACKUP_SEMANTICS | OPEN_REPARSE_POINT
+    handle = k32.CreateFileW(str(directory), generic_write, share_all, None, 3, flags, None)
+    if handle in (None, 0, ctypes.c_void_p(-1).value):
+        raise OSError(ctypes.get_last_error(), "CreateFileW")
+    return k32, handle
+
+
+def set_junction_in_place(directory: Path, target: Path) -> None:
+    """Biến thư mục RỖNG ``directory`` thành junction trỏ tới ``target`` (không đổi tên/xóa)."""
+    import struct
+
+    substitute = ("\\??\\" + str(target.resolve())).encode("utf-16-le")
+    printable = str(target.resolve()).encode("utf-16-le")
+    path_buffer = substitute + b"\0\0" + printable + b"\0\0"
+    header = struct.pack("<HHHH", 0, len(substitute), len(substitute) + 2, len(printable))
+    data = header + path_buffer
+    buf = struct.pack("<IHH", _IO_REPARSE_TAG_MOUNT_POINT, len(data), 0) + data
+    k32, handle = _win_open_for_reparse(directory)
+    try:
+        from ctypes import wintypes
+
+        returned = wintypes.DWORD()
+        raw = ctypes.create_string_buffer(buf, len(buf))
+        if not k32.DeviceIoControl(
+            handle, _FSCTL_SET_REPARSE_POINT, raw, len(buf), None, 0, ctypes.byref(returned), None
+        ):
+            raise OSError(ctypes.get_last_error(), "FSCTL_SET_REPARSE_POINT")
+    finally:
+        k32.CloseHandle(handle)
+    assert directory.is_junction()
+
+
+def remove_junction_in_place(directory: Path) -> None:
+    """Gỡ junction nhưng giữ thư mục (trở lại thư mục rỗng bình thường)."""
+    import struct
+
+    buf = struct.pack("<IHH", _IO_REPARSE_TAG_MOUNT_POINT, 0, 0)
+    k32, handle = _win_open_for_reparse(directory)
+    try:
+        from ctypes import wintypes
+
+        returned = wintypes.DWORD()
+        raw = ctypes.create_string_buffer(buf, len(buf))
+        if not k32.DeviceIoControl(
+            handle,
+            _FSCTL_DELETE_REPARSE_POINT,
+            raw,
+            len(buf),
+            None,
+            0,
+            ctypes.byref(returned),
+            None,
+        ):
+            raise OSError(ctypes.get_last_error(), "FSCTL_DELETE_REPARSE_POINT")
+    finally:
+        k32.CloseHandle(handle)
+    assert not directory.is_junction()
+
+
+class _AfterFirst:
+    """Bọc iterator của ``os.scandir``: chạy ``action`` ngay sau khi lấy được mục đầu tiên."""
+
+    def __init__(self, inner, action):
+        self.inner = inner
+        self.action = action
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.inner.close()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        item = next(self.inner)
+        action, self.action = self.action, None
+        if action:
+            action()
+        return item
+
+
+@windows_only
+def test_in_place_junction_helper_works(tmp_path):
+    """Đối chứng: công cụ đặt/gỡ junction tại chỗ chạy thật trên máy này."""
+    album = tmp_path / "album"
+    album.mkdir()
+    write(tmp_path / "ngoai" / "bi-mat.jpg")
+    set_junction_in_place(album, tmp_path / "ngoai")
+    assert [p.name for p in album.iterdir()] == ["bi-mat.jpg"]
+    remove_junction_in_place(album)
+    assert list(album.iterdir()) == []
+
+
+@windows_only
+@pytest.mark.parametrize("recursive", [False, True])
+def test_r2_held_dir_emptied_and_made_junction_in_place_is_refused(tree, monkeypatch, recursive):
+    """Đang giữ handle: xóa hết file, đặt junction tại chỗ ngay trước ``scandir`` và để nguyên.
+
+    Phép kiểm reparse tag sau khi quét phải bắt được (bản thật của test giả lập của Thợ Máy).
+    """
+    root, outside = tree["root"], tree["outside"]
+    album = root / "album"
+    real_scandir = os.scandir
+
+    def attack_then_scandir(path):
+        if Path(path).name == "album":
+            monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+            (album / "a.jpg").unlink()
+            set_junction_in_place(album, outside)
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", attack_then_scandir)
+    lib = ImageLibrary([root])
+    if recursive:
+        listing = lib.list_folder(0, recursive=True)
+        assert "bi-mat.jpg" not in listed_names(listing)
+        assert listing.skipped.links == 1
+    else:
+        raises_safely(lambda: lib.list_folder(0, "album"), tree["tmp"])
+
+
+@windows_only
+@pytest.mark.xfail(
+    strict=True,
+    reason="R2-1 (soi-loi, khe còn lại Thợ Máy đã ghi): xóa hết file, đặt junction tại chỗ "
+    "ngay trước scandir, gỡ ngay sau khi scandir mở thì vẫn liệt kê được tên file ngoài gốc",
+)
+@pytest.mark.parametrize("recursive", [False, True])
+def test_r2_junction_set_and_removed_in_place_around_scandir(tree, monkeypatch, recursive):
+    root, outside = tree["root"], tree["outside"]
+    album = root / "album"
+    real_scandir = os.scandir
+
+    def attack_then_scandir(path):
+        if Path(path).name != "album":
+            return real_scandir(path)
+        monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+        (album / "a.jpg").unlink()
+        set_junction_in_place(album, outside)
+        return _AfterFirst(real_scandir(path), lambda: remove_junction_in_place(album))
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", attack_then_scandir)
+    lib = ImageLibrary([root])
+    try:
+        listing = (
+            lib.list_folder(0, "album") if not recursive else lib.list_folder(0, recursive=True)
+        )
+    except ImageFolderError as exc:
+        assert_no_abs_path(str(exc), tree["tmp"])
+        return
+    assert "bi-mat.jpg" not in listed_names(listing)
+
+
+@windows_only
+def test_r2_in_place_junction_before_hold_is_refused(tree):
+    """Junction đặt tại chỗ từ trước khi quét: handle mở không theo reparse point bắt được."""
+    root, outside = tree["root"], tree["outside"]
+    (root / "album" / "a.jpg").unlink()
+    set_junction_in_place(root / "album", outside)
+    lib = ImageLibrary([root])
+    raises_safely(lambda: lib.list_folder(0, "album"), tree["tmp"])
+    listing = lib.list_folder(0, recursive=True)
+    assert "bi-mat.jpg" not in listed_names(listing) and listing.skipped.links == 1
+    raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "album/bi-mat.jpg")), tree["tmp"])
+
+
+@windows_only
+def test_r2_swap_and_swap_back_is_blocked_while_held(tree, monkeypatch):
+    """Tráo rồi tráo lại cần đổi tên thư mục: Windows từ chối khi app đang giữ handle."""
+    root, outside = tree["root"], tree["outside"]
+    real_scandir = os.scandir
+    errors = []
+
+    def try_swap(path):
+        if Path(path).name == "album":
+            monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+            try:
+                swap_dir_for_junction(root / "album", outside, tree["tmp"] / "album-cu")
+            except OSError as exc:
+                errors.append(exc.winerror)
+        return real_scandir(path)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", try_swap)
+    listing = ImageLibrary([root]).list_folder(0, "album")
+    assert errors == [32]
+    assert listed_names(listing) == ["a.jpg"]
+
+
+@windows_only
+def test_r2_exclusive_handle_forces_fallback_safely(tree):
+    """Có chương trình khác mở thư mục độc quyền: không giữ được, app báo lỗi gọn, không lộ."""
+    root = tree["root"]
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = k32.CreateFileW(str(root / "album"), 0x80000000, 0, None, 3, 0x02000000, None)
+    assert handle not in (None, 0, ctypes.c_void_p(-1).value)
+    try:
+        lib = ImageLibrary([root])
+        try:
+            listing = lib.list_folder(0, "album")
+        except ImageFolderError as exc:
+            assert_no_abs_path(str(exc), tree["tmp"])
+        else:
+            assert listed_names(listing) == ["a.jpg"]
+        listing = lib.list_folder(0, recursive=True)
+        assert "bi-mat.jpg" not in listed_names(listing)
+    finally:
+        k32.CloseHandle(handle)
+
+
+@windows_only
+def test_r2_fallback_swap_and_swap_back_is_a_known_gap(tree, monkeypatch):
+    """Ổ không giữ được thư mục: tráo rồi tráo lại giữa hai lần kiểm vẫn lọt (Thợ Máy đã ghi).
+
+    Không phải ``xfail``: đây là giới hạn đã ghi nhận của nhánh dự phòng (sổ rủi ro). Test ghi
+    lại hành vi để ai đổi nhánh dự phòng (ví dụ từ chối luôn) thì biết cập nhật báo cáo.
+    """
+    import contextlib
+
+    root, outside = tree["root"], tree["outside"]
+    album = root / "album"
+    park = tree["tmp"] / "album-cu"
+
+    @contextlib.contextmanager
+    def no_hold(path):
+        yield None
+
+    monkeypatch.setattr("seo_app.images.folders._win_hold_dir", no_hold)
+    real_scandir = os.scandir
+
+    def swap_scandir_swap_back(path):
+        if Path(path).name != "album":
+            return real_scandir(path)
+        monkeypatch.setattr("seo_app.images.folders.os.scandir", real_scandir)
+        swap_dir_for_junction(album, outside, park)
+        inner = real_scandir(path)
+
+        def swap_back():
+            os.rmdir(album)  # gỡ junction
+            os.rename(park, album)
+
+        return _AfterFirst(inner, swap_back)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", swap_scandir_swap_back)
+    listing = ImageLibrary([root]).list_folder(0, "album")
+    assert "bi-mat.jpg" in listed_names(listing)  # giới hạn đã biết
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="R2-2 (soi-loi): quét cả cây, vừa đủ max_entries mục mà còn thư mục con RỖNG chờ "
+    "quét thì vẫn báo 'còn nữa' (phần còn lại của L4)",
+)
+def test_r2_exact_budget_with_pending_empty_subfolder_is_not_truncated(tmp_path):
+    root = tmp_path / "anh"
+    write(root / "1.jpg")
+    write(root / "2.jpg")
+    (root / "rong").mkdir()
+    listing = ImageLibrary([root], max_entries=3).list_folder(0, recursive=True)
+    assert listing.total_images == 2
+    assert not listing.truncated
+
+
+def test_r2_budget_still_stops_when_more_entries_exist_in_subfolder(tmp_path):
+    """Đối chứng cho R2-2: thư mục con còn mục thật thì phải báo 'còn nữa'."""
+    root = tmp_path / "anh"
+    write(root / "1.jpg")
+    write(root / "2.jpg")
+    write(root / "thu-muc" / "3.jpg")
+    listing = ImageLibrary([root], max_entries=3).list_folder(0, recursive=True)
+    assert listing.truncated and "còn nữa" in listing.notice
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "a‪b.jpg",
+        "a‫b.jpg",
+        "a‬b.jpg",
+        "a‭b.jpg",
+        "a‮b.jpg",
+        "a⁦b.jpg",
+        "a⁧b.jpg",
+        "a⁨b.jpg",
+        "a⁩b.jpg",
+    ],
+)
+def test_r2_all_nine_bidi_controls_blocked_in_scan_and_ref(tmp_path, name):
+    root = tmp_path / "anh"
+    write(root / "that.jpg")
+    write(root / name)
+    listing = ImageLibrary([root]).list_folder(0)
+    assert listed_names(listing) == ["that.jpg"]
+    assert listing.skipped.bad_names == 1
+    with pytest.raises(ImageFolderError):
+        ImageRef(0, name)
+    with pytest.raises(ImageFolderError):
+        ImageRef(0, f"{name[:-4]}/x.jpg")  # cả khi nằm ở tên thư mục
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Ảnh công trình.jpg",
+        "Ảnh.jpg",  # dạng NFD (Mac)
+        "a​b.jpg",  # ký tự rộng 0: vẫn nhận (giao diện phải escape)
+        "a‍b.jpg",  # ZWJ (emoji ghép)
+        "🙂.jpg",  # ký tự ngoài BMP (cặp surrogate hợp lệ trên Windows)
+    ],
+)
+def test_r2_legit_unicode_names_still_listed(tmp_path, name):
+    """Chặn Cs không được chặn nhầm ký tự hợp lệ (cặp surrogate đúng, NFD, Cf thường)."""
+    root = tmp_path / "anh"
+    write(root / name, b"OK")
+    lib = ImageLibrary([root])
+    listing = lib.list_folder(0)
+    assert listed_names(listing) == [name]
+    assert lib.read_image_bytes(ImageRef(0, name)) == b"OK"
+
+
+def _set_attr(path: Path, attributes: int) -> None:
+    assert ctypes.windll.kernel32.SetFileAttributesW(str(path), attributes)
+
+
+@windows_only
+@pytest.mark.parametrize("attributes", [0x2, 0x4, 0x6])  # ẩn, hệ thống, cả hai
+def test_r2_hidden_or_system_dir_blocked_for_list_and_read(tmp_path, attributes):
+    root = tmp_path / "anh"
+    write(root / "an" / "con" / "q.jpg", b"HIDDEN")
+    _set_attr(root / "an", attributes)
+    lib = ImageLibrary([root])
+    for func in (
+        lambda: lib.read_image_bytes(ImageRef(0, "an/con/q.jpg")),
+        lambda: lib.stat_image(ImageRef(0, "an/con/q.jpg")),
+        lambda: lib.list_folder(0, "an"),
+        lambda: lib.list_folder(0, "an/con"),
+    ):
+        raises_safely(func, tmp_path)
+    assert lib.list_folder(0, recursive=True).total_images == 0
+
+
+@windows_only
+def test_r2_readonly_dir_is_not_treated_as_hidden(tmp_path):
+    """Thư mục chỉ đọc (Windows đặt cho thư mục có biểu tượng riêng) vẫn dùng được."""
+    root = tmp_path / "anh"
+    write(root / "ro" / "q.jpg", b"RO")
+    _set_attr(root / "ro", 0x1)
+    try:
+        lib = ImageLibrary([root])
+        assert [s.name for s in lib.list_folder(0).subfolders] == ["ro"]
+        assert lib.read_image_bytes(ImageRef(0, "ro/q.jpg")) == b"RO"
+    finally:
+        _set_attr(root / "ro", 0x80)  # NORMAL, để pytest dọn được
+
+
+@windows_only
+def test_r2_short_name_of_normal_file_and_dir_is_refused(tmp_path):
+    """Tên ngắn 8.3 của file/thư mục bình thường cũng bị từ chối: một file một ``ImageRef``."""
+    root = tmp_path / "anh"
+    write(root / "Thu muc dai ten" / "Anh cong trinh dai.jpg", b"X")
+    short_dir = _short_name(root / "Thu muc dai ten")
+    short_file = _short_name(root / "Thu muc dai ten" / "Anh cong trinh dai.jpg")
+    if short_dir is None or short_file is None:
+        pytest.skip("ổ chứa tmp_path không tạo tên ngắn 8.3")
+    assert short_file.upper().endswith(".JPG")
+    lib = ImageLibrary([root])
+    assert lib.read_image_bytes(ImageRef(0, "Thu muc dai ten/Anh cong trinh dai.jpg")) == b"X"
+    assert lib.read_image_bytes(ImageRef(0, "THU MUC DAI TEN/anh cong trinh dai.JPG")) == b"X"
+    raises_safely(lambda: lib.list_folder(0, short_dir), tmp_path)
+    for rel in (
+        f"{short_dir}/Anh cong trinh dai.jpg",
+        f"Thu muc dai ten/{short_file}",
+        f"{short_dir}/{short_file}",
+    ):
+        raises_safely(lambda rel=rel: lib.read_image_bytes(ImageRef(0, rel)), tmp_path)
+        raises_safely(lambda rel=rel: lib.stat_image(ImageRef(0, rel)), tmp_path)
+
+
+@windows_only
+def test_r2_scan_releases_hold_after_listing(tree):
+    """Quét xong phải nhả handle: đổi tên thư mục ngay sau đó được (Drive đồng bộ không kẹt)."""
+    root = tree["root"]
+    lib = ImageLibrary([root])
+    lib.list_folder(0, "album")
+    lib.list_folder(0, recursive=True)
+    os.rename(root / "album", root / "album-moi")
+    os.rename(root, tree["tmp"] / "anh-moi")
+
+
+@windows_only
+def test_r2_failed_scan_releases_hold(tree, monkeypatch):
+    """Quét lỗi giữa chừng (ổ bị ngắt) cũng phải nhả handle."""
+    root = tree["root"]
+
+    def broken(path):
+        raise OSError(5, "Access is denied")
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", broken)
+    raises_safely(lambda: ImageLibrary([root]).list_folder(0, "album"), tree["tmp"])
+    monkeypatch.undo()
+    os.rename(root / "album", root / "album-moi")
