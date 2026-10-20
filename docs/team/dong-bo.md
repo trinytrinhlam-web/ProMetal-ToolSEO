@@ -34,20 +34,27 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 10:11. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 11:22. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | đã gộp (`f37ffd6`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 09:54 gộp vào `main` | Điều kiện đã ghi vào T-049, T-052, T-055, T-056; lập T-063 (test Mac/Linux, chặn gộp T-056), T-064 (dọn lỗi Thấp). LC-T048-6 chờ chủ dự án (sổ rủi ro) |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`dc97e0c`) | ✅ 10:09 **Soi Lỗi lượt 2 ĐẠT** (7.660 qua); 2 lỗi mới Thấp SL-T050-5, -6 (`xfail`) | **Lá Chắn** (soát A3, xem SL-T050-5/-6: sửa ở lượt nhỏ hay gom phiếu dọn) |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`fe53d97`) | ✅ 10:07 **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`fe53d97`, 4 lỗi Thấp). Điều kiện đã chép vào T-049, T-056 | **Chỉ Huy mở app thật xem mọi trang** (app có mật khẩu: cần chủ dự án), gộp, chạy test khi máy rảnh; rồi giao T-049 |
-| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`10bc2f0`) | ✅ 10:10 **Soi Lỗi rút gọn ĐẠT** (5.846 qua); việc còn lại đã ghi vào T-062 | **Lá Chắn rút gọn** |
-| Chờ phiếu trước | | T-052 (còn chỗ), T-063 (cần máy Linux/Mac), T-049 (sau T-058), T-062 (sau T-050, T-051), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-065** |
-| `main` | `f37ffd6` + tài liệu | Windows sau gộp T-048: 7.420 qua, 1 hỏng vì quá tải (`test_app.py` quá 30 giây khi 4 bộ test chạy cùng lúc; chạy riêng lại 5/5 qua). Lá Chắn chạy đúng bản gộp: 7.421 qua, 0 hỏng. ruff sạch | |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`dc97e0c`) | Soi Lỗi lượt 2 ĐẠT (7.660 qua; 2 lỗi mới Thấp SL-T050-5, -6). ⏳ **Lá Chắn đang kiểm** (phiên "Lá Chắn · T-050 lớp AI đọc ảnh, alt", giao sau 10:11) | ĐẠT thì gộp (lấy `seo_app/images/__init__.py` bản `main`); SL-T050-5/-6 theo khuyến nghị Lá Chắn |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3) | đã gộp (`0481f7e`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; mở app thật xem mọi trang: không lỗi; 11:21 gộp và đẩy `main` | Điều kiện đã ghi vào T-049, T-056. T-049 giao được |
+| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`10bc2f0`) | Soi Lỗi rút gọn ĐẠT (5.846 qua). ⏳ **Lá Chắn rút gọn đang kiểm** (phiên "Lá Chắn · T-051 kiểm nhanh cấu hình alt", giao sau 10:11) | ĐẠT thì gộp; điều kiện cho T-062 chép vào phiếu |
+| Chờ phiếu trước | | T-049 (còn chỗ), T-052 (còn chỗ), T-063 (cần máy Linux/Mac), T-062 (sau T-050, T-051), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-065** |
+| `main` | `0481f7e` + tài liệu | Windows sau gộp T-058: **7.483 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 11:22 · Chỉ Huy B
+
+- Chủ dự án cho làm tiếp. Gọi 2 phiên con (giao sau 10:11): Lá Chắn T-050, Lá Chắn rút gọn T-051.
+- **Gộp T-058 vào `main`** (`0481f7e`, Pillow 13.0.0). Mở app thật trong trình duyệt của Claude Desktop (cấu hình chạy `D:\ProMetal-ToolSEO\.claude\launch.json`, ngoài repo): chủ dự án đăng nhập, B xem Bài viết, Soạn bài 5 bước, Kế hoạch, Cài đặt 4 thẻ, Kết nối WordPress: không lỗi, nhật ký app sạch. Windows 7.483 qua, 0 hỏng; ruff sạch. Đã đẩy, xóa nhánh `team/T-058` và worktree `wt-T-058`.
+- Chủ dự án không nhớ mật khẩu app, đã đặt lại bằng `set_password.bat` (chỉ đổi mã băm trong `.env` trên máy Windows; máy khác không đổi).
+- T-049 hết chờ (T-058 đã gộp): giao được khi chủ dự án cho làm tiếp.
 
 ### 2026-10-20 10:11 · Chỉ Huy B
 
