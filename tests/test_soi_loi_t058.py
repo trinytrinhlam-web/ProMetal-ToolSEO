@@ -6,13 +6,19 @@ Ba nhóm:
    từ file), bytes/BytesIO (PNG có alpha, JPEG, WEBP, GIF động), mảng numpy (xám, RGB, RGBA,
    số thực, BGR), ảnh rất nhỏ, ảnh rộng hơn khung (Streamlit thu nhỏ bằng ``resize``), danh sách
    ảnh, đường dẫn file, logo SVG của app. Bắt các byte Streamlit thật sự gửi ra trình duyệt rồi
-   mở lại bằng Pillow để xem đúng định dạng, kích thước, kênh alpha.
+   mở lại bằng Pillow để xem đúng định dạng, kích thước, kênh alpha. Thêm các chỗ khác của
+   Streamlit cũng đưa ảnh Pillow qua ``image_to_url``: ``page_icon``, ``st.logo``, ảnh đại diện
+   ``st.chat_message``, ``st.write``.
 2. ``st.cache_data`` băm tham số là ảnh Pillow (Streamlit gọi ``tobytes``/``getpalette``).
 3. Đường T-049 sẽ đi: ảnh có GPS (JPEG, HEIC) lưu sang WebP với ``exif=`` vẫn giữ GPS; không
-   truyền ``exif=`` thì GPS mất; xóa thẻ GPS rồi lưu thì GPS mất mà thẻ khác còn.
+   truyền ``exif=`` thì GPS mất; xóa thẻ GPS rồi lưu thì GPS mất mà thẻ khác còn; cả chuỗi
+   xoay → lọc EXIF theo quyết định 2A → thu cạnh dài 1600 → WebP; ``thumbnail()`` trên JPEG
+   (đường ``draft()`` có lỗ hổng ở 12.3.0); MPO; giới hạn bom giải nén có áp cho cả HEIC.
 
 Mọi ảnh là ảnh giả tạo trong bộ nhớ hoặc thư mục tạm. Không gọi mạng. Cảnh báo "sắp bỏ"
-(DeprecationWarning) của Pillow bị đổi thành lỗi trong các test này để lộ API Pillow 13 đã đổi.
+(DeprecationWarning) của Pillow bị đổi thành lỗi trong các test này để lộ API Pillow 13 đã đổi;
+``test_canh_bao_sap_bo_trong_app_thanh_loi`` chứng minh cách đổi này có hiệu lực cả trong luồng
+chạy trang của AppTest.
 """
 
 import io
@@ -58,6 +64,30 @@ def canh_bao_la_loi():
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         yield
+
+
+def _trang_co_canh_bao_sap_bo():
+    import warnings
+
+    import streamlit as st
+
+    warnings.warn("ham nay sap bo", DeprecationWarning, stacklevel=1)
+    st.write("xong")
+
+
+def test_canh_bao_sap_bo_trong_app_thanh_loi(canh_bao_la_loi):
+    # AppTest chạy trang ở luồng khác; nếu bộ lọc cảnh báo không tới được luồng đó thì mọi test
+    # dùng ``canh_bao_la_loi`` bên dưới qua oan. Đối chứng: không có fixture thì không lỗi.
+    at = AppTest.from_function(_trang_co_canh_bao_sap_bo).run(timeout=30)
+    assert [loi.proto.type for loi in at.exception] == ["DeprecationWarning"]
+
+
+def test_doi_chung_khong_doi_canh_bao_thi_trang_chay_binh_thuong():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        at = AppTest.from_function(_trang_co_canh_bao_sap_bo).run(timeout=30)
+    assert not at.exception
+    assert at.markdown[0].value == "xong"
 
 
 def _png(mode="RGBA", size=(40, 30), color=(10, 20, 30, 128)) -> bytes:
@@ -269,8 +299,10 @@ def test_st_image_bytes_rac_bao_loi_ro_rang():
     at = AppTest.from_function(_trang_hien_anh, args=("bytes", b"khong phai anh", {})).run(
         timeout=30
     )
-    assert at.exception  # Pillow 13 vẫn báo UnidentifiedImageError, không treo/sập tiến trình
-    assert "UnidentifiedImageError" in str(at.exception[0].value) or at.exception[0].message
+    # Pillow 13 vẫn báo UnidentifiedImageError (không treo, không sập tiến trình); Streamlit hiện
+    # lỗi trên trang, không đưa bytes rác ra trình duyệt.
+    assert [loi.proto.type for loi in at.exception] == ["PIL.UnidentifiedImageError"]
+    assert "cannot identify image file" in at.exception[0].message
 
 
 # --- 1c. st.image với numpy ---------------------------------------------------------------------
@@ -313,6 +345,39 @@ def test_st_image_numpy_bgr_dao_kenh_mau(media_ra):
     assert _mo(media_ra[0][0]).getpixel((5, 5)) == (0, 0, 255)
 
 
+# --- 1d. Các chỗ khác của Streamlit đưa ảnh Pillow qua image_to_url ----------------------------
+
+
+def _trang_anh_pillow_cho_khac(cho):
+    import streamlit as st
+    from PIL import Image
+
+    anh = Image.new("RGBA", (48, 48), (15, 123, 108, 255))
+    if cho == "page_icon":
+        st.set_page_config(page_icon=anh)
+    elif cho == "logo":
+        st.logo(anh)
+    elif cho == "avatar":
+        with st.chat_message("assistant", avatar=anh):
+            st.write("chao")
+    else:
+        st.write(anh)
+
+
+@pytest.mark.parametrize("cho", ["page_icon", "logo", "avatar", "write"])
+def test_anh_pillow_o_cac_cho_khac_cua_streamlit(media_ra, canh_bao_la_loi, cho):
+    # App hiện chỉ dùng logo SVG và biểu tượng emoji, nhưng các phiếu sau có thể đưa ảnh Pillow
+    # vào những chỗ này; cả bốn đều đi qua cùng hàm mã hóa ảnh bằng Pillow của Streamlit.
+    at = AppTest.from_function(_trang_anh_pillow_cho_khac, args=(cho,)).run(timeout=30)
+    assert not at.exception, at.exception
+    assert len(media_ra) == 1
+    data, mimetype = media_ra[0]
+    assert mimetype == "image/png"
+    ra = _mo(data)
+    assert ra.size == (48, 48)
+    assert ra.getpixel((10, 10)) == (15, 123, 108, 255)
+
+
 # --- 2. st.cache_data băm ảnh Pillow ----------------------------------------------------------
 
 
@@ -325,17 +390,29 @@ def _trang_cache_anh():
         st.session_state["so_lan_tinh"] = st.session_state.get("so_lan_tinh", 0) + 1
         return anh.size
 
-    p = Image.new("P", (8, 8), 1)
-    p.putpalette([0, 0, 0, 255, 0, 0] + [0] * 762)
-    st.write(kich_thuoc(Image.new("RGB", (8, 8), (1, 2, 3))))
+    # Tên tệp trang của AppTest lấy theo mã nguồn, nên cache của hàm này còn từ lần chạy trước
+    # trong cùng tiến trình: xóa để test không phụ thuộc thứ tự chạy.
+    kich_thuoc.clear()
+
+    def bang_mau(r):
+        return [0, 0, 0, r, 0, 0] + [0] * 762
+
+    p_do = Image.new("P", (8, 8), 1)
+    p_do.putpalette(bang_mau(255))
+    p_khac_mau = Image.new("P", (8, 8), 1)  # cùng chỉ số điểm ảnh, khác bảng màu
+    p_khac_mau.putpalette(bang_mau(7))
+    st.write(kich_thuoc(Image.new("RGB", (8, 8), (1, 2, 3))))  # 1: tính
     st.write(kich_thuoc(Image.new("RGB", (8, 8), (1, 2, 3))))  # trùng: lấy từ cache
-    st.write(kich_thuoc(p))
+    st.write(kich_thuoc(Image.new("RGB", (8, 8), (1, 2, 4))))  # 2: khác một điểm màu
+    st.write(kich_thuoc(p_do))  # 3
+    st.write(kich_thuoc(p_khac_mau))  # 4: Streamlit băm cả getpalette()
+    st.write(kich_thuoc(p_khac_mau.copy()))  # trùng: lấy từ cache
 
 
 def test_cache_data_bam_duoc_anh_pillow(canh_bao_la_loi):
     at = AppTest.from_function(_trang_cache_anh).run(timeout=30)
     assert not at.exception, at.exception
-    assert at.session_state["so_lan_tinh"] == 2
+    assert at.session_state["so_lan_tinh"] == 4
 
 
 # --- 3. Đường T-049: lưu WebP giữ / bỏ GPS ----------------------------------------------------
@@ -404,6 +481,86 @@ def test_webp_sau_exif_transpose_van_giu_gps(canh_bao_la_loi):
     assert ExifTags.Base.Orientation not in ra.getexif()  # đã xoay thì bỏ thẻ hướng
 
 
+BO_THEO_2A = (
+    ExifTags.Base.BodySerialNumber,
+    ExifTags.Base.CameraOwnerName,
+    ExifTags.Base.MakerNote,
+)
+
+
+def _exif_day_du() -> Image.Exif:
+    """EXIF như ảnh điện thoại: GPS, hãng, đời máy, ngày chụp, số seri, tên chủ máy, MakerNote."""
+    exif = _exif_co_gps()
+    exif[ExifTags.Base.Model] = "DoiGia 12"
+    rieng = exif.get_ifd(ExifTags.IFD.Exif)
+    rieng[ExifTags.Base.DateTimeOriginal] = "2026:10:20 08:00:00"
+    rieng[ExifTags.Base.BodySerialNumber] = "SN-123456"
+    rieng[ExifTags.Base.CameraOwnerName] = "Chu May Gia"
+    rieng[ExifTags.Base.MakerNote] = b"\x00du-lieu-rieng-cua-hang"
+    return exif
+
+
+def test_duong_t049_xoay_loc_exif_thu_nho_webp(canh_bao_la_loi):
+    # Đúng thứ tự phiếu T-049 yêu cầu 2: exif_transpose → Orientation = 1 → thu cạnh dài 1600 →
+    # WebP kèm ``exif=`` đã lọc theo 2A. Ở đây chỉ dùng hàm Pillow (code T-049 chưa có), để chắc
+    # mọi bước T-049 cần đều chạy trên Pillow 13 mà không có cảnh báo "sắp bỏ".
+    buf = io.BytesIO()
+    Image.new("RGB", (4032, 3024), (10, 200, 30)).save(buf, "JPEG", exif=_exif_day_du())
+    with Image.open(io.BytesIO(buf.getvalue()), formats=["JPEG", "PNG", "WEBP"]) as goc:
+        anh = ImageOps.exif_transpose(goc)
+    exif = anh.getexif()
+    exif[ExifTags.Base.Orientation] = 1
+    rieng = exif.get_ifd(ExifTags.IFD.Exif)
+    for the in BO_THEO_2A:
+        rieng.pop(the, None)
+    anh.thumbnail((1600, 1600))
+    ra = _luu_webp(anh, exif=exif)
+
+    assert ra.format == "WEBP"
+    assert ra.size == (1200, 1600)  # ảnh dọc sau khi xoay, cạnh dài 1600
+    assert _gps(ra) == GPS  # so giá trị, không chỉ xem có thẻ GPS (góp ý Lá Chắn số 2)
+    ex = ra.getexif()
+    assert ex[ExifTags.Base.Make] == "MayGia"
+    assert ex[ExifTags.Base.Model] == "DoiGia 12"
+    assert ex[ExifTags.Base.Orientation] == 1
+    rieng_ra = ex.get_ifd(ExifTags.IFD.Exif)
+    assert rieng_ra[ExifTags.Base.DateTimeOriginal] == "2026:10:20 08:00:00"
+    assert not set(BO_THEO_2A) & set(rieng_ra)
+    assert b"SN-123456" not in ra.info["exif"]
+    assert b"du-lieu-rieng-cua-hang" not in ra.info["exif"]
+
+
+def test_thumbnail_jpeg_di_qua_draft_van_dung(canh_bao_la_loi):
+    # GHSA-8g5g-8vmr-9782 (lý do chính của T-058) nằm ở thu nhỏ JPEG qua thumbnail()/draft().
+    # Bản vá không được làm hỏng đường bình thường: JPEG lớn thu nhỏ nhiều lần (draft giảm cỡ
+    # lúc giải mã) vẫn ra đúng cỡ, đúng màu.
+    buf = io.BytesIO()
+    Image.new("RGB", (4000, 3000), (40, 90, 160)).save(buf, "JPEG", quality=95)
+    with Image.open(io.BytesIO(buf.getvalue()), formats=["JPEG"]) as anh:
+        assert anh.draft("RGB", (500, 500)) is not None  # có giảm cỡ lúc giải mã
+        assert anh.size == (1000, 750)
+        anh.thumbnail((400, 400))
+        assert anh.size == (400, 300)
+        r, g, b = anh.getpixel((200, 150))
+    assert abs(r - 40) < 8 and abs(g - 90) < 8 and abs(b - 160) < 8
+
+
+def test_mpo_mo_qua_formats_jpeg_con_formats_mpo_van_keyerror(canh_bao_la_loi):
+    # Phiếu T-049 yêu cầu 1: không ghi "MPO" vào formats= (KeyError). Kiểm lại trên Pillow 13:
+    # ảnh MPO (nhiều khung, hay gặp ở điện thoại) mở qua "JPEG", ra format "MPO".
+    khung = [Image.new("RGB", (64, 48), mau) for mau in ((10, 20, 30), (200, 20, 30))]
+    buf = io.BytesIO()
+    khung[0].save(buf, "MPO", save_all=True, append_images=khung[1:])
+    with Image.open(io.BytesIO(buf.getvalue()), formats=["JPEG", "PNG", "WEBP"]) as anh:
+        assert anh.format == "MPO"
+        assert anh.n_frames == 2
+        anh.seek(1)  # GHSA-p8hx-v2p6-rp84 (seek MPO) vá ở 13.0.0: đường bình thường vẫn chạy
+        anh.load()
+        assert abs(anh.getpixel((5, 5))[0] - 200) < 8
+    with pytest.raises(KeyError):
+        Image.open(io.BytesIO(buf.getvalue()), formats=["MPO"])
+
+
 @pytest.fixture
 def heif_dang_ky():
     Image.init()
@@ -450,5 +607,35 @@ def test_heic_hien_bang_st_image(tmp_path, heif_dang_ky, media_ra):
     assert ra.size == (64, 48)
 
 
-def test_gioi_han_bom_giai_nen_van_bat():
+def test_gioi_han_bom_giai_nen_mac_dinh_khong_doi():
     assert Image.MAX_IMAGE_PIXELS == 89_478_485
+    # T-049 điều kiện 1 của Lá Chắn: phải bắt riêng lỗi này vì nó không phải con của OSError.
+    assert not issubclass(Image.DecompressionBombError, OSError)
+
+
+@pytest.mark.parametrize("dinh_dang", ["PNG", "HEIF"])
+def test_bom_giai_nen_canh_bao_roi_chan_ca_heic(tmp_path, heif_dang_ky, monkeypatch, dinh_dang):
+    # Hạ giới hạn xuống 1000 điểm ảnh để thử bằng ảnh nhỏ: vượt giới hạn thì cảnh báo, vượt gấp
+    # đôi thì lỗi; T-049 đổi cảnh báo thành lỗi (điều kiện 2 của Lá Chắn T-047).
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+
+    def tao(size):
+        path = tmp_path / f"{size[0]}x{size[1]}.{dinh_dang.lower()}"
+        anh = Image.new("RGB", size, (1, 2, 3))
+        if dinh_dang == "HEIF":
+            pillow_heif.from_pillow(anh).save(path, quality=80)
+        else:
+            anh.save(path, "PNG")
+        return path
+
+    vua_qua = tao((40, 30))  # 1200 > 1000
+    gap_doi = tao((50, 50))  # 2500 > 2000
+
+    with pytest.warns(Image.DecompressionBombWarning), Image.open(vua_qua) as anh:
+        assert anh.format == dinh_dang
+    with pytest.raises(Image.DecompressionBombError):
+        Image.open(gap_doi)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        with pytest.raises(Image.DecompressionBombWarning):
+            Image.open(vua_qua, formats=["JPEG", "PNG", "WEBP", "HEIF"])
