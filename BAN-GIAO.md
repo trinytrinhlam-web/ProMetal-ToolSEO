@@ -136,6 +136,8 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 
 - Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Hải Châu/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ).
 
+- Chủ dự án chốt 2026-10-20 (phiếu T-058): **nâng lên Pillow 13** (lựa chọn A), dù Streamlit khóa `pillow<13`, để vá 53 khuyến cáo của Pillow 12.3.0 mà Lá Chắn T-047 tìm ra. Thợ Máy nâng bằng `override-dependencies`, chạy đủ test, Chỉ Huy mở app thử mọi trang; hỏng thì quay về bản cũ.
+
 ### 7.5 Tính năng và nội dung
 
 - **Giữ nguyên vị trí GPS trong ảnh** ("nhiều khi đó là mục đích cố ý"). Phiếu T-007 xóa GPS đã hủy; ghi trong sổ rủi ro `docs/team/security.md` mục 6. Khi nén WebP phải chép lại EXIF.

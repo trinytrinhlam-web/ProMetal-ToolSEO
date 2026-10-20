@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-19 |
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Cao (chặn T-049: Lá Chắn T-047 ghi T-049 sẽ KHÔNG ĐẠT nếu chưa có phiếu này) |
-| Phụ thuộc | T-047 đã gộp (`d350aec`). **Chờ chủ dự án chọn A hoặc B** |
-| Trạng thái | Chờ chủ dự án |
+| Phụ thuộc | T-047 đã gộp (`d350aec`). Chủ dự án chọn **A** ngày 2026-10-20 |
+| Trạng thái | Chờ chỗ trống (chủ dự án đã chọn A) |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ D1, D3.
 ## Ghi chú của Chỉ Huy
 
 - Lá Chắn T-047 khuyên nâng (A). Đã hỏi chủ dự án 2026-10-19.
+- 2026-10-20 07:31 (Chỉ Huy A): chủ dự án chọn **A: nâng lên Pillow 13**. Giao Thợ Máy ngay khi có chỗ trống (đang đủ 3 agent). Ưu tiên trước mọi phiếu khác vì chặn T-049.

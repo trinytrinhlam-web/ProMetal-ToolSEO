@@ -27,7 +27,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy / Chỉ Huy | **Chủ dự án chọn A hay B** |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). Giao khi có chỗ, **ưu tiên số 1** |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |

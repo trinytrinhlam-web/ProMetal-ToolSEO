@@ -63,6 +63,8 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+**Anh đã trả lời ngày 20/10: nâng lên Pillow 13 (T-058, lựa chọn A).**
+
 **Anh đã trả lời ngày 19/10 năm câu Giai đoạn 3 (ảnh): 1A 2A 3A 4A 5A.** Chi tiết trong `CLAUDE.md`, mục "Quyết định đã chốt".
 
 **Anh đã trả lời ngày 16/10: 1A 2A 3A 4A 5A.** Các việc anh cần làm trên website. Làm lúc nào cũng được, phần mềm vẫn chạy trong lúc chờ:

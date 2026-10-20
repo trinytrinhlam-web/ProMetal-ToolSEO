@@ -51,6 +51,11 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 07:31 · Chỉ Huy A
+
+- Chỉ Huy B không có commit nào. Phiên trước của A kết thúc khi T-048 lượt 2, T-050, T-051 đang chạy: đã gọi tiếp cả ba. Lần chạy test sau khi gộp T-042 bị ngắt: đang chạy lại, `main` trên máy A có bản gộp T-042 **chưa đẩy** tới khi test đạt.
+- **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20 (phiếu T-058): **nâng lên Pillow 13** (lựa chọn A), dù Streamlit khóa `pillow<13`, để vá 53 khuyến cáo của Pillow 12.3.0 mà Lá Chắn T-047 tìm ra. Thợ Máy nâng bằng `override-dependencies`, chạy đủ test, Chỉ Huy mở app thử mọi trang; hỏng thì quay về bản cũ. Đã ghi vào `CLAUDE.md`, `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4, phiếu T-058. T-058 giao ngay khi có chỗ.
+
 ### 2026-10-19 18:27 · Chỉ Huy A
 
 - Gộp T-047 vào `main` (`d350aec`): Windows 5.810 qua, 0 hỏng. Lá Chắn: Pillow 12.3.0 có 53 khuyến cáo mới, vá ở 13 (Streamlit khóa `<13`) → lập **T-058**, đã hỏi chủ dự án A (nâng Pillow 13) hay B (chấp nhận rủi ro). **T-049 chờ T-058.**
