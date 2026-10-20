@@ -97,7 +97,8 @@ _MAX_CATEGORY_CHARS = 300  # như ``seo_app.images.tags``: dài hơn thì không
 _DROPPED_IMAGES = "dropped_images"
 # Prompt: bỏ ký tự điều khiển (trừ xuống dòng, tab), ký tự vô hình/định dạng (kể cả ký tự đảo
 # hướng chữ), surrogate lẻ (không ghi được ra UTF-8).
-_PROMPT_DROP_CATEGORIES = frozenset({"Cc", "Cf", "Cs"})
+_PROMPT_DROP = frozenset({"Cc", "Cf", "Cs"})
+_category = unicodedata.category
 
 
 class DraftError(Exception):
@@ -123,9 +124,9 @@ class _Strict(BaseModel):
 
 
 def _drop_surrogates(text: str) -> str:
-    """Bỏ surrogate lẻ (``"\\ud800"`` trong JSON): không ghi được ra UTF-8, giao diện lỗi khi
+    """Bỏ surrogate lẻ: không ghi được ra UTF-8 (lưu nháp báo "ký tự lạ"), giao diện lỗi khi
     hiện."""
-    return "".join(ch for ch in text if unicodedata.category(ch) != "Cs")
+    return "".join(ch for ch in text if _category(ch) != "Cs")
 
 
 def _one_line(value: object, limit: int) -> object:
@@ -146,11 +147,7 @@ def _clean_prompt(value: object) -> object:
         return value
     text = value[: MAX_PROMPT_CHARS * _RAW_TEXT_FACTOR]
     text = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
-    kept = "".join(
-        ch
-        for ch in text
-        if ch in "\n\t" or unicodedata.category(ch) not in _PROMPT_DROP_CATEGORIES
-    )
+    kept = "".join(ch for ch in text if ch in "\n\t" or _category(ch) not in _PROMPT_DROP)
     return kept.strip()[:MAX_PROMPT_CHARS].rstrip()
 
 
@@ -751,9 +748,10 @@ def check_chosen_image(
     ai_roots: Collection[int] = (),
 ) -> CheckedImage:
     """Như ``check_draft_images`` cho một ảnh."""
-    return _check_images(
+    (checked,) = _check_images(
         [image], library, tag_store=tag_store, scanned=scanned, ai_roots=ai_roots
-    )[0]
+    )
+    return checked
 
 
 def _check_images(
