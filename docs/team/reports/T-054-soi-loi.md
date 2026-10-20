@@ -23,7 +23,7 @@
 | `tests/test_soi_loi_t054.py` | Mới: 30 hàm test, 116 trường hợp (110 qua, 6 `xfail(strict=True)` cho SL-T054-1…3). Site giả, ảnh giả tạo trong bộ nhớ, không mạng |
 | `docs/team/reports/T-054-soi-loi.md` | Báo cáo này |
 
-Không sửa code ứng dụng, không sửa test cũ. Commit trên `team/T-054`: `a9167b6` (test), và commit báo cáo.
+Không sửa code ứng dụng, không sửa test cũ. Commit trên `team/T-054`: `a9167b6` (test), `bc3d851` và commit cuối (báo cáo).
 
 ## Bằng chứng
 
@@ -40,7 +40,7 @@ $ uv run pytest -q -p no:cacheprovider tests/test_soi_loi_t054.py tests/test_wor
     tests/test_wordpress_published.py tests/test_wordpress_round2_t042.py \
     tests/test_wordpress_routes_t042.py tests/test_wordpress_seo_meta_t042.py \
     tests/test_wordpress_site_link_t042.py
-KET_QUA_CHAY_LIEN_QUAN
+2123 passed, 6 xfailed in 135.16s (0:02:15)      (20 file; 2013 test cũ + 110 test mới, 0 hỏng, 0 XPASS)
 
 $ uv run ruff check .
 All checks passed!
