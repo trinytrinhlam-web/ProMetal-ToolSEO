@@ -14,6 +14,7 @@ from seo_app.content.models import (
     Section,
     SectionText,
 )
+from seo_app.images.alt import AltSuggestion
 
 STIFF = "Có thể thấy rằng việc chọn inox phù hợp là vô cùng quan trọng."
 VAGUE = "Inox 304 rất tốt."
@@ -55,17 +56,29 @@ DRAFT = Draft(
 
 SCORES = Scores(friendly=86, natural=70, readable=88, specific=81, seo=90)
 
+ALT = AltSuggestion(
+    alt="Cổng inox 304 hai cánh màu bạc vừa lắp xong trước nhà phố",
+    caption="Cổng sau khi lắp, mặt inox còn dán phim bảo vệ.",
+)
+
 
 class FakeProvider:
     """Ghi lại mọi lần gọi; lần rà soát đầu trả về 1 câu sửa được, các lần sau không còn gì."""
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str]] = []  # (việc, system, prompt)
+        self.image_calls: list[tuple[str, tuple]] = []  # (việc, ảnh gửi kèm) khi có ảnh
+        self.tasks_seen: list = []  # TaskConfig nhận được, theo thứ tự gọi
         self.reviews = 0
         self.rewrites = 0
 
-    def generate(self, task, *, system, prompt, schema):
+    def generate(self, task, *, system, prompt, schema, images=()):
         self.calls.append((task.name, system, prompt))
+        self.tasks_seen.append(task)
+        if images:
+            self.image_calls.append((task.name, tuple(images)))
+        if schema is AltSuggestion:
+            return ALT
         if schema is Research:
             return RESEARCH
         if schema is Outline:

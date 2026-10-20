@@ -58,3 +58,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
   - Chỉ quét khi người dùng mở thư mục hoặc bấm quét lại.
   - Báo cho người dùng khi thư mục gốc đi qua lối tắt (mục "Ghi nhận" của biên bản).
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-058** (LC-T058-2): xem trước ảnh bằng `st.image` chỉ với ảnh Pillow đã mở qua hàm mở an toàn của module ảnh (T-049) hoặc byte WebP/JPEG do app tạo; không đưa đường dẫn hay byte gốc của file trong thư mục ảnh (Streamlit tự mở bằng Pillow không giới hạn định dạng).
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-050** (điều kiện 3): (a) chỉ gọi `suggest_alt` khi người dùng bấm, cho ảnh đã chọn vào bài; **không** gợi ý alt hàng loạt cho cả thư mục (ảnh chưa chọn không được rời máy, A3); (b) alt và chú thích hiện trong ô nhập chữ để người dùng sửa, duyệt trước khi dùng, hoặc qua `escape_markdown`; không `unsafe_allow_html` (U1); (c) lỗi hiện đúng câu `AIError`, không `st.exception`; (d) nên cảnh báo khi alt có dãy số giống số điện thoại.
