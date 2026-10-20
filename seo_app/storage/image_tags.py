@@ -214,6 +214,15 @@ class ImageTagStore:
         _check_ref(ref)
         if not isinstance(tags, ImageTags):
             raise TypeError("Thẻ phải là ImageTags.")
+        # Dựng lại từ giá trị để chạy lại mọi kiểm tra trước khi ghi (lớp con, đối tượng bị sửa).
+        ref = ImageRef(ref.root_index, ref.rel_path)
+        tags = ImageTags(
+            source=tags.source,
+            project_code=tags.project_code,
+            category=tags.category,
+            area=tags.area,
+            phase=tags.phase,
+        )
         if tags_for_image(ref).tags.is_ai and not tags.is_ai:
             raise TagError(_MSG_AI_FOLDER)
         saved_at = datetime.now(ZoneInfo(self.timezone))

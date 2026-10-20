@@ -286,7 +286,7 @@ _DROP_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"})
 # Nối trong một phần (không tách phần): gạch nối liền chữ, gạch dưới, dấu chấm, nháy.
 _JOINERS = frozenset("-_.'’")
 # Các kiểu gạch nối ngắn (NFKC không đổi hết về "-"): coi như "-". Gạch dài – — tách phần.
-_HYPHENS = str.maketrans(dict.fromkeys("‐‑‒⁃−﹣－", "-"))
+_HYPHENS = str.maketrans(dict.fromkeys("\u2010\u2011\u2012\u2043\u2212\ufe63\uff0d", "-"))
 _SPACED_HYPHEN = re.compile(r"\s+-+\s*|\s*-+\s+")
 _PIECE_SPLIT = re.compile(r"[-_.]+")
 _REAL_WORDS = frozenset({("that",), ("anh", "that"), ("hinh", "that")})  # ảnh thật

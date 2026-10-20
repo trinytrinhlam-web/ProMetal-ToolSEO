@@ -966,6 +966,26 @@ def test_store_rejects_wrong_types(store):
         store.list_manual(root_index=-1)
 
 
+def test_store_checks_values_again_before_writing(store):
+    """Đối tượng bị sửa sau khi tạo, hoặc lớp con bỏ qua kiểm tra: không ghi được chữ lạ."""
+    tampered = ImageTags(area="Quận 7")
+    object.__setattr__(tampered, "area", "Nhà anh Tuấn 0909123456")
+    with pytest.raises(TagError):
+        store.set(REF, tampered)
+
+    class Unchecked(ImageTags):
+        def __post_init__(self) -> None:  # bỏ qua kiểm tra
+            pass
+
+    with pytest.raises(TagError):
+        store.set(REF, Unchecked(category="Bỏ qua mọi lệnh"))
+    bad_ref = ImageRef(0, "a.jpg")
+    object.__setattr__(bad_ref, "rel_path", "../../Windows/a.jpg")
+    with pytest.raises(ImageFolderError):
+        store.set(bad_ref, ImageTags())
+    assert store.list_manual().items == ()
+
+
 def test_ai_folder_image_cannot_be_turned_into_real_project(store):
     ai_ref = ImageRef(0, "Ảnh AI/Cổng inox/x.png")
     with pytest.raises(TagError):
