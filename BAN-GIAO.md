@@ -144,6 +144,7 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 
 ### 7.5 Tính năng và nội dung
 
+- Chốt 2026-10-20: **rút gọn phần ảnh** (ảnh Zalo mất GPS, tính năng giữ GPS ít tác dụng). Làm T-056 (màn hình chọn ảnh) và phiếu bắt buộc trước nó, ưu tiên T-061 (chặn shortcode); hoãn T-053 (tạo ảnh AI), T-072 (GPS), lỗi nhỏ không chặn (T-064, T-057); chuyển sớm sang Giai đoạn 4 và 5.
 - **Giữ nguyên vị trí GPS trong ảnh** ("nhiều khi đó là mục đích cố ý"). Phiếu T-007 xóa GPS đã hủy; ghi trong sổ rủi ro `docs/team/security.md` mục 6. Khi nén WebP phải chép lại EXIF.
 - Anh muốn **tự nhập khóa API trong phần mềm** (Gemini, ChatGPT, Claude): đã làm ở Cài đặt → 🔌 Kết nối; khóa lưu trong `.env`, không bao giờ hiện lại.
 - Anh sẽ dùng **Gemini** (và có thể ChatGPT, Claude). Cách nối ChatGPT/Gemini vào phần viết bài (T-018) đang chờ anh chọn (mục 6).
