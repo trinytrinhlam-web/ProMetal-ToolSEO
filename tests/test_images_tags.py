@@ -35,6 +35,7 @@ from seo_app.images.tags import (
     ImageTags,
     TagError,
     clean_folder_name,
+    is_ai_name,
     match_area,
     match_category,
     match_phase,
@@ -582,6 +583,199 @@ def test_ai_marker_detection_returns_no_folder_text():
     for text in output_strings(result):
         for secret in ("tuấn", "0909", "mẫu", "khách"):
             assert fold(secret) not in fold(text)
+
+
+# T-070 (LC-T052-1 a–d, SL-T052-11): các cách gọi ảnh AI còn sót ở T-052.
+T070_AI_DIRS = [
+    "Ảnh minh họa",
+    "Hình minh hoạ",  # đặt dấu kiểu cũ
+    "minh hoa",
+    "MINH HỌA",
+    "MinhHoa",
+    "minhhoa",
+    unicodedata.normalize("NFD", "Ảnh minh họa"),  # tên kiểu Mac
+    "Ảnh trí tuệ nhân tạo",
+    "tri tue nhan tao",
+    "genai",  # GenAI viết liền, chữ thường
+    "GENAI",
+    "Ảnh Copilot",
+    "Bing Image Creator",
+    "Image Creator",
+    "Microsoft Designer",
+    "Designer",
+    "Ảnh Canva",
+    "Leonardo",
+    "Ideogram",
+    "Flux",
+    "Grok",
+    "Kling",
+    "Dreamina",
+    "ComfyUI",
+    "comfyui",
+    "Runway",
+    "Krea",
+    "Seedream",
+    "Phối cảnh 3D",
+    "Render",
+    "Ảnh do máy tạo",
+    "Ảnh tạo tự động",
+    "Khách 0909 - ảnh minh họa tham khảo",  # dấu hiệu nằm trong phần không khớp danh sách
+]
+
+
+@pytest.mark.parametrize("ai_dir", T070_AI_DIRS)
+def test_t070_more_ai_folder_names_make_whole_branch_ai(ai_dir):
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png",
+        f"{ai_dir}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+    ):
+        result = tags_of(rel_path)
+        assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), rel_path
+        assert result.tags.reference() == {}
+    assert is_ai_name(ai_dir) is True
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "Designer.png",  # Microsoft Designer
+        "Designer (3).png",
+        "Copilot_20250315_102030.png",
+        "OIG3.Ab1cDe2.jpg",  # Bing Image Creator / Copilot
+        "OIG.xYz9.jpeg",
+        "Leonardo_Phoenix_10_a_modern_iron_gate_0.jpg",
+        "Leonardo_Kino_XL_cong_inox.jpg",
+        "ideogram (1).jpeg",
+        "ideogram.jpeg",
+        "flux-1-dev_00001_.png",
+        "FLUX.1 schnell cong.png",
+        "grok_image_8f3a.jpg",
+        "Kling_20250101_Image_cong.png",
+        "dreamina-2025-03-01-1234-cong inox.jpeg",
+        "ComfyUI_00001_.png",
+        "runway_gen4_cong.png",
+        "krea-image-1.png",
+        "seedream_4_cong.jpeg",
+        "canva_cong_inox.png",
+        "GenAI_cong.png",
+        "genai_cong.png",
+        "anh minh hoa cong inox.jpg",
+        "minh-hoa-ai-cong-inox-quan-7.webp",  # tên file app tự đặt cho ảnh AI (T-049)
+    ],
+)
+def test_t070_default_file_names_of_ai_tools_make_image_ai(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), file_name
+    real = tags_of("CT012 - Cổng inox - Quận 7/truoc/IMG_0001.jpg")
+    assert real.tags.area == "Quận 7" and not real.tags.is_ai
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Nhà anh Thái",
+        "Thai",
+        "chị Mai",
+        "Mai Anh",
+        "Nhà chị Ái",
+        "anh Hải",
+        "anh Hai",
+        "Minh Hòa",  # tên người có dấu: không phải "minh họa"
+        "Minh Hoà",
+        "Bình Minh",
+        "Thanh Hóa",
+        "Khánh Hòa",
+        "Hòa Bình",
+        "Phôi cánh cổng",  # có dấu: không phải "phối cảnh"
+        "Cổng tự động",
+        "Mái tôn",
+        "Đại lý Hưng Thịnh",
+        "Cty Home Design",
+    ],
+)
+def test_t070_real_names_are_not_mistaken_for_ai(name):
+    """Đối chứng: tên khách, tên nơi, hạng mục có chữ giống dấu hiệu AI nhưng không phải."""
+    tags = tags_for_folder(f"CT015 - {name} - Q7/truoc").tags
+    assert not tags.is_ai, name
+    assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc"), name
+    assert is_ai_name(name) is False
+    image = tags_of(f"CT015 - Cổng inox - Q7/truoc/{name}.jpg").tags
+    assert not image.is_ai and image.area == "Quận 7", name
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Cty Home Designer",  # tên công ty có chữ Designer (Microsoft Designer)
+        "Nha anh Minh Hoa",  # "Minh Hòa" gõ không dấu = "minh hoa" (minh họa)
+        "Phoi canh cong",  # "phôi cánh" gõ không dấu = "phoi canh" (phối cảnh)
+        "Thuốc hàn Flux",
+    ],
+)
+def test_t070_ambiguous_names_lean_to_ai_and_leak_nothing(name):
+    """Đánh đổi có chủ ý (ghi trong báo cáo T-070): không chắc thì coi là ảnh AI. Ảnh chỉ mất mã
+    công trình, khu vực, trước/sau; không chữ nào của tên đi ra. Muốn giữ thẻ thì đổi tên thư mục
+    (ví dụ "Cty Home Design", "Nhà anh Minh Hòa" có dấu)."""
+    result = tags_of(f"CT015 - Cổng inox - {name} - Q7/truoc/IMG_1.jpg")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    for text in output_strings(result):
+        for word in name.split():
+            if fold(word) not in {"cong", "inox"}:
+                assert fold(word) not in fold(text), (word, text)
+
+
+def test_is_ai_name_checks_last_name_only_and_returns_bool(monkeypatch):
+    """LC-T052-1 (e): T-056 kiểm tên cuối của thư mục gốc đã khai báo. Chỉ trả đúng/sai, không
+    đọc ổ đĩa, không đưa chữ ra ngoài."""
+
+    def blocked(*_args, **_kwargs):
+        raise AssertionError("is_ai_name không được đụng tới ổ đĩa")
+
+    for name in ("open", "stat", "lstat", "scandir", "listdir"):
+        monkeypatch.setattr(os, name, blocked)
+    monkeypatch.setattr(builtins, "open", blocked)
+    yes = [
+        "Ảnh AI",
+        "G:/My Drive/Ảnh AI",
+        "G:/My Drive/Ảnh AI/",
+        "C:\\Users\\Lam\\Google Drive\\Ảnh minh họa",
+        Path("Kho ảnh") / "Copilot",
+        "ANHAI",
+        "Gemini",
+    ]
+    no = [
+        "Ảnh công trình",
+        "G:/AI/Ảnh công trình",  # chỉ xét tên cuối
+        "C:\\Users\\Ái\\Ảnh thật",
+        Path("Ảnh AI") / "CT012 - Cổng inox",
+        "Nhà chị Ái",
+        "",
+        "/",
+    ]
+    for name in yes:
+        assert is_ai_name(name) is True, name
+    for name in no:
+        assert is_ai_name(name) is False, name
+    for bad in (None, 123, b"Anh AI", ImageRef(0, "Ảnh AI/a.jpg")):
+        with pytest.raises(TypeError):
+            is_ai_name(bad)
+
+
+def test_is_ai_name_agrees_with_folder_tags():
+    """``is_ai_name`` nhận ảnh AI đúng như một thư mục bên dưới gốc mang tên đó."""
+    names = [
+        *T070_AI_DIRS,
+        "Ảnh do AI tạo",
+        "AI images",
+        "Midjourney v6",
+        "Nhà chị Ái",
+        "CT015 - Cổng inox - Quận 7",
+        "Khách 0909123456",
+        "xAI3kQ",
+        "Lô A, I",
+    ]
+    for name in names:
+        assert is_ai_name(name) is tags_for_folder(name).tags.is_ai, name
 
 
 def test_province_with_its_district_and_real_conflicts():

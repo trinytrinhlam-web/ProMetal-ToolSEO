@@ -628,14 +628,6 @@ def test_sl_t052_10_valid_sqlite_without_table_swapped_in_recovers(store):
     assert store.get(REF).tags.area == "Quận 8"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-11: thư mục đặt tên bằng cụm tiếng Việt của AI ('trí tuệ nhân tạo') không được "
-        "nhận là ảnh AI (danh sách chỉ có 'AI' và tên công cụ), nên ảnh AI mang mã công trình, "
-        "khu vực, trước/sau thật — sai hướng không an toàn (yêu cầu 4, như SL-T052-1)"
-    ),
-)
 @pytest.mark.parametrize(
     "ai_dir", ["Ảnh trí tuệ nhân tạo", "trí tuệ nhân tạo", "Hình do trí tuệ nhân tạo tạo"]
 )

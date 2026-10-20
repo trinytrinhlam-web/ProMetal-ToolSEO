@@ -34,16 +34,19 @@ An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T0
   Không nhận đường dẫn tuyệt đối, nên tên ổ đĩa, ``Users/…``, ``My Drive/…`` và tên chính thư
   mục gốc không bao giờ được đọc. Tên file ảnh không cho thẻ nào; chỉ dùng để nhận dấu hiệu ảnh AI.
 - Ảnh AI luôn có ``source = "ai"`` và không mang mã công trình, khu vực, trước/sau (chỉ được giữ
-  hạng mục). Dấu hiệu ảnh AI (chữ ``AI`` đứng riêng, tên công cụ tạo ảnh như ``Gemini``,
-  ``Midjourney``, ``DALL-E``) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới gốc, kể cả phần
-  không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
-  (``Gemini_Generated_Image_….png``). Thấy ở đâu thì cả nhánh, hay ảnh đó, là ảnh AI. Không chắc
-  thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa chữ nào ra ngoài.
+  hạng mục). Dấu hiệu ảnh AI (chữ ``AI`` đứng riêng, ``GenAI``, cụm ``minh họa``, ``trí tuệ nhân
+  tạo``, ``phối cảnh``, tên công cụ tạo ảnh như ``Gemini``, ``Midjourney``, ``Copilot``,
+  ``Designer``, ``Leonardo``…) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới gốc, kể cả
+  phần không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
+  (``Gemini_Generated_Image_….png``, ``Designer (3).png``). Thấy ở đâu thì cả nhánh, hay ảnh đó,
+  là ảnh AI. Không chắc thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa
+  chữ nào ra ngoài. Tên thư mục gốc không được đọc: nơi gọi kiểm nó bằng ``is_ai_name``.
 - Module chỉ xử lý chữ: không đọc ổ đĩa, không mở hay ghi file.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from collections.abc import Iterable, Sequence
@@ -194,7 +197,9 @@ _PHASE_WORDS = {
 }
 # Chữ đứng trước trước/sau: "Ảnh trước", "Hình sau khi làm", "Hình ảnh hiện trạng".
 _PHASE_PREFIXES = ("ảnh", "hình", "hình ảnh")
-# Công cụ tạo ảnh AI: tên thư mục hay tên file có các chữ này là ảnh AI.
+# Công cụ tạo ảnh AI: tên thư mục hay tên file có các chữ này là ảnh AI. Tên file mặc định khi
+# tải về thường có tên công cụ: "Designer (3).png", "Copilot_20250315_102030.png",
+# "Leonardo_Phoenix_….jpg", "ideogram (1).jpeg", "ComfyUI_00001_.png", "dreamina-2025-….jpeg".
 _AI_TOOLS = (
     "Gemini",
     "Imagen",
@@ -207,6 +212,31 @@ _AI_TOOLS = (
     "Stable Diffusion",
     "SDXL",
     "Firefly",
+    # T-070 (LC-T052-1 d). "Designer" (Microsoft Designer) cũng bắt tên công ty có chữ Designer,
+    # "Flux" cũng bắt "thuốc hàn flux": nhận nhầm ảnh thật thành ảnh AI là hướng an toàn (ảnh chỉ
+    # mất thẻ công trình), muốn giữ thẻ thì đổi tên thư mục. Canva: ảnh làm trên Canva là ảnh thiết
+    # kế (có thể tạo bằng AI của Canva), không phải ảnh chụp công trình, nên cũng coi là ảnh AI.
+    "Copilot",
+    "Designer",
+    "Bing",
+    "Image Creator",
+    "Leonardo",
+    "Ideogram",
+    "Flux",
+    "Grok",
+    "Kling",
+    "Dreamina",
+    "Jimeng",
+    "Seedream",
+    "ComfyUI",
+    "Runway",
+    "Krea",
+    "Canva",
+    "Recraft",
+    "NightCafe",
+    "SeaArt",
+    "Hailuo",
+    "Sora",
 )
 _AI_WORDS = (
     "AI",
@@ -221,10 +251,28 @@ _AI_WORDS = (
     "AI generated",
     *_AI_TOOLS,
 )
+# Cụm tiếng Việt chỉ ảnh không chụp từ công trình (T-070, LC-T052-1 a, b): "Ảnh minh họa" là đúng
+# chữ app dùng cho ảnh AI (alt «Minh họa…», tên file minh-hoa-ai-…). Chỉ làm dấu hiệu (so có dấu),
+# không đưa vào danh sách khớp trọn (so không dấu): "Minh Hòa" là tên người, bỏ dấu cũng ra
+# "minh hoa". Mỗi cụm tự có thêm dạng không dấu ("minh hoa", "tri tue nhan tao"), nên "Nha anh
+# Minh Hoa" gõ không dấu bị coi là ảnh AI (hướng an toàn); "Minh Hòa", "Minh Hoà" có dấu thì không.
+_AI_PHRASES = (
+    "minh họa",
+    "minh hoạ",  # cách đặt dấu kiểu cũ
+    "trí tuệ nhân tạo",
+    "phối cảnh",  # ảnh dựng 3D gửi khách duyệt, không phải ảnh chụp
+    "render",
+    "do máy tạo",
+    "tạo tự động",
+)
+# Dạng viết liền không tách được bằng chữ hoa ("genai", "GENAI": T-070, LC-T052-1 c) có sẵn từ
+# dạng liền của mọi dấu hiệu nhiều chữ (``_build_ai_markers``); thêm ở đây các dạng không có trong
+# danh sách trên. "OIG…" là tên file ảnh của Bing Image Creator / Copilot ("OIG3.Ab1c….jpg").
+_AI_JOINED = ("GenAI", "AI image", "AI images", "AI art", "OIG", "OIG1", "OIG2", "OIG3", "OIG4")
 # Dấu hiệu ảnh AI tìm ở mọi chỗ của tên (SL-T052-1), kể cả trong phần không khớp danh sách:
 # "Ảnh do AI tạo", "AI images", "Ảnh AI Gemini", "GenAI". So không phân biệt hoa thường nhưng
 # phân biệt dấu: "Ái" (tên người) không phải AI.
-_AI_MARKER_TEXTS = ("AI", "A.I.", *_AI_TOOLS)
+_AI_MARKER_TEXTS = ("A.I.", *_AI_WORDS, *_AI_PHRASES, *_AI_JOINED)
 
 # Hạng mục = [việc] + vật + [vật liệu], ghép từ các từ dưới đây (theo dịch vụ ở
 # config/business_profile.md mục 4). Giá trị thẻ là đúng các từ này nối lại, ví dụ "Cổng inox",
@@ -394,10 +442,15 @@ def _is_number(word: str) -> bool:
 
 
 def _build_ai_markers() -> frozenset[tuple[str, ...]]:
+    """Mỗi dấu hiệu ở dạng có dấu và không dấu, tách và không tách chữ dính liền, và dạng viết
+    liền của dấu hiệu nhiều chữ ("genai", "minhhoa", "stablediffusion")."""
     markers = set()
     for text in _AI_MARKER_TEXTS:
-        for split_case in (True, False):
-            markers.add(tuple(_tokens(clean_folder_name(text), split_case=split_case)))
+        for variant in (text, remove_accents(text)):
+            for split_case in (True, False):
+                words = tuple(_tokens(clean_folder_name(variant), split_case=split_case))
+                markers.add(words)
+                markers.add(("".join(words),))
     return frozenset(markers)
 
 
@@ -877,6 +930,22 @@ def tags_for_folder(folder: str | SubFolder) -> FolderTags:
     return _tags_from_dirs(ref.parts[:-1])
 
 
+def is_ai_name(name: str | os.PathLike[str]) -> bool:
+    """Tên một thư mục (hay một file) có dấu hiệu ảnh AI không (T-070, LC-T052-1 e).
+
+    Dùng cho tên cuối của thư mục gốc đã khai báo (``G:/My Drive/Ảnh AI``): ``tags_for_image``
+    không đọc tên gốc, nên nơi gọi tự kiểm và coi mọi ảnh trong gốc đó là ảnh AI. Nhận cả đường dẫn
+    thì chỉ xét tên cuối (sau dấu ``/`` hay ``\\`` cuối cùng). Cùng cách nhận như tên thư mục bên
+    dưới gốc. Chỉ trả đúng/sai, không đưa chữ nào của tên ra ngoài; không đọc ổ đĩa.
+    """
+    if isinstance(name, os.PathLike):
+        name = os.fspath(name)
+    if not isinstance(name, str):
+        raise TypeError("is_ai_name chỉ nhận tên thư mục hay tên file dạng chữ.")
+    last = re.split(r"[/\\]", name.rstrip("/\\"))[-1]
+    return _parse_dir_name(last).ai
+
+
 __all__ = [
     "AREAS",
     "AREA_GROUPS",
@@ -896,6 +965,7 @@ __all__ = [
     "ImageTags",
     "TagError",
     "clean_folder_name",
+    "is_ai_name",
     "match_area",
     "match_category",
     "match_phase",
