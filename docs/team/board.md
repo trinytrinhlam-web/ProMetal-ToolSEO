@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-20 19:08 (Chỉ Huy B)._
+_Cập nhật: 2026-10-20 19:25 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh (LC-T052-1 Trung bình, LC-T052-2/-3/-5, SL-T052-9 → -11) | Soi Lỗi · T-070 kiểm dọn lỗi thẻ ảnh | `team/T-070` | 17:47 Thợ Máy **xong** (`0d92ff1`: dấu hiệu ảnh AI, `is_ai_name`, kho thẻ chịu file độc; test liên quan 861 qua). 18:39 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`95c0f70`; 5 Thấp SL-T070-1 → -5; test liên quan 1.003 qua). **Chờ Lá Chắn rút gọn** | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Soi Lỗi · T-055 kiểm nháp nhớ ảnh | `team/T-055` | 17:58 Thợ Máy **xong** (`a2ca7d4`; test liên quan 802 qua; sửa 1 dòng test ngoài phạm vi, Chỉ Huy B duyệt). 18:32 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`934c21b`; 2 Trung bình: SL-T055-1 nháp đổi hoa/thường đường dẫn làm ảnh AI thành ảnh thật, SL-T055-2 alt "đã duyệt" của ảnh nay là AI thiếu «Minh họa»; 1 Thấp). **Chờ Thợ Máy lượt 2** | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh (LC-T042-3, LC-T054-1 Trung bình) | Thợ Máy · T-061 chặn shortcode WordPress | `team/T-061` | 19:06 Thợ Máy **xong** (`7c5a405`: mọi `[` `]` gửi lên WordPress thành `&#91;` `&#93;`, chữ SEO dạng shortcode bị chặn, `_fields` cố định cho 6 lệnh ghi; sửa điều kiện so đường ở 6 file test cũ; test liên quan 4.779 qua). **Chờ Soi Lỗi** | [Thợ Máy](reports/T-061-tho-may.md) |
+| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh (LC-T052-1 Trung bình, LC-T052-2/-3/-5, SL-T052-9 → -11) | Lá Chắn · T-070 kiểm nhanh thẻ ảnh | `team/T-070` | 17:47 Thợ Máy **xong** (`0d92ff1`: dấu hiệu ảnh AI, `is_ai_name`, kho thẻ chịu file độc; test liên quan 861 qua). 18:39 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`95c0f70`; 5 Thấp SL-T070-1 → -5; test liên quan 1.003 qua). ⏳ **Lá Chắn rút gọn đang kiểm** (giao sau 19:08) | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy · T-055 lượt 2 nháp nhớ ảnh | `team/T-055` | 17:58 Thợ Máy **xong** (`a2ca7d4`; test liên quan 802 qua; sửa 1 dòng test ngoài phạm vi, Chỉ Huy B duyệt). 18:32 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`934c21b`; 2 Trung bình: SL-T055-1 nháp đổi hoa/thường đường dẫn làm ảnh AI thành ảnh thật, SL-T055-2 alt "đã duyệt" của ảnh nay là AI thiếu «Minh họa»; 1 Thấp). ⏳ **Thợ Máy lượt 2 đang sửa** (giao sau 19:08) | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh (LC-T042-3, LC-T054-1 Trung bình) | Soi Lỗi · T-061 kiểm chặn shortcode | `team/T-061` | 19:06 Thợ Máy **xong** (`7c5a405`: mọi `[` `]` gửi lên WordPress thành `&#91;` `&#93;`, chữ SEO dạng shortcode bị chặn, `_fields` cố định cho 6 lệnh ghi; sửa điều kiện so đường ở 6 file test cũ; test liên quan 4.779 qua). ⏳ **Soi Lỗi đang kiểm** (giao sau 19:08) | [Thợ Máy](reports/T-061-tho-may.md) |
 
 ## Chờ
 

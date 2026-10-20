@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 19:08. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 19:25. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -45,9 +45,9 @@ Chỉ Huy B, cập nhật 2026-10-20 19:08. Bảng cũ của A (cập nhật 17/
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | đã gộp (`3f90489`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 14:37 gộp và đẩy `main` | Điều kiện đã chép; T-067 giao được; Chỉ Huy thử 3–5 ảnh thật trước khi gộp T-054 |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | đã gộp (`1c7bd9a`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 17:02 gộp và đẩy `main` | Điều kiện đã chép; T-055, T-070 giao được; LC-T052-5 chờ chủ dự án |
 | [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) Dọn lỗi Thấp xử lý ảnh (GĐ3) | đã gộp (`e5c0ce8`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; gộp `17:19`, đẩy `main` sau khi test qua | LC-T067-1 → T-072 |
-| [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | `team/T-070` (`95c0f70`) | ✅ 18:39 **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (5 Thấp SL-T070-1 → -5) | **Lá Chắn rút gọn** |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`934c21b`) | ✅ 18:32 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN**: 2 Trung bình (SL-T055-1 đổi hoa/thường đường dẫn làm ảnh AI thành ảnh thật; SL-T055-2 alt đã duyệt của ảnh nay là AI thiếu «Minh họa»), 1 Thấp | **Thợ Máy lượt 2**, rồi Soi Lỗi kiểm lại, Lá Chắn |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`7c5a405`) | ✅ 19:06 **Thợ Máy xong** (`[` `]` thành thực thể HTML ở mọi đường gửi; `_fields` cố định 6 lệnh ghi; sửa điều kiện so đường ở 6 file test cũ; test liên quan 4.779 qua) | **Soi Lỗi** (xem kỹ 6 file test cũ đã sửa, R5), rồi Lá Chắn |
+| [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | `team/T-070` (`95c0f70`) | ✅ 18:39 **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (5 Thấp SL-T070-1 → -5) | ⏳ **Lá Chắn rút gọn đang kiểm** (phiên "Lá Chắn · T-070 kiểm nhanh thẻ ảnh", giao sau 19:08) |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`934c21b`) | ✅ 18:32 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN**: 2 Trung bình (SL-T055-1 đổi hoa/thường đường dẫn làm ảnh AI thành ảnh thật; SL-T055-2 alt đã duyệt của ảnh nay là AI thiếu «Minh họa»), 1 Thấp | ⏳ **Thợ Máy lượt 2 đang sửa** (phiên "Thợ Máy · T-055 lượt 2 nháp nhớ ảnh", giao sau 19:08); rồi Soi Lỗi kiểm lại, Lá Chắn |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`7c5a405`) | ✅ 19:06 **Thợ Máy xong** (`[` `]` thành thực thể HTML ở mọi đường gửi; `_fields` cố định 6 lệnh ghi; sửa điều kiện so đường ở 6 file test cũ; test liên quan 4.779 qua) | ⏳ **Soi Lỗi đang kiểm** (phiên "Soi Lỗi · T-061 kiểm chặn shortcode", giao sau 19:08); rồi Lá Chắn |
 | [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | đã gộp (`f96775a`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 15:09 gộp và đẩy `main` | Điều kiện đã chép; T-053, T-068, T-069 giao được |
 | Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-074** |
 | `main` | `43d6c4a` + tài liệu | Windows sau gộp T-068, T-054: **9.477 qua**, 1 hỏng oan (`test_soi_loi_t037.py` khóa chờ → T-073); ruff sạch | |
@@ -55,6 +55,10 @@ Chỉ Huy B, cập nhật 2026-10-20 19:08. Bảng cũ của A (cập nhật 17/
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 19:25 · Chỉ Huy B
+
+- Chủ dự án cho giao (sau 19:08, đều mức Tối đa, chế độ nhanh): Soi Lỗi T-061 (xem kỹ 7 file test cũ Thợ Máy đã sửa điều kiện so đường), Lá Chắn rút gọn T-070, Thợ Máy T-055 lượt 2 (SL-T055-1, -2 Trung bình, SL-T055-3).
 
 ### 2026-10-20 19:08 · Chỉ Huy B
 
