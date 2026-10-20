@@ -13,14 +13,19 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
   vào bộ nhớ; chữ sai UTF-8, sai kiểu, sai khóa thì bỏ dòng đó. Không ``pickle``, không ``eval``;
   mọi câu SQL dùng tham số ``?``.
 - File hỏng hẳn (không phải SQLite, sai cấu trúc, quá lớn) thì đổi tên sang một bên để giữ lại
-  (như kho nháp), rồi tạo file mới. File là liên kết tắt (symlink, junction) thì chỉ xóa chính
-  liên kết, không đụng file nó trỏ tới. File đang bận hay không mở được thì báo lỗi, không xóa.
+  (như kho nháp), rồi tạo file mới. File đang bận hay không mở được thì báo lỗi, không xóa.
+- Chỗ đặt file (và file nhật ký ``-journal``, ``-wal``, ``-shm`` cạnh nó) là liên kết: symlink,
+  junction, hay hard link (file có tên thứ hai, có thể nằm ngoài ``data/``; Windows tạo được không
+  cần quyền quản trị) thì chỉ gỡ chính liên kết, không đụng file nó trỏ tới, rồi tạo file mới
+  (F1). Kiểm ở **mỗi lần mở**, không chỉ lần đầu, nên liên kết đặt vào khi app đang chạy cũng bị
+  gỡ trước khi SQLite ghi.
 - Ảnh trong thư mục ảnh AI luôn là ảnh AI: thẻ sửa tay không đổi được thành ảnh thật.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import stat
 import unicodedata
 from collections.abc import Iterable, Iterator
 from contextlib import closing, contextmanager, suppress
@@ -48,6 +53,8 @@ _MAX_TAG_BYTES = 1024
 _MAX_TIME_BYTES = 64
 _SQLITE_CORRUPT = 11
 _SQLITE_NOTADB = 26
+_SQLITE_MAX_INT = 2**63 - 1  # số nguyên lớn nhất SQLite lưu được
+_JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
 _COLUMNS = (
     "root_index",
     "ref_key",
@@ -74,9 +81,10 @@ _SELECT_LIMITS = (
 _TEXT_LIMITS = (_MAX_PATH_BYTES, _MAX_PATH_BYTES, *(_MAX_TAG_BYTES,) * 5, _MAX_TIME_BYTES)
 
 _MSG_AI_FOLDER = (
-    "Ảnh này nằm trong thư mục ảnh AI nên luôn là ảnh AI. Muốn đổi, hãy chuyển ảnh sang thư mục "
-    "khác trên Drive."
+    "Ảnh này nằm trong thư mục ảnh AI (hoặc tên file có chữ AI, tên công cụ tạo ảnh) nên luôn là "
+    "ảnh AI. Muốn đổi, hãy đổi tên hoặc chuyển ảnh sang thư mục khác trên Drive."
 )
+_MSG_BAD_ROOT = "Số thứ tự thư mục ảnh không hợp lệ."
 
 
 class ImageTagStoreError(Exception):
@@ -120,6 +128,12 @@ def _check_ref(ref: object) -> ImageRef:
     if not isinstance(ref, ImageRef):
         raise TypeError("Thẻ sửa tay chỉ gắn với ImageRef (đường dẫn tương đối trong thư mục ảnh).")
     return ref
+
+
+def _storable(ref: ImageRef) -> bool:
+    """Số thứ tự thư mục gốc lưu được vào SQLite. ``ImageRef`` đọc lại từ nháp đã lưu có thể mang
+    số rất lớn (SL-T052-6): ảnh đó không thể có thẻ sửa tay."""
+    return type(ref.root_index) is int and 0 <= ref.root_index <= _SQLITE_MAX_INT
 
 
 def _keep_ai(tags: ImageTags, auto: ImageTags) -> ImageTags:
@@ -183,8 +197,8 @@ class ImageTagStore:
         """Thẻ sửa tay của các ảnh có thẻ sửa tay (ảnh không có thì không có trong kết quả)."""
         wanted: dict[tuple[int, str], list[ImageRef]] = {}
         for ref in refs:
-            _check_ref(ref)
-            wanted.setdefault((ref.root_index, ref_key(ref)), []).append(ref)
+            if _storable(_check_ref(ref)):
+                wanted.setdefault((ref.root_index, ref_key(ref)), []).append(ref)
         if not wanted:
             return {}
         by_root: dict[int, list[str]] = {}
@@ -216,6 +230,8 @@ class ImageTagStore:
             raise TypeError("Thẻ phải là ImageTags.")
         # Dựng lại từ giá trị để chạy lại mọi kiểm tra trước khi ghi (lớp con, đối tượng bị sửa).
         ref = ImageRef(ref.root_index, ref.rel_path)
+        if not _storable(ref):
+            raise ImageTagStoreError(_MSG_BAD_ROOT)
         tags = ImageTags(
             source=tags.source,
             project_code=tags.project_code,
@@ -257,7 +273,8 @@ class ImageTagStore:
 
     def clear(self, ref: ImageRef) -> bool:
         """Bỏ thẻ sửa tay của ``ref`` (quay về thẻ đọc từ tên thư mục). ``False``: không có."""
-        _check_ref(ref)
+        if not _storable(_check_ref(ref)):
+            return False
         with self._connect() as conn:
             cursor = conn.execute(
                 "DELETE FROM manual_tags WHERE root_index = ? AND ref_key = ?",
@@ -274,8 +291,10 @@ class ImageTagStore:
         self, *, root_index: int | None = None, limit: int = DEFAULT_LIST_LIMIT
     ) -> ManualTagList:
         """Các thẻ sửa tay, mới nhất trước. Dòng hỏng bị bỏ qua và đếm vào ``skipped``."""
-        if root_index is not None and (type(root_index) is not int or root_index < 0):
-            raise ImageTagStoreError("Số thứ tự thư mục ảnh không hợp lệ.")
+        if root_index is not None and (
+            type(root_index) is not int or not 0 <= root_index <= _SQLITE_MAX_INT
+        ):
+            raise ImageTagStoreError(_MSG_BAD_ROOT)
         limit = max(0, min(int(limit), self.max_items))
         where, params = ("", ()) if root_index is None else (" WHERE root_index = ?", (root_index,))
         with self._connect() as conn:
@@ -325,9 +344,6 @@ class ImageTagStore:
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
-        if self._ready and not self.path.exists():
-            # File hoặc cả thư mục data/ bị xóa khi app đang chạy: tạo lại.
-            self._ready = False
         self._prepare()
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
@@ -345,14 +361,17 @@ class ImageTagStore:
             ) from None
 
     def _prepare(self) -> None:
-        """Lần đầu: tạo thư mục, kiểm file (liên kết tắt, hỏng, quá lớn), tạo bảng."""
-        if self._ready:
-            return
+        """Mỗi lần mở: gỡ liên kết ở chỗ đặt file (F1). Lần đầu, hoặc khi file bị xóa hay bị
+        thay khi app đang chạy: tạo thư mục, kiểm file (hỏng, quá lớn), tạo bảng."""
         try:
+            # Kiểm mỗi lần, không chỉ lần đầu (SL-T052-7, -8): liên kết đặt vào sau lần dùng đầu
+            # cũng bị gỡ trước khi SQLite mở file. File hay cả data/ bị xóa: tạo lại.
+            if self._remove_links() or not self.path.is_file():
+                self._ready = False
+            if self._ready:
+                return
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            if self.path.is_symlink() or self.path.is_junction():
-                self._remove_link()
-            elif self.path.exists():
+            if self.path.exists():
                 if not self.path.is_file():
                     raise ImageTagStoreError(
                         "Chỗ đặt file lưu thẻ ảnh đang là một thư mục, app không dùng được."
@@ -383,12 +402,18 @@ class ImageTagStore:
             ) from None
         self._ready = True
 
-    def _remove_link(self) -> None:
-        """Chỗ đặt file là liên kết tắt (có thể trỏ ra ngoài ``data/``, F1): chỉ xóa liên kết."""
-        try:
-            self.path.unlink()
-        except (IsADirectoryError, PermissionError):
-            self.path.rmdir()  # junction Windows: xóa chính junction, không đụng thư mục đích
+    def _remove_links(self) -> bool:
+        """Gỡ liên kết ở chỗ đặt file và chỗ các file nhật ký của nó. Có gỡ thì ``True``."""
+        removed = False
+        for path in (self.path, *self._journal_paths(self.path)):
+            if _is_link(path):
+                _remove_link(path)
+                removed = True
+        return removed
+
+    @staticmethod
+    def _journal_paths(path: Path) -> tuple[Path, ...]:
+        return tuple(path.with_name(path.name + suffix) for suffix in _JOURNAL_SUFFIXES)
 
     def _move_aside(self) -> Path:
         """Đổi tên file hỏng (và file nhật ký đi kèm) sang một bên để giữ lại."""
@@ -402,21 +427,44 @@ class ImageTagStore:
             )
         self.path.replace(target)
         # File nhật ký của file cũ mà để lại thì SQLite sẽ "khôi phục" nó vào file mới.
-        for suffix in ("-journal", "-wal", "-shm"):
-            journal = self.path.with_name(self.path.name + suffix)
+        for journal, moved in zip(
+            self._journal_paths(self.path), self._journal_paths(target), strict=True
+        ):
             with suppress(FileNotFoundError):
-                journal.replace(target.with_name(target.name + suffix))
+                journal.replace(moved)
         return target
 
 
+def _is_link(path: Path) -> bool:
+    """Liên kết tắt (symlink, junction) hoặc hard link: file thường có hơn một tên, tên kia có thể
+    nằm ngoài ``data/`` (SL-T052-7). SQLite không bao giờ tự tạo hard link."""
+    try:
+        if path.is_symlink() or path.is_junction():
+            return True
+        info = path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+
+
+def _remove_link(path: Path) -> None:
+    """Chỉ gỡ chính liên kết (F1): file/thư mục nó trỏ tới, tên kia của hard link giữ nguyên."""
+    try:
+        path.unlink()
+    except (IsADirectoryError, PermissionError):
+        path.rmdir()  # junction Windows: xóa chính junction, không đụng thư mục đích
+
+
 def _parse_time(value: str, timezone: str) -> datetime | None:
+    """Giờ lưu có múi giờ; sai dạng, thiếu múi giờ, hay ra ngoài khoảng năm 1–9999 khi đổi múi giờ
+    ("9999-12-31T23:59:59-14:00", SL-T052-5) thì ``None`` (bỏ dòng, không ném lỗi)."""
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError:
+        if parsed.tzinfo is None:
+            return None
+        return parsed.astimezone(ZoneInfo(timezone))
+    except (ValueError, OverflowError):
         return None
-    if parsed.tzinfo is None:
-        return None
-    return parsed.astimezone(ZoneInfo(timezone))
 
 
 def _is_healthy(path: Path) -> bool:
@@ -428,6 +476,8 @@ def _is_healthy(path: Path) -> bool:
     """
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
+            # File chưa tin cậy: không chạy hàm trong view/trigger/chỉ mục của nó khi kiểm.
+            conn.execute("PRAGMA trusted_schema = OFF")
             conn.text_factory = bytes
             if conn.execute("PRAGMA quick_check").fetchone() != (b"ok",):
                 return False

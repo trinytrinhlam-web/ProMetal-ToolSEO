@@ -1361,6 +1361,120 @@ def test_junction_at_file_path_is_removed_without_touching_target(store, tmp_pat
     assert (target / "quan-trong.txt").read_bytes() == b"khong duoc dong vao"
 
 
+def _hard_link_or_skip(target: Path, link: Path) -> None:
+    link.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.link(target, link)
+    except OSError:
+        pytest.skip("ổ đĩa không cho tạo hard link")
+
+
+@pytest.mark.parametrize("when", ["truoc-lan-dau", "sau-lan-dau"])
+def test_hard_link_at_file_path_is_removed_without_touching_other_name(store, tmp_path, when):
+    """SL-T052-7 (F1): file thẻ là hard link (tên thứ hai của một file ngoài data/): chỉ gỡ tên
+    trong data/, file kia giữ nguyên; kiểm cả khi liên kết đặt vào sau lần dùng đầu."""
+    outside = write(tmp_path / "ngoai-data" / "khac.sqlite", b"khong duoc dong vao")
+    if when == "sau-lan-dau":
+        store.set(REF, ImageTags(area="Quận 7"))
+        store.path.unlink()
+    _hard_link_or_skip(outside, store.path)
+    assert store.path.stat().st_nlink == 2
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
+    assert outside.read_bytes() == b"khong duoc dong vao"
+    assert store.path.stat().st_nlink == 1 and outside.stat().st_nlink == 1
+    assert store.recovered_from is None
+
+
+def test_hard_link_at_journal_path_is_removed(store, tmp_path):
+    """File nhật ký của SQLite (``-journal``) đặt sẵn là hard link: SQLite sẽ ghi qua nó, nên gỡ
+    trước khi mở. File nhật ký thật (một tên) thì để nguyên cho SQLite tự xử lý."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    outside = write(tmp_path / "ngoai-data" / "nhat-ky.bin", b"khong duoc dong vao")
+    journal = store.path.with_name(store.path.name + "-journal")
+    _hard_link_or_skip(outside, journal)
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert outside.read_bytes() == b"khong duoc dong vao"
+    assert outside.stat().st_nlink == 1
+    assert store.get(REF).tags.area == "Quận 8"
+
+
+def test_directory_placed_after_first_use_reports_clear_error_then_recovers(store):
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    store.path.mkdir()
+    for _ in range(2):
+        resolved = store.resolve(REF)
+        assert not resolved.manual and "thư mục" in resolved.error
+    store.path.rmdir()
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
+
+
+@pytest.mark.parametrize(
+    "saved_at",
+    [
+        "9999-12-31T23:59:59-14:00",
+        "9999-12-31T23:59:59.999999-00:01",
+        "0001-01-01T00:00:00+14:00",
+        "0001-01-01T00:00:00+00:00",  # sang +07:00 vẫn trong khoảng: dòng hợp lệ
+    ],
+)
+def test_extreme_saved_at_is_skipped_not_raised(store, saved_at):
+    """SL-T052-5: ngày lưu ra ngoài năm 1–9999 khi đổi sang giờ Việt Nam: bỏ dòng, không ném lỗi."""
+    other = ImageRef(0, "khac.jpg")
+    store.set(REF, ImageTags(area="Quận 7"))
+    raw_insert(store.path, good_row(other.rel_path, saved_at=saved_at))
+    resolved = store.resolve_many([REF, other])
+    assert resolved[REF].manual and resolved[REF].error == ""
+    listed = store.list_manual()
+    valid = saved_at == "0001-01-01T00:00:00+00:00"
+    assert resolved[other].manual is valid
+    assert listed.skipped == (0 if valid else 1)
+
+
+def test_root_index_beyond_sqlite_integer(store):
+    """SL-T052-6: ``ImageRef`` đọc từ nháp có số thư mục gốc quá lớn: không có thẻ sửa tay, đọc
+    không ném lỗi, ghi báo lỗi tiếng Việt. Số lớn nhất SQLite lưu được vẫn dùng bình thường."""
+    edge = ImageRef(2**63 - 1, "CT012 - Cổng inox - Tân Phú/a.jpg")
+    store.set(edge, ImageTags(area="Quận 7"))
+    assert store.get(edge).tags.area == "Quận 7"
+    assert store.list_manual(root_index=2**63 - 1).items[0].ref == edge
+    big = ImageRef(2**63, edge.rel_path)
+    store.set(REF, ImageTags(area="Quận 8"))
+    resolved = store.resolve_many([big, REF])
+    assert not resolved[big].manual and resolved[big].error == ""
+    assert resolved[big].tags == tags_for_image(big).tags
+    assert resolved[REF].manual
+    assert store.get(big) is None
+    assert store.clear(big) is False
+    with pytest.raises(ImageTagStoreError) as info:
+        store.set(big, ImageTags(area="Quận 7"))
+    assert "thư mục ảnh" in str(info.value)
+    with pytest.raises(ImageTagStoreError):
+        store.list_manual(root_index=2**63)
+
+
+def test_health_check_does_not_trust_schema_of_file(store, monkeypatch):
+    """File thẻ là dữ liệu chưa tin cậy: tắt ``trusted_schema`` trước ``quick_check``."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    statements: list[str] = []
+
+    class Tracing(sqlite3.Connection):
+        def execute(self, sql, *args):
+            statements.append(sql)
+            return super().execute(sql, *args)
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(
+        image_tags_module.sqlite3,
+        "connect",
+        lambda *args, **kwargs: real_connect(*args, factory=Tracing, **kwargs),
+    )
+    assert image_tags_module._is_healthy(store.path)
+    assert statements.index("PRAGMA trusted_schema = OFF") < statements.index("PRAGMA quick_check")
+
+
 def test_old_manual_tags_are_pruned(tmp_path):
     store = ImageTagStore(path=tmp_path / "data" / "image_tags.sqlite", max_items=3)
     refs = [ImageRef(0, f"anh-{n}.jpg") for n in range(5)]

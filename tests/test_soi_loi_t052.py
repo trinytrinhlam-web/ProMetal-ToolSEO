@@ -456,13 +456,6 @@ def raw_insert(path: Path, *rows: tuple) -> None:
         conn.executemany("INSERT INTO manual_tags VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-5: một dòng trong file thẻ có ngày lưu cực trị (năm 9999 hay năm 1 kèm múi giờ) "
-        "làm resolve/resolve_many/list_manual ném OverflowError thay vì bỏ dòng đó"
-    ),
-)
 @pytest.mark.parametrize(
     "saved_at",
     ["9999-12-31T23:59:59-14:00", "9999-12-31T23:59:59+00:00", "0001-01-01T00:00:00+14:00"],
@@ -480,13 +473,6 @@ def test_sl_t052_5_row_with_extreme_date_is_skipped_not_raised(store, saved_at):
     assert listed.skipped == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-6: ImageRef có số thứ tự thư mục gốc từ 2**63 trở lên (tạo được từ nháp đã lưu) "
-        "làm resolve/set/clear/list_manual ném OverflowError, không phải ImageTagStoreError"
-    ),
-)
 def test_sl_t052_6_huge_root_index_does_not_crash_store(store):
     big = ImageRef(2**63, "CT012 - Cổng inox - Tân Phú/a.jpg")
     resolved = store.resolve(big)  # hứa: không ném lỗi
@@ -519,13 +505,6 @@ def _hard_link(target: Path, link: Path) -> None:
         pytest.skip("ổ đĩa không cho tạo hard link")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-7: chỗ đặt file thẻ là hard link (Windows tạo được không cần quyền quản trị) "
-        "tới một file SQLite ngoài data/: app ghi bảng thẻ vào file đó (F1)"
-    ),
-)
 def test_sl_t052_7_hard_link_at_file_path_does_not_write_outside(store, tmp_path):
     other = tmp_path / "ngoai-data" / "du-lieu-khac.sqlite"
     before = _make_other_sqlite(other)
@@ -535,13 +514,6 @@ def test_sl_t052_7_hard_link_at_file_path_does_not_write_outside(store, tmp_path
     assert store.get(REF).tags.area == "Quận 7"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-7: liên kết chỉ được kiểm ở lần dùng đầu; hard link đặt vào sau đó tới file thẻ "
-        "khác ngoài data/ thì app ghi xuyên vào file đó (F1)"
-    ),
-)
 def test_sl_t052_7_hard_link_placed_after_first_use_does_not_write_outside(store, tmp_path):
     store.set(REF, ImageTags(area="Quận 7"))
     other = tmp_path / "ngoai-data" / "image_tags_may_khac.sqlite"
@@ -554,13 +526,6 @@ def test_sl_t052_7_hard_link_placed_after_first_use_does_not_write_outside(store
     assert other.read_bytes() == before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-7: symlink đặt vào sau lần dùng đầu, trỏ tới file thẻ khác ngoài data/: app ghi "
-        "xuyên (chỉ chạy được trên Mac/Linux hoặc Windows bật Developer Mode)"
-    ),
-)
 def test_sl_t052_7_symlink_placed_after_first_use_does_not_write_outside(store, tmp_path):
     store.set(REF, ImageTags(area="Quận 7"))
     other = tmp_path / "ngoai-data" / "image_tags_may_khac.sqlite"
@@ -577,13 +542,6 @@ def test_sl_t052_7_symlink_placed_after_first_use_does_not_write_outside(store, 
 
 
 @pytest.mark.skipif(not IS_WINDOWS, reason="junction chỉ có trên Windows")
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-8: junction đặt vào chỗ file thẻ sau lần dùng đầu: kho báo lỗi mãi (tới khi tạo "
-        "kho mới), không tự gỡ liên kết như lần dùng đầu hay như file hỏng"
-    ),
-)
 def test_sl_t052_8_junction_placed_after_first_use_is_removed(store, tmp_path):
     import _winapi
 
