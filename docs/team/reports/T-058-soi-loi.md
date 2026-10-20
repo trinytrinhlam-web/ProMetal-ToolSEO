@@ -125,7 +125,13 @@ Mong đợi: hiện ảnh. Thực tế: trang báo lỗi `OSError`. Y hệt trê
 
 - `uv pip check` sẽ luôn báo 1 xung đột (Streamlit đòi `pillow<13`) chừng nào còn override. Đó là cố ý; đừng "sửa" bằng cách hạ Pillow.
 - Test chỉ thay được một phần việc mở app thật: Streamlit chưa được thử chính thức với Pillow 13. Mọi hàm Pillow mà Streamlit 1.65 gọi đã được chạy qua với cảnh báo "sắp bỏ" bị đổi thành lỗi.
-- Nếu phải quay về Pillow 12.3.0 (mục "Cách quay về" của báo cáo Thợ Máy): `tests/test_soi_loi_t058.py` không ghim bản 13, các hàm nó dùng đều có ở 12.3.0; dự kiến vẫn chạy, nhưng chưa thử trên 12.3.0 (suy luận).
+- Nếu phải quay về Pillow 12.3.0 (mục "Cách quay về" của báo cáo Thợ Máy): `tests/test_soi_loi_t058.py` không ghim bản 13 và **đã chạy qua cả trên 12.3.0** (bằng chứng dưới), nên không cần xóa; chỉ xóa `tests/test_pillow_version_t058.py` như Thợ Máy ghi. Mặt trái: 60 test này là test chống hỏng chức năng, không phân biệt được 12.3.0 với 13 (không dựng file ảnh khai thác lỗ hổng); chỉ `test_pillow_la_ban_13` của Thợ Máy giữ phiên bản.
+
+```
+$ uv run --offline --with "pillow==12.3.0" pytest tests/test_soi_loi_t058.py tests/test_pillow_version_t058.py -q
+FAILED tests/test_pillow_version_t058.py::test_pillow_la_ban_13 - assert <Version('12.3.0')> >= <Version('13.0.0')>
+1 failed, 61 passed in 37.27s        # đúng như dự tính: chỉ test ghim bản 13 hỏng
+```
 - Lệch số khuyến cáo (Lá Chắn T-047 ghi 53, Thợ Máy đếm 40 hôm nay) và GHSA-654x-cwwv-5j9c (chưa có bản vá ở 13.0.0) là phần của Lá Chắn; Soi Lỗi không kiểm lại.
 
 ## Đề xuất
