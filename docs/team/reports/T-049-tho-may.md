@@ -130,7 +130,7 @@ All checks passed!
 - **T-054 (chèn ảnh vào nháp):** tải lên đúng `WebImage.data` (không sửa byte) để GPS tới WordPress; tên file từ `naming.image_file_name`.
 - **T-056 (giao diện):** `st.image` chỉ nhận `PreviewCache.get(library, ref)` hoặc `make_preview(...)`; hiện `WebImage.notice` khi có, và "Ảnh không có vị trí GPS" khi `WebImage.gps is None`; bắt cả `ImageFolderError` lẫn `ImageProcessError`.
 - **T-062 (đọc cấu hình ảnh):** truyền `[images] webp_quality`, `max_edge_px` vào `make_web_image(webp_quality=…, max_edge_px=…)`; giá trị sai đã có câu báo tiếng Việt nêu tên khóa.
-- **Chỉ Huy/chủ dự án:** sau khi gộp, thử 3–5 ảnh thật trên máy (không commit ảnh): mở bằng app, xem GPS còn (ví dụ bằng thuộc tính file trên Windows) và dung lượng WebP.
+- **Soi Lỗi hoặc Chỉ Huy:** giao diện chọn ảnh chưa có (T-056), nên thử ảnh thật bằng một đoạn lệnh: chạy `make_web_image` trên 3–5 ảnh thật của chủ dự án (iPhone HEIC, ảnh Android) ngay trên máy, không commit ảnh; xem GPS còn (ví dụ thuộc tính file trên Windows) và dung lượng WebP (mục tiêu 150–400 KB).
 
 ## Câu hỏi cho chủ dự án
 
