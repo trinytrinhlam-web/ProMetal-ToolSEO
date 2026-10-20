@@ -1197,6 +1197,23 @@ def test_cache_ghi_doc_lai_va_tao_lai_khi_anh_doi(tmp_path, monkeypatch):
     assert process.jpeg_layout(lan3) == (320, 213)
 
 
+def test_cache_co_san_van_tu_choi_khi_pillow_duoi_13(tmp_path, monkeypatch):
+    # LC-T049-2: kiểm Pillow ngay đầu ``PreviewCache.get``, trước khi trả ảnh có sẵn trong cache.
+    library, ref, _path = _thu_vien(tmp_path)
+    cache = process.PreviewCache(tmp_path / "cache")
+    dung = cache.get(library, ref)
+    (file,) = (tmp_path / "cache").iterdir()
+    goi = []
+    monkeypatch.setattr(ImageLibrary, "stat_image", lambda *a: goi.append(1))
+    monkeypatch.setattr(ImageLibrary, "read_image_bytes", lambda *a: goi.append(2))
+    monkeypatch.setattr(PIL, "__version__", "12.3.0")
+    assert _loi(cache.get, library, ref) == process._MSG_OLD_PILLOW
+    assert goi == []  # không đụng thư mục ảnh, không đọc cache
+    assert file.read_bytes() == dung
+    monkeypatch.undo()  # Pillow 13 trở lại: lấy lại đúng ảnh trong cache
+    assert cache.get(library, ref) == dung
+
+
 @pytest.mark.parametrize("hong", ["rac", "jpeg_co_exif", "qua_lon"])
 def test_cache_hong_thi_tao_lai(tmp_path, hong):
     library, ref, _path = _thu_vien(tmp_path)

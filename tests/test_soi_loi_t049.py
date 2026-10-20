@@ -715,11 +715,7 @@ def test_pillow_duoi_13_khong_cache_thi_tu_choi(tmp_path, monkeypatch):
     assert not (tmp_path / "cache").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-2: PreviewCache.get trả ảnh xem trước có sẵn trong cache mà không kiểm "
-    "Pillow >= 13 (LC-T058-3: module ảnh từ chối khi Pillow < 13)",
-)
+# SL-T049-2 (PreviewCache.get trả ảnh có sẵn trong cache mà không kiểm Pillow >= 13): sửa ở T-067.
 def test_pillow_duoi_13_co_cache_cung_tu_choi(tmp_path, monkeypatch):
     library, refs = _thu_vien(tmp_path, {"a.jpg": _luu(_anh_bon_mau((200, 150)), "JPEG")})
     cache = process.PreviewCache(tmp_path / "cache")

@@ -914,6 +914,9 @@ class PreviewCache:
         Lỗi: ``ImageFolderError`` (ảnh không đọc được từ thư mục) hoặc ``ImageProcessError``
         (nội dung không phải ảnh dùng được); cả hai đều là câu tiếng Việt hiện thẳng được.
         """
+        # LC-T049-2: kiểm trước cả khi trả ảnh có sẵn trong cache (byte trả về vào ``st.image``,
+        # được Pillow của máy giải mã).
+        _require_pillow_13()
         entry = library.stat_image(ref)
         path = self._dir / f"{self._key(ref, entry.size, entry.modified)}.jpg"
         if self.enabled:
