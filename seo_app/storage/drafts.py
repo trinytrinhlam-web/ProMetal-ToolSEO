@@ -341,7 +341,8 @@ class DraftSnapshot(_Strict):
     @classmethod
     def _no_images_before_v2(cls, data: object, info: ValidationInfo) -> object:
         """Khuôn cũ chưa có ảnh đã chọn: dữ liệu ảnh nằm trong nháp khuôn cũ là sửa tay, bỏ đi
-        (đọc từ file thì đếm vào ``dropped_images``). Phần chữ giữ nguyên."""
+        (đọc từ file thì đếm vào ``dropped_images``; ``null`` là "chưa chọn ảnh", không mất ảnh
+        nào nên không đếm, SL-T055-3). Phần chữ giữ nguyên."""
         if not isinstance(data, dict):
             return data
         parts = data.get("parts")
@@ -353,9 +354,9 @@ class DraftSnapshot(_Strict):
         kept = []
         for part in parts:
             if isinstance(part, dict) and "chosen_image" in part:
-                part = {key: value for key, value in part.items() if key != "chosen_image"}
-                if isinstance(dropped, list):
+                if part["chosen_image"] is not None and isinstance(dropped, list):
                     dropped.append("chosen_image")
+                part = {key: value for key, value in part.items() if key != "chosen_image"}
             kept.append(part)
         return {**data, "parts": kept}
 

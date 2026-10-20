@@ -687,10 +687,6 @@ def test_future_versions_fail_whole_draft_without_leaking(store, version):
     assert REAL_PATH not in str(info.value)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-3: nháp khuôn 1 có chosen_image null bị đếm là ảnh hỏng đã bỏ",
-)
 def test_sl_t055_3_v1_null_images_are_not_counted_as_dropped(store):
     """SL-T055-3 (Thấp). Nháp khuôn 1 có ``"chosen_image": null`` ở mỗi phần (sửa tay, hoặc chép nửa
     chừng từ khuôn 2): không có ảnh nào bị mất, nhưng ``dropped_images`` đếm mỗi phần một ảnh nên

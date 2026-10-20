@@ -444,6 +444,21 @@ def test_v1_draft_with_image_data_drops_only_the_image(store):
     assert loaded.parts[1].text == "Bản lề gỉ, cánh xệ."
 
 
+def test_v1_draft_counts_only_real_image_data_as_dropped(store):
+    """SL-T055-3: ``"chosen_image": null`` trong nháp khuôn 1 là "chưa chọn ảnh", không mất ảnh nào
+    nên không đếm; dữ liệu ảnh thật sự (dù hỏng) thì vẫn đếm."""
+    data = v1_draft(new_draft_id())
+    data["parts"][0]["chosen_image"] = None
+    data["parts"][1]["chosen_image"] = None
+    put_v1(store, data)
+    assert store.load(data["id"]).dropped_images == 0
+    data["parts"][1]["chosen_image"] = {"rel_path": "../x.jpg"}
+    put_v1(store, data)
+    loaded = store.load(data["id"])
+    assert loaded.dropped_images == 1
+    assert all(part.chosen_image is None for part in loaded.parts)
+
+
 @pytest.mark.parametrize("version", [0, 3, 999, -1, "abc", None, [2]])
 def test_unknown_schema_versions_are_rejected(store, version):
     saved = store.save(snapshot_with(real_image()))
