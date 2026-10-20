@@ -234,10 +234,9 @@ def test_every_area_in_list_matches_itself_any_case_with_or_without_accents():
         assert match_area(area) == area
         assert match_area(remove_accents(area).upper()) == area
         assert match_area(unicodedata.normalize("NFD", area.lower())) == area
-        # Trong tên thư mục, " – " tách phần: "Bà Rịa – Vũng Tàu" thành hai khu vực khác nhau
-        # (mâu thuẫn, để trống); viết liền "Bà Rịa-Vũng Tàu" thì nhận (test_area_variants).
-        expected = "" if "–" in area else area
-        assert tags_for_folder(f"CT001 - {area}").tags.area == expected
+        # Trong tên thư mục, " – " tách phần, nhưng hai phần liền nhau ghép lại đúng một khu vực
+        # thì vẫn đọc ra khu vực đó ("Bà Rịa – Vũng Tàu", SL-T052-2).
+        assert tags_for_folder(f"CT001 - {area}").tags.area == area
 
 
 def test_service_area_covers_old_hcm_binh_duong_and_ba_ria_vung_tau():
@@ -483,6 +482,179 @@ def test_ai_folder_marks_images_as_ai_and_drops_project_tags():
         result = tags_of(rel_path)
         assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), rel_path
         assert result.tags.reference() == {}
+
+
+@pytest.mark.parametrize(
+    "ai_dir",
+    [
+        "Ảnh do AI tạo",
+        "ảnh tạo bởi ai",  # chữ thường
+        "AI images",
+        "Ảnh AI Gemini",
+        "Gemini",
+        "Ảnh Gemini vẽ",
+        "Midjourney v6",
+        "DALL-E 3",
+        "DALL·E",
+        "ChatGPT tạo",
+        "Stable Diffusion",
+        "GenAI",
+        "ẢnhAI mẫu",
+        "Ảnh A.I",
+        "Khách 0909 - ảnh AI tham khảo",  # dấu hiệu nằm trong phần không khớp danh sách
+        "ＡＩ",  # toàn chiều rộng
+        "A​I",  # ký tự vô hình chen giữa
+    ],
+)
+def test_ai_marker_anywhere_in_folder_name_makes_whole_branch_ai(ai_dir):
+    """SL-T052-1: dấu hiệu ảnh AI ở bất cứ đâu trong tên thư mục, kể cả phần bị bỏ, kể cả thư mục
+    nằm trên thư mục công trình: ảnh AI, không mang mã công trình, khu vực, trước/sau."""
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png",
+        f"{ai_dir}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+    ):
+        result = tags_of(rel_path)
+        assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), rel_path
+        assert result.tags.reference() == {}
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "Gemini_Generated_Image_ab12cd.png",
+        "ChatGPT Image May 12, 2025, 10_00_00 AM.png",
+        "DALL·E 2024-05-12 10.00.00 - A modern iron gate.webp",
+        "AI_cong_inox.jpg",
+        "cong inox AI.jpg",
+        "midjourney_1234.png",
+    ],
+)
+def test_ai_marker_in_file_name_makes_image_ai(file_name):
+    """Ảnh AI tải về để lẫn trong thư mục công trình thật: tên file có dấu hiệu AI thì ảnh đó là
+    ảnh AI. Tên file chỉ dùng để nhận ảnh AI, không cho thẻ nào khác."""
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    real = tags_of("CT012 - Cổng inox - Quận 7/truoc/IMG_0001.jpg")
+    assert real.tags.area == "Quận 7" and not real.tags.is_ai  # ảnh khác cùng thư mục vẫn thật
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "IMG_0001.jpg",
+        "IMG_20240512_101010.HEIC",
+        "PXL_20240512_101010123.jpg",
+        "DSC_0123.JPG",
+        "z5432109876543_7f3a9c1d2e.jpg",  # ảnh tải về từ Zalo
+        "xAI3kQpZ.jpg",  # chuỗi ngẫu nhiên có "AI" dính liền chữ khác
+        "MAI_1.jpg",
+        "Ảnh của chị Ái.jpg",
+    ],
+)
+def test_ordinary_file_names_are_not_ai(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert not result.tags.is_ai
+    assert result.tags == ImageTags(
+        project_code="CT012", category="Cổng inox", area="Quận 7", phase="truoc"
+    )
+
+
+@pytest.mark.parametrize(
+    "rel_dir",
+    [
+        "CT015 - Nhà chị Ái - Q7/truoc",  # "Ái" có dấu: tên người, không phải AI
+        "CT015 - Thái Bình - Q7/truoc",
+        "CT015 - Hai cánh - Q7/truoc",
+        "CT015 - Cổng mái che - Q7/truoc",
+        "CT015 - Mai Anh - Q7/truoc",
+    ],
+)
+def test_words_that_only_look_like_ai_do_not_make_ai_images(rel_dir):
+    tags = tags_for_folder(rel_dir).tags
+    assert not tags.is_ai
+    assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc")
+
+
+def test_ai_marker_detection_returns_no_folder_text():
+    """Nhận ảnh AI chỉ làm mất thẻ: không chữ nào của phần bị bỏ đi ra ngoài."""
+    result = tags_of("Khách Tuấn 0909123456 - ảnh AI mẫu - Quận 7/x.png")
+    assert result.tags == ImageTags(source=SOURCE_AI)
+    for text in output_strings(result):
+        for secret in ("tuấn", "0909", "mẫu", "khách"):
+            assert fold(secret) not in fold(text)
+
+
+def test_province_with_its_district_and_real_conflicts():
+    """SL-T052-2: quận/huyện kèm tỉnh/thành chứa nó thì lấy quận/huyện; còn lại vẫn để trống."""
+    assert tags_for_folder("CT012 - Cổng - Dĩ An, Bình Dương").tags.area == "Dĩ An"
+    assert tags_for_folder("CT012 - Cổng - TP.HCM - Quận 7").tags.area == "Quận 7"
+    assert tags_for_folder("CT012 - Cổng - Sài Gòn - Gò Vấp").tags.area == "Gò Vấp"
+    assert tags_for_folder("CT030 - Bà Rịa – Vũng Tàu - Phú Mỹ").tags.area == "Phú Mỹ"
+    assert tags_for_folder("CT030 - Bà Rịa, Vũng Tàu").tags.area == "Bà Rịa – Vũng Tàu"
+    for rel_dir in (
+        "CT012 - Cổng - Quận 7 - Bình Dương",  # tỉnh không chứa quận đó
+        "CT012 - Cổng - Dĩ An - Thuận An - Bình Dương",  # hai huyện
+        "CT012 - Cổng - TP.HCM - Bình Dương",  # hai tỉnh
+        "CT030 - Vũng Tàu - Bà Rịa",  # hai thành phố (thứ tự khác tên tỉnh)
+    ):
+        result = tags_for_folder(rel_dir)
+        assert result.tags.area == "", rel_dir
+        assert result.conflicts == ("area",), rel_dir
+
+
+@pytest.mark.parametrize(
+    ("rel_dir", "phase"),
+    [
+        ("Ảnh trước", "truoc"),
+        ("HÌNH TRƯỚC KHI SỬA", "truoc"),
+        ("Hình ảnh hiện trạng", "truoc"),
+        ("anh truoc thi cong", "truoc"),
+        ("Hình sau", "sau"),
+        ("Ảnh sau khi thi công xong", "sau"),
+        ("Ảnh hoàn thiện", "sau"),
+        ("Thi công xong", "sau"),
+    ],
+)
+def test_photo_word_before_phase(rel_dir, phase):
+    """SL-T052-3: "Ảnh"/"Hình"/"Hình ảnh" đứng trước trước/sau."""
+    assert match_phase(rel_dir) == phase
+    assert tags_of(f"CT001 - Cổng/{rel_dir}/a.jpg").tags.phase == phase
+
+
+@pytest.mark.parametrize(
+    ("rel_dir", "expected"),
+    [
+        ("CT012 Cổng inox 2024", ImageTags(project_code="CT012", category="Cổng inox")),
+        ("2024 05 CT012 Cổng", ImageTags(project_code="CT012", category="Cổng")),
+        ("Cổng inox 2024 Tân Phú", ImageTags(category="Cổng inox", area="Tân Phú")),
+        ("01 Trước", ImageTags(phase="truoc")),
+        ("Tân Phú 0909123456", ImageTags(area="Tân Phú")),  # số trơn bỏ qua, không đi ra ngoài
+        ("2024", ImageTags()),
+    ],
+)
+def test_plain_numbers_are_skipped_in_folder_names(rel_dir, expected):
+    """SL-T052-4: năm, ngày, số thứ tự đứng chung một phần không làm mất thẻ."""
+    assert tags_for_folder(rel_dir).tags == expected
+
+
+@pytest.mark.parametrize(
+    "rel_dir",
+    [
+        "Q 7 8",  # Quận 7 hay Quận 8? không đoán
+        "Quận 7 12",
+        "CT 0909 123 456",  # số điện thoại sau CT: không thành mã CT0909
+        "CT012 345",
+        "CT٠١٢ 2024",  # chữ số Ả Rập không phải số trơn để bỏ qua
+        "45 Nguyễn Trãi P.2 Quận 5",  # địa chỉ: không đọc ra Quận 5
+    ],
+)
+def test_numbers_right_after_code_or_numbered_district_are_not_guessed(rel_dir):
+    result = tags_for_folder(f"Cổng/{rel_dir}")
+    assert (result.tags.project_code, result.tags.area) == ("", "")
+    assert result.unmatched >= 1
+    # Ô nhập thẻ sửa tay không bỏ qua số.
+    assert match_area("Tân Phú 2024") == ""
+    assert match_project_code("CT012 2024") == ""
 
 
 # ----- ký tự vô hình (LC-T048-4a) ----------------------------------------------------------

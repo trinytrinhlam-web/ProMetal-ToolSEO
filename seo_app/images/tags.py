@@ -11,9 +11,13 @@ Cách đọc một tên thư mục:
   [ ]``. Mỗi phần phải khớp **trọn vẹn** với danh sách cố định, hoặc là ghép của các mục trong
   danh sách (``CT012 Cổng inox Tân Phú``). Phần không khớp bị bỏ cả phần. Phần không khớp mà có
   gạch nối liền chữ hay gạch dưới (``CT012-Cổng inox-Nhà anh Tuấn``) thì thử lại từng mảnh.
+  Hai phần liền nhau ghép lại thành đúng một khu vực thì đọc là khu vực đó (``Bà Rịa – Vũng Tàu``).
+- Số trơn (năm, ngày tháng, số thứ tự: ``2024``, ``12.05.2024``, ``01 Trước``) được bỏ qua khi so,
+  trừ số đứng liền sau mã ``CT`` hay quận số (``Q 7 8``, ``CT 0909 123``: không đoán, bỏ cả phần).
 - So không phân biệt hoa thường, có dấu hay không dấu, chữ dính liền (``TanPhu``, ``Q7``).
 - Thư mục sâu hơn (gần ảnh hơn) quyết định thẻ của nó. Một thư mục ghi hai giá trị khác nhau cho
-  cùng một thẻ (``Quận 7 - Tân Phú``) thì thẻ đó để trống, không đoán.
+  cùng một thẻ (``Quận 7 - Tân Phú``) thì thẻ đó để trống, không đoán. Riêng khu vực: một quận/huyện
+  ghi kèm tỉnh/thành chứa nó (``Dĩ An, Bình Dương``, ``Quận 7, TP.HCM``) thì lấy quận/huyện.
 
 An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T048-4a và T-050 số 5; A3):
 
@@ -28,9 +32,13 @@ An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T0
 - Chỉ đọc phần đường dẫn **bên dưới** thư mục ảnh đã khai báo: đầu vào là ``ImageRef`` của T-048
   (số thứ tự gốc + đường dẫn tương đối) hoặc đường dẫn tương đối đã qua đúng lớp kiểm của T-048.
   Không nhận đường dẫn tuyệt đối, nên tên ổ đĩa, ``Users/…``, ``My Drive/…`` và tên chính thư
-  mục gốc không bao giờ được đọc. Tên file ảnh cũng không dùng.
+  mục gốc không bao giờ được đọc. Tên file ảnh không cho thẻ nào; chỉ dùng để nhận dấu hiệu ảnh AI.
 - Ảnh AI luôn có ``source = "ai"`` và không mang mã công trình, khu vực, trước/sau (chỉ được giữ
-  hạng mục). Thư mục có tên kiểu ``Ảnh AI`` thì mọi ảnh bên trong là ảnh AI.
+  hạng mục). Dấu hiệu ảnh AI (chữ ``AI`` đứng riêng, tên công cụ tạo ảnh như ``Gemini``,
+  ``Midjourney``, ``DALL-E``) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới gốc, kể cả phần
+  không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
+  (``Gemini_Generated_Image_….png``). Thấy ở đâu thì cả nhánh, hay ảnh đó, là ảnh AI. Không chắc
+  thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa chữ nào ra ngoài.
 - Module chỉ xử lý chữ: không đọc ổ đĩa, không mở hay ghi file.
 """
 
@@ -121,6 +129,12 @@ AREA_GROUPS = (
 )
 AREAS = (*HCM_AREAS, *BINH_DUONG_AREAS, *BA_RIA_VUNG_TAU_AREAS)
 _AREA_SET = frozenset(AREAS)
+# Quận/huyện → tỉnh/thành chứa nó (tên đầu của mỗi nhóm). "Dĩ An, Bình Dương" là Dĩ An.
+_AREA_PROVINCE = {
+    area: group[0]
+    for group in (HCM_AREAS, BINH_DUONG_AREAS, BA_RIA_VUNG_TAU_AREAS)
+    for area in group[1:]
+}
 
 # Cách viết khác của tên tỉnh/thành (tên quận/huyện thì tự nhận có dấu hay không dấu).
 _AREA_ALIASES = {
@@ -167,13 +181,33 @@ _PHASE_WORDS = {
         "sau khi sửa",
         "sau khi thi công",
         "sau thi công",
+        "sau khi làm xong",
+        "sau khi sửa xong",
+        "sau khi thi công xong",
         "làm xong",
         "sửa xong",
+        "thi công xong",
         "hoàn thành",
         "hoàn thiện",
         "after",
     ),
 }
+# Chữ đứng trước trước/sau: "Ảnh trước", "Hình sau khi làm", "Hình ảnh hiện trạng".
+_PHASE_PREFIXES = ("ảnh", "hình", "hình ảnh")
+# Công cụ tạo ảnh AI: tên thư mục hay tên file có các chữ này là ảnh AI.
+_AI_TOOLS = (
+    "Gemini",
+    "Imagen",
+    "Nano Banana",
+    "Midjourney",
+    "DALL-E",
+    "DALLE",
+    "ChatGPT",
+    "GPT",
+    "Stable Diffusion",
+    "SDXL",
+    "Firefly",
+)
 _AI_WORDS = (
     "AI",
     "ảnh AI",
@@ -185,7 +219,12 @@ _AI_WORDS = (
     "minh họa AI",
     "ảnh minh họa AI",
     "AI generated",
+    *_AI_TOOLS,
 )
+# Dấu hiệu ảnh AI tìm ở mọi chỗ của tên (SL-T052-1), kể cả trong phần không khớp danh sách:
+# "Ảnh do AI tạo", "AI images", "Ảnh AI Gemini", "GenAI". So không phân biệt hoa thường nhưng
+# phân biệt dấu: "Ái" (tên người) không phải AI.
+_AI_MARKER_TEXTS = ("AI", "A.I.", *_AI_TOOLS)
 
 # Hạng mục = [việc] + vật + [vật liệu], ghép từ các từ dưới đây (theo dịch vụ ở
 # config/business_profile.md mục 4). Giá trị thẻ là đúng các từ này nối lại, ví dụ "Cổng inox",
@@ -324,14 +363,15 @@ def _starts_new_word(prev: str, ch: str) -> bool:
     return prev.islower() and ch.isupper()
 
 
-def _words(text: str) -> list[str]:
-    """Các từ của ``text`` (đã làm sạch) ở dạng so: không dấu, chữ thường."""
+def _tokens(text: str, *, split_case: bool = True) -> list[str]:
+    """Các từ của ``text`` (đã làm sạch), giữ dấu, chữ thường. ``split_case``: tách cả chữ dính
+    liền ("TanPhu", "Q7"); không thì chỉ tách ở dấu cách, dấu câu, gạch dưới."""
     words: list[str] = []
     buffer: list[str] = []
     prev = ""
     for ch in text:
         if _is_word_char(ch):
-            if buffer and _starts_new_word(prev, ch):
+            if buffer and split_case and _starts_new_word(prev, ch):
                 words.append("".join(buffer))
                 buffer = []
             buffer.append(ch)
@@ -341,7 +381,40 @@ def _words(text: str) -> list[str]:
         prev = ch
     if buffer:
         words.append("".join(buffer))
-    return [remove_accents(word).casefold() for word in words]
+    return [word.casefold() for word in words]
+
+
+def _words(text: str) -> list[str]:
+    """Các từ của ``text`` (đã làm sạch) ở dạng so: không dấu, chữ thường."""
+    return [remove_accents(word).casefold() for word in _tokens(text)]
+
+
+def _is_number(word: str) -> bool:
+    return word.isascii() and word.isdigit()
+
+
+def _build_ai_markers() -> frozenset[tuple[str, ...]]:
+    markers = set()
+    for text in _AI_MARKER_TEXTS:
+        for split_case in (True, False):
+            markers.add(tuple(_tokens(clean_folder_name(text), split_case=split_case)))
+    return frozenset(markers)
+
+
+_AI_MARKERS = _build_ai_markers()
+_MAX_MARKER_WORDS = max(len(marker) for marker in _AI_MARKERS)
+
+
+def _has_ai_marker(text: str, *, split_case: bool) -> bool:
+    """``text`` (đã làm sạch) có dấu hiệu ảnh AI ở bất cứ chỗ nào (SL-T052-1). Tên thư mục do
+    người gõ: tách cả chữ dính liền ("ẢnhAI", "GenAI"). Tên file có thể là chuỗi ngẫu nhiên
+    ("xAI3kQ"): chỉ tách ở dấu cách, dấu câu, gạch dưới (``split_case=False``)."""
+    words = _tokens(text, split_case=split_case)
+    return any(
+        tuple(words[start : start + length]) in _AI_MARKERS
+        for length in range(1, _MAX_MARKER_WORDS + 1)
+        for start in range(len(words) - length + 1)
+    )
 
 
 # ----- từ điển -------------------------------------------------------------------------------
@@ -392,7 +465,8 @@ def _build_vocabulary() -> dict[tuple[str, ...], _Item]:
                     add(f"{prefix} {name}", item, compact=False)
     for phase, texts in _PHASE_WORDS.items():
         for text in texts:
-            add(text, _Item(_PHASE, phase))
+            for prefix in ("", *_PHASE_PREFIXES):
+                add(f"{prefix} {text}", _Item(_PHASE, phase))
     for text in _AI_WORDS:
         add(text, _Item(_AI, SOURCE_AI))
     for kind, texts in (
@@ -421,14 +495,20 @@ def _code_at(words: Sequence[str], index: int) -> _Item | None:
     return _Item(_CODE, f"CT{digits}")
 
 
-def _segment(words: Sequence[str]) -> list[_Item] | None:
+def _segment(words: Sequence[str], *, skip_numbers: bool = False) -> list[_Item] | None:
     """Chia ``words`` thành các mục trong từ điển, phủ **trọn** mọi từ; ít mục nhất (cụm dài
-    nhất trước). Không chia được thì ``None``."""
+    nhất trước). Không chia được thì ``None``.
+
+    ``skip_numbers`` (tên thư mục, SL-T052-4): bỏ qua số trơn (năm, ngày, số thứ tự), trừ số đứng
+    liền sau một mục kết thúc bằng số (mã ``CT``, quận số): "Q 7 8", "CT 0909 123" không đoán.
+    """
     count = len(words)
     if not 0 < count <= _MAX_WORDS_PER_PART:
         return None
+    # best[i]: cách chia words[i:]; firm[i]: như best nhưng words[i] không được bỏ qua.
     best: list[list[_Item] | None] = [None] * (count + 1)
-    best[count] = []
+    firm: list[list[_Item] | None] = [None] * (count + 1)
+    best[count] = firm[count] = []
     for start in range(count - 1, -1, -1):
         options: list[tuple[int, _Item]] = []
         for length in range(min(_MAX_KEY_WORDS, count - start), 0, -1):
@@ -438,13 +518,20 @@ def _segment(words: Sequence[str]) -> list[_Item] | None:
         code = _code_at(words, start)
         if code is not None:
             options.append((2, code))
+        current: list[_Item] | None = None
         for length, item in options:
-            rest = best[start + length]
+            end = start + length
+            rest = (firm if _is_number(words[end - 1]) else best)[end]
             if rest is None:
                 continue
-            current = best[start]
             if current is None or len(rest) + 1 < len(current):
-                best[start] = [item, *rest]
+                current = [item, *rest]
+        firm[start] = current
+        if skip_numbers and _is_number(words[start]):
+            skipped = best[start + 1]
+            if skipped is not None and (current is None or len(skipped) < len(current)):
+                current = skipped
+        best[start] = current
     return best[0]
 
 
@@ -671,34 +758,69 @@ def _split_parts(text: str) -> list[str]:
     return [part for part in parts if _words(part)]
 
 
+def _joined_area(parts: Sequence[str], index: int) -> list[_Item] | None:
+    """Phần ``index`` và phần kế tiếp ghép lại là đúng một khu vực ("Bà Rịa – Vũng Tàu": dấu
+    " – " tách thành hai phần): trả mục khu vực đó."""
+    if index + 1 >= len(parts):
+        return None
+    items = _segment(_words(f"{parts[index]} {parts[index + 1]}"))
+    if items is not None and len(items) == 1 and items[0].kind == _AREA:
+        return items
+    return None
+
+
 def _parse_dir_name(name: str) -> _DirTags:
-    result = _DirTags()
-    for part in _split_parts(clean_folder_name(name)):
-        items = _segment(_words(part))
-        if items is not None:
+    cleaned = clean_folder_name(name)
+    result = _DirTags(ai=_has_ai_marker(cleaned, split_case=True))
+    parts = _split_parts(cleaned)
+    index = 0
+    while index < len(parts):
+        joined = _joined_area(parts, index)
+        if joined is not None:
+            result.add(joined)
+            index += 2
+            continue
+        part = parts[index]
+        index += 1
+        items = _segment(_words(part), skip_numbers=True)
+        if items:
             result.add(items)
             continue
         pieces = [piece for piece in _PIECE_SPLIT.split(part) if _words(piece)]
         if len(pieces) < 2:
-            result.unmatched += 1
+            result.unmatched += 1  # kể cả phần chỉ có số ("2024")
             continue
+        # Thử từng mảnh đã là cách đọc nới ra, nên không bỏ qua số nữa: "45 Nguyễn Trãi P.2 Quận
+        # 5" tách ở dấu chấm thành "2 Quận 5", phải bỏ chứ không đọc ra Quận 5 từ một địa chỉ.
         for piece in pieces:
             piece_items = _segment(_words(piece))
-            if piece_items is None:
-                result.unmatched += 1
-            else:
+            if piece_items:
                 result.add(piece_items)
+            else:
+                result.unmatched += 1
     return result
 
 
-def _tags_from_dirs(dir_names: Iterable[str]) -> FolderTags:
+def _narrow_area(values: Sequence[str]) -> str:
+    """Một thư mục ghi nhiều khu vực khác nhau: một quận/huyện kèm tỉnh/thành chứa nó ("Dĩ An,
+    Bình Dương", "Quận 7, TP.HCM") thì lấy quận/huyện; còn lại là mâu thuẫn (rỗng)."""
+    districts = [value for value in values if value in _AREA_PROVINCE]
+    if len(districts) != 1:
+        return ""
+    province = _AREA_PROVINCE[districts[0]]
+    if all(value in (districts[0], province) for value in values):
+        return districts[0]
+    return ""
+
+
+def _tags_from_dirs(dir_names: Iterable[str], *, ai: bool = False) -> FolderTags:
     """Ghép thẻ của các thư mục từ gốc xuống: thư mục sâu hơn quyết định; một thư mục ghi hai giá
-    trị khác nhau thì thẻ đó để trống; có thư mục ảnh AI thì cả nhánh là ảnh AI."""
+    trị khác nhau thì thẻ đó để trống; có thư mục ảnh AI (hoặc ``ai``: tên file có dấu hiệu ảnh
+    AI) thì cả nhánh là ảnh AI."""
     chosen = {"project_code": "", "category": "", "area": "", "phase": ""}
     decided: set[str] = set()
     conflicts: list[str] = []
     unmatched = 0
-    ai = False
     for name in reversed(tuple(dir_names)):
         parsed = _parse_dir_name(name)
         unmatched += parsed.unmatched
@@ -710,6 +832,8 @@ def _tags_from_dirs(dir_names: Iterable[str]) -> FolderTags:
             distinct = list(dict.fromkeys(values))
             if len(distinct) == 1:
                 chosen[key] = distinct[0]
+            elif key == "area" and _narrow_area(distinct):
+                chosen[key] = _narrow_area(distinct)
             else:
                 conflicts.append(key)
     if ai:
@@ -725,12 +849,14 @@ def tags_for_image(ref: ImageRef) -> FolderTags:
     """Thẻ của một ảnh, đọc từ các thư mục **bên dưới** thư mục gốc chứa ảnh.
 
     Nhận ``ImageRef`` của T-048 (đường dẫn tương đối, đã kiểm), không nhận đường dẫn tuyệt đối:
-    tên thư mục gốc, tên ổ đĩa, ``Users/…``, ``My Drive/…`` không bao giờ được đọc. Không dùng
-    tên file ảnh. Không đọc ổ đĩa.
+    tên thư mục gốc, tên ổ đĩa, ``Users/…``, ``My Drive/…`` không bao giờ được đọc. Tên file ảnh
+    không cho thẻ nào, chỉ dùng để nhận ảnh AI (``Gemini_Generated_Image_….png``). Không đọc ổ đĩa.
     """
     if not isinstance(ref, ImageRef):
         raise TypeError("tags_for_image chỉ nhận ImageRef (đường dẫn tương đối trong thư mục ảnh).")
-    return _tags_from_dirs(ref.parts[:-1])
+    stem = ref.name.rsplit(".", 1)[0]
+    ai_file = _has_ai_marker(clean_folder_name(stem), split_case=False)
+    return _tags_from_dirs(ref.parts[:-1], ai=ai_file)
 
 
 def tags_for_folder(folder: str | SubFolder) -> FolderTags:

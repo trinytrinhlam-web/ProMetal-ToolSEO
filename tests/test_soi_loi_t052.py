@@ -253,13 +253,6 @@ def test_two_different_districts_in_one_folder_stay_empty():
 # ----- lỗi tìm thấy ở phần đọc thẻ -------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-1: thư mục ảnh AI đặt tên khác danh sách (có chữ AI đứng riêng) không được nhận "
-        "là ảnh AI, nên ảnh AI mang mã công trình, khu vực, trước/sau thật (yêu cầu 4)"
-    ),
-)
 @pytest.mark.parametrize(
     "ai_dir", ["Ảnh do AI tạo", "Ảnh tạo bởi AI", "AI images", "Ảnh AI Gemini", "ẢNH DO AI VẼ"]
 )
@@ -270,13 +263,6 @@ def test_sl_t052_1_ai_folder_with_free_wording_is_still_ai(ai_dir):
     assert result.tags.reference() == {}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-2: tỉnh/thành ghi kèm quận/huyện của nó bị coi là mâu thuẫn, khu vực để trống; "
-        "chính tên 'Bà Rịa – Vũng Tàu' trong danh sách cũng không đọc lại được"
-    ),
-)
 @pytest.mark.parametrize(
     ("rel_dir", "area"),
     [
@@ -291,22 +277,11 @@ def test_sl_t052_2_province_with_its_district_is_not_a_conflict(rel_dir, area):
     assert tags_for_folder(rel_dir).tags.area == area
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T052-2: tên khu vực trong AREAS viết làm tên thư mục phải đọc lại đúng tên đó",
-)
 def test_sl_t052_2_every_area_in_list_round_trips_as_folder_name():
     wrong = [area for area in AREAS if tags_for_folder(f"CT001 - Cổng - {area}").tags.area != area]
     assert wrong == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-3: thư mục giai đoạn kiểu 'Ảnh trước', 'Hình sau' không nhận trước/sau (trong "
-        "khi 'ảnh_truoc', 'anh-truoc' lại nhận)"
-    ),
-)
 @pytest.mark.parametrize(
     ("rel_dir", "phase"),
     [
@@ -328,13 +303,6 @@ def test_phase_with_underscore_or_hyphen_already_works():
     assert tags_for_folder("anh-sau").tags.phase == "sau"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T052-4: ngày tháng năm hay số thứ tự đứng chung một phần với thẻ làm mất mọi thẻ của "
-        "phần đó"
-    ),
-)
 @pytest.mark.parametrize(
     ("rel_dir", "expected"),
     [
