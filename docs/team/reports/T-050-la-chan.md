@@ -8,11 +8,11 @@
 | Phiếu được kiểm | [T-050](../tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) |
 | Phạm vi | Diff `origin/main...team/T-050` tại `dc97e0c` (merge-base `ffaa1e6`, 19 commit): `seo_app/ai/base.py`, `anthropic_provider.py`, `openai_provider.py`, `gemini_provider.py`, `registry.py`, `seo_app/images/alt.py`, `seo_app/images/__init__.py` (rỗng), `tests/fake_ai.py`, `tests/test_ai_images.py`, `tests/test_soi_loi_t050.py`, 2 báo cáo. Đọc thêm code xung quanh: `seo_app/sanitize.py` (`clean_ai_text`), `seo_app/content/prompts.py` (`_block`), `seo_app/onpage/meta.py` (`normalize_meta`), `tests/conftest.py` |
 | Ngày | 2026-10-20 |
-| **Kết luận** | **(đang viết, xem mục Kết luận ở cuối)** |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** (0 Nghiêm trọng/Cao/Trung bình; 4 Thấp LC-T050-1 → -4; không chặn gộp) |
 
 ## Tóm tắt (cho chủ dự án)
 
-_(viết sau cùng)_
+Gộp được. Lớp gửi ảnh cho AI làm đúng điều quan trọng nhất: ảnh chỉ đi thẳng tới máy chủ chính thức của hãng, không kèm tên file hay đường dẫn trên máy; ảnh còn GPS, EXIF hay ghi chú do điện thoại, máy ảnh, phần mềm ghi vào đều bị từ chối; thẻ ảnh trông như đường dẫn máy bị bỏ; chữ AI trả về được lọc và cắt ngắn. Còn 4 điểm nhỏ (mức Thấp): hồ sơ màu trong ảnh có thể mang tên, đời màn hình tới AI; ảnh **cố tình** dựng vẫn giấu được dữ liệu; 2 chú thích trong code hứa nhiều hơn khả năng thật; và nếu sau này đổi việc viết alt sang Gemini bằng khóa miễn phí thì Google được dùng ảnh. Cách xử lý: phiếu xử lý ảnh T-049 bỏ hồ sơ màu khỏi bản gửi AI, một phiếu dọn nhỏ sửa lớp kiểm trước khi làm giao diện ảnh (T-056), và README ghi rõ nên dùng khóa trả phí nếu đổi hãng cho việc alt.
 
 ## Lỗi phát hiện
 
@@ -103,4 +103,54 @@ Lý do không sửa ngay ở T-050: hiện **chưa có đường gọi nào** đ
 | D2 | Đạt | `.gitignore` không đổi; vẫn chặn `.env`, `.env.*` (trừ `.env.example`), `*service-account*.json`, `secrets/`, `.venv/`, `data/`, `*.sqlite` |
 | D3 | Đạt | Test 3 hãng dùng thư viện thật với `httpx.MockTransport` / `httpx2.MockTransport` (`tests/test_ai_images.py:646–680`); bộ chặn mạng chung vẫn chạy (`tests/conftest.py:19`) và cả bộ test qua dưới nó. Không có lời gọi AI, WordPress, Google thật |
 
-_(Phần 3: công cụ, thử gộp, điều kiện, kết luận. Đang viết.)_
+## Kết quả công cụ quét
+
+Máy Windows 11 của chủ dự án, worktree `wt-T-050` tại `dc97e0c` (trước khi thêm biên bản), 2026-10-20.
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pip-audit 2.10.1 | `uv export --frozen --no-hashes --no-emit-project` → 69 gói ghim (`anthropic==1.13.0`, `openai==3.31.0`, `google-genai==2.30.1`, `pillow==12.3.0`, `pillow-heif==1.8.1`). Nguồn PyPI: `No known vulnerabilities found`. Nguồn OSV (`-s osv`): `No known vulnerabilities found` | Có. `uv.lock` không đổi so với `main`, nên kết quả giống `main`. Lưu ý LC-T058-4: cơ sở dữ liệu chưa có các khuyến cáo Pillow tháng 10; việc đó đã được T-058 xử lý (Pillow 13) |
+| bandit 1.9.4 | `-r seo_app app scripts`: 8.139 dòng, 1 mục Thấp (B101 `assert`, `seo_app/storage/drafts.py:203`) | Có. Có từ trước, không thuộc phiếu này. 0 mục trong file của T-050 |
+| detect-secrets 1.5.0 | 12 file của diff: 0. Patch toàn nhánh: 0 (chuỗi mồi trong cùng lần quét bị bắt đủ). `--all-files`: 411 mục, tất cả trong `.venv/`, `.pytest_cache/`, `.ruff_cache/` (không theo dõi bởi git), trừ `tests/test_config.py:34` | Có. `tests/test_config.py:34` là mật khẩu giả `"abcd efgh"` của test cấu hình cũ, T-050 không đổi file này |
+| Soát lịch sử git | `git log -p origin/main..team/T-050` grep `api[_-]?key\|password\|secret\|token`, `sk-`, `AIza`: chỉ thấy khóa giả `…KhoaGia…` (`tests/test_ai_images.py:64–66`) và biến test `SECRET` chứa địa chỉ, GPS giả | Có |
+| pytest 9.1.1 (worktree) | `1 failed, 7659 passed, 11 skipped, 42 xfailed, 1 warning in 892.14s (0:14:52)`. Hỏng: `tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted` (`DID NOT RAISE SiteIndexError`) | Có. Test khóa SQLite với thời hạn 0,1 giây của T-037, không thuộc phiếu này; máy đang chạy song song bộ test khác. Chạy riêng lại 3 lần: `1 passed` cả 3; cả file `139 passed`. 42 xfail = 27 của phiếu khác + 15 `xfail(strict=True)` SL-T050-5/-6. Cảnh báo là của test cũ `test_soi_loi_t028.py` (pydantic), như các lượt trước |
+| pytest (bản gộp `main` + T-050) | _(điền khi chạy xong)_ | |
+| pytest (bản gộp `team/T-058` + T-050, Pillow 13.0.0) | `tests/test_ai_images.py` + `tests/test_soi_loi_t050.py`: `490 passed, 15 xfailed in 58.81s` | Có. Danh sách cho phép không chặn nhầm ảnh Pillow 13; 15 ca lỗi Thấp vẫn đúng là lỗi (không XPASS) |
+| ruff 0.16.10 | `All checks passed!` | Có |
+
+## Báo nhầm đã loại
+
+- bandit B101 (`assert` ở `seo_app/storage/drafts.py:203`): code cũ, ngoài phạm vi; không phải chỗ kiểm an toàn.
+- detect-secrets: 410 mục trong thư mục thư viện và bộ nhớ đệm không thuộc repo; `tests/test_config.py:34` là dữ liệu giả của test.
+- Khóa `sk-…KhoaGia…`, `AIza…KhoaGia…` trong test: khóa giả để kiểm câu lỗi không chép khóa.
+- Test T-037 hỏng một lần khi máy quá tải: chạy riêng qua 3/3. Ghi nhận cho Soi Lỗi: test này phụ thuộc thời gian (thời hạn 0,1 giây), có thể đỏ oan khi chạy song song nhiều bộ test (giống ghi chú T-025).
+
+## Thử gộp
+
+`git merge-tree --write-tree` (không đụng thư mục làm việc, không tạo ref):
+
+| Gộp | Kết quả |
+|---|---|
+| `origin/main` (`97ec6b5`) + `team/T-050` | Sạch, cây `1980948`. `seo_app/images/__init__.py` lấy bản của `main` (T-048, blob `04c33dd`, có docstring); file rỗng của T-050 tự biến mất vì bản rỗng không thêm dòng nào. Khớp ghi chú của Lá Chắn T-048 |
+| `origin/team/T-058` + `team/T-050` | Sạch, cây `1961d9d` (Pillow 13.0.0); test ảnh qua (bảng trên) |
+| `origin/team/T-051` + `team/T-050` | Sạch, cây `5af3f81` |
+
+Thứ tự gộp nào cũng được. Gộp T-058 trước hay sau, chạy lại `tests/test_ai_images.py tests/test_soi_loi_t050.py` trên bản gộp (đã làm ở đây: qua).
+
+## Điều kiện (ĐẠT CÓ ĐIỀU KIỆN)
+
+Không điều kiện nào chặn gộp T-050. Chỉ Huy chép vào phiếu tương ứng:
+
+1. **Phiếu dọn mới (Thợ Máy), gộp trước T-056 và trước khi hết Giai đoạn 3:** "Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6)". Phạm vi `seo_app/ai/base.py`, `tests/test_ai_images.py`, `tests/test_soi_loi_t050.py` (gỡ 15 dấu `xfail` khi XPASS). (a) `prepare_images` từ chối mọi hồ sơ màu (JPEG APP2 `ICC_PROFILE`, PNG `iCCP`, WebP `ICCP`), bỏ `_icc_ok`, `_jpeg_icc_ok`, `_check_png_icc` và lần giải nén zlib; (b) sửa theo SL-T050-6, bỏ DAC, chỉ nhận SOF0/1/2; (c) viết lại chú thích `base.py:552–556`, `:686–687` (mẫu ở LC-T050-3). Chỉ Huy duyệt việc đổi thiết kế T-046 mục 3 (bản gửi AI không còn hồ sơ màu) và đổi các ca ICC trong test. Soi Lỗi + Lá Chắn kiểm rút gọn.
+2. **T-049 (xử lý ảnh), bắt buộc:** bản gửi AI dựng lại từ điểm ảnh (ảnh mới + dán điểm ảnh, hoặc xóa sạch `info`), **không kèm hồ sơ màu** và không truyền `icc_profile`, `exif`, `comment`, `pnginfo`; **không** dùng `ImageCms` để đổi hồ sơ màu của ảnh gốc. Lưu ý Pillow 12.3 và 13.0 **tự chép** hồ sơ màu khi lưu PNG. Test: ảnh gốc có EXIF + GPS + XMP + COM **và** hồ sơ màu có chữ trong thẻ `desc` → bản gửi AI qua `prepare_images`, không có `ICC_PROFILE`/`iCCP`/`ICCP`/`acsp`, không có chuỗi GPS. Bản đăng web (WebP 1600 px) giữ hồ sơ màu và GPS như thiết kế.
+3. **T-056 (giao diện chỗ cần ảnh):** (a) chỉ gọi `suggest_alt` khi người dùng bấm, cho ảnh đã chọn vào bài; **không** gợi ý alt hàng loạt cho cả thư mục (ảnh chưa chọn đăng không được rời máy, A3); (b) alt và chú thích hiện trong ô nhập chữ để người dùng sửa và duyệt trước khi dùng, hoặc qua `escape_markdown`; không `unsafe_allow_html` (U1); (c) lỗi hiện đúng câu `AIError`, không `st.exception`; (d) nên cảnh báo khi alt có dãy số giống số điện thoại (Soi Lỗi rủi ro 5).
+4. **T-054 (chèn ảnh vào nháp):** trước khi ghi alt/chú thích vào HTML: `unbreak_autolinks`, gỡ escape Markdown mà `clean_ai_text` thêm (`]\(`…), rồi `html.escape(…, quote=True)`; `<figure>` dựng bằng code và qua `sanitize_html` lần cuối (góp ý Lá Chắn T-046 số 7). `alt_text` gửi qua REST cũng dùng chữ đã gỡ ký tự rộng 0.
+5. **T-052 (thẻ ảnh):** chỉ đưa vào thẻ phần tên thư mục **bên dưới** thư mục ảnh đã khai báo (không `Users/…`, `My Drive/…`); thẻ khu vực đối chiếu danh sách quận/huyện cố định (góp ý T-046 số 3). Lớp lọc của T-050 cho qua thẻ một dấu `/` theo thiết kế SL-T050-4, nên không thay được việc này.
+6. **README / Cài đặt (Thư Ký hoặc T-062):** ghi một dòng: việc viết alt gửi ảnh công trình cho hãng AI; dùng Claude (mặc định 4A) hoặc khóa **trả phí** của OpenAI/Gemini; khóa Gemini miễn phí cho Google dùng ảnh để cải tiến sản phẩm và người duyệt có thể đọc. Nếu chủ dự án vẫn muốn dùng khóa Gemini miễn phí cho alt: ghi sổ rủi ro (`security.md` mục 6), chủ dự án quyết (LC-T050-4).
+7. **Sau 01/11:** kiểm lại phiếu này bằng Fable.
+
+Không cần sửa thêm trong T-050 trước khi gộp.
+
+## Kết luận
+
+**ĐẠT CÓ ĐIỀU KIỆN.** 0 Nghiêm trọng, 0 Cao, 0 Trung bình; 4 Thấp (LC-T050-1 → -4, trong đó LC-T050-1/-2 là SL-T050-5/-6). Hai lỗi Trung bình lượt 1 (SL-T050-1, -2) đã sửa thật: thẻ ảnh kiểm trên đúng chữ gửi AI, ảnh kiểm theo danh sách cho phép. Gộp vào `main` được ngay; điều kiện ở mục trên đi vào T-049, T-052, T-054, T-056, phiếu dọn mới và README.
