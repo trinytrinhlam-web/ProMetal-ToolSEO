@@ -36,7 +36,7 @@ from seo_app.images.tags import (
     tags_for_folder,
     tags_for_image,
 )
-from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
+from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError, _is_healthy
 from seo_app.text import remove_accents
 from tests.fake_ai import FakeProvider
 from tests.test_ai_images import JPEG, Router
@@ -557,3 +557,89 @@ def test_sl_t052_8_junction_placed_after_first_use_is_removed(store, tmp_path):
     assert (target / "quan-trong.txt").read_bytes() == b"khong duoc dong vao"
     store.set(REF, ImageTags(area="Quận 8"))
     assert store.get(REF).tags.area == "Quận 8"
+
+
+# ===== Lượt 2: lỗi mới tìm thấy khi kiểm lại bản sửa (SL-T052-9 trở đi) =====
+
+
+def _bounded_view_file(path: Path) -> None:
+    """File SQLite hợp lệ mà ``manual_tags`` là một VIEW (app chỉ bao giờ tạo TABLE), cột đúng tên.
+
+    Dùng view **có giới hạn** để test không bị treo. Ngoài đời, kẻ tấn công đặt view đệ quy
+    **không giới hạn** (``WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n)``) thì
+    mọi ``resolve``/``list`` quét vô hạn → treo app (``PRAGMA trusted_schema = OFF`` không chặn
+    view đệ quy, chỉ chặn hàm/vtab không "innocuous")."""
+    cols = ", ".join(
+        (
+            "root_index", "ref_key", "rel_path", "source", "project_code",
+            "category", "area", "phase", "saved_at", "saved_ts",
+        )
+    )
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute(
+            f"CREATE VIEW manual_tags({cols}) AS WITH RECURSIVE n(x) AS "
+            "(SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 1000) "
+            "SELECT 0, 'k' || x, '', 'that', '', '', '', '', '', x FROM n"
+        )
+        conn.execute("CREATE TABLE info (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        conn.execute("INSERT INTO info VALUES ('schema_version', '1')")
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T052-9: file lưu thẻ (dữ liệu chưa tin cậy) mà manual_tags là một VIEW, không phải "
+        "bảng, vẫn qua _is_healthy; view đệ quy không giới hạn làm resolve/list quét vô hạn (treo). "
+        "App chỉ bao giờ tạo manual_tags là TABLE, nên health check phải coi file có VIEW là hỏng"
+    ),
+)
+def test_sl_t052_9_health_check_rejects_view_posing_as_table(tmp_path):
+    path = tmp_path / "image_tags.sqlite"
+    _bounded_view_file(path)
+    # chứng minh đúng là view, không phải bảng
+    with closing(sqlite3.connect(path)) as conn:
+        kind = conn.execute(
+            "SELECT type FROM sqlite_master WHERE name = 'manual_tags'"
+        ).fetchone()
+    assert kind == ("view",)
+    assert _is_healthy(path) is False
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T052-10: file bị thay giữa lúc chạy bằng SQLite HỢP LỆ nhưng thiếu bảng manual_tags "
+        "('no such table') ra câu lỗi chung và KẸT mãi; _ready chỉ được đặt lại khi lỗi là 'hỏng', "
+        "nên không khôi phục như ca file rác (NOTADB) ở test_file_replaced_by_garbage..."
+    ),
+)
+def test_sl_t052_10_valid_sqlite_without_table_swapped_in_recovers(store):
+    """Như ``test_file_replaced_by_garbage_while_running_recovers`` nhưng file mới là SQLite HỢP
+    LỆ, chỉ thiếu bảng manual_tags: hiện 'no such table' ra câu lỗi chung và KẸT mãi (không khôi
+    phục như ca file rác)."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        conn.execute("CREATE TABLE bang_la (x)")  # SQLite hợp lệ, không phải cấu trúc của app
+    store.resolve(REF)  # lần đầu báo lỗi cũng được
+    second = store.resolve(REF)
+    assert second.error == ""  # phải tự khôi phục (tạo lại bảng hoặc đổi tên file sang một bên)
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T052-11: thư mục đặt tên bằng cụm tiếng Việt của AI ('trí tuệ nhân tạo') không được "
+        "nhận là ảnh AI (danh sách chỉ có 'AI' và tên công cụ), nên ảnh AI mang mã công trình, "
+        "khu vực, trước/sau thật — sai hướng không an toàn (yêu cầu 4, như SL-T052-1)"
+    ),
+)
+@pytest.mark.parametrize(
+    "ai_dir", ["Ảnh trí tuệ nhân tạo", "trí tuệ nhân tạo", "Hình do trí tuệ nhân tạo tạo"]
+)
+def test_sl_t052_11_vietnamese_ai_phrase_is_still_ai(ai_dir):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png")
+    assert result.tags.is_ai
+    assert (result.tags.project_code, result.tags.area, result.tags.phase) == ("", "", "")
