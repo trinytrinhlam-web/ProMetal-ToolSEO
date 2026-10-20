@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from seo_app.ai import AIError, AIRouter, TaskConfig, load_ai_config, make_provider
 from seo_app.ai.anthropic_provider import FALLBACK_BETA, AnthropicProvider
+from seo_app.ai.registry import IMAGE_PROVIDERS, IMAGE_TASK, PROVIDERS
 from seo_app.config import Settings
 
 TASK = TaskConfig(name="write", provider="anthropic", model="claude-opus-5-5", effort="high")
@@ -22,10 +23,18 @@ class Answer(BaseModel):
 
 
 def test_project_ai_config_is_valid():
+    # Không có hãng mặc định (chốt 2026-10-15): kiểm từng việc, không đòi mọi việc là anthropic.
     tasks = load_ai_config()
-    assert {"research", "outline", "write", "rewrite", "review"} <= set(tasks)
+    assert {"research", "outline", "write", "rewrite", "review", "alt"} <= set(tasks)
     assert tasks["research"].web_search is True
-    assert all(t.provider == "anthropic" for t in tasks.values())
+    for name, task in tasks.items():
+        assert task.provider in PROVIDERS, name
+        assert task.model.strip(), name
+        assert task.max_tokens > 0, name
+        if name != "research":
+            assert task.web_search is False, name  # chỉ bước nghiên cứu được tìm web
+    if IMAGE_TASK in tasks:  # sau T-053 khối [tasks.image] được bật
+        assert tasks[IMAGE_TASK].provider in IMAGE_PROVIDERS
 
 
 @pytest.mark.parametrize(
