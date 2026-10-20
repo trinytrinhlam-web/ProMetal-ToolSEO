@@ -34,13 +34,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 08:42. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 09:17. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | Soi Lỗi lượt 2 đạt có điều kiện (`d1b6039`). Lá Chắn của A chỉ kịp đẩy khung biên bản (08:02). ⏳ 08:41 **Lá Chắn kiểm từ đầu** (phiên "Lá Chắn · T-048 đọc thư mục ảnh an toàn") | ĐẠT thì gộp (lấy `seo_app/images/__init__.py` bản T-048); rồi giao T-052 |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`ff5cb0a`) | Soi Lỗi đạt có điều kiện (SL-T050-1, -2 Trung bình). Phần dở của Thợ Máy lượt 2 (A) B đã đẩy hộ thành `ff5cb0a`, chưa chạy test. ⏳ 08:41 **Thợ Máy lượt 2 làm tiếp** (phiên "Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh") | Soi Lỗi kiểm lại, rồi Lá Chắn |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`042a626`) | Thợ Máy xong (7.172 qua). File test dở của Soi Lỗi (A) B đã đẩy hộ thành `042a626`, chưa chạy. ⏳ 08:41 **Soi Lỗi rút gọn làm tiếp** (phiên "Soi Lỗi · T-058 kiểm Pillow 13") | Lá Chắn; gộp xong Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | ✅ 09:15 **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`7c1574d`): 0 Nghiêm trọng/Cao, 1 Trung bình (LC-T048-1: nhánh Mac/Linux chưa chạy test lần nào), 5 Thấp | **Gộp vào `main`** (lấy `seo_app/images/__init__.py` bản T-048), chạy test Windows; ghi điều kiện vào T-052, T-056; hỏi chủ dự án LC-T048-2/-3/-6 (sửa ở phiếu dọn hay ghi sổ rủi ro); rồi giao T-052 |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`c3910e0`) | ✅ 09:13 **Thợ Máy lượt 2 xong**: sửa SL-T050-1 → -4, gỡ `xfail` 39 test; 7.588 qua, 0 hỏng; ruff sạch. Không sửa `seo_app/images/__init__.py` | **Soi Lỗi kiểm lại lượt 2**, rồi Lá Chắn (soát A3: `base.py:552–790`, `alt.py:96–143`) |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`bda4dfc`) | ✅ 09:01 **Soi Lỗi rút gọn ĐẠT**: 60 test mới, 7.232 qua, 0 hỏng; SL-T058-1 Thấp có từ trước (`st.image` ảnh xám 16 bit) | **Lá Chắn T-058** (D1); gộp xong Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong | Soi Lỗi rút gọn, Lá Chắn rút gọn khi có chỗ trống |
 | Chờ phiếu trước | | T-049 (sau T-058), T-052 (sau T-048), T-062 (sau T-050, T-051), T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | |
 | `main` | `ffaa1e6` | Windows 7.170 qua, 0 hỏng (sau gộp T-042) | |
@@ -48,6 +48,14 @@ Chỉ Huy B, cập nhật 2026-10-20 08:42. Bảng cũ của A (cập nhật 17/
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 09:17 · Chỉ Huy B
+
+- Cả 3 phiên con xong, B đã kiểm nhánh (worktree sạch, khớp GitHub):
+  - **Lá Chắn T-048 ĐẠT CÓ ĐIỀU KIỆN** (`7c1574d`). Điều kiện chính LC-T048-1: chạy test T-048 trên Mac hoặc Linux (6 test đang bị bỏ qua trên Windows) trước khi gộp T-056 và trước khi hết GĐ3. LC-T048-2/-3/-6 (lộ **tên** file ngoài thư mục ảnh khi máy đã có chương trình độc; hard link): Lá Chắn khuyên sửa ở phiếu dọn GĐ3, chủ dự án quyết.
+  - **Thợ Máy T-050 lượt 2 xong** (`c3910e0`): 7.588 qua, 0 hỏng.
+  - **Soi Lỗi T-058 ĐẠT** (`bda4dfc`): 7.232 qua, 0 hỏng.
+- Chờ chủ dự án cho làm tiếp: gộp T-048; gọi Lá Chắn T-058, Soi Lỗi T-050 lượt 2; T-051 khi có chỗ.
 
 ### 2026-10-20 08:42 · Chỉ Huy B
 

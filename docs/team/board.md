@@ -22,9 +22,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn | Lá Chắn · T-048 đọc thư mục ảnh an toàn | `team/T-048` | 08:41 Chỉ Huy B gọi lại Lá Chắn, kiểm từ đầu (phiên trước dưới A chỉ có khung biên bản) | [Soi Lỗi](reports/T-048-soi-loi.md) lượt 2: đạt có điều kiện |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh | `team/T-050` | 08:41 Thợ Máy lượt 2 làm tiếp từ phần dở của A (`ff5cb0a`): sửa SL-T050-1, -2. Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 | [Soi Lỗi](reports/T-050-soi-loi.md): đạt có điều kiện |
-| [T-058](tickets/T-058-nang-pillow-13.md) | Nâng Pillow 13 (chặn T-049) | Soi Lỗi · T-058 kiểm Pillow 13 | `team/T-058` | 08:41 Soi Lỗi rút gọn làm tiếp từ file test dở của A (`042a626`); rồi Lá Chắn | [Thợ Máy](reports/T-058-tho-may.md): Pillow 13.0.0, 7.172 qua |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn | Lá Chắn · T-048 đọc thư mục ảnh an toàn | `team/T-048` | 09:15 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`7c1574d`; 1 Trung bình LC-T048-1: chưa chạy test trên Mac/Linux; 5 Thấp). Chờ gộp | [Soi Lỗi](reports/T-048-soi-loi.md) lượt 2: đạt có điều kiện · [Lá Chắn](reports/T-048-la-chan.md) (Opus tạm) |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh | `team/T-050` | 09:13 Thợ Máy lượt 2 **xong** (`c3910e0`: SL-T050-1 → -4 đã sửa, 7.588 qua, 0 hỏng). Chờ Soi Lỗi kiểm lại, rồi Lá Chắn. Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 | [Thợ Máy](reports/T-050-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-050-soi-loi.md): đạt có điều kiện |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Nâng Pillow 13 (chặn T-049) | Soi Lỗi · T-058 kiểm Pillow 13 | `team/T-058` | 09:01 Soi Lỗi rút gọn **ĐẠT** (`bda4dfc`: 60 test mới, 7.232 qua, 0 hỏng). Chờ Lá Chắn | [Thợ Máy](reports/T-058-tho-may.md): Pillow 13.0.0 · [Soi Lỗi](reports/T-058-soi-loi.md): đạt |
 
 ## Chờ
 
