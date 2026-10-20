@@ -49,3 +49,7 @@ A2, S2, D1; góp ý Lá Chắn T-046 số 5, 6.
 ## Ghi chú của Chỉ Huy
 
 - Lập từ báo cáo T-046 (G3 tương ứng ở tiêu đề) và quyết định chủ dự án 2026-10-19. Làm trên nhánh tạm `team/T-053`, tạo từ `main`.
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-051** (`docs/team/reports/T-051-la-chan.md`), trước khi bỏ dấu `#` ở `[tasks.image]` trong `config/ai.toml`:
+  - C7: T-062 đã gộp (provider chỉ tạo khi cần; từ chối `provider = "anthropic"` cho việc ảnh).
+  - C8: xác minh tên mô hình tạo ảnh (tài liệu Google mới nhất, hoặc một lần gọi thử do chủ dự án làm ngoài bộ test) rồi sửa chú thích «CHƯA XÁC MINH». Không thêm `base_url` hay địa chỉ máy chủ nào vào `config/ai.toml`; client Gemini giữ địa chỉ chính thức cố định (T-026).
+  - C9: chỉ tạo ảnh khi người dùng bấm, mỗi lần một ảnh; không tự tạo hàng loạt (chi phí).
