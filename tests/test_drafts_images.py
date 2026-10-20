@@ -928,9 +928,9 @@ def test_cleaning_is_idempotent(text):
     assert DraftImage(**again.model_dump()) == again
 
 
-def test_no_secret_fields_and_unknown_fields_rejected():
+def test_unknown_fields_rejected():
     with pytest.raises(ValidationError):
-        DraftImage(source=SOURCE_REAL, root_index=0, rel_path=REAL_PATH, api_key="sk-ant-gia")
+        DraftImage(source=SOURCE_REAL, root_index=0, rel_path=REAL_PATH, ghi_chu="trường lạ")
     with pytest.raises(ValidationError):
         DraftImage(source=SOURCE_REAL, root_index=0, rel_path=REAL_PATH, path="C:/a.jpg")
 
