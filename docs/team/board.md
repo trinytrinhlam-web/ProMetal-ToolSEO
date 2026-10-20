@@ -22,14 +22,14 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy · T-049 xử lý ảnh WebP giữ GPS | `team/T-049` | 12:19 Thợ Máy **xong** (`c2a597b`: `process.py`, `naming.py`; 7.592 qua, 0 hỏng; bản gửi AI qua bộ kiểm của T-050 kể cả khi ảnh gốc có hồ sơ màu chở chữ). **Chờ Soi Lỗi**, rồi Lá Chắn. Chưa thử ảnh thật | [Thợ Máy](reports/T-049-tho-may.md) |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy · T-052 thẻ ảnh từ tên thư mục | `team/T-052` | 12:46 Thợ Máy **xong** (`0bbc0b8`: `tags.py`, `storage/image_tags.py`; 7.753 qua, 0 hỏng; thẻ chỉ từ danh sách cố định, thẻ sửa tay trong `data/image_tags.sqlite`). **Chờ Soi Lỗi**, rồi Lá Chắn | [Thợ Máy](reports/T-052-tho-may.md) |
+| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Soi Lỗi · T-049 kiểm xử lý ảnh | `team/T-049` | 12:19 Thợ Máy **xong** (`c2a597b`: `process.py`, `naming.py`; 7.592 qua, 0 hỏng; bản gửi AI qua bộ kiểm của T-050 kể cả khi ảnh gốc có hồ sơ màu chở chữ). Chỉ Huy gộp `main` mới vào nhánh (`8e76b54`). ⏳ **Soi Lỗi đang kiểm** (giao sau 12:48), rồi Lá Chắn. Chưa thử ảnh thật | [Thợ Máy](reports/T-049-tho-may.md) |
+| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Soi Lỗi · T-052 kiểm thẻ ảnh | `team/T-052` | 12:46 Thợ Máy **xong** (`0bbc0b8`: `tags.py`, `storage/image_tags.py`; 7.753 qua, 0 hỏng; thẻ chỉ từ danh sách cố định, thẻ sửa tay trong `data/image_tags.sqlite`). Chỉ Huy gộp `main` mới vào nhánh (`2d481c0`, test nối `alt.py` nay chạy: qua). ⏳ **Soi Lỗi đang kiểm** (giao sau 12:48), rồi Lá Chắn | [Thợ Máy](reports/T-052-tho-may.md) |
+| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: provider lười (để bật `[tasks.image]`), chịu lỗi, nhãn; điều kiện Lá Chắn T-051 C1–C6 | Thợ Máy · T-062 đọc cấu hình việc ảnh | `team/T-062` | ⏳ **Thợ Máy đang làm** (giao sau 12:48; nhánh tạo từ `main` `132a73d`) | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: tạo provider khi cần (để bật `[tasks.image]`), chịu lỗi, nhãn hiển thị | Thợ Máy | Còn chỗ (T-050, T-051 đã gộp); trước T-053. Điều kiện Lá Chắn T-051 C1–C6 đã ghi vào phiếu |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
