@@ -453,6 +453,25 @@ def test_reference_for_alt_prompt_has_no_project_code_and_only_safe_characters()
         assert "/" not in value and "\\" not in value
 
 
+def test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text():
+    """Nối với lớp viết alt (T-050, ``seo_app/images/alt.py``; có trên ``main`` từ c1aa0ce): mọi
+    thẻ đi qua bộ lọc thẻ của T-050 nguyên vẹn, chữ gửi AI không có phần tên thư mục bị bỏ, không
+    có mã công trình; ảnh AI không gửi thẻ nào. Nhánh chưa có ``alt.py`` thì test tự bỏ qua."""
+    alt = pytest.importorskip("seo_app.images.alt")
+    for area in AREAS:
+        reference = ImageTags(category="Cổng inox", area=area, phase="sau").reference()
+        assert len(alt.reference_lines(reference)) == 3, area
+    for rel_path, _expected, secrets in PRIVATE_FOLDERS:
+        tags = tags_of(rel_path).tags
+        lines = alt.reference_lines(tags.reference())
+        assert len(lines) == len(tags.reference())
+        text = fold("\n".join(lines))
+        for secret in secrets:
+            assert fold(secret) not in text, (secret, lines)
+        assert "ct0" not in text
+    assert alt.reference_lines(ImageTags.for_ai_image("Cổng inox").reference()) == []
+
+
 def test_ai_folder_marks_images_as_ai_and_drops_project_tags():
     for rel_path in (
         "Ảnh AI/CT012 - Cổng inox - Q7/truoc/x.png",
