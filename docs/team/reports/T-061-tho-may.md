@@ -81,22 +81,22 @@ $ uv run pytest tests/test_shortcode_t061.py tests/test_sanitize.py tests/test_s
     tests/test_site_index_t042.py tests/test_site_index.py tests/test_soi_loi_t054.py \
     tests/test_app_wordpress.py tests/test_app_t044_safe_text.py tests/test_phase2_fixes.py \
     tests/test_safety.py tests/test_soi_loi_t003_t009.py tests/test_soi_loi_t031.py \
-    tests/test_soi_loi_t037.py tests/test_soi_loi_t044.py tests/test_app_pages.py
-6 failed, 3355 passed, 1 skipped, 5 xfailed in 357.25s      # lần 1, tại b53afec+78ee9d8 (6 hỏng: xem dưới, đã sửa ở 4ac6028)
-
-$ uv run pytest tests/test_soi_loi_t044.py tests/test_soi_loi_t042.py
-267 passed in 133.19s
-
-(lần chạy cuối, 41 file, tại 4ac6028: đang chạy, cập nhật khi xong)
+    tests/test_soi_loi_t037.py tests/test_soi_loi_t044.py tests/test_ai_images.py \
+    tests/test_edit_unescape.py tests/test_onpage_meta.py tests/test_soi_loi_round3.py \
+    tests/test_soi_loi_round4.py tests/test_soi_loi_round5.py tests/test_soi_loi_round6.py \
+    tests/test_soi_loi_round7.py tests/test_soi_loi_t016_t020.py tests/test_soi_loi_t021_t017.py \
+    tests/test_storage_drafts.py tests/test_app_pages.py
+4779 passed, 7 skipped, 7 xfailed in 681.98s (0:11:21)
 
 $ uv run ruff check .
 All checks passed!
 ```
 
-- 29 file trên là mọi file test có dùng `sanitize_html`, client WordPress, `seo_app.images.html` (grep), cộng `test_link_escape.py`, `test_sanitize_autolink.py`, `test_app_pages.py`. Windows 11, tại commit trước báo cáo (`78ee9d8` + 1 dòng định dạng). 4 `xfail` còn lại là SL-T054-1 (1) và SL-T054-3 (3), chờ phiếu dọn T-071.
+- 41 file: mọi file test dùng `sanitize_html`, client WordPress, `seo_app.images.html` hay module `seo_app.sanitize` (grep), cộng `test_app_pages.py`. Windows 11, tại `4ac6028` (các commit sau chỉ sửa báo cáo). 7 bỏ qua: tạo symlink, quyền kiểu POSIX trên Windows (có từ trước). 7 `xfail` có từ trước: SL-T054-1 (1) và SL-T054-3 (3) chờ phiếu dọn T-071, SL-7 của T-003/T-009 (1), R4-3 (2).
+- Lần chạy rộng đầu (29 file, tại `78ee9d8`): 6 hỏng, 3.355 qua; 6 hỏng là `test_soi_loi_t044.py` so đúng địa chỉ lệnh tạo nháp, đã sửa ở `4ac6028` (cùng `test_soi_loi_t042.py`: 267 qua).
 - `tests/test_shortcode_t061.py`: 144 qua. **Thử ngược** (thay hàm trong bộ nhớ, không sửa file): `sanitize.escape_shortcodes` không làm gì → 87/90 test mức bộ lọc hỏng (3 test còn lại là test bộ đọc WordPress bản Python và bài không có ngoặc vuông, đúng ý); `client.escape_shortcodes` không làm gì → 11 hỏng; `_has_shortcode` luôn sai → 31 hỏng; `_fields` có thêm `content`/`description` → 3 hỏng.
 - **Thử ngẫu nhiên** (script tạm trong thư mục nháp của phiên, không commit; ghép ngẫu nhiên `[`, `]`, `[[`, `&#91;`, `&#x5B;`, `&lsqb;`, `&#91` thiếu `;`, thẻ, thuộc tính, chú thích HTML, CDATA, `<script>`, U+200B, U+202E, U+2060, U+00AD, ngoặc toàn khổ, escape Markdown): `sanitize_html` 20.000 chuỗi: 0 chuỗi còn `[`/`]` trần hay chạy lại bị đổi; `figure_html` 10.000 cặp alt/chú thích: 0 còn `[`/`]`, alt luôn giải mã đúng bằng `plain_image_text(alt)`; chữ SEO 20.000 chuỗi, 7.204 được `_seo_text` cho qua: với mỗi chữ đó, bộ đọc WordPress bản Python coi **mọi** tên ứng viên là đã đăng ký vẫn không chạy được gì (quy tắc chặn không sót).
-- Sau khi sửa client, 25 trường hợp test cũ hỏng (19 ở lần chạy nhóm WordPress, 6 ở `test_soi_loi_t044.py` trong lần chạy rộng đầu tiên: 6 hỏng, 3.355 qua): 2 là SL-T054-2 thành XPASS (đã gỡ `xfail`), 23 là test so đúng chuỗi alt/tiêu đề Media hay đúng đường có `?…` (đã viết lại như bảng trên, giữ ý test). Không xóa, không bỏ qua test nào.
+- Sau khi sửa client, 25 trường hợp test cũ hỏng (19 ở lần chạy nhóm WordPress, 6 ở `test_soi_loi_t044.py` trong lần chạy rộng đầu): 2 là SL-T054-2 thành XPASS (đã gỡ `xfail`), 23 là test so đúng chuỗi alt/tiêu đề Media hay đúng đường có `?…` (đã viết lại như bảng trên, giữ ý test). Không xóa, không bỏ qua test nào.
 
 ## Đối chiếu tiêu chí xong
 
