@@ -39,8 +39,11 @@ $ uv run pytest tests/test_images_process.py tests/test_pillow_heif_setup.py tes
 (6 skip đều của test_images_folders.py: symlink/Mac-Linux, có từ trước. Test "chưa đăng ký" HEIF
  của T-047 KHÔNG bị bỏ qua: test của phiếu này trả nguyên bảng định dạng Pillow sau mỗi test.)
 
-$ uv run pytest                                             (toàn bộ, Windows)
-<<PYTEST_FULL>>
+$ uv run pytest                                             (toàn bộ, Windows, tại 93d7630)
+7592 passed, 17 skipped, 30 xfailed, 1 warning in 789.90s (0:13:09)
+(0 hỏng, 0 lỗi. Cảnh báo Pydantic ở tests/test_soi_loi_t028.py có từ trước. Lượt chạy song song
+ với pytest của repo chính trên cùng máy, không có test nào quá giờ. Code app không đổi sau
+ 93d7630; commit sau chỉ thêm 4 test ICC vào tests/test_images_process.py, chạy riêng 113 qua.)
 
 $ uv run ruff check .
 All checks passed!
