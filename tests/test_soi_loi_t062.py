@@ -479,6 +479,13 @@ LONG_PREFIX = "Ảnh minh họa (AI): " + "cửa cuốn rất dài " * 20
 )
 def test_ai_image_alt_and_caption_always_start_with_prefix(alt, limit):
     raw = AltSuggestion(alt=alt, caption=alt)
+    if not any(ch.isalnum() for ch in alt):
+        # T-068 (SL-T062-1): alt không có chữ hay số nào («???», «🔥🔥») thì báo lỗi, không bao giờ
+        # thành alt (C6 vẫn giữ: không có alt ảnh AI nào thiếu tiền tố). Chú thích như vậy vẫn
+        # được kiểm bên dưới, đi cùng một alt có chữ.
+        with pytest.raises(AIError, match=EMPTY_ALT):
+            clean_suggestion(raw, ai_generated=True, max_chars=limit, caption_max_chars=limit)
+        raw = AltSuggestion(alt="Cửa cuốn", caption=alt)
     result = clean_suggestion(raw, ai_generated=True, max_chars=limit, caption_max_chars=limit)
     assert result.alt.startswith(AI_ALT_PREFIX) and len(result.alt) <= limit
     assert result.caption.startswith(AI_CAPTION_PREFIX) and len(result.caption) <= limit
@@ -494,7 +501,7 @@ def test_real_photo_never_gets_ai_prefix_added():
 
 # SL-T062-1 (Thấp): alt không có chữ hay số nào vẫn được nhận. «Minh họa.» bị báo «AI không viết
 # được alt», nhưng «Minh họa ?», «Minh họa !!!» (ảnh AI) hay «???» (ảnh thật) lại thành alt.
-@pytest.mark.xfail(strict=True, reason="SL-T062-1: alt toàn ký tự đặc biệt vẫn được nhận")
+# Thợ Máy T-068 đã sửa: gỡ dấu xfail.
 @pytest.mark.parametrize(
     ("alt", "ai_generated"),
     [
@@ -516,7 +523,7 @@ def test_sl_t062_1_alt_without_any_letter_is_refused(alt, ai_generated):
 
 # SL-T062-2 (Thấp): tiền tố AI tự viết trong ngoặc (lời dặn ghi «Minh họa» có ngoặc kép góc) hay
 # dính «!», «…» không được nhận ra: alt thành «Minh họa «Minh họa» cửa…», «Minh họa ! cửa…».
-@pytest.mark.xfail(strict=True, reason="SL-T062-2: tiền tố trong ngoặc / dính dấu câu bị lặp")
+# Thợ Máy T-068 đã sửa: gỡ dấu xfail.
 @pytest.mark.parametrize(
     ("alt", "caption"),
     [
@@ -544,7 +551,7 @@ BODY = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T062-3: cắt độ dài trước khi bỏ tiền tố AI tự viết")
+# Thợ Máy T-068 đã sửa: gỡ dấu xfail.
 @pytest.mark.parametrize(
     ("alt", "limit", "expected"),
     [
