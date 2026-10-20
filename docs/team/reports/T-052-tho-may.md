@@ -4,7 +4,7 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-052](../tickets/T-052-the-anh-theo-ten-thu-muc.md) |
-| Ngày nộp | 2026-10-20 |
+| Ngày nộp | 2026-10-20 (lượt 2: 2026-10-20) |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -145,3 +145,103 @@ Kiểm thêm (ngoài test, thư mục tạm):
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-20, sửa theo báo cáo Soi Lỗi)
+
+### Tóm tắt (cho chủ dự án)
+
+Đã sửa cả 8 lỗi Soi Lỗi tìm ra (SL-T052-1 → 8), không để lại lỗi nào. Quan trọng nhất là **SL-T052-1**: ảnh AI đặt trong thư mục tên tự do (ví dụ "Ảnh do AI tạo", "AI images", "Ảnh Gemini vẽ") nay luôn là ảnh AI, không còn mang mã công trình, khu vực hay trước/sau của công trình thật. App cũng nhận ảnh AI qua **tên file** (ví dụ `Gemini_Generated_Image_….png` để lẫn trong thư mục công trình). Khi không chắc, app chọn phía an toàn: coi là ảnh AI. Ảnh đó chỉ mất thẻ công trình, không chữ nào của tên thư mục đi ra ngoài.
+
+Các lỗi nhỏ còn lại:
+- Đọc được "Dĩ An, Bình Dương", "Quận 7, TP.HCM", "Bà Rịa – Vũng Tàu".
+- Đọc được "Ảnh trước", "Hình sau".
+- Năm, ngày tháng, số thứ tự viết chung với thẻ không làm mất thẻ.
+- File thẻ sửa tay bị sửa bậy (ngày lạ, số lạ) không làm hỏng cả trang ảnh.
+- Liên kết (kể cả "hard link") đặt vào chỗ file thẻ lúc app đang chạy bị gỡ ngay ở lần mở sau; app không ghi ra ngoài `data/`.
+
+### App phân biệt ảnh thật và ảnh AI thế nào (SL-T052-1)
+
+Một ảnh là **ảnh AI** khi có ít nhất một dấu hiệu dưới đây. Không có dấu hiệu nào thì là ảnh thật.
+
+1. Tên **bất kỳ thư mục nào** bên dưới thư mục ảnh đã khai báo có chữ `AI` đứng riêng hoặc tên công cụ tạo ảnh. Điều này áp dụng cả cho thư mục nằm trên thư mục công trình và cả phần tên không khớp danh sách. Ví dụ: `Ảnh do AI tạo`, `ảnh tạo bởi ai`, `AI images`, `GenAI`, `ẢnhAI mẫu`, `Ảnh A.I`, `ＡＩ`, `Gemini`, `Imagen`, `Nano Banana`, `Midjourney`, `DALL-E`/`DALL·E`/`DALLE`, `ChatGPT`, `GPT`, `Stable Diffusion`, `SDXL`, `Firefly`. Thư mục có dấu hiệu thì **mọi ảnh bên trong** là ảnh AI.
+2. **Tên file ảnh** có các dấu hiệu trên (app tách tên theo dấu cách, dấu câu, gạch dưới). Ví dụ: `Gemini_Generated_Image_ab12.png`, `ChatGPT Image May 12, 2025….png`, `DALL·E 2024-05-12 ….webp`, `AI_cong_inox.jpg`. Tên file **chỉ** dùng để nhận ảnh AI, không cho thẻ nào khác (`test_file_name_is_not_used` vẫn qua).
+3. Như lượt 1: thư mục có tên đúng danh sách (`Ảnh AI`, `AI`, `ảnh minh họa AI`…).
+
+Khi so, app không phân biệt hoa thường, nhận cả chữ toàn chiều rộng và chữ có ký tự vô hình chen giữa (`A`+U+200B+`I`), nhưng **có phân biệt dấu**: `Ái` (tên người, như trong "Nhà chị Ái") không phải AI. Với tên thư mục (do người gõ), app tách cả chữ dính liền (`ẢnhAI`, `GenAI`). Với tên file (có thể là chuỗi ngẫu nhiên do máy đặt), app chỉ tách ở dấu cách, dấu câu, gạch dưới, nên `xAI3kQpZ.jpg`, `MAI_1.jpg`, `IMG_0001.jpg` và tên ảnh tải từ Zalo không bị coi là ảnh AI.
+
+Ảnh AI chỉ giữ hạng mục; mã công trình, khu vực, trước/sau bị bỏ (như lượt 1). `reference()` gửi cho AI viết alt là rỗng. Thẻ sửa tay không đổi ảnh AI thành ảnh thật được: `set` báo lỗi, và câu báo nay nói rõ cả trường hợp tên file.
+
+**Đánh đổi (phía an toàn):**
+- Thư mục ảnh thật có chữ `AI`/`ai` đứng riêng (ví dụ tên khách gõ không dấu "Nha chi Ai") hay có tên công cụ: ảnh bị coi là ảnh AI và mất thẻ công trình. Muốn sửa thì đổi tên thư mục hoặc file. Nhận nhầm theo hướng này không làm lộ dữ liệu.
+- Ảnh AI để trong thư mục công trình mà tên file trung tính (`IMG_0001.jpg`): app **không** biết đó là ảnh AI, vì module này chỉ đọc tên, không đọc nội dung ảnh (xem Đề xuất).
+
+### Đã sửa
+
+| Mã | Sửa gì | Chỗ sửa | Test |
+|---|---|---|---|
+| SL-T052-1 (Trung bình) | Tìm dấu hiệu ảnh AI ở mọi chỗ trong tên mọi thư mục, kể cả phần không khớp; tìm cả trong tên file; thêm tên công cụ tạo ảnh vào danh sách | `tags.py:198` (`_AI_TOOLS`), `:227` (`_AI_MARKER_TEXTS`), `:366` (`_tokens`), `:408` (`_has_ai_marker`), `:775` (`_parse_dir_name`), `:859` (`tags_for_image`); câu báo `image_tags.py:84` | Soi Lỗi `test_sl_t052_1_…` (5 ca, gỡ `xfail`). Mới: `test_ai_marker_anywhere_in_folder_name_makes_whole_branch_ai` (17 tên × 2 vị trí), `test_ai_marker_in_file_name_makes_image_ai` (6), `test_ordinary_file_names_are_not_ai` (8), `test_words_that_only_look_like_ai_do_not_make_ai_images` (5: "Ái", "Thái", "Hai", "mái", "Mai"), `test_ai_marker_detection_returns_no_folder_text` |
+| SL-T052-2 (Thấp) | Thư mục ghi một quận/huyện kèm tỉnh/thành chứa nó thì lấy quận/huyện. Hai phần liền nhau, mỗi phần tự khớp danh sách, mà ghép lại thành đúng một khu vực thì đọc là khu vực đó ("Bà Rịa – Vũng Tàu"). Hai quận/huyện khác nhau, hai tỉnh, hay quận kèm tỉnh khác thì vẫn để trống | `tags.py:133` (`_AREA_PROVINCE`), `:761` (`_joined_area`), `:805` (`_narrow_area`), `:836` | Soi Lỗi `test_sl_t052_2_…` (5 ca + 45 tên, gỡ `xfail`). Mới: `test_province_with_its_district_and_real_conflicts`. Sửa test lượt 1 `test_every_area_in_list_matches_itself_…` (`test_images_tags.py:230`), vốn ghi theo hành vi cũ "Bà Rịa – Vũng Tàu để trống" |
+| SL-T052-3 (Thấp) | Nhận "Ảnh", "Hình", "Hình ảnh" đứng trước mọi chữ chỉ trước/sau; thêm "sau khi làm/sửa/thi công xong", "thi công xong" | `tags.py:196` (`_PHASE_PREFIXES`), `:468`, `_PHASE_WORDS` | Soi Lỗi `test_sl_t052_3_…` (6 ca, gỡ `xfail`). Mới: `test_photo_word_before_phase` (8 ca, cả ô nhập `match_phase`) |
+| SL-T052-4 (Thấp) | Trong tên thư mục, bỏ qua số trơn (chữ số ASCII) khi so. **Không** bỏ qua số đứng liền sau mã `CT` hay quận số: "Q 7 8", "CT 0909 123 456" không đoán, bỏ cả phần như cũ. Bước thử từng mảnh (tách ở `-_.`) không bỏ qua số, để "45 Nguyễn Trãi P.2 Quận 5" không đọc ra Quận 5 từ một địa chỉ. Ô nhập thẻ sửa tay cũng không bỏ qua số | `tags.py:498` (`_segment`, `skip_numbers`, mảng `firm` `:524`), `:531`, `:797` | Soi Lỗi `test_sl_t052_4_…` (4 ca, gỡ `xfail`). Mới: `test_plain_numbers_are_skipped_in_folder_names` (6), `test_numbers_right_after_code_or_numbered_district_are_not_guessed` (6) |
+| SL-T052-5 (Thấp) | Khi đọc ngày lưu, bắt cả `OverflowError` lúc đổi múi giờ; dòng đó bị bỏ và đếm vào `skipped` | `image_tags.py:459–468` (`_parse_time`) | Soi Lỗi `test_sl_t052_5_…` (3 ca, gỡ `xfail`). Mới: `test_extreme_saved_at_is_skipped_not_raised` (4 ca, có ca biên hợp lệ năm 1) |
+| SL-T052-6 (Thấp) | Số thứ tự thư mục gốc ngoài khoảng số nguyên SQLite (≥ 2⁶³): `resolve`, `resolve_many`, `get` coi như không có thẻ sửa tay (không ném lỗi); `clear` trả `False`; `set` và `list_manual` báo `ImageTagStoreError` tiếng Việt. Số 2⁶³ − 1 vẫn dùng bình thường | `image_tags.py:57`, `:134` (`_storable`), `:201`, `:234`, `:277`, `:296` | Soi Lỗi `test_sl_t052_6_…` (gỡ `xfail`). Mới: `test_root_index_beyond_sqlite_integer` |
+| SL-T052-7 (Thấp, F1) | Kiểm liên kết ở **mỗi lần mở**, không chỉ lần đầu. Kiểm symlink, junction và **hard link** (file thường có `st_nlink > 1`), ở chỗ đặt file và cả ở các file nhật ký `-journal`, `-wal`, `-shm` (SQLite ghi qua các file này). Thấy liên kết thì chỉ gỡ chính liên kết rồi tạo file mới; tên kia của hard link và file/thư mục đích giữ nguyên | `image_tags.py:364–371` (`_prepare`), `:406` (`_remove_links`), `:439` (`_is_link`), `:451` (`_remove_link`) | Soi Lỗi `test_sl_t052_7_hard_link_…` (2 ca, gỡ `xfail`, chạy trên Windows); `test_sl_t052_7_symlink_…` gỡ `xfail` dựa trên code (xem dưới). Mới: `test_hard_link_at_file_path_is_removed_without_touching_other_name` (trước và sau lần dùng đầu), `test_hard_link_at_journal_path_is_removed` |
+| SL-T052-8 (Thấp) | Nhờ kiểm ở mỗi lần mở: junction đặt vào sau lần dùng đầu bị gỡ ở lần mở kế tiếp, ngay lần đầu đã không báo lỗi. Nếu đặt một thư mục thật vào chỗ file thì app báo câu rõ ("đang là một thư mục") thay vì "Không mở được…"; gỡ thư mục đi thì app tự tạo lại file | `image_tags.py:370` | Soi Lỗi `test_sl_t052_8_…` (gỡ `xfail`). Mới: `test_directory_placed_after_first_use_reports_clear_error_then_recovers` |
+| Điểm Lá Chắn | `_is_healthy` đặt `PRAGMA trusted_schema = OFF` trước khi chạy `PRAGMA quick_check` trên file chưa tin cậy | `image_tags.py:481` | Mới: `test_health_check_does_not_trust_schema_of_file` (kiểm thứ tự câu lệnh) |
+
+Tôi không sửa điều kiện kiểm nào trong test của Soi Lỗi; chỉ xóa các dòng `@pytest.mark.xfail(...)` (`git diff 0848316 HEAD -- tests/test_soi_loi_t052.py`: xóa 74 dòng, thêm 0 dòng). Hai file test của phiếu không còn `xfail` nào.
+
+**Ca symlink chưa chạy được trên máy này.** Hai test `test_sl_t052_7_symlink_placed_after_first_use_does_not_write_outside` (Soi Lỗi) và `test_symlink_at_file_path_is_replaced_without_touching_target` (của tôi) bị bỏ qua vì Windows chưa bật Developer Mode (đã thử, lỗi 1314). Tôi vẫn gỡ dấu `xfail(strict)` của ca Soi Lỗi vì hai lý do. Một: code mới kiểm `is_symlink()` ở mỗi lần mở, cùng đường với ca junction và hard link đã chạy qua. Hai: nếu giữ dấu thì trên Mac/Linux test sẽ báo XPASS và bị tính là hỏng. Kết luận này là suy luận từ code, cần chạy trên Mac/Linux để xác nhận.
+
+### Phạm vi
+
+`git diff --stat 0848316 HEAD` (trước khi thêm báo cáo) chỉ có 4 file được phép:
+
+```
+ seo_app/images/tags.py        | 183 ++++++++++++++++++++++----
+ seo_app/storage/image_tags.py | 115 +++++++++++-----
+ tests/test_images_tags.py     | 297 +++++++++++++++++++++++++++++++++++++++++-
+ tests/test_soi_loi_t052.py    |  74 -----------
+```
+
+Không sửa `seo_app/images/__init__.py`, `folders.py`, `alt.py`, `app/**`, `config/**`, `drafts.py`, `site_index.py`. Không thêm thư viện.
+
+### Bằng chứng (lượt 2)
+
+Máy Windows 11, Python 3.12.15, worktree `wt-T-052`, nhánh `team/T-052`. Theo quy tắc mới tôi chỉ chạy test liên quan; Chỉ Huy chạy toàn bộ test khi gộp.
+
+```
+$ uv run pytest tests/test_images_tags.py tests/test_soi_loi_t052.py tests/test_images_folders*.py \
+    tests/test_ai_images.py -q -p no:cacheprovider -rs        (tại f428bb3, 2026-10-20 14:11–14:12 +07)
+849 passed, 8 skipped, 3 xfailed in 68.91s (0:01:08)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- 0 hỏng. Riêng hai file của phiếu: `test_images_tags.py` có 304 test (303 qua, 1 bỏ qua); `test_soi_loi_t052.py` có 52 test (51 qua, 1 bỏ qua); không còn `xfail`.
+- 8 bỏ qua: 2 ca symlink của phiếu này (đã nói ở trên) và 6 ca của T-048 trong `test_images_folders.py` (symlink, tên chỉ tạo được trên Mac/Linux).
+- 3 xfail: đều của T-048 trong `test_images_folders_soi_loi.py` (R2-1, R2-2), không thuộc phiếu này.
+- Trước lượt 2 (Soi Lỗi chạy tại `13467e7`): 753 passed, 8 skipped, 31 xfailed. Chênh lệch: 28 ca xfail của SL-T052 nay qua, và có thêm 68 test mới của tôi.
+
+### Rủi ro và điểm cần chú ý (lượt 2)
+
+- **Nhận nhầm ảnh thật thành ảnh AI** khi tên thư mục hoặc tên file có `AI`/`ai` đứng riêng hay có tên công cụ (xem trên). Không lộ dữ liệu, ảnh chỉ mất thẻ; người dùng thấy nhãn "Ảnh AI" và có thể đổi tên thư mục hoặc file. Giao diện T-056 nên nói rõ lý do (ví dụ "tên thư mục hoặc tên file có chữ AI").
+- **Hard link:**
+  - Gặp file thẻ có hơn một tên, app gỡ tên nằm trong `data/` và bắt đầu file mới. Thẻ sửa tay cũ vẫn còn ở tên kia nên không mất dữ liệu, nhưng app không đọc tới nữa.
+  - Phần mềm sao lưu kiểu "hard link vào thư mục sao lưu" (hiếm trên Windows/Mac) sẽ khiến app bỏ file thẻ sau mỗi lần sao lưu.
+  - Nếu ổ đĩa báo sai số liên kết (lớn hơn 1 cho mọi file) thì thẻ sửa tay không giữ được. NTFS và APFS báo đúng; tôi đã thử trên NTFS: `st_nlink` từ 2 về 1 sau khi gỡ.
+- **Khoảng hở vài mili giây giữa lúc kiểm và lúc SQLite mở file:** nếu có người thay file đúng lúc đó thì vẫn lọt. Lý do: SQLite mở file theo tên, Python không cho mở theo "file vừa kiểm". Muốn lợi dụng thì phải ghi được vào thư mục `data/` trên máy.
+- **Ghép khu vực** chỉ xảy ra khi hai phần liền nhau đều tự khớp danh sách (`Bà Rịa – Vũng Tàu`, `Bà Rịa, Vũng Tàu`). `Vũng Tàu - Bà Rịa` (thứ tự ngược) vẫn được hiểu là hai thành phố khác nhau nên để trống.
+- **Số đứng liền sau quận số hay mã CT vẫn làm mất cả phần** (`CT012 Cổng inox Quận 7 2024`, `CT012 2024 Cổng`). Giữ vậy để không đoán sai mã hoặc quận kiểu `Q 7 8`, `CT 0909 123`. Nếu viết năm thành phần riêng (`… - Quận 7 - 2024`) hoặc đặt năm lên trước (`2024 CT012 …`) thì app đọc đủ.
+- Từ điển giai đoạn có thêm "thi công xong", nên một phần chỉ gồm chữ này nay là giai đoạn "sau" (trước đây bị bỏ cả phần).
+
+### Đề xuất (lượt 2)
+
+- **Chỉ Huy:** lập phiếu dọn chung cho `seo_app/storage/drafts.py` và `site_index.py`, cùng kiểu lỗi SL-T052-7: dùng chung một hàm kiểm liên kết (symlink, junction, hard link, kiểm ở mỗi lần mở, kể cả file nhật ký). Có thể chuyển `_is_link`/`_remove_link` (`image_tags.py:439`, `:451`) thành hàm dùng chung. Việc này ngoài phạm vi phiếu nên tôi không làm.
+- **Chỉ Huy / Thợ Máy (sau này):** nhận ảnh AI theo **nội dung ảnh**, ví dụ dữ liệu C2PA ("Content Credentials") mà Gemini, ChatGPT, Firefly ghi vào ảnh, hoặc trường EXIF `Software`. Cách này bắt được cả ảnh AI có tên file trung tính. Vì phải đọc file ảnh nên việc này thuộc `folders.py` hoặc phần xử lý ảnh, không thuộc `tags.py`; cần hỏi chủ dự án có cần không.
+- **Thư Ký (README) / Họa Sĩ (T-056):** hướng dẫn đặt ảnh AI trong thư mục có chữ "AI" (hoặc giữ nguyên tên file gốc của công cụ); không đặt ảnh thật trong thư mục có chữ "AI"; giao diện hiện lý do một ảnh bị coi là ảnh AI.
+- **Soi Lỗi (trên Mac/Linux):** chạy `tests/test_images_tags.py` và `tests/test_soi_loi_t052.py` để xác nhận hai ca symlink (đã gỡ `xfail`) và tên NFD thật.
+- **Lá Chắn:** soát lại F1 ở `_prepare`, `_remove_links`, `_is_link`, `_remove_link` (`image_tags.py:364–457`), và A3 ở phần tìm dấu hiệu ảnh AI (`tags.py:408`, `:775`, `:859`): phần này chỉ trả đúng/sai, không giữ chữ nào của tên.
