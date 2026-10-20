@@ -32,9 +32,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi **đạt có điều kiện** (`6cb1f52`, 5.826 qua; không đọc được nội dung file ngoài gốc; L1, L2 Trung bình, L3–L5 Thấp). **Thợ Máy sửa lượt 2** (13:49) |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi đạt có điều kiện (`6cb1f52`); Thợ Máy lượt 2 xong (`69d6b6c`, 5.846 qua). **Soi Lỗi đang kiểm lại** |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-058 (chủ dự án chọn cách xử lý Pillow) |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | **Thợ Máy đang làm** (phiên Chỉ Huy A, worktree `wt-T-050`) |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Thợ Máy xong (`f5f8b63`, Windows 5.937 qua, 0 hỏng). **Chờ Soi Lỗi** (chỗ trống kế tiếp). Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Còn chỗ |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy | T-048 |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | T-049, T-050 |
