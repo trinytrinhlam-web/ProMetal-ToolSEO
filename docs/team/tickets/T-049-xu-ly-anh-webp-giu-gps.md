@@ -65,3 +65,10 @@ F2 (test bắt buộc: còn GPS sau nén, bản AI không còn metadata), F3, A3
   6. Báo Soi Lỗi thay `pytest.skip` trong test "chưa đăng ký" của T-047 bằng fixture tự gỡ HEIF.
 - 2026-10-20 (Chỉ Huy A): theo Thợ Máy T-058, Pillow 13.0.0 còn 1 khuyến cáo chưa vá (GHSA-654x-cwwv-5j9c, lộ vùng nhớ khi xuất ảnh sang Arrow, chỉ xảy ra khi đặt `PILLOW_ALIGNMENT` > 1). Phiếu này: **không** xuất ảnh sang Arrow, **không** đặt `PILLOW_ALIGNMENT`. Nếu T-058 đã gộp thì điều kiện 5 (tránh `thumbnail()`/`draft()`…) không còn bắt buộc.
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-048**: kiểm nội dung bằng Pillow `formats=…`, không tin đuôi file; thư mục cache ảnh xem trước phải nằm trong `.gitignore` (góp ý Lá Chắn T-046 số 9). Đọc ảnh qua `ImageLibrary.read_image_bytes` (`seo_app/images/folders.py`).
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-058** (`docs/team/reports/T-058-la-chan.md`, mục "Điều kiện" 2), áp khi T-058 đã gộp (Pillow 13.0.0):
+  - Điều kiện 5 của T-047 (tránh `thumbnail()`/`draft()`, `seek()`, ghi JPEG) **không còn bắt buộc**; vẫn chỉ xử lý khung đầu của ảnh MPO.
+  - Điều kiện 1–4, 6, 7 của T-047 **giữ nguyên**: bắt `(OSError, ValueError, Image.DecompressionBombError)` quanh cả `open` lẫn `load`; kiểm dung lượng trước khi mở, đặt `MAX_IMAGE_PIXELS`, đổi `DecompressionBombWarning` thành lỗi; đăng ký HEIF một chỗ; luôn mở với `formats=["JPEG","PNG","WEBP","HEIF"]`.
+  - LC-T058-1: không xuất ảnh sang Arrow (`__arrow_c_array__`, `__arrow_c_schema__`, `Image.fromarrow`, `pyarrow`), không đặt/đọc `PILLOW_ALIGNMENT`.
+  - LC-T058-2: chỉ đưa vào `st.image` ảnh Pillow đã mở qua hàm mở an toàn của module ảnh, hoặc byte WebP/JPEG do app tạo; **không bao giờ** đưa đường dẫn hay byte gốc của file trong `IMAGE_FOLDERS`. Có test. Áp cả cho phiếu giao diện xem trước ảnh (T-056).
+  - LC-T058-3: module ảnh từ chối xử lý khi Pillow < 13 (một dòng kiểm phiên bản, câu lỗi tiếng Việt cố định, có test).
+  - SL-T058-1: ảnh 16 bit đưa vào `st.image` phải đổi về 8 bit hoặc `output_format="PNG"`.

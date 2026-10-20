@@ -34,13 +34,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 09:54. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 10:09. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | đã gộp (`f37ffd6`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 09:54 gộp vào `main` | Điều kiện đã ghi vào T-049, T-052, T-055, T-056; lập T-063 (test Mac/Linux, chặn gộp T-056), T-064 (dọn lỗi Thấp). LC-T048-6 chờ chủ dự án (sổ rủi ro) |
 | [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`c3910e0`) | Thợ Máy lượt 2 xong (7.588 qua). ⏳ **Soi Lỗi kiểm lại lượt 2** (phiên "Soi Lỗi · T-050 lượt 2 kiểm lại", giao sau 09:17) | Lá Chắn (soát A3: `base.py:552–790`, `alt.py:96–143`) |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`bda4dfc`) | Soi Lỗi rút gọn ĐẠT (7.232 qua). ⏳ **Lá Chắn đang kiểm** (phiên "Lá Chắn · T-058 kiểm Pillow 13", giao sau 09:17) | ĐẠT thì gộp, chạy test, Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`bda4dfc`) | ✅ 10:07 **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`fe53d97`, 4 lỗi Thấp). Điều kiện đã chép vào T-049, T-056 | **Chỉ Huy mở app thật xem mọi trang** (app có mật khẩu: cần chủ dự án), gộp, chạy test khi máy rảnh; rồi giao T-049 |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong. ⏳ **Soi Lỗi rút gọn đang kiểm** (phiên "Soi Lỗi · T-051 kiểm cấu hình alt, ảnh", giao sau 09:17) | Lá Chắn rút gọn |
 | Chờ phiếu trước | | T-052 (còn chỗ), T-063 (cần máy Linux/Mac), T-049 (sau T-058), T-062 (sau T-050, T-051), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-065** |
 | `main` | `f37ffd6` + tài liệu | Windows sau gộp T-048: 7.420 qua, 1 hỏng vì quá tải (`test_app.py` quá 30 giây khi 4 bộ test chạy cùng lúc; chạy riêng lại 5/5 qua). Lá Chắn chạy đúng bản gộp: 7.421 qua, 0 hỏng. ruff sạch | |
@@ -48,6 +48,12 @@ Chỉ Huy B, cập nhật 2026-10-20 09:54. Bảng cũ của A (cập nhật 17/
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 10:09 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20: **chấp nhận rủi ro LC-T048-6** (hard link trong thư mục ảnh; ổ không có số inode). Đã ghi `docs/team/security.md` mục 6, `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4, phiếu T-064. LC-T048-2/-3 vẫn sửa ở T-064.
+- **Lá Chắn T-058 ĐẠT CÓ ĐIỀU KIỆN** (`fe53d97`): 4 lỗi Thấp. Điều kiện chép vào T-049 (điều kiện 5 của T-047 hết bắt buộc; giữ điều kiện 1–4, 6, 7; không xuất Arrow; `st.image` chỉ nhận ảnh đã mở an toàn; từ chối Pillow < 13) và T-056. Trước khi gộp: Chỉ Huy mở app thật xem mọi trang.
+- Soi Lỗi T-050 lượt 2 và Soi Lỗi T-051 đang chờ lần chạy pytest toàn bộ.
 
 ### 2026-10-20 09:54 · Chỉ Huy B
 

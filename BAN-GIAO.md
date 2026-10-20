@@ -138,6 +138,8 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 
 - Chủ dự án chốt 2026-10-20 (phiếu T-058): **nâng lên Pillow 13** (lựa chọn A), dù Streamlit khóa `pillow<13`, để vá 53 khuyến cáo của Pillow 12.3.0 mà Lá Chắn T-047 tìm ra. Thợ Máy nâng bằng `override-dependencies`, chạy đủ test, Chỉ Huy mở app thử mọi trang; hỏng thì quay về bản cũ.
 
+- Chủ dự án chốt 2026-10-20 (Lá Chắn T-048, LC-T048-6): **chấp nhận rủi ro** hard link trong thư mục ảnh và ổ không có số inode (muốn khai thác phải chạy được chương trình trên máy trước; chặn hard link sẽ chặn nhầm ảnh do phần mềm sao lưu tạo). Đã ghi sổ rủi ro `docs/team/security.md` mục 6. Các lỗi Thấp khác của T-048 (LC-T048-2/-3: lộ tên file ngoài thư mục ảnh) vẫn **sửa** ở T-064.
+
 ### 7.5 Tính năng và nội dung
 
 - **Giữ nguyên vị trí GPS trong ảnh** ("nhiều khi đó là mục đích cố ý"). Phiếu T-007 xóa GPS đã hủy; ghi trong sổ rủi ro `docs/team/security.md` mục 6. Khi nén WebP phải chép lại EXIF.

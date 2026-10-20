@@ -47,4 +47,4 @@ F1, U2.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 2, 3 của Lá Chắn T-048. Lá Chắn khuyên **sửa** LC-T048-2/-3 thay vì ghi sổ rủi ro; Chỉ Huy B chọn sửa, trừ khi chủ dự án muốn chấp nhận rủi ro.
-- **LC-T048-6** (hard link; ổ không có số inode) không nằm trong phiếu này: Lá Chắn không khuyên sửa (chặn `st_nlink > 1` sẽ chặn nhầm ảnh do phần mềm sao lưu tạo). Chờ chủ dự án đồng ý ghi vào sổ rủi ro `docs/team/security.md` mục 6.
+- **LC-T048-6** (hard link; ổ không có số inode) không nằm trong phiếu này: Lá Chắn không khuyên sửa (chặn `st_nlink > 1` sẽ chặn nhầm ảnh do phần mềm sao lưu tạo). Chủ dự án đồng ý chấp nhận rủi ro ngày 2026-10-20, đã ghi sổ rủi ro `docs/team/security.md` mục 6.

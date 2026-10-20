@@ -57,3 +57,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
   - Không dùng `ImageLibrary._folders`; không hiện đường dẫn tuyệt đối (dùng `roots()`).
   - Chỉ quét khi người dùng mở thư mục hoặc bấm quét lại.
   - Báo cho người dùng khi thư mục gốc đi qua lối tắt (mục "Ghi nhận" của biên bản).
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-058** (LC-T058-2): xem trước ảnh bằng `st.image` chỉ với ảnh Pillow đã mở qua hàm mở an toàn của module ảnh (T-049) hoặc byte WebP/JPEG do app tạo; không đưa đường dẫn hay byte gốc của file trong thư mục ảnh (Streamlit tự mở bằng Pillow không giới hạn định dạng).
