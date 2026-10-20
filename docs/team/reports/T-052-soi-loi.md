@@ -36,12 +36,14 @@ $ uv run pytest tests/test_soi_loi_t052.py --runxfail -k sl_t052 --tb=line
 (mỗi xfail hỏng đúng lý do: OverflowError ở image_tags.py:419 và :199; khu vực/giai đoạn rỗng;
  file ngoài data/ bị đổi nội dung; câu lỗi "Không mở được file…" lặp lại)
 
-$ uv run pytest            (toàn bộ)
-<chờ kết quả>
+$ uv run pytest -q -p no:cacheprovider     (toàn bộ, tại 165fbb8, 2026-10-20 13:20–13:37 +07)
+8267 passed, 19 skipped, 78 xfailed, 1 warning in 1023.37s (0:17:03)
 
 $ uv run ruff check .
-<chờ kết quả>
+All checks passed!
 ```
+
+Không test nào hỏng, không cần chạy lại riêng. Cảnh báo duy nhất là của test cũ `test_soi_loi_t028.py` (pydantic), không liên quan. 78 xfail = 50 của các phiếu trước (gồm 15 của T-050) + 28 của file này. Test nối `alt.py` của Thợ Máy (`test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text`) nay chạy và qua vì nhánh đã có `alt.py` (gộp `2d481c0`).
 
 ## Lỗi tìm thấy
 
