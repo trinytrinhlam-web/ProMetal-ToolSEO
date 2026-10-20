@@ -462,8 +462,8 @@ IMAGE_MIME_MESSAGE = "Ảnh gửi AI chỉ nhận JPEG, PNG hoặc WebP."
 IMAGE_EMPTY_MESSAGE = "Ảnh gửi AI bị rỗng (không có dữ liệu)."
 IMAGE_BROKEN_MESSAGE = "Ảnh gửi AI bị hỏng hoặc không đúng định dạng đã khai báo."
 IMAGE_METADATA_MESSAGE = (
-    "Ảnh gửi AI vẫn còn thông tin kèm theo (EXIF, XMP hoặc chú thích, có thể có vị trí GPS). "
-    "Phần mềm không gửi ảnh này cho AI."
+    "Ảnh gửi AI vẫn còn thông tin kèm theo ngoài phần ảnh (EXIF, XMP, chú thích…, có thể có vị "
+    "trí GPS). Phần mềm không gửi ảnh này cho AI."
 )
 
 
@@ -547,15 +547,29 @@ def _has_metadata_marker(data: bytes) -> bool:
     return any(marker in data for marker in _METADATA_MARKERS)
 
 
-# JPEG: APP1 (EXIF, XMP), APP13 (Photoshop/IPTC: tên người, địa điểm), COM (chú thích tự do).
-_JPEG_METADATA = frozenset({0xE1, 0xED, 0xFE})
-_JPEG_STANDALONE = frozenset({0x01, *range(0xD0, 0xD8)})
+# Kiểm theo DANH SÁCH CHO PHÉP (Soi Lỗi SL-T050-2): chỉ nhận khối cần để giải mã và hiện đúng
+# màu; mọi khối khác (EXIF, XMP, IPTC, chú thích, khối riêng của hãng máy ảnh…) đều bị từ chối,
+# kể cả loại chưa biết.
+#
+# JPEG, khối cần để giải mã: SOF0–SOF15 (trừ C4, C8, CC là mã khác), DHT (C4), DAC (CC, bảng mã
+# số học), DQT (DB), DNL (DC), DRI (DD), SOS (DA); RST0–7 nằm trong dữ liệu quét; SOI, EOI.
+_JPEG_DECODE = frozenset(
+    {*range(0xC0, 0xC4), *range(0xC5, 0xC8), *range(0xC9, 0xCC), *range(0xCD, 0xD0),
+     0xC4, 0xCC, 0xDB, 0xDC, 0xDD, 0xDA}
+)  # fmt: skip
+# Khối APPn được nhận, chỉ khi phần đầu đúng chữ ký:
+# - APP0 "JFIF\0": mật độ điểm ảnh, Pillow luôn ghi; nhỏ, không có chữ tự do. Không nhận
+#   "JFXX" (chứa ảnh nhỏ nhúng: chỗ giấu được ảnh gốc chưa cắt).
+# - APP2 "ICC_PROFILE\0": hồ sơ màu (ảnh iPhone Display P3 mất hồ sơ thì màu sai); Pillow chép khi
+#   có ``icc_profile``.
+# - APP14 "Adobe": cờ biến đổi màu, cần để giải mã đúng JPEG CMYK/YCCK; 12 byte cố định.
+_JPEG_APP_SIGNATURES = {0xE0: b"JFIF\x00", 0xE2: b"ICC_PROFILE\x00", 0xEE: b"Adobe"}
 
 
 def _check_jpeg(data: bytes) -> str | None:
     """Đi qua mọi khối JPEG, kể cả giữa các lượt quét của ảnh progressive, tới mã kết thúc (EOI)
     ở đúng cuối file. ``"format"``: sai cấu trúc hoặc có dữ liệu nối sau EOI; ``"metadata"``: có
-    khối metadata; ``None``: ổn."""
+    khối ngoài danh sách cho phép; ``None``: ổn."""
     if not data.startswith(b"\xff\xd8\xff"):
         return "format"
     i, n = 2, len(data)
@@ -571,15 +585,17 @@ def _check_jpeg(data: bytes) -> str | None:
         i += 1
         if marker == 0xD9:  # EOI: chỉ hợp lệ sau khối ảnh và ở đúng cuối file
             return None if seen_scan and i == n else "format"
-        if marker in _JPEG_STANDALONE:
-            continue
-        if marker in (0x00, 0xD8) or i + 2 > n:
-            return "format"
+        if marker in (0x00, 0xD8) or 0xD0 <= marker <= 0xD7 or i + 2 > n:
+            return "format"  # RST chỉ được nằm trong dữ liệu quét (_skip_entropy đã bỏ qua)
         length = int.from_bytes(data[i : i + 2], "big")
         if length < 2 or i + length > n:
             return "format"
-        if marker in _JPEG_METADATA:
-            return "metadata"
+        signature = _JPEG_APP_SIGNATURES.get(marker)
+        if signature is not None:
+            if not data[i + 2 : i + length].startswith(signature):
+                return "metadata"
+        elif marker not in _JPEG_DECODE:
+            return "metadata"  # APPn khác, COM, TEM, mã chưa biết
         i += length
         if marker == 0xDA:  # SOS: tiếp theo là dữ liệu ảnh nén, đi tới mã khối kế tiếp
             seen_scan = True
@@ -606,8 +622,16 @@ def _skip_entropy(data: bytes, i: int) -> int:
 
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-# eXIf: EXIF; tEXt/zTXt/iTXt: chữ tự do (tác giả, chú thích, XMP, cả EXIF dạng chữ).
-_PNG_METADATA = frozenset({b"eXIf", b"tEXt", b"zTXt", b"iTXt"})
+# PNG, chunk được nhận kèm độ dài tối đa của phần dữ liệu (``None``: không giới hạn riêng):
+# - chunk chính IHDR, PLTE, IDAT, IEND (cần để giải mã);
+# - tRNS (độ trong suốt), gAMA, cHRM, sRGB, iCCP (màu đúng; iCCP là hồ sơ màu nén, như APP2 của
+#   JPEG), pHYs (mật độ điểm ảnh: Pillow tự ghi khi ảnh nguồn có dpi), sBIT, bKGD: độ dài cố định
+#   và nhỏ, không chứa chữ tự do.
+# Không nhận: eXIf, tEXt/zTXt/iTXt (chữ tự do, XMP), tIME, chunk ảnh động, chunk riêng.
+_PNG_ALLOWED: dict[bytes, int | None] = {
+    b"IHDR": 13, b"PLTE": 768, b"IDAT": None, b"IEND": 0, b"tRNS": 256, b"gAMA": 4,
+    b"cHRM": 32, b"sRGB": 1, b"iCCP": None, b"pHYs": 9, b"sBIT": 4, b"bKGD": 6,
+}  # fmt: skip
 
 
 def _check_png(data: bytes) -> str | None:
@@ -622,8 +646,11 @@ def _check_png(data: bytes) -> str | None:
             return "format"
         if first and kind != b"IHDR":
             return "format"
-        if kind in _PNG_METADATA:
+        if kind not in _PNG_ALLOWED:
             return "metadata"
+        limit = _PNG_ALLOWED[kind]
+        if limit is not None and length > limit:
+            return "format"
         if kind == b"IEND":
             # Không nhận dữ liệu nối sau IEND (chỗ giấu được bất cứ thứ gì).
             return None if i + 12 + length == n else "format"
@@ -633,7 +660,10 @@ def _check_png(data: bytes) -> str | None:
 
 
 _WEBP_IMAGE_CHUNKS = frozenset({b"VP8 ", b"VP8L", b"VP8X"})
-_WEBP_METADATA = frozenset({b"EXIF", b"XMP "})
+# WebP, chunk được nhận: dữ liệu ảnh (VP8, VP8L, VP8X, ALPH độ trong suốt, ANIM/ANMF ảnh động)
+# và ICCP (hồ sơ màu, Pillow ghi khi có ``icc_profile``; giữ cho cùng cách với JPEG/PNG).
+# Không nhận: EXIF, XMP, mọi chunk khác (kể cả "exif", "xmp " viết thường, chunk riêng).
+_WEBP_ALLOWED = frozenset({*_WEBP_IMAGE_CHUNKS, b"ALPH", b"ANIM", b"ANMF", b"ICCP"})
 
 
 def _check_webp(data: bytes) -> str | None:
@@ -653,7 +683,7 @@ def _check_webp(data: bytes) -> str | None:
             return "format"
         if first and kind not in _WEBP_IMAGE_CHUNKS:
             return "format"
-        if kind in _WEBP_METADATA:
+        if kind not in _WEBP_ALLOWED:
             return "metadata"
         first = False
         i += 8 + size + (size & 1)  # chunk lẻ có 1 byte đệm
