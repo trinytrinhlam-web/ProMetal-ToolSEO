@@ -35,6 +35,7 @@ from seo_app.images.tags import (
     ImageTags,
     TagError,
     clean_folder_name,
+    is_ai_name,
     match_area,
     match_category,
     match_phase,
@@ -582,6 +583,199 @@ def test_ai_marker_detection_returns_no_folder_text():
     for text in output_strings(result):
         for secret in ("tuấn", "0909", "mẫu", "khách"):
             assert fold(secret) not in fold(text)
+
+
+# T-070 (LC-T052-1 a–d, SL-T052-11): các cách gọi ảnh AI còn sót ở T-052.
+T070_AI_DIRS = [
+    "Ảnh minh họa",
+    "Hình minh hoạ",  # đặt dấu kiểu cũ
+    "minh hoa",
+    "MINH HỌA",
+    "MinhHoa",
+    "minhhoa",
+    unicodedata.normalize("NFD", "Ảnh minh họa"),  # tên kiểu Mac
+    "Ảnh trí tuệ nhân tạo",
+    "tri tue nhan tao",
+    "genai",  # GenAI viết liền, chữ thường
+    "GENAI",
+    "Ảnh Copilot",
+    "Bing Image Creator",
+    "Image Creator",
+    "Microsoft Designer",
+    "Designer",
+    "Ảnh Canva",
+    "Leonardo",
+    "Ideogram",
+    "Flux",
+    "Grok",
+    "Kling",
+    "Dreamina",
+    "ComfyUI",
+    "comfyui",
+    "Runway",
+    "Krea",
+    "Seedream",
+    "Phối cảnh 3D",
+    "Render",
+    "Ảnh do máy tạo",
+    "Ảnh tạo tự động",
+    "Khách 0909 - ảnh minh họa tham khảo",  # dấu hiệu nằm trong phần không khớp danh sách
+]
+
+
+@pytest.mark.parametrize("ai_dir", T070_AI_DIRS)
+def test_t070_more_ai_folder_names_make_whole_branch_ai(ai_dir):
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png",
+        f"{ai_dir}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+    ):
+        result = tags_of(rel_path)
+        assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), rel_path
+        assert result.tags.reference() == {}
+    assert is_ai_name(ai_dir) is True
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "Designer.png",  # Microsoft Designer
+        "Designer (3).png",
+        "Copilot_20250315_102030.png",
+        "OIG3.Ab1cDe2.jpg",  # Bing Image Creator / Copilot
+        "OIG.xYz9.jpeg",
+        "Leonardo_Phoenix_10_a_modern_iron_gate_0.jpg",
+        "Leonardo_Kino_XL_cong_inox.jpg",
+        "ideogram (1).jpeg",
+        "ideogram.jpeg",
+        "flux-1-dev_00001_.png",
+        "FLUX.1 schnell cong.png",
+        "grok_image_8f3a.jpg",
+        "Kling_20250101_Image_cong.png",
+        "dreamina-2025-03-01-1234-cong inox.jpeg",
+        "ComfyUI_00001_.png",
+        "runway_gen4_cong.png",
+        "krea-image-1.png",
+        "seedream_4_cong.jpeg",
+        "canva_cong_inox.png",
+        "GenAI_cong.png",
+        "genai_cong.png",
+        "anh minh hoa cong inox.jpg",
+        "minh-hoa-ai-cong-inox-quan-7.webp",  # tên file app tự đặt cho ảnh AI (T-049)
+    ],
+)
+def test_t070_default_file_names_of_ai_tools_make_image_ai(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), file_name
+    real = tags_of("CT012 - Cổng inox - Quận 7/truoc/IMG_0001.jpg")
+    assert real.tags.area == "Quận 7" and not real.tags.is_ai
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Nhà anh Thái",
+        "Thai",
+        "chị Mai",
+        "Mai Anh",
+        "Nhà chị Ái",
+        "anh Hải",
+        "anh Hai",
+        "Minh Hòa",  # tên người có dấu: không phải "minh họa"
+        "Minh Hoà",
+        "Bình Minh",
+        "Thanh Hóa",
+        "Khánh Hòa",
+        "Hòa Bình",
+        "Phôi cánh cổng",  # có dấu: không phải "phối cảnh"
+        "Cổng tự động",
+        "Mái tôn",
+        "Đại lý Hưng Thịnh",
+        "Cty Home Design",
+    ],
+)
+def test_t070_real_names_are_not_mistaken_for_ai(name):
+    """Đối chứng: tên khách, tên nơi, hạng mục có chữ giống dấu hiệu AI nhưng không phải."""
+    tags = tags_for_folder(f"CT015 - {name} - Q7/truoc").tags
+    assert not tags.is_ai, name
+    assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc"), name
+    assert is_ai_name(name) is False
+    image = tags_of(f"CT015 - Cổng inox - Q7/truoc/{name}.jpg").tags
+    assert not image.is_ai and image.area == "Quận 7", name
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Cty Home Designer",  # tên công ty có chữ Designer (Microsoft Designer)
+        "Nha anh Minh Hoa",  # "Minh Hòa" gõ không dấu = "minh hoa" (minh họa)
+        "Phoi canh cong",  # "phôi cánh" gõ không dấu = "phoi canh" (phối cảnh)
+        "Thuốc hàn Flux",
+    ],
+)
+def test_t070_ambiguous_names_lean_to_ai_and_leak_nothing(name):
+    """Đánh đổi có chủ ý (ghi trong báo cáo T-070): không chắc thì coi là ảnh AI. Ảnh chỉ mất mã
+    công trình, khu vực, trước/sau; không chữ nào của tên đi ra. Muốn giữ thẻ thì đổi tên thư mục
+    (ví dụ "Cty Home Design", "Nhà anh Minh Hòa" có dấu)."""
+    result = tags_of(f"CT015 - Cổng inox - {name} - Q7/truoc/IMG_1.jpg")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    for text in output_strings(result):
+        for word in name.split():
+            if fold(word) not in {"cong", "inox"}:
+                assert fold(word) not in fold(text), (word, text)
+
+
+def test_is_ai_name_checks_last_name_only_and_returns_bool(monkeypatch):
+    """LC-T052-1 (e): T-056 kiểm tên cuối của thư mục gốc đã khai báo. Chỉ trả đúng/sai, không
+    đọc ổ đĩa, không đưa chữ ra ngoài."""
+
+    def blocked(*_args, **_kwargs):
+        raise AssertionError("is_ai_name không được đụng tới ổ đĩa")
+
+    for name in ("open", "stat", "lstat", "scandir", "listdir"):
+        monkeypatch.setattr(os, name, blocked)
+    monkeypatch.setattr(builtins, "open", blocked)
+    yes = [
+        "Ảnh AI",
+        "G:/My Drive/Ảnh AI",
+        "G:/My Drive/Ảnh AI/",
+        "C:\\Users\\Lam\\Google Drive\\Ảnh minh họa",
+        Path("Kho ảnh") / "Copilot",
+        "ANHAI",
+        "Gemini",
+    ]
+    no = [
+        "Ảnh công trình",
+        "G:/AI/Ảnh công trình",  # chỉ xét tên cuối
+        "C:\\Users\\Ái\\Ảnh thật",
+        Path("Ảnh AI") / "CT012 - Cổng inox",
+        "Nhà chị Ái",
+        "",
+        "/",
+    ]
+    for name in yes:
+        assert is_ai_name(name) is True, name
+    for name in no:
+        assert is_ai_name(name) is False, name
+    for bad in (None, 123, b"Anh AI", ImageRef(0, "Ảnh AI/a.jpg")):
+        with pytest.raises(TypeError):
+            is_ai_name(bad)
+
+
+def test_is_ai_name_agrees_with_folder_tags():
+    """``is_ai_name`` nhận ảnh AI đúng như một thư mục bên dưới gốc mang tên đó."""
+    names = [
+        *T070_AI_DIRS,
+        "Ảnh do AI tạo",
+        "AI images",
+        "Midjourney v6",
+        "Nhà chị Ái",
+        "CT015 - Cổng inox - Quận 7",
+        "Khách 0909123456",
+        "xAI3kQ",
+        "Lô A, I",
+    ]
+    for name in names:
+        assert is_ai_name(name) is tags_for_folder(name).tags.is_ai, name
 
 
 def test_province_with_its_district_and_real_conflicts():
@@ -1476,6 +1670,254 @@ def test_health_check_does_not_trust_schema_of_file(store, monkeypatch):
     )
     assert image_tags_module._is_healthy(store.path)
     assert statements.index("PRAGMA trusted_schema = OFF") < statements.index("PRAGMA quick_check")
+
+
+# ----- T-070: file thẻ dựng sẵn hay bị thay (LC-T052-2, SL-T052-9, -10) ----------------------
+
+# Đúng hai câu T-052 (bản trên main) dùng để tạo file: file cũ phải vẫn được nhận sau T-070.
+T052_CREATE_TAGS = (
+    "CREATE TABLE IF NOT EXISTS manual_tags ("
+    "root_index INTEGER NOT NULL, ref_key TEXT NOT NULL, rel_path TEXT NOT NULL, "
+    "source TEXT NOT NULL, project_code TEXT NOT NULL, category TEXT NOT NULL, "
+    "area TEXT NOT NULL, phase TEXT NOT NULL, saved_at TEXT NOT NULL, "
+    "saved_ts REAL NOT NULL, PRIMARY KEY (root_index, ref_key))"
+)
+T052_CREATE_INFO = "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+T052_FILE = (
+    f"{T052_CREATE_TAGS}; {T052_CREATE_INFO}; INSERT INTO info VALUES ('schema_version', '1')"
+)
+TAG_COLUMNS = (
+    "root_index, ref_key, rel_path, source, project_code, category, area, phase, saved_at, saved_ts"
+)
+# Truy vấn đệ quy có giới hạn (1e8 dòng): lớp kiểm mà hỏng thì test chạy lâu rồi hỏng, không treo.
+RECURSIVE = "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 100000000)"
+# File SQLite hợp lệ mà app không bao giờ tạo (thử T11 của Lá Chắn T-052 và hơn thế).
+HOSTILE_FILES = {
+    "info-la-khung-nhin-de-quy": (
+        f"{T052_CREATE_TAGS}; CREATE VIEW info(key, value) AS {RECURSIVE} "
+        "SELECT 'schema_version', '1' FROM n"
+    ),
+    "manual_tags-la-khung-nhin-de-quy": (
+        f"CREATE VIEW manual_tags({TAG_COLUMNS}) AS {RECURSIVE} SELECT 0, 'k' || x, 'k' || x, "
+        "'that', '', '', '', '', '2026-10-20T10:00:00+07:00', x FROM n; "
+        f"{T052_CREATE_INFO}; INSERT INTO info VALUES ('schema_version', '1')"
+    ),
+    "khung-nhin-tro-bang-khong-co": (
+        f"CREATE VIEW manual_tags AS SELECT * FROM khong_co; {T052_CREATE_INFO}"
+    ),
+    "trigger-chay-truy-van-de-quy": (
+        f"{T052_FILE}; CREATE VIEW no AS {RECURSIVE} SELECT x FROM n; "
+        "CREATE TRIGGER t AFTER INSERT ON manual_tags BEGIN SELECT count(*) FROM no; END"
+    ),
+    "trigger-sua-du-lieu": (
+        f"{T052_FILE}; CREATE TRIGGER t AFTER INSERT ON manual_tags BEGIN "
+        "UPDATE manual_tags SET area = 'Quận 1' WHERE rowid = new.rowid; END"
+    ),
+    "without-rowid": (
+        f"{T052_CREATE_TAGS} WITHOUT ROWID; {T052_CREATE_INFO}; "
+        "INSERT INTO info VALUES ('schema_version', '1')"
+    ),
+    "bang-ao": (f"CREATE VIRTUAL TABLE manual_tags USING fts5({TAG_COLUMNS}); {T052_CREATE_INFO}"),
+    "co-check": T052_FILE.replace(
+        "saved_ts REAL NOT NULL,", "saved_ts REAL NOT NULL CHECK (saved_ts = saved_ts),"
+    ),
+    "cot-sinh": T052_FILE.replace(
+        "saved_ts REAL NOT NULL,",
+        "saved_ts REAL NOT NULL, them INTEGER GENERATED ALWAYS AS (root_index + 1),",
+    ),
+    "kieu-cot-khac": T052_FILE.replace("saved_ts REAL NOT NULL", "saved_ts TEXT NOT NULL"),
+    "chi-muc-them": f"{T052_FILE}; CREATE INDEX them ON manual_tags(category)",
+    "chi-muc-bieu-thuc": f"{T052_FILE}; CREATE INDEX them ON manual_tags(length(rel_path))",
+    "bang-la-kem-theo": f"{T052_FILE}; CREATE TABLE khac (x)",
+    "chi-co-bang-la": "CREATE TABLE bang_la (x)",  # SL-T052-10
+}
+
+
+def build_sqlite(path: Path, script: str) -> bytes:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with closing(sqlite3.connect(path)) as conn, conn:
+            conn.executescript(script)
+    except sqlite3.OperationalError as exc:
+        if "no such module" in str(exc):
+            pytest.skip("SQLite trên máy này không có fts5")
+        raise
+    return path.read_bytes()
+
+
+@pytest.fixture
+def small_step_limit(monkeypatch):
+    """Hạ giới hạn số bước (lớp phòng thứ hai): lớp kiểm cấu trúc mà hỏng thì test hỏng nhanh."""
+    monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", 2_000_000)
+
+
+@pytest.mark.parametrize("case", list(HOSTILE_FILES))
+def test_t070_health_check_rejects_files_the_app_never_makes(store, small_step_limit, case):
+    """LC-T052-2: ``sqlite_master`` phải khớp đúng hai bảng app tạo, kiểm trước mọi truy vấn khác;
+    file lạ được đổi tên sang một bên (giữ nguyên nội dung), app tạo file mới."""
+    hostile = build_sqlite(store.path, HOSTILE_FILES[case])
+    assert image_tags_module._is_healthy(store.path) is False
+    store.set(REF, ImageTags(area="Quận 7"))
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is not None
+    assert store.recovered_from.read_bytes() == hostile
+    assert image_tags_module._is_healthy(store.path) is True
+
+
+@pytest.mark.parametrize("case", list(HOSTILE_FILES))
+def test_t070_file_swapped_while_running_is_caught_then_replaced(store, small_step_limit, case):
+    """SL-T052-9, -10: file bị thay khi app đang chạy (sau lần dùng đầu): bắt ngay ở lần mở kế
+    tiếp, trước khi ghi (trigger không chạy); lần sau tự đổi tên file lạ và dùng lại được."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    hostile = build_sqlite(store.path, HOSTILE_FILES[case])
+    with pytest.raises(ImageTagStoreError) as info:
+        store.set(REF, ImageTags(area="Quận 8"))
+    assert "C:" not in str(info.value) and str(store.path.parent) not in str(info.value)
+    resolved = store.resolve(REF)
+    assert resolved.error == "" and not resolved.manual
+    assert store.recovered_from.read_bytes() == hostile
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
+
+
+def test_t070_missing_table_while_running_recovers_without_losing_tags(store):
+    """SL-T052-10: thiếu bảng khi app đang chạy ("no such table"): kiểm lại ở lần sau, tạo lại bảng
+    thiếu; thẻ sửa tay còn trong file không bị mất, file không bị đổi tên."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        conn.execute("DROP TABLE info")
+    store.resolve(REF)  # lần đầu báo lỗi cũng được
+    resolved = store.resolve(REF)
+    assert resolved.error == "" and resolved.manual and resolved.tags.area == "Quận 7"
+    assert store.recovered_from is None
+
+
+def test_t070_file_made_by_t052_is_still_accepted(store):
+    """File thẻ do bản T-052 tạo (cùng câu ``CREATE TABLE``) vẫn được nhận, không bị đổi tên; file
+    mới tạo dở (chỉ có bảng thẻ) cũng vậy, bảng còn thiếu được tạo thêm."""
+    build_sqlite(store.path, T052_FILE)
+    raw_insert(store.path, good_row(REF.rel_path, area="Quận 3"))
+    assert image_tags_module._is_healthy(store.path) is True
+    assert store.get(REF).tags.area == "Quận 3"
+    assert store.recovered_from is None
+
+    half = ImageTagStore(path=store.path.with_name("tao-do.sqlite"))
+    build_sqlite(half.path, T052_CREATE_TAGS)
+    raw_insert(half.path, good_row(REF.rel_path, area="Quận 4"))
+    assert image_tags_module._is_healthy(half.path) is True
+    assert half.get(REF).tags.area == "Quận 4"
+    assert half.recovered_from is None
+
+
+def test_t070_schema_is_read_before_any_other_query(store, monkeypatch):
+    """LC-T052-2: ở mọi kết nối mở file thẻ, giới hạn số bước và ``trusted_schema = OFF`` đặt
+    trước, rồi đọc ``sqlite_master``, rồi mới tới truy vấn khác."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    events: list[str] = []
+
+    class Tracing(sqlite3.Connection):
+        def execute(self, sql, *args):
+            events.append(sql)
+            return super().execute(sql, *args)
+
+        def set_progress_handler(self, handler, n):
+            events.append("progress-handler")
+            return super().set_progress_handler(handler, n)
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(
+        image_tags_module.sqlite3,
+        "connect",
+        lambda *args, **kwargs: real_connect(*args, factory=Tracing, **kwargs),
+    )
+    store._ready = False  # mở lại từ đầu: kiểm file, tạo bảng, rồi đọc
+    store.get(REF)
+    store.set(REF, ImageTags(area="Quận 8"))
+    # Mỗi kết nối bắt đầu bằng "PRAGMA trusted_schema = OFF": tách thành từng kết nối.
+    assert events[0] == "PRAGMA trusted_schema = OFF"
+    blocks: list[list[str]] = []
+    for event in events:
+        if event == "PRAGMA trusted_schema = OFF":
+            blocks.append([])
+        blocks[-1].append(event)
+    assert len(blocks) == 4  # kiểm file, tạo bảng, get, set
+    for block in blocks:
+        assert block[1] == "progress-handler", block
+    first_queries = [block[2] for block in blocks]
+    master = image_tags_module._MASTER_SQL
+    assert first_queries == [master, image_tags_module._CREATE_TABLES[0], master, master]
+
+
+def test_t070_query_running_too_long_is_stopped_not_hung(store, monkeypatch):
+    """Lớp phòng thứ hai (``set_progress_handler``): truy vấn chạy quá số bước bị dừng, báo lỗi
+    tiếng Việt; lần sau kiểm lại file (file hợp lệ thì giữ nguyên, không đổi tên)."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", 200_000)
+    with pytest.raises(ImageTagStoreError) as info, store._connect() as conn:
+        conn.execute(
+            "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n "
+            "WHERE x < 50000000) SELECT count(*) FROM n"
+        ).fetchone()
+    assert "bị lỗi" in str(info.value)
+    assert store._ready is False
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is None
+
+
+def test_t070_health_check_running_too_long_counts_as_broken(store, monkeypatch):
+    """Kiểm file mà chạy quá số bước (file lạ, quá nhiều dòng): coi là hỏng, đổi tên sang một bên
+    (giữ lại), không treo."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    raw_insert(store.path, *(good_row(f"anh-{n}.jpg") for n in range(3000)))
+    monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", 1000)
+    assert image_tags_module._is_healthy(store.path) is False
+
+
+def test_t070_step_limit_leaves_room_for_the_largest_real_file(store, monkeypatch):
+    """Giới hạn số bước không làm hỏng file thật: file đủ ``MAX_MANUAL_TAGS`` thẻ, đường dẫn dài,
+    vẫn kiểm, liệt kê (phần SQL), lưu kèm dọn thẻ cũ được với **một phần mười** giới hạn."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    long_dir = "CT012 - Cổng inox - Tân Phú/" + "Thư mục con rất dài " * 10
+    raw_insert(
+        store.path,
+        *(
+            good_row(f"{long_dir}/anh-{n:05d}.jpg", saved_ts=float(n))
+            for n in range(image_tags_module.MAX_MANUAL_TAGS)
+        ),
+    )
+    monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", image_tags_module._MAX_VM_STEPS // 10)
+    assert image_tags_module._is_healthy(store.path) is True
+    store._ready = False
+    with store._connect() as conn:
+        rows = conn.execute(
+            f"{image_tags_module._SELECT} ORDER BY saved_ts DESC, rowid DESC LIMIT ?",
+            (*image_tags_module._SELECT_LIMITS, image_tags_module.MAX_MANUAL_TAGS),
+        ).fetchall()
+    assert len(rows) == image_tags_module.MAX_MANUAL_TAGS
+    store.set(ImageRef(0, "moi.jpg"), ImageTags(area="Quận 1"))
+    assert store.recovered_from is None
+    assert store.list_manual(limit=1).items[0].ref == ImageRef(0, "moi.jpg")
+
+
+def test_t070_get_applies_ai_rule_to_the_ref_asked(store):
+    """LC-T052-3: khóa không phân biệt hoa thường, dấu hiệu ảnh AI thì có ("khoai" là củ khoai,
+    "KhoAI" là kho ảnh AI). Thẻ sửa tay lưu cho ảnh thật không được trả cho ảnh AI cùng khóa."""
+    real_ref = ImageRef(0, "CT012 - Cổng inox - Quận 7/truoc/khoai/x.png")
+    ai_ref = ImageRef(0, "CT012 - Cổng inox - Quận 7/truoc/KhoAI/x.png")
+    assert ref_key(real_ref) == ref_key(ai_ref)
+    assert not tags_for_image(real_ref).tags.is_ai
+    assert tags_for_image(ai_ref).tags.is_ai
+    manual = ImageTags(project_code="CT012", category="Cổng inox", area="Quận 7", phase="truoc")
+    store.set(real_ref, manual)
+    expected_ai = ImageTags(source=SOURCE_AI, category="Cổng inox")
+    assert store.get(real_ref).tags == manual
+    assert store.get(ai_ref).tags == expected_ai
+    many = store.get_many([real_ref, ai_ref])
+    assert many[real_ref].tags == manual and many[ai_ref].tags == expected_ai
+    assert many[ai_ref].ref == ai_ref
+    assert store.resolve(ai_ref).tags == expected_ai
+    assert store.resolve(real_ref).tags == manual
 
 
 def test_old_manual_tags_are_pruned(tmp_path):
