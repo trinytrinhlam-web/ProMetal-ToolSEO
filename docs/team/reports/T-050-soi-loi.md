@@ -151,7 +151,13 @@ $ uv run pytest            (tại c3910e0, chạy song song với các script th
 7588 passed, 11 skipped, 27 xfailed, 1 warning in 1227.08s (0:20:27)
 
 $ uv run pytest            (tại c43a321, có test lượt 2)
-(đang chạy khi commit bản nháp báo cáo; kết quả ghi ở commit sau)
+7660 passed, 11 skipped, 42 xfailed, 1 warning in 783.03s (0:13:03)
+(= 7.588 + 72 test mới; 42 xfail = 27 của phiếu khác + 15 mới; 0 hỏng, 0 lỗi. Cảnh báo là của
+ test cũ tests/test_soi_loi_t028.py (pydantic), như các lượt trước)
+
+$ uv run pytest tests/test_soi_loi_t050.py tests/test_ai_images.py      (tại c43a321)
+490 passed, 15 xfailed in 29.65s
+(= 418 cũ + 72 test mới qua; 15 xfail = SL-T050-5 (6) + SL-T050-6 (9))
 
 $ uv run pytest tests/test_soi_loi_t050.py --runxfail -k "outside_tag_table or longer_than_shape"
 15 failed  (cả 15 hỏng đúng ở "assert not accepted(data, mime)": ảnh độc được nhận)
@@ -187,7 +193,7 @@ All checks passed!
 **Khối ảnh**
 
 - **Bị từ chối đúng:** JFIF có ảnh nhỏ 1×1, `JFXX`; PNG `iCCP` tên khác `ICC Profile`, `iCCP` lặp; hồ sơ màu chứa nguyên chuỗi `Exif\0\0` ở JPEG và WebP (bộ dò chuỗi bắt).
-- **Bom giải nén, ảnh to:** `iCCP` bom 1 GB bị từ chối sau 0,03 giây (giải nén dừng ở 5 MB); hồ sơ giải nén đúng 5 MB qua, 5 MB + 1 byte bị từ chối; `IDAT` bom 1 GB không bị giải nén (0,00 giây). Đo 2 ảnh × 5 MB (máy đang chạy bộ test toàn phần song song nên số thật nhỏ hơn), trường hợp chậm nhất: dữ liệu nén toàn byte `FF FF…` 7,7 giây; `FF 00` 3,1 giây; mã RST 3,7 giây; khoảng 1,3 triệu khối DHT rỗng mỗi ảnh 4,3 giây; khoảng 480 nghìn lượt quét mỗi ảnh 2,5 giây; khoảng 290 nghìn khối JFIF mỗi ảnh 1,6 giây. Không treo, không tràn đệ quy; bản gửi AI thật chỉ vài trăm KB. Test: `test_png_iccp_decompression_bomb_is_rejected` (bom 64 MB).
+- **Bom giải nén, ảnh to:** `iCCP` bom 1 GB bị từ chối sau 0,03 giây (giải nén dừng ở 5 MB); hồ sơ giải nén đúng 5 MB qua, 5 MB + 1 byte bị từ chối; `IDAT` bom 1 GB không bị giải nén (0,00 giây). Đo một lần gửi 2 ảnh × 5 MB (đúng mức tổng tối đa 10 MB), máy rảnh, trường hợp chậm nhất: dữ liệu nén toàn byte `FF FF…` 5,0 giây; `FF 00` 2,0 giây; mã RST 2,3 giây; khoảng 1,3 triệu khối DHT rỗng mỗi ảnh 3,2 giây; khoảng 480 nghìn lượt quét mỗi ảnh 1,9 giây; khoảng 290 nghìn khối JFIF mỗi ảnh 1,2 giây. Không treo, không tràn đệ quy; bản gửi AI thật chỉ vài trăm KB. Test: `test_png_iccp_decompression_bomb_is_rejected` (bom 64 MB).
 - **Ảnh sạch thật không bị chặn nhầm:** Pillow 12.3.0 (bản trong `uv.lock`, giống `main`): ma trận 965 ảnh (5 cỡ từ 1×1 tới 1024×768, 8 chế độ màu, 17 kiểu lưu JPEG gồm progressive, optimize, restart marker, `qtables`, subsampling, ICC, dpi, `keep_rgb`; 8 kiểu PNG; 9 kiểu WebP) → 0 ảnh bị từ chối. 22 kiểu chưa có trong test của Thợ Máy đưa vào `test_more_clean_pillow_images_pass` (ảnh có nhiễu để dữ liệu nén có đủ loại byte).
 - **Ảnh HEIC qua pillow-heif 1.8.1** (libheif 1.23.6): HEIC có EXIF + GPS, XMP, hồ sơ màu (và loại không có ICC, chỉ `nclx`), mở bằng Pillow, thu nhỏ, lưu JPEG/PNG/WebP chỉ kèm `icc_profile` → qua; lưu mặc định với `info` của HEIC → qua (Pillow 12.3 không tự chép `exif`/`xmp` sang 3 định dạng này); lỡ kèm `exif=` → từ chối "còn thông tin kèm theo". Test: `test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy` (3).
 - **Ghi nhận cho T-049** (Pillow 12.3): lưu lại một JPEG gốc có chú thích (COM) thành JPEG mà **không** truyền `comment` thì Pillow vẫn tự chép chú thích (lớp kiểm từ chối, đúng); lưu PNG thì Pillow tự chép hồ sơ màu từ `im.info`. T-049 nên xóa `info` của ảnh trước khi lưu bản gửi AI và chỉ truyền đúng thứ cần. Test: `test_pillow_resaved_jpeg_with_comment_is_rejected_if_comment_is_copied` (đúng với mọi bản Pillow: còn chú thích thì phải bị từ chối).
@@ -205,7 +211,7 @@ All checks passed!
 ### Rủi ro và điểm cần chú ý
 
 1. Lớp kiểm này chỉ là **lớp cuối**: dữ liệu giấu trong phần ảnh nén (JPEG, `IDAT`, `VP8L`, `ALPH`) và trong bảng giải mã không thể thấy nếu không giải mã. T-049 vẫn phải dựng bản gửi AI lại từ điểm ảnh, và xóa `info` (chú thích JPEG, hồ sơ màu PNG được Pillow tự chép) trước khi lưu.
-2. Số đo thời gian ở trên lấy khi máy đang chạy bộ test toàn phần, chỉ để thấy "không treo"; không viết test đo tốc độ (dễ đỏ oan, xem T-025).
+2. Số đo thời gian ở trên chỉ để thấy "không treo" (ảnh dựng cố ý, chậm nhất 5 giây cho 10 MB); không viết test đo tốc độ (dễ đỏ oan, xem T-025).
 3. Các điểm "Rủi ro" lượt 1 không thuộc 4 mã lỗi (số 1, 2, 3, 5, 7, 8) chưa đổi; Thợ Máy đã ghi chưa làm.
 
 ### Kết luận
