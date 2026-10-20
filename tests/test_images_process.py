@@ -793,6 +793,23 @@ def test_toa_do_nam_tay_am():
     assert web.gps == process.GpsCoordinates(latitude=-16.0554417, longitude=-108.2022)
 
 
+def test_khoi_gps_khong_co_toa_do_thi_bo_khong_bao_hong():
+    # Máy tắt định vị có thể chỉ ghi phiên bản GPS: không có vị trí để giữ, không báo "hỏng".
+    exif = _exif_day_du(gps=False)
+    exif.get_ifd(ExifTags.IFD.GPSInfo)[0] = b"\x02\x02\x00\x00"
+    web = process.make_web_image(_jpeg_voi_exif_tho(exif.tobytes()))
+    assert web.gps is None and web.notice == ""
+    assert _gps_doc_lai(web.data) == {}
+
+
+def test_toa_do_ngoai_pham_vi_thi_bo_va_bao():
+    exif = _exif_day_du()
+    exif.get_ifd(ExifTags.IFD.GPSInfo)[2] = (R(95, 1), R(0, 1), R(0, 1))  # vĩ độ 95°
+    web = process.make_web_image(_jpeg_voi_exif_tho(exif.tobytes()))
+    assert web.gps is None and web.notice == process._NOTICE_GPS_BROKEN
+    assert _gps_doc_lai(web.data) == {}
+
+
 def test_che_do_mau_va_ho_so_mau():
     icc = _icc_srgb()
     # RGB có hồ sơ màu RGB: ảnh web giữ hồ sơ (màu không lệch), bản AI thì không.

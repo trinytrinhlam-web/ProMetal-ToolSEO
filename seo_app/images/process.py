@@ -315,6 +315,12 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSHPositioningError: "rational",
 }
 _GPS_LOCATION_TAGS = (ExifTags.GPS.GPSLatitude, ExifTags.GPS.GPSLongitude)
+_GPS_COORDINATE_TAGS = (
+    ExifTags.GPS.GPSLatitudeRef,
+    ExifTags.GPS.GPSLatitude,
+    ExifTags.GPS.GPSLongitudeRef,
+    ExifTags.GPS.GPSLongitude,
+)
 
 
 def _is_rational(value: object) -> bool:
@@ -448,11 +454,12 @@ class _KeptExif:
             )
         except _EXIF_ERRORS:
             return cls({}, {}, {}, notice=_NOTICE_EXIF_UNREADABLE)
-        had_gps = bool(gps_ifd) or ExifTags.IFD.GPSInfo in exif
-        if not all(tag in kept.gps for tag in _GPS_LOCATION_TAGS):
-            # Không có đủ vĩ độ và kinh độ đúng kiểu thì không có "vị trí" nào để giữ: bỏ hết
-            # phần GPS còn lại cho gọn (ngày giờ GPS đứng một mình không có ích).
-            kept = cls(kept.base, kept.exif, {}, notice=_NOTICE_GPS_BROKEN if had_gps else "")
+        if _coordinates(kept.gps) is None:
+            # Không có vĩ độ và kinh độ đúng kiểu, đúng phạm vi thì không có "vị trí" nào để giữ:
+            # bỏ hết phần GPS còn lại (giờ GPS đứng một mình không có ích). Chỉ báo người dùng khi
+            # ảnh gốc có ghi tọa độ (máy tắt định vị có thể chỉ ghi phiên bản GPS).
+            had_location = any(tag in gps_ifd for tag in _GPS_COORDINATE_TAGS)
+            kept = cls(kept.base, kept.exif, {}, notice=_NOTICE_GPS_BROKEN if had_location else "")
         return kept
 
     @property
