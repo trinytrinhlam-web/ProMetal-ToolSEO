@@ -23,8 +23,8 @@ An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T0
   được đếm (``FolderTags.unmatched``), nên không thể đi vào prompt AI, tên file, tiêu đề, chú
   thích. ``ImageTags`` tự kiểm lại điều này mỗi lần được tạo (kể cả từ cache, từ ô nhập).
 - Trước khi so: bỏ ký tự vô hình/định dạng (Unicode Cf: U+200B, U+200F, U+061C, U+FEFF,
-  U+FFF9–FFFB, khối thẻ U+E0000–E007F…), ký tự điều khiển (Cc), surrogate lẻ (Cs), vùng riêng
-  (Co), ký tự chưa gán (Cn); ngắt dòng/đoạn (Zl, Zp) thành dấu cách; rồi chuẩn hóa NFKC.
+  U+FFF9–FFFB, khối thẻ U+E0000–E007F…), ngắt dòng/đoạn (Zl, Zp: U+2028, U+2029), ký tự điều
+  khiển (Cc), surrogate lẻ (Cs), vùng riêng (Co), ký tự chưa gán (Cn); rồi chuẩn hóa NFKC.
 - Chỉ đọc phần đường dẫn **bên dưới** thư mục ảnh đã khai báo: đầu vào là ``ImageRef`` của T-048
   (số thứ tự gốc + đường dẫn tương đối) hoặc đường dẫn tương đối đã qua đúng lớp kiểm của T-048.
   Không nhận đường dẫn tuyệt đối, nên tên ổ đĩa, ``Users/…``, ``My Drive/…`` và tên chính thư
@@ -278,10 +278,11 @@ _CATEGORY_ALIASES = {"Xingfa": ("Xing Fa",), "mô tơ": ("motor", "mô-tơ")}
 
 # ----- làm sạch và tách chữ ------------------------------------------------------------------
 
-# Bỏ hẳn: điều khiển (Cc), định dạng/vô hình (Cf), surrogate lẻ (Cs), vùng riêng (Co), chưa gán
-# (Cn). Ngắt dòng, ngắt đoạn (Zl, Zp) và khoảng trắng thành dấu cách.
-_DROP_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn"})
-_SPACE_CATEGORIES = frozenset({"Zl", "Zp", "Zs"})
+# Bỏ hẳn (điều kiện Lá Chắn T-048 LC-T048-4a): điều khiển (Cc), định dạng/vô hình (Cf),
+# surrogate lẻ (Cs), vùng riêng (Co), chưa gán (Cn), ngắt dòng (Zl), ngắt đoạn (Zp). Bỏ chứ không
+# thay bằng dấu cách, nên chèn ký tự vô hình vào giữa chữ không đổi được kết quả. Các kiểu dấu
+# cách khác (Zs: dấu cách không ngắt, dấu cách toàn chiều rộng…) thành dấu cách thường.
+_DROP_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"})
 # Nối trong một phần (không tách phần): gạch nối liền chữ, gạch dưới, dấu chấm, nháy.
 _JOINERS = frozenset("-_.'’")
 # Các kiểu gạch nối ngắn (NFKC không đổi hết về "-"): coi như "-". Gạch dài – — tách phần.
@@ -307,11 +308,8 @@ def clean_folder_name(value: object) -> str:
 def _strip_hidden(text: str) -> str:
     out = []
     for ch in text:
-        category = unicodedata.category(ch)
-        if ch.isspace() or category in _SPACE_CATEGORIES:
-            out.append(" ")
-        elif category not in _DROP_CATEGORIES:
-            out.append(ch)
+        if unicodedata.category(ch) not in _DROP_CATEGORIES:
+            out.append(" " if ch.isspace() else ch)
     return "".join(out)
 
 
