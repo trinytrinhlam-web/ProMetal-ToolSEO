@@ -131,7 +131,7 @@ uvx pip-audit                       # lỗ hổng đã biết trong thư viện 
 uvx bandit -r seo_app app scripts   # lỗi bảo mật phổ biến trong code Python
 uvx detect-secrets scan --all-files # tìm chuỗi giống bí mật
 git log -p | grep -inE "api[_-]?key|password|secret|token" | head   # soát nhanh lịch sử git
-uv run pytest && uv run ruff check .
+uv run pytest <test liên quan tới phiếu> && uv run ruff check .   # toàn bộ pytest do Chỉ Huy chạy khi gộp (chốt 2026-10-20)
 ```
 
 Môi trường không có mạng thì ghi rõ "chưa quét được công cụ X" trong biên bản, **không được ghi là đạt**.

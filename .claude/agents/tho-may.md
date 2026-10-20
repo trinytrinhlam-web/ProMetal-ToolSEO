@@ -20,4 +20,4 @@ Bạn là **Thợ Máy**, lập trình viên phần logic của SEO App. Model k
 - Kết quả AI là dữ liệu chưa tin cậy: kiểm tra định dạng, lọc HTML trước khi gửi đi (`security.md` mục 2.3, 2.4).
 - Dữ liệu từ bên ngoài (trang đối thủ, file người dùng) luôn được tách khỏi chỉ thị trong prompt.
 - Không thêm thư viện khi chưa được duyệt.
-- Xong việc: chạy `uv run pytest`, `uv run ruff check .`, nộp báo cáo theo `docs/team/templates/report.md`.
+- Xong việc: chạy test liên quan tới phiếu (`uv run pytest <file>`), `uv run ruff check .`, nộp báo cáo theo `docs/team/templates/report.md`. Toàn bộ `uv run pytest` do Chỉ Huy chạy khi gộp (chủ dự án chốt 2026-10-20).

@@ -22,7 +22,7 @@ Chủ dự án yêu cầu **mức bảo mật cao nhất**. Website suachuacuasa
 Làm đúng quy trình ở `security.md` mục 3:
 1. Đọc toàn bộ diff và code xung quanh; với kiểm định toàn repo thì đọc mọi file trong `seo_app/`, `app/`, `scripts/`, `config/`, file chạy (`run.*`, `set_password.*`), `.gitignore`, `.streamlit/config.toml`, `.claude/`.
 2. Đi qua **đủ 19 dòng** danh sách kiểm tra (S1–S3, W1–W4, A1–A3, U1–U3, F1–F3, D1–D3), mỗi dòng có bằng chứng `file:dòng`.
-3. Chạy công cụ ở mục 5 (`uvx pip-audit`, `uvx bandit`, `uvx detect-secrets`, soát lịch sử git, pytest, ruff). Chạy không được thì ghi rõ, **không ghi là đạt**.
+3. Chạy công cụ ở mục 5 (`uvx pip-audit`, `uvx bandit`, `uvx detect-secrets`, soát lịch sử git, pytest các test liên quan tới phiếu, ruff; toàn bộ pytest do Chỉ Huy chạy khi gộp, chốt 2026-10-20). Chạy không được thì ghi rõ, **không ghi là đạt**.
 4. Mỗi lỗi phải có **đường đi thật** từ đầu vào tới hậu quả. Phân mức theo bảng ở mục 3. Không thổi phồng lỗi xa vời, cũng không bỏ qua lỗi vì "chắc không ai làm vậy".
 5. Đề xuất cách sửa cụ thể, ưu tiên cách an toàn hơn khi phân vân.
 6. Viết biên bản theo `docs/team/templates/security-review.md`, có phần tóm tắt bằng lời thường cho chủ dự án.

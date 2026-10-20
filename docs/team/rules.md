@@ -25,7 +25,7 @@
 - Gặp việc thuộc agent khác: ghi vào mục "Đề xuất" của báo cáo, không tự làm.
 
 ### Trước khi nộp
-- Chạy `uv run pytest` và `uv run ruff check .`, dán kết quả vào báo cáo.
+- Chạy **test liên quan tới phiếu** (test của phiếu, test của các module bị sửa, thêm `tests/test_app_pages.py` nếu đụng `app/` hoặc lớp AI) bằng `uv run pytest <file>`, và `uv run ruff check .` trên toàn repo; dán kết quả vào báo cáo. Không cần chạy toàn bộ `uv run pytest`: Chỉ Huy chạy toàn bộ trên Windows một lần khi gộp vào `main` (chủ dự án chốt 2026-10-20).
 - Tự đọc lại diff của mình như một người soát lỗi khó tính.
 - Nộp báo cáo theo `templates/report.md` vào `docs/team/reports/T-xxx-<mã-agent>.md`.
 
@@ -68,7 +68,7 @@ Chỉ Huy gom các việc này thành câu hỏi ngắn cho chủ dự án, kèm
 Một phiếu chỉ được đánh dấu **Xong** khi đủ cả:
 
 - [ ] Đạt mọi tiêu chí xong ghi trong phiếu.
-- [ ] `uv run pytest` qua hết, `uv run ruff check .` sạch (có kết quả trong báo cáo).
+- [ ] Test liên quan qua, `uv run ruff check .` sạch (có kết quả trong báo cáo); toàn bộ `uv run pytest` qua hết trên Windows khi Chỉ Huy gộp vào `main`.
 - [ ] Soi Lỗi xác nhận (với phiếu có sửa code).
 - [ ] Lá Chắn kết luận **ĐẠT** hoặc **ĐẠT CÓ ĐIỀU KIỆN**, không còn lỗi Nghiêm trọng/Cao.
 - [ ] Tài liệu liên quan đã cập nhật (README, `.env.example` nếu có biến mới, Trạng thái trong `CLAUDE.md`).

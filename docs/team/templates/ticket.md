@@ -38,7 +38,7 @@
 ## Tiêu chí xong
 
 - [ ] <Tiêu chí kiểm tra được>
-- [ ] `uv run pytest` và `uv run ruff check .` sạch
+- [ ] Test liên quan (`uv run pytest <file>`) qua và `uv run ruff check .` sạch; toàn bộ test do Chỉ Huy chạy trên Windows khi gộp
 - [ ] Có test cho phần logic mới
 - [ ] Báo cáo nộp tại `docs/team/reports/T-xxx-<mã-agent>.md`
 

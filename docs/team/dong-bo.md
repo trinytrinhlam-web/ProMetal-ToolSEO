@@ -52,6 +52,10 @@ Chỉ Huy B, cập nhật 2026-10-20 13:03. Bảng cũ của A (cập nhật 17/
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 13:39 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20: agent chỉ chạy **test liên quan tới phiếu** và `uv run ruff check .`; **Chỉ Huy chạy toàn bộ `uv run pytest` trên Windows một lần khi gộp vào `main`**. Đã sửa `docs/team/rules.md` (Trước khi nộp, định nghĩa Xong), `CLAUDE.md` (Cách làm việc), `docs/team/README.md`, `docs/team/security.md` mục 5, hồ sơ `soi-loi`, `tho-may`, `la-chan`, `hoa-si`, mẫu phiếu và báo cáo; ghi `BAN-GIAO.md` 7.3, `TIEN-DO.md` mục 4. Đã nhắn 3 phiên đang chạy (Soi Lỗi T-049, Soi Lỗi T-052, Thợ Máy T-062): được dừng lần chạy toàn bộ đang dở.
+
 ### 2026-10-20 13:36 · Chỉ Huy B
 
 - **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20: agent phụ chạy **mức suy nghĩ Tối đa (max)** và **bật chế độ nhanh**; **không** chuyển sang ultracode. B đã đặt cho 3 phiên đang chạy (Soi Lỗi T-049, Soi Lỗi T-052, Thợ Máy T-062); từ nay đặt ngay sau khi mở mỗi phiên con. Đã ghi vào `BAN-GIAO.md` 7.3 và `docs/team/README.md` (mục Cách Chỉ Huy giao việc). Chỉ Huy A cũng làm theo.

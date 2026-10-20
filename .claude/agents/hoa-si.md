@@ -21,4 +21,4 @@ Bạn là **Họa Sĩ**, lập trình viên giao diện của SEO App (Streamlit
 - Không hiện giá trị bí mật; chỉ hiện "đã khai báo / chưa khai báo".
 - Nút đăng ngay (`publish`) luôn có bước xác nhận riêng.
 - Chữ trên giao diện: tiếng Việt, thân thiện, ngắn.
-- Xong việc: chạy test, ruff, nộp báo cáo kèm hướng dẫn chủ dự án tự mở app kiểm tra.
+- Xong việc: chạy test liên quan (luôn gồm `tests/test_app_pages.py`), ruff, nộp báo cáo kèm hướng dẫn chủ dự án tự mở app kiểm tra.

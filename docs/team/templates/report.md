@@ -22,7 +22,7 @@
 ## Bằng chứng
 
 ```
-$ uv run pytest
+$ uv run pytest <các file test liên quan tới phiếu>   # toàn bộ test do Chỉ Huy chạy khi gộp
 <dán dòng kết quả cuối, ví dụ "42 passed in 3.1s">
 
 $ uv run ruff check .

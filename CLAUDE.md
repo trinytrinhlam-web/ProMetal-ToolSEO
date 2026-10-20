@@ -105,7 +105,7 @@ Cấm: mở bài kiểu "Trong thời đại…", "Hãy cùng tìm hiểu…"; c
 
 - Mỗi phiên làm một giai đoạn hoặc một phần nhỏ của giai đoạn, kết thúc bằng một PR riêng.
 - Trước khi sửa code: trình bày kế hoạch ngắn bằng tiếng Việt.
-- Viết test cho phần logic; chạy `uv run pytest` và `uv run ruff check .` trước khi báo xong.
+- Viết test cho phần logic; chạy test liên quan tới phiếu và `uv run ruff check .` trước khi báo xong. Toàn bộ `uv run pytest` do Chỉ Huy chạy trên Windows một lần khi gộp vào `main` (chủ dự án chốt 2026-10-20).
 - Không thêm thư viện khi chưa cần; khi thêm, giải thích ngắn lý do.
 - Xong một giai đoạn: đánh dấu [x] trong Lộ trình, ghi một dòng vào mục Trạng thái, cập nhật README nếu cách dùng thay đổi.
 

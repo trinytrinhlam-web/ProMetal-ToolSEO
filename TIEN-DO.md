@@ -63,6 +63,8 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+**Anh đã trả lời ngày 20/10: agent phụ chạy mức Tối đa và chế độ nhanh (không ultracode); agent chỉ chạy test liên quan, Chỉ Huy chạy toàn bộ test khi gộp.**
+
 **Anh đã trả lời ngày 20/10: chấp nhận rủi ro hard link trong thư mục ảnh (LC-T048-6), đã ghi sổ rủi ro `docs/team/security.md` mục 6.**
 
 **Anh đã trả lời ngày 20/10: nâng lên Pillow 13 (T-058, lựa chọn A).**
