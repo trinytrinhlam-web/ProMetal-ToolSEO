@@ -9,7 +9,7 @@
 
 ## Tóm tắt (cho chủ dự án)
 
-Đã thử Pillow 13 với mọi chỗ Streamlit dùng Pillow để vẽ ảnh, với bộ nhớ tạm của Streamlit, và với đúng các bước xử lý ảnh mà phiếu T-049 sắp làm (xoay ảnh, lọc EXIF, thu nhỏ 1600 px, lưu WebP còn nguyên GPS). Không tìm thấy lỗi nào do việc nâng cấp: 60 test mới đều qua, toàn bộ bộ test và kiểm code đều sạch. Có một giới hạn cũ của Streamlit (ảnh xám 16 bit) đã có từ Pillow 12.3.0, không do phiếu này, ghi lại để T-049 tránh. Việc còn lại trước khi gộp: Lá Chắn kiểm bảo mật, Chỉ Huy mở app thật xem mọi trang.
+Đã thử Pillow 13 với mọi chỗ Streamlit dùng Pillow để vẽ ảnh, với bộ nhớ tạm của Streamlit, và với đúng các bước xử lý ảnh mà phiếu T-049 sắp làm (xoay ảnh, lọc EXIF, thu nhỏ 1600 px, lưu WebP còn nguyên GPS). Không tìm thấy lỗi nào do việc nâng cấp: 60 test mới đều qua, toàn bộ 7.232 test qua (0 hỏng) trên Windows, kiểm code sạch. Có một giới hạn cũ của Streamlit (ảnh xám 16 bit) đã có từ Pillow 12.3.0, không do phiếu này, ghi lại để T-049 tránh. Việc còn lại trước khi gộp: Lá Chắn kiểm bảo mật, Chỉ Huy mở app thật xem mọi trang.
 
 ## Đã thay đổi
 
@@ -83,7 +83,11 @@ $ grep pyproject.toml
 35: [tool.uv]
 38: override-dependencies = ["pillow>=13.0.0,<14"]
 
-<<KET_QUA_PYTEST>>
+$ uv run pytest -q -rfEs              # toàn bộ, Windows 11, tại commit 86dc99b
+7232 passed, 11 skipped, 27 xfailed, 1 warning in 699.60s (0:11:39)
+(= 7.172 của Thợ Máy + 60 test mới; 0 hỏng, 0 lỗi. 11 bỏ qua đều do Windows: quyền 600 kiểu
+Mac/Linux, tạo symlink cần quyền đặc biệt; giống hệt lần chạy của Thợ Máy. Cảnh báo duy nhất:
+Pydantic trong tests/test_soi_loi_t028.py, có từ trước, không liên quan Pillow.)
 
 $ uv run ruff check .
 All checks passed!
@@ -111,6 +115,10 @@ Không có lỗi nào do việc nâng lên Pillow 13.
 
 **SL-T058-1, cách tái hiện:** trong trang Streamlit, `st.image(Image.new("I;16", (40, 30), 3000))`.
 Mong đợi: hiện ảnh. Thực tế: trang báo lỗi `OSError`. Y hệt trên Pillow 12.3.0 (bằng chứng ở trên), nên đây là giới hạn của Streamlit, không phải do T-058. Truyền `output_format="PNG"` thì chạy (`test_st_image_anh_16_bit_phai_chon_png`). App hiện không hiển thị ảnh 16 bit; ghi lại để T-049 biết (xem Đề xuất).
+
+## Kết luận
+
+**ĐẠT**: chuyển sang Lá Chắn. Không có lỗi nào phải trả Thợ Máy sửa; SL-T058-1 có từ trước, không do T-058, không chặn. Việc mở app thật kiểm mọi trang vẫn là bước của Chỉ Huy trước khi gộp.
 
 ## Đối chiếu tiêu chí xong
 
