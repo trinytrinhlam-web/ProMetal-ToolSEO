@@ -342,7 +342,7 @@ def wp_prepend_attachment(alt_text):
     ``<img>`` có ``alt`` lấy từ ``alt_text`` qua ``esc_attr`` (không mã hóa "[", không giải mã
     "&#91;"), rồi ``do_shortcode`` chạy trên cả khối (``the_content`` ưu tiên 11)."""
     return (
-        f"<p class=\"attachment\"><a href='{UPLOADS}a.webp'><img width=\"300\" height=\"225\" "
+        f'<p class="attachment"><a href=\'{UPLOADS}a.webp\'><img width="300" height="225" '
         f'src="{UPLOADS}a-300x225.webp" alt="{alt_text}" /></a></p>\n'
     )
 
