@@ -20,22 +20,22 @@
 |---|---|
 | `seo_app/images/process.py` | Mới: mở ảnh an toàn, `make_web_image` (WebP giữ GPS), `make_ai_image` (bản gửi AI sạch), `make_preview` + `PreviewCache` (ảnh xem trước, cache trong `data/`), `jpeg_layout`/`webp_chunks` (kiểm khối của file ra) |
 | `seo_app/images/naming.py` | Mới: `image_file_name` (tên file không dấu theo thẻ hoặc alt, tối đa 60 ký tự, tránh trùng, tiền tố ảnh AI) |
-| `tests/test_images_process.py` | Mới: 61 hàm test, 107 trường hợp (ảnh giả tạo trong bộ nhớ/thư mục tạm, không mạng) |
+| `tests/test_images_process.py` | Mới: 63 hàm test, 109 trường hợp (ảnh giả tạo trong bộ nhớ/thư mục tạm, không mạng) |
 | `docs/team/reports/T-049-tho-may.md` | Báo cáo này |
 
 Không sửa `seo_app/images/__init__.py`, `folders.py`, `app/**`, `config/**`, `seo_app/ai/**`, test của phiếu khác, không thêm thư viện (`git diff --stat c1b21dc..HEAD` chỉ có 4 file trên).
 
-Commit trên `team/T-049`: `a293a1c` (naming), `9aa6596` (process lõi), `98096e7` (test + chặn WebP khai khung lớn), `d015789` (chỉnh nhỏ), và commit báo cáo này.
+Commit trên `team/T-049`: `a293a1c` (naming), `9aa6596` (process lõi), `98096e7` (test + chặn WebP khai khung lớn), `d015789` (chỉnh nhỏ), `c373c1c` (báo cáo nháp), `93d7630` (khối GPS không có tọa độ thì bỏ, không báo hỏng; tọa độ ngoài phạm vi thì bỏ và báo), và commit báo cáo này.
 
 ## Bằng chứng
 
 ```
-$ uv run pytest tests/test_images_process.py -q            (tại d015789)
-107 passed in 21.94s
+$ uv run pytest tests/test_images_process.py -q            (tại 93d7630)
+109 passed in 19.12s
 
 $ uv run pytest tests/test_images_process.py tests/test_pillow_heif_setup.py tests/test_soi_loi_t047.py \
     tests/test_soi_loi_t058.py tests/test_pillow_version_t058.py tests/test_images_folders.py -q -rs
-331 passed, 6 skipped in 65.46s
+331 passed, 6 skipped in 65.46s                             (tại 98096e7, trước 2 test GPS mới)
 (6 skip đều của test_images_folders.py: symlink/Mac-Linux, có từ trước. Test "chưa đăng ký" HEIF
  của T-047 KHÔNG bị bỏ qua: test của phiếu này trả nguyên bảng định dạng Pillow sau mỗi test.)
 
@@ -48,19 +48,19 @@ All checks passed!
 
 **Bản gửi AI qua bộ kiểm của T-050** (code `seo_app/ai/` lấy từ `origin/team/T-050` `2327c75` bằng `git archive` vào thư mục tạm, không đụng worktree `wt-T-050`): ảnh nhiễu 1600×1200 lưu dưới dạng JPEG (có EXIF + GPS + ICC + COM + XMP), PNG RGBA (EXIF + ICC), WebP (EXIF + ICC + XMP), PNG xám 16 bit, HEIC (EXIF + GPS) → `make_ai_image` và `make_preview` → `prepare_images([ImageInput(data, "image/jpeg")])`: **10/10 QUA** (bản AI ~374 KB với ảnh nhiễu, trường hợp nặng nhất; giới hạn T-050 là 5 MB).
 
-**EXIF hỏng ngẫu nhiên** (thử ngoài test, 3 × 3.000 file JPEG có EXIF bị sửa 1–8 byte hoặc cắt cụt): 9.000/9.000 xử lý xong, 0 lỗi thô lọt ra. Lần đầu có 114/3.000 ca báo "Không nén được" vì hãng/đời máy có ký tự ngoài ASCII (Pillow ghi thành `?`, lớp kiểm sau nén bắt lệch) → đã sửa: chỉ giữ chữ ASCII in được, ký tự lạ thì bỏ thẻ đó. Trong test có bản thu nhỏ (150 ca, hạt giống cố định): `test_exif_hong_ngau_nhien_khong_lam_sap`.
+**EXIF hỏng ngẫu nhiên** (thử ngoài test, 4 × 3.000 file JPEG có EXIF bị sửa 1–8 byte hoặc cắt cụt): 12.000/12.000 xử lý xong, 0 lỗi thô lọt ra (lượt cuối tại `93d7630`: 933 giữ GPS, 849 báo GPS hỏng, 1.218 không có GPS). Lần đầu có 114/3.000 ca báo "Không nén được" vì hãng/đời máy có ký tự ngoài ASCII (Pillow ghi thành `?`, lớp kiểm sau nén bắt lệch) → đã sửa: chỉ giữ chữ ASCII in được, ký tự lạ thì bỏ thẻ đó. Trong test có bản thu nhỏ (150 ca, hạt giống cố định): `test_exif_hong_ngau_nhien_khong_lam_sap`.
 
 ## Cách làm chính
 
 | Bước | Làm gì | Ở đâu |
 |---|---|---|
 | Mở ảnh | Kiểm Pillow ≥ 13 → kiểm dung lượng (≤ 40 MB, lấy từ `folders.MAX_IMAGE_BYTES`) → (WebP) đọc kích thước khung từ phần đầu file → đăng ký HEIF → `Image.open(..., formats=["JPEG","PNG","WEBP","HEIF"])` trong khối đổi `DecompressionBombWarning` thành lỗi → so `rộng × cao` với `MAX_IMAGE_PIXELS` (80 triệu) → (JPEG) `draft` → `load()` | `process.py:184-219` |
-| Đọc EXIF | `getexif()` trong khối bắt lỗi; hỏng thì coi như không có EXIF và báo người dùng | `:363-371` |
-| Lọc EXIF (2A) | **Danh sách cho phép**: IFD0 `Make`, `Model`, `DateTime`; Exif IFD `DateTimeOriginal`, `DateTimeDigitized`, `OffsetTime*`; GPS: 30 thẻ chuẩn, mỗi thẻ kiểm đúng kiểu. Mọi thẻ khác bị bỏ | `:270-318`, `:339-360`, `:429-480` |
-| Điểm ảnh | Xám 16 bit chia 256 về 8 bit; có trong suốt → RGBA (ảnh web) hoặc lót nền trắng (AI, xem trước); còn lại RGB. Xoay theo Orientation (cùng bảng với `ImageOps.exif_transpose`), `thumbnail(LANCZOS)` (chỉ thu nhỏ), rồi **`Image.frombytes`**: ảnh mới hoàn toàn, không `info` | `:497-558` |
-| Ảnh web | WebP `quality=80`, `method=6`, `exif=` EXIF dựng mới (Orientation = 1), hồ sơ màu chỉ khi là RGB hợp lệ. Mở lại: chunk chỉ `VP8X/VP8 /VP8L/ALPH/ICCP/EXIF`, đúng cỡ, **GPS đúng từng giá trị** (so phân số), EXIF còn lại đúng y danh sách giữ, không IFD1 | `:688-756` |
-| Bản AI | JPEG q85, chỉ truyền `quality`; kiểm danh sách khối (`jpeg_layout`): SOI, 1 APP0 JFIF 14 byte, DQT, DHT, DRI, 1 SOF0/1, 1 SOS, dữ liệu ảnh chỉ có `FF 00`/RST, EOI ở cuối | `:607-670`, `:760-781` |
-| Xem trước | JPEG q80 320 px, cùng lớp kiểm khối; `PreviewCache` lưu theo mã băm của (`ImageRef`, dung lượng, thời điểm sửa) trong `data/image_previews/` | `:784-905` |
+| Đọc EXIF | `getexif()` trong khối bắt lỗi; hỏng thì coi như không có EXIF và báo người dùng (`WebImage.notice`). Khối GPS không có vĩ độ, kinh độ đúng kiểu, đúng phạm vi thì bỏ cả khối; chỉ báo "GPS hỏng" khi ảnh gốc có ghi tọa độ | `:369-377`, `:443-463` |
+| Lọc EXIF (2A) | **Danh sách cho phép**: IFD0 `Make`, `Model`, `DateTime`; Exif IFD `DateTimeOriginal`, `DateTimeDigitized`, `OffsetTime*`; GPS: 30 thẻ chuẩn, mỗi thẻ kiểm đúng kiểu. Mọi thẻ khác bị bỏ | `:270-323`, `:345-366`, `:435-487` |
+| Điểm ảnh | Xám 16 bit chia 256 về 8 bit; có trong suốt → RGBA (ảnh web) hoặc lót nền trắng (AI, xem trước); còn lại RGB. Xoay theo Orientation (cùng bảng với `ImageOps.exif_transpose`), `thumbnail(LANCZOS)` (chỉ thu nhỏ), rồi **`Image.frombytes`**: ảnh mới hoàn toàn, không `info` | `:504-565` |
+| Ảnh web | WebP `quality=80`, `method=6`, `exif=` EXIF dựng mới (Orientation = 1), hồ sơ màu chỉ khi là RGB hợp lệ. Mở lại: chunk chỉ `VP8X/VP8 /VP8L/ALPH/ICCP/EXIF`, đúng cỡ, **GPS đúng từng giá trị** (so phân số), EXIF còn lại đúng y danh sách giữ, không IFD1 | `:695-763` |
+| Bản AI | JPEG q85, chỉ truyền `quality`; kiểm danh sách khối (`jpeg_layout`): SOI, 1 APP0 JFIF 14 byte, DQT, DHT, DRI, 1 SOF0/1, 1 SOS, dữ liệu ảnh chỉ có `FF 00`/RST, EOI ở cuối | `:614-677`, `:767-788` |
+| Xem trước | JPEG q80 320 px, cùng lớp kiểm khối; `PreviewCache` lưu theo mã băm của (`ImageRef`, dung lượng, thời điểm sửa) trong `data/image_previews/` | `:791-906` |
 
 ## Đối chiếu tiêu chí xong
 
@@ -70,7 +70,7 @@ All checks passed!
 - [x] YC2 xoay → Orientation = 1 → cạnh dài 1600 → WebP kèm EXIF lọc 2A (`test_xoay_dung_chieu_ca_8_huong` ×8, `test_thu_canh_dai_khong_phong_to` ×5, `test_2a_giu_ngay_hang_doi_may_bo_seri_chu_may_makernote_ifd1`: ảnh gốc có IFD1 thật, có số seri thân máy/ống kính, `CameraOwnerName`, `Artist`, `Software`, MakerNote)
 - [x] YC3 kiểm GPS **sau nén theo giá trị** (`test_f2_webp_con_gps_dung_tung_gia_tri`, `test_kiem_gps_sau_nen_bat_duoc_khi_quen_chep_exif` (giả lập quên `exif=`), `test_kiem_gps_sau_nen_so_gia_tri_khong_chi_co_the` (lệch 0,01 giây vĩ độ))
 - [x] YC4 bản AI dựng từ điểm ảnh, không APP1/COM/XMP/chunk chữ (`test_f2_ban_ai_tu_jpeg_day_du_khong_con_metadata`: gốc có EXIF + GPS + XMP + COM + APP13 + APP15 + ICC + IFD1; `test_f2_ban_ai_tu_png_co_chunk_chu`: tEXt, iTXt, zTXt, eXIf, iCCP; `test_f2_ban_ai_tu_heic_co_gps`; `test_ban_ai_bi_chan_neu_pillow_lo_chep_metadata`)
-- [x] YC5 ảnh xem trước bỏ EXIF, cache trong `.gitignore` kiểm bằng code (`_cache_dir_is_ignored` `:802-820`; `test_cache_mac_dinh_nam_trong_data_da_gitignore` chạy cả `git check-ignore`; `test_cache_trong_du_an_ngoai_data_thi_khong_ghi`; `test_cache_bi_go_khoi_gitignore_thi_khong_ghi`)
+- [x] YC5 ảnh xem trước bỏ EXIF, cache trong `.gitignore` kiểm bằng code (`_cache_dir_is_ignored` `process.py:809-827`; `test_cache_mac_dinh_nam_trong_data_da_gitignore` chạy cả `git check-ignore`; `test_cache_trong_du_an_ngoai_data_thi_khong_ghi`; `test_cache_bi_go_khoi_gitignore_thi_khong_ghi`)
 - [x] YC6 tên file không dấu theo nội dung, tránh trùng, không lấy tên thư mục (12 test `test_ten_file_*`, `test_tranh_trung_*`, `test_ham_dat_ten_khong_nhan_ten_thu_muc_hay_ten_file_goc`)
 - [x] YC7 ảnh chụp màn hình không EXIF (`test_anh_chup_man_hinh_khong_exif_van_chay`: PNG trong suốt 1920×1080 → WebP 1600×900, không chunk EXIF, giữ trong suốt)
 
@@ -88,7 +88,7 @@ All checks passed!
 - [x] Đ4 luôn `formats=["JPEG","PNG","WEBP","HEIF"]`; không thêm AVIF (lý do ở `:57-58`; `test_avif_bi_tu_choi`)
 - [x] Đ5 không còn bắt buộc trên Pillow 13 (dùng `draft`/`thumbnail`, ghi JPEG cho bản AI); vẫn chỉ khung đầu MPO (`test_mpo_chi_dung_khung_dau`: `seek` sang khung 2 là hỏng test)
 - [ ] Đ6 thay `pytest.skip` trong test "chưa đăng ký" của T-047: **không thuộc phạm vi phiếu này** (không sửa test của T-047), chuyển Soi Lỗi (Đề xuất)
-- [x] Đ7 F1: chỉ nhận byte (`test_khong_nhan_duong_dan_chi_nhan_byte`), đọc qua `ImageLibrary.read_image_bytes` (`PreviewCache.get` `:884-905`; test đếm lần gọi); EXIF giữ GPS theo 2A
+- [x] Đ7 F1: chỉ nhận byte (`test_khong_nhan_duong_dan_chi_nhan_byte`), đọc qua `ImageLibrary.read_image_bytes` (`PreviewCache.get` `process.py:891-906`; test đếm lần gọi); EXIF giữ GPS theo 2A
 
 **Điều kiện Lá Chắn T-048**: [x] kiểm nội dung bằng `formats=…`, không tin đuôi (nhận byte, không có đuôi nào); [x] cache trong `.gitignore` (YC5); [x] đọc qua `read_image_bytes`; khóa cache lấy `ImageRef` của kết quả quét (ghi trong docstring `PreviewCache`).
 
