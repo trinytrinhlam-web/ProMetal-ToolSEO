@@ -79,7 +79,7 @@ Không đổi: `pyproject.toml`, `uv.lock`, `.gitignore`, `.env.example`, `.stre
 | ruff | `uv run ruff check .`: **All checks passed!** `ruff format --check` 4 file Python của diff: đã đúng định dạng | Có |
 | pytest (toàn bộ) | Nhánh tại `5993812` (code giống `882dc18`): `uv run pytest -q -p no:cacheprovider` → **5875 passed, 17 skipped, 38 xfailed, 1 warning in 717.47s**, 0 hỏng, 0 lỗi. 17 bỏ qua = 6 của T-048 (bên dưới) + 11 có từ trước; 38 xfail = 35 có từ trước + 3 của Soi Lỗi (R2-1 ×2, R2-2). Cảnh báo duy nhất là Pydantic trong `test_soi_loi_t028.py`, có từ trước | Có |
 | pytest (T-048) | `uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py -rsx` → **251 passed, 6 skipped, 3 xfailed in 16.98s**. 6 bỏ qua đúng lý do: 4 symlink (Windows này không cho tạo, lỗi 1314), tên lạ và FIFO (chỉ tạo được trên Mac/Linux). **Mọi test Windows đều chạy thật**: junction, junction tới cả ổ đĩa, `\\localhost\C$`, tên 8.3, đặt junction tại chỗ bằng `FSCTL_SET_REPARSE_POINT`, giữ handle. 3 xfail hỏng đúng lý do R2-1, R2-2 | Có |
-| pytest (bản gộp) | Cây gộp thử `origin/main` + `team/T-048` (`ff133e4`, giải nén ra thư mục tạm bằng `git archive`, không đụng repo): test T-048 **251 passed, 6 skipped, 3 xfailed**; `ruff check .` sạch. Toàn bộ test trên bản gộp: xem mục "Ghi chú cho Chỉ Huy khi gộp" | Có |
+| pytest (bản gộp) | Cây gộp thử `origin/main` + `team/T-048` (`ff133e4`, giải nén ra thư mục tạm bằng `git archive`, không đụng repo): test T-048 **251 passed, 6 skipped, 3 xfailed**; toàn bộ **7421 passed, 17 skipped, 30 xfailed**, 0 hỏng; `ruff check .` sạch | Có |
 
 ## Danh sách kiểm tra
 
@@ -141,4 +141,6 @@ Gộp được ngay. Các việc sau phải có phiếu (Chỉ Huy lập):
   - `origin/main` + `team/T-048`: **sạch**, không xung đột (cây `ff133e4`).
   - `team/T-048` + `team/T-050`: **sạch**; bản gộp lấy đúng docstring của T-048 (blob `04c33dd`), đúng như bảng việc đã chốt. Lý do: git gộp "cùng thêm một file" mà một bên rỗng thì lấy bên có nội dung. Thứ tự gộp nào cũng ra cùng kết quả.
   - Docstring T-048 ghi "chỉ phiếu T-048 tạo nó" là chưa đúng hẳn (T-050 cũng tạo), không ảnh hưởng bảo mật.
-- `main` đã đi xa gốc chung `5e38bb8` (49 file, có `uv.lock` của T-058). Code T-048 chỉ dùng thư viện chuẩn (`ctypes`, `msvcrt`, `os`, `stat`, `unicodedata`), không phụ thuộc phần `main` mới đổi.
+- `main` đã đi xa gốc chung `5e38bb8` (49 file, có `uv.lock` của T-047). Code T-048 chỉ dùng thư viện chuẩn (`ctypes`, `msvcrt`, `os`, `stat`, `unicodedata`), không phụ thuộc phần `main` mới đổi.
+- **Chạy thử bản gộp** `origin/main` (`4e6681b`) + `team/T-048` (cây `ff133e4`, giải nén bằng `git archive` vào thư mục tạm, không đụng repo hay worktree khác): toàn bộ test **7421 passed, 17 skipped, 30 xfailed, 1 warning in 690.10s**, 0 hỏng; `ruff check .` sạch; pip-audit sạch. Sau khi gộp thật, Chỉ Huy vẫn chạy lại `uv run pytest` trên `main` như thường lệ.
+- Không thấy rủi ro bảo mật khi gộp.
