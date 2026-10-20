@@ -14,6 +14,7 @@ Không gọi mạng: provider giả.
 """
 
 import io
+import unicodedata
 
 import pytest
 from PIL import Image
@@ -337,3 +338,174 @@ def test_project_examples_for_ai_images_already_have_prefix():
         if example.image.startswith("Ảnh AI"):
             raw = AltSuggestion(alt=example.good, caption="")
             assert clean_suggestion(raw, ai_generated=True).alt == example.good
+
+
+# ------------------------------------------- T-068: dọn lỗi Thấp SL-T062-1 → 3 (Soi Lỗi T-062)
+
+
+@pytest.mark.parametrize("ai_generated", [False, True])
+@pytest.mark.parametrize(
+    "alt", ["???", "!!!", "…?!", "🔥🔥", "«»", "“ ” ( ) [ ]", "- – —", "́", "​?​"]
+)
+def test_alt_without_any_letter_or_digit_is_refused(alt, ai_generated):
+    # SL-T062-1: alt chỉ có dấu câu, biểu tượng thì không mô tả gì, như alt rỗng.
+    with pytest.raises(AIError) as info:
+        clean_suggestion(AltSuggestion(alt=alt, caption="Ray dưới"), ai_generated=ai_generated)
+    assert str(info.value) == alt_module.EMPTY_ALT_MESSAGE
+
+
+@pytest.mark.parametrize("alt", ["2 cánh", "Cửa số 1", "LED", "x"])
+def test_alt_with_a_letter_or_digit_is_kept(alt):
+    assert clean_suggestion(AltSuggestion(alt=alt, caption="")).alt == alt
+
+
+def test_alt_cut_down_to_punctuation_only_is_refused():
+    # Cắt theo ranh giới từ có thể chỉ còn phần dấu câu ở đầu: vẫn là alt vô nghĩa.
+    raw = AltSuggestion(alt="?????????? cửacuốnnhàphốmởmộtnửa", caption="")
+    for ai_generated, limit in [(False, 20), (True, 29)]:
+        with pytest.raises(AIError, match="không viết được alt"):
+            clean_suggestion(raw, ai_generated=ai_generated, max_chars=limit)
+
+
+@pytest.mark.parametrize("caption", ["???", "🔥", "«»", "- …"])
+def test_caption_without_any_letter_is_left_empty(caption):
+    # Chú thích được phép trống: chú thích vô nghĩa coi như trống, không báo lỗi.
+    raw = AltSuggestion(alt="Cửa cuốn", caption=caption)
+    assert clean_suggestion(raw).caption == ""
+    assert clean_suggestion(raw, ai_generated=True).caption == AI_CAPTION_PREFIX
+
+
+@pytest.mark.parametrize(
+    "caption", ["Ảnh minh họa (AI): ???", "«Ảnh minh họa (AI)» 🔥", "Minh họa!!!", "(Minh họa)"]
+)
+def test_ai_caption_with_only_prefix_and_symbols_is_just_the_prefix(caption):
+    raw = AltSuggestion(alt="Cửa cuốn", caption=caption)
+    assert clean_suggestion(raw, ai_generated=True).caption == AI_CAPTION_PREFIX
+
+
+# SL-T062-2: tiền tố AI tự viết trong ngoặc hay dính dấu câu lạ được bỏ, rồi ghi đúng một tiền tố.
+QUOTED_ALTS = [
+    "«Minh họa» cửa cuốn",
+    "“Minh họa” cửa cuốn",
+    '"Minh họa" cửa cuốn',
+    "'Minh họa' cửa cuốn",
+    "‹Minh họa› cửa cuốn",
+    "(Minh họa) cửa cuốn",
+    "**Minh họa**: cửa cuốn",
+    "« Minh họa »: cửa cuốn",
+    "«Minh họa:» cửa cuốn",
+    "“Hình ảnh minh hoạ (AI)” – cửa cuốn",
+    "Minh họa! Cửa cuốn",
+    "Minh họa? cửa cuốn",
+    "Minh họa… cửa cuốn",
+    "Minh họa | cửa cuốn",
+    "Minh họa · cửa cuốn",
+    "Minh họa «Minh họa» cửa cuốn",
+    "Minh họa: Minh họa: cửa cuốn",
+    "Ảnh minh họa (AI): «Ảnh minh họa (AI)» cửa cuốn",
+    "«Minh họa cửa cuốn»",
+    "“Minh họa: cửa cuốn”",
+    '"Minh họa cửa cuốn"',
+]
+
+
+@pytest.mark.parametrize("alt", QUOTED_ALTS)
+def test_ai_prefix_in_quotes_or_with_odd_punctuation_is_written_once(alt):
+    result = clean_suggestion(AltSuggestion(alt=alt, caption=alt), ai_generated=True)
+    assert result.alt == "Minh họa cửa cuốn"
+    assert result.caption == "Ảnh minh họa (AI): cửa cuốn"
+    assert clean_suggestion(result, ai_generated=True) == result  # chạy lại không đổi
+
+
+@pytest.mark.parametrize(
+    ("alt", "expected"),
+    [
+        # Ngoặc của phần thân giữ nguyên, không bị coi là ngoặc của tiền tố.
+        ("Minh họa «cửa cuốn» nhà phố", "Minh họa «cửa cuốn» nhà phố"),
+        ("«Cửa cuốn» nhà phố", "Minh họa «Cửa cuốn» nhà phố"),
+        ('«Minh họa "cửa cuốn"»', 'Minh họa "cửa cuốn"'),
+        ('"Minh họa cửa "cuốn"', 'Minh họa cửa "cuốn"'),
+        ("«Minh họa» «cửa cuốn»", "Minh họa «cửa cuốn»"),
+        ("(2 cánh) cửa cuốn", "Minh họa (2 cánh) cửa cuốn"),
+        # «minh họa» nằm giữa câu không phải tiền tố.
+        ("Cửa cuốn minh họa cách lắp", "Minh họa cửa cuốn minh họa cách lắp"),
+    ],
+)
+def test_quotes_that_are_not_around_the_prefix_are_kept(alt, expected):
+    result = clean_suggestion(AltSuggestion(alt=alt, caption=""), ai_generated=True)
+    assert result.alt == expected
+
+
+def test_real_photo_alt_keeps_quotes_and_words():
+    # Ảnh thật: code không bỏ gì ở đầu alt (không có tiền tố ảnh AI để bỏ).
+    raw = AltSuggestion(alt="«Minh họa» cửa cuốn", caption="“Ảnh minh họa (AI)” ray")
+    assert clean_suggestion(raw) == raw
+
+
+# SL-T062-3: bỏ tiền tố AI tự viết trên chữ còn nguyên, cắt phần thân, rồi mới ghép tiền tố.
+@pytest.mark.parametrize(
+    ("alt", "limit", "expected"),
+    [
+        ("Hình ảnh minh họa cửa kéo sắt", 20, "Minh họa cửa kéo sắt"),
+        ("«Ảnh minh họa (AI)»: cửa kéo sắt", 20, "Minh họa cửa kéo sắt"),
+        ("Minh họa «Minh họa» cửa kéo sắt", 20, "Minh họa cửa kéo sắt"),
+        ("Ảnh minh họa (AI): cửa kéo sắt sơn xanh đang đóng", 30, "Minh họa cửa kéo sắt sơn xanh"),
+    ],
+)
+def test_ai_prefix_is_removed_before_cutting_alt(alt, limit, expected):
+    raw = AltSuggestion(alt=alt, caption="")
+    assert len(alt) > limit  # chữ AI viết dài quá giới hạn, alt đúng thì vừa
+    result = clean_suggestion(raw, ai_generated=True, max_chars=limit)
+    assert result.alt == expected and len(result.alt) <= limit
+
+
+def test_ai_prefix_is_removed_before_cutting_caption():
+    raw = AltSuggestion(alt="Cửa cuốn", caption="Hình ảnh minh họa (AI): Ray bị mòn")
+    assert len(raw.caption) > 29
+    result = clean_suggestion(raw, ai_generated=True, caption_max_chars=29)
+    assert result.caption == "Ảnh minh họa (AI): ray bị mòn"
+
+
+def test_final_period_does_not_cost_the_last_word():
+    # Bỏ chấm cuối trước khi cắt: câu vừa đúng giới hạn không mất chữ cuối vì dấu chấm.
+    raw = AltSuggestion(alt="Cổng sắt hai cánh đỏ.", caption="")
+    assert clean_suggestion(raw, max_chars=20).alt == "Cổng sắt hai cánh đỏ"
+
+
+def test_suggest_alt_with_project_rules_keeps_whole_body_after_ai_written_prefix():
+    # Mặc định 125: AI viết 130 ký tự, có tiền tố tự viết dài; alt đúng (dưới 125) giữ đủ chữ.
+    body = (
+        "cửa cuốn nhà phố đang mở một nửa trong buổi chiều có nắng nhẹ chiếu lên mặt lá cửa "
+        "màu xám ở góc nhìn từ vỉa hè"
+    )
+    raw = AltSuggestion(alt=f"«Ảnh minh họa (AI)»: {body}.", caption="")
+    assert len(raw.alt) > 125 >= len(f"{AI_ALT_PREFIX} {body}")
+    result = suggest_alt(Router(Returns(raw)), _jpeg(), ai_generated=True, rules=load_alt_rules())
+    assert result.alt == f"{AI_ALT_PREFIX} {body}"
+
+
+ODD_INPUTS = [
+    *QUOTED_ALTS,
+    "«Minh họa» " + "cửa cuốn rất dài " * 20,
+    "Ảnh minh họa (AI): «Ảnh minh họa (AI)» " + "ray dưới " * 30,
+    "**Minh họa**!!! … cửa",
+    "«««Minh họa»»» cửa",
+    "Minh họa «Minh họa» cửa",
+]
+
+
+@pytest.mark.parametrize("limit", [20, 29, 125])
+@pytest.mark.parametrize("text", ODD_INPUTS)
+def test_c6_prefix_written_exactly_once_whatever_ai_writes(text, limit):
+    # C6 (Lá Chắn T-051): ảnh AI luôn có đúng một tiền tố chuẩn, trong giới hạn, một dòng, NFC.
+    raw = AltSuggestion(alt=text, caption=text)
+    result = clean_suggestion(raw, ai_generated=True, max_chars=limit, caption_max_chars=limit)
+    assert result.alt.startswith(f"{AI_ALT_PREFIX} ") and len(result.alt) <= limit
+    assert result.caption.startswith(AI_CAPTION_PREFIX) and len(result.caption) <= limit
+    assert result.alt.lower().count("minh họa") == 1
+    assert result.caption.lower().count("minh họa") == 1
+    assert any(ch.isalnum() for ch in result.alt.removeprefix(AI_ALT_PREFIX))
+    assert unicodedata.is_normalized("NFC", result.alt + result.caption)
+    assert "\n" not in result.alt + result.caption and not result.alt.endswith(".")
+    again = clean_suggestion(result, ai_generated=True, max_chars=limit, caption_max_chars=limit)
+    assert again == result
