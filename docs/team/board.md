@@ -27,7 +27,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). Giao khi có chỗ, **ưu tiên số 1** |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). **Thợ Máy đang làm** (worktree `wt-T-058`) |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
@@ -45,7 +45,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
-| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | GĐ4: ghi meta SEO (SiteSEO) lên bài nháp | Thợ Máy | T-037 (chủ dự án đã trả lời 1A, 2A ngày 16/10; thử thật cần anh bật Abilities và tạo tài khoản Biên tập viên) |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |
 
@@ -61,6 +60,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-042](tickets/T-042-ghi-meta-seo-len-nhap.md) | Ghi meta SEO (SiteSEO) lên bài nháp (GĐ4) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-042-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-042-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-042-la-chan.md) (Opus tạm); lỗi Thấp → T-060, T-061; giao diện → T-041; thử thật → T-059. Gộp vào `main` `81381c5`: Windows 7.170 qua, 0 hỏng |
 | [T-047](tickets/T-047-khai-bao-pillow-va-pillow-heif.md) | Khai báo Pillow 12.3.0, pillow-heif 1.8.1 (GĐ3) | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-047-tho-may.md) · [Soi Lỗi](reports/T-047-soi-loi.md) rút gọn: đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-047-la-chan.md) (Opus tạm): Pillow 12.3.0 có 53 khuyến cáo mới, vá ở 13 → T-058; điều kiện mở ảnh ghi vào T-049. Gộp vào `main` `d350aec`: Windows 5.810 qua, 0 hỏng |
 | [T-045](tickets/T-045-loc-ho-so-theo-doi-sau-t043.md) | Bộ lọc hồ sơ: 3 lỗi Thấp sau T-043 | Thợ Máy | 2026-10-19 | [Thợ Máy](reports/T-045-tho-may.md) · [Soi Lỗi](reports/T-045-soi-loi.md): đạt (fuzz 300.000 tài liệu, 0 dòng có nhãn tới AI) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-045-la-chan.md) (Opus tạm); SL-T045-1/2 → T-057. Gộp vào `main` `cc3099f`: Windows 5.791 qua, 0 hỏng |
 | [T-044](tickets/T-044-ten-site-tu-wordpress-hien-an-toan.md) | Chữ lấy từ WordPress và tên mô hình hiện an toàn | Họa Sĩ | 2026-10-19 | [Họa Sĩ](reports/T-044-hoa-si.md) (2 lượt) · [Soi Lỗi](reports/T-044-soi-loi.md) rút gọn: đạt có điều kiện (SL-T044-1/2 đã sửa) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-044-la-chan.md) (Opus tạm); LC-T044-1 → T-042. Gộp vào `main` `cb9cd47`: Windows 5.624 qua, 0 hỏng |

@@ -51,6 +51,12 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 07:43 · Chỉ Huy A
+
+- Gộp T-042 vào `main` (`81381c5`): Windows 7.170 qua, 0 hỏng. Đã đẩy lên, xóa nhánh `team/T-042`.
+- T-048 lượt 2 Thợ Máy xong (`69d6b6c`, 5.846 qua): chờ Soi Lỗi kiểm lại ở chỗ trống kế tiếp (sau T-058).
+- Giao **T-058** (Thợ Máy, nâng Pillow 13), worktree `wt-T-058`.
+
 ### 2026-10-20 07:31 · Chỉ Huy A
 
 - Chỉ Huy B không có commit nào. Phiên trước của A kết thúc khi T-048 lượt 2, T-050, T-051 đang chạy: đã gọi tiếp cả ba. Lần chạy test sau khi gộp T-042 bị ngắt: đang chạy lại, `main` trên máy A có bản gộp T-042 **chưa đẩy** tới khi test đạt.
