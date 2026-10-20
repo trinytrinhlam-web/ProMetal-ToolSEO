@@ -581,7 +581,7 @@ _WEBP_ALLOWED_CHUNKS = frozenset({b"VP8 ", b"VP8L", b"VP8X", b"ALPH", b"ICCP", b
 # Khối JPEG được phép trong ảnh do app tạo: bảng lượng tử, bảng mã, khung ảnh, khoảng khởi động
 # lại. Ngoài ra chỉ có đúng một khối APP0 "JFIF" (không ảnh nhỏ) trước các khối này.
 _JPEG_TABLE_MARKERS = frozenset({0xDB, 0xC4, 0xDD})
-_JPEG_FRAME_MARKERS = frozenset({0xC0, 0xC1, 0xC2})
+_JPEG_FRAME_MARKERS = frozenset({0xC0, 0xC1})  # baseline; app không ghi JPEG progressive
 
 
 def webp_chunks(data: bytes) -> list[bytes]:
@@ -607,7 +607,7 @@ def webp_chunks(data: bytes) -> list[bytes]:
 def jpeg_layout(data: bytes) -> tuple[int, int]:
     """Kiểm file JPEG chỉ có các khối trong danh sách cho phép, trả (rộng, cao).
 
-    Cho phép: SOI, đúng một APP0 ``JFIF`` 14 byte, DQT, DHT, DRI, đúng một SOF0/1/2, đúng một
+    Cho phép: SOI, đúng một APP0 ``JFIF`` 14 byte, DQT, DHT, DRI, đúng một SOF0/SOF1, đúng một
     SOS, dữ liệu ảnh (chỉ có byte đệm ``FF 00`` và mã RST), rồi EOI ở cuối file. Mọi thứ khác
     (APP1 EXIF/XMP, APP2 ICC, APP13, COM, dữ liệu sau EOI…) thì báo lỗi.
     """
@@ -882,7 +882,11 @@ class PreviewCache:
             pass  # cache chỉ để nhanh hơn: ghi không được thì thôi
 
     def get(self, library: ImageLibrary, ref: ImageRef) -> bytes:
-        """Ảnh xem trước (JPEG do app tạo) của một ảnh trong thư mục ảnh."""
+        """Ảnh xem trước (JPEG do app tạo) của một ảnh trong thư mục ảnh.
+
+        Lỗi: ``ImageFolderError`` (ảnh không đọc được từ thư mục) hoặc ``ImageProcessError``
+        (nội dung không phải ảnh dùng được); cả hai đều là câu tiếng Việt hiện thẳng được.
+        """
         entry = library.stat_image(ref)
         path = self._dir / f"{self._key(ref, entry.size, entry.modified)}.jpg"
         if self.enabled:
