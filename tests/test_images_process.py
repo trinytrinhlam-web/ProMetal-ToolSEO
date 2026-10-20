@@ -12,8 +12,11 @@ import re
 import shutil
 import struct
 import subprocess
+import threading
+import time
 import warnings
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
 
@@ -483,6 +486,18 @@ def test_kiem_dung_luong_truoc_khi_mo(monkeypatch):
     assert goi == []
 
 
+def test_kiem_dung_luong_memoryview_dem_theo_byte(monkeypatch):
+    # N4 (Lá Chắn T-049): memoryview có phần tử 4 byte, ``len`` chỉ đếm 1/4 số byte.
+    monkeypatch.setattr(process, "MAX_IMAGE_BYTES", 1000)
+    lon = memoryview(b"\xff\xd8" + b"\x00" * 1998).cast("I")
+    assert len(lon) == 500 and lon.nbytes == 2000
+    assert _loi(process.make_preview, lon).startswith("Ảnh quá lớn")
+    assert _loi(process.make_preview, memoryview(b"")) == process._MSG_EMPTY
+    monkeypatch.undo()
+    png = _luu(_anh_bon_mau((64, 48)), "PNG")
+    assert process.jpeg_layout(process.make_preview(memoryview(png))) == (64, 48)
+
+
 @pytest.mark.parametrize("sai", ["anh.jpg", Path("anh.jpg"), None, 123])
 def test_khong_nhan_duong_dan_chi_nhan_byte(sai):
     # Byte ảnh phải lấy qua ImageLibrary.read_image_bytes; module không tự mở đường dẫn.
@@ -555,6 +570,82 @@ def test_canh_bao_bom_giai_nen_cua_pillow_thanh_loi(monkeypatch, dinh_dang):
         bo_loc = list(warnings.filters)
         assert "quá nhiều điểm ảnh" in _loi(process.make_ai_image, data)
         assert list(warnings.filters) == bo_loc  # không để lại bộ lọc cảnh báo
+
+
+def _dang_loc_bom():
+    """Bộ lọc "DecompressionBombWarning thành lỗi" đang có trong bộ lọc cảnh báo chung."""
+    return any(
+        action == "error" and category is Image.DecompressionBombWarning
+        for action, _message, category, _module, _line in warnings.filters
+    )
+
+
+def test_nhieu_luong_mo_anh_cung_luc_bo_loc_canh_bao_giu_nguyen(monkeypatch):
+    # LC-T049-3: nhiều phiên Streamlit (mỗi phiên một luồng) mở ảnh cùng lúc. Khóa giữ mỗi lúc
+    # chỉ một luồng trong khối đổi bộ lọc, nên bộ lọc chung không bị để lại hay gỡ mất.
+    data = _luu(_anh_bon_mau((64, 48)), "PNG")
+    mo_that = Image.open
+    dem = threading.Lock()
+    dang_mo = []
+    cung_luc = []
+    co_loc = []
+
+    def mo_cham(*args, **kwargs):
+        with dem:
+            dang_mo.append(1)
+            cung_luc.append(len(dang_mo))
+            co_loc.append(_dang_loc_bom())
+        time.sleep(0.01)  # không có khóa thì các luồng khác kịp chen vào khối
+        try:
+            return mo_that(*args, **kwargs)
+        finally:
+            with dem:
+                dang_mo.pop()
+
+    monkeypatch.setattr(Image, "open", mo_cham)
+    with warnings.catch_warnings():  # có lỗi thật thì bộ lọc thừa không lan sang test khác
+        truoc = list(warnings.filters)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            ket_qua = list(pool.map(lambda _: process.make_preview(data), range(32)))
+        sau = list(warnings.filters)
+    assert sau == truoc
+    assert len(cung_luc) == 32 and max(cung_luc) == 1
+    assert all(co_loc)
+    assert all(process.jpeg_layout(anh) == (64, 48) for anh in ket_qua)
+    assert not process._WARNINGS_LOCK.locked()
+
+
+@pytest.mark.parametrize("dinh_dang", ["JPEG", "PNG", "WEBP", "HEIF"])
+def test_pillow_chi_kiem_bom_trong_khoa_va_bo_loc(monkeypatch, dinh_dang):
+    # Khóa chỉ bọc ``Image.open``: Pillow không được kiểm "bom" ở chỗ khác (``load``, ``draft``,
+    # thu nhỏ…), nếu không thì cảnh báo ở đó không thành lỗi (Lá Chắn T-047 điều kiện 2).
+    data = _heic((800, 600)) if dinh_dang == "HEIF" else _luu(_anh_bon_mau((800, 600)), dinh_dang)
+    kiem_that = Image._decompression_bomb_check
+    lan_kiem = []
+
+    def kiem_gian_diep(*args, **kwargs):
+        lan_kiem.append((process._WARNINGS_LOCK.locked(), _dang_loc_bom()))
+        return kiem_that(*args, **kwargs)
+
+    monkeypatch.setattr(Image, "_decompression_bomb_check", kiem_gian_diep)
+    process.make_web_image(data, max_edge_px=200)  # có cả lần mở lại WebP để kiểm sau nén
+    process.make_ai_image(data, max_edge_px=200)
+    process.make_preview(data)
+    assert len(lan_kiem) >= 4
+    assert set(lan_kiem) == {(True, True)}
+    assert not process._WARNINGS_LOCK.locked() and not _dang_loc_bom()
+
+
+def test_khoa_mo_anh_duoc_tra_khi_loi(monkeypatch):
+    bo_loc = list(warnings.filters)
+    for data in (b"khong phai anh", b"\x89PNG\r\n\x1a\n" + b"\x00" * 40):
+        assert _loi(process.make_preview, data) in {process._MSG_NOT_IMAGE, process._MSG_BROKEN}
+        assert not process._WARNINGS_LOCK.locked()
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+    monkeypatch.setattr(process, "MAX_IMAGE_PIXELS", 10**9)
+    assert "quá nhiều điểm ảnh" in _loi(process.make_preview, _luu(_anh_bon_mau((40, 30)), "PNG"))
+    assert not process._WARNINGS_LOCK.locked()
+    assert list(warnings.filters) == bo_loc
 
 
 def test_khong_doi_gioi_han_chung_cua_pillow():
@@ -810,6 +901,97 @@ def test_toa_do_ngoai_pham_vi_thi_bo_va_bao():
     web = process.make_web_image(_jpeg_voi_exif_tho(exif.tobytes()))
     assert web.gps is None and web.notice == process._NOTICE_GPS_BROKEN
     assert _gps_doc_lai(web.data) == {}
+
+
+def _exif_nam_tay_duoi_mat_bien():
+    """Ảnh chụp ở bán cầu Nam/Tây, dưới mặt biển; có thêm vĩ độ đích và tốc độ (đủ loại thẻ Ref)."""
+    exif = _exif_day_du()
+    gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
+    gps[1], gps[3], gps[5] = "S", "W", b"\x01"
+    gps[12], gps[13] = "K", R(0, 1)
+    gps[19], gps[20] = "S", GPS_LAT
+    return exif
+
+
+def _altitude_ref_kieu_short(exif_bytes):
+    """GPSAltitudeRef ghi kiểu SHORT thay vì BYTE (sai chuẩn EXIF; Pillow luôn ghi đúng kiểu)."""
+    byte = struct.pack(">HHI", ExifTags.GPS.GPSAltitudeRef, 1, 1) + b"\x01\x00\x00\x00"
+    short = struct.pack(">HHI", ExifTags.GPS.GPSAltitudeRef, 3, 1) + b"\x00\x01\x00\x00"
+    assert exif_bytes.count(byte) == 1
+    return exif_bytes.replace(byte, short)
+
+
+def test_the_ref_gps_dung_khuon_giu_nguyen_ban_cau_va_do_cao():
+    data = _jpeg_voi_exif_tho(_exif_nam_tay_duoi_mat_bien().tobytes())
+    web = process.make_web_image(data)
+    assert web.notice == ""
+    assert web.gps == process.GpsCoordinates(latitude=-16.0554417, longitude=-108.2022)
+    goc = _gps_doc_lai(data)
+    assert _gps_doc_lai(web.data) == {k: v for k, v in goc.items() if k != 27}
+    assert (goc[1], goc[3], goc[5], goc[12], goc[19]) == ("S", "W", b"\x01", "K", "S")
+
+
+@pytest.mark.parametrize(
+    ("the", "gia_tri", "doc_lai"),
+    [
+        (ExifTags.GPS.GPSLatitudeRef, "s", "s"),
+        (ExifTags.GPS.GPSLongitudeRef, "w", "w"),
+        (ExifTags.GPS.GPSLatitudeRef, "n", "n"),
+        (ExifTags.GPS.GPSLongitudeRef, "EW", "EW"),
+        (ExifTags.GPS.GPSAltitudeRef, b"\x02", b"\x02"),
+        (ExifTags.GPS.GPSAltitudeRef, "SHORT", 1),
+        (ExifTags.GPS.GPSSpeedRef, "k", "k"),
+        (ExifTags.GPS.GPSDestLatitudeRef, "s", "s"),
+    ],
+)
+def test_the_ref_gps_sai_khuon_thi_bo_ca_khoi_gps_va_bao(the, gia_tri, doc_lai):
+    # LC-T049-1: thẻ Ref sai khuôn không bị bỏ lặng lẽ (tọa độ còn lại sẽ bị hiểu là Bắc/Đông,
+    # trên mặt biển); cũng không đoán lại (có thể sai). Bỏ cả khối GPS, báo người dùng.
+    exif = _exif_nam_tay_duoi_mat_bien()
+    if gia_tri == "SHORT":
+        data = _jpeg_voi_exif_tho(_altitude_ref_kieu_short(exif.tobytes()))
+    else:
+        exif.get_ifd(ExifTags.IFD.GPSInfo)[the] = gia_tri
+        data = _jpeg_voi_exif_tho(exif.tobytes())
+    assert _gps_doc_lai(data)[the] == doc_lai  # ảnh gốc mang đúng thẻ sai khuôn
+    web = process.make_web_image(data)
+    assert web.gps is None and not web.has_gps
+    assert web.notice == process._NOTICE_GPS_BROKEN
+    assert _gps_doc_lai(web.data) == {}
+    exif_ra = _mo(web.data).getexif()
+    assert exif_ra[ExifTags.Base.Make] == "Apple"  # phần còn lại vẫn giữ
+    assert ExifTags.IFD.GPSInfo not in exif_ra
+
+
+@pytest.mark.parametrize(
+    ("the", "gia_tri", "giu"),
+    [
+        (ExifTags.GPS.GPSMapDatum, "WGS-84", True),
+        (ExifTags.GPS.GPSMapDatum, "WGS 84", True),
+        (ExifTags.GPS.GPSMapDatum, "TOKYO", True),
+        (ExifTags.GPS.GPSMapDatum, "Nha anh Tuan 12 Le Loi", False),  # quá 16 ký tự
+        (ExifTags.GPS.GPSMapDatum, "12 Le Loi, Q1", False),
+        (ExifTags.GPS.GPSSatellites, "05", True),
+        (ExifTags.GPS.GPSSatellites, "04,07,12", True),
+        (ExifTags.GPS.GPSSatellites, "Nha anh Tuan", False),
+        (ExifTags.GPS.GPSSatellites, "0903 123 456", False),
+    ],
+)
+def test_the_gps_chu_chi_nhan_dang_may_that_ghi(the, gia_tri, giu):
+    # N1 (Lá Chắn T-049): GPSMapDatum, GPSSatellites không chở được chữ tự do. Thẻ sai dạng thì
+    # chỉ bỏ thẻ đó, vị trí vẫn giữ, không báo "GPS hỏng".
+    exif = _exif_day_du()
+    exif.get_ifd(ExifTags.IFD.GPSInfo)[the] = gia_tri
+    data = _jpeg_voi_exif_tho(exif.tobytes())
+    assert _gps_doc_lai(data)[the] == gia_tri
+    web = process.make_web_image(data)
+    assert web.gps is not None and web.notice == ""
+    ra = _gps_doc_lai(web.data)
+    if giu:
+        assert ra[the] == gia_tri
+    else:
+        assert the not in ra
+    assert ra[2] == GPS_MONG_DOI[2] and ra[4] == GPS_MONG_DOI[4]
 
 
 def test_che_do_mau_va_ho_so_mau():
@@ -1135,6 +1317,23 @@ def test_cache_ghi_doc_lai_va_tao_lai_khi_anh_doi(tmp_path, monkeypatch):
     lan3 = cache.get(library, ref)
     assert lan3 != lan1 and len(doc) == 2
     assert process.jpeg_layout(lan3) == (320, 213)
+
+
+def test_cache_co_san_van_tu_choi_khi_pillow_duoi_13(tmp_path, monkeypatch):
+    # LC-T049-2: kiểm Pillow ngay đầu ``PreviewCache.get``, trước khi trả ảnh có sẵn trong cache.
+    library, ref, _path = _thu_vien(tmp_path)
+    cache = process.PreviewCache(tmp_path / "cache")
+    dung = cache.get(library, ref)
+    (file,) = (tmp_path / "cache").iterdir()
+    goi = []
+    monkeypatch.setattr(ImageLibrary, "stat_image", lambda *a: goi.append(1))
+    monkeypatch.setattr(ImageLibrary, "read_image_bytes", lambda *a: goi.append(2))
+    monkeypatch.setattr(PIL, "__version__", "12.3.0")
+    assert _loi(cache.get, library, ref) == process._MSG_OLD_PILLOW
+    assert goi == []  # không đụng thư mục ảnh, không đọc cache
+    assert file.read_bytes() == dung
+    monkeypatch.undo()  # Pillow 13 trở lại: lấy lại đúng ảnh trong cache
+    assert cache.get(library, ref) == dung
 
 
 @pytest.mark.parametrize("hong", ["rac", "jpeg_co_exif", "qua_lon"])

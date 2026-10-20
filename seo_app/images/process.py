@@ -39,6 +39,7 @@ import os
 import re
 import struct
 import tempfile
+import threading
 import warnings
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -77,6 +78,11 @@ MAX_ICC_BYTES = 1024 * 1024  # hồ sơ màu lớn hơn thì bỏ (hồ sơ củ
 PREVIEW_CACHE_DIR = PROJECT_ROOT / "data" / "image_previews"
 _PREVIEW_CACHE_VERSION = 1  # đổi cách làm ảnh xem trước thì tăng số này để bỏ cache cũ
 _MAX_CACHED_PREVIEW_BYTES = 2 * 1024 * 1024
+
+# LC-T049-3: ``warnings.catch_warnings`` sửa bộ lọc cảnh báo của cả chương trình rồi trả lại bản
+# đã lưu khi ra khối, nên không an toàn khi nhiều luồng (Python 3.12; Streamlit chạy mỗi phiên
+# một luồng): luồng ra sau trả lại bộ lọc của luồng kia. Khóa giữ mỗi lúc chỉ một luồng trong khối.
+_WARNINGS_LOCK = threading.Lock()
 
 _MSG_OLD_PILLOW = (
     "Thư viện ảnh Pillow đang là bản cũ (dưới 13) nên app không xử lý ảnh để tránh lỗ hổng đã "
@@ -147,7 +153,8 @@ def _too_many_pixels(pixels: int | None = None) -> ImageProcessError:
 def _check_source_size(data: object) -> bytes:
     if not isinstance(data, bytes | bytearray | memoryview):
         raise ImageProcessError(_MSG_NOT_IMAGE)
-    size = len(data)
+    # N4 (Lá Chắn T-049): ``len`` của ``memoryview`` đếm phần tử, không đếm byte.
+    size = data.nbytes if isinstance(data, memoryview) else len(data)
     if size == 0:
         raise ImageProcessError(_MSG_EMPTY)
     if size > MAX_IMAGE_BYTES:
@@ -181,6 +188,18 @@ def _webp_canvas_pixels(data: bytes) -> int | None:
     return width * height
 
 
+def _pillow_open(data: bytes, formats: tuple[str, ...]) -> Image.Image:
+    """``Image.open`` với ``DecompressionBombWarning`` thành lỗi (Lá Chắn T-047 điều kiện 2).
+
+    Khóa ``_WARNINGS_LOCK`` bọc cả khối đổi bộ lọc cảnh báo (LC-T049-3). Với 4 định dạng được mở,
+    Pillow chỉ kiểm "bom giải nén" trong ``Image.open`` (``load`` không kiểm), nên khóa chỉ bọc lời
+    gọi này: phần giải mã ảnh của các phiên khác nhau vẫn chạy song song.
+    """
+    with _WARNINGS_LOCK, warnings.catch_warnings():
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        return Image.open(io.BytesIO(data), formats=list(formats))
+
+
 def _open(
     data: object, formats: tuple[str, ...] = ALLOWED_FORMATS, draft_edge: int | None = None
 ) -> Image.Image:
@@ -192,21 +211,19 @@ def _open(
         raise _too_many_pixels(canvas)
     _register_heif()
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            image = Image.open(io.BytesIO(data), formats=list(formats))
-            try:
-                pixels = image.width * image.height
-                if pixels > MAX_IMAGE_PIXELS:
-                    raise _too_many_pixels(pixels)
-                if draft_edge and image.format in ("JPEG", "MPO"):
-                    # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần
-                    # (vẫn không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.
-                    image.draft(None, (draft_edge, draft_edge))
-                image.load()
-            except BaseException:
-                image.close()
-                raise
+        image = _pillow_open(data, formats)
+        try:
+            pixels = image.width * image.height
+            if pixels > MAX_IMAGE_PIXELS:
+                raise _too_many_pixels(pixels)
+            if draft_edge and image.format in ("JPEG", "MPO"):
+                # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần (vẫn
+                # không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.
+                image.draft(None, (draft_edge, draft_edge))
+            image.load()
+        except BaseException:
+            image.close()
+            raise
     except ImageProcessError:
         raise
     except (Image.DecompressionBombError, Image.DecompressionBombWarning):
@@ -263,6 +280,10 @@ _POINTER_TAGS = frozenset({ExifTags.IFD.Exif, ExifTags.IFD.GPSInfo, ExifTags.IFD
 _DATE_TIME = re.compile(r"\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}")
 _UTC_OFFSET = re.compile(r"[+-]\d{2}:\d{2}")
 _GPS_DATE = re.compile(r"\d{4}:\d{2}:\d{2}")
+# N1 (Lá Chắn T-049): hai thẻ chữ còn giữ của GPS chỉ nhận đúng dạng máy thật ghi ("WGS-84", "05"),
+# không chở được chữ tự do (địa chỉ viết tay…).
+_GPS_MAP_DATUM = re.compile(r"[A-Za-z0-9 -]{1,16}")
+_GPS_SATELLITES = re.compile(r"[0-9,]{1,64}")
 _MAX_TEXT_CHARS = 64
 
 # Quyết định 2A: giữ hãng, đời máy, ngày chụp. Danh sách cho phép: thẻ nào không có ở đây thì bỏ
@@ -291,7 +312,7 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSAltitudeRef: "byte01",
     ExifTags.GPS.GPSAltitude: "rational",
     ExifTags.GPS.GPSTimeStamp: "rational3",
-    ExifTags.GPS.GPSSatellites: "text",
+    ExifTags.GPS.GPSSatellites: "satellites",
     ExifTags.GPS.GPSStatus: "AV",
     ExifTags.GPS.GPSMeasureMode: "23",
     ExifTags.GPS.GPSDOP: "rational",
@@ -301,7 +322,7 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSTrack: "rational",
     ExifTags.GPS.GPSImgDirectionRef: "TM",
     ExifTags.GPS.GPSImgDirection: "rational",
-    ExifTags.GPS.GPSMapDatum: "text",
+    ExifTags.GPS.GPSMapDatum: "datum",
     ExifTags.GPS.GPSDestLatitudeRef: "NS",
     ExifTags.GPS.GPSDestLatitude: "rational3",
     ExifTags.GPS.GPSDestLongitudeRef: "EW",
@@ -314,6 +335,20 @@ _GPS_KEEP = {
     ExifTags.GPS.GPSDifferential: "short01",
     ExifTags.GPS.GPSHPositioningError: "rational",
 }
+# Thẻ "Ref" cho biết nghĩa của thẻ đi kèm: bán cầu, trên hay dưới mặt biển, đơn vị, hướng thật hay
+# hướng từ. Thiếu thẻ Ref thì trình đọc ảnh hiểu theo mặc định (Bắc, Đông, trên mặt biển, km/h…).
+_GPS_REF_TAGS = (
+    ExifTags.GPS.GPSLatitudeRef,
+    ExifTags.GPS.GPSLongitudeRef,
+    ExifTags.GPS.GPSAltitudeRef,
+    ExifTags.GPS.GPSSpeedRef,
+    ExifTags.GPS.GPSTrackRef,
+    ExifTags.GPS.GPSImgDirectionRef,
+    ExifTags.GPS.GPSDestLatitudeRef,
+    ExifTags.GPS.GPSDestLongitudeRef,
+    ExifTags.GPS.GPSDestBearingRef,
+    ExifTags.GPS.GPSDestDistanceRef,
+)
 _GPS_LOCATION_TAGS = (ExifTags.GPS.GPSLatitude, ExifTags.GPS.GPSLongitude)
 _GPS_COORDINATE_TAGS = (
     ExifTags.GPS.GPSLatitudeRef,
@@ -352,6 +387,10 @@ def _valid(kind: str, value: object) -> bool:
         return isinstance(value, str) and _UTC_OFFSET.fullmatch(value) is not None
     if kind == "gpsdate":
         return isinstance(value, str) and _GPS_DATE.fullmatch(value) is not None
+    if kind == "datum":
+        return isinstance(value, str) and _GPS_MAP_DATUM.fullmatch(value) is not None
+    if kind == "satellites":
+        return isinstance(value, str) and _GPS_SATELLITES.fullmatch(value) is not None
     if kind == "rational":
         return _is_rational(value)
     if kind == "rational3":
@@ -454,6 +493,12 @@ class _KeptExif:
             )
         except _EXIF_ERRORS:
             return cls({}, {}, {}, notice=_NOTICE_EXIF_UNREADABLE)
+        if any(tag in gps_ifd and tag not in kept.gps for tag in _GPS_REF_TAGS):
+            # LC-T049-1: ảnh gốc có thẻ Ref mà sai khuôn (``"s"``, ``"w"`` chữ thường;
+            # GPSAltitudeRef sai kiểu…). Bỏ riêng thẻ đó thì giá trị đi kèm bị hiểu theo mặc định
+            # (Nam thành Bắc, dưới mặt biển thành trên), mà đoán lại thì có thể sai: coi cả khối
+            # GPS hỏng, không đăng tọa độ có thể sai, và báo người dùng.
+            return cls(kept.base, kept.exif, {}, notice=_NOTICE_GPS_BROKEN)
         if _coordinates(kept.gps) is None:
             # Không có vĩ độ và kinh độ đúng kiểu, đúng phạm vi thì không có "vị trí" nào để giữ:
             # bỏ hết phần GPS còn lại (giờ GPS đứng một mình không có ích). Chỉ báo người dùng khi
@@ -894,6 +939,9 @@ class PreviewCache:
         Lỗi: ``ImageFolderError`` (ảnh không đọc được từ thư mục) hoặc ``ImageProcessError``
         (nội dung không phải ảnh dùng được); cả hai đều là câu tiếng Việt hiện thẳng được.
         """
+        # LC-T049-2: kiểm trước cả khi trả ảnh có sẵn trong cache (byte trả về vào ``st.image``,
+        # được Pillow của máy giải mã).
+        _require_pillow_13()
         entry = library.stat_image(ref)
         path = self._dir / f"{self._key(ref, entry.size, entry.modified)}.jpg"
         if self.enabled:

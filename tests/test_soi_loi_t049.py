@@ -372,11 +372,7 @@ def test_anh_dang_web_co_gps_khong_bao_gio_qua_bo_kiem_gui_ai():
         prepare_images([ImageInput(data=web.data, mime=web.mime)])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-1: GPSLatitudeRef/GPSLongitudeRef sai khuôn (chữ thường 's', 'w') bị bỏ "
-    "lặng lẽ, tọa độ còn lại bị hiểu là Bắc/Đông (đổi bán cầu), không báo người dùng",
-)
+# SL-T049-1 (GPSLatitudeRef/GPSLongitudeRef chữ thường bị bỏ lặng lẽ, đổi bán cầu): sửa ở T-067.
 def test_gps_ref_sai_khuon_khong_lang_le_doi_ban_cau():
     data = _nguon("JPEG", _exif_gps("s", "w").tobytes())
     assert _gps(data)[1] == "s"  # ảnh gốc ghi Nam/Tây bằng chữ thường (sai chuẩn EXIF)
@@ -719,11 +715,7 @@ def test_pillow_duoi_13_khong_cache_thi_tu_choi(tmp_path, monkeypatch):
     assert not (tmp_path / "cache").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-2: PreviewCache.get trả ảnh xem trước có sẵn trong cache mà không kiểm "
-    "Pillow >= 13 (LC-T058-3: module ảnh từ chối khi Pillow < 13)",
-)
+# SL-T049-2 (PreviewCache.get trả ảnh có sẵn trong cache mà không kiểm Pillow >= 13): sửa ở T-067.
 def test_pillow_duoi_13_co_cache_cung_tu_choi(tmp_path, monkeypatch):
     library, refs = _thu_vien(tmp_path, {"a.jpg": _luu(_anh_bon_mau((200, 150)), "JPEG")})
     cache = process.PreviewCache(tmp_path / "cache")
@@ -732,11 +724,8 @@ def test_pillow_duoi_13_co_cache_cung_tu_choi(tmp_path, monkeypatch):
     assert _loi(cache.get, library, refs["a.jpg"]) == process._MSG_OLD_PILLOW
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-3: warnings.catch_warnings không an toàn nhiều luồng; hai phiên Streamlit "
-    "mở ảnh cùng lúc để lại bộ lọc 'DecompressionBombWarning thành lỗi' cho cả chương trình",
-)
+# SL-T049-3 (catch_warnings không an toàn nhiều luồng): sửa ở T-067 bằng khóa của module. Luồng A
+# chờ B vào khối tới hết 10 giây (có khóa thì B không vào được), nên test này chạy khoảng 10 giây.
 def test_hai_luong_mo_anh_cung_luc_khong_de_lai_bo_loc_canh_bao(monkeypatch):
     png = _luu(Image.new("RGB", (20, 20)), "PNG")
     a_vao, b_vao, a_ra = threading.Event(), threading.Event(), threading.Event()
