@@ -51,6 +51,11 @@ Chỉ Huy A, cập nhật 2026-10-17 07:32. Agent chạy dưới phiên A, mỗi
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 07:46 · Chỉ Huy A
+
+- T-050 Thợ Máy xong (`f5f8b63`): giao Soi Lỗi. T-051 Ngòi Bút xong (`fc39367`): `[tasks.image]` để tắt vì bật lên làm trang Soạn bài đòi khóa Gemini; lập **T-062** (Thợ Máy) cho phần đọc cấu hình. T-051 chờ Soi Lỗi rút gọn, Lá Chắn rút gọn. Số phiếu tiếp theo: **T-063**.
+- Sửa ví dụ tên thư mục thẻ ảnh (quận Hải Châu là của Đà Nẵng) thành `Tân Phú` trong `CLAUDE.md`, `BAN-GIAO.md`.
+
 ### 2026-10-20 07:43 · Chỉ Huy A
 
 - Gộp T-042 vào `main` (`81381c5`): Windows 7.170 qua, 0 hỏng. Đã đẩy lên, xóa nhánh `team/T-042`.
@@ -99,7 +104,7 @@ _Mục mới nhất ở trên cùng._
 
 ### 2026-10-19 08:10 · Chỉ Huy A
 
-- **Quyết định chủ dự án:** Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Hải Châu/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4. Lập phiếu code Giai đoạn 3 từ T-047.
+- **Quyết định chủ dự án:** Chủ dự án trả lời 5 câu Giai đoạn 3 ngày 2026-10-19 (báo cáo `docs/team/reports/T-046-tho-may.md` mục 8): **1A** thêm thư viện `pillow-heif` để đọc ảnh HEIC của iPhone (Lá Chắn quét lỗ hổng trước khi dùng); **2A** EXIF giữ GPS, ngày chụp, hãng và đời máy, bỏ số seri máy, tên chủ máy, khối dữ liệu riêng của hãng; **3A** thẻ ảnh đặt theo tên thư mục trong Drive (ví dụ `CT012 - Cổng inox - Tân Phú/truoc`), app không ghi gì vào Drive, thẻ sửa tay chỉ nhớ trên máy đang dùng; **4A** viết alt bằng Claude Sonnet, tạo ảnh bằng Gemini (mô hình ghi trong `config/ai.toml`, đổi được); **5A** ảnh trong bài dùng file đầy đủ 1600 px để GPS tới người xem và Google (không để WordPress tự chọn cỡ nhỏ). Đã ghi vào `CLAUDE.md` (Quyết định đã chốt), `BAN-GIAO.md` 7.4, `TIEN-DO.md` mục 4. Lập phiếu code Giai đoạn 3 từ T-047.
 
 ### 2026-10-19 07:30 · Chỉ Huy A
 
