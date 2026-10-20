@@ -90,19 +90,24 @@ Tên file ảnh (T-049, `naming.image_file_name`): truyền `category=tags.categ
 Máy Windows 11, Python 3.12.15, worktree `wt-T-052`, nhánh `team/T-052`.
 
 ```
-$ uv run pytest -q -p no:cacheprovider          (toàn bộ, <<PYTEST_TIME>>)
-<<PYTEST_RESULT>>
+$ uv run pytest -q -p no:cacheprovider        (toàn bộ, tại 5db1f60, 2026-10-20 12:34–12:45 +07)
+7753 passed, 19 skipped, 35 xfailed, 1 warning in 658.95s (0:10:58)
 
-$ uv run pytest tests/test_images_tags.py -q -p no:cacheprovider -rs
-<<T052_RESULT>>
+$ uv run pytest -q -p no:cacheprovider        (lượt trước, tại e902e38)
+7752 passed, 18 skipped, 35 xfailed, 1 warning in 755.75s (0:12:35)
+
+$ uv run pytest tests/test_images_tags.py -q -p no:cacheprovider
+234 passed, 2 skipped in 15.32s
 
 $ uv run ruff check .
 All checks passed!
 ```
 
+Không test nào hỏng ở cả hai lượt. Cảnh báo duy nhất là của test cũ `test_soi_loi_t028.py` (pydantic), không liên quan phiếu này. Lượt cuối hơn lượt trước 1 test qua (`test_store_checks_values_again_before_writing`) và 1 test bỏ qua (test nối `alt.py`, xem dưới).
+
 Hai test bỏ qua trong `tests/test_images_tags.py`:
 - `test_symlink_at_file_path_is_replaced_without_touching_target`: Windows chưa bật Developer Mode nên không tạo được symlink. Ca tương đương bằng junction (`test_junction_at_file_path_is_removed_without_touching_target`) **đã chạy và qua**.
-- `test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text`: cần `seo_app/images/alt.py` (T-050), có trên `main` từ `c1aa0ce` nhưng chưa có trên nhánh này (tạo từ `c00b2e1`). Sau khi gộp, test tự chạy. <<MAIN_CHECK>>
+- `test_tags_pass_alt_filter_unchanged_and_carry_no_folder_text`: cần `seo_app/images/alt.py` (T-050), có trên `main` từ `c1aa0ce` nhưng chưa có trên nhánh này (tạo từ `c00b2e1`). Sau khi gộp, test tự chạy. Đã thử trước: dựng `origin/main` (`b0fba1e`, có T-050) bằng `git archive` trong thư mục tạm, chép 3 file của phiếu này vào, `uv sync`, rồi `uv run pytest tests/test_images_tags.py tests/test_ai_images.py tests/test_soi_loi_t050.py tests/test_images_folders.py`: **868 passed, 7 skipped, 15 xfailed**; test nối `alt.py` **qua** (`-k alt_filter`: 1 passed). 7 bỏ qua đều là ca symlink trên Windows.
 
 Kiểm thêm (ngoài test, thư mục tạm):
 - Chép đúng phần lọc thẻ của `alt.py` trên `main` (`_CONTROL_CHARS` … `reference_lines`), cho chạy trên **15.775 tổ hợp**: mọi khu vực × trước/sau, và cả 15.640 hạng mục ghép được từ từ điển. **0 thẻ bị bộ lọc của T-050 bỏ**: chữ thẻ chỉ gồm chữ Latin, số, dấu cách, `.`, `–`.
