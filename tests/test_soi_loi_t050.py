@@ -11,11 +11,14 @@ Lỗi tìm thấy được đánh dấu ``xfail(strict=True)`` kèm mã ``SL-T05
 import base64
 import io
 import json
+import random
 import struct
 import unicodedata
+import zlib
 
 import httpx
 import httpx2
+import pillow_heif
 import pytest
 from PIL import Image, ImageCms
 
@@ -43,6 +46,7 @@ from seo_app.images.alt import (
 from tests.fake_ai import FakeProvider
 from tests.test_ai_images import (
     ANTHROPIC_KEY,
+    ICC,
     IDAT,
     IEND,
     IHDR,
@@ -55,6 +59,7 @@ from tests.test_ai_images import (
     SOS,
     VENDORS,
     WEBP,
+    XMP,
     Answer,
     Returns,
     Router,
@@ -70,6 +75,7 @@ from tests.test_ai_images import (
     task,
     webp_chunk,
 )
+from tests.test_pillow_heif_setup import heif_registry_restored  # noqa: F401  (fixture dùng chung)
 
 # Thông tin riêng giấu trong ảnh: không bao giờ được tới AI.
 SECRET = b"GPS 16.0544N 108.2022E; D:/Anh/Nha anh Tuan 12 Le Loi/IMG_0001.jpg"
@@ -681,3 +687,310 @@ def test_openai_org_and_project_env_ignored_with_images(network, monkeypatch):  
     headers = {name.lower() for name in request.headers}
     assert "openai-organization" not in headers and "openai-project" not in headers
     assert request.headers["authorization"] == f"Bearer {KEYS['openai']}"
+
+
+# ================================================================== 6. lượt 2: lách bản sửa mới
+# Sau khi Thợ Máy chuyển sang danh sách cho phép (SL-T050-2) và kiểm thẻ trên chữ đã NFKC
+# (SL-T050-1): tìm khối "đúng khuôn" vẫn chở được chữ/GPS, ảnh sạch thật bị chặn nhầm, chữ tiếng
+# Việt bị chặn nhầm, đường dẫn thật còn lọt.
+
+
+def icc_with_tail(tail):
+    """Hồ sơ màu đúng phần đầu mà lớp kiểm xem (khai đúng độ dài, chữ ký "acsp"), bảng thẻ rỗng
+    (0 thẻ), rồi ``tail``: dữ liệu không thuộc thẻ nào."""
+    body = ICC[4:] + tail
+    return (len(body) + 4).to_bytes(4, "big") + body
+
+
+def jpeg_icc_segments(*parts):
+    count = len(parts)
+    return [
+        jpeg_segment(0xE2, b"ICC_PROFILE\x00" + bytes([seq, count]) + part)
+        for seq, part in enumerate(parts, start=1)
+    ]
+
+
+def png_iccp(profile):
+    return png_chunk(b"iCCP", b"ICC Profile\x00\x00" + zlib.compress(profile))
+
+
+VP8X_ICC = webp_chunk(b"VP8X", b"\x20" + b"\x00" * 9)  # cờ "có hồ sơ màu"
+VP8L = webp_chunk(b"VP8L", b"\x2f\x00\x00\x00\x00")
+
+
+def webp_iccp(profile):
+    return make_webp(webp_chunk(b"ICCP", profile), VP8L, first=VP8X_ICC)
+
+
+# Đối chứng: cùng cách dựng, hồ sơ màu không có đuôi thì qua (test xfail dưới đây hỏng vì đuôi,
+# không phải vì khuôn ảnh dựng sai).
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        (make_jpeg(*jpeg_icc_segments(icc_with_tail(b""))), "image/jpeg"),
+        (make_png(png_iccp(icc_with_tail(b""))), "image/png"),
+        (webp_iccp(icc_with_tail(b"")), "image/webp"),
+    ],
+    ids=["jpeg", "png", "webp"],
+)
+def test_icc_builders_without_tail_pass(data, mime):
+    assert accepted(data, mime)
+
+
+# --- SL-T050-5: hồ sơ màu ICC chỉ được kiểm phần đầu (độ dài, "acsp"), không kiểm bảng thẻ:
+# sau phần đầu chở được EXIF thô có GPS, đường dẫn, gói XMP. Trong PNG, hồ sơ được nén nên cả
+# chuỗi "Exif\0\0" hay XMP cũng qua mắt bộ dò chuỗi ``_has_metadata_marker``.
+_EXIF_IN_ICC = icc_with_tail(b"Exif\x00\x00" + RAW_TIFF)
+_SPLIT_AT = _EXIF_IN_ICC.index(b"Exif") + 2  # tách "Ex" | "if\0\0" qua hai khối APP2
+
+SL5 = pytest.mark.xfail(
+    strict=True,
+    reason="SL-T050-5: hồ sơ màu ICC chỉ kiểm phần đầu, chở được EXIF/GPS hay chữ tùy ý",
+)
+
+
+@SL5
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        (make_jpeg(*jpeg_icc_segments(icc_with_tail(RAW_TIFF))), "image/jpeg"),
+        (make_jpeg(*jpeg_icc_segments(_EXIF_IN_ICC[:_SPLIT_AT], _EXIF_IN_ICC[_SPLIT_AT:])),
+         "image/jpeg"),
+        (make_png(png_iccp(icc_with_tail(RAW_TIFF))), "image/png"),
+        (make_png(png_iccp(_EXIF_IN_ICC)), "image/png"),
+        (make_png(png_iccp(icc_with_tail(XMP + SECRET))), "image/png"),
+        (webp_iccp(icc_with_tail(RAW_TIFF)), "image/webp"),
+    ],
+    ids=["jpeg-app2-tiff-gps", "jpeg-app2-exif-tach-doi", "png-iccp-tiff-gps",
+         "png-iccp-exif-nen", "png-iccp-xmp-nen", "webp-iccp-tiff-gps"],
+)  # fmt: skip
+def test_icc_profile_with_data_outside_tag_table_is_rejected(data, mime):
+    assert b"Exif\x00\x00" not in data  # bộ dò chuỗi không thấy: tách đôi, hoặc nằm trong dòng nén
+    assert not accepted(data, mime)
+
+
+# --- SL-T050-6: khối được nhận lặp lại không giới hạn hoặc dài hơn khuôn của nó, chở được chữ
+# tùy ý (đủ cho một tọa độ GPS hay đường dẫn). Chỉ APPn được kiểm khuôn; Pillow (bản gửi AI của
+# T-049) ghi mỗi khối một lần, đúng độ dài, và không ghi PLTE cho ảnh RGB hay cHRM.
+SOF_1X1 = b"\x08\x00\x01\x00\x01\x01\x01\x11\x00"  # 8 bit, 1×1 điểm ảnh, 1 thành phần màu
+SL6 = pytest.mark.xfail(
+    strict=True,
+    reason="SL-T050-6: khối được nhận lặp lại hoặc dài hơn khuôn, chở được chữ tùy ý",
+)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [make_jpeg(jpeg_segment(0xC0, SOF_1X1)), make_jpeg(jpeg_segment(0xDD, b"\x00\x10"))],
+    ids=["sof-dung-khuon", "dri-dung-khuon"],
+)
+def test_decode_segments_in_right_shape_pass(data):
+    assert accepted(data, "image/jpeg")
+
+
+@SL6
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        # 9 khối APP0 JFIF đúng 14 byte, mật độ điểm ảnh là chữ (7 byte mỗi khối).
+        (make_jpeg(*[jpeg_segment(0xE0, b"JFIF\x00" + SECRET[i : i + 7] + b"\x00\x00")
+                     for i in range(0, 63, 7)]), "image/jpeg"),
+        # 9 khối APP14 Adobe đúng 12 byte, phần cờ là chữ.
+        (make_jpeg(*[jpeg_segment(0xEE, b"Adobe" + SECRET[i : i + 7]) for i in range(0, 63, 7)]),
+         "image/jpeg"),
+        # Khung ảnh (SOF), DRI, DNL, đầu lượt quét (SOS) dài hơn khuôn: phần thừa là chữ.
+        (make_jpeg(jpeg_segment(0xC0, SOF_1X1 + SECRET)), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xDD, b"\x00\x10" + SECRET)), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xDC, b"\x00\x01" + SECRET)), "image/jpeg"),
+        (b"\xff\xd8" + JFIF + jpeg_segment(0xDA, b"\x01\x01\x00\x00\x3f\x00" + SECRET) + SCAN
+         + b"\xff\xd9", "image/jpeg"),
+        # PNG RGB (IHDR loại màu 2): bảng màu PLTE không dùng tới, 63 byte chữ.
+        (make_png(png_chunk(b"PLTE", SECRET[:63])), "image/png"),
+        # tRNS của ảnh RGB phải đúng 6 byte; ở đây 60 byte chữ.
+        (make_png(png_chunk(b"tRNS", SECRET[:60])), "image/png"),
+        # cHRM đúng 32 byte nhưng là chữ: đủ chứa tọa độ GPS.
+        (make_png(png_chunk(b"cHRM", b"GPS 16.0544N 108.2022E Le Loi 12")), "image/png"),
+    ],
+    ids=["jpeg-app0-lap", "jpeg-app14-lap", "jpeg-sof-dai", "jpeg-dri-dai", "jpeg-dnl-dai",
+         "jpeg-sos-dai", "png-plte-anh-rgb", "png-trns-dai", "png-chrm-chu"],
+)  # fmt: skip
+def test_allowed_blocks_repeated_or_longer_than_shape_are_rejected(data, mime):
+    assert not accepted(data, mime)
+
+
+# --- Ảnh sạch thật không bị chặn nhầm (ngoài 22 kiểu đã có trong test_ai_images).
+
+
+def textured(mode, size):
+    """Ảnh có nhiễu và dải màu: dữ liệu nén có đủ loại byte (cả 0xFF), không phải ảnh một màu."""
+    bands = [
+        Image.effect_noise(size, 64),
+        Image.linear_gradient("L").resize(size),
+        Image.radial_gradient("L").resize(size),
+    ]
+    return Image.merge("RGB", bands).convert(mode)
+
+
+@pytest.mark.parametrize(
+    ("mode", "fmt", "size", "args"),
+    [
+        ("RGB", "JPEG", (1, 1), {}),
+        ("RGB", "JPEG", (1024, 768), {"quality": 85, "icc_profile": "srgb"}),  # như T-046 mục 8
+        ("RGB", "JPEG", (333, 1024), {"progressive": True, "optimize": True, "quality": 60}),
+        ("RGB", "JPEG", (200, 150), {"restart_marker_blocks": 1}),
+        ("RGB", "JPEG", (200, 150), {"restart_marker_rows": 2, "progressive": True}),
+        ("RGB", "JPEG", (200, 150), {"qtables": "web_high"}),
+        ("RGB", "JPEG", (200, 150), {"subsampling": 2, "quality": 30}),
+        ("RGB", "JPEG", (200, 150), {"quality": 100, "subsampling": 0}),
+        ("RGB", "JPEG", (200, 150), {"keep_rgb": True}),
+        ("CMYK", "JPEG", (200, 150), {"progressive": True}),
+        ("P", "PNG", (200, 150), {"bits": 4}),
+        ("P", "PNG", (200, 150), {"optimize": True}),
+        ("RGB", "PNG", (200, 150), {"compress_level": 0}),
+        ("RGBA", "PNG", (200, 150), {"compress_level": 9, "icc_profile": "srgb"}),
+        ("RGB", "PNG", (200, 150), {"transparency": (1, 2, 3)}),
+        ("L", "PNG", (200, 150), {"transparency": 7}),
+        ("RGBA", "WEBP", (200, 150), {"exact": True, "lossless": True}),
+        ("RGBA", "WEBP", (200, 150), {"alpha_quality": 50}),
+        ("RGB", "WEBP", (200, 150), {"method": 0}),
+        ("RGB", "WEBP", (1024, 768), {"quality": 80, "method": 6, "icc_profile": "srgb"}),
+        ("LA", "WEBP", (200, 150), {}),
+        ("RGB", "WEBP", (1, 1), {"lossless": True}),
+    ],
+)  # fmt: skip
+def test_more_clean_pillow_images_pass(mode, fmt, size, args):
+    if args.get("icc_profile") == "srgb":
+        args = {**args, "icc_profile": srgb_icc()}
+    out = io.BytesIO()
+    textured(mode, size).save(out, fmt, **args)
+    mime = f"image/{fmt.lower()}"
+    (prepared,) = prepare_images([ImageInput(data=out.getvalue(), mime=mime)])
+    assert prepared.data == out.getvalue()
+
+
+def gps_exif():
+    exif = Image.Exif()
+    exif[0x010F] = "Apple"
+    exif[0x0110] = "iPhone 15"
+    gps = exif.get_ifd(0x8825)
+    gps.update({1: "N", 2: (16.0, 3.0, 15.84), 3: "E", 4: (108.0, 12.0, 7.92)})
+    return exif.tobytes()
+
+
+@pytest.mark.parametrize("fmt", ["JPEG", "PNG", "WEBP"])
+def test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy(fmt, heif_registry_restored):  # noqa: F811
+    """Ảnh iPhone HEIC có EXIF + GPS, XMP, hồ sơ màu; mở bằng Pillow qua pillow-heif như T-049 sẽ
+    làm. Bản gửi AI chỉ chép hồ sơ màu thì qua; lỡ chép EXIF thì bị từ chối."""
+    pillow_heif.register_heif_opener()
+    heic = io.BytesIO()
+    Image.new("RGB", (320, 240), (20, 120, 200)).save(
+        heic, "HEIF", quality=80, exif=gps_exif(), xmp=XMP[XMP.index(b"<"):],
+        icc_profile=srgb_icc(),
+    )  # fmt: skip
+    with Image.open(io.BytesIO(heic.getvalue()), formats=["HEIF"]) as photo:
+        assert photo.info.get("exif") and photo.info.get("xmp") and photo.info.get("icc_profile")
+        small = photo.convert("RGB").resize((160, 120))
+        icc, exif = photo.info["icc_profile"], photo.info["exif"]
+    mime = f"image/{fmt.lower()}"
+    clean = io.BytesIO()
+    small.save(clean, fmt, icc_profile=icc)
+    assert accepted(clean.getvalue(), mime)
+    leaky = io.BytesIO()
+    small.save(leaky, fmt, icc_profile=icc, exif=exif)
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=leaky.getvalue(), mime=mime)])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+def test_pillow_resaved_jpeg_with_comment_is_rejected_if_comment_is_copied():
+    """Ghi nhận cho T-049: Pillow 12.3 tự chép chú thích (COM) của JPEG gốc khi lưu lại JPEG, dù
+    không truyền ``comment``. Lớp kiểm phải bắt được bất cứ khi nào chú thích còn trong ảnh."""
+    original = io.BytesIO()
+    Image.new("RGB", (32, 24), "red").save(original, "JPEG", comment=b"Nha anh Tuan 12 Le Loi")
+    with Image.open(io.BytesIO(original.getvalue())) as photo:
+        again = io.BytesIO()
+        photo.save(again, "JPEG")
+    data = again.getvalue()
+    assert accepted(data, "image/jpeg") == (b"Nha anh Tuan" not in data)
+
+
+def test_png_iccp_decompression_bomb_is_rejected():
+    stream = zlib.compressobj(9)
+    zeros = bytes(1024 * 1024)
+    bomb = b"".join(stream.compress(zeros) for _ in range(64)) + stream.flush()  # 64 MB
+    data = make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00" + bomb))
+    assert len(data) < 200_000
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime="image/png")])
+    assert str(info.value) == IMAGE_BROKEN_MESSAGE
+
+
+# --- Thẻ, từ khóa: chữ tiếng Việt thường gặp không bị chặn nhầm; đường dẫn thật không lọt.
+VIETNAMESE_TAGS = [
+    "CT012 - Cổng inox - Tân Phú/truoc",  # quyết định 3A
+    "CT012 - Cổng inox - Tân Phú/trước",
+    unicodedata.normalize("NFD", "CT012 - Cổng inox - Tân Phú/trước"),  # tên thư mục trên Mac
+    "ĐÀ NẴNG", "đà nẵng", "Quận 7, TP.HCM", "Q.Bình Thạnh", "P.12, Q.Gò Vấp",
+    "Cửa kéo Đài Loan", "Mô-tơ cửa cuốn", "Nhà phố 5×20 m", "Ngang 4,5m - cao 3,2m", "Cửa 90°",
+    "Ổ khóa Việt-Tiệp", "Sơn tĩnh điện 2 lớp", "Kính cường lực 10 ly", "Bước 1: tháo lò xo",
+    "Lắp ngày 15.10.2026", "ỹ ỵ ỳ ự ừ ữ ử ứ Ỹ Ỵ Ỳ Ự Ừ Ữ Ử Ứ", "Ơ Ư ơ ư Ă Â Ê Ô ă â ê ô",
+    "Bao nhiêu tiền?", "Thép hộp 40x80", "Cửa 1 cánh + 1 ô thoáng",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("value", VIETNAMESE_TAGS)
+def test_common_vietnamese_tags_and_keywords_are_kept(value):
+    expected = unicodedata.normalize("NFC", value)
+    assert reference_lines({"Hạng mục": value}) == [f"Hạng mục: {expected}"]
+    assert reference_lines(None, keyword=value) == [f"Từ khóa chính của bài: {expected}"]
+
+
+# Đường dẫn, tên file thật trên Windows, Mac, Google Drive for Desktop, OneDrive, USB, NAS.
+REAL_PATHS = [
+    "G:/My Drive/CT012 - Cổng inox - Tân Phú/truoc",
+    "G:\\My Drive\\CT012 - Cổng inox - Tân Phú",
+    "/Users/lam/Library/CloudStorage/GoogleDrive-lam@gmail.com/My Drive/CT012",
+    "C:\\Users\\Lam\\OneDrive\\Ảnh\\CT012",
+    "\\\\NAS\\Anh\\Khach",
+    "~/Pictures/CT012",
+    "Ｇ：／My Drive／CT012",
+    "My Drive/CT012 - Cổng inox/truoc",
+    "/Volumes/USB/CT012",
+    "E:/DCIM/100APPLE",
+    "file:///C:/Users/Lam",
+    "IMG_0001 (1).jpg",
+    "IMG_0001.jpg.webp",
+    "IMG_0001.HEIC",
+    "Ảnh chụp màn hình 2026-10-15 lúc 08.30.15.png",
+    "Screenshot 2026-10-15 at 08.30.15.png",
+]
+
+
+@pytest.mark.parametrize("value", REAL_PATHS)
+def test_real_paths_and_file_names_are_dropped(value):
+    assert reference_lines({"Thư mục": value}) == []
+    assert reference_lines({value: "Cổng inox"}) == []
+    assert reference_lines(None, keyword=value) == []
+
+
+def test_random_tags_reach_ai_exactly_as_checked():
+    """Chuỗi ngẫu nhiên trộn chữ có dấu (cả dạng tách dấu), ký tự toàn chiều rộng, ký tự vô hình,
+    ký tự điều khiển, gạch chéo, hai chấm: thẻ nào được nhận thì tới AI đúng nguyên văn, một
+    dòng, không có "\\" hay "://"."""
+    pool = (
+        "aăâeêioôơuưyAĐđCD01 -/.:,()'\"_"
+        "\u0301\u0300\u0303\u0309\u0323\u0302\u0306\u031b"
+        "\u200b\u00ad\ufeff\u034f\u2060\uff0f\uff1a\uff3c\uff0e\u00a0\u3000\u2028\x00\x1b\x85"
+    )
+    rng = random.Random(50)
+    kept = 0
+    for _ in range(3000):
+        value = "".join(rng.choice(pool) for _ in range(rng.randint(1, 16)))
+        lines = reference_lines({"Hạng mục": value}, keyword=value)
+        prompt = alt_prompt({"Hạng mục": value}, keyword=value)
+        for line in lines:
+            kept += 1
+            assert line in prompt
+            assert "\\" not in line and "://" not in line and "\n" not in line
+            assert not any(unicodedata.category(ch) in ("Cc", "Cf", "Mn") for ch in line)
+    assert kept > 100  # phép thử có nghĩa: nhiều thẻ được nhận
