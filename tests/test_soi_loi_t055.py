@@ -50,9 +50,9 @@ REAL_PATH = f"{PROJECT}/truoc/IMG_0001.jpg"
 AI_FOLDER = "Ảnh AI"
 AI_PATH = f"{AI_FOLDER}/cong-minh-hoa.png"
 CAMEL_AI_PATH = f"{PROJECT}/GenAI/cong.png"  # "GenAI": nhận ra ảnh AI nhờ tách chữ hoa (T-052)
-SECRET_NAME = "bi-mat-ngoai-goc.jpg"
+OUTSIDE_NAME = "bi-mat-ngoai-goc.jpg"
 FAKE_JPEG = b"\xff\xd8\xff anh gia"
-SECRET_BYTES = b"\xff\xd8\xff BI MAT NGOAI GOC"
+OUTSIDE_BYTES = b"\xff\xd8\xff BI MAT NGOAI GOC"
 REAL_ALT = "Bản lề cổng inox bị gỉ trước khi sửa"
 
 
@@ -72,8 +72,8 @@ def root(tmp_path: Path) -> Path:
     write(drive / REAL_PATH)
     write(drive / AI_PATH, b"\x89PNG anh AI gia")
     write(drive / CAMEL_AI_PATH, b"\x89PNG anh AI gia")
-    write(tmp_path / "may" / SECRET_NAME, SECRET_BYTES)
-    write(tmp_path / SECRET_NAME, SECRET_BYTES)
+    write(tmp_path / "may" / OUTSIDE_NAME, OUTSIDE_BYTES)
+    write(tmp_path / OUTSIDE_NAME, OUTSIDE_BYTES)
     return drive
 
 
@@ -268,39 +268,39 @@ def test_json_level_breakage_in_image_is_a_draft_error_not_a_crash(store, replac
 
 def outside_forms(tmp_path: Path) -> list[str]:
     """Mọi cách viết trỏ tới file bí mật ngoài thư mục ảnh."""
-    secret = tmp_path / "may" / SECRET_NAME
+    outside = tmp_path / "may" / OUTSIDE_NAME
     forms = [
-        f"../{SECRET_NAME}",
-        f"../../{SECRET_NAME}",
-        f"{PROJECT}/../../{SECRET_NAME}",
-        f"..\\{SECRET_NAME}",
-        f"{PROJECT}\\..\\..\\{SECRET_NAME}",
-        f"./../{SECRET_NAME}",
-        f"%2e%2e/{SECRET_NAME}",
-        f"..%2f{SECRET_NAME}",
-        f"．．/{SECRET_NAME}",  # dấu chấm toàn khổ (NFKC thành "..")
-        f"‥/{SECRET_NAME}",  # "‥" một ký tự
-        f"..​/{SECRET_NAME}",
-        f"​../{SECRET_NAME}",
-        f"..‮/{SECRET_NAME}",
-        f"... /{SECRET_NAME}",
-        f"~/{SECRET_NAME}",
-        f"$HOME/{SECRET_NAME}",
-        f"%USERPROFILE%/{SECRET_NAME}",
-        str(secret),
-        secret.as_posix(),
-        "\\\\?\\" + str(secret),
-        "//?/" + secret.as_posix(),
-        "\\\\.\\" + str(secret),
-        "\\\\localhost\\" + str(secret).replace(":", "$", 1),
-        "file:///" + secret.as_posix(),
-        secret.as_posix().lstrip("/").replace(":", "", 1),  # bỏ dấu ổ: thành đường dẫn "tương đối"
-        f"{secret.drive}{SECRET_NAME}" if secret.drive else f"C:{SECRET_NAME}",
-        f"{SECRET_NAME}::$DATA",
-        f"{SECRET_NAME}.",
-        f"{SECRET_NAME} ",
-        f"{SECRET_NAME}\x00.jpg",
-        f"{SECRET_NAME}\n",
+        f"../{OUTSIDE_NAME}",
+        f"../../{OUTSIDE_NAME}",
+        f"{PROJECT}/../../{OUTSIDE_NAME}",
+        f"..\\{OUTSIDE_NAME}",
+        f"{PROJECT}\\..\\..\\{OUTSIDE_NAME}",
+        f"./../{OUTSIDE_NAME}",
+        f"%2e%2e/{OUTSIDE_NAME}",
+        f"..%2f{OUTSIDE_NAME}",
+        f"．．/{OUTSIDE_NAME}",  # dấu chấm toàn khổ (NFKC thành "..")
+        f"‥/{OUTSIDE_NAME}",  # "‥" một ký tự
+        f"..​/{OUTSIDE_NAME}",
+        f"​../{OUTSIDE_NAME}",
+        f"..‮/{OUTSIDE_NAME}",
+        f"... /{OUTSIDE_NAME}",
+        f"~/{OUTSIDE_NAME}",
+        f"$HOME/{OUTSIDE_NAME}",
+        f"%USERPROFILE%/{OUTSIDE_NAME}",
+        str(outside),
+        outside.as_posix(),
+        "\\\\?\\" + str(outside),
+        "//?/" + outside.as_posix(),
+        "\\\\.\\" + str(outside),
+        "\\\\localhost\\" + str(outside).replace(":", "$", 1),
+        "file:///" + outside.as_posix(),
+        outside.as_posix().lstrip("/").replace(":", "", 1),  # bỏ dấu ổ: thành đường dẫn "tương đối"
+        f"{outside.drive}{OUTSIDE_NAME}" if outside.drive else f"C:{OUTSIDE_NAME}",
+        f"{OUTSIDE_NAME}::$DATA",
+        f"{OUTSIDE_NAME}.",
+        f"{OUTSIDE_NAME} ",
+        f"{OUTSIDE_NAME}\x00.jpg",
+        f"{OUTSIDE_NAME}\n",
     ]
     return forms
 
@@ -326,7 +326,7 @@ def test_hand_edited_path_never_touches_file_outside_root(
         assert str(tmp_path) not in result.message
     # Mọi lần hỏi ổ đĩa về tên file bí mật đều ở **bên trong** thư mục ảnh (và không thấy gì).
     inside = root.resolve()
-    for path in spy.touched(SECRET_NAME):
+    for path in spy.touched(OUTSIDE_NAME):
         assert Path(os.path.normpath(path)).is_relative_to(inside), path
 
 
@@ -334,11 +334,11 @@ def test_kept_odd_names_stay_inside_root(store, library, root, monkeypatch):
     """Tên thư mục lạ nhưng hợp lệ ("~", "%2e%2e", "$HOME") là thư mục **bên trong** gốc: tạo thật
     ở đó thì đọc đúng file trong gốc, không bao giờ giãn ra thư mục nhà hay biến môi trường."""
     for name in ("~", "%2e%2e", "$HOME", "%USERPROFILE%"):
-        write(root / name / SECRET_NAME, b"\xff\xd8 trong goc")
+        write(root / name / OUTSIDE_NAME, b"\xff\xd8 trong goc")
     monkeypatch.setenv("HOME", str(root.parent))
     monkeypatch.setenv("USERPROFILE", str(root.parent))
     for name in ("~", "%2e%2e", "$HOME", "%USERPROFILE%"):
-        image = real_image(rel_path=f"{name}/{SECRET_NAME}")
+        image = real_image(rel_path=f"{name}/{OUTSIDE_NAME}")
         result = check_chosen_image(image, library)
         assert result.available, name
         assert library.read_image_bytes(result.ref) == b"\xff\xd8 trong goc"
@@ -603,9 +603,9 @@ def test_huge_text_in_draft_is_bounded(store, field, limit):
 
 
 # Nháp khuôn 1 do chính code của ``main`` (trước T-055, ``origin/main`` 08e803e) lưu ra, chép
-# nguyên văn: có nghiên cứu, dàn ý, rà soát, câu bỏ qua.
+# nguyên văn (chỉ thay mã nháp cho dễ đọc): có nghiên cứu, dàn ý, rà soát, câu bỏ qua.
 REAL_V1_DRAFT = (
-    '{"schema_version":1,"id":"0123456789abcdef0123456789abcdef",'
+    '{"schema_version":1,"id":"00000000000000000000000000000055",'
     '"saved_at":"2026-10-20T18:11:11.680195+07:00","step":3,"keyword":"sửa cổng inox Tân Phú",'
     '"material":{"Kinh nghiệm của xưởng":"Bản lề gỉ sau 3 năm.",'
     '"Câu khách hay hỏi":"Có cần tháo cả cánh không?"},'
@@ -625,7 +625,7 @@ REAL_V1_DRAFT = (
     '"replacement":"Bản lề gỉ sét."}],"summary":"Ổn."},"auto_fixed":1,'
     '"ignored_flags":["Bản lề gỉ."]}'
 )
-REAL_V1_ID = "0123456789abcdef0123456789abcdef"
+REAL_V1_ID = "00000000000000000000000000000055"
 
 
 def put_raw(store: DraftStore, draft_id: str, raw: str) -> None:
