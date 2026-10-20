@@ -34,13 +34,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 08:38. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 08:42. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | Soi Lỗi lượt 2 đạt có điều kiện (`d1b6039`). Lá Chắn của A mới đẩy khung biên bản (08:02), chưa kiểm gì | B gọi lại **Lá Chắn T-048** |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`f947e30`) | Soi Lỗi đạt có điều kiện (SL-T050-1, -2 Trung bình). Thợ Máy lượt 2 của A đang sửa `seo_app/ai/base.py` thì dừng, chưa commit | B đẩy phần dở lên nhánh, gọi tiếp **Thợ Máy T-050 lượt 2** |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`7a4c581`) | Thợ Máy xong (7.172 qua). Soi Lỗi rút gọn của A đang viết `tests/test_soi_loi_t058.py` thì dừng, chưa commit | B đẩy phần dở lên nhánh, gọi tiếp **Soi Lỗi T-058**; rồi Lá Chắn; gộp xong Chỉ Huy mở app thử mọi trang |
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | `team/T-048` (`5993812`) | Soi Lỗi lượt 2 đạt có điều kiện (`d1b6039`). Lá Chắn của A chỉ kịp đẩy khung biên bản (08:02). ⏳ 08:41 **Lá Chắn kiểm từ đầu** (phiên "Lá Chắn · T-048 đọc thư mục ảnh an toàn") | ĐẠT thì gộp (lấy `seo_app/images/__init__.py` bản T-048); rồi giao T-052 |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | `team/T-050` (`ff5cb0a`) | Soi Lỗi đạt có điều kiện (SL-T050-1, -2 Trung bình). Phần dở của Thợ Máy lượt 2 (A) B đã đẩy hộ thành `ff5cb0a`, chưa chạy test. ⏳ 08:41 **Thợ Máy lượt 2 làm tiếp** (phiên "Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh") | Soi Lỗi kiểm lại, rồi Lá Chắn |
+| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3, chặn T-049) | `team/T-058` (`042a626`) | Thợ Máy xong (7.172 qua). File test dở của Soi Lỗi (A) B đã đẩy hộ thành `042a626`, chưa chạy. ⏳ 08:41 **Soi Lỗi rút gọn làm tiếp** (phiên "Soi Lỗi · T-058 kiểm Pillow 13") | Lá Chắn; gộp xong Chỉ Huy mở app thử mọi trang; rồi giao T-049 |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | `team/T-051` (`fc39367`) | Ngòi Bút xong | Soi Lỗi rút gọn, Lá Chắn rút gọn khi có chỗ trống |
 | Chờ phiếu trước | | T-049 (sau T-058), T-052 (sau T-048), T-062 (sau T-050, T-051), T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | |
 | `main` | `ffaa1e6` | Windows 7.170 qua, 0 hỏng (sau gộp T-042) | |
@@ -48,6 +48,12 @@ Chỉ Huy B, cập nhật 2026-10-20 08:38. Bảng cũ của A (cập nhật 17/
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 08:42 · Chỉ Huy B
+
+- Đẩy hộ phần dở của A: `team/T-050` `ff5cb0a` (Thợ Máy lượt 2, `seo_app/ai/base.py`), `team/T-058` `042a626` (test Soi Lỗi). Cả hai chưa chạy test; agent làm tiếp phải kiểm lại trước.
+- Gọi 3 phiên con dưới B, mỗi phiên làm trong worktree của phiếu: Lá Chắn T-048 (kiểm từ đầu), Thợ Máy T-050 lượt 2, Soi Lỗi T-058 rút gọn. T-051 chờ chỗ trống (tối đa 3 phiên).
+- Lưu ý vận hành: worktree `wt-T-xxx` chưa được app tin cậy, nên phiên con mở ở `D:\ProMetal-ToolSEO` rồi `cd` vào worktree.
 
 ### 2026-10-20 08:38 · Chỉ Huy B tiếp quản từ Chỉ Huy A, không có bàn giao
 

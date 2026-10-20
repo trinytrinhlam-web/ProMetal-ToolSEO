@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-16 14:16 (Chỉ Huy B giữ quyền điều phối; xem [dong-bo.md](dong-bo.md))._
+_Cập nhật: 2026-10-20 08:42 (Chỉ Huy B giữ quyền điều phối từ 08:38, chạy trên máy Windows; xem [dong-bo.md](dong-bo.md))._
 
 > 2026-10-15 13:20: Chỉ Huy B nhận quyền, làm tiếp 3 việc dở của A (T-026, T-029, T-025). Phát hiện `main` đỏ trên Linux (9 test của T-027), lập T-030.
 >
@@ -22,20 +22,20 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
+| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn | Lá Chắn · T-048 đọc thư mục ảnh an toàn | `team/T-048` | 08:41 Chỉ Huy B gọi lại Lá Chắn, kiểm từ đầu (phiên trước dưới A chỉ có khung biên bản) | [Soi Lỗi](reports/T-048-soi-loi.md) lượt 2: đạt có điều kiện |
+| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy · T-050 lượt 2 lớp AI đọc ảnh | `team/T-050` | 08:41 Thợ Máy lượt 2 làm tiếp từ phần dở của A (`ff5cb0a`): sửa SL-T050-1, -2. Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 | [Soi Lỗi](reports/T-050-soi-loi.md): đạt có điều kiện |
+| [T-058](tickets/T-058-nang-pillow-13.md) | Nâng Pillow 13 (chặn T-049) | Soi Lỗi · T-058 kiểm Pillow 13 | `team/T-058` | 08:41 Soi Lỗi rút gọn làm tiếp từ file test dở của A (`042a626`); rồi Lá Chắn | [Thợ Máy](reports/T-058-tho-may.md): Pillow 13.0.0, 7.172 qua |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: tạo provider khi cần (để bật `[tasks.image]`), chịu lỗi, nhãn hiển thị | Thợ Máy | T-050, T-051 gộp; trước T-053 |
-| [T-058](tickets/T-058-nang-pillow-13.md) | Pillow 12.3.0 có lỗ hổng mới: nâng Pillow 13 (A) hoặc chấp nhận rủi ro (B). **Chặn T-049** | Thợ Máy | Chủ dự án chọn **A** (20/10). Thợ Máy xong (`7a4c581`: Pillow 13.0.0, pip-audit 0, 7.172 qua). **Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) | GĐ3 · G3-2: đọc thư mục ảnh an toàn (chặn `..`, symlink, junction) | Thợ Máy | Thợ Máy xong (`e572de8`); Soi Lỗi đạt có điều kiện (`6cb1f52`); Thợ Máy lượt 2 xong (`69d6b6c`); Soi Lỗi lượt 2 **đạt có điều kiện** (`d1b6039`, 5.875 qua; R2-1 khe rất hẹp lộ tên file, R2-2 hiển thị). **Lá Chắn đang kiểm** |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy | T-058 (chủ dự án chọn cách xử lý Pillow) |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) | GĐ3 · G3-4: lớp AI đọc ảnh, gợi ý alt | Thợ Máy | Thợ Máy xong (`f5f8b63`); Soi Lỗi **đạt có điều kiện** (`8ea45df`, 6.072 qua; SL-T050-1, -2 Trung bình A3: thẻ toàn chiều rộng lách bộ lọc đường dẫn, metadata lạ lọt danh sách đen). **Thợ Máy sửa lượt 2** (Chỉ Huy chọn sửa, không chấp nhận rủi ro). Khi gộp: `seo_app/images/__init__.py` lấy bản T-048 |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) | GĐ3 · G3-5: prompt alt, `[tasks.alt]` Claude, `[tasks.image]` Gemini | Ngòi Bút | Ngòi Bút xong (`fc39367`, 5.810 qua; `[tasks.image]` ghi sẵn nhưng tắt, chờ T-062). **Chờ Soi Lỗi rút gọn, Lá Chắn rút gọn** |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy | T-048 |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | T-049, T-050 |
