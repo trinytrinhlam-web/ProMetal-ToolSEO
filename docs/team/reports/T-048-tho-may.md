@@ -152,7 +152,8 @@ $ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.p
 222 passed, 6 skipped in 28.90s          (0 xfail: cả 9 lỗi đã sửa)
 
 $ uv run pytest -q -p no:cacheprovider
-KET_QUA_TOAN_BO
+5846 passed, 17 skipped, 35 xfailed, 1 warning in 636.87s (0:10:36)
+                                  (35 xfail đều có từ trước; 9 xfail của Soi Lỗi đã hết; chạy ở 7405d3a, code giống 882dc18)
 
 $ uv run ruff check .
 All checks passed!
