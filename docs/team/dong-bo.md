@@ -52,6 +52,11 @@ Chỉ Huy B, cập nhật 2026-10-20 13:03. Bảng cũ của A (cập nhật 17/
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-20 13:36 · Chỉ Huy B
+
+- **Quyết định chủ dự án:** Chủ dự án chốt 2026-10-20: agent phụ chạy **mức suy nghĩ Tối đa (max)** và **bật chế độ nhanh**; **không** chuyển sang ultracode. B đã đặt cho 3 phiên đang chạy (Soi Lỗi T-049, Soi Lỗi T-052, Thợ Máy T-062); từ nay đặt ngay sau khi mở mỗi phiên con. Đã ghi vào `BAN-GIAO.md` 7.3 và `docs/team/README.md` (mục Cách Chỉ Huy giao việc). Chỉ Huy A cũng làm theo.
+- Lưu ý: phần chậm nhất của mỗi agent là chạy toàn bộ pytest (khoảng 13–23 phút khi 3 agent chạy cùng lúc trên một máy); hai cài đặt trên không rút được thời gian này.
+
 ### 2026-10-20 13:03 · Chỉ Huy B
 
 - Chủ dự án cho giao cả vòng. Gộp `main` (`132a73d`, có T-050, T-051, T-058) vào `team/T-049` (`8e76b54`) và `team/T-052` (`2d481c0`), cả hai sạch, đã đẩy; test T-049 113 qua, test nối `alt.py` của T-052 qua.

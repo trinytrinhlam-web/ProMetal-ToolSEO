@@ -118,6 +118,7 @@ Gom từ toàn bộ project cũ (chat chung và các luồng: Khám phá repo, D
 - Chỉ Huy **tự gọi agent phụ**, nhưng **mỗi agent phải có tên cụ thể** để anh theo dõi.
 - Bắt buộc có phiếu giao việc và báo cáo; có quy tắc, nguyên tắc, ràng buộc; **agent kiểm thử và bảo mật phải đảm bảo mức an toàn cao nhất**; ghi rõ model từng agent.
 - **Không cần tiết kiệm chi phí model**, ưu tiên chất lượng: Lá Chắn Fable 5.1 (không bao giờ hạ cấp; tạm Opus 5.5 tới 01/11 vì Fable bị giới hạn), Thư Ký Sonnet 5.5, còn lại Opus 5.5.
+- Chốt 2026-10-20: mọi phiên con (agent phụ) chạy **mức suy nghĩ Tối đa (max)** và **bật chế độ nhanh (fast mode)**; Chỉ Huy đặt ngay sau khi mở phiên. **Không** dùng ultracode (workflow nhiều agent).
 - Đã duyệt: sửa code ngay cho các lỗi bảo mật; sửa `seo_app/config.py` để test không bao giờ đọc `.env` thật; khai báo `pydantic` trong `pyproject.toml`.
 
 ### 7.4 Website và doanh nghiệp
