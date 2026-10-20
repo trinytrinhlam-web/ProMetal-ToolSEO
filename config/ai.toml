@@ -10,6 +10,8 @@
 #                openai   : "gpt-5.1"
 #                gemini   : "gemini-3-pro"
 #              Tên sai thì app báo "Không có mô hình ...".
+#              Việc tạo ảnh ([tasks.image]) dùng mô hình tạo ảnh riêng, xem ghi chú ở mục đó.
+#              Claude KHÔNG tạo được ảnh: việc tạo ảnh chỉ chọn "openai" hoặc "gemini".
 # effort     : AI nghĩ kỹ tới đâu: "low" | "medium" | "high" | "xhigh" | "max".
 #              Càng cao càng kỹ, nhưng chậm hơn và tốn tiền hơn.
 #                anthropic, openai: dùng đúng mức bạn ghi.
@@ -25,6 +27,9 @@
 # cố định trong app. Thử mù xong, bạn tự sửa provider / model / effort của việc cần đổi ở dưới.
 # Ví dụ đổi việc viết bài sang ChatGPT: trong [tasks.write] ghi provider = "openai" và
 # model = "gpt-5.1".
+#
+# Việc đang có: research, outline, write, rewrite, review, meta (bài viết); alt (viết chữ
+# thay thế cho ảnh); image (tạo ảnh minh họa, đang tắt, xem ghi chú ở cuối file).
 
 [tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
 provider = "anthropic"
@@ -62,3 +67,31 @@ provider = "anthropic"
 model = "claude-opus-5-5"
 effort = "low"
 max_tokens = 2000
+
+[tasks.alt]  # viết alt (chữ thay thế) và chú thích cho ảnh, AI nhìn ảnh rồi viết
+# Quyết định 4A (2026-10-19): Claude Sonnet. Quy tắc viết alt nằm ở mục [alt] của
+# config/content.toml. Việc ngắn (alt ≤ 125 ký tự) nên effort thấp, max_tokens nhỏ.
+provider = "anthropic"
+model = "claude-sonnet-5-5"
+effort = "low"
+max_tokens = 2000
+
+# ---------------------------------------------------------------- tạo ảnh minh họa (đang tắt)
+# Quyết định 4A (2026-10-19): tạo ảnh bằng Gemini. Mục dưới đây ĐANG TẮT (có dấu # ở đầu dòng)
+# vì phần mềm chưa có chức năng tạo ảnh (phiếu T-053). Nếu bật sớm, trang Soạn bài sẽ đòi khóa
+# Gemini ngay cả khi bạn chỉ viết bài. Đợi Chỉ Huy báo chức năng tạo ảnh đã xong rồi mới xóa
+# dấu # ở 4 dòng [tasks.image], provider, model, max_tokens.
+#
+# Tên mô hình theo báo cáo T-046 (đọc tài liệu Google ngày 2026-10-17), CHƯA XÁC MINH bằng lệnh
+# gọi thật. Các mô hình tạo ảnh của Gemini (giá ước tính mỗi ảnh, chưa xác minh):
+#   "gemini-nano-banana-2.1"      khoảng 0,034 USD (cỡ 1K) / 0,050 USD (cỡ 2K)  ← đang chọn
+#   "gemini-3.1-flash-lite-image" khoảng 0,034 USD
+#   "gemini-3.1-flash-image"      khoảng 0,067 / 0,101 USD
+#   "gemini-3-pro-image"          khoảng 0,134 USD
+# Muốn dùng OpenAI: provider = "openai", model = "gpt-image-2" (khoảng 0,053 USD/ảnh chất
+# lượng vừa, chưa xác minh). effort và web_search không dùng cho việc tạo ảnh.
+#
+# [tasks.image]  # tạo ảnh minh họa từ prompt (ảnh AI luôn ghi rõ là ảnh minh họa)
+# provider = "gemini"
+# model = "gemini-nano-banana-2.1"
+# max_tokens = 2000
