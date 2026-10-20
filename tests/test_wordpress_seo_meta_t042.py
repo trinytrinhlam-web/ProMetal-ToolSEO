@@ -249,8 +249,9 @@ def test_writes_through_abilities(fake_wp, client):
             "focus_keyphrase": KEYWORD,
         }
     }
-    # Không có lệnh ghi nào vào wp/v2/posts/42 khi đi đường Abilities.
-    assert [r.path_url for r in writes(fake_wp)] == ["/wp-json/wp/v2/posts", RUN]
+    # Không có lệnh ghi nào vào wp/v2/posts/42 khi đi đường Abilities. (T-061: lệnh tạo nháp có
+    # thêm ``?_fields=`` cố định, nên so phần đường.)
+    assert [r.path_url.split("?")[0] for r in writes(fake_wp)] == ["/wp-json/wp/v2/posts", RUN]
 
 
 @pytest.mark.parametrize(

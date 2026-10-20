@@ -10,6 +10,8 @@ HTML ảnh **do code dựng**, không lấy từ AI hay người dùng (góp ý 
 - ``src`` chỉ nhận địa chỉ ``https://`` an toàn (``is_safe_url``), không có dấu nháy hay ký tự
   lạ. Client WordPress còn kiểm địa chỉ nằm trên đúng website (``is_site_link``).
 - Kết quả đi qua ``sanitize_html`` lần cuối; thiếu ``src`` hay ``alt`` sau khi lọc thì báo lỗi.
+  Bộ lọc đổi mọi "[" và "]" (cả trong ``alt``) thành "&#91;", "&#93;" (T-061): shortcode
+  WordPress trong alt, chú thích không chạy được, kể cả khi ký tự vô hình vừa được gỡ ở trên.
 
 Lớp CSS: chỉ ``wp-block-image`` trên ``<figure>`` (kiểu dáng ảnh của WordPress). **Không** gắn
 ``wp-image-<mã>`` vào ``<img>``: có lớp này WordPress tự thêm ``srcset`` (các cỡ nhỏ do WordPress
@@ -23,7 +25,13 @@ import html
 import re
 
 from seo_app.onpage.meta import normalize_meta
-from seo_app.sanitize import is_safe_url, sanitize_html, unbreak_autolinks, unescape_link_syntax
+from seo_app.sanitize import (
+    escape_shortcodes,
+    is_safe_url,
+    sanitize_html,
+    unbreak_autolinks,
+    unescape_link_syntax,
+)
 
 FIGURE_CLASS = "wp-block-image"
 MAX_SRC_CHARS = 2000
@@ -98,7 +106,8 @@ def figure_html(*, src: str, alt: str, width: int, height: int, caption: str = "
     )
     cleaned = sanitize_html(f'<figure class="{FIGURE_CLASS}">{img}{figcaption}</figure>')
     # Bộ lọc là chốt cuối: nó mà bỏ src hay alt (địa chỉ lạ lọt qua bước kiểm ở trên) thì dừng,
-    # không gửi một ảnh hỏng vào bài.
-    if f' src="{html.escape(src, quote=True)}"' not in cleaned or " alt=" not in cleaned:
+    # không gửi một ảnh hỏng vào bài. So với ``src`` đúng dạng bộ lọc in ra ("[" thành "&#91;").
+    src_attr = escape_shortcodes(html.escape(src, quote=True))
+    if f' src="{src_attr}"' not in cleaned or " alt=" not in cleaned:
         raise ImageHtmlError(_MSG_BAD_SRC)
     return cleaned

@@ -194,7 +194,8 @@ def test_featured_image_draft_published_between_create_and_set(fake_wp, status):
     client.create_draft("A", "B")
     with pytest.raises(WordPressError, match="không còn là bản nháp"):
         client.set_featured_image(42, 7)
-    assert [r.path_url for r in writes(fake_wp)] == [POSTS]
+    # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định; so đường như các test khác của file.
+    assert [r.path_url.split("?")[0] for r in writes(fake_wp)] == [POSTS]
     with pytest.raises(WordPressError, match="bài nháp app vừa tạo"):  # đã bỏ id
         client.set_featured_image(42, 7)
 
