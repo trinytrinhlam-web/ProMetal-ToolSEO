@@ -589,8 +589,8 @@ def _bounded_view_file(path: Path) -> None:
     strict=True,
     reason=(
         "SL-T052-9: file lưu thẻ (dữ liệu chưa tin cậy) mà manual_tags là một VIEW, không phải "
-        "bảng, vẫn qua _is_healthy; view đệ quy không giới hạn làm resolve/list quét vô hạn (treo). "
-        "App chỉ bao giờ tạo manual_tags là TABLE, nên health check phải coi file có VIEW là hỏng"
+        "bảng, vẫn qua _is_healthy; view đệ quy không giới hạn làm resolve/list quét vô hạn "
+        "(treo). App chỉ bao giờ tạo manual_tags là TABLE, nên health check phải coi VIEW là hỏng"
     ),
 )
 def test_sl_t052_9_health_check_rejects_view_posing_as_table(tmp_path):
