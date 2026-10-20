@@ -894,11 +894,11 @@ def _check_images(
         rebuilt.append(DraftImage.model_validate(image.model_dump()))
 
     folder_names = _FolderNames(library)
-    found: list[tuple[DraftImage, ImageRef | None, ImageEntry | None, str]] = []
+    located: list[tuple[DraftImage, ImageRef | None, ImageEntry | None, str]] = []
     for image in rebuilt:
         ref = image.ref
         if ref is None:
-            found.append((image, None, None, ""))
+            located.append((image, None, None, ""))
             continue
         scanned_ref = known.get(_image_key(ref))
         if scanned_ref is not None:
@@ -917,9 +917,9 @@ def _check_images(
                     ref, entry = real, replace(entry, ref=real, name=real.name)
         except ImageFolderError as exc:
             entry, message = None, str(exc)
-        found.append((image, ref, entry, message))
+        located.append((image, ref, entry, message))
 
-    refs = [ref for _image, ref, _entry, _message in found if ref is not None]
+    refs = [ref for _image, ref, _entry, _message in located if ref is not None]
     current: dict[ImageRef, tuple[ImageTags, str]] = {}
     if tag_store is not None and refs:
         for ref, resolved in tag_store.resolve_many(refs).items():
@@ -929,7 +929,7 @@ def _check_images(
             current[ref] = (tags_for_image(ref).tags, "")
 
     results: list[CheckedImage] = []
-    for image, ref, entry, message in found:
+    for image, ref, entry, message in located:
         if ref is None:
             results.append(
                 CheckedImage(
