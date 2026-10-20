@@ -214,30 +214,23 @@ def test_clean_pillow_images_with_icc_pass(fmt, mime, args):
 
 
 # --- SL-T050-2: khối/chunk không nằm trong danh sách chặn vẫn qua, dù chứa GPS, đường dẫn.
-# Cách kiểm hiện tại là "danh sách chặn" (APP1, APP13, COM; eXIf/tEXt/zTXt/iTXt; EXIF/XMP).
+# Cách kiểm cũ là "danh sách chặn" (APP1, APP13, COM; eXIf/tEXt/zTXt/iTXt; EXIF/XMP).
 # Bản gửi AI của T-049 không có lý do mang các khối dưới đây; ExifTool đọc nhiều khối trong số
 # này (Kodak "Meta" ở APP3, Ricoh "RMETA" ở APP5, GoPro ở APP6, "PictureInfo"/"Ducky" ở APP12).
-
-SL2 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T050-2: chỉ chặn theo danh sách đen, khối/chunk lạ chứa GPS, đường dẫn vẫn qua",
-)
+# Thợ Máy lượt 2 đã sửa (danh sách cho phép): gỡ dấu xfail.
 
 
-@SL2
 @pytest.mark.parametrize("app", [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15])
 def test_jpeg_other_app_segments_with_private_data_are_rejected(app):
     data = make_jpeg(jpeg_segment(0xE0 + app, b"Meta\x00\x00" + RAW_TIFF))
     assert not accepted(data, "image/jpeg")
 
 
-@SL2
 @pytest.mark.parametrize("kind", [b"zxIf", b"exIf", b"prVt", b"gpSl"])
 def test_png_unknown_chunks_with_raw_exif_are_rejected(kind):
     assert not accepted(make_png(png_chunk(kind, RAW_TIFF)), "image/png")
 
 
-@SL2
 @pytest.mark.parametrize("kind", [b"exif", b"xmp ", b"XMP\x00", b"META"])
 def test_webp_unknown_chunks_with_private_data_are_rejected(kind):
     assert not accepted(make_webp(webp_chunk(kind, RAW_TIFF)), "image/webp")

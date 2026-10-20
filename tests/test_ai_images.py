@@ -130,6 +130,8 @@ PNG = make_png()
 WEBP = make_webp()
 EXIF_TIFF = b"Exif\x00\x00II*\x00\x08\x00\x00\x00\x00\x00"
 XMP = b'http://ns.adobe.com/xap/1.0/\x00<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>'
+# Hồ sơ màu ICC nhỏ nhất đúng khuôn: 4 byte đầu khai đúng độ dài, chữ ký "acsp" ở byte 36, 0 thẻ.
+ICC = (132).to_bytes(4, "big") + b"\x00" * 32 + b"acsp" + b"\x00" * 92
 
 
 def jpeg_image(data=JPEG):
@@ -146,7 +148,7 @@ def jpeg_image(data=JPEG):
         (JPEG, " IMAGE/JPG ", "image/jpeg"),
         (PNG, "image/png", "image/png"),
         (WEBP, "image/webp", "image/webp"),
-        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01abc")), "image/jpeg", "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + ICC)), "image/jpeg", None),
         (make_jpeg(jpeg_segment(0xEE, b"Adobe\x00\x64\x00\x00\x00\x00\x01")), "image/jpeg", None),
         (make_png(png_chunk(b"sRGB", b"\x00")), "image/png", None),
         (make_webp(first=webp_chunk(b"VP8 ", b"\x00" * 11)), "image/webp", None),
@@ -417,6 +419,168 @@ def test_pillow_jpeg_comment_and_png_text_are_rejected():
         with pytest.raises(AIError) as info:
             prepare_images([ImageInput(data=data, mime=mime)])
         assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+# ------------------------------------------------- danh sách cho phép: khối được nhận phải đúng
+# khuôn, không còn chỗ nhét chữ (Soi Lỗi SL-T050-2)
+
+
+def icc_segments(profile, size):
+    """Chia hồ sơ màu thành các khối APP2 như Pillow làm với hồ sơ lớn (mỗi phần ``size`` byte)."""
+    parts = [profile[at : at + size] for at in range(0, len(profile), size)]
+    return [
+        jpeg_segment(0xE2, b"ICC_PROFILE\x00" + bytes([number, len(parts)]) + part)
+        for number, part in enumerate(parts, start=1)
+    ]
+
+
+ICC_PARTS = icc_segments(ICC, 50)  # 3 khối: 50 + 50 + 32 byte
+PNG_ICC = b"ICC Profile\x00\x00" + zlib.compress(ICC)
+VP8L = webp_chunk(b"VP8L", b"\x2f\x00\x00\x00\x00")
+VP8X = webp_chunk(b"VP8X", b"\x20" + b"\x00" * 9)  # cờ 0x20: có hồ sơ màu
+SOF0 = jpeg_segment(0xC0, b"\x08\x00\x10\x00\x10\x01\x01\x11\x00")
+SECRET_TEXT = b"Nha anh Tuan 12 Le Loi"
+
+
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        (make_jpeg(*ICC_PARTS), "image/jpeg"),
+        (make_jpeg(*reversed(ICC_PARTS)), "image/jpeg"),  # thứ tự khối không bắt buộc
+        (make_jpeg(SOF0), "image/jpeg"),
+        (make_png(png_chunk(b"iCCP", PNG_ICC)), "image/png"),
+        (make_png(png_chunk(b"gAMA", b"\x00\x00\xb1\x8f"), png_chunk(b"pHYs", b"\x00" * 9)),
+         "image/png"),  # fmt: skip
+        (make_webp(webp_chunk(b"ICCP", ICC), VP8L, first=VP8X), "image/webp"),
+        (make_webp(webp_chunk(b"ALPH", b"\x00\x01"), webp_chunk(b"VP8 ", b"\x00" * 11),
+                   first=webp_chunk(b"VP8X", b"\x10" + b"\x00" * 9)), "image/webp"),  # fmt: skip
+    ],
+    ids=["icc-3-khoi", "icc-3-khoi-dao", "sof", "png-iccp", "png-gama-phys", "webp-iccp",
+         "webp-alph"],  # fmt: skip
+)
+def test_allowed_blocks_in_right_shape_pass(data, mime):
+    assert prepare_images([ImageInput(data=data, mime=mime)])[0].data == data
+
+
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        # APP0: JFIF có chữ nối sau, có ảnh nhỏ nhúng, JFXX, chữ lạ.
+        (make_jpeg(jpeg_segment(0xE0, JFIF[4:] + SECRET_TEXT)), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE0, JFIF[4:16] + b"\x01\x01\xff\x00\x00")), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE0, b"JFXX\x00\x10\xff\xd8\xff\xd9")), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE0, SECRET_TEXT)), "image/jpeg"),
+        # APP14: Adobe dài hơn 12 byte.
+        (make_jpeg(jpeg_segment(0xEE, b"Adobe\x00\x64\x00\x00\x00\x00\x01" + SECRET_TEXT)),
+         "image/jpeg"),  # fmt: skip
+        # APP2: không phải hồ sơ màu, hồ sơ có chữ nối sau, thiếu khối, lặp khối, sai tổng số,
+        # khối FlashPix.
+        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + SECRET_TEXT)), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + ICC + SECRET_TEXT)),
+         "image/jpeg"),  # fmt: skip
+        (make_jpeg(*ICC_PARTS[:2]), "image/jpeg"),
+        (make_jpeg(*ICC_PARTS, ICC_PARTS[0]), "image/jpeg"),
+        (make_jpeg(*icc_segments(ICC, 100)[:1], ICC_PARTS[2]), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xE2, b"FPXR\x00" + SECRET_TEXT)), "image/jpeg"),
+        # PNG iCCP: tên hồ sơ tự đặt, không phải hồ sơ màu, có chữ sau dòng nén.
+        (make_png(png_chunk(b"iCCP", SECRET_TEXT + b"\x00\x00" + zlib.compress(ICC))),
+         "image/png"),  # fmt: skip
+        (make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00" + zlib.compress(SECRET_TEXT))),
+         "image/png"),  # fmt: skip
+        (make_png(png_chunk(b"iCCP", PNG_ICC + SECRET_TEXT)), "image/png"),
+        # WebP ICCP không phải hồ sơ màu.
+        (make_webp(webp_chunk(b"ICCP", SECRET_TEXT), VP8L, first=VP8X), "image/webp"),
+    ],
+    ids=["jfif-co-chu", "jfif-anh-nho", "jfxx", "app0-chu", "adobe-dai", "icc-chu",
+         "icc-noi-chu", "icc-thieu-khoi", "icc-lap-khoi", "icc-sai-tong", "flashpix",
+         "iccp-ten-tu-dat", "iccp-chu", "iccp-noi-chu", "webp-iccp-chu"],  # fmt: skip
+)
+def test_allowed_blocks_in_wrong_shape_are_metadata(data, mime):
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime=mime)])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        (make_jpeg(SOF0, SOF0), "image/jpeg"),  # khung ảnh thứ hai
+        (make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00\x78\x9cxyz")), "image/png"),  # hỏng
+        (make_png(png_chunk(b"iCCP", PNG_ICC[:-5])), "image/png"),  # dòng nén cụt
+        (make_png(IHDR), "image/png"),  # IHDR lặp
+        (make_png(png_chunk(b"sRGB", b"\x00"), png_chunk(b"sRGB", b"\x00")), "image/png"),
+        (make_png(png_chunk(b"gAMA", b"\x00" * 5)), "image/png"),  # dài hơn khuôn
+        (
+            b"\x89PNG\r\n\x1a\n" + png_chunk(b"IHDR", IHDR[8:20]) + IDAT + IEND,
+            "image/png",
+        ),  # IHDR thiếu 1 byte
+        (make_webp(VP8L, first=webp_chunk(b"VP8X", b"\x00" * 12)), "image/webp"),
+        (make_webp(VP8L), "image/webp"),  # hai ảnh
+        (make_webp(webp_chunk(b"ICCP", ICC)), "image/webp"),  # dạng đơn giản có thêm chunk
+        (make_webp(webp_chunk(b"ICCP", ICC), first=VP8X), "image/webp"),  # không có ảnh
+        (make_webp(webp_chunk(b"VP8 ", b"\x00" * 11), VP8L, first=VP8X), "image/webp"),
+        (
+            make_webp(webp_chunk(b"ANIM", b"\x00" * 6), webp_chunk(b"ANMF", b"\x00" * 16 + VP8L),
+                      first=webp_chunk(b"VP8X", b"\x02" + b"\x00" * 9)),
+            "image/webp",
+        ),  # ảnh động  # fmt: skip
+    ],
+    ids=["jpeg-2-khung", "iccp-hong", "iccp-cut", "ihdr-lap", "srgb-lap", "gama-dai",
+         "ihdr-ngan", "vp8x-dai", "webp-2-anh", "webp-don-gian-them-chunk", "webp-khong-anh",
+         "webp-vp8-va-vp8l", "webp-dong"],  # fmt: skip
+)
+def test_extra_frames_duplicates_and_animation_are_broken(data, mime):
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime=mime)])
+    assert str(info.value) == IMAGE_BROKEN_MESSAGE
+
+
+def pillow_image_bytes(mode, fmt, **save_args):
+    image_mod = pytest.importorskip("PIL.Image")
+    buffer = io.BytesIO()
+    image_mod.new(mode, (40, 30)).save(buffer, fmt, **save_args)
+    return buffer.getvalue()
+
+
+def srgb_profile(pad=0):
+    """Hồ sơ sRGB thật của LittleCMS; ``pad`` > 0: đệm cho lớn (Pillow chia nhiều khối APP2)."""
+    image_cms = pytest.importorskip("PIL.ImageCms")
+    profile = image_cms.ImageCmsProfile(image_cms.createProfile("sRGB")).tobytes() + b"\0" * pad
+    return len(profile).to_bytes(4, "big") + profile[4:]
+
+
+# Mọi kiểu ảnh Pillow có thể ghi cho bản gửi AI (T-049) phải qua: lớp kiểm không chặn nhầm.
+@pytest.mark.parametrize(
+    ("mode", "fmt", "args"),
+    [
+        ("RGB", "JPEG", {}), ("L", "JPEG", {}), ("CMYK", "JPEG", {}),
+        ("RGB", "JPEG", {"icc_profile": 0}), ("RGB", "JPEG", {"icc_profile": 70_000}),
+        ("RGB", "JPEG", {"progressive": True, "icc_profile": 0}),
+        ("RGB", "JPEG", {"dpi": (72, 72)}),
+        ("RGB", "PNG", {}), ("RGBA", "PNG", {}), ("L", "PNG", {}), ("LA", "PNG", {}),
+        ("P", "PNG", {"transparency": 0}), ("1", "PNG", {}), ("I;16", "PNG", {}),
+        ("RGB", "PNG", {"icc_profile": 0}), ("RGB", "PNG", {"dpi": (72, 72)}),
+        ("RGB", "WEBP", {}), ("RGB", "WEBP", {"lossless": True}), ("RGBA", "WEBP", {}),
+        ("RGBA", "WEBP", {"lossless": True}), ("RGB", "WEBP", {"icc_profile": 0}),
+        ("RGBA", "WEBP", {"icc_profile": 0}),
+    ],
+)  # fmt: skip
+def test_pillow_images_of_every_kind_pass(mode, fmt, args):
+    if "icc_profile" in args:
+        args = {**args, "icc_profile": srgb_profile(pad=args["icc_profile"])}
+    data = pillow_image_bytes(mode, fmt, **args)
+    mime = f"image/{fmt.lower()}"
+    assert prepare_images([ImageInput(data=data, mime=mime)])[0].data == data
+
+
+def test_pillow_animated_webp_is_rejected():
+    image_mod = pytest.importorskip("PIL.Image")
+    frames = [image_mod.new("RGB", (8, 8), color) for color in ("red", "blue")]
+    buffer = io.BytesIO()
+    frames[0].save(buffer, "WEBP", save_all=True, append_images=frames[1:])
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=buffer.getvalue(), mime="image/webp")])
+    assert str(info.value) == IMAGE_BROKEN_MESSAGE
 
 
 # ================================================================== 3 hãng: thư viện thật
