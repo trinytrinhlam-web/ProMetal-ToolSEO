@@ -22,8 +22,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy · T-049 xử lý ảnh WebP giữ GPS | `team/T-049` | ⏳ **Thợ Máy đang làm** (giao sau 11:22; nhánh tạo từ `main` `c1b21dc`, đã có Pillow 13 và `folders.py`) | |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy · T-052 thẻ ảnh từ tên thư mục | `team/T-052` | ⏳ **Thợ Máy đang làm** (giao sau 11:41; nhánh tạo từ `main` `c00b2e1`) | |
+| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, 1600 px, WebP **giữ GPS**, bản gửi AI sạch, tên file | Thợ Máy · T-049 xử lý ảnh WebP giữ GPS | `team/T-049` | 12:19 Thợ Máy **xong** (`c2a597b`: `process.py`, `naming.py`; 7.592 qua, 0 hỏng; bản gửi AI qua bộ kiểm của T-050 kể cả khi ảnh gốc có hồ sơ màu chở chữ). **Chờ Soi Lỗi**, rồi Lá Chắn. Chưa thử ảnh thật | [Thợ Máy](reports/T-049-tho-may.md) |
+| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (không ghi vào Drive) | Thợ Máy · T-052 thẻ ảnh từ tên thư mục | `team/T-052` | 12:46 Thợ Máy **xong** (`0bbc0b8`: `tags.py`, `storage/image_tags.py`; 7.753 qua, 0 hỏng; thẻ chỉ từ danh sách cố định, thẻ sửa tay trong `data/image_tags.sqlite`). **Chờ Soi Lỗi**, rồi Lá Chắn | [Thợ Máy](reports/T-052-tho-may.md) |
 
 ## Chờ
 
