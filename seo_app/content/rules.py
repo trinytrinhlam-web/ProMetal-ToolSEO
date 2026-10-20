@@ -78,6 +78,47 @@ class ContentRules:
     checklist: tuple[str, ...]
 
 
+# ---------------------------------------------------- [images], [alt] (T-051 cấu hình, T-062 đọc)
+
+# Giới hạn cạnh dài khớp ``_check_edge`` của xử lý ảnh (T-049, ``seo_app/images/process.py``):
+# số ngoài khoảng này thì báo ngay khi đọc cấu hình, kèm tên file và tên mục.
+IMAGE_EDGE_MIN = 16
+IMAGE_EDGE_MAX = 4096
+# Alt, chú thích ngắn nhất được đặt: ảnh AI luôn có tiền tố «Minh họa» / «Ảnh minh họa (AI)»
+# (17 ký tự) do code thêm, nên giới hạn phải đủ chỗ cho tiền tố và vài chữ tả ảnh.
+ALT_MIN_CHARS = 20
+
+
+@dataclass(frozen=True)
+class ImageSettings:
+    """Mục ``[images]``: nén ảnh đăng web. Thiếu mục hay thiếu khóa thì dùng mặc định (5A)."""
+
+    webp_quality: int = 80
+    max_edge_px: int = 1600
+
+
+@dataclass(frozen=True)
+class AltExample:
+    """Một mục ``[[alt.examples]]``: ``anh``, ``the``, ``tot``, ``xau``, ``vi_sao``."""
+
+    image: str
+    tags: str
+    good: str
+    bad: str = ""
+    why: str = ""
+
+
+@dataclass(frozen=True)
+class AltRules:
+    """Mục ``[alt]``: giới hạn ký tự, quy tắc và ví dụ viết alt. Thiếu thì dùng mặc định."""
+
+    max_chars: int = 125
+    caption_max_chars: int = 200
+    rules: tuple[str, ...] = ()
+    bad_starts: tuple[str, ...] = ()
+    examples: tuple[AltExample, ...] = ()
+
+
 def confirmed_profile(text: str) -> str:
     """Hồ sơ doanh nghiệp đã bỏ các ý còn nhãn [CẦN XÁC NHẬN] và mọi dòng ghi chú ``>``.
 
@@ -312,6 +353,18 @@ def _read_text(path: Path) -> str:
         raise ContentRulesError(f"Không đọc được file config/{path.name}.") from exc
 
 
+def _load_toml(path: Path) -> dict:
+    try:
+        return tomllib.loads(_read_text(path))
+    except tomllib.TOMLDecodeError as exc:
+        raise ContentRulesError(f"File config/{path.name} viết sai cú pháp: {exc}") from exc
+
+
+def _place(path: Path, section: str = "") -> str:
+    # Chỉ tên file trong config/ và tên mục, không lộ đường dẫn đầy đủ trên máy (LC-T019-2).
+    return f"File config/{path.name}, mục [{section}]" if section else f"File config/{path.name}"
+
+
 def _table(data: dict, key: str, path: Path) -> dict:
     value = data.get(key, {})
     if not isinstance(value, dict):
@@ -328,26 +381,124 @@ def _text(table: dict, key: str, path: Path) -> str:
     return value
 
 
-def _text_list(table: dict, key: str, path: Path) -> tuple[str, ...]:
+def _text_list(table: dict, key: str, path: Path, section: str = "") -> tuple[str, ...]:
     value = table.get(key, [])
     if isinstance(value, str):
         # Viết nhầm một chuỗi thay vì danh sách: coi là danh sách một dòng, không tách từng chữ.
         value = [value]
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
         raise ContentRulesError(
-            f'File config/{path.name}: «{key}» phải là danh sách chữ, ví dụ ["dòng 1", "dòng 2"].'
+            f'{_place(path, section)}: «{key}» phải là danh sách chữ, ví dụ ["dòng 1", "dòng 2"].'
         )
     return tuple(v for v in value if v.strip())
+
+
+def _int_value(
+    table: dict, key: str, default: int, path: Path, section: str, low: int, high: int | None
+) -> int:
+    value = table.get(key, default)
+    # bool là một loại int trong Python (True == 1): loại trước, như ``_positive_int`` của
+    # ``seo_app/ai/registry.py`` (Lá Chắn T-051 C5). Số thực (80.0), chữ ("80") cũng sai dạng.
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < low
+        or (high is not None and value > high)
+    ):
+        span = f"từ {low} đến {high}" if high is not None else f"từ {low} trở lên"
+        raise ContentRulesError(
+            f"{_place(path, section)}: {key} phải là số nguyên {span}, viết không có ngoặc kép, "
+            f"ví dụ {key} = {default}."
+        )
+    return value
+
+
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
+
+
+def load_image_settings(path: Path = CONTENT_CONFIG_FILE) -> ImageSettings:
+    """Mục ``[images]`` đã kiểm (``webp_quality`` 1–100, ``max_edge_px`` 16–4096).
+
+    Thiếu mục hay thiếu khóa thì dùng mặc định 80 / 1600. Sai dạng thì báo ``ContentRulesError``
+    (tiếng Việt, nêu ``config/content.toml`` và tên mục), không đoán.
+    """
+    default = ImageSettings()
+    table = _table(_load_toml(path), "images", path)
+    quality = _int_value(table, "webp_quality", default.webp_quality, path, "images", 1, 100)
+    edge = _int_value(
+        table, "max_edge_px", default.max_edge_px, path, "images", IMAGE_EDGE_MIN, IMAGE_EDGE_MAX
+    )
+    return ImageSettings(webp_quality=quality, max_edge_px=edge)
+
+
+def _alt_examples(table: dict, path: Path) -> tuple[AltExample, ...]:
+    raw = table.get("examples", [])
+    where = f"File config/{path.name}, mục [[alt.examples]]"
+    if not isinstance(raw, list) or not all(isinstance(item, dict) for item in raw):
+        raise ContentRulesError(
+            f"{where}: mỗi ví dụ phải là một mục [[alt.examples]] riêng, có anh, the, tot, xau, "
+            "vi_sao."
+        )
+    examples = []
+    for number, item in enumerate(raw, 1):
+        fields: dict[str, str] = {}
+        for key in ("anh", "the", "tot", "xau", "vi_sao"):
+            value = item.get(key, "")
+            if not isinstance(value, str):
+                raise ContentRulesError(
+                    f"{where} thứ {number}: «{key}» phải là chữ trong ngoặc kép."
+                )
+            fields[key] = _one_line(value)
+        if not fields["anh"] or not fields["tot"]:
+            raise ContentRulesError(
+                f"{where} thứ {number}: phải có «anh» (ảnh có gì) và «tot» (alt nên viết)."
+            )
+        if fields["xau"] and not fields["vi_sao"]:
+            # Bản xấu không kèm lý do thì AI có thể học nhầm (Lá Chắn T-051 C4).
+            raise ContentRulesError(
+                f"{where} thứ {number}: có «xau» (alt không nên viết) thì phải có «vi_sao» (lý do)."
+            )
+        examples.append(
+            AltExample(
+                image=fields["anh"],
+                tags=fields["the"],
+                good=fields["tot"],
+                bad=fields["xau"],
+                why=fields["vi_sao"],
+            )
+        )
+    return tuple(examples)
+
+
+def load_alt_rules(path: Path = CONTENT_CONFIG_FILE) -> AltRules:
+    """Mục ``[alt]`` đã kiểm: ``max_chars``, ``caption_max_chars`` (số nguyên từ
+    ``ALT_MIN_CHARS`` trở lên), ``rules``, ``bad_starts`` (danh sách chữ), ``[[alt.examples]]``.
+
+    Thiếu mục hay thiếu khóa thì dùng mặc định 125 / 200, không quy tắc, không ví dụ. Sai dạng thì
+    báo ``ContentRulesError`` (tiếng Việt, nêu ``config/content.toml`` và tên mục). Đọc riêng với
+    ``load_rules``: mục ``[alt]`` sai chỉ khóa việc viết alt, không khóa trang Soạn bài.
+    """
+    default = AltRules()
+    table = _table(_load_toml(path), "alt", path)
+    return AltRules(
+        max_chars=_int_value(
+            table, "max_chars", default.max_chars, path, "alt", ALT_MIN_CHARS, None
+        ),
+        caption_max_chars=_int_value(
+            table, "caption_max_chars", default.caption_max_chars, path, "alt", ALT_MIN_CHARS, None
+        ),
+        rules=tuple(_one_line(r) for r in _text_list(table, "rules", path, "alt")),
+        bad_starts=tuple(_one_line(s) for s in _text_list(table, "bad_starts", path, "alt")),
+        examples=_alt_examples(table, path),
+    )
 
 
 def load_rules(
     path: Path = CONTENT_CONFIG_FILE, profile_path: Path = BUSINESS_PROFILE_FILE
 ) -> ContentRules:
     """Đọc quy tắc nội dung. File sai bảng mã hoặc sai dạng thì báo ``ContentRulesError``."""
-    try:
-        data = tomllib.loads(_read_text(path))
-    except tomllib.TOMLDecodeError as exc:
-        raise ContentRulesError(f"File config/{path.name} viết sai cú pháp: {exc}") from exc
+    data = _load_toml(path)
     voice = _table(data, "voice", path)
     review = _table(data, "review", path)
     profile = confirmed_profile(_read_text(profile_path)) if profile_path.is_file() else ""

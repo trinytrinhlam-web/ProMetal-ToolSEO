@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from seo_app.ai import AIError, TaskConfig, load_ai_config, make_provider
 from seo_app.ai.base import EFFORTS, TokenLimitError
-from seo_app.ai.registry import AI_CONFIG_FILE, PROVIDERS
+from seo_app.ai.registry import AI_CONFIG_FILE, IMAGE_TASK, PROVIDERS
 from seo_app.config import Settings
 from seo_app.content import prompts
 from seo_app.content.rules import ContentRules
@@ -99,6 +99,9 @@ TASK_LABELS = {
     "write": "Viết bài",
     "rewrite": "Viết lại từng phần",
     "review": "Kiểm tra văn phong",
+    "meta": "Gợi ý meta",
+    "alt": "Viết alt ảnh",
+    "image": "Tạo ảnh AI",
 }
 
 
@@ -206,9 +209,13 @@ def task_models(path: Path = AI_CONFIG_FILE) -> list[TaskModel]:
 
 
 def model_suggestions(rows: Sequence[TaskModel]) -> dict[str, list[str]]:
-    """Tên mô hình gợi ý theo hãng, lấy từ bảng việc–mô hình (không trùng, giữ thứ tự)."""
+    """Tên mô hình gợi ý theo hãng, lấy từ bảng việc–mô hình (không trùng, giữ thứ tự).
+
+    Bỏ mô hình của việc tạo ảnh (T-062): mô hình đó không viết bài, thử mù chỉ thử viết bài."""
     out: dict[str, list[str]] = {pid: [] for pid in PROVIDERS}
     for row in rows:
+        if row.task == IMAGE_TASK:
+            continue
         if row.model not in out[row.provider]:
             out[row.provider].append(row.model)
     return out

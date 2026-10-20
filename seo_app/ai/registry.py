@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Iterable
 from pathlib import Path
 
 from seo_app.ai.base import EFFORTS, SETUP_ERRORS, AIError, AIProvider, TaskConfig, library_error
@@ -17,6 +18,17 @@ PROVIDERS = {
     "gemini": ("Google Gemini", "GEMINI_API_KEY"),
 }
 SUPPORTED = {"anthropic", "openai", "gemini"}
+
+# Việc tạo ảnh minh họa (T-053): Claude không tạo được ảnh (T-046 mục 4), chỉ OpenAI, Gemini.
+IMAGE_TASK = "image"
+IMAGE_PROVIDERS = ("gemini", "openai")
+
+# Các việc của trang Soạn bài (``ContentWriter``: nghiên cứu → dàn ý → viết → rà soát → viết
+# lại). ``AIRouter`` dựng sẵn provider cho các việc này lúc tạo, để trang Soạn bài báo thiếu khóa
+# ngay khi mở và khóa các nút AI như trước. Mọi việc khác (meta, alt, image…) chỉ tạo provider
+# khi được gọi lần đầu (T-062): bật [tasks.image] bằng Gemini không bắt người chỉ viết bài nhập
+# khóa Gemini.
+WRITING_TASKS = ("research", "outline", "write", "rewrite", "review")
 
 # Việc mới thêm sau, có thể chưa có trong config/ai.toml của máy đang dùng (file do người dùng
 # sửa, máy kia có thể chưa cập nhật): câu báo nói rõ việc đó là gì và ghi mẫu để chép vào.
@@ -73,6 +85,11 @@ def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
         provider = str(raw.get("provider", "")).strip().lower()
         if provider not in PROVIDERS:
             raise AIError(f"Việc «{name}»: không biết hãng AI «{provider}».")
+        if name == IMAGE_TASK and provider not in IMAGE_PROVIDERS:
+            raise AIError(
+                f"Việc «{name}»: Claude không tạo được ảnh. Trong mục [tasks.{name}] của "
+                'config/ai.toml, ghi provider = "gemini" hoặc provider = "openai".'
+            )
         effort = str(raw.get("effort", "medium")).strip().lower()
         if effort not in EFFORTS:
             raise AIError(f"Việc «{name}»: effort phải là một trong {', '.join(EFFORTS)}.")
@@ -132,17 +149,38 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
 
 
 class AIRouter:
-    """Chọn đúng provider + cấu hình cho từng việc (nghiên cứu, viết, rà soát…)."""
+    """Chọn đúng provider + cấu hình cho từng việc (nghiên cứu, viết, rà soát…).
 
-    def __init__(self, tasks: dict[str, TaskConfig], settings: Settings) -> None:
+    Provider của mỗi hãng chỉ tạo một lần, khi một việc dùng hãng đó được gọi lần đầu (lười), nên
+    thiếu khóa của một hãng chỉ báo ``AIError`` khi gọi đúng việc dùng hãng đó. Riêng các việc
+    trong ``prepare`` (mặc định ``WRITING_TASKS``) được tạo ngay lúc dựng: thiếu khóa hay thư viện
+    hỏng thì báo ở đây, trang Soạn bài khóa các nút AI. Trang chỉ dùng việc khác (ví dụ viết alt)
+    truyền ``prepare=()`` hoặc đúng việc của trang, để không đòi khóa của các việc viết bài.
+    """
+
+    def __init__(
+        self,
+        tasks: dict[str, TaskConfig],
+        settings: Settings,
+        prepare: Iterable[str] = WRITING_TASKS,
+    ) -> None:
         self.tasks = tasks
+        self._settings = settings
         self._providers: dict[str, AIProvider] = {}
-        for task in tasks.values():
-            if task.provider not in self._providers:
-                self._providers[task.provider] = make_provider(task.provider, settings)
+        for name in prepare:
+            if name in tasks:
+                self._provider(tasks[name])
+
+    def _provider(self, task: TaskConfig) -> AIProvider:
+        provider = self._providers.get(task.provider)
+        if provider is None:
+            # Lỗi (thiếu khóa, thư viện hỏng) không được nhớ: lần gọi sau thử tạo lại.
+            provider = make_provider(task.provider, self._settings)
+            self._providers[task.provider] = provider
+        return provider
 
     def get(self, task_name: str) -> tuple[AIProvider, TaskConfig]:
         if task_name not in self.tasks:
             raise AIError(missing_task_message(task_name))
         task = self.tasks[task_name]
-        return self._providers[task.provider], task
+        return self._provider(task), task

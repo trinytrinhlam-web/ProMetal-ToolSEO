@@ -9,9 +9,8 @@ Kiểm:
   trong bản tạm (``tmp_path``, không đụng file thật) đúng cách chú thích trong file hướng dẫn;
 - 6 ví dụ alt không vi phạm chính quy tắc ``[alt]``, còn mỗi bản xấu vi phạm ít nhất một quy tắc.
 
-Test ``xfail(strict=True)`` = việc còn chờ T-062, đánh số SL-T051-… khớp báo cáo. Khi T-062 làm
-xong, test báo XPASS và phải gỡ dấu ``xfail``. Không gọi mạng, khóa API là chuỗi giả, không
-cần .env.
+Test ``test_sl_t051_…`` (đánh số SL-T051-… khớp báo cáo) từng là ``xfail(strict=True)`` chờ T-062;
+T-062 đã sửa và gỡ dấu ``xfail``. Không gọi mạng, khóa API là chuỗi giả, không cần .env.
 """
 
 import re
@@ -42,8 +41,6 @@ KEY_FIELDS = {
 WRITING_TASKS = ("research", "outline", "write", "rewrite", "review")
 # 4 dòng mà chú thích trong ai.toml bảo xóa dấu # khi bật việc tạo ảnh, theo đúng thứ tự.
 IMAGE_LINES = ("[tasks.image]", "provider", "model", "max_tokens")
-
-T062 = "chờ T-062 (Thợ Máy)"
 
 
 def _ai_text() -> str:
@@ -172,11 +169,6 @@ def test_half_enabled_image_block_gives_vietnamese_error(tmp_path):
         load_ai_config(path)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AIError,
-    reason=f"SL-T051-1, {T062}: AIRouter tạo provider cho mọi việc ngay lúc tạo",
-)
 def test_sl_t051_1_enabled_image_needs_gemini_key_only_when_called(tmp_path):
     tasks = load_ai_config(_enabled_ai_toml(tmp_path))
     try:
@@ -190,33 +182,18 @@ def test_sl_t051_1_enabled_image_needs_gemini_key_only_when_called(tmp_path):
         router.get("image")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=pytest.fail.Exception,  # «DID NOT RAISE»: hiện file vẫn đọc được
-    reason=f"SL-T051-2, {T062}: chưa từ chối Claude cho việc tạo ảnh",
-)
 def test_sl_t051_2_image_task_on_anthropic_is_refused(tmp_path):
     text = enable_image_block(_ai_text(), provider="anthropic")
     with pytest.raises(AIError, match="Claude không tạo được ảnh"):
         load_ai_config(_write(tmp_path, "ai.toml", text))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=f"SL-T051-3, {T062}: TASK_LABELS thiếu nhãn alt, meta",
-)
 def test_sl_t051_3_every_task_has_a_vietnamese_label():
     # Cài đặt → 🤖 Mô hình AI hiện bảng việc–mô hình: việc thiếu nhãn hiện tên thô «alt», «meta».
     raw = [row.task for row in blind_test.task_models() if row.task_label == row.task]
     assert raw == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=f"SL-T051-4, {T062}: thử mù gợi ý cả mô hình tạo ảnh",
-)
 def test_sl_t051_4_blind_test_does_not_suggest_image_model(tmp_path):
     rows = blind_test.task_models(_enabled_ai_toml(tmp_path))
     assert "gemini-nano-banana-2.1" not in blind_test.model_suggestions(rows)["gemini"]
@@ -492,7 +469,7 @@ def _open_write_page(project_root) -> AppTest:
     at.session_state["authenticated"] = True
     at.switch_page("views/write.py").run()
     if at.exception:
-        # Không dùng assert: test xfail dưới đây chỉ chấp nhận AssertionError về khóa Gemini.
+        # Không dùng assert: lỗi trang sập phải khác lỗi «đòi khóa Gemini» của SL-T051-1.
         pytest.fail(f"Trang Soạn bài sập: {at.exception}")
     return at
 
@@ -516,11 +493,6 @@ def test_write_page_with_committed_config_needs_only_claude_key(project_root, mo
     assert not any(FAKE_KEY in t for t in _shown_text(at))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=f"SL-T051-1, {T062}: bật [tasks.image] thì trang Soạn bài đòi khóa Gemini",
-)
 def test_sl_t051_1_write_page_with_image_enabled_does_not_ask_for_gemini_key(
     project_root, tmp_path, monkeypatch
 ):
