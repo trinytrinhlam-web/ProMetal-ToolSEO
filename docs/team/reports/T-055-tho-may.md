@@ -5,7 +5,7 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-055](../tickets/T-055-nhap-luu-lua-chon-anh.md) |
 | Ngày nộp | 2026-10-20 |
-| Kết quả | Hoàn thành (kèm sửa 1 dòng test cũ ngoài phạm vi, Chỉ Huy B duyệt) |
+| Kết quả | Hoàn thành (kèm sửa 1 dòng test cũ ngoài phạm vi, Chỉ Huy B duyệt). **Lượt 2:** đã sửa SL-T055-1 → 3 (mục "Lượt 2" cuối báo cáo) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -131,3 +131,101 @@ $ uvx bandit -q seo_app/storage/drafts.py
 - **Thư Ký / Chỉ Huy:** nếu muốn `from seo_app.storage import DraftImage, check_draft_images` thì thêm vào `seo_app/storage/__init__.py` (ngoài phạm vi phiếu này; hiện import từ `seo_app.storage.drafts`).
 - **Soi Lỗi:** xem lại dòng `tests/test_soi_loi_t016_t020.py:744` đã sửa; thử thêm nháp do bản app cũ (trước T-055) lưu thật trên máy của chủ dự án; ảnh trùng tên khác hoa thường trên Mac (NFD); gốc là ổ FAT.
 - **Lá Chắn:** soát `_safe_tags` (`drafts.py:682`) và đường bỏ ảnh hỏng (`:294`, `:342`) theo F1 và điều kiện T-048/T-052.
+
+## Lượt 2 (2026-10-20): sửa 3 lỗi Soi Lỗi tìm ra
+
+Theo báo cáo Soi Lỗi `docs/team/reports/T-055-soi-loi.md` (SL-T055-1 → 3). Số dòng trong mục này là số dòng **sau lượt 2**.
+
+### Tóm tắt (cho chủ dự án)
+
+- **SL-T055-1 (Trung bình), đã sửa:** nháp ghi tên thư mục khác chữ hoa/thường (`GenAI` thành `genai`) không còn làm ảnh AI thành "ảnh thật". Khi mở nháp, app xem tên thật của các thư mục chứa ảnh trên ổ (chỉ đọc tên, không mở file ảnh) rồi mới đọc thẻ.
+- **SL-T055-2 (Trung bình), đã sửa:** ảnh nay là ảnh AI thì alt luôn có chữ «Minh họa» đứng đầu (chú thích có «Ảnh minh họa (AI)»), và alt đó không còn "đã duyệt": người dùng đọc lại rồi duyệt.
+- **SL-T055-3 (Thấp), đã sửa:** không còn báo nhầm "ảnh hỏng đã bỏ" khi nháp cũ ghi "chưa chọn ảnh".
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/storage/drafts.py` | Tên thư mục thật trên ổ (`_FolderNames`, `:745`) dùng trong `_check_images` (`:908`); tiền tố ảnh AI (`_ai_prefixed` `:176`, `_ai_wording` `:307`) dùng khi mở nháp (`clean_loaded`, `:655`) và khi kiểm ảnh (`:944`); đếm ảnh bỏ (`:407`) |
+| `tests/test_drafts_images.py` | 150 → 174 test: thêm test cho 3 lỗi; đổi 1 test của lượt 1 (xem "Thay đổi so với lượt 1"); 1 test ổn định lưu/mở dùng alt ảnh AI đã có tiền tố |
+| `tests/test_soi_loi_t055.py` | Chỉ gỡ 4 dấu `xfail` (7 test: SL-T055-1 ×3, SL-T055-2 ×3, SL-T055-3 ×1), không đổi điều kiện kiểm |
+| `docs/team/reports/T-055-tho-may.md` | Mục này |
+
+Không sửa `seo_app/images/**`, `app/**`, `config/**`; không thêm thư viện.
+
+### Cách sửa
+
+**SL-T055-1.** Gốc lỗi: thẻ đọc từ tên thư mục phân biệt hoa thường ("GenAI" được nhận là ảnh AI nhờ tách chữ hoa, "genai" thì không), còn ổ Windows/Mac và `stat_image` thì không phân biệt, nên chữ trong nháp quyết định thẻ. Cách sửa trong `drafts.py` (theo gợi ý thứ nhất của Soi Lỗi, không cần sửa T-048):
+
+- Ảnh nháp ghi là **ảnh thật**, không có trong `scanned`, `stat_image` thấy ảnh: `_FolderNames.real_ref` (`:761`) xem `library.list_folder(gốc, thư_mục, page_size=1)` từ gốc xuống từng tầng (không đệ quy), lấy tên thư mục con trùng tên trong nháp: trùng hẳn trước (ổ phân biệt hoa thường có thể có cả "GenAI" lẫn "genai", là hai thư mục khác nhau), rồi trùng không phân biệt hoa thường và phải **đúng một** (`:768`). `ref`, `entry.ref` và thẻ (`resolve_many`, `tags_for_image`) theo tên thật đó.
+- So không phân biệt hoa thường đúng cách của thư mục ảnh: NFC + `casefold` (`_name_key`, `:739`, như `folders._name_key` và `ref_key`).
+- Không kiểm được tên thật (thư mục quá 5.000 mục hay quét quá giờ nên chưa thấy, hai tên chỉ khác hoa thường, lỗi đọc thư mục): ảnh **không dùng được**, kèm câu báo không có đường dẫn máy (`_MSG_FOLDER_NAME`, `:108`); không đoán theo chữ trong nháp. Lựa chọn vẫn nằm trong nháp; giao diện truyền `scanned` (kết quả quét thư mục chứa ảnh) là hết.
+- Không cần bước này khi: ảnh có trong `scanned` (đã là `ImageRef` trên ổ), nháp ghi AI hay gốc nằm trong `ai_roots` (đã là ảnh AI), ảnh nằm ngay trong gốc (không có thư mục), ảnh tạo bằng AI. Tên file giữ như nháp vì tên file không đổi thẻ (`tags_for_image` nhận ảnh AI theo tên file mà không tách chữ hoa, cả ở bản T-070).
+- Mỗi thư mục chỉ xem một lần cho cả nháp, kể cả khi lỗi (`:768`); `tag_store.resolve_many` vẫn chỉ gọi một lần.
+- Nguồn ảnh vẫn theo hướng an toàn như lượt 1 (`_safe_tags`): AI nếu nháp ghi AI **hoặc** thẻ hiện tại (theo tên thật) nói AI **hoặc** gốc trong `ai_roots`. **`is_ai_name` chưa có trên `main`** (T-070 chưa gộp, `git grep is_ai_name origin/main` không ra gì) nên tên thư mục gốc chưa được tự kiểm trong `drafts.py`: ghi ở Đề xuất.
+
+**SL-T055-2.** Chọn **cả hai**: thêm tiền tố **và** bỏ "đã duyệt" khi alt phải thêm tiền tố.
+
+- Thêm tiền tố bằng đúng hàm của `alt.py`: `clean_suggestion(AltSuggestion(...), ai_generated=True, max_chars=MAX_ALT_CHARS, caption_max_chars=MAX_CAPTION_CHARS)` (`_ai_prefixed`, `:176`): bỏ tiền tố tự viết («Minh hoạ», «Ảnh minh họa»…), cắt thân theo ranh giới từ trong giới hạn lưu của nháp, ghi lại đúng một tiền tố chuẩn. Bỏ tiền tố rồi không còn chữ (alt chỉ là «minh họa») thì để trống.
+- Lý do bỏ "đã duyệt": người dùng duyệt câu tả ảnh công trình thật; câu đã đổi (thêm «Minh họa») chưa ai đọc, và nội dung có thể không còn đúng cho ảnh minh họa. Nên alt ảnh AI **không bao giờ thiếu «Minh họa»** (kể cả lúc chưa duyệt), và người dùng phải duyệt lại.
+- Alt, chú thích đã có tiền tố: giữ nguyên, vẫn "đã duyệt" (`test_ai_text_with_prefix_is_kept_and_stays_approved`). Ảnh thật: không đụng (`test_real_image_text_is_untouched`). Chú thích trống thì để trống.
+- Hai chỗ: khi mở nháp (`clean_loaded`, `:655`) cho ảnh nháp ghi AI; và trong `check_draft_images` (`:944`) cho mọi ảnh mà thẻ cuối cùng nói AI (thư mục AI, thẻ sửa tay AI, gốc AI, tên thật trên ổ). Kết quả nằm ở `CheckedImage.image`.
+- Không đổi `DraftImage(...)` lúc tạo (giao diện tự lưu khi người dùng đang gõ, tự sửa chữ lúc đó làm ô nhập nhảy chữ); giao diện phải dùng `clean_suggestion(ai_generated=True)` hay tiền tố khi người dùng duyệt alt ảnh AI (Đề xuất).
+
+**SL-T055-3.** Chỉ đếm khi `chosen_image` khác `null` (`:407`). Trường hợp `schema_version` ghi dạng chữ/`true` (chỉ khi sửa tay) giữ như cũ: bỏ ảnh, hướng an toàn.
+
+### Thay đổi so với lượt 1 (Lá Chắn xem)
+
+- Lượt 1 ghi "kiểm ảnh không quét thư mục". Nay `check_draft_images` **có** gọi `ImageLibrary.list_folder` cho thư mục trên đường tới ảnh nháp ghi là ảnh thật (không đệ quy, `page_size=1`). Vẫn không mở file ảnh nào (`read_image_bytes` không được gọi), `list_folder` chỉ đọc tên và `stat` nên Drive "chỉ trực tuyến" không bị tải về, mọi đường đi vẫn qua `ImageLibrary` (chặn `..`, liên kết, ra ngoài gốc như T-048). Test lượt 1 `test_check_does_not_scan_or_read_files` đổi thành `test_check_reads_no_file_and_lists_only_folders_on_the_path` (kiểm đúng các thư mục được xem: `[(0, ""), (0, "CT012 - …")]`, không đệ quy, mỗi thư mục một lần; ảnh nháp ghi AI và gốc AI không xem) và thêm `test_scanned_images_need_no_folder_listing` (có `scanned` thì không gọi `list_folder`).
+- `DraftStore.load` nay sửa alt, chú thích của ảnh nháp ghi AI (thêm tiền tố, bỏ "đã duyệt"). Mở rồi lưu lại vẫn ra đúng JSON (sau lần mở đầu): `test_opening_draft_that_says_ai_already_adds_prefix`. Test lượt 1 `test_save_load_save_is_stable` đổi alt ảnh AI mẫu thành alt đã có tiền tố (chữ độc vẫn giữ nguyên để kiểm bộ lọc).
+
+### Bằng chứng (lượt 2)
+
+Máy Windows 11 của chủ dự án, Python 3.12, worktree `wt-T-055`, nhánh `team/T-055`.
+
+```
+$ uv run pytest tests/test_drafts_images.py tests/test_soi_loi_t055.py tests/test_storage_drafts.py
+    tests/test_app_drafts.py tests/test_soi_loi_t016_t020.py tests/test_soi_loi_t021_t017.py
+    tests/test_images_folders.py tests/test_images_tags.py tests/test_app_pages.py
+936 passed, 14 skipped in 275.39s (0:04:35)
+(lượt Soi Lỗi trên 934c21b: 905 passed, 14 skipped, 7 xfailed. Nay 7 test xfail đã qua, thêm 24 test
+ mới của tôi; 0 failed, 0 xfailed. 14 bỏ qua đều có từ trước, vì máy Windows này không cho tạo symlink
+ hay test quyền kiểu POSIX: test_drafts_images.py:633, test_soi_loi_t016_t020.py:232/260/273/333,
+ test_images_folders.py:62/368/381, test_images_tags.py:1346)
+
+$ uv run pytest tests/test_drafts_images.py tests/test_soi_loi_t055.py   # sau commit đổi tên biến
+283 passed, 1 skipped in 24.96s
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan seo_app/storage/drafts.py tests/test_drafts_images.py
+    tests/test_soi_loi_t055.py
+"results": {}
+
+$ uvx bandit -q seo_app/storage/drafts.py
+1 Low: B101 assert (assert saved.saved_at, có từ T-016, như lượt 1)
+```
+
+### Đối chiếu (lượt 2)
+
+- [x] SL-T055-1: `test_sl_t055_1_case_variant_cannot_launder_ai_folder` (2 ca), `test_sl_t055_1_case_only_folder_rename_keeps_ai` (Soi Lỗi, đã gỡ `xfail`); của tôi: `test_case_variant_of_ai_folder_reads_real_name_and_stays_ai` (2 ca), `test_exact_folder_name_wins_on_case_sensitive_disk`, `test_single_case_insensitive_match_takes_real_name`, `test_unconfirmed_folder_name_is_unavailable` (3 ca), `test_folder_listing_error_is_reported_once_per_folder`, `test_image_in_root_needs_no_folder_listing`, `test_scanned_ref_becomes_the_key` (thêm kiểm tên thật, thẻ)
+- [x] SL-T055-2: `test_sl_t055_2_approved_alt_of_ai_image_has_prefix` (3 ca, đã gỡ `xfail`); của tôi: `test_ai_image_text_gets_prefix_and_needs_review` (5 cách ảnh thành ảnh AI), `test_ai_text_with_prefix_is_kept_and_stays_approved`, `test_real_image_text_is_untouched`, `test_opening_draft_that_says_ai_already_adds_prefix`, `test_ai_text_prefix_edge_cases` (4 ca), `test_long_ai_alt_keeps_prefix_within_limit`
+- [x] SL-T055-3: `test_sl_t055_3_v1_null_images_are_not_counted_as_dropped` (đã gỡ `xfail`), `test_v1_draft_counts_only_real_image_data_as_dropped`
+- [x] Gỡ đủ 7 `xfail(strict=True)` khi XPASS, không đổi dòng `assert` nào của Soi Lỗi (`git diff 934c21b -- tests/test_soi_loi_t055.py` chỉ có dòng bị xóa)
+- [x] Test liên quan qua, `ruff check .` sạch (phần Bằng chứng)
+
+### Rủi ro và điểm cần chú ý (lượt 2)
+
+- **Ảnh không dùng được** (USB chưa cắm, file mất): không xem được ổ nên thẻ vẫn đọc từ chữ trong nháp; nháp sửa tay `genai` trên USB đang rút sẽ hiện thẻ ảnh thật nhưng ảnh không dùng được (không đọc, không tải lên được). Cắm lại là kiểm đúng.
+- **Thư mục rất lớn hay Drive chậm:** `list_folder` của thư mục gốc có thể xem tới 5.000 mục; quá thì ảnh báo "Chưa kiểm được tên thư mục…" cho tới khi giao diện truyền `scanned`. Chậm thêm một lần quét mỗi thư mục trên đường đi, chỉ cho ảnh chưa có trong `scanned`.
+- `checked.ref` khi không có `scanned`: tên thư mục theo ổ, **tên file theo nháp** (có thể khác hoa thường với tên trên ổ). Đọc, kiểm vẫn đúng file; so ảnh nên dùng khóa không phân biệt hoa thường (`ref_key`), hoặc truyền `scanned`.
+- `clean_suggestion` trên `main` (T-068 đã gộp) khác bản trên nhánh này ở vài ca biên (alt chỉ có dấu câu như «???»). Test của tôi tránh các ca đó; Chỉ Huy chạy lại `tests/test_drafts_images.py` sau khi gộp.
+
+### Đề xuất (lượt 2)
+
+- **T-056 (Họa Sĩ):** dùng `checked.image` (không dùng `snapshot.parts[i].chosen_image`) để hiện, duyệt, lưu lại alt/chú thích; truyền `scanned` khi đã quét thư mục chứa ảnh; hiện `checked.message` khi ảnh không dùng được. Khi người dùng duyệt alt của ảnh AI (hoặc bấm "đổi sang ảnh AI"), chạy `clean_suggestion(..., ai_generated=True)` trước khi lưu, để alt đã duyệt luôn có «Minh họa» ngay từ lúc lưu.
+- **T-070 / T-056:** sau khi `is_ai_name` lên `main`, tính `ai_roots` bằng `is_ai_name(library.roots()[i].label)` khi gọi `check_draft_images` (hoặc phiếu nhỏ cho `drafts.py` tự tính). Lưu ý: `label` là chữ trong `IMAGE_FOLDERS` (người dùng gõ), có thể khác hoa thường với tên thật trên ổ, cùng loại lỗi SL-T055-1 ở tầng gốc.
+- **T-048 (tùy Chỉ Huy):** nếu `stat_image` trả `ImageRef` theo tên thật trên ổ (trên Windows `resolve` đã cho tên thật khi kiểm tên 8.3, `folders.py:513-517`; trên Mac `resolve` giữ chữ đã gõ nên cần cách khác) thì `drafts.py` bỏ được bước xem thư mục.
+- **Lá Chắn:** soát `_FolderNames` (`drafts.py:745`: chỉ đi qua `list_folder`, không ghép đường dẫn tuyệt đối, câu báo không có đường dẫn) và `_ai_wording` (`:307`) theo F1, C6.
+- **Soi Lỗi:** chạy lại trên Mac (APFS không phân biệt hoa thường, tên NFD) và ổ phân biệt hoa thường; thử thư mục gốc hơn 5.000 mục.
