@@ -509,10 +509,6 @@ def test_scanned_refs_fix_case_variant(library, root, tag_store):
 @pytest.mark.parametrize(
     "case", ["nhap-that-thu-muc-AI", "doi-sang-AI-sau-khi-duyet", "anh-tao-bang-AI-sua-tay"]
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-2: alt 'đã duyệt' không có tiền tố «Minh họa» vẫn đi kèm ảnh mà check nói AI",
-)
 def test_sl_t055_2_approved_alt_of_ai_image_has_prefix(store, library, tag_store, case):
     """SL-T055-2 (Trung bình). Alt duyệt khi ảnh còn là ảnh thật («Bản lề cổng inox…») vẫn giữ
     ``alt_approved=True`` khi mở lại nháp mà ảnh nay là ảnh AI (thư mục AI, người dùng bấm "đổi sang

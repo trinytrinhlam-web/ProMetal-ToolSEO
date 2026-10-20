@@ -54,10 +54,17 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError  # đi kèm pydantic, không phải thư viện mới
 
+from seo_app.ai.base import AIError
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
 from seo_app.content.models import OutlineItem, Research, Review
 from seo_app.content.workflow import clean_ai_line, clean_research, clean_review
-from seo_app.images.alt import clean_alt_text
+from seo_app.images.alt import (
+    AI_ALT_PREFIX,
+    AI_CAPTION_PREFIX,
+    AltSuggestion,
+    clean_alt_text,
+    clean_suggestion,
+)
 from seo_app.images.folders import (
     MAX_REL_PATH_CHARS,
     ImageEntry,
@@ -157,6 +164,23 @@ def _ai_tags(category: str) -> ImageTags:
         return ImageTags(source=SOURCE_AI, category=category)
     except TagError:
         return ImageTags(source=SOURCE_AI)
+
+
+def _ai_prefixed(text: str, *, caption: bool = False) -> str:
+    """Alt (hay chú thích) của ảnh AI bắt đầu bằng đúng một tiền tố «Minh họa» (hay «Ảnh minh họa
+    (AI)»), ghép bằng chính hàm của luồng gợi ý alt (``clean_suggestion``, quy tắc C6 Lá Chắn
+    T-051): bỏ tiền tố tự viết, cắt phần thân theo ranh giới từ, ghi lại tiền tố chuẩn. Bỏ tiền tố
+    rồi không còn chữ nào (alt chỉ là «minh họa», «???») thì trả chuỗi rỗng."""
+    try:
+        fixed = clean_suggestion(
+            AltSuggestion(alt=text, caption=text),
+            ai_generated=True,
+            max_chars=MAX_ALT_CHARS,
+            caption_max_chars=MAX_CAPTION_CHARS,
+        )
+    except AIError:
+        return ""
+    return fixed.caption if caption else fixed.alt
 
 
 class DraftImage(_Strict):
@@ -271,6 +295,25 @@ class DraftImage(_Strict):
         if self.root_index is None:
             return None
         return ImageRef(self.root_index, self.rel_path)
+
+
+def _ai_wording(image: DraftImage) -> DraftImage:
+    """Chữ đi kèm ảnh AI: alt bắt đầu «Minh họa», chú thích bắt đầu «Ảnh minh họa (AI)» (quy tắc C6
+    Lá Chắn T-051, SL-T055-2). Code bảo đảm, không trông vào người hay AI.
+
+    Alt duyệt khi ảnh còn là ảnh thật (hay nháp sửa tay) tả ảnh như công trình thật: thêm tiền tố
+    **và** bỏ "đã duyệt", vì chữ đã đổi không còn là chữ người dùng đã duyệt, người dùng đọc lại
+    rồi duyệt (hay bấm gợi ý lại với ``ai_generated=True``). Alt, chú thích đã có tiền tố thì giữ
+    nguyên, kể cả "đã duyệt"; alt, chú thích trống thì để trống.
+    """
+    update: dict[str, object] = {}
+    if image.alt and not image.alt.startswith(AI_ALT_PREFIX):
+        update.update(alt=_ai_prefixed(image.alt), alt_approved=False)
+    if image.caption and not image.caption.startswith(AI_CAPTION_PREFIX):
+        update["caption"] = _ai_prefixed(image.caption, caption=True)
+    if not update:
+        return image
+    return DraftImage.model_validate({**image.model_dump(), **update})
 
 
 class DraftPart(_Strict):
@@ -594,11 +637,17 @@ def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
     - dàn ý ở dạng ô sửa (chưa escape): lọc như AI rồi bỏ escape, giống ``set_outline``;
     - thân bài ở dạng đã escape, có thể có chữ người dùng sửa tay: bỏ thẻ rồi escape, giống
       ``apply_flag``;
-    - ảnh đã chọn: dựng lại ``DraftImage`` (chạy lại mọi kiểm tra và bộ lọc của nó).
+    - ảnh đã chọn: dựng lại ``DraftImage`` (chạy lại mọi kiểm tra và bộ lọc của nó); nháp ghi ảnh
+      AI thì alt, chú thích có tiền tố ảnh AI (``_ai_wording``). Ảnh mà chỉ thẻ trên máy nói là
+      ảnh AI thì ``check_draft_images`` mới biết, và cũng thêm tiền tố ở đó.
     """
 
     def outline_line(text: str) -> str:
         return unescape_link_syntax(clean_ai_line(text))
+
+    def chosen(image: DraftImage) -> DraftImage:
+        image = DraftImage.model_validate(image.model_dump())
+        return _ai_wording(image) if image.source == SOURCE_AI else image
 
     return snapshot.model_copy(
         update={
@@ -625,11 +674,7 @@ def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
                     versions=[escape_link_syntax(strip_tags(text)) for text in part.versions],
                     current=part.current,
                     image=clean_ai_text(part.image),
-                    chosen_image=(
-                        None
-                        if part.chosen_image is None
-                        else DraftImage.model_validate(part.chosen_image.model_dump())
-                    ),
+                    chosen_image=None if part.chosen_image is None else chosen(part.chosen_image),
                 )
                 for part in snapshot.parts
             ],
@@ -644,6 +689,9 @@ def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
 class CheckedImage:
     """Ảnh đã chọn trong nháp sau khi kiểm lại trên máy này (``check_draft_images``).
 
+    - ``image``: ảnh đã chọn dựng lại từ nháp. Ảnh AI (theo ``tags``) thì alt, chú thích luôn có
+      tiền tố ảnh AI; alt phải thêm tiền tố thì không còn "đã duyệt" (SL-T055-2). Giao diện dùng
+      ``image`` này (không dùng ảnh trong nháp vừa mở) để hiện, duyệt và lưu lại.
     - ``ref``: ảnh trong thư mục ảnh: ``ImageRef`` dựng lại từ nháp, hoặc đúng ``ImageRef`` của
       kết quả quét nếu có; ảnh tạo bằng AI: ``None``.
     - ``entry``: kết quả ``ImageLibrary.stat_image`` khi ảnh còn dùng được; ``None`` nếu không.
@@ -796,7 +844,9 @@ def _check_images(
     for image, ref in rebuilt:
         if ref is None:
             results.append(
-                CheckedImage(image=image, ref=None, entry=None, tags=_ai_tags(image.category))
+                CheckedImage(
+                    image=_ai_wording(image), ref=None, entry=None, tags=_ai_tags(image.category)
+                )
             )
             continue
         try:
@@ -804,12 +854,13 @@ def _check_images(
         except ImageFolderError as exc:
             entry, message = None, str(exc)
         tags, tag_error = current[ref]
+        tags = _safe_tags(image, tags, ai_root=ref.root_index in ai_root_set)
         results.append(
             CheckedImage(
-                image=image,
+                image=_ai_wording(image) if tags.is_ai else image,
                 ref=ref,
                 entry=entry,
-                tags=_safe_tags(image, tags, ai_root=ref.root_index in ai_root_set),
+                tags=tags,
                 message=message,
                 tag_error=tag_error,
             )

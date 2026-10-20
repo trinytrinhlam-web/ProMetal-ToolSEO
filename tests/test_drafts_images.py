@@ -16,6 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from seo_app.content import OutlineItem
+from seo_app.images.alt import AI_ALT_PREFIX, AI_CAPTION_PREFIX
 from seo_app.images.folders import ImageEntry, ImageLibrary, ImageRef
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags
 from seo_app.storage import drafts
@@ -218,9 +219,11 @@ NASTY_TEXT = (
 
 
 def test_save_load_save_is_stable(store):
-    """Bộ lọc chạy lại không đổi gì: mở rồi lưu lại cho đúng JSON cũ (trừ giờ lưu)."""
+    """Bộ lọc chạy lại không đổi gì: mở rồi lưu lại cho đúng JSON cũ (trừ giờ lưu). Ảnh AI mà alt
+    thiếu tiền tố thì lần mở đầu thêm tiền tố (SL-T055-2, test riêng ở dưới); ở đây alt đã có."""
     image = real_image(alt=NASTY_TEXT, caption=NASTY_TEXT, prompt=NASTY_TEXT)
-    first = store.save(snapshot_with(image, generated_image(alt=NASTY_TEXT, prompt=NASTY_TEXT)))
+    generated = generated_image(alt=f"{AI_ALT_PREFIX} {NASTY_TEXT}", prompt=NASTY_TEXT)
+    first = store.save(snapshot_with(image, generated))
     raw_first = json.loads(read_row(store, first.id))
     second = store.save(store.load(first.id))
     raw_second = json.loads(read_row(store, second.id))
@@ -941,6 +944,98 @@ def test_cleaning_is_idempotent(text):
     again = DraftImage(**image.model_dump())
     assert again == image
     assert DraftImage(**again.model_dump()) == again
+
+
+# ----- chữ đi kèm ảnh AI luôn có tiền tố (SL-T055-2) ------------------------------------------
+
+
+AI_ALT = "Minh họa bản lề cổng inox bị gỉ trước khi sửa"
+AI_CAPTION = "Ảnh minh họa (AI): bản lề gỉ sau 3 năm mưa nắng"
+
+
+def ai_case(case: str, tag_store: ImageTagStore) -> tuple[DraftImage, dict]:
+    """(ảnh có alt "đã duyệt" tả ảnh thật, tham số cho check) theo một cách ảnh thành ảnh AI."""
+    if case == "nhap-ghi-AI":
+        return real_image(source=SOURCE_AI), {}
+    if case == "thu-muc-AI":
+        return real_image(rel_path=AI_FOLDER_PATH), {}
+    if case == "doi-sang-AI-sau-khi-duyet":
+        tag_store.set(ImageRef(0, REAL_PATH), ImageTags(source=SOURCE_AI, category="Cổng inox"))
+        return real_image(), {"tag_store": tag_store}
+    if case == "goc-AI":
+        return real_image(), {"ai_roots": {0}}
+    # Ảnh tạo bằng AI mà nháp (sửa tay) ghi alt, chú thích không có tiền tố.
+    return generated_image(alt=real_image().alt, caption=real_image().caption), {}
+
+
+@pytest.mark.parametrize(
+    "case", ["nhap-ghi-AI", "thu-muc-AI", "doi-sang-AI-sau-khi-duyet", "goc-AI", "anh-tao-bang-AI"]
+)
+def test_ai_image_text_gets_prefix_and_needs_review(store, library, tag_store, case):
+    image, kwargs = ai_case(case, tag_store)
+    assert image.alt_approved
+    result = check_one(store, library, image, **kwargs)
+    assert result.is_ai
+    assert result.image.alt == AI_ALT
+    assert result.image.caption == AI_CAPTION
+    assert not result.image.alt_approved  # chữ đã đổi: người dùng đọc lại rồi duyệt
+    assert result.image.prompt == image.prompt and result.image.ref == image.ref
+
+
+def test_ai_text_with_prefix_is_kept_and_stays_approved(store, library):
+    image = real_image(source=SOURCE_AI, alt=AI_ALT, caption=AI_CAPTION)
+    saved = store.save(snapshot_with(image, generated_image()))
+    loaded = store.load(saved.id)
+    assert [part.chosen_image for part in loaded.parts[1:]] == [image, generated_image()]
+    checked = check_draft_images(loaded, library)
+    assert checked[1].image == image and checked[2].image == generated_image()
+    assert checked[1].image.alt_approved and checked[2].image.alt_approved
+
+
+def test_real_image_text_is_untouched(store, library, tag_store):
+    result = check_one(store, library, real_image(), tag_store=tag_store)
+    assert not result.is_ai
+    assert result.image == real_image()
+
+
+def test_opening_draft_that_says_ai_already_adds_prefix(store):
+    """Nháp ghi ảnh AI: mở nháp (chưa cần kiểm trên máy) đã có tiền tố và bỏ "đã duyệt"; lưu rồi mở
+    lại không đổi gì thêm."""
+    saved = store.save(snapshot_with(real_image(source=SOURCE_AI), real_image()))
+    loaded = store.load(saved.id)
+    ai, real = loaded.parts[1].chosen_image, loaded.parts[2].chosen_image
+    assert (ai.alt, ai.caption, ai.alt_approved) == (AI_ALT, AI_CAPTION, False)
+    assert real == real_image()
+    again = store.load(store.save(loaded).id)
+    assert again.parts[1].chosen_image == ai and again.parts[2].chosen_image == real
+
+
+@pytest.mark.parametrize(
+    ("alt", "caption", "expected"),
+    [
+        ("minh họa", "minh họa:", ("", "")),  # chỉ có tiền tố: không còn gì để giữ
+        ("Minh hoạ cổng inox", "", ("Minh họa cổng inox", "")),  # tiền tố viết khác: ghi lại
+        (
+            "Ảnh minh họa cổng inox",
+            "Minh họa: cổng",
+            ("Minh họa cổng inox", "Ảnh minh họa (AI): cổng"),
+        ),
+        ("", "Cổng inox hai cánh", ("", "Ảnh minh họa (AI): cổng inox hai cánh")),
+    ],
+)
+def test_ai_text_prefix_edge_cases(library, alt, caption, expected):
+    image = generated_image(alt=alt, caption=caption, alt_approved=bool(alt))
+    result = check_chosen_image(image, library).image
+    assert (result.alt, result.caption) == expected
+    assert not result.alt_approved
+
+
+def test_long_ai_alt_keeps_prefix_within_limit(library):
+    image = generated_image(alt="cổng inox hai cánh " * 100, caption="cửa cuốn " * 300)
+    result = check_chosen_image(image, library).image
+    assert result.alt.startswith(f"{AI_ALT_PREFIX} cổng inox") and len(result.alt) <= MAX_ALT_CHARS
+    assert result.caption.startswith(AI_CAPTION_PREFIX)
+    assert len(result.caption) <= MAX_CAPTION_CHARS
 
 
 def test_unknown_fields_rejected():
