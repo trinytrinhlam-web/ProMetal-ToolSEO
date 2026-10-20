@@ -438,7 +438,6 @@ class _PlannedImage:
     """Một ảnh đã kiểm xong, sẵn sàng tải lên (chưa gửi gì)."""
 
     source: DraftImage
-    number: int  # thứ tự trong bài, từ 1
     file_name: str
     alt: str  # chữ thường đã gỡ ký tự ngắt, escape Markdown (alt_text gửi REST)
     caption: str  # chữ thường; escape HTML khi gửi
@@ -1081,7 +1080,7 @@ class WordPressClient:
                 taken=names,
             )
             names.append(file_name)
-            planned.append(_PlannedImage(part, number, file_name, alt, caption))
+            planned.append(_PlannedImage(part, file_name, alt, caption))
         chosen = [item.source for item in planned if item.source.featured]
         if len(chosen) > 1:
             raise WordPressError(_DRAFT_TWO_FEATURED)
