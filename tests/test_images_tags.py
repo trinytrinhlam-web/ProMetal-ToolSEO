@@ -1717,9 +1717,7 @@ HOSTILE_FILES = {
         f"{T052_CREATE_TAGS} WITHOUT ROWID; {T052_CREATE_INFO}; "
         "INSERT INTO info VALUES ('schema_version', '1')"
     ),
-    "bang-ao": (
-        f"CREATE VIRTUAL TABLE manual_tags USING fts5({TAG_COLUMNS}); {T052_CREATE_INFO}"
-    ),
+    "bang-ao": (f"CREATE VIRTUAL TABLE manual_tags USING fts5({TAG_COLUMNS}); {T052_CREATE_INFO}"),
     "co-check": T052_FILE.replace(
         "saved_ts REAL NOT NULL,", "saved_ts REAL NOT NULL CHECK (saved_ts = saved_ts),"
     ),
