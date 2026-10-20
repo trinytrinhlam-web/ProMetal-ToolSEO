@@ -39,6 +39,7 @@ import os
 import re
 import struct
 import tempfile
+import threading
 import warnings
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -77,6 +78,11 @@ MAX_ICC_BYTES = 1024 * 1024  # hồ sơ màu lớn hơn thì bỏ (hồ sơ củ
 PREVIEW_CACHE_DIR = PROJECT_ROOT / "data" / "image_previews"
 _PREVIEW_CACHE_VERSION = 1  # đổi cách làm ảnh xem trước thì tăng số này để bỏ cache cũ
 _MAX_CACHED_PREVIEW_BYTES = 2 * 1024 * 1024
+
+# LC-T049-3: ``warnings.catch_warnings`` sửa bộ lọc cảnh báo của cả chương trình rồi trả lại bản
+# đã lưu khi ra khối, nên không an toàn khi nhiều luồng (Python 3.12; Streamlit chạy mỗi phiên
+# một luồng): luồng ra sau trả lại bộ lọc của luồng kia. Khóa giữ mỗi lúc chỉ một luồng trong khối.
+_WARNINGS_LOCK = threading.Lock()
 
 _MSG_OLD_PILLOW = (
     "Thư viện ảnh Pillow đang là bản cũ (dưới 13) nên app không xử lý ảnh để tránh lỗ hổng đã "
@@ -181,6 +187,18 @@ def _webp_canvas_pixels(data: bytes) -> int | None:
     return width * height
 
 
+def _pillow_open(data: bytes, formats: tuple[str, ...]) -> Image.Image:
+    """``Image.open`` với ``DecompressionBombWarning`` thành lỗi (Lá Chắn T-047 điều kiện 2).
+
+    Khóa ``_WARNINGS_LOCK`` bọc cả khối đổi bộ lọc cảnh báo (LC-T049-3). Với 4 định dạng được mở,
+    Pillow chỉ kiểm "bom giải nén" trong ``Image.open`` (``load`` không kiểm), nên khóa chỉ bọc lời
+    gọi này: phần giải mã ảnh của các phiên khác nhau vẫn chạy song song.
+    """
+    with _WARNINGS_LOCK, warnings.catch_warnings():
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        return Image.open(io.BytesIO(data), formats=list(formats))
+
+
 def _open(
     data: object, formats: tuple[str, ...] = ALLOWED_FORMATS, draft_edge: int | None = None
 ) -> Image.Image:
@@ -192,21 +210,19 @@ def _open(
         raise _too_many_pixels(canvas)
     _register_heif()
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            image = Image.open(io.BytesIO(data), formats=list(formats))
-            try:
-                pixels = image.width * image.height
-                if pixels > MAX_IMAGE_PIXELS:
-                    raise _too_many_pixels(pixels)
-                if draft_edge and image.format in ("JPEG", "MPO"):
-                    # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần
-                    # (vẫn không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.
-                    image.draft(None, (draft_edge, draft_edge))
-                image.load()
-            except BaseException:
-                image.close()
-                raise
+        image = _pillow_open(data, formats)
+        try:
+            pixels = image.width * image.height
+            if pixels > MAX_IMAGE_PIXELS:
+                raise _too_many_pixels(pixels)
+            if draft_edge and image.format in ("JPEG", "MPO"):
+                # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần (vẫn
+                # không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.
+                image.draft(None, (draft_edge, draft_edge))
+            image.load()
+        except BaseException:
+            image.close()
+            raise
     except ImageProcessError:
         raise
     except (Image.DecompressionBombError, Image.DecompressionBombWarning):

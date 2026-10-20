@@ -724,11 +724,8 @@ def test_pillow_duoi_13_co_cache_cung_tu_choi(tmp_path, monkeypatch):
     assert _loi(cache.get, library, refs["a.jpg"]) == process._MSG_OLD_PILLOW
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T049-3: warnings.catch_warnings không an toàn nhiều luồng; hai phiên Streamlit "
-    "mở ảnh cùng lúc để lại bộ lọc 'DecompressionBombWarning thành lỗi' cho cả chương trình",
-)
+# SL-T049-3 (catch_warnings không an toàn nhiều luồng): sửa ở T-067 bằng khóa của module. Luồng A
+# chờ B vào khối tới hết 10 giây (có khóa thì B không vào được), nên test này chạy khoảng 10 giây.
 def test_hai_luong_mo_anh_cung_luc_khong_de_lai_bo_loc_canh_bao(monkeypatch):
     png = _luu(Image.new("RGB", (20, 20)), "PNG")
     a_vao, b_vao, a_ra = threading.Event(), threading.Event(), threading.Event()

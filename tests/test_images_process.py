@@ -12,8 +12,11 @@ import re
 import shutil
 import struct
 import subprocess
+import threading
+import time
 import warnings
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
 
@@ -555,6 +558,82 @@ def test_canh_bao_bom_giai_nen_cua_pillow_thanh_loi(monkeypatch, dinh_dang):
         bo_loc = list(warnings.filters)
         assert "quá nhiều điểm ảnh" in _loi(process.make_ai_image, data)
         assert list(warnings.filters) == bo_loc  # không để lại bộ lọc cảnh báo
+
+
+def _dang_loc_bom():
+    """Bộ lọc "DecompressionBombWarning thành lỗi" đang có trong bộ lọc cảnh báo chung."""
+    return any(
+        action == "error" and category is Image.DecompressionBombWarning
+        for action, _message, category, _module, _line in warnings.filters
+    )
+
+
+def test_nhieu_luong_mo_anh_cung_luc_bo_loc_canh_bao_giu_nguyen(monkeypatch):
+    # LC-T049-3: nhiều phiên Streamlit (mỗi phiên một luồng) mở ảnh cùng lúc. Khóa giữ mỗi lúc
+    # chỉ một luồng trong khối đổi bộ lọc, nên bộ lọc chung không bị để lại hay gỡ mất.
+    data = _luu(_anh_bon_mau((64, 48)), "PNG")
+    mo_that = Image.open
+    dem = threading.Lock()
+    dang_mo = []
+    cung_luc = []
+    co_loc = []
+
+    def mo_cham(*args, **kwargs):
+        with dem:
+            dang_mo.append(1)
+            cung_luc.append(len(dang_mo))
+            co_loc.append(_dang_loc_bom())
+        time.sleep(0.01)  # không có khóa thì các luồng khác kịp chen vào khối
+        try:
+            return mo_that(*args, **kwargs)
+        finally:
+            with dem:
+                dang_mo.pop()
+
+    monkeypatch.setattr(Image, "open", mo_cham)
+    with warnings.catch_warnings():  # có lỗi thật thì bộ lọc thừa không lan sang test khác
+        truoc = list(warnings.filters)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            ket_qua = list(pool.map(lambda _: process.make_preview(data), range(32)))
+        sau = list(warnings.filters)
+    assert sau == truoc
+    assert len(cung_luc) == 32 and max(cung_luc) == 1
+    assert all(co_loc)
+    assert all(process.jpeg_layout(anh) == (64, 48) for anh in ket_qua)
+    assert not process._WARNINGS_LOCK.locked()
+
+
+@pytest.mark.parametrize("dinh_dang", ["JPEG", "PNG", "WEBP", "HEIF"])
+def test_pillow_chi_kiem_bom_trong_khoa_va_bo_loc(monkeypatch, dinh_dang):
+    # Khóa chỉ bọc ``Image.open``: Pillow không được kiểm "bom" ở chỗ khác (``load``, ``draft``,
+    # thu nhỏ…), nếu không thì cảnh báo ở đó không thành lỗi (Lá Chắn T-047 điều kiện 2).
+    data = _heic((800, 600)) if dinh_dang == "HEIF" else _luu(_anh_bon_mau((800, 600)), dinh_dang)
+    kiem_that = Image._decompression_bomb_check
+    lan_kiem = []
+
+    def kiem_gian_diep(*args, **kwargs):
+        lan_kiem.append((process._WARNINGS_LOCK.locked(), _dang_loc_bom()))
+        return kiem_that(*args, **kwargs)
+
+    monkeypatch.setattr(Image, "_decompression_bomb_check", kiem_gian_diep)
+    process.make_web_image(data, max_edge_px=200)  # có cả lần mở lại WebP để kiểm sau nén
+    process.make_ai_image(data, max_edge_px=200)
+    process.make_preview(data)
+    assert len(lan_kiem) >= 4
+    assert set(lan_kiem) == {(True, True)}
+    assert not process._WARNINGS_LOCK.locked() and not _dang_loc_bom()
+
+
+def test_khoa_mo_anh_duoc_tra_khi_loi(monkeypatch):
+    bo_loc = list(warnings.filters)
+    for data in (b"khong phai anh", b"\x89PNG\r\n\x1a\n" + b"\x00" * 40):
+        assert _loi(process.make_preview, data) in {process._MSG_NOT_IMAGE, process._MSG_BROKEN}
+        assert not process._WARNINGS_LOCK.locked()
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1000)
+    monkeypatch.setattr(process, "MAX_IMAGE_PIXELS", 10**9)
+    assert "quá nhiều điểm ảnh" in _loi(process.make_preview, _luu(_anh_bon_mau((40, 30)), "PNG"))
+    assert not process._WARNINGS_LOCK.locked()
+    assert list(warnings.filters) == bo_loc
 
 
 def test_khong_doi_gioi_han_chung_cua_pillow():
