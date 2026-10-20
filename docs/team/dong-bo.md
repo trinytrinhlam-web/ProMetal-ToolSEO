@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 14:53. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-20 15:13. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -43,15 +43,22 @@ Chỉ Huy B, cập nhật 2026-10-20 14:53. Bảng cũ của A (cập nhật 17/
 | [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3) | đã gộp (`0481f7e`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; mở app thật xem mọi trang: không lỗi; 11:21 gộp và đẩy `main` | Điều kiện đã ghi vào T-049, T-056. T-049 giao được |
 | [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | đã gộp (`57fc6b9`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 11:41 gộp và đẩy `main` | Điều kiện đã chép: C1–C6 → T-062, C7–C9 → T-053, C10 → T-065. T-065 giao được |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | đã gộp (`3f90489`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 14:37 gộp và đẩy `main` | Điều kiện đã chép; T-067 giao được; Chỉ Huy thử 3–5 ảnh thật trước khi gộp T-054 |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (`f771a0e`) | ✅ 14:15 **Thợ Máy lượt 2 xong**: sửa đủ SL-T052-1 → -8 (test liên quan 849 qua, 0 hỏng) | ⏳ **Soi Lỗi kiểm lại lượt 2** (phiên "Soi Lỗi · T-052 lượt 2 kiểm lại thẻ ảnh", giao sau 14:20), rồi Lá Chắn |
+| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | `team/T-052` (`497aa45`) | ✅ 14:54 **Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN**: 8 lỗi lượt 1 sửa thật; 3 lỗi mới Thấp SL-T052-9 → -11 (`xfail`); test liên quan 849 qua. Ca symlink, tên NFD chưa chạy (Windows chưa bật Developer Mode) | **Lá Chắn** |
 | [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) Dọn lỗi Thấp xử lý ảnh (GĐ3) | `team/T-067` (từ `6ed41e2`) | ⏳ **Thợ Máy đang làm** (phiên "Thợ Máy · T-067 dọn lỗi Thấp xử lý ảnh", giao sau 14:37), worktree `wt-T-067` | Soi Lỗi rút gọn, Lá Chắn rút gọn |
-| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | `team/T-062` (`0f01c1e`) | ✅ 14:31 **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (C1–C6 đạt; 1 lỗi Thấp LC-T062-1). Điều kiện đã chép vào T-053, T-056, T-065; lập T-068 (SL-T062-1 → -3), T-069 (README) | **Gộp vào `main`** khi chủ dự án cho |
+| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | đã gộp (`f96775a`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 15:09 gộp và đẩy `main` | Điều kiện đã chép; T-053, T-068, T-069 giao được |
 | Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-070** |
-| `main` | `3f90489` + tài liệu | Windows sau gộp T-049: **8.278 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
+| `main` | `f96775a` + tài liệu | Windows sau gộp T-062: **8.487 qua, 0 hỏng**; ruff sạch. Pillow 13.0.0 | |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-20 15:13 · Chỉ Huy B
+
+- Chủ dự án cho gộp **T-062**: gộp vào `main` (`f96775a`), không xung đột; lần đầu chạy chung với T-049. Windows 8.487 qua, 0 hỏng; ruff sạch. Đã đẩy, xóa nhánh `team/T-062` và worktree `wt-T-062`. Hết chờ: T-053, T-068, T-069.
+- **Soi Lỗi T-052 lượt 2 ĐẠT CÓ ĐIỀU KIỆN** (`497aa45`): 8 lỗi lượt 1 sửa thật; 3 lỗi mới Thấp SL-T052-9 → -11. Chờ Lá Chắn.
+- Chủ dự án tạo thư mục Google Drive "SEO-Tool" và nhờ báo tiến độ: B tạo Google Docs "Tiến độ SEO App (Pro-Metal), cập nhật 20/10/2026" trong thư mục đó (tóm tắt giai đoạn, phiếu, việc chờ chủ dự án). Lần sau cập nhật tiến độ thì sửa đúng file này nếu có công cụ sửa Google Docs; không có thì tạo file mới ghi ngày.
+- Đang chạy: Thợ Máy T-067.
 
 ### 2026-10-20 14:53 · Chỉ Huy B
 
