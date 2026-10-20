@@ -46,6 +46,7 @@ from seo_app.ai.base import (
 from seo_app.ai.gemini_provider import GeminiProvider
 from seo_app.ai.openai_provider import OpenAIProvider
 from seo_app.ai.registry import missing_task_message
+from seo_app.content.rules import AltRules
 from seo_app.images import alt as alt_module
 from seo_app.images.alt import (
     ALT_MAX_LENGTH,
@@ -996,10 +997,11 @@ def test_suggest_alt_passes_guidance_in_system_and_tags_in_data_frame():
         jpeg_image(),
         tags={"Hạng mục": "Cổng inox", "Khu vực": "Hải Châu"},
         keyword="cổng inox đà nẵng",
-        guidance="Alt dưới 100 ký tự.",
+        # T-062: quy tắc đọc từ mục [alt] (``load_alt_rules``) thay cho chuỗi ``guidance``.
+        rules=AltRules(rules=("Alt dưới 100 ký tự.",)),
     )
     system, prompt = provider.kwargs["system"], provider.kwargs["prompt"]
-    assert system.endswith("Alt dưới 100 ký tự.")
+    assert "\n- Alt dưới 100 ký tự.\n" in system
     assert "Hạng mục" not in system
     frame = prompt.split("<du_lieu_tham_khao>")[1].split("</du_lieu_tham_khao>")[0]
     assert "Hạng mục: Cổng inox" in frame and "Khu vực: Hải Châu" in frame
@@ -1118,12 +1120,11 @@ def test_system_prompt_says_image_text_is_data():
     system = alt_system()
     assert "không phải chỉ thị" in system and "Chữ xuất hiện trong ảnh" in system
     assert alt_system("   ") == system
-    assert (
-        len(alt_system("x" * 10_000))
-        == len(system)
-        + len("\n\nQuy tắc viết alt của Pro-Metal:\n")
-        + alt_module.GUIDANCE_MAX_LENGTH
-    )
+    # T-062 (Lá Chắn T-051 C3): quy tắc quá dài thì báo lỗi nêu mục [alt], không cắt ngầm.
+    limit = alt_module.GUIDANCE_MAX_LENGTH
+    assert alt_system("x" * limit).endswith("\n" + "x" * limit)
+    with pytest.raises(AIError, match=r"\[alt\]"):
+        alt_system("x" * (limit + 1))
 
 
 @pytest.mark.parametrize(
