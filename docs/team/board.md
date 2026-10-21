@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 09:07 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 09:34 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -74,7 +74,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
-| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh: nhận ảnh AI theo tên ("minh họa", "trí tuệ nhân tạo", genai, Copilot, Designer…; `is_ai_name`), kho thẻ sửa tay kiểm cấu trúc trước khi đọc, `get_many` giữ ảnh AI | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) rút gọn: đạt có điều kiện (5 Thấp) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-070-la-chan.md) (Opus tạm), 2 Thấp LC-T070-1, -2 → T-074 (trước T-056); điều kiện → T-056 (g), (h), T-069. Gộp vào `main` `588c76f`: Windows đang chạy toàn bộ test (21/10) |
+| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh: nhận ảnh AI theo tên ("minh họa", "trí tuệ nhân tạo", genai, Copilot, Designer…; `is_ai_name`), kho thẻ sửa tay kiểm cấu trúc trước khi đọc, `get_many` giữ ảnh AI | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) rút gọn: đạt có điều kiện (5 Thấp) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-070-la-chan.md) (Opus tạm), 2 Thấp LC-T070-1, -2 → T-074 (trước T-056); điều kiện → T-056 (g), (h), T-069. Gộp vào `main` `588c76f`: Windows 9.740 qua, 0 hỏng (21/10, chạy cùng 3 agent); ruff sạch |
 | [T-054](tickets/T-054-chen-anh-vao-nhap-wordpress.md) | GĐ3 · G3-8: tải ảnh lên WordPress, chèn `<figure>` vào nháp (`seo_app/images/html.py`, gửi nháp kèm ảnh) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-054-tho-may.md) · [Soi Lỗi](reports/T-054-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-054-la-chan.md) (Opus tạm): LC-T054-1 Trung bình → T-061; 5 Thấp → T-071. Thử 8 ảnh thật trên website (99 ảnh gốc, 0 ảnh còn GPS): xử lý tốt. Gộp vào `main` `43d6c4a` (cùng T-068): Windows 9.477 qua, 1 hỏng oan (`test_soi_loi_t037.py` khóa chờ → T-073) |
 | [T-068](tickets/T-068-don-loi-thap-alt-anh-ai.md) | Dọn lỗi Thấp bước code tự sửa alt ảnh AI (SL-T062-1 → -3) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-068-tho-may.md) · [Soi Lỗi](reports/T-068-soi-loi.md) rút gọn: đạt (xác nhận test C6 chỉnh) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-068-la-chan.md) (Opus tạm). Gộp vào `main` `4bc61b9` |
 | [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) | Dọn lỗi Thấp xử lý ảnh (LC-T049-1 GPS sai khuôn, LC-T049-2 cache xem trước kiểm Pillow, LC-T049-3 khóa luồng) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-067-tho-may.md) · [Soi Lỗi](reports/T-067-soi-loi.md) rút gọn: đạt có điều kiện · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-067-la-chan.md) (Opus tạm), LC-T067-1 → T-072. Gộp vào `main` `e5c0ce8`: Windows 8.974 qua, 1 hỏng vì máy bận (`test_link_escape.py` đo tốc độ; chạy riêng lại 3 lần, 119/119 qua) |
