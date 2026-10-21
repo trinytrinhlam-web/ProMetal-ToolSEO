@@ -34,14 +34,14 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 12:03. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 12:20. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | đã gộp (`588c76f`), nhánh và worktree đã xóa | ✅ Windows 9.740 qua, 0 hỏng; ruff sạch; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-074 |
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`3e2c1fa`) | ✅ 11:35 Thợ Máy lượt 3 sửa `tests/test_drafts_images.py` (1 test hỏng còn lại trong `tests/test_soi_loi_t055.py`) | ⏳ Soi Lỗi sửa `tests/test_soi_loi_t055.py` (phiên "Soi Lỗi · T-055 sửa dữ liệu test"); rồi gộp |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress | đã gộp (`975d323`), nhánh và worktree đã xóa | ✅ Windows 9.915 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-059, T-060 |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 | đã gộp vào `main` trên máy (`ae2ae8e`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; chủ dự án cho gộp | ⏳ Chạy toàn bộ test Windows; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-074` |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 | đã gộp (`ae2ae8e`), nhánh và worktree đã xóa | ✅ Windows 10.135 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-077 |
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` (gấp, LC-T061-1 Cao) | `team/T-075` (`f5f2bb6`) | ✅ 11:38 Soi Lỗi rút gọn ĐẠT (0 lỗi) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-075 kiểm nhanh certifi") |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ (trước T-056) | `team/T-077` (từ `main` `ae2ae8e` + tài liệu) | Chủ dự án cho giao | ⏳ Thợ Máy làm (phiên "Thợ Máy · T-077 tên công cụ AI") |
 | Chờ phiếu trước | | T-076 (sau T-055, nên trước T-056); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-078** |
@@ -49,6 +49,10 @@ Chỉ Huy B, cập nhật 2026-10-21 12:03. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 12:20 · Chỉ Huy B
+
+- **Toàn bộ test Windows sau gộp T-074:** 10.135 qua, 19 bỏ qua, 128 xfail, **0 hỏng** (17 phút, chạy cùng 3 agent); ruff sạch. Đã đẩy `main`, xóa nhánh `team/T-074` (máy và GitHub) và worktree `wt-T-074`. Bảng %: Giai đoạn 3 lên khoảng 80%.
 
 ### 2026-10-21 12:03 · Chỉ Huy B
 
