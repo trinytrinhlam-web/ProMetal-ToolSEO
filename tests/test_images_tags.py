@@ -23,7 +23,13 @@ import pytest
 
 import seo_app.storage.image_tags as image_tags_module
 from seo_app.config import PROJECT_ROOT
-from seo_app.images.folders import ImageFolderError, ImageLibrary, ImageRef, SubFolder
+from seo_app.images.folders import (
+    MAX_REL_PATH_CHARS,
+    ImageFolderError,
+    ImageLibrary,
+    ImageRef,
+    SubFolder,
+)
 from seo_app.images.tags import (
     AREA_GROUPS,
     AREAS,
@@ -2070,6 +2076,91 @@ def test_t074_structure_cannot_change_between_check_and_use(store, monkeypatch):
     with closing(sqlite3.connect(store.path)) as conn:
         triggers = conn.execute("SELECT count(*) FROM sqlite_master WHERE type = 'trigger'")
         assert triggers.fetchone() == (0,)
+
+
+def test_t074_guard_limits_length_of_every_value():
+    """SL-T070-2: giới hạn số bước không giới hạn được một bước nặng; ``_guard`` thêm giới hạn độ
+    dài, nên hàm tạo giá trị khổng lồ bị từ chối ngay (``SQLITE_TOOBIG``) hoặc trả rỗng."""
+    with closing(sqlite3.connect(":memory:")) as conn:
+        image_tags_module._guard(conn)
+        limit = image_tags_module._MAX_SQLITE_LENGTH
+        assert conn.getlimit(sqlite3.SQLITE_LIMIT_LENGTH) == limit
+        for sql in (
+            f"SELECT randomblob({limit + 1})",
+            f"SELECT zeroblob({limit + 1})",
+            f"SELECT hex(zeroblob({limit // 2 + 1}))",
+            f"SELECT replace(hex(zeroblob({limit // 4 + 1})), '0', '00')",
+        ):
+            with pytest.raises(sqlite3.DataError) as info:
+                conn.execute(sql).fetchone()
+            assert image_tags_module._is_too_big(info.value), sql
+            assert image_tags_module._db_message(info.value) == image_tags_module._MSG_BROKEN
+        assert conn.execute(f"SELECT printf('%.*c', {limit + 1}, 'x')").fetchone() == (None,)
+        assert conn.execute(f"SELECT length(randomblob({limit}))").fetchone() == (limit,)
+
+
+def test_t074_longest_row_the_app_writes_fits_under_length_limit(store):
+    """Dòng dài nhất app ghi (đường dẫn ``MAX_REL_PATH_CHARS`` ký tự, mỗi ký tự 4 byte UTF-8) vẫn
+    lưu, đọc, liệt kê được; file vẫn được coi là lành."""
+    folder = "𝐀" * 200  # U+1D400: 4 byte UTF-8
+    rel_path = "/".join([folder] * 4 + ["𝐀" * 216 + ".jpg"])
+    ref = ImageRef(0, rel_path)
+    assert len(rel_path) == MAX_REL_PATH_CHARS and len(rel_path.encode()) > 4000
+    store.set(ref, ImageTags(category="Cổng inox", area="Quận 7"))
+    assert store.get(ref).tags.area == "Quận 7"
+    assert [item.ref for item in store.list_manual().items] == [ref]
+    assert image_tags_module._is_healthy(store.path) is True
+    assert store.recovered_from is None
+
+
+def _insert_info(path: Path, key, value) -> None:
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("INSERT INTO info VALUES (?, ?)", (key, value))
+
+
+TOO_LONG = 1_200_000  # quá _MAX_SQLITE_LENGTH (1 triệu byte)
+OVERSIZED_CELLS = {
+    "chu-qua-dai": lambda p: raw_insert(p, good_row("lon.jpg", category="x" * TOO_LONG)),
+    "chu-nhieu-byte": lambda p: raw_insert(p, good_row("lon.jpg", area="ệ" * (TOO_LONG // 3))),
+    "khoa-la-khoi-byte": lambda p: raw_insert(p, good_row("lon.jpg", ref_key=b"x" * TOO_LONG)),
+    "cot-so-la-khoi-byte": lambda p: raw_insert(p, good_row("lon.jpg", saved_ts=b"x" * TOO_LONG)),
+    "khoa-info-qua-dai": lambda p: _insert_info(p, "k" * TOO_LONG, "1"),
+    "gia-tri-info-qua-dai": lambda p: _insert_info(p, "khac", b"x" * TOO_LONG),
+}
+
+
+@pytest.mark.parametrize("case", list(OVERSIZED_CELLS))
+def test_t074_file_with_oversized_cell_is_moved_aside_not_jammed(store, case):
+    """Ô dài quá giới hạn độ dài (app không bao giờ ghi): đọc tới ô đó là ``SQLITE_TOOBIG``, còn
+    ``quick_check`` vẫn "ok". ``_is_healthy`` đọc thử mọi ô nên coi file là hỏng, đổi tên sang một
+    bên; kho không kẹt mãi ở câu báo lỗi."""
+    build_sqlite(store.path, T052_FILE)
+    OVERSIZED_CELLS[case](store.path)
+    hostile = store.path.read_bytes()
+    with closing(sqlite3.connect(store.path)) as conn:
+        assert conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
+    assert image_tags_module._is_healthy(store.path) is False
+    store.set(REF, ImageTags(area="Quận 7"))
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is not None and store.recovered_from.read_bytes() == hostile
+
+
+@pytest.mark.parametrize("case", ["chu-qua-dai", "khoa-la-khoi-byte", "cot-so-la-khoi-byte"])
+def test_t074_oversized_cell_swapped_in_while_running_resets_then_recovers(store, case):
+    """File có ô quá dài bị thay vào khi app đang chạy: lần đọc báo lỗi (không đường dẫn), đặt lại
+    ``_ready``; lần sau ``_is_healthy`` coi là hỏng, đổi tên file, dùng lại được."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    build_sqlite(store.path, T052_FILE)
+    OVERSIZED_CELLS[case](store.path)
+    with pytest.raises(ImageTagStoreError) as info:
+        store.list_manual()
+    assert str(info.value) == image_tags_module._MSG_BROKEN
+    assert store._ready is False
+    assert store.list_manual().items == ()
+    assert store.recovered_from is not None
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
 
 
 def test_t074_change_made_between_operations_is_caught_at_next_check(store):

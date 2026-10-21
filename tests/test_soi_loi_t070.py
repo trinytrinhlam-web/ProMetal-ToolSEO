@@ -420,14 +420,6 @@ def test_sl_t070_1_hidden_recursive_trigger_does_not_jam_store(tmp_path, monkeyp
     assert store.get(REF).tags == TAGS
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "SL-T070-2: _guard chỉ đếm số bước máy ảo; một bước có thể tốn rất lâu (randomblob, "
-        "zeroblob, printf %.*c cỡ chục MB), nên truy vấn ít bước mà chạy lâu không bị dừng"
-    ),
-)
 def test_sl_t070_2_guard_also_stops_few_but_heavy_steps():
     """32 bước nặng (mỗi bước tạo 25 MB, khoảng 4,5 giây trên máy Windows của chủ dự án) trên kết
     nối đã ``_guard``: phải bị dừng (chạy quá giờ) hoặc bị từ chối (giá trị quá lớn), không được
