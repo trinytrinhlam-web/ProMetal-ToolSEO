@@ -1,0 +1,144 @@
+# Biên bản bảo mật T-061 · Shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh
+
+> **Model:** chạy tạm Claude Opus 5.5, cần kiểm lại bằng Claude Fable sau 01/11 (tài khoản chưa dùng được Fable; chủ dự án đã duyệt).
+
+> **Cảnh báo toàn repo, mức Cao, không do T-061 (LC-T061-1):** thư viện `certifi` 2026.7.22 trong `uv.lock` (có sẵn trên `main`) còn tin một gốc chứng chỉ có 8 chứng chỉ con bị lộ khóa (GHSA-6q48-6c7w-9gw2, công bố 2026-10-20). App dùng bộ chứng chỉ này khi gửi mật khẩu ứng dụng WordPress và khóa Gemini. Cần một phiếu sửa gấp (nâng lên 2026.10.19, đã thử được). Chi tiết ở mục «Phát hiện toàn repo».
+
+| Mục | Nội dung |
+|---|---|
+| Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 (tạm, xem ghi chú trên) · dưới Chỉ Huy B |
+| Phiếu được kiểm | [T-061](../tickets/T-061-shortcode-trong-bai-ai.md), kèm điều kiện 2 của Lá Chắn T-054 (LC-T054-1) và LC-T042-3 của Lá Chắn T-042 |
+| Phạm vi | diff `43d6c4a...team/T-061` (đầu nhánh `64525d3`, 14 file): `seo_app/sanitize.py`, `seo_app/wordpress/client.py`, `seo_app/images/html.py`, `tests/test_shortcode_t061.py`, `tests/test_soi_loi_t061.py`, 7 file test cũ, 2 báo cáo. Kèm code xung quanh: cả lớp `_Sanitizer`, `_request`, `_post_from`, `create_draft_with_images`, `_plan_draft_images`, `plain_image_text`, `_seo_text`, `has_html`, `normalize_meta`, `process.py` (thẻ EXIF giữ lại, chunk WebP cho phép), trang Kết nối WordPress (`app/views/wordpress.py`) |
+| Ngày | 2026-10-21 (giờ máy, +07) |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** cho thay đổi của T-061: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **4 Thấp** (LC-T061-2 → -5). **LC-T054-1 đã đóng.** **LC-T042-3 đã đóng phần app**, phần còn lại (LC-T061-2 = SL-T061-1, Thấp) chờ T-059 bước 4. **Gộp vào `main` được ngay**: các điều kiện không chặn gộp T-061. Riêng **LC-T061-1 (Cao, toàn repo, có từ trước)** không do T-061, không tính vào kết luận này, nhưng phải có phiếu sửa gấp |
+
+## Tóm tắt (cho chủ dự án)
+
+- **Phần sửa của T-061 an toàn và làm đúng việc.** Mọi chữ app gửi lên website (nội dung bài, tiêu đề, đoạn trích, alt và chú thích ảnh trong bài, ba ô của ảnh trong thư viện Media) không còn dấu `[` `]` thật nào, nên WordPress không thấy lệnh shortcode nào để chạy, kể cả khi chữ được giấu bằng mã ký tự (`&#91;`) hay ký tự vô hình. Tôi đọc lại mã nguồn WordPress và tự thử thêm khoảng 110.000 chuỗi cho nội dung, alt, chú thích: không chuỗi nào lọt. Chữ SEO dạng `[…]` bị chặn, có báo lỗi; trong 60.000 chuỗi thử cho chữ SEO chỉ còn một dạng viết lạ đã biết (mức Thấp, xem LC-T061-2). Người đọc vẫn thấy «[Lưu ý]» như cũ.
+- **Còn 4 điểm nhỏ (mức Thấp), không cần sửa trước khi gộp.** Điểm cần nhớ: lớp bảo vệ này chỉ giữ tới lúc **có người mở bài nháp trong trang quản trị WordPress rồi sửa và lưu**; trình soạn của WordPress lưu lại dấu `[` thật. Vì vậy màn hình chọn ảnh, gửi nháp (T-056) phải cảnh báo khi trong bài có chữ dạng `[tên …]` để chủ dự án xóa trước khi gửi; và plugin Code Snippets trên website nên được nâng lên **3.9.2 trở lên** như đã dặn (`TIEN-DO.md` mục 4b).
+- **Việc gấp, không liên quan T-061:** công cụ quét phát hiện thư viện `certifi` (danh sách «cơ quan cấp chứng chỉ» mà app tin khi kết nối website và Gemini) có một cơ quan bị lộ khóa, công bố ngày 20/10. Kẻ chen được vào đường mạng (ví dụ Wi-Fi công cộng) và có khóa đó có thể giả làm suachuacuasat.com để lấy mật khẩu ứng dụng WordPress. Sửa rất nhanh: nâng `certifi` lên bản 2026.10.19 (tôi đã thử trên bản sao: chỉ đổi đúng thư viện này, quét lại sạch). **Trong lúc chờ: chỉ dùng app ở mạng công ty hoặc ở nhà, không dùng Wi-Fi công cộng.**
+
+## Phát hiện toàn repo (ngoài phạm vi phiếu, không tính vào kết luận T-061)
+
+| # | Mức | Mô tả | Vị trí | Đường đi thật (đầu vào → hậu quả) | Cách sửa đề xuất |
+|---|---|---|---|---|---|
+| LC-T061-1 | **Cao** (toàn repo, có từ trước, không do T-061; GitHub xếp Critical, CVSS 4.0: 9.1) | `certifi` 2026.7.22 có gốc «emSign ECC Root CA - G3»; 8 chứng chỉ trung gian eMudhra dưới gốc này **bị lộ khóa riêng** và đã bị thu hồi (GHSA-6q48-6c7w-9gw2 = PYSEC-2026-4320, công bố 2026-10-20, ảnh hưởng `>= 2019.03.09, < 2026.10.19`, vá ở **2026.10.19**). Python không kiểm thu hồi, nên vẫn tin chứng chỉ do các khóa đó ký cho **bất kỳ** tên miền nào | `uv.lock:82-83` (`certifi 2026.7.22`, giống hệt `main` `c43a0ee`; `requests` `:1429-1433`, `httpx` `:516-521` phụ thuộc); bộ chứng chỉ đã cài có gốc này (`.venv/Lib/site-packages/certifi/cacert.pem:2008-2010` trên máy này) | Client WordPress: `requests` dùng `certifi.where()` (`requests/utils.py:82`), `client.py:1197` không đặt `verify` riêng → mỗi lệnh gửi header Basic chứa **Application Password**. Gemini: `google-genai` dựng SSL bằng `certifi.where()` (`google/genai/_api_client.py:1187-1190`) → header chứa **khóa Gemini**. Kẻ ở giữa đường mạng (Wi-Fi công cộng, router bị chiếm) có một trong các khóa bị lộ → đưa ra chứng chỉ giả cho `suachuacuasat.com` → app chấp nhận → lấy mật khẩu → sửa, xóa bài trên site thật bằng quyền Biên tập viên. Claude, ChatGPT đi qua `httpx2` dùng kho chứng chỉ của hệ điều hành (`truststore`, `httpx2/_config.py:32-41`), không qua `certifi` (suy luận từ mã thư viện, chưa thử). Điều kiện tấn công khó (phải ở giữa đường mạng **và** có khóa bị lộ) nhưng đúng loại «thư viện có lỗ hổng đã biết đang bị dùng tới» của `security.md` mục 3 | **Phiếu mới, gấp** (Thợ Máy; Chỉ Huy lập phiếu và báo chủ dự án vì là nâng thư viện): `uv lock --upgrade-package certifi` → 2026.10.19. Đã thử trên **bản sao** `pyproject.toml`/`uv.lock` trong thư mục nháp: chỉ `certifi` đổi (3 dòng), `pip-audit` PyPI và OSV: `No known vulnerabilities found`. Thêm test chốt: `certifi` ≥ 2026.10.19 và bộ chứng chỉ không còn nhãn «emSign ECC Root CA - G3». Lá Chắn rút gọn quét lại. Sau khi gộp, cả 2 máy mở app bằng `run.bat`/`run.command` (tự `uv sync`). **Hạn:** trước lần dùng mật khẩu thật tiếp theo ngoài mạng tin cậy, trước T-059 (thử thật) và trước khi gộp T-056. Trong lúc chờ: không dùng app trên Wi-Fi công cộng |
+
+## Lỗi phát hiện (thay đổi của T-061)
+
+| # | Mức | Mô tả | Vị trí | Đường đi thật (đầu vào → hậu quả) | Cách sửa đề xuất |
+|---|---|---|---|---|---|
+| LC-T061-2 | Thấp (= SL-T061-1, **giữ mức**) | Chữ SEO «[<>tên …]» (cũng `[<1>…]`, `[<=>…]`, `[<.>…]`, `[<đ>…]`, `[<U+200B>…]`) lọt qua `_seo_text`; `sanitize_text_field` của WordPress (nếu SiteSEO dùng) bỏ cụm `<…>` như `strip_tags` của PHP, chữ còn lại thành shortcode liền mạch | `client.py:1401` (`_has_shortcode` không nhìn qua `<`), `:136`; `has_html` chỉ bắt `<` + chữ ASCII, `/`, `!`, `?` (`sanitize.py:41`, `:43`; `onpage/meta.py:93-95`) | AI (bị lệnh ẩn trong trang đối thủ) gợi ý tiêu đề SEO `[<>code_snippet id=1]` → người dùng không để ý → app ghi qua Abilities → **nếu** SiteSEO làm sạch bằng `sanitize_text_field` **và** chạy shortcode trong tiêu đề, mô tả SEO → chạy trên mọi lượt xem bài. Hai điều kiện đều chưa biết (mã SiteSEO: `plugins.trac.wordpress.org` trả 403, không đọc được). Thử E2.2: 56.226 chuỗi `_seo_text` cho qua, gửi nguyên thì 0 chạy; qua bản Python của `sanitize_text_field` thì 28 thành shortcode, **cả 28 đều có `<` liền ký tự không phải khoảng trắng** | Ở phiếu dọn **T-060** (cùng file `client.py`): trong `_seo_text`, chặn mọi `<` mà ký tự ngay sau **không phải khoảng trắng ASCII** (`[ \t\n\r\v\f]`, theo `isspace` của C mà `strip_tags` dùng; đừng dùng `str.isspace` của Python). Thử E2.2 với cách này: 28 → **0**. Thêm test (gỡ 4 `xfail` SL-T061-1). Hạn: trước khi bật ghi SEO cho người dùng (giao diện T-041); đóng luôn nếu T-059 bước 4 xác nhận SiteSEO không chạy shortcode trong meta |
+| LC-T061-3 | Thấp (= SL-T061-2, **giữ mức**) | Trang Kết nối WordPress tải **nguyên file** người dùng chọn; WordPress lấy tiêu đề, chú thích (IPTC, EXIF) và alt (XMP, WordPress 7.0+) **từ trong file** khi lệnh không ghi các ô đó, không qua `escape_shortcodes` | `client.py:915-919` (chỉ ghi ô có chữ, `if value`), `:950-958`; `app/views/wordpress.py:133` (chỉ truyền `alt_text`); WordPress: `class-wp-rest-attachments-controller.php` `insert_attachment()` (đọc lại 2026-10-21: lấy `title`, `caption`, `alt` từ `$image_meta` khi lệnh không có) | Ảnh tải từ mạng có XMP alt `[code_snippet id=1]` → người dùng tải lên ở trang Kết nối WordPress, để trống ô alt → alt lưu nguyên → trang ảnh công khai (nếu site bật) dựng `<img alt="[code_snippet id=1]">` qua `prepend_attachment` → `do_shortcode` chạy. Lệnh tải của app có `_fields` nên **không** chạy ngay trong lệnh của app. Chữ đến từ file người dùng tự chọn, không phải AI. **Không chạm T-056**: đường gửi nháp kèm ảnh dùng WebP app dựng lại (EXIF chỉ hãng, đời máy, ngày (`process.py:291-302`) và GPS (`:306`); chunk WebP không có XMP: `process.py:632`), luôn gửi alt và tiêu đề | Phiếu dọn (T-060 hoặc T-071): `upload_media` luôn ghi đè cả `alt_text`, `title`, `caption` (đã `escape_shortcodes`; ô trống cũng gửi chuỗi rỗng; tiêu đề lấy từ tên file khi trống), hoặc cho trang Kết nối WordPress đi qua `make_web_image` (T-049) — cách sau xử lý luôn điểm #3 của Lá Chắn T-001 (ảnh gốc giữ số seri, tên chủ máy, trái quyết định 2A). Gỡ 2 `xfail` SL-T061-2. **Không bắt buộc trước T-056** |
+| LC-T061-4 | Thấp (mới; chính thức hóa Rủi ro 1 của Thợ Máy và của Soi Lỗi) | Lớp vô hiệu `&#91;` chỉ giữ tới lúc **người** sửa bài nháp trong trang quản trị WordPress: trình soạn cổ điển (TinyMCE, `entity_encoding = 'raw'`, `class-wp-editor.php:1107-1108` theo Thợ Máy), khối «Cổ điển» khi được bấm vào rồi lưu, hay «Chuyển thành khối» đều đọc `&#91;` thành `[` rồi lưu lại `[` trần (suy luận từ cấu hình và cách trình duyệt đọc HTML; chưa thử trên site). Ô tiêu đề của trình soạn khối có thể làm tương tự với tiêu đề | Ngoài app; dữ liệu đi ra từ `client.py:706-707`, `sanitize.py:770` | AI (bị lệnh ẩn) viết `[code_snippet id=N]` hay `[embed]https://…[/embed]` vào bài → người dùng duyệt trong app không để ý → app gửi nháp (an toàn: `&#91;`) → chủ dự án mở nháp trong WordPress, sửa vài chữ, Xem trước hoặc Đăng → `[` trần → `do_shortcode` chạy (xem trước: trong phiên của người sửa; đăng: công khai). Hậu quả xấu nhất như LC-T054-1 (Code Snippets ≤ 3.9.1 bật «file-based execution»: chạy mã PHP, CVE-2025-13035) nhưng cần thêm một bước người làm và thêm một lần không để ý (trong trình soạn, chữ hiện rõ `[code_snippet …]`, ký tự vô hình ở alt, chú thích đã bị gỡ) → hạ một mức so với LC-T054-1 | **Điều kiện cho T-056** (Họa Sĩ): trước nút «Gửi nháp», tìm và **liệt kê rõ** mọi đoạn dạng shortcode trong tiêu đề, nội dung, đoạn trích, alt, chú thích (cùng quy tắc `_has_shortcode`, xét trên chữ đã gỡ ký tự vô hình), nhắc «WordPress sẽ chạy đoạn này nếu bạn sửa và lưu bài trong trang quản trị; nên xóa»; có test. Hàm tìm công khai đặt ở `seo_app/` (Thợ Máy, T-071 hoặc phần logic của T-056; Đề xuất 2 của Thợ Máy). **T-059**: thử vòng sửa bằng shortcode vô hại `[caption]thu[/caption]` (Đề xuất 4 của Thợ Máy). **Chỉ Huy**: xác nhận `TIEN-DO.md` mục 4b (Code Snippets ≥ 3.9.2) trước khi bật nút Gửi nháp (điều kiện 3 của Lá Chắn T-054, vẫn chờ). Cách mạnh hơn (tùy chọn, cần thử ở T-059): chèn U+2060 ngay sau `&#91;` khi theo sau là ký tự tên, để cả khi trình soạn lưu lại `[` trần thì tên shortcode vẫn không trùng tên đã đăng ký; đổi lại bài có ký tự vô hình, ngược hướng gỡ ký tự ngắt của T-031 |
+| LC-T061-5 | Thấp (R5, độ chặt của test) | `test_base_url_cannot_turn_allowed_route_into_another` nay chỉ so phần đường (`split("?")[0]`): nếu bộ chặn `base_url` bị nới, một `base_url` đặt phần tấn công **sau** `/wp-json/wp/v2/posts` không còn bị test này bắt | `tests/test_soi_loi_t042.py:423-424` | Thử E3 (thay `_is_plain_site_url` trong bộ nhớ, `base_url = https://example.com/wp-json/wp/v2/posts?rest_route=/code-snippets/v1/snippets&x=`): điều kiện cũ hỏng (bắt được), điều kiện mới **qua** (không bắt), so chặt phần đường + truy vấn thì hỏng (bắt được). Hôm nay không có đường đi: `_is_plain_site_url` từ chối `?`, `#`, `%`, đoạn `wp-json` (`client.py:1460-1482`) và có test riêng (`tests/test_soi_loi_t042_round2.py:82-164`); 3 tham số hiện có của test vẫn bị bắt | Ở **T-060** (phiếu dọn LC-T042-1 về `rest_route`, `_method`): so `urlsplit(url).path` **và** `parse_qs(query) == {"_fields": [_POST_FIELDS]}` thay cho `split("?")[0]`. Không cần làm trước khi gộp |
+
+## Kết luận về LC-T054-1 và LC-T042-3
+
+**Còn đường nào để `[` `]` trần (hay dạng WordPress giải mã thành shortcode) tới WordPress không?** Không, trong mọi chữ app gửi. Bằng chứng theo từng lối:
+
+| Lối | Kết quả | Bằng chứng |
+|---|---|---|
+| Nội dung, đoạn trích (`sanitize_html`) | Không còn `[` `]` | Đọc hết `_Sanitizer` (`sanitize.py:703-789`): mọi ký tự in ra hoặc là chữ cố định (tên thẻ, tên thuộc tính trong danh sách cho phép), hoặc qua `escape_shortcodes` (`:726` thuộc tính, `:770` chữ); bình luận, `<!…>`, `<?…?>`, CDATA bị bỏ. Lọc ở **bước in ra**, sau khi bộ đọc (`convert_charrefs=True`, `:705`) đã giải mã `&#91;`, `&#091;`, `&#0000091;`, `&#x5B;`, `&lsqb;`, `&lbrack;`, `&#91` thiếu `;` thành `[`, nên không dạng mã ký tự nào vượt được. Thử E1: 60.005 chuỗi (có `<textarea>`, `<title>`, `<plaintext>`, `<xmp>`, `--!>`, thẻ dở cuối chuỗi, NUL, nửa cặp UTF-16, 100.000 dấu `[`): 0 còn `[` `]`, 0 chạy lại bị đổi |
+| Khối WordPress (`<!-- wp:embed … -->`, khối dùng lại, khối động) | Không thể có | Bình luận bị bỏ, `<` trong chữ thành `&lt;`, nên đầu ra không bao giờ có `<!--` |
+| Alt (thuộc tính có nháy), `<figcaption>` | Không còn `[` `]` | `html.py:107-111`: `plain_image_text` gỡ ký tự vô hình **trước**, `sanitize_html` vô hiệu **sau**; chốt cuối so đúng dạng in ra. Thử E1: 19.826 cặp alt/chú thích: 0 |
+| Tiêu đề bài | Không còn `[` `]` | `client.py:706` (`escape_shortcodes(strip_tags(title))`) |
+| Ba ô Media (`alt_text`, `title`, `caption`) | Không còn `[` `]` | `client.py:1141-1145` (sau `plain_image_text`), `:916` (`upload_media`) |
+| Slug, chuyên mục, thẻ, tên file | Không có `[` | `_SLUG_PATTERN` (`client.py:51`), mã số; tên file qua `slugify` |
+| Phía WordPress: lưu và dựng bài | Không giải mã `&#91;` | Đọc mã nguồn WordPress (`wordpress-develop`, `trunk`, 2026-10-21, qua `raw.githubusercontent.com`, **không gọi website**): `do_shortcode` trả nguyên khi không có `[` (`if ( ! str_contains( $content, '[' ) )`); khi có shortcode khác chạy cùng bài, `do_shortcodes_in_html_tags` đổi `&#91;` → `&#091;` **trước** rồi `unescape_invalid_shortcodes` mới đổi `&#91;` → `[`, nên `&#91;` của app không bao giờ thành `[`. `prepare_item_for_database` chép `title`, `content`, `excerpt` nguyên văn; `wp_kses_normalize_entities` (trong `esc_attr`, `esc_html`, `wp_kses`) chỉ đổi `&#91;` thành `&#091;` (`wp_kses_normalize_entities2`: mã hợp lệ thì đệm số 0, không giải mã); `_sanitize_text_fields` (`formatting.php:5776-5815`, dùng cho alt) chỉ bỏ thẻ, bỏ `%XX`, gộp khoảng trắng, không giải mã. Thử E2.1: 30.000 chuỗi qua bản Python của các hàm này (alt → trang ảnh; nội dung + `[gallery]` chạy cùng): 0 `[` trần |
+| Câu trả lời của chính lệnh app (`content.rendered`, `description.rendered`) | Không dựng | `_fields` cố định cho 6 lệnh ghi (`client.py:47-49`, `:720`, `:843`, `:882`, `:926`, `:958`, `:1148`); WordPress chỉ dựng `content`, `excerpt` khi `rest_is_field_included`, `description`, `caption` của ảnh khi `in_array( …, $fields )` (đọc lại 2026-10-21). Nội dung cũng không còn `[` nên đây là lớp thứ hai |
+| Unicode lạ | Không thành `[` | Bộ đọc shortcode của WordPress chạy trên byte, không chuẩn hóa NFKC; `［` (U+FF3B), `﹇`, `【` không phải `[` với WordPress lẫn trình duyệt. Ký tự vô hình chen trong tên: ở alt, chú thích, ô Media bị gỡ **trước** khi vô hiệu; trong nội dung thì giữ nguyên (tên shortcode khi đó sai) |
+| Chữ SEO | Chặn | `client.py:1401` (chữ gốc, chữ đã chuẩn hóa, NFKC); còn LC-T061-2 (Thấp) |
+
+**Ba điểm của LC-T054-1:** (1) shortcode chạy ngay trong lệnh tạo nháp: **đã đóng** (nội dung không còn `[`, cộng `_fields` không hỏi `content`, `excerpt`, `description`, `caption`); (2) ký tự vô hình bị gỡ sau khi lọc: **đã đóng** (vô hiệu ở bước in ra, sau `plain_image_text`); (3) `sanitize_html` giải mã `&#91;`: **đã đóng** (vô hiệu ở bước in ra, phủ chữ và mọi thuộc tính, chạy lại không đổi). Trường Media REST: **đã xét và vô hiệu** (điểm W7 của Thợ Máy đúng: alt vào `<img alt>` của trang ảnh qua `prepend_attachment` rồi chạy shortcode). Gỡ 2 `xfail` SL-T054-2: **đúng R5** (điều kiện kiểm giữ nguyên, nay qua). **LC-T054-1: đóng.**
+
+**LC-T042-3:** `_seo_text` chặn mọi dạng `[` + ký tự tên + `]` phía sau, trên cả 3 dạng chữ. **Đóng phần app.** Còn LC-T061-2 (Thấp) và câu hỏi «SiteSEO có chạy shortcode trong meta không» cho T-059 bước 4.
+
+## Đánh giá lỗi của Soi Lỗi
+
+| Lỗi | Ý kiến Lá Chắn | Phải sửa trước khi gộp T-056? |
+|---|---|---|
+| SL-T061-1 (Thấp) | **Giữ Thấp** (LC-T061-2). Tự tái hiện (`--runxfail`: 4 × `DID NOT RAISE`). Thử E2.2 xác nhận đây là **lớp lỗi duy nhất** còn lại của chữ SEO trong mô hình `sanitize_text_field`: 28/28 chuỗi lọt đều do cụm `<…>`; bỏ `%XX` không tạo được shortcode vì `%` đã là ký tự tên (bị chặn). Bổ sung cho gợi ý sửa của Soi Lỗi: khoảng trắng phải hiểu theo kiểu ASCII như `strip_tags` của PHP; hôm nay `normalize_meta` đã đổi U+00A0, U+3000 thành dấu cách nên chưa có lỗ, nhưng đừng dựa vào điều đó | **Không.** T-056 không ghi SEO. Hạn: trước khi bật ghi SEO cho người dùng (T-041), hoặc đóng theo T-059 bước 4 |
+| SL-T061-2 (Thấp) | **Giữ Thấp** (LC-T061-3). Tự tái hiện (`--runxfail`: 2 × `('title', '[code_snippet id=2]')`). Đọc lại `insert_attachment()` của WordPress: tiêu đề, chú thích, alt lấy từ `$image_meta` khi lệnh không có. Có `_fields` nên shortcode không chạy trong lệnh của app; chỉ chạy khi xem trang ảnh công khai | **Không.** Đường gửi nháp kèm ảnh không bị (WebP dựng lại không có chữ mô tả, XMP, IPTC; luôn gửi alt, tiêu đề). Đưa vào phiếu dọn |
+| Rủi ro 1 (Soi Lỗi), Rủi ro 1 (Thợ Máy) | Thành **LC-T061-4** (Thấp), có điều kiện cho T-056, T-059 | Điều kiện cảnh báo: **có**, thuộc chính T-056 |
+| Rủi ro 2 (Soi Lỗi: tiêu đề «[Cập nhật 2026]» trong trình soạn khối), Rủi ro 2 (Thợ Máy: hộp «Chi tiết ảnh» hiện `&#91;`) | Hình thức, không phải lỗi bảo mật. Đồng ý Đề xuất 1 của Thợ Máy (tiền tố ảnh AI `(AI) ` thay cho `[AI] `): bớt luôn ngoặc vuông trong chữ app gửi | Không |
+| Rủi ro 4 (Thợ Máy: plugin giải mã mã ký tự trước `do_shortcode`) | Suy luận, chưa biết plugin nào làm vậy; lõi WordPress không làm (bảng trên). Ghi nhận, không mở lỗi | Không |
+| Rủi ro 5 (Thợ Máy: `_fields` khi LC-T042-1 chưa làm) | Đồng ý **không có đường đi**: giá trị là hằng do code viết (`client.py:47-49`), không lấy từ dữ liệu ngoài. Khi T-060 làm danh sách khóa `params` cho phép, phải cho `_fields` với đúng 3 giá trị hằng | Không |
+| Rủi ro 8 (Thợ Máy: tự nhúng địa chỉ đứng riêng một dòng) | Ngoài phạm vi; ghi cho Giai đoạn 5: nếu gỡ ký tự ngắt T-031 trước khi gửi, địa chỉ đứng riêng một dòng hay một mình trong `<p>` sẽ bị WordPress nhúng (`WP_Embed::autoembed`, chạy trước `do_shortcode`), cùng hậu quả với `[embed]` | Không |
+
+## R5: 7 file test cũ Thợ Máy sửa
+
+Đọc `git diff 43d6c4a...team/T-061 -- tests/` từng chỗ. Đồng ý với Soi Lỗi: **không file nào bị làm yếu tới mức che lỗi**; không test nào bị xóa, bỏ qua hay đánh `xfail` thêm.
+
+| File:dòng | Ý kiến |
+|---|---|
+| `test_soi_loi_t042.py:423-424` | Không yếu với 3 `base_url` đang thử (phần tấn công nằm trước đường, test vẫn bắt). Lỏng hơn về lý thuyết: LC-T061-5 (Thấp, thử E3). Test bù của Soi Lỗi (`test_soi_loi_t061.py:301-314`) so nguyên địa chỉ của 5 lệnh nhưng không thử `base_url` lạ |
+| `test_soi_loi_t042_round2.py:197-198`, `test_wordpress_round2_t042.py:103-104`, `test_wordpress_seo_meta_t042.py:252-254` | Không yếu: ý test là «lệnh nào được gửi», phần đường đủ để kiểm; lệnh `RUN` vẫn được so nguyên ở test khác cùng file |
+| `test_soi_loi_t044.py:276-277` | Không yếu: chỉ đổi cách lọc lệnh tạo nháp, điều kiện thật giữ nguyên (`len == 1`, `featured_media`, `draft`) |
+| `test_soi_loi_t054.py:412`, `:478` | Không yếu: dùng `escape_shortcodes` làm đáp án, nhưng hàm này bị ghim bằng đáp án viết tay ở `test_shortcode_t061.py` và `test_soi_loi_t061.py` |
+| `test_soi_loi_t054.py:488-503` (gỡ 2 `xfail` SL-T054-2) | Đúng R5: lỗi đã sửa, điều kiện giữ nguyên |
+| `test_soi_loi_t054.py:599-605` | Chặt hơn: so đúng giá trị `_fields` |
+| `test_wordpress_images.py:313-314`, `:331-332`, `:340` | Không yếu: vẫn là chuỗi cố định viết tay |
+
+## Danh sách kiểm tra
+
+| Mã | Kết quả | Bằng chứng / ghi chú |
+|---|---|---|
+| S1 | Đạt | Diff không có bí mật (`git log -p 43d6c4a..team/T-061`, 9 commit: lệnh soát `security.md` mục 5 ra 0 dòng; detect-secrets trên patch nhánh: 0). 3 mục detect-secrets ở file test là khóa giả có từ trước, dòng không đổi trong nhánh (mục «Báo nhầm») |
+| S2 | Đạt | Câu lỗi mới cố định, không chép chữ người dùng hay máy chủ (`client.py:1401-1405`); không thêm log. `_fields` chỉ thêm `?_fields=` hằng vào địa chỉ |
+| S3 | Không áp dụng | Không có biến cấu hình mới (`.env.example`, `config/` không đổi) |
+| W1 | Đạt | `create_draft` vẫn `"status": "draft"` cố định (`client.py:705`); `_fields` chỉ lọc câu trả lời, không đổi trạng thái; không thêm đường `publish`/`future` |
+| W2 | Đạt | Không thêm lệnh xóa hay ghi vào thứ có sẵn: các lệnh ghi Media nhắm đúng mã ảnh vừa tải (`client.py:922-928`, `:1146-1149`); lệnh sửa bài vẫn qua `_own_draft` |
+| W3 | Đạt | Mục «Kết luận về LC-T054-1 và LC-T042-3». Danh sách thẻ, thuộc tính, URL của bộ lọc không đổi; chỉ thêm vô hiệu `[` `]` ở bước in ra |
+| W4 | Đạt (có ghi chú) | Không `verify=False` (grep `seo_app app scripts`); `timeout`, `allow_redirects=False` giữ nguyên (`client.py:1197-1199`). Ghi chú: bộ chứng chỉ `certifi` đang dùng có lỗ hổng → LC-T061-1 (toàn repo) |
+| A1 | Không áp dụng | Không đổi prompt hay dữ liệu đưa vào AI |
+| A2 | Đạt | Kết quả AI (bài, meta, alt, chú thích) được coi là chưa tin cậy và vô hiệu shortcode trước khi gửi; AI không có công cụ. Ghi chú: LC-T061-2, LC-T061-4 (Thấp) |
+| A3 | Không áp dụng | Không gửi gì mới vào AI |
+| U1 | Không áp dụng | Không đổi `app/`, không thêm `unsafe_allow_html` |
+| U2 | Không áp dụng | Không đổi trang hay `.streamlit/config.toml` |
+| U3 | Không áp dụng | Không đổi đăng nhập |
+| F1 | Không áp dụng | Không đọc, ghi file mới |
+| F2 | Đạt | Byte ảnh gửi đi không đổi (GPS giữ như quyết định ở mục 6); chỉ đổi chữ mô tả |
+| F3 | Không áp dụng | Không đọc file; không `eval`, `pickle` |
+| D1 | Đạt (có ghi chú) | Không thêm hay đổi thư viện (`uv.lock`, `pyproject.toml` giống gốc và `main`: `git diff --quiet`). Quét lỗ hổng: 1 lỗ hổng có từ trước → LC-T061-1 |
+| D2 | Không áp dụng | `.gitignore` không đổi |
+| D3 | Đạt | Hai file test mới dùng `fake_wordpress` và bộ chặn mạng tự động (`tests/conftest.py:19`); không `requests.get`, `urlopen`, `socket` thật (grep) |
+
+## Kết quả công cụ quét
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pip-audit | `uv export --frozen --no-hashes --no-emit-project` → 69 gói ghim; `--disable-pip --no-deps`. Nguồn PyPI và nguồn OSV: **1 lỗ hổng**, `certifi 2026.7.22` PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2), vá ở 2026.10.19. Bản sao lock đã nâng `certifi` (thư mục nháp): **0** cả hai nguồn | Có. Lỗ hổng thật, có đường đi → LC-T061-1. Không do T-061 (`uv.lock` không đổi trong nhánh) |
+| bandit 1.9.4 | `seo_app app scripts` (11.690 dòng): 1 mục Low (B101 `assert`) ở `seo_app/storage/drafts.py:203`; 3 file code của phiếu: không có mục nào | Có. `drafts.py` không thuộc diff, có từ trước |
+| detect-secrets | **Đặt `PYTHONUTF8=1`**, `--all-files` trong thư mục nháp riêng gồm: bản sao 14 file của nhánh, patch nhánh (`git log -p 43d6c4a..team/T-061`, 138 KB), patch `main` từ gốc (58 KB), **file mồi có chữ tiếng Việt** (một khóa AWS giả, một dòng `password = …` giả). Mồi: **bắt đủ 2/2**. Patch nhánh: 0. Patch `main`: 0. File của nhánh: 3 mục | Có. 3 mục là khóa giả có từ trước (mục «Báo nhầm»). Đã xóa file mồi |
+| Soát lịch sử git | Lệnh `security.md` mục 5 trên `git log -p 43d6c4a..team/T-061` (9 commit): **0 dòng**. `git ls-files`: không `.env`, `.sqlite`, JSON service account | Có |
+| pytest | 42 file (41 file của Thợ Máy + `test_soi_loi_t061.py`): **4808 passed, 7 skipped, 13 xfailed in 673.06s** (Windows 11, tại `64525d3`, máy đang chạy song song phiên khác). 13 `xfail`: SL-T061-1 ×4, SL-T061-2 ×2, SL-T054-1 ×1, SL-T054-3 ×3, SL-7 T-003/T-009 ×1, R4-3 ×2. `--runxfail -k sl_t061`: 6 hỏng đúng lý do | Có. Khớp số Thợ Máy (4779) + Soi Lỗi (29) |
+| ruff 0.16.10 | `uv run ruff check .`: `All checks passed!` | Có |
+| Kiểm gộp với `main` | `git merge-tree --write-tree origin/main team/T-061` (`main` `c43a0ee`, đã gồm T-070): cây `57a2806`, **không xung đột**. Từ gốc `43d6c4a`, `main` chỉ đổi `seo_app/images/tags.py`, `seo_app/storage/image_tags.py`, test T-052/T-070 và tài liệu; mọi file T-061 dùng không đổi (`git diff --quiet`) | Có. Kết quả test của nhánh áp dụng cho bản gộp |
+
+## Thử độc lập (thư mục nháp của phiên, không commit, không gọi website)
+
+- **E1, `sanitize_html` và `figure_html`:** 60.005 chuỗi ghép ngẫu nhiên từ 100 mảnh (mọi dạng mã ký tự của `[` `]`, ngoặc toàn khổ, `【`, `﹇`, ký tự vô hình, đảo chiều, các thẻ «chữ thô» của bộ đọc Python 3.12.15, thẻ dở cuối chuỗi, NUL, nửa cặp UTF-16), cộng 5 chuỗi rất dài: **0** còn `[` `]`, **0** chạy lại bị đổi. `figure_html`: 19.826 cặp alt/chú thích dùng được: 0 còn `[` `]`, luôn đúng một `<img>`.
+- **E2.1, đi qua hàm WordPress:** bản Python của `sanitize_text_field`, `strip_tags` (PHP), `wp_kses_normalize_entities`, `esc_attr`, phần xử lý mã ký tự của `do_shortcode`: 30.000 chuỗi alt/nội dung: **0** `[` trần ở trang ảnh hay ở bài có shortcode khác chạy cùng.
+- **E2.2, chữ SEO:** 60.000 chuỗi; 56.226 được `_seo_text` cho qua; gửi nguyên: 0 chạy được (coi mọi tên là đã đăng ký); qua `sanitize_text_field`: 28 (LC-T061-2); với cách sửa đề xuất: **0**.
+- **E3, R5:** mục LC-T061-5.
+- **Đọc mã nguồn WordPress** (`trunk`, 2026-10-21): `shortcodes.php` (`do_shortcode`, `do_shortcodes_in_html_tags`, `unescape_invalid_shortcodes`, mẫu tên ứng viên), `class-wp-rest-attachments-controller.php` (ghi `_wp_attachment_image_alt`, lấy chữ từ `$image_meta`, `description`/`caption` chỉ dựng khi được hỏi), `class-wp-rest-posts-controller.php` (`content`, `excerpt`, `title` theo `_fields`; `prepare_item_for_database` chép nguyên văn), `kses.php` (`wp_kses_normalize_entities*`), `formatting.php` (`_sanitize_text_fields` `:5776-5815`, `wp_strip_all_tags`, `wp_pre_kses_less_than` `:5317`, `_wp_specialchars` với `$double_encode = false`). Khớp mô tả W1–W7 của Thợ Máy và bản Python ở E2. `plugins.trac.wordpress.org` (mã SiteSEO) trả 403: chưa xác minh được SiteSEO.
+- **Thư viện:** `requests` dùng `certifi.where()`; `google-genai` dựng SSL bằng `certifi.where()`; `anthropic`, `openai` dùng `httpx2` + `truststore`. Thử nâng `certifi` trên bản sao `pyproject.toml`/`uv.lock` (thư mục nháp): `Updated certifi v2026.7.22 -> v2026.10.19`, chỉ 3 dòng đổi. `git status` của worktree sạch sau khi thử.
+
+## Báo nhầm đã loại
+
+- detect-secrets, 3 mục ở file test (dòng không đổi trong nhánh): `tests/test_soi_loi_t042.py:22` (`PASSWORD = "abcd efgh ijkl mnop"`, khóa giả của site giả), `tests/test_soi_loi_t042_round2.py:98` (`https://user:pass@example.com`, địa chỉ mẫu để thử bộ chặn `base_url`), `tests/test_soi_loi_t044.py:39` (`PASSWORD = "mat-khau-thu-123"`, khóa giả).
+- bandit B101 (`seo_app/storage/drafts.py:203`): kiểm tra nội bộ có từ trước, không thuộc diff.
+- pip-audit `certifi`: **không phải báo nhầm** (LC-T061-1).
+
+## Điều kiện
+
+| # | Điều kiện | Ai | Hạn |
+|---|---|---|---|
+| 1 | **LC-T061-1 (Cao, toàn repo):** phiếu mới nâng `certifi` lên ≥ 2026.10.19 (`uv lock --upgrade-package certifi`), thêm test chốt phiên bản và nhãn gốc, Lá Chắn rút gọn quét lại; báo chủ dự án: tạm không dùng app trên Wi-Fi công cộng, sau khi gộp mở app bằng `run.bat`/`run.command` ở cả 2 máy | Chỉ Huy (lập phiếu, báo chủ dự án), Thợ Máy | **Gấp.** Trước T-059 và trước khi gộp T-056. Không chặn gộp T-061 (T-061 không đổi thư viện, gộp không làm rủi ro nặng thêm) |
+| 2 | **LC-T061-4:** T-056 cảnh báo, liệt kê đoạn dạng shortcode trước nút «Gửi nháp» (có test); hàm tìm công khai trong `seo_app/` (T-071 hoặc phần logic của T-056); T-059 thử vòng sửa bằng `[caption]thu[/caption]`; Chỉ Huy xác nhận `TIEN-DO.md` mục 4b (Code Snippets ≥ 3.9.2) trước khi bật nút | Họa Sĩ (T-056), Thợ Máy, Chỉ Huy (T-059, hỏi chủ dự án) | Trước khi gộp T-056 |
+| 3 | **LC-T061-2 (SL-T061-1):** chặn `<` theo sau không phải khoảng trắng ASCII trong `_seo_text`; gỡ 4 `xfail` | Thợ Máy (T-060) | Trước khi bật ghi SEO cho người dùng (T-041), hoặc đóng theo T-059 bước 4 |
+| 4 | **LC-T061-3 (SL-T061-2):** `upload_media` luôn ghi đè cả 3 ô Media, hoặc trang Kết nối WordPress đi qua `make_web_image`; gỡ 2 `xfail` | Thợ Máy (T-060 hoặc T-071) | Trước khi hết Giai đoạn 3; không chặn T-056 |
+| 5 | **LC-T061-5:** siết `test_soi_loi_t042.py:423-424` (so phần đường và truy vấn) | Thợ Máy (T-060) | Cùng T-060 |
+
+T-061 được gộp vào `main` ngay; điều kiện 2 phải xong trước khi gộp T-056, điều kiện 1 làm gấp ở phiếu riêng.
