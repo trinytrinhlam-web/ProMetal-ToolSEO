@@ -28,33 +28,30 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, từ 2026-10-20 08:38 (chủ dự án báo A đã dừng, giao B nhận quyền). Tiếp quản **không có bàn giao**: commit cuối của A lúc 08:11, file sửa cuối trong worktree lúc 08:14.
+**Chỉ Huy B**, từ 2026-10-20 08:38 (chủ dự án báo A đã dừng, giao B nhận quyền). Phiên mới của B từ 2026-10-21 09:02 (chủ dự án xác nhận phiên này là B).
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-20 19:25. Bảng cũ của A (cập nhật 17/10) đã cũ; bảng này B lập lại từ nhật ký, `git log` và các worktree. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc.
+Chỉ Huy B, cập nhật 2026-10-21 09:07. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
-| [T-048](tickets/T-048-doc-thu-muc-anh-an-toan.md) Đọc thư mục ảnh an toàn (GĐ3) | đã gộp (`f37ffd6`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 09:54 gộp vào `main` | Điều kiện đã ghi vào T-049, T-052, T-055, T-056; lập T-063 (test Mac/Linux, chặn gộp T-056), T-064 (dọn lỗi Thấp). LC-T048-6: chủ dự án chấp nhận, đã ghi sổ rủi ro |
-| [T-050](tickets/T-050-lop-ai-doc-anh-goi-y-alt.md) Lớp AI đọc ảnh, gợi ý alt (GĐ3) | đã gộp (`c1aa0ce`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 12:15 gộp và đẩy `main` | Điều kiện đã chép vào T-049, T-052, T-054, T-056, T-062; T-066 (dọn). T-062 giao được |
-| [T-058](tickets/T-058-nang-pillow-13.md) Nâng Pillow 13 (GĐ3) | đã gộp (`0481f7e`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; mở app thật xem mọi trang: không lỗi; 11:21 gộp và đẩy `main` | Điều kiện đã ghi vào T-049, T-056. T-049 giao được |
-| [T-051](tickets/T-051-prompt-alt-va-cau-hinh-anh.md) Prompt alt, cấu hình ảnh (GĐ3) | đã gộp (`57fc6b9`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 11:41 gộp và đẩy `main` | Điều kiện đã chép: C1–C6 → T-062, C7–C9 → T-053, C10 → T-065. T-065 giao được |
-| [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) Xử lý ảnh, WebP giữ GPS (GĐ3) | đã gộp (`3f90489`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 14:37 gộp và đẩy `main` | Điều kiện đã chép; T-067 giao được; Chỉ Huy thử 3–5 ảnh thật trước khi gộp T-054 |
-| [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) Thẻ ảnh từ tên thư mục (GĐ3) | đã gộp (`1c7bd9a`), nhánh đã xóa | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; 17:02 gộp và đẩy `main` | Điều kiện đã chép; T-055, T-070 giao được; LC-T052-5 chờ chủ dự án |
-| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) Dọn lỗi Thấp xử lý ảnh (GĐ3) | đã gộp (`e5c0ce8`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; gộp `17:19`, đẩy `main` sau khi test qua | LC-T067-1 → T-072 |
-| [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | `team/T-070` (`95c0f70`) | ✅ 18:39 **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (5 Thấp SL-T070-1 → -5) | ⏳ **Lá Chắn rút gọn đang kiểm** (phiên "Lá Chắn · T-070 kiểm nhanh thẻ ảnh", giao sau 19:08) |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`934c21b`) | ✅ 18:32 **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN**: 2 Trung bình (SL-T055-1 đổi hoa/thường đường dẫn làm ảnh AI thành ảnh thật; SL-T055-2 alt đã duyệt của ảnh nay là AI thiếu «Minh họa»), 1 Thấp | ⏳ **Thợ Máy lượt 2 đang sửa** (phiên "Thợ Máy · T-055 lượt 2 nháp nhớ ảnh", giao sau 19:08); rồi Soi Lỗi kiểm lại, Lá Chắn |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`7c5a405`) | ✅ 19:06 **Thợ Máy xong** (`[` `]` thành thực thể HTML ở mọi đường gửi; `_fields` cố định 6 lệnh ghi; sửa điều kiện so đường ở 6 file test cũ; test liên quan 4.779 qua) | ⏳ **Soi Lỗi đang kiểm** (phiên "Soi Lỗi · T-061 kiểm chặn shortcode", giao sau 19:08); rồi Lá Chắn |
-| [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) Đọc cấu hình việc ảnh (GĐ3) | đã gộp (`f96775a`), nhánh đã xóa | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN; 15:09 gộp và đẩy `main` | Điều kiện đã chép; T-053, T-068, T-069 giao được |
-| Chờ phiếu trước | | T-065 (còn chỗ), T-063 (cần máy Linux/Mac), T-066 (sau T-049), T-064, T-039 → T-041, T-057, T-060, T-061; T-059 chờ chủ dự án bật Abilities và tạo tài khoản Biên tập viên | Số phiếu tiếp theo: **T-074** |
-| `main` | `43d6c4a` + tài liệu | Windows sau gộp T-068, T-054: **9.477 qua**, 1 hỏng oan (`test_soi_loi_t037.py` khóa chờ → T-073); ruff sạch | |
+| [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | `team/T-070` (`4fd9643`); đã gộp vào `main` trên máy (`588c76f`, 20/10 19:49) | ✅ Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (2 Thấp → T-074) | ⏳ 21/10 09:06 chạy toàn bộ test Windows trên `main`; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-070` |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`2c95844`) | ✅ 20/10 19:46 Thợ Máy lượt 2 xong (SL-T055-1 → -3; 936 test liên quan qua) | ⏳ Soi Lỗi kiểm lại (giao 21/10); rồi Lá Chắn |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`64525d3`) | ✅ 20/10 19:47 Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (2 Thấp SL-T061-1, -2) | ⏳ Lá Chắn kiểm (giao 21/10) |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (từ `main` sau gộp T-070) | Lập 20/10 19:50 | ⏳ Thợ Máy làm (giao 21/10) |
+| Chờ phiếu trước | | T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-075** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 09:07 · Chỉ Huy B
+
+- Phiên mới của B (chủ dự án xác nhận). Phiên trước dừng 20/10 khoảng 19:50 không kịp ghi: đã gộp T-070 vào `main` trên máy (`588c76f`, chưa đẩy), lập **T-074** (Lá Chắn T-070 điều kiện 1), chép điều kiện Lá Chắn T-070 vào T-056 (g, h) và T-069; Thợ Máy T-055 lượt 2 xong (`2c95844`), Soi Lỗi T-061 xong (`64525d3`). Đã đối chiếu `git log`, các worktree sạch.
+- Chủ dự án cho làm: chạy toàn bộ test Windows cho bản gộp T-070, rồi giao 3 phiên con (mức Tối đa, chế độ nhanh): Soi Lỗi kiểm lại T-055, Lá Chắn T-061, Thợ Máy T-074.
 
 ### 2026-10-20 19:25 · Chỉ Huy B
 
