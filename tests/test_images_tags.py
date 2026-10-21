@@ -888,6 +888,7 @@ ONE_WORD_AI_TOOLS = [
     "Midjourney",
     "DALLE",
     "ChatGPT",
+    "GPT",
     "SDXL",
     "Firefly",
     "Copilot",
