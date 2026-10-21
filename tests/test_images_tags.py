@@ -1846,7 +1846,8 @@ def test_t070_schema_is_read_before_any_other_query(store, monkeypatch):
     for block in blocks:
         assert block[1] == "progress-handler", block
     master = image_tags_module._MASTER_SQL
-    assert [block[2] for block in blocks] == ["BEGIN", "BEGIN IMMEDIATE", "BEGIN", "BEGIN IMMEDIATE"]
+    read, write = "BEGIN", "BEGIN IMMEDIATE"
+    assert [block[2] for block in blocks] == [read, write, read, write]
     assert [block[3] for block in blocks] == [master] * 4
     assert blocks[1][4] == image_tags_module._CREATE_TABLES[0]
 
@@ -1972,7 +1973,10 @@ DUPLICATE_ROW_FILES = {
     ),
     "chi-lap-khong-trigger": (T052_FILE, duplicate_master_row("sqlite_autoindex_info_1")),
     # Ít dòng hơn số mong đợi (file tạo dở, chỉ có bảng thẻ) mà có dòng lặp: vẫn là file lạ.
-    "lap-trong-gioi-han": (T052_CREATE_TAGS, duplicate_master_row("sqlite_autoindex_manual_tags_1")),
+    "lap-trong-gioi-han": (
+        T052_CREATE_TAGS,
+        duplicate_master_row("sqlite_autoindex_manual_tags_1"),
+    ),
 }
 
 
