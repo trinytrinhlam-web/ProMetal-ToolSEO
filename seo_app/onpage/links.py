@@ -322,9 +322,8 @@ def select_candidates(
             )
         )
     if kind is not ArticleKind.AREA and max_related > 0:
-        chosen += [Candidate(item) for item in _related(by_id, title, keyword, taken, current_id)][
-            :max_related
-        ]
+        related = _related(by_id, title, keyword, taken, current_id)[:max_related]
+        chosen += [Candidate(item) for item in related]
     return Candidates(tuple(chosen), tuple(notices))
 
 
