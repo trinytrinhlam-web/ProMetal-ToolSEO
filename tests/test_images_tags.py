@@ -15,6 +15,7 @@ import os
 import random
 import re
 import sqlite3
+import threading
 import unicodedata
 from contextlib import closing
 from pathlib import Path
@@ -23,7 +24,13 @@ import pytest
 
 import seo_app.storage.image_tags as image_tags_module
 from seo_app.config import PROJECT_ROOT
-from seo_app.images.folders import ImageFolderError, ImageLibrary, ImageRef, SubFolder
+from seo_app.images.folders import (
+    MAX_REL_PATH_CHARS,
+    ImageFolderError,
+    ImageLibrary,
+    ImageRef,
+    SubFolder,
+)
 from seo_app.images.tags import (
     AREA_GROUPS,
     AREAS,
@@ -776,6 +783,100 @@ def test_is_ai_name_agrees_with_folder_tags():
     ]
     for name in names:
         assert is_ai_name(name) is tags_for_folder(name).tags.is_ai, name
+
+
+# T-074 (SL-T070-3): tên file tách thêm ở chỗ chữ dính số, không tách theo chữ hoa.
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "AI01.png",
+        "AI2.jpg",
+        "AI2025.jpg",
+        "2025AI.jpg",
+        "cong-inox-AI3.jpg",
+        "dalle3_cong.png",
+        "Gemini2.5_cong.png",
+        "gpt4o_cong.png",
+        "sdxl10_cong.png",
+        "Midjourney7.png",
+        "Sora2_cong.png",
+        "kling21_cong.png",
+        "AIgen_01.png",  # T-074: "AIgen"
+        "aigen.png",
+        "anh-mo-phong-cong.jpg",  # T-074 (SL-T070-5)
+    ],
+)
+def test_t074_ai_file_names_with_digits_stuck_are_ai(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), file_name
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "xAI3kQ.jpg",  # chuỗi ngẫu nhiên: "xai 3 kq", không có "ai" đứng riêng
+        "xAI3kQpZ.jpg",
+        "MAI1.jpg",
+        "TRAI2.jpg",
+        "IMG_E0001.JPG",
+        "IMG20250315102030.jpg",
+        "MVIMG_20250315_102030.jpg",
+        "DJI_0001.JPG",
+        "GOPR0001.JPG",
+        "P1000123.JPG",
+        "received_1234567890.jpeg",
+        "FB_IMG_1710000000000.jpg",
+        "z5432109876543_7f3a9c1d2e.jpg",
+        "1a2b3c4d.jpg",
+        "Cong2canh.jpg",
+        "Q7_cong_inox_01.jpg",
+    ],
+)
+def test_t074_camera_and_chat_file_names_with_digits_stay_real(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(
+        project_code="CT012", category="Cổng inox", area="Quận 7", phase="truoc"
+    ), file_name
+
+
+@pytest.mark.parametrize(
+    "ai_dir",
+    [
+        "AIgen",
+        "AIGen",
+        "aigen",
+        "AIgen 2025",
+        "Ảnh mô phỏng",
+        "Hình mô phỏng 3D",
+        "mo phong",
+        "MoPhong",
+        "mophong",
+        unicodedata.normalize("NFD", "Ảnh mô phỏng"),
+    ],
+)
+def test_t074_aigen_and_simulated_folders_are_ai(ai_dir):
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png",
+        f"{ai_dir}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+    ):
+        assert tags_of(rel_path).tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    assert is_ai_name(ai_dir) is True
+
+
+@pytest.mark.parametrize("name", ["Nhà anh Phong", "Mô tơ cổng cuốn", "Mộ Phong", "Ảnh dựng khung"])
+def test_t074_words_near_simulated_stay_real(name):
+    tags = tags_for_folder(f"CT015 - {name} - Q7/truoc").tags
+    assert not tags.is_ai, name
+    assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc"), name
+
+
+def test_t074_folder_names_still_split_the_old_way():
+    """Đổi cách tách tên file không đổi cách đọc tên thư mục: vẫn tách cả chữ hoa và chữ dính
+    số ("TanPhu", "Q7", "CT012")."""
+    assert tags_for_folder("CT012-CongInox-TanPhu/Truoc").tags == ImageTags(
+        project_code="CT012", category="Cổng inox", area="Tân Phú", phase="truoc"
+    )
+    assert tags_for_folder("Q7").tags.area == "Quận 7"
 
 
 def test_province_with_its_district_and_real_conflicts():
@@ -1812,7 +1913,8 @@ def test_t070_file_made_by_t052_is_still_accepted(store):
 
 def test_t070_schema_is_read_before_any_other_query(store, monkeypatch):
     """LC-T052-2: ở mọi kết nối mở file thẻ, giới hạn số bước và ``trusted_schema = OFF`` đặt
-    trước, rồi đọc ``sqlite_master``, rồi mới tới truy vấn khác."""
+    trước, rồi mở giao dịch (T-074, LC-T070-2: ``BEGIN IMMEDIATE`` để ghi, ``BEGIN`` để đọc), rồi
+    đọc ``sqlite_master`` trong giao dịch đó, rồi mới tới truy vấn khác."""
     store.set(REF, ImageTags(area="Quận 7"))
     events: list[str] = []
 
@@ -1844,9 +1946,11 @@ def test_t070_schema_is_read_before_any_other_query(store, monkeypatch):
     assert len(blocks) == 4  # kiểm file, tạo bảng, get, set
     for block in blocks:
         assert block[1] == "progress-handler", block
-    first_queries = [block[2] for block in blocks]
     master = image_tags_module._MASTER_SQL
-    assert first_queries == [master, image_tags_module._CREATE_TABLES[0], master, master]
+    read, write = "BEGIN", "BEGIN IMMEDIATE"
+    assert [block[2] for block in blocks] == [read, write, read, write]
+    assert [block[3] for block in blocks] == [master] * 4
+    assert blocks[1][4] == image_tags_module._CREATE_TABLES[0]
 
 
 def test_t070_query_running_too_long_is_stopped_not_hung(store, monkeypatch):
@@ -1918,6 +2022,298 @@ def test_t070_get_applies_ai_rule_to_the_ref_asked(store):
     assert many[ai_ref].ref == ai_ref
     assert store.resolve(ai_ref).tags == expected_ai
     assert store.resolve(real_ref).tags == manual
+
+
+# ----- T-074: dòng lặp trong sqlite_master, kiểm và dùng trong cùng giao dịch ------------------
+
+# Trigger sửa khu vực vừa lưu: chạy được thì đọc lại ra "Quận 1" thay vì "Tân Phú".
+MUTATING_TRIGGER = (
+    "CREATE TRIGGER {if_not_exists}t AFTER INSERT ON manual_tags BEGIN "
+    "UPDATE manual_tags SET area = 'Quận 1'; END"
+)
+TRIGGER_ROW = (
+    "INSERT INTO sqlite_master (type, name, tbl_name, rootpage, sql) VALUES "
+    "('trigger', 't', 'manual_tags', 0, ?)"
+)
+
+
+def duplicate_master_row(name: str) -> str:
+    return f"INSERT INTO sqlite_master SELECT * FROM sqlite_master WHERE name = '{name}'"
+
+
+def edit_master(path: Path, *statements: str) -> None:
+    """Sửa thẳng ``sqlite_master`` (``writable_schema``), như một chương trình lạ có thể làm."""
+    with closing(sqlite3.connect(path)) as conn:
+        conn.execute("PRAGMA writable_schema = ON")
+        for statement in statements:
+            if statement == TRIGGER_ROW:
+                conn.execute(statement, (MUTATING_TRIGGER.format(if_not_exists=""),))
+            else:
+                conn.execute(statement)
+        conn.commit()
+
+
+# LC-T070-1 (= SL-T070-1): một dòng chỉ mục tự sinh lặp lại đẩy trigger ra ngoài ``LIMIT``; bản
+# T-070 so theo tập hợp nên dòng lặp gộp vào dòng cũ. Thêm các biến thể của Lá Chắn (thử T1).
+DUPLICATE_ROW_FILES = {
+    "lap-chi-muc-info-che-trigger": (
+        T052_FILE,
+        duplicate_master_row("sqlite_autoindex_info_1"),
+        TRIGGER_ROW,
+    ),
+    "lap-chi-muc-manual_tags-che-trigger": (
+        T052_FILE,
+        duplicate_master_row("sqlite_autoindex_manual_tags_1"),
+        TRIGGER_ROW,
+    ),
+    "lap-hai-dong-che-trigger": (
+        T052_FILE,
+        duplicate_master_row("sqlite_autoindex_manual_tags_1"),
+        duplicate_master_row("sqlite_autoindex_info_1"),
+        TRIGGER_ROW,
+    ),
+    "chi-lap-khong-trigger": (T052_FILE, duplicate_master_row("sqlite_autoindex_info_1")),
+    # Ít dòng hơn số mong đợi (file tạo dở, chỉ có bảng thẻ) mà có dòng lặp: vẫn là file lạ.
+    "lap-trong-gioi-han": (
+        T052_CREATE_TAGS,
+        duplicate_master_row("sqlite_autoindex_manual_tags_1"),
+    ),
+}
+
+
+@pytest.mark.parametrize("case", list(DUPLICATE_ROW_FILES))
+def test_t074_duplicate_master_row_is_a_strange_file(store, small_step_limit, case):
+    script, *edits = DUPLICATE_ROW_FILES[case]
+    build_sqlite(store.path, script)
+    edit_master(store.path, *edits)
+    hostile = store.path.read_bytes()
+    with closing(sqlite3.connect(store.path)) as conn:  # SQLite vẫn nhận file, quick_check "ok"
+        assert conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
+    assert image_tags_module._is_healthy(store.path) is False
+    for _ in range(2):  # lần 2: như khởi động lại app
+        fresh = ImageTagStore(path=store.path)
+        fresh.set(REF, ImageTags(area="Tân Phú"))
+        assert fresh.get(REF).tags.area == "Tân Phú"  # trigger không bao giờ chạy
+    moved = sorted(store.path.parent.glob("image_tags.hong-*.sqlite"))
+    assert len(moved) == 1 and moved[0].read_bytes() == hostile
+
+
+@pytest.mark.parametrize("case", ["lap-chi-muc-info-che-trigger", "lap-trong-gioi-han"])
+def test_t074_duplicate_master_row_swapped_in_while_running_is_caught(store, case):
+    """File có dòng lặp bị thay vào khi app đang chạy: ``_connect`` bắt ngay, chưa ghi gì."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    script, *edits = DUPLICATE_ROW_FILES[case]
+    build_sqlite(store.path, script)
+    edit_master(store.path, *edits)
+    with pytest.raises(ImageTagStoreError):
+        store.set(REF, ImageTags(area="Tân Phú"))
+    assert store._ready is False
+    store.set(REF, ImageTags(area="Tân Phú"))
+    assert store.get(REF).tags.area == "Tân Phú"
+    assert store.recovered_from is not None
+
+
+def test_t074_app_tables_rejects_more_rows_than_expected_or_repeated_rows(store):
+    """``_app_tables`` đọc vào danh sách: quá số dòng mong đợi, hay một dòng ``(loại, tên)`` lặp
+    lại, thì ``None``; file app tạo thì ra đúng hai bảng."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    with closing(sqlite3.connect(store.path)) as conn:
+        conn.text_factory = bytes
+        assert image_tags_module._app_tables(conn) == image_tags_module._APP_TABLES
+    edit_master(store.path, duplicate_master_row("sqlite_autoindex_info_1"))
+    with closing(sqlite3.connect(store.path)) as conn:
+        conn.text_factory = bytes
+        assert len(conn.execute("SELECT * FROM sqlite_master").fetchall()) == 5
+        assert image_tags_module._app_tables(conn) is None
+
+
+def _attack_right_after_check(monkeypatch, path: Path) -> list[str]:
+    """Thử T2 của Lá Chắn T-070: ngay sau mỗi lần app kiểm ``sqlite_master``, "chương trình khác"
+    (kết nối riêng, không chờ khóa) thêm một trigger sửa dữ liệu. Trả kết quả từng lần thử."""
+    real_app_tables = image_tags_module._app_tables
+    outcomes: list[str] = []
+
+    def check_then_attack(conn):
+        result = real_app_tables(conn)
+        with closing(sqlite3.connect(path, timeout=0, isolation_level=None)) as attacker:
+            try:
+                attacker.execute(MUTATING_TRIGGER.format(if_not_exists="IF NOT EXISTS "))
+                outcomes.append("da-sua")
+            except sqlite3.OperationalError as exc:
+                outcomes.append("bi-chan" if "locked" in str(exc) else str(exc))
+            if attacker.in_transaction:
+                attacker.execute("ROLLBACK")
+        return result
+
+    monkeypatch.setattr(image_tags_module, "_app_tables", check_then_attack)
+    return outcomes
+
+
+def test_t074_structure_cannot_change_between_check_and_use(store, monkeypatch):
+    """LC-T070-2: kiểm cấu trúc trong cùng giao dịch với thao tác (``BEGIN IMMEDIATE`` để ghi,
+    ``BEGIN`` để đọc, rồi mới ``_app_tables``); khóa giữ tới khi xong, nên chương trình khác không
+    thêm được trigger giữa lúc kiểm và lúc ghi/đọc. Thử cả đường kiểm file và tạo bảng
+    (``_is_healthy``, ``_prepare``)."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    outcomes = _attack_right_after_check(monkeypatch, store.path)
+    store.set(REF, ImageTags(area="Tân Phú"))  # ghi
+    assert store.get(REF).tags.area == "Tân Phú"  # đọc
+    store.clear(ImageRef(0, "khac.jpg"))
+    store.list_manual()
+    store._ready = False  # mở lại từ đầu: _is_healthy, _prepare, rồi thao tác
+    store.set(REF, ImageTags(area="Tân Phú"))
+    assert len(outcomes) == 7
+    assert set(outcomes) == {"bi-chan"}
+    monkeypatch.undo()
+    assert store.get(REF).tags.area == "Tân Phú"
+    assert store.recovered_from is None
+    with closing(sqlite3.connect(store.path)) as conn:
+        triggers = conn.execute("SELECT count(*) FROM sqlite_master WHERE type = 'trigger'")
+        assert triggers.fetchone() == (0,)
+
+
+def test_t074_guard_limits_length_of_every_value():
+    """SL-T070-2: giới hạn số bước không giới hạn được một bước nặng; ``_guard`` thêm giới hạn độ
+    dài, nên hàm tạo giá trị khổng lồ bị từ chối ngay (``SQLITE_TOOBIG``) hoặc trả rỗng."""
+    with closing(sqlite3.connect(":memory:")) as conn:
+        image_tags_module._guard(conn)
+        limit = image_tags_module._MAX_SQLITE_LENGTH
+        assert conn.getlimit(sqlite3.SQLITE_LIMIT_LENGTH) == limit
+        for sql in (
+            f"SELECT randomblob({limit + 1})",
+            f"SELECT zeroblob({limit + 1})",
+            f"SELECT hex(zeroblob({limit // 2 + 1}))",
+            f"SELECT replace(hex(zeroblob({limit // 4 + 1})), '0', '00')",
+        ):
+            with pytest.raises(sqlite3.DataError) as info:
+                conn.execute(sql).fetchone()
+            assert image_tags_module._is_too_big(info.value), sql
+            assert image_tags_module._db_message(info.value) == image_tags_module._MSG_BROKEN
+        assert conn.execute(f"SELECT printf('%.*c', {limit + 1}, 'x')").fetchone() == (None,)
+        assert conn.execute(f"SELECT length(randomblob({limit}))").fetchone() == (limit,)
+
+
+def test_t074_longest_row_the_app_writes_fits_under_length_limit(store):
+    """Dòng dài nhất app ghi (đường dẫn ``MAX_REL_PATH_CHARS`` ký tự, mỗi ký tự 4 byte UTF-8) vẫn
+    lưu, đọc, liệt kê được; file vẫn được coi là lành."""
+    folder = "𝐀" * 200  # U+1D400: 4 byte UTF-8
+    rel_path = "/".join([folder] * 4 + ["𝐀" * 216 + ".jpg"])
+    ref = ImageRef(0, rel_path)
+    assert len(rel_path) == MAX_REL_PATH_CHARS and len(rel_path.encode()) > 4000
+    store.set(ref, ImageTags(category="Cổng inox", area="Quận 7"))
+    assert store.get(ref).tags.area == "Quận 7"
+    assert [item.ref for item in store.list_manual().items] == [ref]
+    assert image_tags_module._is_healthy(store.path) is True
+    assert store.recovered_from is None
+
+
+def _insert_info(path: Path, key, value) -> None:
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("INSERT INTO info VALUES (?, ?)", (key, value))
+
+
+TOO_LONG = 1_200_000  # quá _MAX_SQLITE_LENGTH (1 triệu byte)
+OVERSIZED_CELLS = {
+    "chu-qua-dai": lambda p: raw_insert(p, good_row("lon.jpg", category="x" * TOO_LONG)),
+    "chu-nhieu-byte": lambda p: raw_insert(p, good_row("lon.jpg", area="ệ" * (TOO_LONG // 3))),
+    "khoa-la-khoi-byte": lambda p: raw_insert(p, good_row("lon.jpg", ref_key=b"x" * TOO_LONG)),
+    "cot-so-la-khoi-byte": lambda p: raw_insert(p, good_row("lon.jpg", saved_ts=b"x" * TOO_LONG)),
+    "khoa-info-qua-dai": lambda p: _insert_info(p, "k" * TOO_LONG, "1"),
+    "gia-tri-info-qua-dai": lambda p: _insert_info(p, "khac", b"x" * TOO_LONG),
+}
+
+
+@pytest.mark.parametrize("case", list(OVERSIZED_CELLS))
+def test_t074_file_with_oversized_cell_is_moved_aside_not_jammed(store, case):
+    """Ô dài quá giới hạn độ dài (app không bao giờ ghi): đọc tới ô đó là ``SQLITE_TOOBIG``, còn
+    ``quick_check`` vẫn "ok". ``_is_healthy`` đọc thử mọi ô nên coi file là hỏng, đổi tên sang một
+    bên; kho không kẹt mãi ở câu báo lỗi."""
+    build_sqlite(store.path, T052_FILE)
+    OVERSIZED_CELLS[case](store.path)
+    hostile = store.path.read_bytes()
+    with closing(sqlite3.connect(store.path)) as conn:
+        assert conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
+    assert image_tags_module._is_healthy(store.path) is False
+    store.set(REF, ImageTags(area="Quận 7"))
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is not None and store.recovered_from.read_bytes() == hostile
+
+
+def test_t074_huge_create_statement_is_moved_aside_not_jammed(store):
+    """Câu ``CREATE`` dài quá giới hạn độ dài trong ``sqlite_master``: chính câu đọc
+    ``sqlite_master`` báo ``SQLITE_TOOBIG``. ``_is_healthy`` coi là hỏng (trả ``False``, không ném
+    lại), nên file bị đổi tên thay vì kẹt ở câu "Không mở được…"."""
+    build_sqlite(store.path, f"{T052_FILE}; CREATE TABLE khac (x /* {'c' * TOO_LONG} */)")
+    hostile = store.path.read_bytes()
+    with closing(sqlite3.connect(store.path)) as conn:
+        image_tags_module._guard(conn)
+        with pytest.raises(sqlite3.DataError) as info:
+            conn.execute("SELECT name FROM sqlite_master").fetchall()
+    assert image_tags_module._is_too_big(info.value)
+    assert image_tags_module._is_healthy(store.path) is False
+    store.set(REF, ImageTags(area="Quận 7"))
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is not None and store.recovered_from.read_bytes() == hostile
+
+
+@pytest.mark.parametrize("case", ["chu-qua-dai", "khoa-la-khoi-byte", "cot-so-la-khoi-byte"])
+def test_t074_oversized_cell_swapped_in_while_running_resets_then_recovers(store, case):
+    """File có ô quá dài bị thay vào khi app đang chạy: lần đọc báo lỗi (không đường dẫn), đặt lại
+    ``_ready``; lần sau ``_is_healthy`` coi là hỏng, đổi tên file, dùng lại được."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    store.path.unlink()
+    build_sqlite(store.path, T052_FILE)
+    OVERSIZED_CELLS[case](store.path)
+    with pytest.raises(ImageTagStoreError) as info:
+        store.list_manual()
+    assert str(info.value) == image_tags_module._MSG_BROKEN
+    assert store._ready is False
+    assert store.list_manual().items == ()
+    assert store.recovered_from is not None
+    store.set(REF, ImageTags(area="Quận 8"))
+    assert store.get(REF).tags.area == "Quận 8"
+
+
+def test_t074_parallel_reads_and_writes_do_not_deadlock(store):
+    """Giao dịch đọc nay giữ khóa đọc suốt thao tác, giao dịch ghi giữ quyền ghi từ đầu (LC-T070-2):
+    nhiều luồng (như nhiều tab Streamlit) cùng đọc, ghi một kho không kẹt, không báo bận."""
+    store.set(REF, ImageTags(area="Quận 7"))  # file đã tạo: không thử đua lúc tạo file lần đầu
+    errors: list[str] = []
+
+    def work(worker: int) -> None:
+        for n in range(15):
+            ref = ImageRef(0, f"luong-{worker}/anh-{n}.jpg")
+            try:
+                store.set(ref, ImageTags(area="Quận 3"))
+                assert store.get(ref).tags.area == "Quận 3"
+                store.list_manual(limit=5)
+                store.resolve_many([REF, ref])
+            except Exception as exc:  # noqa: BLE001 - gom mọi lỗi của luồng để báo
+                errors.append(f"{type(exc).__name__}: {exc}")
+
+    threads = [threading.Thread(target=work, args=(worker,)) for worker in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=120)
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(store.list_manual(limit=100).items) == 1 + 4 * 15
+    assert store.recovered_from is None
+
+
+def test_t074_change_made_between_operations_is_caught_at_next_check(store):
+    """Trigger thêm vào giữa hai thao tác (ngoài mọi giao dịch của app): thao tác sau bắt được
+    trước khi ghi, rồi đổi tên file lạ và dùng lại được."""
+    store.set(REF, ImageTags(area="Quận 7"))
+    with closing(sqlite3.connect(store.path)) as conn:
+        conn.execute(MUTATING_TRIGGER.format(if_not_exists=""))
+    with pytest.raises(ImageTagStoreError):
+        store.set(REF, ImageTags(area="Tân Phú"))
+    store.set(REF, ImageTags(area="Tân Phú"))
+    assert store.get(REF).tags.area == "Tân Phú"
+    assert store.recovered_from is not None
 
 
 def test_old_manual_tags_are_pruned(tmp_path):

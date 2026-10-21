@@ -388,13 +388,6 @@ RECURSIVE = (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: _app_tables đọc sqlite_master với LIMIT 5 và so theo tập hợp; một dòng chỉ "
-        "mục tự sinh lặp lại (writable_schema) đẩy trigger ra ngoài LIMIT, file độc qua kiểm"
-    ),
-)
 def test_sl_t070_1_duplicate_master_row_cannot_hide_a_trigger(tmp_path):
     path = tmp_path / "image_tags.sqlite"
     _hide_trigger_behind_duplicate_row(path, MUTATE)
@@ -403,13 +396,6 @@ def test_sl_t070_1_duplicate_master_row_cannot_hide_a_trigger(tmp_path):
     assert _is_healthy(path) is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: trigger ẩn sau dòng lặp chạy ở mỗi lần set: đổi khu vực vừa lưu "
-        "(Tân Phú → Quận 1), file không bị đổi tên kể cả khi tạo kho mới"
-    ),
-)
 def test_sl_t070_1_hidden_trigger_never_changes_saved_tags(tmp_path):
     path = tmp_path / "image_tags.sqlite"
     _hide_trigger_behind_duplicate_row(path, MUTATE)
@@ -419,13 +405,6 @@ def test_sl_t070_1_hidden_trigger_never_changes_saved_tags(tmp_path):
         assert store.get(REF).tags.area == "Tân Phú"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: trigger đệ quy ẩn sau dòng lặp: mỗi lần set bị giới hạn số bước dừng rồi báo "
-        "lỗi, nhưng _is_healthy vẫn cho qua nên file không bao giờ bị đổi tên: kẹt mãi"
-    ),
-)
 def test_sl_t070_1_hidden_recursive_trigger_does_not_jam_store(tmp_path, monkeypatch):
     monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", 200_000)
     path = tmp_path / "image_tags.sqlite"
@@ -441,14 +420,6 @@ def test_sl_t070_1_hidden_recursive_trigger_does_not_jam_store(tmp_path, monkeyp
     assert store.get(REF).tags == TAGS
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "SL-T070-2: _guard chỉ đếm số bước máy ảo; một bước có thể tốn rất lâu (randomblob, "
-        "zeroblob, printf %.*c cỡ chục MB), nên truy vấn ít bước mà chạy lâu không bị dừng"
-    ),
-)
 def test_sl_t070_2_guard_also_stops_few_but_heavy_steps():
     """32 bước nặng (mỗi bước tạo 25 MB, khoảng 4,5 giây trên máy Windows của chủ dự án) trên kết
     nối đã ``_guard``: phải bị dừng (chạy quá giờ) hoặc bị từ chối (giá trị quá lớn), không được
@@ -490,14 +461,6 @@ def test_get_many_and_resolve_many_force_ai_per_ref_asked(tmp_path):
 # ===== Lỗi mới về tên (LC-T052-1 còn sót) =======================================================
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-3: tên file chỉ tách ở dấu cách/gạch (không tách chữ dính số), nên tên công cụ "
-        "hay 'AI' dính số phiên bản/số thứ tự không nhận là ảnh AI, dù tên thư mục cùng chữ thì "
-        "nhận (AI01, dalle3, flux1, gpt4o, Gemini2…)"
-    ),
-)
 @pytest.mark.parametrize(
     "file_name",
     [
@@ -541,13 +504,6 @@ def test_sl_t070_4_real_proper_names_are_not_ai(name):
     assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-5: cụm tiếng Việt 'mô phỏng' (ảnh mô phỏng, hình mô phỏng 3D: ảnh dựng, không "
-        "phải ảnh chụp công trình) không nhận là ảnh AI, ảnh giữ mã công trình/khu vực thật"
-    ),
-)
 @pytest.mark.parametrize("ai_dir", ["Ảnh mô phỏng", "Hình mô phỏng 3D", "mo phong"])
 def test_sl_t070_5_simulated_image_phrase_is_ai(ai_dir):
     assert tags_of(f"{BASE}/{ai_dir}/x.png") == AI_ONLY

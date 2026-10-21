@@ -13,12 +13,19 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
   vào bộ nhớ; chữ sai UTF-8, sai kiểu, sai khóa thì bỏ dòng đó. Không ``pickle``, không ``eval``;
   mọi câu SQL dùng tham số ``?``.
 - Cấu trúc file cũng chưa tin cậy (T-070, LC-T052-2): trước mọi truy vấn khác, ``sqlite_master``
-  phải khớp đúng hai bảng app tạo (đúng câu ``CREATE TABLE``, kèm chỉ mục tự sinh của khóa chính);
-  có khung nhìn, trigger, bảng ảo, ``WITHOUT ROWID``, chỉ mục hay bảng lạ thì coi là hỏng. Kiểm ở
-  mỗi lần mở, nên file bị thay khi app đang chạy cũng bị bắt. Mọi truy vấn còn bị giới hạn số bước
-  (``_MAX_VM_STEPS``): file dựng sẵn không làm treo app.
-- File hỏng hẳn (không phải SQLite, sai cấu trúc, quá lớn) thì đổi tên sang một bên để giữ lại
-  (như kho nháp), rồi tạo file mới. File đang bận hay không mở được thì báo lỗi, không xóa.
+  phải khớp đúng hai bảng app tạo (đúng câu ``CREATE TABLE``, kèm chỉ mục tự sinh của khóa chính),
+  không thừa dòng, không dòng nào lặp lại (T-074); có khung nhìn, trigger, bảng ảo,
+  ``WITHOUT ROWID``, chỉ mục hay bảng lạ thì coi là hỏng. Kiểm ở mỗi lần mở, nên file bị thay khi
+  app đang chạy cũng bị bắt; và kiểm **trong cùng giao dịch** với thao tác (T-074), nên chương
+  trình khác không đổi được cấu trúc giữa lúc kiểm và lúc dùng. Nhờ vậy chỉ câu SQL của app được
+  chạy trên file.
+- Lớp phòng sau, nếu lớp kiểm trên bị lách: mỗi truy vấn bị giới hạn số bước (``_MAX_VM_STEPS``)
+  và độ dài mỗi giá trị (``_MAX_SQLITE_LENGTH``, T-074): truy vấn đệ quy bị dừng, giá trị khổng lồ
+  bị từ chối. Đó là giới hạn số bước và độ dài, **không phải giới hạn thời gian**: một truy vấn lạ
+  vẫn có thể chạy lâu trước khi bị dừng.
+- File hỏng hẳn (không phải SQLite, sai cấu trúc, có ô dài quá giới hạn, quá lớn) thì đổi tên sang
+  một bên để giữ lại (như kho nháp), rồi tạo file mới. File đang bận hay không mở được thì báo lỗi,
+  không xóa.
 - Chỗ đặt file (và file nhật ký ``-journal``, ``-wal``, ``-shm`` cạnh nó) là liên kết: symlink,
   junction, hay hard link (file có tên thứ hai, có thể nằm ngoài ``data/``; Windows tạo được không
   cần quyền quản trị) thì chỉ gỡ chính liên kết, không đụng file nó trỏ tới, rồi tạo file mới
@@ -60,6 +67,7 @@ _MAX_TAG_BYTES = 1024
 _MAX_TIME_BYTES = 64
 _SQLITE_INTERRUPT = 9
 _SQLITE_CORRUPT = 11
+_SQLITE_TOOBIG = 18
 _SQLITE_NOTADB = 26
 _SQLITE_MAX_INT = 2**63 - 1  # số nguyên lớn nhất SQLite lưu được
 _JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
@@ -69,6 +77,11 @@ _JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
 # khoảng 26 triệu bước mỗi giây, nên bị dừng sau vài giây thay vì treo.
 _MAX_VM_STEPS = 50_000_000
 _PROGRESS_EVERY = 1000  # SQLite gọi bộ đếm sau mỗi chừng này bước
+# Độ dài tối đa (byte) của một chuỗi, khối byte hay một dòng trên kết nối tới file thẻ (T-074,
+# SL-T070-2): một bước máy ảo không tạo được giá trị khổng lồ (``randomblob``, ``zeroblob``,
+# ``printf('%.*c', …)``: SQLite báo ``SQLITE_TOOBIG`` hoặc trả rỗng ngay). Ô app ghi chỉ vài KB
+# (đường dẫn tối đa ``MAX_REL_PATH_CHARS`` ký tự, 4 byte/ký tự), mặc định của SQLite là 1 tỷ.
+_MAX_SQLITE_LENGTH = 1_000_000
 _CREATE_TABLES = (
     "CREATE TABLE IF NOT EXISTS manual_tags ("
     "root_index INTEGER NOT NULL, ref_key TEXT NOT NULL, rel_path TEXT NOT NULL, "
@@ -104,6 +117,22 @@ _SELECT_LIMITS = (
     _MAX_TIME_BYTES + 1,
 )
 _TEXT_LIMITS = (_MAX_PATH_BYTES, _MAX_PATH_BYTES, *(_MAX_TAG_BYTES,) * 5, _MAX_TIME_BYTES)
+
+
+def _oversized_sql(table: str, columns: Iterable[str]) -> str:
+    checks = " OR ".join(f"length(CAST({column} AS BLOB)) > ?1" for column in columns)
+    return f"SELECT 1 FROM {table} WHERE {checks} LIMIT 1"
+
+
+# Ô dài hơn ``_MAX_SQLITE_LENGTH`` (app không bao giờ ghi): đọc ô đó báo ``SQLITE_TOOBIG`` ở mọi
+# lần đọc (``substr`` vẫn nạp cả ô), còn ``quick_check`` vẫn ra ``ok``. ``_is_healthy`` đọc thử mọi
+# ô (``CAST`` phải nạp cả ô: ô quá dài báo ``SQLITE_TOOBIG``; nếu SQLite nào đó không nạp thì phép
+# so độ dài vẫn bắt), để file như vậy bị đổi tên sang một bên thay vì làm kho kẹt mãi ở câu báo
+# lỗi. Chỉ ghép tên bảng, tên cột hằng.
+_OVERSIZED_SQL = {
+    b"manual_tags": _oversized_sql("manual_tags", _COLUMNS),
+    b"info": _oversized_sql("info", ("key", "value")),
+}
 
 _MSG_AI_FOLDER = (
     "Ảnh này nằm trong thư mục ảnh AI (hoặc tên file có chữ AI, tên công cụ tạo ảnh) nên luôn là "
@@ -272,7 +301,7 @@ class ImageTagStore:
             raise TagError(_MSG_AI_FOLDER)
         saved_at = datetime.now(ZoneInfo(self.timezone))
         key = ref_key(ref)
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO manual_tags "
                 f"({', '.join(_COLUMNS)}) VALUES ({', '.join('?' * len(_COLUMNS))})",
@@ -304,7 +333,7 @@ class ImageTagStore:
         """Bỏ thẻ sửa tay của ``ref`` (quay về thẻ đọc từ tên thư mục). ``False``: không có."""
         if not _storable(_check_ref(ref)):
             return False
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             cursor = conn.execute(
                 "DELETE FROM manual_tags WHERE root_index = ? AND ref_key = ?",
                 (ref.root_index, ref_key(ref)),
@@ -313,7 +342,7 @@ class ImageTagStore:
 
     def clear_all(self) -> int:
         """Bỏ mọi thẻ sửa tay trên máy này. Trả số thẻ đã bỏ."""
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             return conn.execute("DELETE FROM manual_tags").rowcount
 
     def list_manual(
@@ -372,22 +401,26 @@ class ImageTagStore:
         return ManualTag(ref=ref, tags=_keep_ai(tags, tags_for_image(ref).tags), saved_at=saved_at)
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
+    def _connect(self, *, write: bool = False) -> Iterator[sqlite3.Connection]:
+        """Kết nối trong **một** giao dịch, đã kiểm cấu trúc file. ``write``: thao tác ghi."""
         self._prepare()
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
                 conn.text_factory = bytes  # tự giải mã UTF-8 từng ô (``_row_to_tag``)
-                # File bị thay khi app đang chạy (SL-T052-9, -10): kiểm cấu trúc trước khi đọc.
+                _begin(conn, write=write)
+                # File bị thay khi app đang chạy (SL-T052-9, -10): kiểm cấu trúc trước khi đọc,
+                # trong cùng giao dịch với thao tác (LC-T070-2).
                 if _app_tables(conn) != _APP_TABLES:
                     self._ready = False  # lần sau kiểm lại: đổi tên file lạ, tạo file mới
                     raise ImageTagStoreError(_MSG_BROKEN)
                 yield conn
         except sqlite3.DatabaseError as exc:
             if not _is_busy(exc):
-                # Hỏng, thiếu bảng/cột (file bị thay, SL-T052-10), chạy quá số bước: lần sau
-                # kiểm lại file. Bận/khóa thì chỉ là tab khác đang ghi.
+                # Hỏng, thiếu bảng/cột (file bị thay, SL-T052-10), chạy quá số bước, giá trị dài
+                # quá giới hạn (SL-T070-2): lần sau kiểm lại file (``_is_healthy`` coi các lỗi này
+                # là hỏng, đổi tên file). Bận/khóa thì chỉ là tab khác đang ghi.
                 self._ready = False
             raise ImageTagStoreError(_db_message(exc)) from None
         except OSError as exc:
@@ -415,6 +448,13 @@ class ImageTagStore:
                     self.recovered_from = self._move_aside()
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
+                conn.text_factory = bytes
+                # File có thể bị thay ngay sau ``_is_healthy`` (LC-T070-2): kiểm lại trong giao
+                # dịch ghi, trước ``CREATE``/``INSERT``. Lạ thì chưa ghi gì; lần sau kiểm lại từ
+                # đầu, đổi tên file lạ.
+                _begin(conn, write=True)
+                if _app_tables(conn) is None:
+                    raise ImageTagStoreError(_MSG_BROKEN)
                 for sql in _CREATE_TABLES:
                     conn.execute(sql)
                 conn.execute(
@@ -496,9 +536,15 @@ def _parse_time(value: str, timezone: str) -> datetime | None:
 
 def _guard(conn: sqlite3.Connection) -> None:
     """File thẻ là dữ liệu chưa tin cậy (F3): không chạy hàm "không vô hại" trong view/trigger/chỉ
-    mục của file, và dừng truy vấn chạy quá ``_MAX_VM_STEPS`` bước trên kết nối này (LC-T052-2,
-    lớp phòng sau lớp kiểm cấu trúc): SQLite báo ``interrupted`` thay vì treo luồng Streamlit."""
+    mục của file; dừng truy vấn chạy quá ``_MAX_VM_STEPS`` bước trên kết nối này (LC-T052-2: SQLite
+    báo ``interrupted``); không cho tạo chuỗi hay khối byte dài quá ``_MAX_SQLITE_LENGTH``
+    (SL-T070-2: SQLite báo ``SQLITE_TOOBIG``).
+
+    Đây là lớp phòng sau lớp kiểm cấu trúc, và **không phải giới hạn thời gian**: mỗi bước bị chặn
+    cỡ, số bước bị chặn số, nhưng một truy vấn lạ vẫn có thể chạy lâu trước khi bị dừng. Lớp chặn
+    chính là ``_app_tables`` (chỉ câu SQL của app được chạy trên file)."""
     conn.execute("PRAGMA trusted_schema = OFF")
+    conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_SQLITE_LENGTH)
     limit = _MAX_VM_STEPS  # đọc lúc mở (test hạ được giới hạn)
     steps = 0
 
@@ -508,6 +554,15 @@ def _guard(conn: sqlite3.Connection) -> None:
         return 1 if steps > limit else 0
 
     conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
+
+
+def _begin(conn: sqlite3.Connection, *, write: bool) -> None:
+    """Mở giao dịch **trước** khi kiểm cấu trúc (LC-T070-2), để kiểm và dùng file nằm trong cùng
+    một giao dịch: khóa giữ tới khi commit/rollback, nên chương trình khác không đổi được cấu trúc
+    giữa lúc kiểm và lúc dùng (nó nhận "database is locked"). Ghi: ``BEGIN IMMEDIATE`` (giữ quyền
+    ghi ngay); đọc: ``BEGIN`` (giữ khóa đọc, hay ảnh chụp ở chế độ WAL, từ câu đọc đầu tiên, tức
+    câu kiểm ``sqlite_master``)."""
+    conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
 
 
 @cache
@@ -533,13 +588,21 @@ def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
     trong file đều khớp đúng ``_expected_schema``; có gì khác thì ``None`` (LC-T052-2, SL-T052-9).
 
     Bắt được: khung nhìn, trigger, bảng ảo (``USING …``), ``WITHOUT ROWID``, ``CHECK``, cột sinh,
-    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``.
+    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``, và đang ở
+    trong giao dịch của thao tác (``_begin``).
+
+    Đọc vào **danh sách** (LC-T070-1): nhiều dòng hơn số mong đợi, hay một dòng ``(loại, tên)``
+    lặp lại, thì ``None``. So theo tập hợp thì một dòng chỉ mục lặp lại (``writable_schema``) gộp
+    vào dòng cũ và đẩy một trigger ra ngoài ``LIMIT``. Vẫn đọc có ``LIMIT``: không đọc vô hạn.
     """
     expected = _expected_schema()
-    limit = sum(len(items) for items in expected.values()) + 1
+    limit = sum(len(items) for items in expected.values())
+    rows = [tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit + 1))]
+    if len(rows) > limit or len({row[:2] for row in rows}) != len(rows):
+        return None
     found: dict[bytes, set[tuple]] = {}
-    for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit)):
-        found.setdefault(row[2], set()).add(tuple(row))
+    for row in rows:
+        found.setdefault(row[2], set()).add(row)
     for name, items in found.items():
         if name not in expected or items != expected[name]:
             return None
@@ -551,14 +614,18 @@ def _is_healthy(path: Path) -> bool:
     phiên bản.
 
     ``False`` chỉ khi **chắc chắn** hỏng hoặc lạ (SQLite báo hỏng / không phải cơ sở dữ liệu,
-    cấu trúc khác app tạo, ``quick_check`` khác ``ok``, sai phiên bản, kiểm quá số bước). Lỗi khác
-    (bận, khóa, không mở được) được ném lại để báo lỗi mà không đổi tên file.
+    cấu trúc khác app tạo, ``quick_check`` khác ``ok``, có ô dài quá ``_MAX_SQLITE_LENGTH`` hay
+    gặp ``SQLITE_TOOBIG`` (T-074, SL-T070-2), sai phiên bản, kiểm quá số bước). Lỗi khác (bận,
+    khóa, không mở được) được ném lại để báo lỗi mà không đổi tên file.
     """
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
             # File chưa tin cậy: không chạy hàm trong view/trigger/chỉ mục của nó khi kiểm.
             _guard(conn)
             conn.text_factory = bytes
+            # Mọi bước kiểm nằm trong một giao dịch đọc (LC-T070-2): cấu trúc không đổi được giữa
+            # ``_app_tables`` và ``quick_check``.
+            _begin(conn, write=False)
             # Trước mọi truy vấn khác (LC-T052-2): khung nhìn hay trigger đệ quy không bao giờ
             # được chạy, kể cả bởi ``quick_check`` (kiểm ``CHECK``, cột sinh).
             tables = _app_tables(conn)
@@ -566,13 +633,16 @@ def _is_healthy(path: Path) -> bool:
                 return False
             if conn.execute("PRAGMA quick_check").fetchone() != (b"ok",):
                 return False
+            for table in tables:
+                if conn.execute(_OVERSIZED_SQL[table], (_MAX_SQLITE_LENGTH,)).fetchone():
+                    return False
             version = None
             if b"info" in tables:
                 version = conn.execute(
                     "SELECT substr(value, 1, 16) FROM info WHERE key = 'schema_version'"
                 ).fetchone()
     except sqlite3.DatabaseError as exc:
-        if _is_corrupt(exc) or _is_interrupted(exc):
+        if _is_corrupt(exc) or _is_interrupted(exc) or _is_too_big(exc):
             return False
         raise
     return version is None or version == (SCHEMA_VERSION.encode(),)
@@ -600,12 +670,21 @@ def _is_interrupted(exc: sqlite3.DatabaseError) -> bool:
     return "interrupted" in str(exc).lower()
 
 
+def _is_too_big(exc: sqlite3.DatabaseError) -> bool:
+    """Chuỗi hay khối byte dài quá ``_MAX_SQLITE_LENGTH`` (``SQLITE_TOOBIG``, ``DataError``): app
+    không bao giờ ghi giá trị như vậy, nên file có nó là file lạ (SL-T070-2)."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return code & 0xFF == _SQLITE_TOOBIG
+    return "too big" in str(exc).lower()
+
+
 def _db_message(exc: sqlite3.DatabaseError) -> str:
     if _is_busy(exc):
         return (
             "File lưu thẻ ảnh đang bận (có thể app mở ở tab khác đang lưu). Thử lại sau giây lát."
         )
-    if _is_corrupt(exc) or _is_interrupted(exc):
+    if _is_corrupt(exc) or _is_interrupted(exc) or _is_too_big(exc):
         return _MSG_BROKEN
     return (
         "Không mở được file lưu thẻ ảnh (có thể chương trình khác đang giữ file, hoặc không có "
