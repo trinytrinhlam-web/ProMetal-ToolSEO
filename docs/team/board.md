@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 12:20 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 13:33 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,15 +34,16 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Soi Lỗi · T-055 sửa dữ liệu test | `team/T-055` | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`; 1 Trung bình LC-T055-1 → T-056, T-076; 3 Thấp). Chỉ Huy đưa `main` vào nhánh (`15a9726`). 11:35 Thợ Máy lượt 3 **xong** (`3e2c1fa`: `tests/test_drafts_images.py` dùng cặp `CongAI`/`congai`, thêm `assert` điều kiện đầu; 9 file liên quan 1.067 qua, 1 hỏng trong file của Soi Lỗi). ⏳ **12:03 Soi Lỗi đang sửa `tests/test_soi_loi_t055.py`**; rồi gộp (chỉ đổi dữ liệu test, không cần Lá Chắn kiểm lại) | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
-| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Lá Chắn · T-075 kiểm nhanh certifi | `team/T-075` | Thợ Máy **xong** (`f6a8220`; 927 test liên quan qua). 21/10 11:38 Soi Lỗi rút gọn **ĐẠT** (`f5f2bb6`: 0 lỗi; `uv.lock` chỉ đổi `certifi`, hash đúng PyPI; thêm test bắt tay TLS của client WordPress và Gemini dùng đúng bộ chứng chỉ đã vá). ⏳ **12:03 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-075-tho-may.md) · [Soi Lỗi](reports/T-075-soi-loi.md) |
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Thợ Máy · T-077 tên công cụ AI | `team/T-077` | ⏳ **12:03 Thợ Máy đang làm** (nhánh từ `main` sau khi gộp T-074) | |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Chỉ Huy (chờ cho gộp) | `team/T-055` | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`; LC-T055-1 → T-056, T-076). Lượt 3 sửa dữ liệu test sau T-070: Thợ Máy (`3e2c1fa`), Soi Lỗi 12:25 (`b137643`: đột biến bắt lại đủ; 9 file liên quan 1.068 qua, **0 hỏng**). **Sẵn sàng gộp** (chỉ đổi dữ liệu test, không cần Lá Chắn kiểm lại). ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
+| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Chỉ Huy (chờ cho gộp) | `team/T-075` | Thợ Máy xong (`f6a8220`). Soi Lỗi rút gọn **ĐẠT** (`f5f2bb6`, 0 lỗi). 12:28 Lá Chắn rút gọn **ĐẠT** (`6c0652c`, Opus tạm; 0 lỗi; LC-T061-1 đóng; **gộp được ngay**). Phát hiện ngoài phiếu: LC-T075-1 (Cao, công cụ `uv` cũ) → T-078. ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-075-tho-may.md) · [Soi Lỗi](reports/T-075-soi-loi.md) · [Lá Chắn](reports/T-075-la-chan.md) |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Thợ Máy · T-077 tên công cụ AI | `team/T-077` | ⏳ **12:03 Thợ Máy đang làm** (code `c8c6351` đã đẩy; phiên dừng 12:30 vì hết hạn mức, 13:3x nhắn làm tiếp) | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3) | Thợ Máy | T-055 gộp; nên trước T-056 |
+| [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1: `uv` cũ tin chứng chỉ bị lộ khi tải công cụ), thêm `required-version`, README | Chủ dự án + Chỉ Huy, Thợ Máy, Thư Ký | Chủ dự án duyệt nâng công cụ |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
@@ -145,4 +146,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-078
+## Số phiếu tiếp theo: T-079
