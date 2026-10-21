@@ -23,13 +23,14 @@ import pytest
 
 import seo_app.storage.image_tags as image_tags_module
 from seo_app.images.folders import ImageRef
-from seo_app.images.tags import ImageTags, tags_for_image
+from seo_app.images.tags import SOURCE_AI, ImageTags, is_ai_name, tags_for_image
 from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError, _is_healthy
 
 REF = ImageRef(0, "CT012 - Cổng inox - Tân Phú/truoc/IMG_0001.jpg")
 FOLDER = "CT012 - Cổng inox - Tân Phú/truoc"
 BASE = "CT012 - Cổng inox - Quận 7/truoc"
 REAL = ImageTags(project_code="CT012", category="Cổng inox", area="Quận 7", phase="truoc")
+AI_ONLY = ImageTags(source=SOURCE_AI, category="Cổng inox")
 # Trigger sửa khu vực vừa lưu: chạy được thì đọc lại ra "Quận 1" thay vì khu vực đã lưu.
 MUTATING_TRIGGER = (
     "CREATE TRIGGER IF NOT EXISTS t AFTER INSERT ON manual_tags BEGIN "
@@ -551,3 +552,69 @@ def test_sl_t074_1_save_in_other_tab_does_not_wait_for_row_processing(store, mon
     found = store.get_many(refs)
     assert len(found) == len(refs)
     assert outcomes == ["da-luu"]
+
+
+# Tên công cụ AI một từ mà người gõ viết hoa ở giữa (kiểu CamelCase). Lá Chắn T-055 thấy
+# "MidJourney" trên ``main``; tôi thử thêm mọi tên công cụ một từ ở mọi chỗ viết hoa (E10).
+CAMEL_CASE_AI_FOLDERS = [
+    "MidJourney",
+    "Ảnh MidJourney",
+    "MidJourney V6",
+    "FireFly",
+    "Adobe FireFly",
+    "SeeDream",
+    "SeeDream 4.0",
+    "HaiLuo",
+    "JiMeng",
+    "CoPilot",
+    "IdeoGram",
+    "ReCraft",
+    "RunWay",
+]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T074-2: tên thư mục chỉ đọc kiểu tách chữ hoa (split_case=True), nên tên công cụ AI "
+        "một từ viết hoa ở giữa ('MidJourney' thành 'mid journey') không khớp dấu hiệu "
+        "'midjourney': ảnh AI giữ mã công trình, khu vực, trước/sau như ảnh thật"
+    ),
+)
+@pytest.mark.parametrize("folder", CAMEL_CASE_AI_FOLDERS)
+def test_sl_t074_2_camel_case_tool_name_in_folder_is_ai(folder):
+    assert tags_for_image(ImageRef(0, f"{BASE}/{folder}/IMG_0001.jpg")).tags == AI_ONLY
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T074-2: is_ai_name đọc tên thư mục gốc cùng cách, nên gốc tên 'MidJourney', 'FireFly' "
+        "không bị coi là thư mục ảnh AI"
+    ),
+)
+@pytest.mark.parametrize("folder", ["MidJourney", "FireFly", "SeeDream", "HaiLuo", "CoPilot"])
+def test_sl_t074_2_camel_case_tool_name_as_root_folder_is_ai(folder):
+    assert is_ai_name(f"G:/My Drive/{folder}") is True
+
+
+# Đối chứng (đang đúng): cùng các tên ở tên file (không tách chữ hoa) và ở kiểu viết thường gặp.
+@pytest.mark.parametrize("name", ["MidJourney", "MidJourney6", "FireFly", "SeeDream", "HaiLuo"])
+def test_camel_case_tool_name_in_file_name_is_ai(name):
+    assert tags_for_image(ImageRef(0, f"{BASE}/{name}_0001.png")).tags == AI_ONLY
+
+
+USUAL_CASE_AI_FOLDERS = [
+    "midjourney",
+    "Midjourney",
+    "MIDJOURNEY",
+    "Firefly",
+    "FIREFLY",
+    "Seedream",
+    "copilot",
+]
+
+
+@pytest.mark.parametrize("folder", USUAL_CASE_AI_FOLDERS)
+def test_tool_name_in_usual_case_in_folder_is_ai(folder):
+    assert tags_for_image(ImageRef(0, f"{BASE}/{folder}/IMG_0001.jpg")).tags == AI_ONLY
