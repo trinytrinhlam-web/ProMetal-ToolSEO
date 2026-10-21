@@ -50,3 +50,4 @@ F1 (đọc file ngoài thư mục đã khai báo).
 - Lập theo điều kiện 1 của Lá Chắn T-048. Hạn: trước khi gộp T-056 và trước khi hết Giai đoạn 3.
 - Máy chủ dự án là Windows; Chỉ Huy B cũng chạy trên Windows. Cách nhanh: mở một phiên Claude Code cloud trên nhánh `main` (đã có T-048), làm trên nhánh tạm `team/T-063`.
 - 2026-10-20 (Chỉ Huy B): **Thêm theo Lá Chắn T-052** (điều kiện 5): chạy cả `uv run pytest tests/test_images_tags.py tests/test_soi_loi_t052.py -rs` để 2 ca symlink chạy thật; nếu có Mac thì thử tên NFD thật. Ghi vào báo cáo T-063.
+- 2026-10-21 (Chỉ Huy B): **Điều kiện Lá Chắn T-055** (điều kiện 4): chạy thêm `tests/test_drafts_images.py`, `tests/test_soi_loi_t055.py` trên Mac (symlink, APFS không phân biệt hoa thường, tên NFD).
