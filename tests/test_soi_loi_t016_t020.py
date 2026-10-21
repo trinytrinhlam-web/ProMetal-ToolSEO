@@ -741,7 +741,7 @@ def test_bad_json_in_row_gives_draft_error(store, data):
         {"auto_fixed": -3},
         {"material": {f"nhãn {i}": "x" for i in range(21)}},
         {"saved_at": "2026-10-14T08:00:00"},  # thiếu múi giờ
-        {"schema_version": 2},
+        {"schema_version": 3},
         {"id": "f" * 32},  # không khớp mã dòng
         {"research": {"intent": "không phải danh sách"}},
         {"secret": "sk-ant-abc"},

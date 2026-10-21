@@ -7,18 +7,38 @@ thì bỏ qua và báo lỗi tiếng Việt, không làm sập app. File hỏng 
 
 Không dùng ``pickle``; mọi câu SQL dùng tham số ``?``. Khuôn không có chỗ nào cho khóa API
 hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
+
+Ảnh đã chọn cho chỗ cần ảnh (T-055, khuôn 2; thiết kế T-046 mục 7 G3-9):
+
+- Mỗi phần của bài nhớ một ``DraftImage``: ảnh trong thư mục ảnh hoặc ảnh tạo bằng AI, nguồn
+  ảnh (thật/AI), hạng mục, alt và cờ đã duyệt, chú thích, prompt ảnh AI.
+- Ảnh trong thư mục ảnh chỉ lưu ``ImageRef`` của T-048 (số thứ tự thư mục gốc, đường dẫn tương
+  đối), không bao giờ lưu đường dẫn tuyệt đối (F1): ``ImageRef(...)`` kiểm lại mỗi lần tạo, kể cả
+  khi đọc nháp. Khi mở nháp, ``check_draft_images`` dựng lại ``ImageRef`` rồi hỏi
+  ``ImageLibrary.stat_image`` (thư mục gốc còn khai báo không, file còn không, có đi qua liên kết
+  không), không tin số thứ tự gốc ghi trong nháp; nếu có kết quả quét thì dùng đúng ``ImageRef``
+  của kết quả quét làm khóa (một file có thể có nhiều ``ImageRef`` khác hoa thường), không có thì
+  lấy tên thư mục thật trên ổ để thẻ không theo chữ hoa thường trong nháp (SL-T055-1).
+- Nháp là dữ liệu chưa tin cậy (góp ý Lá Chắn T-046 số 11, điều kiện Lá Chắn T-048 và T-052): thẻ
+  dựng lại qua ``ImageTags(...)``; nguồn ảnh nghiêng về ảnh AI (nháp ghi AI **hoặc** thẻ hiện tại
+  nói AI thì là ảnh AI; nháp không bao giờ kéo ảnh AI về ảnh thật); alt, chú thích, prompt là chữ
+  thường có giới hạn độ dài, chỉ được lọc và hiện, không chạy gì.
+- Nháp khuôn 1 (chưa có ảnh) vẫn mở được. Dữ liệu ảnh hỏng (sửa tay, sai khuôn) chỉ làm mất ảnh
+  đó (``DraftSnapshot.dropped_images`` đếm), phần chữ của bài giữ nguyên.
 """
 
 from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 import uuid
-from collections.abc import Iterator
+from collections.abc import Collection, Iterable, Iterator
 from contextlib import closing, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from pydantic import (
@@ -26,24 +46,73 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     ValidationError,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
     field_validator,
     model_validator,
 )
 from pydantic_core import PydanticSerializationError  # đi kèm pydantic, không phải thư viện mới
 
+from seo_app.ai.base import AIError
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
 from seo_app.content.models import OutlineItem, Research, Review
 from seo_app.content.workflow import clean_ai_line, clean_research, clean_review
+from seo_app.images.alt import (
+    AI_ALT_PREFIX,
+    AI_CAPTION_PREFIX,
+    AltSuggestion,
+    clean_alt_text,
+    clean_suggestion,
+)
+from seo_app.images.folders import (
+    MAX_REL_PATH_CHARS,
+    ImageEntry,
+    ImageFolderError,
+    ImageLibrary,
+    ImageRef,
+    SubFolder,
+)
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError, tags_for_image
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags, unescape_link_syntax
+from seo_app.storage.image_tags import ref_key
+
+if TYPE_CHECKING:
+    from seo_app.storage.image_tags import ImageTagStore
 
 DEFAULT_DRAFTS_FILE = PROJECT_ROOT / "data" / "drafts.sqlite"
 MAX_DRAFTS = 30
 MAX_DRAFT_BYTES = 5 * 1024 * 1024  # một nháp (JSON, UTF-8) không quá 5 MB
 STEP_COUNT = 5  # Chuẩn bị · Dàn ý · Viết & kiểm tra · SEO · Xuất bản
-SCHEMA_VERSION = 1
+# 1: chữ của bài (T-016). 2: thêm ảnh đã chọn cho chỗ cần ảnh (T-055).
+SCHEMA_VERSION = 2
+_OLD_SCHEMA_VERSIONS = frozenset({1})  # vẫn mở được, nâng lên SCHEMA_VERSION khi mở
 _ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 _SQLITE_TIMEOUT = 5  # giây chờ khi file đang bị một lần lưu khác giữ
+
+# Ảnh đã chọn (T-055). Số thứ tự thư mục gốc lớn hơn mức này không thể do app ghi: bỏ ảnh đó.
+# Số trong khoảng mà thư mục chưa khai báo thì giữ, ``check_draft_images`` báo "không có".
+MAX_ROOT_INDEX = 999
+# Giới hạn lưu trữ (ký tự, sau khi lọc). Rộng hơn giới hạn viết alt trong config/content.toml
+# (mặc định 125 và 200) để đổi cấu hình không cắt mất alt đã duyệt; giao diện kiểm lại theo cấu
+# hình trước khi dùng.
+MAX_ALT_CHARS = 500
+MAX_CAPTION_CHARS = 1000
+MAX_PROMPT_CHARS = 4000
+_RAW_TEXT_FACTOR = 4  # chữ thô dài hơn giới hạn × số này thì cắt bớt trước khi lọc (đỡ tốn công)
+_MAX_CATEGORY_CHARS = 300  # như ``seo_app.images.tags``: dài hơn thì không phải một thẻ
+# Khóa ``context`` khi đọc nháp từ file: ảnh hỏng thì bỏ ảnh và ghi vào danh sách này.
+_DROPPED_IMAGES = "dropped_images"
+# Không lấy được tên thật trên ổ của thư mục chứa ảnh (SL-T055-1): không có đường dẫn máy.
+_MSG_FOLDER_NAME = (
+    "Chưa kiểm được tên thư mục chứa ảnh này (thư mục có quá nhiều mục, ổ đang chậm hoặc thư mục "
+    "vừa đổi tên). Hãy mở thư mục chứa ảnh để app kiểm lại."
+)
+# Prompt: bỏ ký tự điều khiển (trừ xuống dòng, tab), ký tự vô hình/định dạng (kể cả ký tự đảo
+# hướng chữ), surrogate lẻ (không ghi được ra UTF-8).
+_PROMPT_DROP = frozenset({"Cc", "Cf", "Cs"})
+_category = unicodedata.category
 
 
 class DraftError(Exception):
@@ -68,6 +137,192 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _drop_surrogates(text: str) -> str:
+    """Bỏ surrogate lẻ: không ghi được ra UTF-8 (lưu nháp báo "ký tự lạ"), giao diện lỗi khi
+    hiện."""
+    return "".join(ch for ch in text if _category(ch) != "Cs")
+
+
+def _one_line(value: object, limit: int) -> object:
+    """Alt, chú thích: lọc như chữ AI (``clean_alt_text``: bỏ thẻ HTML, link, ký tự vô hình; một
+    dòng), tối đa ``limit`` ký tự. Không phải chữ thì trả nguyên để pydantic báo sai khuôn."""
+    if not isinstance(value, str):
+        return value
+    return clean_alt_text(_drop_surrogates(value[: limit * _RAW_TEXT_FACTOR]), limit)
+
+
+def _clean_prompt(value: object) -> object:
+    """Prompt ảnh AI: giữ nhiều dòng, bỏ ký tự điều khiển/vô hình, tối đa ``MAX_PROMPT_CHARS``.
+
+    Chỉ là chữ để hiện (ô sửa, ``st.code``) và gửi cho AI tạo ảnh khi người dùng bấm; không bỏ thẻ
+    HTML hay escape (chữ trong ô sửa không phải Markdown, bản sao chép phải đúng chữ).
+    """
+    if not isinstance(value, str):
+        return value
+    text = value[: MAX_PROMPT_CHARS * _RAW_TEXT_FACTOR]
+    text = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
+    kept = "".join(ch for ch in text if ch in "\n\t" or _category(ch) not in _PROMPT_DROP)
+    return kept.strip()[:MAX_PROMPT_CHARS].rstrip()
+
+
+def _ai_tags(category: str) -> ImageTags:
+    """Thẻ ảnh AI (chỉ có hạng mục), dựng qua ``ImageTags(...)``; hạng mục sai thì bỏ trống."""
+    try:
+        return ImageTags(source=SOURCE_AI, category=category)
+    except TagError:
+        return ImageTags(source=SOURCE_AI)
+
+
+def _ai_prefixed(text: str, *, caption: bool = False) -> str:
+    """Alt (hay chú thích) của ảnh AI bắt đầu bằng đúng một tiền tố «Minh họa» (hay «Ảnh minh họa
+    (AI)»), ghép bằng chính hàm của luồng gợi ý alt (``clean_suggestion``, quy tắc C6 Lá Chắn
+    T-051): bỏ tiền tố tự viết, cắt phần thân theo ranh giới từ, ghi lại tiền tố chuẩn. Bỏ tiền tố
+    rồi không còn chữ nào (alt chỉ là «minh họa», «???») thì trả chuỗi rỗng."""
+    try:
+        fixed = clean_suggestion(
+            AltSuggestion(alt=text, caption=text),
+            ai_generated=True,
+            max_chars=MAX_ALT_CHARS,
+            caption_max_chars=MAX_CAPTION_CHARS,
+        )
+    except AIError:
+        return ""
+    return fixed.caption if caption else fixed.alt
+
+
+class DraftImage(_Strict):
+    """Ảnh đã chọn cho một chỗ cần ảnh (T-055).
+
+    Hai loại:
+
+    - **Ảnh trong thư mục ảnh** (ảnh thật, hoặc ảnh AI người dùng để trong thư mục): ``root_index``
+      và ``rel_path`` là ``ImageRef`` của T-048, kiểm bằng chính ``ImageRef(...)`` mỗi lần tạo
+      (chặn ``..``, ổ đĩa, đường dẫn tuyệt đối, UNC…). Không bao giờ lưu đường dẫn tuyệt đối (F1).
+      Tạo bằng ``DraftImage.from_library`` từ kết quả quét.
+    - **Ảnh tạo bằng AI** (``root_index`` là ``None``): chỉ lưu prompt, không lưu ảnh hay đường dẫn.
+      Luôn là ảnh AI.
+
+    Nguồn ảnh nghiêng về ảnh AI: chỉ đúng chữ ``"that"`` mới là ảnh thật, mọi giá trị khác đọc
+    thành ``"ai"``. Hạng mục chỉ nhận giá trị ``ImageTags`` chấp nhận (sai thì bỏ trống, không giữ
+    chữ lạ). Alt, chú thích: một dòng, đã lọc, tối đa ``MAX_ALT_CHARS``/``MAX_CAPTION_CHARS``; alt
+    rỗng thì không thể "đã duyệt". Prompt: nhiều dòng, tối đa ``MAX_PROMPT_CHARS``.
+    """
+
+    source: str = SOURCE_AI
+    root_index: int | None = Field(default=None, strict=True, ge=0, le=MAX_ROOT_INDEX)
+    rel_path: str = Field(default="", max_length=MAX_REL_PATH_CHARS)
+    category: str = ""
+    alt: str = ""
+    alt_approved: bool = Field(default=False, strict=True)
+    caption: str = ""
+    prompt: str = ""
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def _source_or_ai(cls, value: object) -> str:
+        return SOURCE_REAL if isinstance(value, str) and value == SOURCE_REAL else SOURCE_AI
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _known_category(cls, value: object) -> str:
+        # Dựng lại qua ImageTags (tự kiểm theo danh sách hạng mục cố định, điều kiện Lá Chắn T-052).
+        if not isinstance(value, str) or not value or len(value) > _MAX_CATEGORY_CHARS:
+            return ""
+        try:
+            return ImageTags(category=value).category
+        except TagError:
+            return ""
+
+    @field_validator("alt", mode="before")
+    @classmethod
+    def _clean_alt(cls, value: object) -> object:
+        return _one_line(value, MAX_ALT_CHARS)
+
+    @field_validator("caption", mode="before")
+    @classmethod
+    def _clean_caption(cls, value: object) -> object:
+        return _one_line(value, MAX_CAPTION_CHARS)
+
+    @field_validator("prompt", mode="before")
+    @classmethod
+    def _clean_prompt_text(cls, value: object) -> object:
+        return _clean_prompt(value)
+
+    @model_validator(mode="after")
+    def _check_place(self) -> DraftImage:
+        if self.root_index is None:
+            if self.rel_path:
+                raise ValueError("đường dẫn ảnh thiếu số thứ tự thư mục gốc")
+            self.source = SOURCE_AI  # ảnh tạo bằng AI không bao giờ là ảnh thật
+        else:
+            try:
+                ImageRef(self.root_index, self.rel_path)
+            except ImageFolderError:
+                raise ValueError("đường dẫn ảnh không hợp lệ") from None
+        if not self.alt:
+            self.alt_approved = False
+        return self
+
+    @classmethod
+    def from_library(
+        cls,
+        image: ImageRef | ImageEntry,
+        tags: ImageTags,
+        *,
+        alt: str = "",
+        alt_approved: bool = False,
+        caption: str = "",
+        prompt: str = "",
+    ) -> DraftImage:
+        """Ảnh chọn từ thư mục ảnh. ``image``: ``ImageEntry``/``ImageRef`` **của kết quả quét**
+        (khóa lựa chọn, điều kiện Lá Chắn T-048); ``tags``: thẻ đang dùng cho ảnh (``resolve``)."""
+        ref = image.ref if isinstance(image, ImageEntry) else image
+        if not isinstance(ref, ImageRef) or not isinstance(tags, ImageTags):
+            raise TypeError("from_library cần ImageRef (hoặc ImageEntry) và ImageTags.")
+        return cls(
+            source=tags.source,
+            root_index=ref.root_index,
+            rel_path=ref.rel_path,
+            category=tags.category,
+            alt=alt,
+            alt_approved=alt_approved,
+            caption=caption,
+            prompt=prompt,
+        )
+
+    @property
+    def is_generated(self) -> bool:
+        """Ảnh tạo bằng AI (không nằm trong thư mục ảnh)."""
+        return self.root_index is None
+
+    @property
+    def ref(self) -> ImageRef | None:
+        """``ImageRef`` dựng lại (đã kiểm dạng chữ); ảnh tạo bằng AI: ``None``. Muốn biết ảnh còn
+        dùng được trên máy này không thì dùng ``check_draft_images``."""
+        if self.root_index is None:
+            return None
+        return ImageRef(self.root_index, self.rel_path)
+
+
+def _ai_wording(image: DraftImage) -> DraftImage:
+    """Chữ đi kèm ảnh AI: alt bắt đầu «Minh họa», chú thích bắt đầu «Ảnh minh họa (AI)» (quy tắc C6
+    Lá Chắn T-051, SL-T055-2). Code bảo đảm, không trông vào người hay AI.
+
+    Alt duyệt khi ảnh còn là ảnh thật (hay nháp sửa tay) tả ảnh như công trình thật: thêm tiền tố
+    **và** bỏ "đã duyệt", vì chữ đã đổi không còn là chữ người dùng đã duyệt, người dùng đọc lại
+    rồi duyệt (hay bấm gợi ý lại với ``ai_generated=True``). Alt, chú thích đã có tiền tố thì giữ
+    nguyên, kể cả "đã duyệt"; alt, chú thích trống thì để trống.
+    """
+    update: dict[str, object] = {}
+    if image.alt and not image.alt.startswith(AI_ALT_PREFIX):
+        update.update(alt=_ai_prefixed(image.alt), alt_approved=False)
+    if image.caption and not image.caption.startswith(AI_CAPTION_PREFIX):
+        update["caption"] = _ai_prefixed(image.caption, caption=True)
+    if not update:
+        return image
+    return DraftImage.model_validate({**image.model_dump(), **update})
+
+
 class DraftPart(_Strict):
     """Một phần của bài: tiêu đề, mọi phiên bản (để quay lại bản trước) và bản đang chọn."""
 
@@ -75,6 +330,7 @@ class DraftPart(_Strict):
     versions: list[str] = Field(min_length=1)
     current: int = Field(default=0, ge=0)
     image: str = ""  # mô tả chỗ cần ảnh; trống nếu phần này không cần ảnh
+    chosen_image: DraftImage | None = None  # ảnh đã chọn cho chỗ cần ảnh (T-055)
 
     @field_validator("versions")
     @classmethod
@@ -82,6 +338,22 @@ class DraftPart(_Strict):
         # Thân bài trong session luôn ở dạng đã escape link. Chạy lại (idempotent, bản đúng
         # không đổi) để file bị sửa tay cũng không chèn được link Markdown vào bài.
         return [escape_link_syntax(text) for text in versions]
+
+    @field_validator("chosen_image", mode="wrap")
+    @classmethod
+    def _drop_broken_image(
+        cls, value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> DraftImage | None:
+        """Đọc nháp từ file (``DraftStore.load``): ảnh sai khuôn thì bỏ riêng ảnh đó và đếm, phần
+        chữ của bài giữ nguyên. Tạo trong code (giao diện, ``save``): sai khuôn là lỗi, báo ngay."""
+        try:
+            return handler(value)
+        except ValidationError:
+            dropped = (info.context or {}).get(_DROPPED_IMAGES)
+            if not isinstance(dropped, list):
+                raise
+            dropped.append(info.field_name)
+            return None
 
     @model_validator(mode="after")
     def _current_in_range(self) -> DraftPart:
@@ -113,13 +385,42 @@ class DraftSnapshot(_Strict):
     review: Review | None = None
     auto_fixed: int = Field(default=0, ge=0)
     ignored_flags: list[str] = Field(default_factory=list)
+    _dropped_images: int = PrivateAttr(default=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_images_before_v2(cls, data: object, info: ValidationInfo) -> object:
+        """Khuôn cũ chưa có ảnh đã chọn: dữ liệu ảnh nằm trong nháp khuôn cũ là sửa tay, bỏ đi
+        (đọc từ file thì đếm vào ``dropped_images``; ``null`` là "chưa chọn ảnh", không mất ảnh
+        nào nên không đếm, SL-T055-3). Phần chữ giữ nguyên."""
+        if not isinstance(data, dict):
+            return data
+        parts = data.get("parts")
+        if data.get("schema_version", SCHEMA_VERSION) == SCHEMA_VERSION or not isinstance(
+            parts, list
+        ):
+            return data
+        dropped = (info.context or {}).get(_DROPPED_IMAGES)
+        kept = []
+        for part in parts:
+            if isinstance(part, dict) and "chosen_image" in part:
+                if part["chosen_image"] is not None and isinstance(dropped, list):
+                    dropped.append("chosen_image")
+                part = {key: value for key, value in part.items() if key != "chosen_image"}
+            kept.append(part)
+        return {**data, "parts": kept}
 
     @field_validator("schema_version")
     @classmethod
     def _known_version(cls, value: int) -> int:
-        if value != SCHEMA_VERSION:
+        if value != SCHEMA_VERSION and value not in _OLD_SCHEMA_VERSIONS:
             raise ValueError(f"phiên bản khuôn {value} không được hỗ trợ")
-        return value
+        return SCHEMA_VERSION  # nháp khuôn cũ được nâng lên khuôn hiện tại khi mở
+
+    @property
+    def dropped_images(self) -> int:
+        """Số ảnh đã chọn bị bỏ khi mở nháp vì dữ liệu ảnh hỏng (phần chữ của bài vẫn giữ)."""
+        return self._dropped_images
 
     @field_validator("id")
     @classmethod
@@ -225,7 +526,11 @@ class DraftStore:
         return saved
 
     def load(self, draft_id: str) -> DraftSnapshot:
-        """Đọc một nháp. Nháp không có, quá lớn hoặc sai khuôn: ``DraftError`` dễ hiểu."""
+        """Đọc một nháp. Nháp không có, quá lớn hoặc sai khuôn: ``DraftError`` dễ hiểu.
+
+        Riêng ảnh đã chọn sai khuôn thì chỉ bỏ ảnh đó (``dropped_images`` đếm), vẫn mở được bài.
+        Ảnh trong nháp chưa được kiểm trên ổ đĩa: gọi ``check_draft_images`` trước khi dùng.
+        """
         _check_id(draft_id)
         with self._connect() as conn:
             row = conn.execute(
@@ -236,17 +541,20 @@ class DraftStore:
             if row[0] is None or row[0] > self.max_bytes:
                 raise DraftError("Nháp này quá lớn hoặc bị hỏng nên không mở được.")
             (data,) = conn.execute("SELECT data FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        dropped: list[str] = []
         try:
             if isinstance(data, bytes):
                 data = data.decode("utf-8")
             if not isinstance(data, str):
                 raise TypeError("dữ liệu không phải chữ")
-            snapshot = DraftSnapshot.model_validate_json(data)
+            snapshot = DraftSnapshot.model_validate_json(data, context={_DROPPED_IMAGES: dropped})
         except (ValidationError, UnicodeDecodeError, TypeError) as exc:
             raise DraftError(f"Nháp này bị hỏng nên không mở được ({_short(exc)}).") from None
         if snapshot.id != draft_id:
             raise DraftError("Nháp này bị hỏng nên không mở được (mã nháp không khớp).")
-        return clean_loaded(snapshot)
+        loaded = clean_loaded(snapshot)
+        loaded._dropped_images = len(dropped)
+        return loaded
 
     def list_drafts(self, limit: int = MAX_DRAFTS) -> DraftList:
         """Các nháp mới nhất trước. Dòng hỏng bị bỏ qua và đếm vào ``skipped``."""
@@ -335,11 +643,18 @@ def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
     Dạng lưu của từng trường (xem ``app/views/write.py``):
     - dàn ý ở dạng ô sửa (chưa escape): lọc như AI rồi bỏ escape, giống ``set_outline``;
     - thân bài ở dạng đã escape, có thể có chữ người dùng sửa tay: bỏ thẻ rồi escape, giống
-      ``apply_flag``.
+      ``apply_flag``;
+    - ảnh đã chọn: dựng lại ``DraftImage`` (chạy lại mọi kiểm tra và bộ lọc của nó); nháp ghi ảnh
+      AI thì alt, chú thích có tiền tố ảnh AI (``_ai_wording``). Ảnh mà chỉ thẻ trên máy nói là
+      ảnh AI thì ``check_draft_images`` mới biết, và cũng thêm tiền tố ở đó.
     """
 
     def outline_line(text: str) -> str:
         return unescape_link_syntax(clean_ai_line(text))
+
+    def chosen(image: DraftImage) -> DraftImage:
+        image = DraftImage.model_validate(image.model_dump())
+        return _ai_wording(image) if image.source == SOURCE_AI else image
 
     return snapshot.model_copy(
         update={
@@ -366,11 +681,275 @@ def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
                     versions=[escape_link_syntax(strip_tags(text)) for text in part.versions],
                     current=part.current,
                     image=clean_ai_text(part.image),
+                    chosen_image=None if part.chosen_image is None else chosen(part.chosen_image),
                 )
                 for part in snapshot.parts
             ],
         }
     )
+
+
+# ---------------------------------------------------------------------- ảnh đã chọn
+
+
+@dataclass(frozen=True)
+class CheckedImage:
+    """Ảnh đã chọn trong nháp sau khi kiểm lại trên máy này (``check_draft_images``).
+
+    - ``image``: ảnh đã chọn dựng lại từ nháp. Ảnh AI (theo ``tags``) thì alt, chú thích luôn có
+      tiền tố ảnh AI; alt phải thêm tiền tố thì không còn "đã duyệt" (SL-T055-2). Giao diện dùng
+      ``image`` này (không dùng ảnh trong nháp vừa mở) để hiện, duyệt và lưu lại.
+    - ``ref``: ảnh trong thư mục ảnh: đúng ``ImageRef`` của kết quả quét nếu có, không thì
+      ``ImageRef`` dựng lại từ nháp với tên thư mục viết như trên ổ (ảnh nháp ghi là ảnh thật);
+      ảnh tạo bằng AI: ``None``.
+    - ``entry``: kết quả ``ImageLibrary.stat_image`` khi ảnh còn dùng được; ``None`` nếu không.
+    - ``tags``: thẻ dùng cho ảnh, nguồn ảnh theo hướng an toàn (xem ``check_draft_images``).
+    - ``message``: vì sao ảnh không dùng được (câu tiếng Việt của T-048, không chứa đường dẫn).
+    - ``tag_error``: không đọc được thẻ sửa tay (đang dùng thẻ đọc từ tên thư mục).
+    """
+
+    image: DraftImage
+    ref: ImageRef | None
+    entry: ImageEntry | None
+    tags: ImageTags
+    message: str = ""
+    tag_error: str = ""
+
+    @property
+    def is_generated(self) -> bool:
+        """Ảnh tạo bằng AI: không có file trong thư mục ảnh, chỉ có prompt."""
+        return self.ref is None
+
+    @property
+    def available(self) -> bool:
+        """Ảnh trong thư mục ảnh còn dùng được trên máy này (ảnh tạo bằng AI: ``False``)."""
+        return self.entry is not None
+
+    @property
+    def is_ai(self) -> bool:
+        return self.tags.is_ai
+
+
+def _image_key(ref: ImageRef) -> tuple[int, str]:
+    """Khóa so ảnh: cùng thư mục gốc, cùng đường dẫn không phân biệt hoa thường, cùng dạng Unicode
+    (như ``seo_app.storage.image_tags.ref_key``)."""
+    return ref.root_index, ref_key(ref)
+
+
+def _name_key(name: str) -> str:
+    """Khóa so một tên: không phân biệt hoa thường, cùng dạng Unicode (như ``ImageLibrary`` so tên
+    đã gõ với tên trên ổ)."""
+    return unicodedata.normalize("NFC", name).casefold()
+
+
+class _FolderNames:
+    """Tên thật trên ổ của các thư mục trên đường tới một ảnh (SL-T055-1).
+
+    Thẻ đọc từ tên thư mục phân biệt hoa thường ("GenAI" là thư mục ảnh AI nhờ tách chữ hoa,
+    "genai" thì không), còn ổ Windows, Mac và ``ImageLibrary.stat_image`` thì không: nháp ghi
+    ``…/genai/…`` (sửa tay, hay thư mục được đổi hoa thường sau khi chọn ảnh) vẫn trỏ tới thư mục
+    ``GenAI``. Lấy tên thật bằng ``library.list_folder`` từng tầng, từ thư mục gốc xuống: không đệ
+    quy, chỉ đọc tên và ``stat``, không mở file ảnh (Drive "chỉ trực tuyến" không bị tải về); mỗi
+    thư mục xem một lần cho cả nháp. Tên file không cần: tên file chỉ dùng để nhận ảnh AI và không
+    tách chữ hoa (``tags_for_image``).
+    """
+
+    def __init__(self, library: ImageLibrary) -> None:
+        self._library = library
+        self._subfolders: dict[tuple[int, str], tuple[SubFolder, ...] | str] = {}
+
+    def real_ref(self, ref: ImageRef) -> ImageRef:
+        """``ref`` với tên thư mục viết đúng như trên ổ. Không kiểm được: ``ImageFolderError``."""
+        real_dir = ""
+        for name in ref.parts[:-1]:
+            real_dir = self._child(ref.root_index, real_dir, name)
+        return ImageRef(ref.root_index, f"{real_dir}/{ref.name}") if real_dir else ref
+
+    def _child(self, root_index: int, rel_dir: str, name: str) -> str:
+        """Đường dẫn thật của thư mục con ``name`` trong ``rel_dir`` (đã là tên thật)."""
+        key = (root_index, rel_dir)
+        if key not in self._subfolders:
+            try:
+                listing = self._library.list_folder(root_index, rel_dir, page_size=1)
+            except ImageFolderError as exc:
+                self._subfolders[key] = str(exc)
+            else:
+                self._subfolders[key] = listing.subfolders
+        subfolders = self._subfolders[key]
+        if isinstance(subfolders, str):
+            raise ImageFolderError(subfolders)
+        # Trùng hẳn trước (ổ phân biệt hoa thường có thể có cả "GenAI" lẫn "genai": "genai" là
+        # một thư mục khác), rồi mới tới trùng không phân biệt hoa thường, phải đúng một.
+        same = [sub for sub in subfolders if sub.name == name] or [
+            sub for sub in subfolders if _name_key(sub.name) == _name_key(name)
+        ]
+        if len(same) != 1:  # thư mục quá nhiều mục, quét quá giờ, vừa đổi tên
+            raise ImageFolderError(_MSG_FOLDER_NAME)
+        return same[0].rel_path
+
+
+def _safe_tags(image: DraftImage, current: ImageTags, *, ai_root: bool) -> ImageTags:
+    """Thẻ dùng cho ảnh trong thư mục ảnh (điều kiện Lá Chắn T-052 số 3).
+
+    Thẻ hiện tại (``resolve`` hay tên thư mục) là gốc; nháp chỉ được kéo về phía ảnh AI: nháp ghi
+    AI, thẻ hiện tại nói AI hoặc cả thư mục gốc là thư mục ảnh AI thì là ảnh AI, không mang mã công
+    trình, khu vực, trước/sau. Nháp không bao giờ làm ảnh AI thành ảnh thật, cũng không thêm thẻ nào
+    cho ảnh thật.
+    """
+    try:
+        current = ImageTags(
+            source=current.source,
+            project_code=current.project_code,
+            category=current.category,
+            area=current.area,
+            phase=current.phase,
+        )
+    except TagError:
+        return _ai_tags(image.category)
+    if image.source == SOURCE_AI or current.is_ai or ai_root:
+        return _ai_tags(current.category or image.category)
+    return current
+
+
+def check_draft_images(
+    snapshot: DraftSnapshot,
+    library: ImageLibrary,
+    *,
+    tag_store: ImageTagStore | None = None,
+    scanned: Iterable[ImageRef | ImageEntry] = (),
+    ai_roots: Collection[int] = (),
+) -> dict[int, CheckedImage]:
+    """Kiểm lại các ảnh đã chọn trong nháp trên máy này. Trả ``{số thứ tự phần: CheckedImage}``
+    cho các phần có ảnh đã chọn.
+
+    Nháp là dữ liệu chưa tin cậy (góp ý Lá Chắn T-046 số 11, điều kiện Lá Chắn T-048, T-052):
+
+    - Mỗi ảnh được dựng lại (``DraftImage`` rồi ``ImageRef(...)``), rồi hỏi
+      ``library.stat_image``: số thứ tự gốc không còn khai báo, file mất, đi qua liên kết, quá lớn…
+      thì ``entry`` là ``None`` kèm ``message``. Không mở file ảnh (Drive "chỉ trực tuyến" không bị
+      tải về). Đọc ảnh sau này cũng phải qua ``library.read_image_bytes(ref)``.
+    - ``scanned``: kết quả quét đang có trên giao diện (``FolderListing.images``). Ảnh trùng (không
+      phân biệt hoa thường, dạng Unicode) thì dùng đúng ``ImageRef`` của kết quả quét làm khóa.
+    - Ảnh nháp ghi là ảnh thật mà không có trong ``scanned``: xem tên các thư mục trên đường tới
+      ảnh (``list_folder`` không đệ quy, mỗi thư mục một lần) để ``ref`` và thẻ theo đúng tên thư
+      mục trên ổ, không theo chữ hoa thường trong nháp (SL-T055-1). Không kiểm được (thư mục quá
+      nhiều mục, quét quá giờ) thì ảnh không dùng được, kèm ``message``; truyền ``scanned`` thì
+      không cần bước này.
+    - Thẻ: ``tag_store.resolve_many`` (thẻ sửa tay hoặc tên thư mục), không có ``tag_store`` thì
+      thẻ đọc từ tên thư mục. Nguồn ảnh theo hướng an toàn (``_safe_tags``); ``ai_roots``: số thứ
+      tự các thư mục gốc mà mọi ảnh trong đó là ảnh AI (giao diện quyết, ví dụ theo tên gốc).
+    - Ảnh AI: alt, chú thích trong ``CheckedImage.image`` luôn có tiền tố ảnh AI (SL-T055-2).
+    - Ảnh tạo bằng AI: ``ref`` và ``entry`` là ``None``, thẻ ảnh AI với hạng mục ghi trong nháp.
+    """
+    if not isinstance(snapshot, DraftSnapshot):
+        raise TypeError("check_draft_images cần DraftSnapshot.")
+    chosen = {
+        index: part.chosen_image
+        for index, part in enumerate(snapshot.parts)
+        if part.chosen_image is not None
+    }
+    checked = _check_images(
+        list(chosen.values()), library, tag_store=tag_store, scanned=scanned, ai_roots=ai_roots
+    )
+    return dict(zip(chosen, checked, strict=True))
+
+
+def check_chosen_image(
+    image: DraftImage,
+    library: ImageLibrary,
+    *,
+    tag_store: ImageTagStore | None = None,
+    scanned: Iterable[ImageRef | ImageEntry] = (),
+    ai_roots: Collection[int] = (),
+) -> CheckedImage:
+    """Như ``check_draft_images`` cho một ảnh."""
+    (checked,) = _check_images(
+        [image], library, tag_store=tag_store, scanned=scanned, ai_roots=ai_roots
+    )
+    return checked
+
+
+def _check_images(
+    images: list[DraftImage],
+    library: ImageLibrary,
+    *,
+    tag_store: ImageTagStore | None,
+    scanned: Iterable[ImageRef | ImageEntry],
+    ai_roots: Collection[int],
+) -> list[CheckedImage]:
+    if not isinstance(library, ImageLibrary):
+        raise TypeError("Cần ImageLibrary để kiểm ảnh trong nháp.")
+    known: dict[tuple[int, str], ImageRef] = {}
+    for item in scanned:
+        found = item.ref if isinstance(item, ImageEntry) else item
+        if isinstance(found, ImageRef):
+            known.setdefault(_image_key(found), found)
+    ai_root_set = frozenset(index for index in ai_roots if type(index) is int)
+
+    rebuilt: list[DraftImage] = []
+    for image in images:
+        if not isinstance(image, DraftImage):
+            raise TypeError("Ảnh đã chọn phải là DraftImage.")
+        # Dựng lại để chạy lại mọi kiểm tra (đối tượng có thể đã bị sửa sau khi tạo).
+        rebuilt.append(DraftImage.model_validate(image.model_dump()))
+
+    folder_names = _FolderNames(library)
+    located: list[tuple[DraftImage, ImageRef | None, ImageEntry | None, str]] = []
+    for image in rebuilt:
+        ref = image.ref
+        if ref is None:
+            located.append((image, None, None, ""))
+            continue
+        scanned_ref = known.get(_image_key(ref))
+        if scanned_ref is not None:
+            ref = scanned_ref
+        try:
+            entry, message = library.stat_image(ref), ""
+            # SL-T055-1: thẻ phải đọc từ tên thư mục thật trên ổ, không từ chữ trong nháp. Chỉ cần
+            # khi ảnh có thể ra ảnh thật: nháp ghi AI hay gốc AI thì đã là ảnh AI.
+            if (
+                scanned_ref is None
+                and image.source == SOURCE_REAL
+                and ref.root_index not in ai_root_set
+            ):
+                real = folder_names.real_ref(ref)
+                if real != ref:
+                    ref, entry = real, replace(entry, ref=real, name=real.name)
+        except ImageFolderError as exc:
+            entry, message = None, str(exc)
+        located.append((image, ref, entry, message))
+
+    refs = [ref for _image, ref, _entry, _message in located if ref is not None]
+    current: dict[ImageRef, tuple[ImageTags, str]] = {}
+    if tag_store is not None and refs:
+        for ref, resolved in tag_store.resolve_many(refs).items():
+            current[ref] = (resolved.tags, resolved.error)
+    for ref in refs:
+        if ref not in current:
+            current[ref] = (tags_for_image(ref).tags, "")
+
+    results: list[CheckedImage] = []
+    for image, ref, entry, message in located:
+        if ref is None:
+            results.append(
+                CheckedImage(
+                    image=_ai_wording(image), ref=None, entry=None, tags=_ai_tags(image.category)
+                )
+            )
+            continue
+        tags, tag_error = current[ref]
+        tags = _safe_tags(image, tags, ai_root=ref.root_index in ai_root_set)
+        results.append(
+            CheckedImage(
+                image=_ai_wording(image) if tags.is_ai else image,
+                ref=ref,
+                entry=entry,
+                tags=tags,
+                message=message,
+                tag_error=tag_error,
+            )
+        )
+    return results
 
 
 def _is_healthy(path: Path) -> bool:
@@ -418,14 +997,23 @@ def _short(exc: Exception) -> str:
 
 __all__ = [
     "DEFAULT_DRAFTS_FILE",
+    "MAX_ALT_CHARS",
+    "MAX_CAPTION_CHARS",
     "MAX_DRAFTS",
     "MAX_DRAFT_BYTES",
+    "MAX_PROMPT_CHARS",
+    "MAX_ROOT_INDEX",
+    "SCHEMA_VERSION",
+    "CheckedImage",
     "DraftError",
+    "DraftImage",
     "DraftList",
     "DraftPart",
     "DraftSnapshot",
     "DraftStore",
     "DraftSummary",
+    "check_chosen_image",
+    "check_draft_images",
     "clean_loaded",
     "new_draft_id",
 ]
