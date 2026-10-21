@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 13:33 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 13:36 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,7 +36,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Chỉ Huy (chờ cho gộp) | `team/T-055` | Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`; LC-T055-1 → T-056, T-076). Lượt 3 sửa dữ liệu test sau T-070: Thợ Máy (`3e2c1fa`), Soi Lỗi 12:25 (`b137643`: đột biến bắt lại đủ; 9 file liên quan 1.068 qua, **0 hỏng**). **Sẵn sàng gộp** (chỉ đổi dữ liệu test, không cần Lá Chắn kiểm lại). ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
 | [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Chỉ Huy (chờ cho gộp) | `team/T-075` | Thợ Máy xong (`f6a8220`). Soi Lỗi rút gọn **ĐẠT** (`f5f2bb6`, 0 lỗi). 12:28 Lá Chắn rút gọn **ĐẠT** (`6c0652c`, Opus tạm; 0 lỗi; LC-T061-1 đóng; **gộp được ngay**). Phát hiện ngoài phiếu: LC-T075-1 (Cao, công cụ `uv` cũ) → T-078. ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-075-tho-may.md) · [Soi Lỗi](reports/T-075-soi-loi.md) · [Lá Chắn](reports/T-075-la-chan.md) |
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Thợ Máy · T-077 tên công cụ AI | `team/T-077` | ⏳ **12:03 Thợ Máy đang làm** (code `c8c6351` đã đẩy; phiên dừng 12:30 vì hết hạn mức, 13:3x nhắn làm tiếp) | |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Soi Lỗi rút gọn (chưa giao) | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). ⏳ **Chờ giao Soi Lỗi rút gọn**; rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-077-tho-may.md) |
 
 ## Chờ
 
