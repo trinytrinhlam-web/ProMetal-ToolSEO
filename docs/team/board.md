@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 09:38 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 09:59 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -35,15 +35,16 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Lá Chắn (chưa giao) | `team/T-055` | 18:32 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (2 Trung bình SL-T055-1, -2; 1 Thấp). 19:46 Thợ Máy lượt 2 **xong** (`2c95844`: sửa SL-T055-1 → -3, gỡ 7 `xfail`; test liên quan 936 qua). 09:35 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (`1504d29`: 3 lỗi cũ sửa thật, test không bị làm yếu; 2 Thấp mới SL-T055-4 tên thư mục "thật" có thể trỏ sang file khác trên ổ phân biệt hoa thường hoặc khi đổi tên đúng lúc, SL-T055-5 thư mục gốc hơn 5.000 mục thì ảnh "chưa kiểm được"). ⏳ **Chờ giao Lá Chắn** | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh (LC-T042-3, LC-T054-1 Trung bình) | Lá Chắn · T-061 kiểm chặn shortcode | `team/T-061` | 19:06 Thợ Máy **xong** (`7c5a405`). 19:47 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`64525d3`; 45.000 chuỗi ngẫu nhiên không lọt; 7 file test cũ không bị làm yếu; 2 Thấp SL-T061-1 chữ SEO `[<>…]`, SL-T061-2 chữ có sẵn trong file ảnh tải tay). ⏳ **21/10 Lá Chắn đang kiểm** | [Thợ Máy](reports/T-061-tho-may.md) · [Soi Lỗi](reports/T-061-soi-loi.md) |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Thợ Máy · T-074 dọn thẻ ảnh lượt 2 | `team/T-074` | ⏳ **21/10 Thợ Máy đang làm** (nhánh từ `main` sau khi gộp T-070) | |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh (LC-T042-3, LC-T054-1 Trung bình) | Chỉ Huy (chờ cho gộp) | `team/T-061` | 19:06 Thợ Máy **xong** (`7c5a405`). 19:47 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`64525d3`; 2 Thấp). 21/10 09:47 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`b144b26`, Opus tạm; LC-T054-1 đóng, LC-T042-3 đóng phần app; 4 Thấp → T-056, T-060, T-059; **gộp được ngay**). Riêng **LC-T061-1 Cao toàn repo** (`certifi`) → T-075. ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-061-tho-may.md) · [Soi Lỗi](reports/T-061-soi-loi.md) · [Lá Chắn](reports/T-061-la-chan.md) |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Soi Lỗi (chưa giao) | `team/T-074` | 21/10 09:56 Thợ Máy **xong** (`8ce0117`: đủ yêu cầu 1–6, gỡ 6 `xfail` SL-T070; test liên quan 1.087 qua, 0 hỏng). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Thợ Máy](reports/T-074-tho-may.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
+| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao, có sẵn trên `main`: app tin chứng chỉ do khóa bị lộ ký, có thể bị giả website để lấy mật khẩu ứng dụng) | Thợ Máy | Chủ dự án duyệt nâng thư viện. Trước T-059 và trước khi gộp T-056 |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-061 gộp (thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) | Chạy test đọc thư mục ảnh trên Mac/Linux (LC-T048-1, Trung bình). **Chặn gộp T-056** | Soi Lỗi | Cần máy Linux/Mac: phiên Claude Code cloud |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
@@ -54,7 +55,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-072](tickets/T-072-gps-ref-phu-sai-khuon.md) | GPS: thẻ Ref phụ sai khuôn không làm mất vị trí (LC-T067-1) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: ảnh Zalo mất GPS) |
 | [T-073](tickets/T-073-on-dinh-test-khoa-cho-t037.md) | Ổn định test khóa chờ của kho danh sách bài (hỏng oan khi máy bận) | Soi Lỗi | Còn chỗ |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: chưa cần tạo ảnh AI) |
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-055, T-061, T-074, T-065, T-066, T-069, T-071; **T-063** (điều kiện Lá Chắn T-048) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-055, T-061, T-074, T-075, T-065, T-066, T-069, T-071; **T-063** (điều kiện Lá Chắn T-048) |
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | Hết chờ (T-036, T-037 đã gộp); chủ dự án chốt chuyển sớm sang GĐ4 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
@@ -142,4 +143,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-075
+## Số phiếu tiếp theo: T-076

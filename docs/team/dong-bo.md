@@ -34,19 +34,26 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 09:38. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 09:59. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | đã gộp (`588c76f`), nhánh và worktree đã xóa | ✅ Windows 9.740 qua, 0 hỏng; ruff sạch; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-074 |
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`1504d29`) | ✅ 21/10 09:35 Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (SL-T055-1 → -3 đã sửa; 2 Thấp mới SL-T055-4, -5) | ⏳ Chờ chủ dự án cho giao Lá Chắn |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`64525d3`) | ✅ 20/10 19:47 Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (2 Thấp SL-T061-1, -2) | ⏳ Lá Chắn kiểm đầy đủ (phiên "Lá Chắn · T-061 kiểm chặn shortcode", giao 09:13) |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (từ `main` `da87dbf`) | Lập 20/10 19:50 | ⏳ Thợ Máy làm (phiên "Thợ Máy · T-074 dọn thẻ ảnh lượt 2", giao 09:14) |
-| Chờ phiếu trước | | T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-075** |
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`b144b26`) | ✅ 21/10 09:47 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (4 Thấp; gộp được ngay); điều kiện đã chép vào T-056, T-059, T-060 | ⏳ Chờ chủ dự án cho gộp; LC-T061-1 (Cao, `certifi`) → T-075 chờ chủ dự án duyệt |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (`8ce0117`) | ✅ 21/10 09:56 Thợ Máy xong (1.087 test liên quan qua) | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn |
+| Chờ phiếu trước | | **T-075 gấp** (`certifi`, chờ chủ dự án duyệt); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-076** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 09:59 · Chỉ Huy B
+
+- **Lá Chắn T-061 ĐẠT CÓ ĐIỀU KIỆN** (`b144b26`, Opus tạm): LC-T054-1 đóng, LC-T042-3 đóng phần app; 4 Thấp: LC-T061-2, -3, -5 → T-060; LC-T061-4 → T-056 (liệt kê shortcode trước «Gửi nháp»), T-059. Gộp `main` được ngay; chờ chủ dự án cho gộp.
+- **LC-T061-1 (Cao, toàn repo, có từ trước):** `certifi` 2026.7.22 (GHSA-6q48-6c7w-9gw2, công bố 20/10). Đã kiểm `uv.lock` (2026.7.22) và bộ chứng chỉ trên máy còn «emSign ECC Root CA - G3». Lập **T-075** (Thợ Máy, nâng lên 2026.10.19), chờ chủ dự án duyệt nâng thư viện; báo chủ dự án tạm không dùng app trên Wi-Fi công cộng.
+- **Thợ Máy T-074 xong** (`8ce0117`): đủ yêu cầu 1–6; 1.087 test liên quan qua. Chờ chủ dự án cho giao Soi Lỗi rút gọn.
+- Không còn phiên con nào đang chạy. Số phiếu tiếp theo: **T-076**.
 
 ### 2026-10-21 09:38 · Chỉ Huy B
 

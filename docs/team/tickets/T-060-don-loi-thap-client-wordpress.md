@@ -40,3 +40,6 @@ W3, W4, S2.
 ## Kiểm thử và kiểm định
 
 - Soi Lỗi: Có. Lá Chắn: Có (W3, S2).
+
+## Ghi chú của Chỉ Huy
+- 2026-10-21 (Chỉ Huy B): thêm từ Lá Chắn T-061 (`docs/team/reports/T-061-la-chan.md`, điều kiện 3–5): **LC-T061-2** (= SL-T061-1) trong `_seo_text` chặn mọi `<` mà ký tự ngay sau không phải khoảng trắng ASCII `[ \t\n\r\v\f]`, gỡ 4 `xfail` SL-T061-1 (hạn: trước khi bật ghi SEO cho người dùng ở T-041, hoặc đóng theo T-059 bước 4); **LC-T061-3** (= SL-T061-2) `upload_media` luôn ghi đè cả `alt_text`, `title`, `caption` (hoặc trang Kết nối WordPress đi qua `make_web_image`), gỡ 2 `xfail` SL-T061-2; **LC-T061-5** siết `tests/test_soi_loi_t042.py:423-424` (so phần đường **và** truy vấn). Phiếu này làm sau khi T-061 gộp.
