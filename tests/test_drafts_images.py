@@ -25,7 +25,7 @@ from seo_app.images.folders import (
     ImageRef,
     SubFolder,
 )
-from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, tags_for_image
 from seo_app.storage import drafts
 from seo_app.storage.drafts import (
     MAX_ALT_CHARS,
@@ -878,7 +878,17 @@ def test_same_image_in_two_parts(store, library, tag_store):
 # ----- thẻ theo tên thư mục thật trên ổ, không theo chữ hoa thường trong nháp (SL-T055-1) -------
 
 
-CAMEL_AI_PATH = f"{PROJECT}/GenAI/cong.png"  # "GenAI": thư mục ảnh AI nhờ tách chữ hoa (T-052)
+# "CongAI": thư mục ảnh AI chỉ nhờ tách chữ hoa ("Cong AI", T-052); "congai", "CONGAI" thì không.
+# Không dùng "GenAI": từ T-070 "genai" viết kiểu nào cũng là ảnh AI (LC-T055-4).
+CAMEL_AI_PATH = f"{PROJECT}/CongAI/cong.png"
+
+
+def assert_ai_only_by_case(ai_path: str, other_case: str) -> None:
+    """Điều kiện đầu (LC-T055-4): ``ai_path`` là ảnh AI chỉ nhờ chữ hoa, cùng tên viết hoa thường
+    khác (``other_case``) thì không, nên thẻ phải theo đúng tên trên ổ thì test mới qua. Đổi cách
+    nhận tên ảnh AI làm mất điều này thì test hỏng ở đây, không qua oan."""
+    assert tags_for_image(ImageRef(0, ai_path)).tags.is_ai
+    assert not tags_for_image(ImageRef(0, other_case)).tags.is_ai
 
 
 def case_insensitive_disk(folder: Path) -> bool:
@@ -894,10 +904,11 @@ def case_insensitive_disk(folder: Path) -> bool:
 def test_case_variant_of_ai_folder_reads_real_name_and_stays_ai(
     store, library, roots, tag_store, with_store
 ):
+    variant = CAMEL_AI_PATH.replace("CongAI", "congai")
+    assert_ai_only_by_case(CAMEL_AI_PATH, variant)
     write(roots[0] / CAMEL_AI_PATH, b"\x89PNG fake")
     if not case_insensitive_disk(roots[0]):
-        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác, không trỏ tới 'GenAI'")
-    variant = CAMEL_AI_PATH.replace("GenAI", "genai")
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác, không trỏ tới 'CongAI'")
     kwargs = {"tag_store": tag_store} if with_store else {}
     result = check_one(store, library, real_image(rel_path=variant), **kwargs)
     assert result.available
@@ -930,31 +941,34 @@ class FakeDisk:
 
 
 def test_exact_folder_name_wins_on_case_sensitive_disk(monkeypatch, library):
-    """Ổ phân biệt hoa thường có cả "GenAI" lẫn "genai": nháp ghi "genai" là đúng thư mục "genai"
-    (một thư mục khác, không phải thư mục ảnh AI)."""
-    FakeDisk(monkeypatch, names=("GenAI", "genai"))
-    result = check_chosen_image(real_image(rel_path="genai/cong.png"), library)
-    assert result.available and result.ref == ImageRef(0, "genai/cong.png")
+    """Ổ phân biệt hoa thường có cả "CongAI" lẫn "congai": nháp ghi "congai" là đúng thư mục
+    "congai" (một thư mục khác, không phải thư mục ảnh AI)."""
+    assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
+    FakeDisk(monkeypatch, names=("CongAI", "congai"))
+    result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
+    assert result.available and result.ref == ImageRef(0, "congai/cong.png")
     assert not result.is_ai
 
 
 def test_single_case_insensitive_match_takes_real_name(monkeypatch, library):
-    FakeDisk(monkeypatch, names=("Ảnh khác", "GenAI"))
-    result = check_chosen_image(real_image(rel_path="genai/cong.png"), library)
-    assert result.available and result.ref == ImageRef(0, "GenAI/cong.png")
+    assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
+    FakeDisk(monkeypatch, names=("Ảnh khác", "CongAI"))
+    result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
+    assert result.available and result.ref == ImageRef(0, "CongAI/cong.png")
     assert result.is_ai
 
 
 @pytest.mark.parametrize(
     "names",
-    [(), ("GenAI", "GENAI"), ("Ảnh khác",)],
+    [(), ("CongAI", "CONGAI"), ("Ảnh khác",)],
     ids=["quet-chua-toi", "hai-ten-cung-khoa", "khong-thay"],
 )
 def test_unconfirmed_folder_name_is_unavailable(monkeypatch, library, store, tmp_path, names):
     """Không lấy được tên thật (thư mục quá nhiều mục hay quét quá giờ nên chưa thấy, hai tên chỉ
     khác hoa thường): ảnh không dùng được, không đoán theo chữ trong nháp; nháp vẫn giữ lựa chọn."""
+    assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")  # đoán theo nháp là ra ảnh thật
     FakeDisk(monkeypatch, names=names)
-    image = real_image(rel_path="genai/cong.png")
+    image = real_image(rel_path="congai/cong.png")
     saved = store.save(snapshot_with(image))
     result = check_draft_images(store.load(saved.id), library)[1]
     assert not result.available and result.entry is None
