@@ -15,6 +15,7 @@ import os
 import random
 import re
 import sqlite3
+import threading
 import unicodedata
 from contextlib import closing
 from pathlib import Path
@@ -2272,6 +2273,34 @@ def test_t074_oversized_cell_swapped_in_while_running_resets_then_recovers(store
     assert store.recovered_from is not None
     store.set(REF, ImageTags(area="Quận 8"))
     assert store.get(REF).tags.area == "Quận 8"
+
+
+def test_t074_parallel_reads_and_writes_do_not_deadlock(store):
+    """Giao dịch đọc nay giữ khóa đọc suốt thao tác, giao dịch ghi giữ quyền ghi từ đầu (LC-T070-2):
+    nhiều luồng (như nhiều tab Streamlit) cùng đọc, ghi một kho không kẹt, không báo bận."""
+    store.set(REF, ImageTags(area="Quận 7"))  # file đã tạo: không thử đua lúc tạo file lần đầu
+    errors: list[str] = []
+
+    def work(worker: int) -> None:
+        for n in range(15):
+            ref = ImageRef(0, f"luong-{worker}/anh-{n}.jpg")
+            try:
+                store.set(ref, ImageTags(area="Quận 3"))
+                assert store.get(ref).tags.area == "Quận 3"
+                store.list_manual(limit=5)
+                store.resolve_many([REF, ref])
+            except Exception as exc:  # noqa: BLE001 - gom mọi lỗi của luồng để báo
+                errors.append(f"{type(exc).__name__}: {exc}")
+
+    threads = [threading.Thread(target=work, args=(worker,)) for worker in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=120)
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(store.list_manual(limit=100).items) == 1 + 4 * 15
+    assert store.recovered_from is None
 
 
 def test_t074_change_made_between_operations_is_caught_at_next_check(store):
