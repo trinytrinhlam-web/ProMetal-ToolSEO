@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-037 đã gộp (dùng kiểu dữ liệu danh sách bài). T-036 đã gộp (cùng sửa `seo_app/content/prompts.py`) |
-| Trạng thái | Chờ T-036, T-037 |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -88,3 +88,4 @@ A1, A2, W3 (không nới bộ lọc nào), U1, D3. Test chứng minh AI không c
   - Tiêu đề, meta lấy từ site hiện trên giao diện phải là chữ thuần hoặc đã escape; đưa vào prompt AI thì phải nằm trong khung dữ liệu.
   - Khi `truncated` bật thì không được kết luận "link hỏng"; chuẩn hóa link trước khi so bằng `by_link()`.
   - Nếu phiếu này nối `get()` vào giao diện trước T-042 thì phải sửa SL-T037-5 (file cache bận làm treo khoảng 14 giây).
+- 2026-10-21 13:58 (Chỉ Huy B): chủ dự án cho giao (chốt 20/10 chuyển sớm sang Giai đoạn 4). Nhánh `team/T-039` tạo từ `main` mới nhất (đã có T-036, T-037, T-042, T-061). Lưu ý: từ T-061, `sanitize_html` vô hiệu mọi `[` `]` ở bước in ra; test `sanitize_html(apply_links(...))` phải tính tới điều này. Test liên quan: `tests/test_onpage_links.py` (mới), test của `seo_app/content/prompts.py`, `tests/test_sanitize*.py`, `tests/test_site_index*.py`, `tests/test_app_pages.py`.

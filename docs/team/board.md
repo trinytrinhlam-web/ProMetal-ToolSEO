@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 13:56 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 13:58 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,13 +34,14 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Lá Chắn rút gọn (chưa giao) | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). 13:55 Soi Lỗi rút gọn **ĐẠT** (`0cbd4f3`: 0 lỗi; 231 cách gõ tên công cụ AI đều ra ảnh AI, 44 ca đối chứng ảnh thật vẫn là ảnh thật). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-077-tho-may.md) · [Soi Lỗi](reports/T-077-soi-loi.md) |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Lá Chắn · T-077 kiểm nhanh tên công cụ AI | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). 13:55 Soi Lỗi rút gọn **ĐẠT** (`0cbd4f3`: 0 lỗi; 231 cách gõ tên công cụ AI đều ra ảnh AI, 44 ca đối chứng ảnh thật vẫn là ảnh thật). ⏳ **13:58 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-077-tho-may.md) · [Soi Lỗi](reports/T-077-soi-loi.md) |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Thợ Máy · T-076 tên thư mục trên ổ | `team/T-076` | ⏳ **13:58 Thợ Máy đang làm** | |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy · T-039 liên kết nội bộ | `team/T-039` | ⏳ **13:58 Thợ Máy đang làm** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3) | Thợ Máy | Hết chờ (T-055 đã gộp); nên trước T-056 |
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chờ máy Mac |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
@@ -56,7 +57,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: chưa cần tạo ảnh AI) |
 | [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-055, T-074, T-075, T-077, T-065, T-066, T-069, T-071, nên cả T-076; **T-063** (điều kiện Lá Chắn T-048) |
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | Hết chờ (T-036, T-037 đã gộp); chủ dự án chốt chuyển sớm sang GĐ4 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
