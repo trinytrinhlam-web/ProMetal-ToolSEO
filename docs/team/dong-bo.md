@@ -34,20 +34,27 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 11:23. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 12:01. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | đã gộp (`588c76f`), nhánh và worktree đã xóa | ✅ Windows 9.740 qua, 0 hỏng; ruff sạch; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-074 |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`15a9726`, đã có `main`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; Chỉ Huy đưa `main` vào nhánh | ⏳ Thợ Máy lượt 3 sửa `tests/test_drafts_images.py` (phiên "Thợ Máy · T-055 lượt 3 sửa dữ liệu test"); rồi Soi Lỗi sửa `tests/test_soi_loi_t055.py`; rồi gộp |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`3e2c1fa`) | ✅ 11:35 Thợ Máy lượt 3 sửa `tests/test_drafts_images.py` (1 test hỏng còn lại trong `tests/test_soi_loi_t055.py`) | ⏳ Chờ chủ dự án cho giao Soi Lỗi sửa `tests/test_soi_loi_t055.py`; rồi gộp |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress | đã gộp (`975d323`), nhánh và worktree đã xóa | ✅ Windows 9.915 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-059, T-060 |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (`eec8fc7`) | ✅ 21/10 11:15 Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (2 Thấp SL-T074-1, -2) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-074 kiểm nhanh thẻ ảnh") |
-| [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` (gấp, LC-T061-1 Cao) | `team/T-075` (`f6a8220`) | ✅ 21/10 10:44 Thợ Máy xong (`certifi` 2026.10.19; 927 test liên quan qua) | ⏳ Soi Lỗi rút gọn (phiên "Soi Lỗi · T-075 kiểm nhanh certifi"); rồi Lá Chắn rút gọn |
-| Chờ phiếu trước | | T-076 (sau T-055, nên trước T-056); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-077** |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (`b9918e1`) | ✅ 11:59 Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (1 Thấp LC-T074-1 → T-077); gộp được ngay; điều kiện đã chép vào T-056, T-069 | ⏳ Chờ chủ dự án cho gộp |
+| [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` (gấp, LC-T061-1 Cao) | `team/T-075` (`f5f2bb6`) | ✅ 11:38 Soi Lỗi rút gọn ĐẠT (0 lỗi) | ⏳ Chờ chủ dự án cho giao Lá Chắn rút gọn |
+| Chờ phiếu trước | | T-077 (sau T-074, trước T-056); T-076 (sau T-055, nên trước T-056); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-078** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 12:01 · Chỉ Huy B
+
+- **Thợ Máy T-055 lượt 3 xong** (`3e2c1fa`): `tests/test_drafts_images.py` đổi sang cặp `CongAI`/`congai`, thêm `assert` điều kiện đầu; còn 1 test hỏng trong `tests/test_soi_loi_t055.py` chờ Soi Lỗi.
+- **Soi Lỗi T-075 rút gọn ĐẠT** (`f5f2bb6`, 0 lỗi). Chờ Lá Chắn rút gọn.
+- **Lá Chắn T-074 rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`b9918e1`): LC-T070-1, -2 đóng; 1 Thấp LC-T074-1 (có từ trước, gồm SL-T074-2 và kiểu tách đôi "Mid Journey") → lập **T-077** (Thợ Máy, trước T-056, kèm SL-T074-1); điều kiện (i), (j) vào T-056, điều kiện 3 vào T-069. Gộp được ngay, chờ chủ dự án cho gộp.
+- Không còn phiên con nào chạy. Số phiếu tiếp theo: **T-078**.
 
 ### 2026-10-21 11:23 · Chỉ Huy B
 
