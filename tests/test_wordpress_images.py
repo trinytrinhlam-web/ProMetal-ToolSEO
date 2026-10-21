@@ -310,7 +310,8 @@ def test_anh_ai_co_tien_to_ten_file_va_tieu_de_khong_ma_cong_trinh(fake_wp, wp_c
     send(wp_client, [image])
     assert _file_names(fake_wp) == ["minh-hoa-ai-cong-inox.webp"]
     update = next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}")
-    assert body(update)["title"] == "[AI] Minh họa cổng inox 2 cánh"
+    # T-061: "[", "]" ra mã ký tự (WordPress vẫn hiện «[AI] …», shortcode không chạy được).
+    assert body(update)["title"] == "&#91;AI&#93; Minh họa cổng inox 2 cánh"
 
 
 # ----- yêu cầu 3: alt/chú thích: gỡ ký tự ngắt, escape Markdown, rồi escape HTML -------------
@@ -327,7 +328,8 @@ def test_alt_chu_thich_go_ky_tu_ngat_va_escape_markdown_roi_escape_html(
     content = sent_content(fake_wp)
     assert AUTOLINK_BREAK not in content and "\\" not in content
     assert 'alt="Cổng &quot;Pro&quot; mẫu www.prometal.vn sơn a@b.vn &amp; 5 &lt; 6"' in content
-    assert "<figcaption>[Lưu ý](chữ có cách): cổng www.a.vn</figcaption>" in content
+    # T-061: "[", "]" ra mã ký tự; người đọc vẫn thấy «[Lưu ý](chữ có cách)».
+    assert "<figcaption>&#91;Lưu ý&#93;(chữ có cách): cổng www.a.vn</figcaption>" in content
     assert "<script" not in content and "<b>" not in content
 
     update = body(next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}"))
@@ -335,7 +337,7 @@ def test_alt_chu_thich_go_ky_tu_ngat_va_escape_markdown_roi_escape_html(
     assert update["alt_text"] == 'Cổng "Pro" mẫu www.prometal.vn sơn a@b.vn & 5 < 6'
     # Tiêu đề, chú thích media: WordPress hiện như HTML nên đã escape.
     assert update["title"] == "Cổng &quot;Pro&quot; mẫu www.prometal.vn sơn a@b.vn &amp; 5 &lt; 6"
-    assert update["caption"] == "[Lưu ý](chữ có cách): cổng www.a.vn"
+    assert update["caption"] == "&#91;Lưu ý&#93;(chữ có cách): cổng www.a.vn"
     for value in walk(update):
         assert AUTOLINK_BREAK not in str(value)
 

@@ -420,7 +420,8 @@ def test_base_url_cannot_turn_allowed_route_into_another(base_url):
     except WordPressError:
         pass
     for request in fake.requests:
-        assert request.path_url == "/wp-json/wp/v2/posts", request.url
+        # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định; phần đường vẫn phải đúng.
+        assert request.path_url.split("?")[0] == "/wp-json/wp/v2/posts", request.url
 
 
 # ================================================================ chặn chữ SEO

@@ -273,7 +273,8 @@ def test_uploaded_image_url_line_is_plain(project_root, fake_wp, monkeypatch, so
     assert len(lines) == 1
     assert shown(lines[0]) == f"Ảnh đại diện đã tải lên: {source_url}"
     assert shown(at.success[0].value) == "Đã tạo bài nháp #42: **Bài [x](https://evil.example)**"
-    posted = [r for r in fake_wp.requests if r.url.endswith("/wp/v2/posts")]
+    # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định, nên so phần đường.
+    posted = [r for r in fake_wp.requests if r.url.split("?")[0].endswith("/wp/v2/posts")]
     assert len(posted) == 1 and b'"featured_media": 9' in posted[0].body
     assert b'"status": "draft"' in posted[0].body
 

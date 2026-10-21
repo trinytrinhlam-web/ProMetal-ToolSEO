@@ -100,7 +100,8 @@ def test_featured_image_refused_when_post_no_longer_draft(fake_wp, client, statu
     client.create_draft("A", "B")
     with pytest.raises(WordPressError, match="không còn là bản nháp"):
         client.set_featured_image(42, 9)
-    assert [r.path_url for r in writes(fake_wp)] == [POSTS]
+    # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định; so đường như các test dưới.
+    assert [r.path_url.split("?")[0] for r in writes(fake_wp)] == [POSTS]
     assert 42 not in client._created_post_ids
 
 

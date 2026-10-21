@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 import requests
 
 from seo_app.config import Settings
-from seo_app.sanitize import sanitize_html, strip_tags
+from seo_app.sanitize import escape_shortcodes, sanitize_html, strip_tags
 from seo_app.text import slugify
 
 if TYPE_CHECKING:
@@ -40,6 +40,13 @@ PUBLISHED_TYPES = ("post", "page")
 SITESEO_TITLE_KEY = "_siteseo_titles_title"
 SITESEO_DESC_KEY = "_siteseo_titles_desc"
 _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
+# ``_fields`` cố định cho lệnh ghi (T-061, Lá Chắn T-054): câu trả lời chỉ có trường app đọc.
+# Không hỏi ``content``, ``excerpt`` (bài) hay ``description``, ``caption`` (ảnh): WordPress dựng
+# các trường đó bằng ``the_content``/``the_excerpt``, tức chạy shortcode ngay trong lệnh của app
+# (``description`` của ảnh còn chèn ``<img alt="…">`` qua ``prepend_attachment``).
+_POST_FIELDS = "id,status,title,link,featured_media"
+_POST_META_FIELDS = "id,status,meta"
+_MEDIA_FIELDS = "id,source_url,alt_text"
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
@@ -122,6 +129,11 @@ _LEGACY_ENTITY = re.compile(
     )
     + ")"
 )
+# Mở đầu shortcode WordPress (T-061, LC-T042-3): "[" (có thể thêm một "[" hay "/") ngay trước
+# ký tự ``do_shortcode`` nhận làm tên (mọi ký tự trừ ``<>&/[]=``, khoảng trắng, ký tự điều khiển;
+# ``wp-includes/shortcodes.php``). Chữ SEO không dùng được "&#91;" (mọi mã ký tự HTML bị chặn),
+# nên chặn hẳn; "[ 2026 ]" (dấu cách sau "[") hay "[" không có "]" phía sau thì không phải.
+_SHORTCODE_OPEN = re.compile(r"\[[\[/]?[^<>&/\[\]=\x00-\x20]")
 
 _SEO_NOT_OWN = (
     "Chỉ được ghi SEO cho bài nháp app vừa tạo trong lần làm việc này, không sửa bài đã có "
@@ -682,14 +694,16 @@ class WordPressClient:
     ) -> Post:
         """Tạo bài ở trạng thái NHÁP (draft). Không bao giờ đăng công khai.
 
-        Nội dung và đoạn trích luôn qua bộ lọc HTML (security.md 2.3); tiêu đề bỏ mọi thẻ.
+        Nội dung và đoạn trích luôn qua bộ lọc HTML (security.md 2.3); tiêu đề bỏ mọi thẻ. Không
+        còn "[" trần ở cả ba (T-061): WordPress không chạy được shortcode, kể cả trong câu trả lời
+        của chính lệnh này (``_fields`` cố định, không có ``content``).
         """
         title = strip_tags(title).strip()
         if not title:
             raise WordPressError("Tiêu đề bài viết không được để trống.")
         payload: dict[str, Any] = {
             "status": "draft",
-            "title": title,
+            "title": escape_shortcodes(title),
             "content": sanitize_html(content),
         }
         if categories:
@@ -702,7 +716,9 @@ class WordPressClient:
             payload["slug"] = slug
         if featured_media:
             payload["featured_media"] = featured_media
-        data = self._json(self._request("POST", "/wp/v2/posts", json=payload))
+        data = self._json(
+            self._request("POST", "/wp/v2/posts", json=payload, params={"_fields": _POST_FIELDS})
+        )
         post = self._post_from(data)
         if post.status == "draft":  # chỉ ghi nhận bài site xác nhận là nháp (R3, T-042)
             self._created_post_ids.add(post.id)
@@ -761,7 +777,7 @@ class WordPressClient:
                 self._request(
                     "GET",
                     f"/wp/v2/posts/{post_id}",
-                    params={"context": "edit", "_fields": "id,status,meta"},
+                    params={"context": "edit", "_fields": _POST_META_FIELDS},
                 )
             )
         except WordPressError as exc:
@@ -820,7 +836,12 @@ class WordPressClient:
             return SeoWriteResult(False, reason="unavailable", message=_SEO_UNAVAILABLE)
         try:
             data = self._json(
-                self._request("POST", f"/wp/v2/posts/{post_id}", json={"meta": send})
+                self._request(
+                    "POST",
+                    f"/wp/v2/posts/{post_id}",
+                    json={"meta": send},
+                    params={"_fields": _POST_META_FIELDS},
+                )
             )
         except WordPressError as exc:
             if exc.status_code in (400, 401, 403):  # site không cho ghi khóa meta này
@@ -854,7 +875,12 @@ class WordPressClient:
             raise WordPressError("Mã ảnh đại diện không hợp lệ.")
         self._own_draft(post_id, failed=_IMAGE_CHECK_FAILED)
         data = self._json(
-            self._request("POST", f"/wp/v2/posts/{post_id}", json={"featured_media": media_id})
+            self._request(
+                "POST",
+                f"/wp/v2/posts/{post_id}",
+                json={"featured_media": media_id},
+                params={"_fields": _POST_FIELDS},
+            )
         )
         if not _is_own_draft_answer(data, post_id):
             # SL-T042-11: câu trả lời nói về bài khác, hay bài không còn nháp: bất thường.
@@ -870,7 +896,11 @@ class WordPressClient:
         title: str = "",
         caption: str = "",
     ) -> Media:
-        """Tải ảnh lên thư viện Media. Tên file được chuyển thành không dấu."""
+        """Tải ảnh lên thư viện Media. Tên file được chuyển thành không dấu.
+
+        Alt, tiêu đề, chú thích không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn
+        alt vào ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
+        """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
         if content_type is None:
@@ -883,12 +913,19 @@ class WordPressClient:
         media_id, media = self._post_media(data, safe_name, content_type)
 
         extra = {
-            key: value
+            key: escape_shortcodes(value)
             for key, value in {"alt_text": alt_text, "title": title, "caption": caption}.items()
             if value
         }
         if extra:
-            updated = self._json(self._request("POST", f"/wp/v2/media/{media_id}", json=extra))
+            updated = self._json(
+                self._request(
+                    "POST",
+                    f"/wp/v2/media/{media_id}",
+                    json=extra,
+                    params={"_fields": _MEDIA_FIELDS},
+                )
+            )
             if isinstance(updated, dict):
                 media = updated
 
@@ -918,6 +955,7 @@ class WordPressClient:
                 "Content-Type": content_type,
                 "Content-Disposition": f'attachment; filename="{file_name}"',
             },
+            params={"_fields": _MEDIA_FIELDS},
         )
         media = self._json(response)
         # SL-T042-4, LC-T044-1: chỉ nhận id là số nguyên dương thật (``True``, ``"7"``, ``7.9``
@@ -1094,12 +1132,22 @@ class WordPressClient:
 
         ``alt_text`` là chữ thường (WordPress tự escape khi in ra); tiêu đề và chú thích được
         WordPress hiện như HTML nên phải ``html.escape``. Không gửi ``status``, ``post``.
+        Cả ba không còn "[" trần (``escape_shortcodes``, T-061), làm SAU khi ``plain_image_text``
+        đã gỡ ký tự vô hình: WordPress chèn ``alt_text`` vào ``<img>`` của nội dung trang ảnh
+        (``prepend_attachment``, cả trong câu trả lời REST có ``description``) rồi chạy shortcode.
         """
         title = f"{AI_MEDIA_TITLE_PREFIX}{item.alt}" if item.source.ai_generated else item.alt
-        payload = {"alt_text": item.alt, "title": html.escape(title, quote=True)}
+        payload = {
+            "alt_text": escape_shortcodes(item.alt),
+            "title": escape_shortcodes(html.escape(title, quote=True)),
+        }
         if item.caption:
-            payload["caption"] = html.escape(item.caption, quote=True)
-        updated = self._json(self._request("POST", f"/wp/v2/media/{media_id}", json=payload))
+            payload["caption"] = escape_shortcodes(html.escape(item.caption, quote=True))
+        updated = self._json(
+            self._request(
+                "POST", f"/wp/v2/media/{media_id}", json=payload, params={"_fields": _MEDIA_FIELDS}
+            )
+        )
         if not isinstance(updated, dict) or _positive_id(updated.get("id")) != media_id:
             raise WordPressError(_MEDIA_ODD_ANSWER)
         # File đầy đủ (không phải cỡ nhỏ WordPress tự tạo): địa chỉ lúc tải lên, rồi tới câu
@@ -1325,8 +1373,9 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
 
     Chặn (ném ``WordPressError``, câu cố định không chép chữ người dùng): không phải chữ, thẻ
     HTML, mã ký tự HTML (LC-T036-3: ``&#37;``, ``&lt;script&gt;``, cả ``&#37`` thiếu ``;``),
-    ``%%`` (biến SiteSEO), ký tự điều khiển, quá dài. Xét cả chữ gốc, chữ đã chuẩn hóa và dạng
-    NFKC (``＜``, ``％％`` toàn khổ).
+    ``%%`` (biến SiteSEO), dạng shortcode WordPress (T-061: ``[tên]``, ``[[tên]]``, ``[/tên]``),
+    ký tự điều khiển, quá dài. Xét cả chữ gốc, chữ đã chuẩn hóa (đã gỡ ký tự vô hình, đúng chữ
+    sẽ gửi) và dạng NFKC (``＜``, ``％％``, ``［`` toàn khổ).
     """
     # Nhập muộn: seo_app.onpage kéo theo lớp nội dung/AI, không cần khi chỉ dùng client.
     from seo_app.onpage.meta import _ENTITY, has_html, normalize_meta
@@ -1349,11 +1398,25 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
         )
     if "%%" in folded:
         raise WordPressError(f"{label} có «%%»: plugin SiteSEO hiểu đó là biến. Bỏ «%%» đi.")
+    if any(_has_shortcode(text) for text in (raw, value, folded)):
+        raise WordPressError(
+            f"{label} có chữ dạng shortcode WordPress («[» liền chữ, có «]» phía sau), website "
+            "có thể chạy như lệnh. Bỏ dấu ngoặc vuông hoặc dùng ngoặc tròn rồi gửi lại."
+        )
     if _CONTROL_CHARS.search(value):
         raise WordPressError(f"{label} có ký tự điều khiển. Gõ lại chữ thường.")
     if len(value) > limit:
         raise WordPressError(f"{label} quá dài (tối đa {limit} ký tự).")
     return value
+
+
+def _has_shortcode(text: str) -> bool:
+    """Có dạng shortcode WordPress: "[" mở đầu tên (``_SHORTCODE_OPEN``) và "]" phía sau.
+
+    Một lượt, tuyến tính: "[" mở đầu tiên không có "]" phía sau thì các "[" sau nó cũng không.
+    """
+    match = _SHORTCODE_OPEN.search(text)
+    return match is not None and text.find("]", match.end()) >= 0
 
 
 def _seo_error(route: str, status_code: int | None) -> SeoWriteResult:

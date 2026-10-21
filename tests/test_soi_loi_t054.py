@@ -5,7 +5,7 @@ commit ảnh thật), GPS là tọa độ giả, tên khách là tên giả.
 
 Test ``xfail(strict=True)`` là lỗi tìm được (SL-T054-1…3 trong
 ``docs/team/reports/T-054-soi-loi.md``): sửa xong thì test thành XPASS và báo hỏng, khi đó chỉ
-cần xóa dòng ``@pytest.mark.xfail``.
+cần xóa dòng ``@pytest.mark.xfail``. SL-T054-2 đã sửa ở T-061 (đã gỡ ``xfail``).
 """
 
 import base64
@@ -30,7 +30,7 @@ import seo_app.wordpress.client as client_module
 from seo_app.images import html as image_html
 from seo_app.images.alt import AltSuggestion, clean_suggestion
 from seo_app.images.process import make_web_image
-from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, sanitize_html
+from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, escape_shortcodes, sanitize_html
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import (
     DraftImage,
@@ -409,7 +409,8 @@ def test_alt_chu_thich_doc_chi_con_la_chu(fake_wp, wp_client, site, web, case):
     assert sanitize_html(content) == content  # kết quả cuối đã qua bộ lọc, ổn định
 
     update = body(describes(fake_wp)[0])
-    assert update["alt_text"] == plain  # chữ thường đã gỡ ký tự rộng 0 (REST)
+    # Chữ thường đã gỡ ký tự rộng 0 (REST); T-061: "[", "]" ra "&#91;", "&#93;" (shortcode).
+    assert update["alt_text"] == escape_shortcodes(plain)
     for field in ("title", "caption"):
         assert html.unescape(update[field]) == plain
         assert not set(update[field]) & set('<>"')
@@ -474,7 +475,8 @@ def test_sl_t054_1_anh_ai_chu_mo_dau_ngoac_vuong_con_dau_gach_cheo(fake_wp, wp_c
     assert page.imgs[0]["alt"] == "Minh họa [Trước khi sửa]: cổng sắt gỉ sét"
     assert page.captions == ["Ảnh minh họa (AI): [Lưu ý]: sơn lại cổng"]
     update = body(describes(fake_wp)[0])
-    assert update["alt_text"] == "Minh họa [Trước khi sửa]: cổng sắt gỉ sét"
+    # T-061: "[", "]" của alt_text ra "&#91;", "&#93;" (shortcode); lỗi kiểm ở đây vẫn là dấu "\".
+    assert update["alt_text"] == escape_shortcodes("Minh họa [Trước khi sửa]: cổng sắt gỉ sét")
     assert "\\" not in update["caption"] and "\\" not in update["title"]
 
 
@@ -483,10 +485,6 @@ def _shortcode_reached(fake_wp):
     return re.search(r"\[\s*/?\s*code_snippet", sent_content(fake_wp)) is not None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T054-2 (trùng T-061): shortcode trong chú thích ảnh tới nội dung bài nguyên dạng",
-)
 def test_sl_t054_2_shortcode_trong_chu_thich(fake_wp, wp_client, site, web):
     try:
         send(wp_client, [DraftImage(web, alt="Cổng", caption="[code_snippet id=1] sơn lại")])
@@ -496,10 +494,6 @@ def test_sl_t054_2_shortcode_trong_chu_thich(fake_wp, wp_client, site, web):
     assert not _shortcode_reached(fake_wp)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T054-2 (trùng T-061): shortcode trong alt (thuộc tính có nháy) tới bài nguyên dạng",
-)
 def test_sl_t054_2_shortcode_trong_alt(fake_wp, wp_client, site, web):
     try:
         send(wp_client, [DraftImage(web, alt="[code_snippet id=1] cổng")])
@@ -605,8 +599,10 @@ def test_moi_lenh_deu_qua_danh_sach_duong_khong_tham_so_la(
         query = parse_qs(urlsplit(request.url).query)
         if request.method == "GET":  # chỉ lệnh kiểm nháp của _own_draft (T-042)
             assert query == {"context": ["edit"], "_fields": ["id,status,meta"]}
-        else:
-            assert query == {}
+        elif path(request).startswith(MEDIA):  # T-061: ``_fields`` cố định, không ``description``
+            assert query == {"_fields": ["id,source_url,alt_text"]}
+        else:  # T-061: ``_fields`` cố định, không ``content``, ``excerpt``
+            assert query == {"_fields": ["id,status,title,link,featured_media"]}
 
 
 def test_duong_bi_go_khoi_danh_sach_thi_khong_gui(fake_wp, wp_client, site, web, monkeypatch):
