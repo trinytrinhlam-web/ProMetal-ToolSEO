@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi gộp T-056, chậm nhất trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-051 đã gộp (`config/content.toml` mục `[alt]`) |
-| Trạng thái | Mới |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ A1.
 
 - Lập theo điều kiện C10 của Lá Chắn T-051. Làm trên nhánh tạm `team/T-065`, tạo từ `main` sau khi T-051 gộp.
 - 2026-10-20 (Chỉ Huy B): **Thêm LC-T062-1 của Lá Chắn T-062** (`docs/team/reports/T-062-la-chan.md`): thêm chú thích trên `[alt]` và `[[alt.examples]]` trong `config/content.toml` nói rõ quy tắc và ví dụ (cả bản «xấu») được gửi **nguyên văn** cho hãng AI mỗi lần viết alt, nên chỉ dùng tên, số điện thoại, địa chỉ bịa, không bao giờ dùng thông tin khách thật. Hạn: trước khi gộp T-056.
+- 2026-10-21 14:53 (Chỉ Huy B): chủ dự án cho giao. Nhánh `team/T-065` tạo từ `main` sau khi gộp T-077. Mức kiểm: Soi Lỗi rút gọn, Lá Chắn rút gọn (A1).

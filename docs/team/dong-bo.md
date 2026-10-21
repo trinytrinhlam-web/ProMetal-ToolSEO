@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 14:46. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 14:53. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -43,14 +43,19 @@ Chỉ Huy B, cập nhật 2026-10-21 14:46. Agent chạy ở phiên con dưới 
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress | đã gộp (`975d323`), nhánh và worktree đã xóa | ✅ Windows 9.915 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-059, T-060 |
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 | đã gộp (`ae2ae8e`), nhánh và worktree đã xóa | ✅ Windows 10.135 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-077 |
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ (trước T-056) | `team/T-077` (`9333508`) | ✅ 14:41 Lá Chắn rút gọn ĐẠT (0 lỗi; gộp được ngay) | ⏳ Chờ chủ dự án cho gộp |
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ (GĐ3, nên trước T-056) | `team/T-076` (`3bb126e`) | ✅ 14:41 Thợ Máy xong (1.435 test liên quan qua) | ⏳ Chờ chủ dự án cho giao Soi Lỗi |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`bf1f889`) | ✅ 14:45 Thợ Máy xong (2.320 test liên quan qua) | ⏳ Chờ chủ dự án cho giao Soi Lỗi |
-| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-079** |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp vào `main` trên máy (`c2233ed`) | ✅ Lá Chắn ĐẠT; chủ dự án cho gộp | ⏳ Chạy toàn bộ test Windows; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-077` |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ (GĐ3, nên trước T-056) | `team/T-076` (`3bb126e`) | ✅ 14:41 Thợ Máy xong (1.435 test liên quan qua) | ⏳ Soi Lỗi kiểm (phiên "Soi Lỗi · T-076 kiểm tên thư mục trên ổ") |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`bf1f889`) | ✅ 14:45 Thợ Máy xong (2.320 test liên quan qua) | ⏳ Soi Lỗi kiểm (phiên "Soi Lỗi · T-039 kiểm liên kết nội bộ") |
+| [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt (GĐ3, trước T-056) | `team/T-065` (từ `main` `c2233ed` + tài liệu) | Chủ dự án cho giao | ⏳ Ngòi Bút làm (phiên "Ngòi Bút · T-065 quy tắc alt") |
+| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-079** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 14:53 · Chỉ Huy B
+
+- Chủ dự án ("có"): gộp T-077; giao Soi Lỗi T-076, Soi Lỗi T-039, Ngòi Bút T-065. Gộp T-077 vào `main` (`c2233ed`), không xung đột; đang chạy toàn bộ test Windows. Nhánh `team/T-065` tạo từ `main` sau commit này.
 
 ### 2026-10-21 14:46 · Chỉ Huy B
 
