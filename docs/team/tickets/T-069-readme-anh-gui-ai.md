@@ -49,3 +49,4 @@ Không có (soát bí mật như mọi phiếu tài liệu).
 
 - Lập theo điều kiện 3 của Lá Chắn T-062 (LC-T050-4) và đề xuất của Soi Lỗi T-052.
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-052** (điều kiện 4), cho mục "Đặt thư mục ảnh": ảnh AI để trong thư mục con có chữ "AI" (ví dụ `Ảnh AI`) bên dưới thư mục đã khai báo; chưa khai báo thư mục ảnh AI làm một mục `IMAGE_FOLDERS` riêng cho tới khi T-056 xử lý; thư mục ảnh thật không có chữ "AI" đứng riêng hay tên công cụ AI (ảnh sẽ mất thẻ).
+- 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-070** (điều kiện 3), cho mục "Đặt thư mục ảnh": liệt kê các chữ làm ảnh thành ảnh AI (AI, minh họa, tên công cụ…); gõ tên thư mục ảnh thật **có dấu**; tránh tên công cụ đứng riêng (Sora, Flux, Designer, Canva, Bing…); không để ảnh lấy từ mạng hay ảnh tham khảo trong thư mục ảnh.

@@ -63,6 +63,10 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+**Anh đã trả lời ngày 21/10: gộp phần chặn shortcode (T-061); duyệt nâng thư viện `certifi` lên 2026.10.19 (T-075, lỗi bảo mật mức Cao: app tin chứng chỉ có khóa bị lộ). Trong lúc chờ T-075 gộp: không dùng app trên Wi-Fi công cộng; sau khi gộp, mở app bằng `run.bat` / `run.command` ở cả 2 máy để tự cập nhật thư viện.**
+
+**Anh đã trả lời ngày 20/10: rút gọn phần ảnh (ảnh Zalo mất GPS): làm màn hình chọn ảnh và phiếu bắt buộc, hoãn tạo ảnh AI và phiếu GPS, chuyển sớm sang SEO và đăng bài.**
+
 **Anh đã trả lời ngày 20/10: agent phụ chạy mức Tối đa và chế độ nhanh (không ultracode); agent chỉ chạy test liên quan, Chỉ Huy chạy toàn bộ test khi gộp.**
 
 **Anh đã trả lời ngày 20/10: chấp nhận rủi ro hard link trong thư mục ảnh (LC-T048-6), đã ghi sổ rủi ro `docs/team/security.md` mục 6.**
@@ -83,6 +87,7 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
    - bỏ đoạn mô tả thừa ở trang chủ ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức";
    - cân nhắc bỏ mức giá "$$".
 4. **Nhờ người làm web kiểm tra:** website có các đường `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Nhờ họ xác nhận các đường này **bắt buộc đăng nhập quản trị**. Phần mềm không bao giờ gọi các đường này.
+4b. **Cập nhật plugin Code Snippets (quan trọng, Lá Chắn T-054 nêu 20/10):** vào WordPress → Plugins, xem Code Snippets đã ở bản **3.9.2 trở lên** chưa, chưa thì cập nhật. Trong cài đặt Code Snippets, **tắt «Enable file-based execution»** nếu không dùng. Bản cũ có lỗ hổng (CVE-2025-13035) cho mọi tài khoản từ Cộng tác viên trở lên chạy mã trên máy chủ website, không riêng phần mềm. Làm trước khi phần mềm được bật nút Gửi nháp kèm ảnh.
 5. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung khi rảnh (mục 7 của `config/business_profile.md` có hướng dẫn).
 6. **Chạy kiểm tra trên Windows:** khi mở máy Windows với Chỉ Huy A, nhờ A chạy `uv run pytest` một lượt.
 

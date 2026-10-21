@@ -318,13 +318,19 @@ def _cut(text: str, limit: int) -> str:
     return cut.rstrip(_TRAILING)
 
 
+def _one_line(text: object) -> str:
+    """Chữ AI viết đã chuẩn hóa (NFC, bỏ ký tự vô hình, ký tự điều khiển thành dấu cách), qua
+    ``clean_ai_text`` (bỏ thẻ HTML, link; vô hiệu cú pháp link) và gộp một dòng; chưa cắt."""
+    if not isinstance(text, str):
+        return ""
+    return " ".join(clean_ai_text(normalize_meta(_CONTROL_CHARS.sub(" ", text))).split())
+
+
 def clean_alt_text(text: object, limit: int) -> str:
     """Chữ AI viết cho alt/caption: chuẩn hóa (NFC, bỏ ký tự vô hình, ký tự điều khiển thành dấu
     cách), ``clean_ai_text`` (bỏ thẻ HTML, link; vô hiệu cú pháp link), gộp một dòng, cắt còn tối
     đa ``limit`` ký tự."""
-    if not isinstance(text, str):
-        return ""
-    text = " ".join(clean_ai_text(normalize_meta(_CONTROL_CHARS.sub(" ", text))).split())
+    text = _one_line(text)
     if len(text) <= limit:
         return text
     # Lọc lại sau khi cắt (hàm lọc chạy lại không đổi gì), rồi chắc chắn không quá ``limit``.
@@ -337,12 +343,53 @@ def clean_alt_text(text: object, limit: int) -> str:
 # Cuối alt không chấm câu (quy tắc [alt]): bỏ dấu chấm, dấu ba chấm và các dấu ``_TRAILING``.
 _ALT_END = _TRAILING + ".…。"
 # Tiền tố mà AI đã tự viết cho ảnh AI (đúng hay gần đúng: «Minh hoạ», «Hình minh họa», «Ảnh minh
-# họa (AI):»…): bỏ đi rồi code ghi lại đúng một tiền tố chuẩn, không lặp «Minh họa Minh họa».
+# họa (AI)»…): bỏ đi rồi code ghi lại đúng một tiền tố chuẩn, không lặp «Minh họa Minh họa».
 _AI_PREFIX = re.compile(
-    r"^(?:(?:bức\s+)?(?:hình\s+ảnh|ảnh|hình)\s+)?minh\s+h(?:ọa|oạ)\b"
-    r"(?:\s*\(\s*ai\s*\))?[\s:,.;\-–—]*",
+    r"(?:(?:bức\s+)?(?:hình\s+ảnh|ảnh|hình)\s+)?minh\s+h(?:ọa|oạ)\b(?:\s*\(\s*ai\s*\))?",
     re.IGNORECASE,
 )
+# Ngoặc AI hay đặt quanh tiền tố (lời dặn ``AI_PREFIX_NOTE`` và ví dụ ghi tiền tố trong «»):
+# ký tự mở → ký tự đóng. Tối đa ``_MAX_WRAP`` ký tự mở liền nhau («**Minh họa**», «"«Minh họa»"»).
+_WRAPPERS = {
+    "«": "»", "“": "”", "‘": "’", "‹": "›", '"': '"', "'": "'", "(": ")", "[": "]", "*": "*",
+}  # fmt: skip
+_MAX_WRAP = 3
+# Dấu cách và dấu câu dính sau tiền tố («Minh họa: », «Minh họa! », «Minh họa… », «Minh họa – »).
+_AFTER_PREFIX = " :,.;!?…-–—|/·•"
+_ALT_SEP = " "
+_CAPTION_SEP = ": "
+
+
+def _strip_ai_prefix(text: str) -> str:
+    """Bỏ tiền tố AI tự viết ở đầu ``text`` (một dòng đã lọc, chưa cắt), kể cả khi tiền tố nằm
+    trong ngoặc («Minh họa», “Ảnh minh họa (AI)”, **Minh họa**) hay dính dấu câu («Minh họa!»,
+    «Minh họa…»), và bỏ tới khi hết («Minh họa «Minh họa» cửa cuốn»). Code ghi lại đúng một tiền
+    tố chuẩn sau đó (Soi Lỗi SL-T062-2).
+
+    Ngoặc mở trước tiền tố mà ngay sau tiền tố không có ngoặc đóng thì là ngoặc bọc cả câu
+    («Minh họa cửa cuốn»): bỏ ngoặc đóng ở cuối câu, nếu giữa câu không còn ngoặc đóng nào khác.
+    Không có tiền tố thì giữ nguyên ``text``, kể cả ngoặc."""
+    while True:
+        size = 0
+        while size < _MAX_WRAP and text[size : size + 1] in _WRAPPERS:
+            size += 1
+        rest = text[size:].lstrip()
+        match = _AI_PREFIX.match(rest)
+        if not match:
+            return text
+        rest = rest[match.end() :].lstrip(_AFTER_PREFIX)
+        closing = "".join(_WRAPPERS[ch] for ch in reversed(text[:size]))
+        if closing and rest.startswith(closing):
+            rest = rest[len(closing) :]
+        elif closing and rest.endswith(closing) and closing not in rest[: -len(closing)]:
+            rest = rest[: -len(closing)]
+        text = rest.lstrip(_AFTER_PREFIX)
+
+
+def _meaningful(text: str) -> str:
+    """``text`` nếu có ít nhất một chữ cái hay chữ số, không thì chuỗi rỗng: alt «???», «!!!»,
+    «🔥🔥», ««»» không mô tả gì cho người khiếm thị hay Google (Soi Lỗi SL-T062-1)."""
+    return text if any(ch.isalnum() for ch in text) else ""
 
 
 def _lower_first(text: str) -> str:
@@ -377,19 +424,25 @@ def clean_suggestion(
     - ảnh AI (``ai_generated``, do code quyết): alt luôn bắt đầu «Minh họa», chú thích luôn bắt
       đầu «Ảnh minh họa (AI)» (chú thích AI để trống thì chỉ còn tiền tố), dù AI viết gì.
 
-    Alt rỗng sau khi lọc thì báo ``AIError`` (alt rỗng không được dùng).
+    Thứ tự (Soi Lỗi SL-T062-3): lọc và gộp một dòng; ảnh AI thì bỏ tiền tố AI tự viết trên chữ
+    còn nguyên; cắt phần thân theo chỗ còn lại sau tiền tố chuẩn; rồi mới ghép tiền tố chuẩn.
+
+    Alt rỗng hay không có chữ cái, chữ số nào («???», «Minh họa !!!») sau khi lọc và cắt thì báo
+    ``AIError`` (alt như vậy không được dùng); chú thích như vậy thì coi như để trống.
     """
-    alt = clean_alt_text(raw.alt, max_chars)
-    caption = clean_alt_text(raw.caption, caption_max_chars)
+    alt, caption = _one_line(raw.alt), _one_line(raw.caption)
+    alt_room, caption_room = max_chars, caption_max_chars
     if ai_generated:
-        alt = _AI_PREFIX.sub("", alt, count=1)
-        caption = _AI_PREFIX.sub("", caption, count=1)
-    alt = alt.rstrip(_ALT_END)
+        alt, caption = _strip_ai_prefix(alt), _strip_ai_prefix(caption)
+        alt_room = max(max_chars - len(AI_ALT_PREFIX) - len(_ALT_SEP), 0)
+        caption_room = max(caption_max_chars - len(AI_CAPTION_PREFIX) - len(_CAPTION_SEP), 0)
+    alt = _meaningful(clean_alt_text(alt.rstrip(_ALT_END), alt_room).rstrip(_ALT_END))
+    caption = _meaningful(clean_alt_text(caption, caption_room))
     if not alt:
         raise AIError(EMPTY_ALT_MESSAGE)
     if ai_generated:
-        alt = _with_prefix(AI_ALT_PREFIX, alt, max_chars, " ").rstrip(_ALT_END)
-        caption = _with_prefix(AI_CAPTION_PREFIX, caption, caption_max_chars, ": ")
+        alt = _with_prefix(AI_ALT_PREFIX, alt, max_chars, _ALT_SEP).rstrip(_ALT_END)
+        caption = _with_prefix(AI_CAPTION_PREFIX, caption, caption_max_chars, _CAPTION_SEP)
     return AltSuggestion(alt=alt, caption=caption)
 
 

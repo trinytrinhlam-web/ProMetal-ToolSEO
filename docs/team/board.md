@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-20 17:02 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 11:16 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -13,7 +13,7 @@ _Cập nhật: 2026-10-20 17:02 (Chỉ Huy B)._
 | 0 · Bộ khung | **100%** | App mở bằng `run.bat`, đăng nhập bằng mật khẩu |
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
-| 3 · Ảnh | **khoảng 70%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chèn ảnh vào nháp. Còn: tạo ảnh AI, lưu lựa chọn ảnh, **màn hình chọn ảnh** |
+| 3 · Ảnh | **khoảng 75%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…), chèn ảnh vào nháp, nháp nhớ ảnh đã chọn (đang kiểm). Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
 | 4 · SEO trên trang | **khoảng 45%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. Còn: liên kết nội bộ, **màn hình bước SEO** |
 | 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
@@ -22,7 +22,7 @@ Trên app hôm nay chủ dự án dùng thật được phần **viết bài b�
 
 ## Đang làm
 
-> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-038, T-043, T-036, T-037, T-044, T-045, T-046, T-047, T-042, T-048, T-058, T-051, T-050, T-049, T-062, T-052 (Chỉ Huy B bổ sung 20/10 các phiếu gộp từ 17/10).
+> 2026-10-15: Fable 5.1 vẫn bị giới hạn tới 01/11, nên Lá Chắn chạy tạm bằng Opus 5.5 (chủ dự án đã duyệt). Sau 01/11 Lá Chắn kiểm lại bằng Fable: T-013 → T-021, T-018, T-022, T-023, T-024, T-019, T-025, T-026, T-027, T-028, T-029, T-030, T-031, T-032, T-034, T-035, T-038, T-043, T-036, T-037, T-044, T-045, T-046, T-047, T-042, T-048, T-058, T-051, T-050, T-049, T-062, T-052, T-067, T-054, T-068 (Chỉ Huy B bổ sung 20/10 các phiếu gộp từ 17/10).
 >
 > 2026-10-15 12:35: tài khoản của Chỉ Huy A gọi Fable 5.1 bị từ chối ("cần mua thêm lượt dùng"), nên Lá Chắn T-027 chạy lại bằng Opus 5.5.
 >
@@ -34,29 +34,30 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) | Dọn lỗi Thấp xử lý ảnh (LC-T049-1/-2/-3) | Lá Chắn · T-067 kiểm nhanh dọn lỗi ảnh | `team/T-067` | 15:09 Thợ Máy **xong** (`da9d6c8`: sửa LC-T049-1 → -3, làm thêm N1, N4, gỡ 3 `xfail`; test liên quan 688 qua, 0 hỏng). 16:49 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`46f1bf7`; 1 Thấp SL-T067-1). ⏳ **Lá Chắn rút gọn đang kiểm** (giao sau 16:51) | [Thợ Máy](reports/T-067-tho-may.md) · [Soi Lỗi](reports/T-067-soi-loi.md) |
-| [T-054](tickets/T-054-chen-anh-vao-nhap-wordpress.md) | GĐ3 · G3-8: tải ảnh, chèn `<figure>` vào nháp | Lá Chắn · T-054 kiểm chèn ảnh vào nháp | `team/T-054` | 15:39 Thợ Máy **xong** (`3a909c0`: hàm gửi nháp kèm ảnh, `seo_app/images/html.py`; không sửa `sanitize.py`; 90 test mới, test liên quan 2.013 qua, 0 hỏng). 16:47 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`1aee061`; 1 Trung bình SL-T054-2 shortcode trong alt/chú thích, trùng T-061; 2 Thấp). ⏳ **Lá Chắn đang kiểm** (giao sau 16:51). Trước khi gộp: T-067 gộp, Chỉ Huy thử ảnh thật | [Thợ Máy](reports/T-054-tho-may.md) |
-| [T-068](tickets/T-068-don-loi-thap-alt-anh-ai.md) | Dọn lỗi Thấp bước code tự sửa alt (SL-T062-1 → -3) | Soi Lỗi · T-068 kiểm nhanh alt ảnh AI | `team/T-068` | 16:42 Thợ Máy **xong** (`69b9f31`: sửa 3 lỗi, gỡ 3 `xfail`, 145 test mới; test liên quan 813 qua; chỉnh test C6 mâu thuẫn với SL-T062-1, Chỉ Huy đã xem: hợp lý). ⏳ **Soi Lỗi rút gọn đang kiểm** (giao sau 16:51) | [Thợ Máy](reports/T-068-tho-may.md) |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy + Soi Lỗi (sửa dữ liệu test, chưa giao) | `team/T-055` | 20/10 Thợ Máy lượt 2 xong; 21/10 09:35 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (2 Thấp). 21/10 10:49 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`, Opus tạm): an toàn với file trên máy; 1 Trung bình LC-T055-1 (quét thư mục theo đường dẫn trong nháp có thể làm ảnh AI thành ảnh thật) → điều kiện T-056, sửa tận gốc ở T-076; 3 Thấp. ⏳ **Trước khi gộp:** đưa `main` vào nhánh, sửa dữ liệu test cũ sau T-070 (LC-T055-4: `genai` nay là ảnh AI, 2 test hỏng trên bản gộp) | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Lá Chắn rút gọn (chưa giao) | `team/T-074` | 21/10 09:56 Thợ Máy **xong** (`8ce0117`; 1.087 test liên quan qua). 11:15 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`eec8fc7`: 6 yêu cầu làm đúng; 2 Thấp: SL-T074-1 đọc thẻ rất nhiều ảnh làm lần lưu ở tab khác chờ, quá 5 giây báo bận; SL-T074-2 thư mục tên công cụ AI viết hoa giữa chữ như "MidJourney", "FireFly" vẫn ra ảnh thật, có từ trước). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-074-tho-may.md) · [Soi Lỗi](reports/T-074-soi-loi.md) |
+| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Soi Lỗi, Lá Chắn rút gọn (chưa giao) | `team/T-075` | 21/10 10:44 Thợ Máy **xong** (`f6a8220`: `certifi` 2026.7.22 → 2026.10.19, `uv.lock` chỉ đổi 3 dòng; test chốt phiên bản và gốc emSign; `pip-audit` PyPI + OSV sạch; 927 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn, Lá Chắn rút gọn** | [Thợ Máy](reports/T-075-tho-may.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3) | Thợ Máy | T-055 gộp; nên trước T-056 |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | T-042 gộp; trước khi hết GĐ4 |
-| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Shortcode WordPress trong chữ AI và chữ SEO (site có Code Snippets) | Thợ Máy | T-042 gộp; trước GĐ5 |
-| [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | Còn chỗ (ưu tiên sau các phiếu Giai đoạn 3) |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
+| [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) | Chạy test đọc thư mục ảnh trên Mac/Linux (LC-T048-1, Trung bình). **Chặn gộp T-056** | Soi Lỗi | Cần máy Linux/Mac: phiên Claude Code cloud |
-| [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | Sau T-063; trước khi hết GĐ3 |
+| [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) | Quy tắc alt: chữ trong ảnh không chép vào alt lẫn chú thích (C10 của Lá Chắn T-051) | Ngòi Bút | Còn chỗ (T-051 đã gộp); trước khi gộp T-056 |
 | [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý | Thợ Máy | Còn chỗ (T-049, T-050 đã gộp); trước khi gộp T-056 |
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) | README: ảnh gửi hãng AI khi viết alt (LC-T050-4), cách đặt thư mục ảnh | Thư Ký | Còn chỗ (T-062 đã gộp); nên sau T-052; trước khi gộp T-056 |
-| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh (LC-T052-1 Trung bình, LC-T052-2/-3/-5, SL-T052-9 → -11) | Thợ Máy | Còn chỗ (T-052 đã gộp); trước khi gộp T-056 |
-| [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | Còn chỗ (T-049, T-050, T-062 đã gộp); điều kiện C7–C9 |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy | Còn chỗ (T-052 đã gộp) |
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-049 → T-055; **T-063** (điều kiện Lá Chắn T-048) |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4) | Thợ Máy | Còn chỗ (T-054, T-070 đã gộp); trước khi gộp T-056 |
+| [T-072](tickets/T-072-gps-ref-phu-sai-khuon.md) | GPS: thẻ Ref phụ sai khuôn không làm mất vị trí (LC-T067-1) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: ảnh Zalo mất GPS) |
+| [T-073](tickets/T-073-on-dinh-test-khoa-cho-t037.md) | Ổn định test khóa chờ của kho danh sách bài (hỏng oan khi máy bận) | Soi Lỗi | Còn chỗ |
+| [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: chưa cần tạo ảnh AI) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-055, T-074, T-075, T-065, T-066, T-069, T-071, nên cả T-076; **T-063** (điều kiện Lá Chắn T-048) |
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | T-036, T-037 |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy | Hết chờ (T-036, T-037 đã gộp); chủ dự án chốt chuyển sớm sang GĐ4 |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | T-036, T-039 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | T-036 → T-039 |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
@@ -74,6 +75,11 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress: mọi `[` `]` app gửi lên WordPress (nội dung, tiêu đề, đoạn trích, alt, chú thích, ô Media) thành `&#91;` `&#93;`; chữ SEO dạng shortcode bị chặn; `_fields` cố định cho 6 lệnh ghi | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-061-tho-may.md) · [Soi Lỗi](reports/T-061-soi-loi.md): đạt có điều kiện (2 Thấp) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-061-la-chan.md) (Opus tạm): LC-T054-1 đóng, LC-T042-3 đóng phần app; 4 Thấp → T-056, T-059, T-060; LC-T061-1 Cao toàn repo → T-075. Gộp vào `main` `975d323`: Windows 9.915 qua, 0 hỏng (lượt đầu Python sập khi nạp `sqlite3` lúc khởi động, trước khi chạy test nào; chạy lại qua); ruff sạch |
+| [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh: nhận ảnh AI theo tên ("minh họa", "trí tuệ nhân tạo", genai, Copilot, Designer…; `is_ai_name`), kho thẻ sửa tay kiểm cấu trúc trước khi đọc, `get_many` giữ ảnh AI | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) rút gọn: đạt có điều kiện (5 Thấp) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-070-la-chan.md) (Opus tạm), 2 Thấp LC-T070-1, -2 → T-074 (trước T-056); điều kiện → T-056 (g), (h), T-069. Gộp vào `main` `588c76f`: Windows 9.740 qua, 0 hỏng (21/10, chạy cùng 3 agent); ruff sạch |
+| [T-054](tickets/T-054-chen-anh-vao-nhap-wordpress.md) | GĐ3 · G3-8: tải ảnh lên WordPress, chèn `<figure>` vào nháp (`seo_app/images/html.py`, gửi nháp kèm ảnh) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-054-tho-may.md) · [Soi Lỗi](reports/T-054-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-054-la-chan.md) (Opus tạm): LC-T054-1 Trung bình → T-061; 5 Thấp → T-071. Thử 8 ảnh thật trên website (99 ảnh gốc, 0 ảnh còn GPS): xử lý tốt. Gộp vào `main` `43d6c4a` (cùng T-068): Windows 9.477 qua, 1 hỏng oan (`test_soi_loi_t037.py` khóa chờ → T-073) |
+| [T-068](tickets/T-068-don-loi-thap-alt-anh-ai.md) | Dọn lỗi Thấp bước code tự sửa alt ảnh AI (SL-T062-1 → -3) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-068-tho-may.md) · [Soi Lỗi](reports/T-068-soi-loi.md) rút gọn: đạt (xác nhận test C6 chỉnh) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-068-la-chan.md) (Opus tạm). Gộp vào `main` `4bc61b9` |
+| [T-067](tickets/T-067-don-loi-thap-xu-ly-anh.md) | Dọn lỗi Thấp xử lý ảnh (LC-T049-1 GPS sai khuôn, LC-T049-2 cache xem trước kiểm Pillow, LC-T049-3 khóa luồng) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-067-tho-may.md) · [Soi Lỗi](reports/T-067-soi-loi.md) rút gọn: đạt có điều kiện · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-067-la-chan.md) (Opus tạm), LC-T067-1 → T-072. Gộp vào `main` `e5c0ce8`: Windows 8.974 qua, 1 hỏng vì máy bận (`test_link_escape.py` đo tốc độ; chạy riêng lại 3 lần, 119/119 qua) |
 | [T-052](tickets/T-052-the-anh-theo-ten-thu-muc.md) | GĐ3 · G3-6: thẻ ảnh từ tên thư mục Drive (mã công trình, hạng mục, khu vực, trước/sau, nguồn thật/AI); thẻ sửa tay lưu SQLite trong `data/` (`tags.py`, `storage/image_tags.py`) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-052-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-052-soi-loi.md) (2 lượt): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-052-la-chan.md) (Opus tạm), 1 Trung bình + 4 Thấp → T-070; điều kiện → T-055, T-056, T-063, T-069. Gộp vào `main` `1c7bd9a`: Windows 8.840 qua, 1 hỏng vì máy bận (`test_soi_loi_t037.py` khóa chờ; chạy riêng lại 3 lần, 139/139 qua; T-052 không đụng phần này) |
 | [T-062](tickets/T-062-doc-cau-hinh-viec-anh.md) | Đọc cấu hình việc ảnh: provider lười (bật được `[tasks.image]` mà Soạn bài không đòi khóa Gemini), đọc `[images]`/`[alt]` chịu lỗi, nhãn, tiền tố ảnh AI do code bảo đảm | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-062-tho-may.md) · [Soi Lỗi](reports/T-062-soi-loi.md): đạt có điều kiện (3 Thấp → T-068) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-062-la-chan.md) (Opus tạm), C1–C6 đạt, LC-T062-1 → T-065; README → T-069. Gộp vào `main` `f96775a`: Windows 8.487 qua, 0 hỏng |
 | [T-049](tickets/T-049-xu-ly-anh-webp-giu-gps.md) | GĐ3 · G3-3: xoay, cạnh dài 1600 px, WebP **giữ GPS** (danh sách thẻ 2A), bản gửi AI dựng lại từ điểm ảnh (không metadata, không hồ sơ màu), ảnh xem trước, tên file chuẩn SEO (`process.py`, `naming.py`) | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-049-tho-may.md) · [Soi Lỗi](reports/T-049-soi-loi.md): đạt có điều kiện (3 Thấp) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-049-la-chan.md) (Opus tạm), 4 Thấp; điều kiện → T-053, T-054, T-056, T-062, `security.md` mục 5; dọn → T-067. Gộp vào `main` `3f90489`: Windows 8.278 qua, 0 hỏng. Chưa thử ảnh thật (trước khi gộp T-054) |
@@ -138,4 +144,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-071
+## Số phiếu tiếp theo: T-077

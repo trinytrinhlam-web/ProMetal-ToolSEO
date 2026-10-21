@@ -6,7 +6,8 @@ Hai lớp, chỉ dùng thư viện chuẩn (security.md mục 2.3, 2.4):
   link/ảnh Markdown (giữ chữ), vì AI không được tự chèn link hay mã vào bài.
 - ``sanitize_html``: dùng ngay trước khi gửi HTML lên WordPress. Chỉ giữ các thẻ và thuộc tính
   trong danh sách cho phép; bỏ hẳn ``<script>``, ``<iframe>``, ``<object>``, ``<embed>``,
-  ``<form>``, ``<style>``…, mọi thuộc tính ``on*=``/``style``, link ``javascript:``/``data:``.
+  ``<form>``, ``<style>``…, mọi thuộc tính ``on*=``/``style``, link ``javascript:``/``data:``;
+  vô hiệu shortcode WordPress (``escape_shortcodes``, T-061).
 """
 
 from __future__ import annotations
@@ -679,6 +680,26 @@ def _is_safe_srcset(value: str) -> bool:
     return all(is_safe_url(item.strip().split(" ")[0]) for item in value.split(",") if item.strip())
 
 
+# Shortcode WordPress (T-061, Lá Chắn T-054 LC-T054-1): WordPress chạy shortcode khi dựng nội
+# dung (``the_content`` → ``do_shortcode``), kể cả ngay trong lệnh tạo nháp (câu trả lời REST có
+# ``content.rendered``) và trong thuộc tính có dấu nháy (``do_shortcodes_in_html_tags``).
+# ``do_shortcode`` trả nguyên nội dung khi không có dấu "[" trần (``wp-includes/shortcodes.php``),
+# còn trình duyệt hiện "&#91;" đúng là "[". Thay MỌI "[" và "]" thì không dạng nào chạy được
+# (``[tên]``, ``[[tên]]``, ``[/tên]``, tên có "-", "_" hay ký tự vô hình), chữ người đọc thấy
+# vẫn y như cũ.
+_SHORTCODE_BRACKETS = str.maketrans({"[": "&#91;", "]": "&#93;"})
+
+
+def escape_shortcodes(text: str) -> str:
+    """Thay "[" và "]" bằng mã ký tự "&#91;", "&#93;" để WordPress không chạy shortcode.
+
+    Chỉ dùng cho chữ được hiểu như HTML (đã ``html.escape``, hoặc trường WordPress in ra bằng
+    ``esc_attr`` vốn không mã hóa lại "&#…;", như ``alt_text``): người đọc vẫn thấy "[" và "]".
+    Chạy lại không đổi gì (idempotent).
+    """
+    return text.translate(_SHORTCODE_BRACKETS)
+
+
 class _Sanitizer(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -701,7 +722,8 @@ class _Sanitizer(HTMLParser):
             if name == "srcset" and not _is_safe_srcset(value):
                 continue
             seen.add(name)
-            parts.append(f' {name}="{html.escape(value, quote=True)}"')
+            # Bước in ra: bộ đọc đã giải mã "&#91;", "&lsqb;"… thành "[" trần (T-061).
+            parts.append(f' {name}="{escape_shortcodes(html.escape(value, quote=True))}"')
         return "".join(parts)
 
     def _start(self, tag: str, attrs: list[tuple[str, str | None]], *, closed: bool) -> None:
@@ -745,7 +767,7 @@ class _Sanitizer(HTMLParser):
 
     def handle_data(self, data):
         if self.skip_tag is None:
-            self.out.append(html.escape(data, quote=False))
+            self.out.append(escape_shortcodes(html.escape(data, quote=False)))
 
     # Bình luận, <!DOCTYPE>, <?...?> và CDATA đều bị bỏ.
     def handle_comment(self, data):
@@ -768,7 +790,11 @@ class _Sanitizer(HTMLParser):
 
 
 def sanitize_html(content: str) -> str:
-    """Lọc HTML theo danh sách cho phép trước khi gửi lên WordPress (security.md 2.3)."""
+    """Lọc HTML theo danh sách cho phép trước khi gửi lên WordPress (security.md 2.3).
+
+    Mọi "[" và "]" trong chữ và giá trị thuộc tính ra dạng "&#91;", "&#93;" (``escape_shortcodes``):
+    không còn shortcode WordPress chạy được. Chạy lại không đổi gì (idempotent).
+    """
     parser = _Sanitizer()
     parser.feed(content)
     return parser.result()

@@ -12,6 +12,11 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
   ``ImageTags`` (chỉ nhận giá trị trong danh sách cố định); giới hạn độ dài từng ô trước khi đọc
   vào bộ nhớ; chữ sai UTF-8, sai kiểu, sai khóa thì bỏ dòng đó. Không ``pickle``, không ``eval``;
   mọi câu SQL dùng tham số ``?``.
+- Cấu trúc file cũng chưa tin cậy (T-070, LC-T052-2): trước mọi truy vấn khác, ``sqlite_master``
+  phải khớp đúng hai bảng app tạo (đúng câu ``CREATE TABLE``, kèm chỉ mục tự sinh của khóa chính);
+  có khung nhìn, trigger, bảng ảo, ``WITHOUT ROWID``, chỉ mục hay bảng lạ thì coi là hỏng. Kiểm ở
+  mỗi lần mở, nên file bị thay khi app đang chạy cũng bị bắt. Mọi truy vấn còn bị giới hạn số bước
+  (``_MAX_VM_STEPS``): file dựng sẵn không làm treo app.
 - File hỏng hẳn (không phải SQLite, sai cấu trúc, quá lớn) thì đổi tên sang một bên để giữ lại
   (như kho nháp), rồi tạo file mới. File đang bận hay không mở được thì báo lỗi, không xóa.
 - Chỗ đặt file (và file nhật ký ``-journal``, ``-wal``, ``-shm`` cạnh nó) là liên kết: symlink,
@@ -32,6 +37,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -52,10 +58,28 @@ _QUERY_CHUNK = 400  # số tham số tối đa mỗi câu ``IN (...)``
 _MAX_PATH_BYTES = 4 * MAX_REL_PATH_CHARS
 _MAX_TAG_BYTES = 1024
 _MAX_TIME_BYTES = 64
+_SQLITE_INTERRUPT = 9
 _SQLITE_CORRUPT = 11
 _SQLITE_NOTADB = 26
 _SQLITE_MAX_INT = 2**63 - 1  # số nguyên lớn nhất SQLite lưu được
 _JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
+# Giới hạn số bước máy ảo SQLite cho mỗi lần mở (LC-T052-2). Đo trên Windows (T-070): việc nặng
+# nhất của một file hợp lệ (kiểm ``quick_check``, liệt kê, lưu kèm dọn thẻ cũ trên file 60.000 dòng,
+# 176 MB, gấp gần ba lần ``MAX_FILE_BYTES``) tốn dưới 2,1 triệu bước; truy vấn đệ quy vô hạn chạy
+# khoảng 26 triệu bước mỗi giây, nên bị dừng sau vài giây thay vì treo.
+_MAX_VM_STEPS = 50_000_000
+_PROGRESS_EVERY = 1000  # SQLite gọi bộ đếm sau mỗi chừng này bước
+_CREATE_TABLES = (
+    "CREATE TABLE IF NOT EXISTS manual_tags ("
+    "root_index INTEGER NOT NULL, ref_key TEXT NOT NULL, rel_path TEXT NOT NULL, "
+    "source TEXT NOT NULL, project_code TEXT NOT NULL, category TEXT NOT NULL, "
+    "area TEXT NOT NULL, phase TEXT NOT NULL, saved_at TEXT NOT NULL, "
+    "saved_ts REAL NOT NULL, PRIMARY KEY (root_index, ref_key))",
+    "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+)
+_APP_TABLES = frozenset({b"manual_tags", b"info"})
+_MASTER_SQL = "SELECT type, name, tbl_name, substr(sql, 1, ?) FROM sqlite_master LIMIT ?"
+_MAX_SQL_BYTES = 2048  # câu CREATE dài nhất của app chưa tới 400 byte
 _COLUMNS = (
     "root_index",
     "ref_key",
@@ -86,6 +110,7 @@ _MSG_AI_FOLDER = (
     "ảnh AI. Muốn đổi, hãy đổi tên hoặc chuyển ảnh sang thư mục khác trên Drive."
 )
 _MSG_BAD_ROOT = "Số thứ tự thư mục ảnh không hợp lệ."
+_MSG_BROKEN = "File lưu thẻ ảnh bị lỗi nên không đọc/ghi được. Thử tải lại trang."
 
 
 class ImageTagStoreError(Exception):
@@ -220,7 +245,10 @@ class ImageTagStore:
                         if item is None:
                             continue
                         for ref in wanted.get((item.ref.root_index, ref_key(item.ref)), ()):
-                            found[ref] = ManualTag(ref=ref, tags=item.tags, saved_at=item.saved_at)
+                            # Khóa không phân biệt hoa thường, dấu hiệu ảnh AI thì có thể
+                            # ("khoai" / "KhoAI"): ép ảnh AI theo đúng ảnh được hỏi (LC-T052-3).
+                            tags = _keep_ai(item.tags, tags_for_image(ref).tags)
+                            found[ref] = ManualTag(ref=ref, tags=tags, saved_at=item.saved_at)
         return found
 
     def set(self, ref: ImageRef, tags: ImageTags) -> ManualTag:
@@ -349,12 +377,18 @@ class ImageTagStore:
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
-                conn.execute("PRAGMA trusted_schema = OFF")
+                _guard(conn)
                 conn.text_factory = bytes  # tự giải mã UTF-8 từng ô (``_row_to_tag``)
+                # File bị thay khi app đang chạy (SL-T052-9, -10): kiểm cấu trúc trước khi đọc.
+                if _app_tables(conn) != _APP_TABLES:
+                    self._ready = False  # lần sau kiểm lại: đổi tên file lạ, tạo file mới
+                    raise ImageTagStoreError(_MSG_BROKEN)
                 yield conn
         except sqlite3.DatabaseError as exc:
-            if _is_corrupt(exc):
-                self._ready = False  # lần sau kiểm lại file
+            if not _is_busy(exc):
+                # Hỏng, thiếu bảng/cột (file bị thay, SL-T052-10), chạy quá số bước: lần sau
+                # kiểm lại file. Bận/khóa thì chỉ là tab khác đang ghi.
+                self._ready = False
             raise ImageTagStoreError(_db_message(exc)) from None
         except OSError as exc:
             raise ImageTagStoreError(
@@ -380,17 +414,9 @@ class ImageTagStore:
                 if self.path.stat().st_size > MAX_FILE_BYTES or not _is_healthy(self.path):
                     self.recovered_from = self._move_aside()
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
-                conn.execute("PRAGMA trusted_schema = OFF")
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS manual_tags ("
-                    "root_index INTEGER NOT NULL, ref_key TEXT NOT NULL, rel_path TEXT NOT NULL, "
-                    "source TEXT NOT NULL, project_code TEXT NOT NULL, category TEXT NOT NULL, "
-                    "area TEXT NOT NULL, phase TEXT NOT NULL, saved_at TEXT NOT NULL, "
-                    "saved_ts REAL NOT NULL, PRIMARY KEY (root_index, ref_key))"
-                )
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-                )
+                _guard(conn)
+                for sql in _CREATE_TABLES:
+                    conn.execute(sql)
                 conn.execute(
                     "INSERT OR IGNORE INTO info (key, value) VALUES ('schema_version', ?)",
                     (SCHEMA_VERSION,),
@@ -468,35 +494,87 @@ def _parse_time(value: str, timezone: str) -> datetime | None:
         return None
 
 
-def _is_healthy(path: Path) -> bool:
-    """File là SQLite đọc được, bảng nào đã có thì đúng cột, đúng phiên bản.
+def _guard(conn: sqlite3.Connection) -> None:
+    """File thẻ là dữ liệu chưa tin cậy (F3): không chạy hàm "không vô hại" trong view/trigger/chỉ
+    mục của file, và dừng truy vấn chạy quá ``_MAX_VM_STEPS`` bước trên kết nối này (LC-T052-2,
+    lớp phòng sau lớp kiểm cấu trúc): SQLite báo ``interrupted`` thay vì treo luồng Streamlit."""
+    conn.execute("PRAGMA trusted_schema = OFF")
+    limit = _MAX_VM_STEPS  # đọc lúc mở (test hạ được giới hạn)
+    steps = 0
 
-    ``False`` chỉ khi **chắc chắn** hỏng (SQLite báo hỏng / không phải cơ sở dữ liệu,
-    ``quick_check`` khác ``ok``, sai cột, sai phiên bản). Lỗi khác (bận, khóa, không mở được)
-    được ném lại để báo lỗi mà không đổi tên file.
+    def stop_when_too_long() -> int:
+        nonlocal steps
+        steps += _PROGRESS_EVERY
+        return 1 if steps > limit else 0
+
+    conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
+
+
+@cache
+def _expected_schema() -> dict[bytes, frozenset[tuple]]:
+    """Các dòng ``sqlite_master`` (loại, tên, bảng, câu lệnh) của hai bảng app tạo, theo tên bảng.
+
+    Dựng bằng chính ``_CREATE_TABLES`` trong một cơ sở dữ liệu trong bộ nhớ, nên khớp đúng cách
+    SQLite đang chạy ghi lại câu lệnh (bỏ ``IF NOT EXISTS``…). Mỗi bảng có một chỉ mục tự sinh
+    cho khóa chính (câu lệnh rỗng)."""
+    with closing(sqlite3.connect(":memory:")) as conn:
+        conn.text_factory = bytes
+        for sql in _CREATE_TABLES:
+            conn.execute(sql)
+        rows = conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, 16)).fetchall()
+    schema: dict[bytes, set[tuple]] = {}
+    for row in rows:
+        schema.setdefault(row[2], set()).add(tuple(row))
+    return {name: frozenset(items) for name, items in schema.items()}
+
+
+def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
+    """Đọc ``sqlite_master`` (chưa chạm vào bảng nào): các bảng của app đang có, nếu mọi đối tượng
+    trong file đều khớp đúng ``_expected_schema``; có gì khác thì ``None`` (LC-T052-2, SL-T052-9).
+
+    Bắt được: khung nhìn, trigger, bảng ảo (``USING …``), ``WITHOUT ROWID``, ``CHECK``, cột sinh,
+    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``.
+    """
+    expected = _expected_schema()
+    limit = sum(len(items) for items in expected.values()) + 1
+    found: dict[bytes, set[tuple]] = {}
+    for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit)):
+        found.setdefault(row[2], set()).add(tuple(row))
+    for name, items in found.items():
+        if name not in expected or items != expected[name]:
+            return None
+    return frozenset(found)
+
+
+def _is_healthy(path: Path) -> bool:
+    """File là SQLite đọc được, chỉ chứa đúng các bảng app tạo (bảng chưa có thì được), đúng
+    phiên bản.
+
+    ``False`` chỉ khi **chắc chắn** hỏng hoặc lạ (SQLite báo hỏng / không phải cơ sở dữ liệu,
+    cấu trúc khác app tạo, ``quick_check`` khác ``ok``, sai phiên bản, kiểm quá số bước). Lỗi khác
+    (bận, khóa, không mở được) được ném lại để báo lỗi mà không đổi tên file.
     """
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
             # File chưa tin cậy: không chạy hàm trong view/trigger/chỉ mục của nó khi kiểm.
-            conn.execute("PRAGMA trusted_schema = OFF")
+            _guard(conn)
             conn.text_factory = bytes
+            # Trước mọi truy vấn khác (LC-T052-2): khung nhìn hay trigger đệ quy không bao giờ
+            # được chạy, kể cả bởi ``quick_check`` (kiểm ``CHECK``, cột sinh).
+            tables = _app_tables(conn)
+            if tables is None:
+                return False
             if conn.execute("PRAGMA quick_check").fetchone() != (b"ok",):
                 return False
-            tags = {row[1] for row in conn.execute("PRAGMA table_info(manual_tags)")}
-            info = {row[1] for row in conn.execute("PRAGMA table_info(info)")}
             version = None
-            if info == {b"key", b"value"}:
+            if b"info" in tables:
                 version = conn.execute(
                     "SELECT substr(value, 1, 16) FROM info WHERE key = 'schema_version'"
                 ).fetchone()
     except sqlite3.DatabaseError as exc:
-        if _is_corrupt(exc):
+        if _is_corrupt(exc) or _is_interrupted(exc):
             return False
         raise
-    if tags and tags != {name.encode() for name in _COLUMNS}:
-        return False
-    if info and info != {b"key", b"value"}:
-        return False
     return version is None or version == (SCHEMA_VERSION.encode(),)
 
 
@@ -514,13 +592,21 @@ def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:
     return "not a database" in text or "malformed" in text
 
 
+def _is_interrupted(exc: sqlite3.DatabaseError) -> bool:
+    """Truy vấn bị ``_guard`` dừng vì chạy quá số bước (``SQLITE_INTERRUPT``)."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return code & 0xFF == _SQLITE_INTERRUPT
+    return "interrupted" in str(exc).lower()
+
+
 def _db_message(exc: sqlite3.DatabaseError) -> str:
     if _is_busy(exc):
         return (
             "File lưu thẻ ảnh đang bận (có thể app mở ở tab khác đang lưu). Thử lại sau giây lát."
         )
-    if _is_corrupt(exc):
-        return "File lưu thẻ ảnh bị lỗi nên không đọc/ghi được. Thử tải lại trang."
+    if _is_corrupt(exc) or _is_interrupted(exc):
+        return _MSG_BROKEN
     return (
         "Không mở được file lưu thẻ ảnh (có thể chương trình khác đang giữ file, hoặc không có "
         "quyền ghi). Ảnh vẫn dùng thẻ đọc từ tên thư mục."
