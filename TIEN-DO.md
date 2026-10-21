@@ -63,6 +63,8 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+**Anh đã trả lời ngày 21/10: gộp phần chặn shortcode (T-061); duyệt nâng thư viện `certifi` lên 2026.10.19 (T-075, lỗi bảo mật mức Cao: app tin chứng chỉ có khóa bị lộ). Trong lúc chờ T-075 gộp: không dùng app trên Wi-Fi công cộng; sau khi gộp, mở app bằng `run.bat` / `run.command` ở cả 2 máy để tự cập nhật thư viện.**
+
 **Anh đã trả lời ngày 20/10: rút gọn phần ảnh (ảnh Zalo mất GPS): làm màn hình chọn ảnh và phiếu bắt buộc, hoãn tạo ảnh AI và phiếu GPS, chuyển sớm sang SEO và đăng bài.**
 
 **Anh đã trả lời ngày 20/10: agent phụ chạy mức Tối đa và chế độ nhanh (không ultracode); agent chỉ chạy test liên quan, Chỉ Huy chạy toàn bộ test khi gộp.**

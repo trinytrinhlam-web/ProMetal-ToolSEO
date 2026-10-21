@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-21 |
 | Giai đoạn | Chung (bảo mật toàn repo) |
 | Mức ưu tiên | **Cao, gấp** (Lá Chắn T-061, LC-T061-1) |
-| Phụ thuộc | Không. Nâng thư viện: chờ chủ dự án duyệt (`rules.md` mục 4) |
-| Trạng thái | Chờ chủ dự án duyệt |
+| Phụ thuộc | Không. Chủ dự án duyệt nâng thư viện 2026-10-21 10:05 |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ D1, D3.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 1 của Lá Chắn T-061. **Hạn:** trước T-059 (thử thật) và trước khi gộp T-056. Sau khi gộp: cả 2 máy mở app bằng `run.bat` / `run.command` (tự `uv sync`). Trong lúc chờ: không dùng app trên Wi-Fi công cộng.
+- 2026-10-21 10:05 (Chỉ Huy B): chủ dự án duyệt nâng `certifi`. Làm trên nhánh tạm `team/T-075`, tạo từ `main` sau khi gộp T-061.
