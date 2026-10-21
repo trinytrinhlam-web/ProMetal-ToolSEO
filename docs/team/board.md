@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 13:39 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 13:56 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -13,7 +13,7 @@ _Cập nhật: 2026-10-21 13:39 (Chỉ Huy B)._
 | 0 · Bộ khung | **100%** | App mở bằng `run.bat`, đăng nhập bằng mật khẩu |
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
-| 3 · Ảnh | **khoảng 80%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn (đang kiểm). Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
+| 3 · Ảnh | **khoảng 85%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn. Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
 | 4 · SEO trên trang | **khoảng 45%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. Còn: liên kết nội bộ, **màn hình bước SEO** |
 | 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
@@ -34,7 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Soi Lỗi · T-077 kiểm nhanh tên công cụ AI | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). ⏳ **13:39 Soi Lỗi rút gọn đang kiểm**; rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-077-tho-may.md) |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Lá Chắn rút gọn (chưa giao) | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). 13:55 Soi Lỗi rút gọn **ĐẠT** (`0cbd4f3`: 0 lỗi; 231 cách gõ tên công cụ AI đều ra ảnh AI, 44 ca đối chứng ảnh thật vẫn là ảnh thật). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-077-tho-may.md) · [Soi Lỗi](reports/T-077-soi-loi.md) |
 
 ## Chờ
 
@@ -74,8 +74,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
-| [T-075](tickets/T-075-nang-certifi.md) | Nâng `certifi` 2026.7.22 → 2026.10.19 (GHSA-6q48-6c7w-9gw2, LC-T061-1 Cao): app không còn tin chứng chỉ do khóa bị lộ ký | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-075-tho-may.md) · [Soi Lỗi](reports/T-075-soi-loi.md) rút gọn: đạt (0 lỗi) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-075-la-chan.md) (Opus tạm), LC-T061-1 đóng; LC-T075-1 (công cụ `uv` cũ) → T-078. Gộp vào `main` `0d398c2`: Windows đang chạy toàn bộ test (21/10) |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp nhớ ảnh đã chọn cho từng chỗ cần ảnh (ảnh thật theo thư mục số + đường dẫn tương đối, ảnh AI kèm prompt), alt, chú thích; mở lại nháp thì kiểm lại ảnh trên máy | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-055-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-055-soi-loi.md) (3 lượt): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-055-la-chan.md) (Opus tạm): LC-T055-1 Trung bình → T-056 (2a–d), T-076; LC-T055-2, -3 → T-076; LC-T055-4 sửa ở lượt 3. Gộp vào `main` `64fd0c8`: Windows đang chạy toàn bộ test (21/10) |
+| [T-075](tickets/T-075-nang-certifi.md) | Nâng `certifi` 2026.7.22 → 2026.10.19 (GHSA-6q48-6c7w-9gw2, LC-T061-1 Cao): app không còn tin chứng chỉ do khóa bị lộ ký | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-075-tho-may.md) · [Soi Lỗi](reports/T-075-soi-loi.md) rút gọn: đạt (0 lỗi) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-075-la-chan.md) (Opus tạm), LC-T061-1 đóng; LC-T075-1 (công cụ `uv` cũ) → T-078. Gộp vào `main` `0d398c2`: Windows 10.441 qua, 0 hỏng (21/10, cùng lượt với T-055/T-075; `uv sync` cài `certifi` 2026.10.19); ruff sạch |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp nhớ ảnh đã chọn cho từng chỗ cần ảnh (ảnh thật theo thư mục số + đường dẫn tương đối, ảnh AI kèm prompt), alt, chú thích; mở lại nháp thì kiểm lại ảnh trên máy | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-055-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-055-soi-loi.md) (3 lượt): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-055-la-chan.md) (Opus tạm): LC-T055-1 Trung bình → T-056 (2a–d), T-076; LC-T055-2, -3 → T-076; LC-T055-4 sửa ở lượt 3. Gộp vào `main` `64fd0c8`: Windows 10.441 qua, 0 hỏng (21/10, cùng lượt với T-055/T-075; `uv sync` cài `certifi` 2026.10.19); ruff sạch |
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2: kiểm cấu trúc file thẻ theo danh sách và trong cùng giao dịch, giới hạn độ dài giá trị, tách tên file chỗ chữ dính số, thêm "AIgen", "mô phỏng" | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-074-tho-may.md) · [Soi Lỗi](reports/T-074-soi-loi.md) rút gọn: đạt có điều kiện (2 Thấp) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-074-la-chan.md) (Opus tạm): LC-T070-1, -2 đóng; LC-T074-1 → T-077; điều kiện → T-056 (i, j), T-069. Gộp vào `main` `ae2ae8e`: Windows 10.135 qua, 0 hỏng (21/10, chạy cùng 3 agent); ruff sạch |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress: mọi `[` `]` app gửi lên WordPress (nội dung, tiêu đề, đoạn trích, alt, chú thích, ô Media) thành `&#91;` `&#93;`; chữ SEO dạng shortcode bị chặn; `_fields` cố định cho 6 lệnh ghi | Thợ Máy | 2026-10-21 | [Thợ Máy](reports/T-061-tho-may.md) · [Soi Lỗi](reports/T-061-soi-loi.md): đạt có điều kiện (2 Thấp) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-061-la-chan.md) (Opus tạm): LC-T054-1 đóng, LC-T042-3 đóng phần app; 4 Thấp → T-056, T-059, T-060; LC-T061-1 Cao toàn repo → T-075. Gộp vào `main` `975d323`: Windows 9.915 qua, 0 hỏng (lượt đầu Python sập khi nạp `sqlite3` lúc khởi động, trước khi chạy test nào; chạy lại qua); ruff sạch |
 | [T-070](tickets/T-070-don-loi-the-anh.md) | Dọn lỗi thẻ ảnh: nhận ảnh AI theo tên ("minh họa", "trí tuệ nhân tạo", genai, Copilot, Designer…; `is_ai_name`), kho thẻ sửa tay kiểm cấu trúc trước khi đọc, `get_many` giữ ảnh AI | Thợ Máy | 2026-10-20 | [Thợ Máy](reports/T-070-tho-may.md) · [Soi Lỗi](reports/T-070-soi-loi.md) rút gọn: đạt có điều kiện (5 Thấp) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-070-la-chan.md) (Opus tạm), 2 Thấp LC-T070-1, -2 → T-074 (trước T-056); điều kiện → T-056 (g), (h), T-069. Gộp vào `main` `588c76f`: Windows 9.740 qua, 0 hỏng (21/10, chạy cùng 3 agent); ruff sạch |
