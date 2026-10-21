@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 13:58 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 14:46 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Lá Chắn · T-077 kiểm nhanh tên công cụ AI | `team/T-077` | 13:35 Thợ Máy **xong** (`36d6470`: đủ yêu cầu 1–4, gỡ `xfail` SL-T074-1, -2, LC-T074-1; 7 file liên quan 1.323 qua, 0 hỏng). 13:55 Soi Lỗi rút gọn **ĐẠT** (`0cbd4f3`: 0 lỗi; 231 cách gõ tên công cụ AI đều ra ảnh AI, 44 ca đối chứng ảnh thật vẫn là ảnh thật). ⏳ **13:58 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-077-tho-may.md) · [Soi Lỗi](reports/T-077-soi-loi.md) |
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Thợ Máy · T-076 tên thư mục trên ổ | `team/T-076` | ⏳ **13:58 Thợ Máy đang làm** | |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy · T-039 liên kết nội bộ | `team/T-039` | ⏳ **13:58 Thợ Máy đang làm** | |
+| [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) | Dọn thẻ ảnh nhỏ: tên công cụ AI gõ khác dạng chuẩn (LC-T074-1), `get_many` đọc xong mới xử lý (SL-T074-1). **Phải gộp trước T-056** | Chỉ Huy (chờ cho gộp) | `team/T-077` | Thợ Máy xong (`36d6470`). Soi Lỗi rút gọn **ĐẠT** (`0cbd4f3`, 0 lỗi). 14:41 Lá Chắn rút gọn **ĐẠT** (`9333508`, Opus tạm; 0 lỗi; LC-T074-1 đóng, LC-T070-2 giữ; **gộp được ngay**). ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-077-tho-may.md) · [Soi Lỗi](reports/T-077-soi-loi.md) · [Lá Chắn](reports/T-077-la-chan.md) |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Soi Lỗi (chưa giao) | `team/T-076` | 14:41 Thợ Máy **xong** (`3bb126e`: đủ yêu cầu 1–4; `list_folder`, `stat_image` trả tên trên ổ; đổi tên giữa chừng thì báo "chưa kiểm được"; thư mục gốc hơn 5.000 mục vẫn dùng được; gỡ `xfail` SL-T055-4, -5; test liên quan 1.435 qua). ⏳ **Chờ giao Soi Lỗi** | [Thợ Máy](reports/T-076-tho-may.md) |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Soi Lỗi (chưa giao) | `team/T-039` | 14:45 Thợ Máy **xong** (`bf1f889`: `seo_app/onpage/links.py` mới; AI chỉ thấy ID + tiêu đề, code kiểm từng gợi ý, chèn link bằng `html.parser`, kiểm link nháp/hỏng; `prompts.py` chỉ thêm; 24 file test liên quan 2.320 qua). ⏳ **Chờ giao Soi Lỗi** | [Thợ Máy](reports/T-039-tho-may.md) |
 
 ## Chờ
 
