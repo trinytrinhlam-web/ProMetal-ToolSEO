@@ -12,6 +12,10 @@ Lượt 2 (sau khi Thợ Máy sửa SL-T055-1 → 3): tên thư mục thật tr�
 đổi tên/xóa/tráo liên kết giữa chừng, không mở file ảnh, danh sách bị cắt) và tiền tố ảnh AI
 (không lặp, không mất "đã duyệt" oan).
 
+Lượt 3 (LC-T055-4): từ T-070 "genai" viết kiểu nào cũng là ảnh AI, nên cặp tên thử đổi sang
+``CongAI`` (ảnh AI chỉ nhờ tách chữ hoa) / ``congai``, ``Congai`` (ảnh thật); test dựa vào cặp này
+kiểm điều kiện đầu bằng ``assert_ai_only_by_case``.
+
 Lỗi tìm được đánh dấu ``xfail(strict=True)`` kèm mã SL-T055-x (xem
 ``docs/team/reports/T-055-soi-loi.md``). Mọi test dùng thư mục tạm, ảnh giả, không gọi mạng.
 """
@@ -59,7 +63,10 @@ PROJECT = "CT012 - Cổng inox - Tân Phú"
 REAL_PATH = f"{PROJECT}/truoc/IMG_0001.jpg"
 AI_FOLDER = "Ảnh AI"
 AI_PATH = f"{AI_FOLDER}/cong-minh-hoa.png"
-CAMEL_AI_PATH = f"{PROJECT}/GenAI/cong.png"  # "GenAI": nhận ra ảnh AI nhờ tách chữ hoa (T-052)
+# "CongAI": thư mục ảnh AI chỉ nhờ tách chữ hoa ("Cong AI", T-052); "congai", "Congai" thì không.
+# Không dùng "GenAI": từ T-070 "genai" viết kiểu nào cũng là ảnh AI (LC-T055-4).
+CAMEL_AI_PATH = f"{PROJECT}/CongAI/cong.png"
+CASE_VARIANT = CAMEL_AI_PATH.replace("CongAI", "congai")  # nháp ghi chữ thường
 OUTSIDE_NAME = "bi-mat-ngoai-goc.jpg"
 FAKE_JPEG = b"\xff\xd8\xff anh gia"
 OUTSIDE_BYTES = b"\xff\xd8\xff BI MAT NGOAI GOC"
@@ -198,6 +205,14 @@ class FileSpy:
 def is_case_insensitive(folder: Path) -> bool:
     probe = next(folder.iterdir())
     return (folder / probe.name.swapcase()).exists() and probe.name.swapcase() != probe.name
+
+
+def assert_ai_only_by_case(ai_path: str, other_case: str) -> None:
+    """Điều kiện đầu (LC-T055-4): ``ai_path`` là ảnh AI chỉ nhờ chữ hoa, cùng tên viết hoa thường
+    khác (``other_case``) thì không, nên thẻ phải theo đúng tên trên ổ thì test mới qua. Đổi cách
+    nhận tên ảnh AI làm mất điều này thì test hỏng ở đây, không qua oan."""
+    assert tags_for_image(ImageRef(0, ai_path)).tags.is_ai
+    assert not tags_for_image(ImageRef(0, other_case)).tags.is_ai
 
 
 # ----- F1: số gốc sửa tay -------------------------------------------------------------------
@@ -463,30 +478,32 @@ def test_bad_current_tags_are_rebuilt_and_fall_back_to_ai(library, monkeypatch):
 
 @pytest.mark.parametrize("with_store", [False, True], ids=["khong-kho-the", "co-kho-the"])
 def test_sl_t055_1_case_variant_cannot_launder_ai_folder(library, root, tag_store, with_store):
-    """SL-T055-1 (Trung bình). Thư mục "GenAI" là thư mục ảnh AI (T-052 tách chữ hoa). Nháp sửa tay
-    ghi ``.../genai/cong.png``, nguồn "that": trên Windows/Mac ``stat_image`` vẫn tìm ra đúng file
-    (không phân biệt hoa thường) nhưng thẻ đọc từ **chữ trong nháp** nên ra ảnh thật, còn mang mã
-    công trình CT012 và khu vực Tân Phú. Mong đợi: là ảnh AI (hoặc không dùng được)."""
+    """SL-T055-1 (Trung bình). Thư mục "CongAI" là thư mục ảnh AI (T-052 tách chữ hoa). Nháp sửa
+    tay ghi ``.../congai/cong.png``, nguồn "that": trên Windows/Mac ``stat_image`` vẫn tìm ra đúng
+    file (không phân biệt hoa thường) nhưng thẻ đọc từ **chữ trong nháp** nên ra ảnh thật, còn mang
+    mã công trình CT012 và khu vực Tân Phú. Mong đợi: là ảnh AI (hoặc không dùng được)."""
+    assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
     if not is_case_insensitive(root):
         pytest.skip("ổ phân biệt hoa thường: tên khác hoa thường là file khác")
-    variant = CAMEL_AI_PATH.replace("GenAI", "genai")
     kwargs = {"tag_store": tag_store} if with_store else {}
-    result = check_chosen_image(real_image(rel_path=variant), library, **kwargs)
+    result = check_chosen_image(real_image(rel_path=CASE_VARIANT), library, **kwargs)
     assert result.is_ai or not result.available
     assert result.tags.project_code == ""
 
 
 def test_sl_t055_1_case_only_folder_rename_keeps_ai(store, library, root):
-    """SL-T055-1, đường không cần sửa tay: chọn ảnh khi thư mục tên "Genai" (chưa nhận là AI), sau
-    đó đổi tên thư mục thành "GenAI" (thành thư mục ảnh AI). Mở lại nháp, chưa quét: ra ảnh thật."""
-    old = write(root / "Genai" / "cong.png", b"\x89PNG")
+    """SL-T055-1, đường không cần sửa tay: chọn ảnh khi thư mục tên "Congai" (chưa nhận là AI),
+    sau đó đổi tên thư mục thành "CongAI" (thành thư mục ảnh AI). Mở lại nháp, chưa quét: ra ảnh
+    thật."""
+    assert_ai_only_by_case("CongAI/cong.png", "Congai/cong.png")
+    old = write(root / "Congai" / "cong.png", b"\x89PNG")
     if not is_case_insensitive(root):
         pytest.skip("ổ phân biệt hoa thường: tên khác hoa thường là file khác")
-    ref = ImageRef(0, "Genai/cong.png")
+    ref = ImageRef(0, "Congai/cong.png")
     picked = DraftImage.from_library(ref, tags_for_image(ref).tags, alt=REAL_ALT)
     assert picked.source == SOURCE_REAL
     saved = store.save(snapshot_with(picked))
-    old.parent.rename(root / "GenAI")
+    old.parent.rename(root / "CongAI")
     result = check_draft_images(store.load(saved.id), library)[1]
     assert result.is_ai or not result.available
 
@@ -494,12 +511,12 @@ def test_sl_t055_1_case_only_folder_rename_keeps_ai(store, library, root):
 def test_scanned_refs_fix_case_variant(library, root, tag_store):
     """Đường đã đúng hôm nay: có kết quả quét (``scanned``) thì khóa về đúng ``ImageRef`` trên ổ và
     thẻ ra ảnh AI. SL-T055-1 chỉ xảy ra khi mở nháp mà chưa truyền ``scanned``."""
+    assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
     if not is_case_insensitive(root):
         pytest.skip("ổ phân biệt hoa thường: tên khác hoa thường là file khác")
-    listing = library.list_folder(0, f"{PROJECT}/GenAI")
-    variant = CAMEL_AI_PATH.replace("GenAI", "genai")
+    listing = library.list_folder(0, f"{PROJECT}/CongAI")
     result = check_chosen_image(
-        real_image(rel_path=variant), library, tag_store=tag_store, scanned=listing.images
+        real_image(rel_path=CASE_VARIANT), library, tag_store=tag_store, scanned=listing.images
     )
     assert result.ref == ImageRef(0, CAMEL_AI_PATH)
     assert result.is_ai and result.tags.project_code == ""
@@ -720,9 +737,6 @@ def test_round_trip_many_images_keeps_every_choice(store, library, root):
 # ===== Lượt 2: tên thư mục thật trên ổ (SL-T055-1 đã sửa bằng ``_FolderNames``) ================
 
 
-GENAI_VARIANT = CAMEL_AI_PATH.replace("GenAI", "genai")  # nháp ghi chữ thường
-
-
 class CaseSensitiveDisk:
     """Giả ổ **phân biệt** hoa thường (Linux, APFS bản phân biệt, thư mục NTFS bật phân biệt hoa
     thường): ``stat_image`` chỉ thấy đúng tên trong ``files`` (mỗi file một cỡ để biết là file
@@ -746,27 +760,31 @@ class CaseSensitiveDisk:
 
 @pytest.mark.parametrize(
     ("draft_path", "seen"),
-    [("genai/cong.png", ("GenAI",)), ("GenAI/cong.png", ("genai",))],
-    ids=["nhap-genai-chi-thay-GenAI", "nhap-GenAI-chi-thay-genai"],
+    [("congai/cong.png", ("CongAI",)), ("CongAI/cong.png", ("congai",))],
+    ids=["nhap-congai-chi-thay-CongAI", "nhap-CongAI-chi-thay-congai"],
 )
 @pytest.mark.xfail(
     strict=True,
     reason="SL-T055-4: tên thư mục 'thật' lấy từ danh sách bị cắt, không kiểm lại là cùng file",
 )
 def test_sl_t055_4_real_name_must_point_to_the_checked_file(monkeypatch, library, draft_path, seen):
-    """SL-T055-4 (Thấp). Ổ phân biệt hoa thường có cả ``GenAI/cong.png`` (ảnh AI) lẫn
-    ``genai/cong.png`` (một file khác). ``stat_image`` thấy đúng file nháp ghi; danh sách thư mục
+    """SL-T055-4 (Thấp). Ổ phân biệt hoa thường có cả ``CongAI/cong.png`` (ảnh AI) lẫn
+    ``congai/cong.png`` (một file khác). ``stat_image`` thấy đúng file nháp ghi; danh sách thư mục
     gốc bị cắt nên chỉ thấy tên kia. ``_FolderNames`` lấy tên kia làm "tên thật" (trùng không phân
     biệt hoa thường, đúng một) và đổi ``ref``, ``entry.ref`` sang **file khác** mà không kiểm lại:
     ảnh vẫn "dùng được", đọc ảnh sau này ra ảnh khác ảnh đã chọn; ca thứ hai còn làm ảnh nháp ghi
-    trong thư mục ``GenAI`` thành ảnh thật. Mong đợi: ``ref`` dùng được thì đúng là file đã kiểm."""
-    files = {"GenAI/cong.png": 111, "genai/cong.png": 222}
+    trong thư mục ``CongAI`` thành ảnh thật. Mong đợi: ``ref`` dùng được thì đúng là file đã
+    kiểm."""
+    # Còn ``xfail`` thì câu này hỏng cũng bị tính là "hỏng như dự kiến"; các test SL-T055-1 ở trên
+    # (không ``xfail``) kiểm cùng cặp tên. Gỡ ``xfail`` (đã sửa SL-T055-4) thì câu này có hiệu lực.
+    assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
+    files = {"CongAI/cong.png": 111, "congai/cong.png": 222}
     CaseSensitiveDisk(monkeypatch, files, seen)
     result = check_chosen_image(real_image(rel_path=draft_path), library)
     if result.available:
         assert result.ref == ImageRef(0, draft_path)
         assert result.entry.size == files[result.ref.rel_path]
-    if draft_path.startswith("GenAI/"):
+    if draft_path.startswith("CongAI/"):
         assert result.is_ai
 
 
@@ -778,20 +796,20 @@ def test_sl_t055_4_folder_swapped_during_check_on_real_disk(monkeypatch, library
     """SL-T055-4 trên ổ thật (Windows, Mac): giữa lúc ``stat_image`` và lúc xem tên thư mục, thư mục
     chứa ảnh bị đổi tên đi và một thư mục khác được đổi tên thành tên trùng hoa thường. ``ref``
     chuyển sang file của thư mục kia, ``entry`` vẫn là số liệu của file cũ."""
-    write(root / "Genai" / "cong.png", b"\x89PNG anh da chon")
+    write(root / "Congai" / "cong.png", b"\x89PNG anh da chon")
     write(root / "Khac" / "cong.png", b"\x89PNG mot anh khac han, dai hon")
-    if not (root / "genai").exists():
-        pytest.skip("ổ phân biệt hoa thường: nháp 'genai' không trỏ tới 'Genai'")
+    if not (root / "congai").exists():
+        pytest.skip("ổ phân biệt hoa thường: nháp 'congai' không trỏ tới 'Congai'")
     original = ImageLibrary.list_folder
 
     def swap_then_list(self, root_index, rel_dir="", **kwargs):
         if rel_dir == "":
-            os.rename(root / "Genai", root / "Genai cu")
-            os.rename(root / "Khac", root / "GenAI")
+            os.rename(root / "Congai", root / "Congai cu")
+            os.rename(root / "Khac", root / "CongAI")
         return original(self, root_index, rel_dir, **kwargs)
 
     monkeypatch.setattr(ImageLibrary, "list_folder", swap_then_list)
-    result = check_chosen_image(real_image(rel_path="genai/cong.png"), library)
+    result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
     monkeypatch.undo()
     if result.available:
         assert library.stat_image(result.ref).size == result.entry.size
@@ -853,10 +871,11 @@ class MacDisk:
 
 
 def test_mac_nfd_folder_names_keep_ai_and_real_tags(monkeypatch, library):
-    """Mac lưu tên dạng NFD, nháp ghi NFC (và chữ thường "genai"): vẫn lấy đúng tên trên ổ, ảnh
-    trong "GenAI" là ảnh AI không mã công trình; ảnh thật giữ mã công trình, khu vực."""
+    """Mac lưu tên dạng NFD, nháp ghi NFC (và chữ thường "congai"): vẫn lấy đúng tên trên ổ, ảnh
+    trong "CongAI" là ảnh AI không mã công trình; ảnh thật giữ mã công trình, khu vực."""
+    assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
     disk = MacDisk(monkeypatch, [CAMEL_AI_PATH, REAL_PATH])
-    ai = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    ai = check_chosen_image(real_image(rel_path=CASE_VARIANT), library)
     assert ai.available and ai.is_ai and ai.tags.project_code == ""
     assert ai.ref.rel_path == unicodedata.normalize("NFD", CAMEL_AI_PATH)
     real = check_chosen_image(real_image(), library)
@@ -870,14 +889,15 @@ def test_ntfs_nfc_and_nfd_sibling_folders_are_told_apart(library, root):
     trong nháp trùng hẳn thì lấy đúng thư mục đó, không báo "chưa kiểm được"."""
     nfc = "Tân Phú"
     nfd = unicodedata.normalize("NFD", nfc)
-    write(root / nfc / "GenAI" / "a.png", b"\x89PNG")
+    assert_ai_only_by_case(f"{nfc}/CongAI/a.png", f"{nfc}/congai/a.png")
+    write(root / nfc / "CongAI" / "a.png", b"\x89PNG")
     write(root / nfd / "truoc" / "a.png", b"\x89PNG")
     if len({path.name for path in root.iterdir()} & {nfc, nfd}) != 2:
         pytest.skip("ổ gộp NFC/NFD (Mac): không có hai thư mục riêng")
     if not is_case_insensitive(root / nfc):
-        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
-    ai = check_chosen_image(real_image(rel_path=f"{nfc}/genai/a.png"), library)
-    assert ai.available and ai.is_ai and ai.ref.rel_path == f"{nfc}/GenAI/a.png"
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác")
+    ai = check_chosen_image(real_image(rel_path=f"{nfc}/congai/a.png"), library)
+    assert ai.available and ai.is_ai and ai.ref.rel_path == f"{nfc}/CongAI/a.png"
     real = check_chosen_image(real_image(rel_path=f"{nfd}/TRUOC/a.png"), library)
     assert real.available and not real.is_ai and real.ref.rel_path == f"{nfd}/truoc/a.png"
 
@@ -885,6 +905,7 @@ def test_ntfs_nfc_and_nfd_sibling_folders_are_told_apart(library, root):
 def test_check_opens_no_image_file(monkeypatch, library):
     """Kiểm tên thư mục chỉ mở thư mục (đọc tên, ``stat``), không mở file ảnh nào: Drive "chỉ trực
     tuyến" không bị tải về. Theo dõi ``os.open``, ``open`` và chỗ giữ thư mục của Windows."""
+    assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
     opened: list[str] = []
     real_os_open, real_open, real_hold = os.open, builtins.open, folders._win_hold_dir
 
@@ -905,7 +926,7 @@ def test_check_opens_no_image_file(monkeypatch, library):
     monkeypatch.setattr(io, "open", spy_open)
     monkeypatch.setattr(folders, "_win_hold_dir", spy_hold)
     monkeypatch.setattr(ImageLibrary, "read_image_bytes", None)
-    result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    result = check_chosen_image(real_image(rel_path=CASE_VARIANT), library)
     monkeypatch.undo()
     if result.available:  # ổ không phân biệt hoa thường: đã xem tên thư mục
         assert opened and result.is_ai and result.ref.rel_path == CAMEL_AI_PATH
@@ -920,16 +941,16 @@ def test_folder_renamed_or_deleted_during_check(monkeypatch, library, root, tmp_
 
     def change_then_list(self, root_index, rel_dir="", **kwargs):
         if rel_dir == PROJECT:
-            target = root / PROJECT / "GenAI"
+            target = root / PROJECT / "CongAI"
             if change == "xoa":
                 (target / "cong.png").unlink()
                 target.rmdir()
             else:
-                os.rename(target, root / PROJECT / "GenAI cu")
+                os.rename(target, root / PROJECT / "CongAI cu")
         return original(self, root_index, rel_dir, **kwargs)
 
     monkeypatch.setattr(ImageLibrary, "list_folder", change_then_list)
-    result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    result = check_chosen_image(real_image(rel_path=CASE_VARIANT), library)
     assert not result.available
     assert str(tmp_path) not in result.message and "\\" not in result.message
 
@@ -942,7 +963,7 @@ def test_junction_swapped_in_during_check_is_unavailable(monkeypatch, library, r
     import shutil
 
     outside = tmp_path / "ngoai"
-    write(outside / "GenAI" / "cong.png", OUTSIDE_BYTES)
+    write(outside / "CongAI" / "cong.png", OUTSIDE_BYTES)
     original = ImageLibrary.list_folder
 
     def swap_then_list(self, root_index, rel_dir="", **kwargs):
@@ -953,7 +974,7 @@ def test_junction_swapped_in_during_check_is_unavailable(monkeypatch, library, r
 
     monkeypatch.setattr(ImageLibrary, "list_folder", swap_then_list)
     try:
-        result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+        result = check_chosen_image(real_image(rel_path=CASE_VARIANT), library)
     finally:
         monkeypatch.undo()
         if (root / PROJECT).is_junction():
@@ -974,7 +995,7 @@ def ai_way(case: str, tag_store: ImageTagStore) -> tuple[DraftImage, dict]:
     if case == "nhap-ghi-AI":
         return real_image(source=SOURCE_AI, **texts), {}
     if case == "thu-muc-AI-hoa-thuong":
-        return real_image(rel_path=GENAI_VARIANT, **texts), {}
+        return real_image(rel_path=CASE_VARIANT, **texts), {}
     if case == "the-sua-tay-AI":
         tag_store.set(ImageRef(0, REAL_PATH), ImageTags(source=SOURCE_AI))
         return real_image(**texts), {"tag_store": tag_store}
@@ -990,8 +1011,10 @@ def test_prefixed_alt_never_loses_approval(store, library, root, tag_store, case
     """Không mất "đã duyệt" oan: alt đã có «Minh họa» thì giữ nguyên và vẫn đã duyệt; chú thích
     được thêm tiền tố mà không kéo theo alt."""
     image, kwargs = ai_way(case, tag_store)
-    if case == "thu-muc-AI-hoa-thuong" and not is_case_insensitive(root):
-        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
+    if case == "thu-muc-AI-hoa-thuong":
+        assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
+        if not is_case_insensitive(root):
+            pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác")
     saved = store.save(snapshot_with(image))
     result = check_draft_images(store.load(saved.id), library, **kwargs)[1]
     assert result.is_ai
@@ -1002,10 +1025,11 @@ def test_prefixed_alt_never_loses_approval(store, library, root, tag_store, case
 def test_prefix_is_not_repeated_over_many_save_open_cycles(store, library, root):
     """Mở nháp, kiểm, lưu lại bằng ``checked.image`` (như giao diện sẽ làm) nhiều lần: tiền tố chỉ
     thêm một lần, không thành «Minh họa minh họa…»; duyệt lại một lần thì giữ "đã duyệt"."""
+    assert_ai_only_by_case(CAMEL_AI_PATH, CASE_VARIANT)
     if not is_case_insensitive(root):
-        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác")
     images = (
-        real_image(rel_path=GENAI_VARIANT),  # thư mục AI, nháp ghi ảnh thật, chữ thường
+        real_image(rel_path=CASE_VARIANT),  # thư mục AI, nháp ghi ảnh thật, chữ thường
         real_image(source=SOURCE_AI),  # nháp ghi AI
         DraftImage(source=SOURCE_AI, prompt="cổng", alt="Cổng inox", alt_approved=True),
     )
