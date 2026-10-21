@@ -126,8 +126,9 @@ def _oversized_sql(table: str, columns: Iterable[str]) -> str:
 
 # Ô dài hơn ``_MAX_SQLITE_LENGTH`` (app không bao giờ ghi): đọc ô đó báo ``SQLITE_TOOBIG`` ở mọi
 # lần đọc (``substr`` vẫn nạp cả ô), còn ``quick_check`` vẫn ra ``ok``. ``_is_healthy`` đọc thử mọi
-# ô (``CAST`` sang khối byte phải nạp ô chữ; ô khối byte thì so độ dài), để file như vậy bị đổi tên
-# sang một bên thay vì làm kho kẹt mãi ở câu báo lỗi. Chỉ ghép tên bảng, tên cột hằng.
+# ô (``CAST`` phải nạp cả ô: ô quá dài báo ``SQLITE_TOOBIG``; nếu SQLite nào đó không nạp thì phép
+# so độ dài vẫn bắt), để file như vậy bị đổi tên sang một bên thay vì làm kho kẹt mãi ở câu báo
+# lỗi. Chỉ ghép tên bảng, tên cột hằng.
 _OVERSIZED_SQL = {
     b"manual_tags": _oversized_sql("manual_tags", _COLUMNS),
     b"info": _oversized_sql("info", ("key", "value")),

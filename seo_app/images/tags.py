@@ -35,11 +35,12 @@ An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T0
   mục gốc không bao giờ được đọc. Tên file ảnh không cho thẻ nào; chỉ dùng để nhận dấu hiệu ảnh AI.
 - Ảnh AI luôn có ``source = "ai"`` và không mang mã công trình, khu vực, trước/sau (chỉ được giữ
   hạng mục). Dấu hiệu ảnh AI (chữ ``AI`` đứng riêng, ``GenAI``, cụm ``minh họa``, ``trí tuệ nhân
-  tạo``, ``phối cảnh``, tên công cụ tạo ảnh như ``Gemini``, ``Midjourney``, ``Copilot``,
-  ``Designer``, ``Leonardo``…) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới gốc, kể cả
-  phần không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
-  (``Gemini_Generated_Image_….png``, ``Designer (3).png``). Thấy ở đâu thì cả nhánh, hay ảnh đó,
-  là ảnh AI. Không chắc thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa
+  tạo``, ``phối cảnh``, ``mô phỏng``, tên công cụ tạo ảnh như ``Gemini``, ``Midjourney``,
+  ``Copilot``, ``Designer``, ``Leonardo``…) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới
+  gốc, kể cả phần không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
+  (``Gemini_Generated_Image_….png``, ``Designer (3).png``, ``AI01.png``, ``dalle3_….png``: tên file
+  tách cả chỗ chữ dính số, không tách theo chữ hoa). Thấy ở đâu thì cả nhánh, hay ảnh đó, là ảnh
+  AI. Không chắc thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa
   chữ nào ra ngoài. Tên thư mục gốc không được đọc: nơi gọi kiểm nó bằng ``is_ai_name``.
 - Module chỉ xử lý chữ: không đọc ổ đĩa, không mở hay ghi file.
 """
@@ -264,11 +265,26 @@ _AI_PHRASES = (
     "render",
     "do máy tạo",
     "tạo tự động",
+    # T-074 (SL-T070-5): "ảnh mô phỏng", "hình mô phỏng 3D" là ảnh dựng. Không thêm "ảnh dựng":
+    # "Ảnh dựng khung" là ảnh thật chụp lúc dựng khung.
+    "mô phỏng",
 )
 # Dạng viết liền không tách được bằng chữ hoa ("genai", "GENAI": T-070, LC-T052-1 c) có sẵn từ
 # dạng liền của mọi dấu hiệu nhiều chữ (``_build_ai_markers``); thêm ở đây các dạng không có trong
 # danh sách trên. "OIG…" là tên file ảnh của Bing Image Creator / Copilot ("OIG3.Ab1c….jpg").
-_AI_JOINED = ("GenAI", "AI image", "AI images", "AI art", "OIG", "OIG1", "OIG2", "OIG3", "OIG4")
+# "AIgen" (T-074): chữ hoa đứng trước chữ thường không tách được ("AIgen" là một từ "aigen").
+_AI_JOINED = (
+    "GenAI",
+    "AIgen",
+    "AI image",
+    "AI images",
+    "AI art",
+    "OIG",
+    "OIG1",
+    "OIG2",
+    "OIG3",
+    "OIG4",
+)
 # Dấu hiệu ảnh AI tìm ở mọi chỗ của tên (SL-T052-1), kể cả trong phần không khớp danh sách:
 # "Ảnh do AI tạo", "AI images", "Ảnh AI Gemini", "GenAI". So không phân biệt hoa thường nhưng
 # phân biệt dấu: "Ái" (tên người) không phải AI.
@@ -404,22 +420,26 @@ def _is_word_char(ch: str) -> bool:
     return ch.isalnum() or unicodedata.category(ch).startswith("M")
 
 
-def _starts_new_word(prev: str, ch: str) -> bool:
-    """Chữ dính liền: "TanPhu" → "Tan Phu", "Q7" → "Q 7", "CT012" → "CT 012"."""
-    if prev.isdigit() != ch.isdigit() and prev.isalnum() and ch.isalnum():
+def _starts_new_word(prev: str, ch: str, *, split_case: bool, split_digits: bool) -> bool:
+    """Chữ dính liền. ``split_digits``: chữ dính số ("Q7" → "Q 7", "CT012" → "CT 012", "AI01" →
+    "AI 01"); ``split_case``: chữ thường dính chữ hoa ("TanPhu" → "Tan Phu")."""
+    if split_digits and prev.isdigit() != ch.isdigit() and prev.isalnum() and ch.isalnum():
         return True
-    return prev.islower() and ch.isupper()
+    return split_case and prev.islower() and ch.isupper()
 
 
-def _tokens(text: str, *, split_case: bool = True) -> list[str]:
-    """Các từ của ``text`` (đã làm sạch), giữ dấu, chữ thường. ``split_case``: tách cả chữ dính
-    liền ("TanPhu", "Q7"); không thì chỉ tách ở dấu cách, dấu câu, gạch dưới."""
+def _tokens(text: str, *, split_case: bool = True, split_digits: bool = True) -> list[str]:
+    """Các từ của ``text`` (đã làm sạch), giữ dấu, chữ thường. ``split_digits``: tách chữ dính số
+    ("Q7", "AI01"); ``split_case``: tách cả chữ dính liền theo chữ hoa ("TanPhu"). Không tách gì
+    thì chỉ tách ở dấu cách, dấu câu, gạch dưới."""
     words: list[str] = []
     buffer: list[str] = []
     prev = ""
     for ch in text:
         if _is_word_char(ch):
-            if buffer and split_case and _starts_new_word(prev, ch):
+            if buffer and _starts_new_word(
+                prev, ch, split_case=split_case, split_digits=split_digits
+            ):
                 words.append("".join(buffer))
                 buffer = []
             buffer.append(ch)
@@ -442,13 +462,18 @@ def _is_number(word: str) -> bool:
 
 
 def _build_ai_markers() -> frozenset[tuple[str, ...]]:
-    """Mỗi dấu hiệu ở dạng có dấu và không dấu, tách và không tách chữ dính liền, và dạng viết
-    liền của dấu hiệu nhiều chữ ("genai", "minhhoa", "stablediffusion")."""
+    """Mỗi dấu hiệu ở dạng có dấu và không dấu, ở mọi cách tách của ``_tokens`` (tách cả chữ hoa
+    và chữ ↔ số, chỉ chữ ↔ số, không tách), và dạng viết liền của dấu hiệu nhiều chữ ("genai",
+    "minhhoa", "stablediffusion")."""
     markers = set()
     for text in _AI_MARKER_TEXTS:
         for variant in (text, remove_accents(text)):
-            for split_case in (True, False):
-                words = tuple(_tokens(clean_folder_name(variant), split_case=split_case))
+            for split_case, split_digits in ((True, True), (False, True), (False, False)):
+                words = tuple(
+                    _tokens(
+                        clean_folder_name(variant), split_case=split_case, split_digits=split_digits
+                    )
+                )
                 markers.add(words)
                 markers.add(("".join(words),))
     return frozenset(markers)
@@ -461,7 +486,9 @@ _MAX_MARKER_WORDS = max(len(marker) for marker in _AI_MARKERS)
 def _has_ai_marker(text: str, *, split_case: bool) -> bool:
     """``text`` (đã làm sạch) có dấu hiệu ảnh AI ở bất cứ chỗ nào (SL-T052-1). Tên thư mục do
     người gõ: tách cả chữ dính liền ("ẢnhAI", "GenAI"). Tên file có thể là chuỗi ngẫu nhiên
-    ("xAI3kQ"): chỉ tách ở dấu cách, dấu câu, gạch dưới (``split_case=False``)."""
+    ("xAI3kQ"): không tách theo chữ hoa (``split_case=False``), chỉ tách ở dấu cách, dấu câu, gạch
+    dưới và chỗ chữ dính số (T-074, SL-T070-3: "AI01", "dalle3", "Gemini2"). "xAI3kQ" thành
+    "xai 3 kq": không có "ai" đứng riêng, vẫn là ảnh thật."""
     words = _tokens(text, split_case=split_case)
     return any(
         tuple(words[start : start + length]) in _AI_MARKERS

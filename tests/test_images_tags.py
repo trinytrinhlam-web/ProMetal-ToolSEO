@@ -784,6 +784,100 @@ def test_is_ai_name_agrees_with_folder_tags():
         assert is_ai_name(name) is tags_for_folder(name).tags.is_ai, name
 
 
+# T-074 (SL-T070-3): tên file tách thêm ở chỗ chữ dính số, không tách theo chữ hoa.
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "AI01.png",
+        "AI2.jpg",
+        "AI2025.jpg",
+        "2025AI.jpg",
+        "cong-inox-AI3.jpg",
+        "dalle3_cong.png",
+        "Gemini2.5_cong.png",
+        "gpt4o_cong.png",
+        "sdxl10_cong.png",
+        "Midjourney7.png",
+        "Sora2_cong.png",
+        "kling21_cong.png",
+        "AIgen_01.png",  # T-074: "AIgen"
+        "aigen.png",
+        "anh-mo-phong-cong.jpg",  # T-074 (SL-T070-5)
+    ],
+)
+def test_t074_ai_file_names_with_digits_stuck_are_ai(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox"), file_name
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    [
+        "xAI3kQ.jpg",  # chuỗi ngẫu nhiên: "xai 3 kq", không có "ai" đứng riêng
+        "xAI3kQpZ.jpg",
+        "MAI1.jpg",
+        "TRAI2.jpg",
+        "IMG_E0001.JPG",
+        "IMG20250315102030.jpg",
+        "MVIMG_20250315_102030.jpg",
+        "DJI_0001.JPG",
+        "GOPR0001.JPG",
+        "P1000123.JPG",
+        "received_1234567890.jpeg",
+        "FB_IMG_1710000000000.jpg",
+        "z5432109876543_7f3a9c1d2e.jpg",
+        "1a2b3c4d.jpg",
+        "Cong2canh.jpg",
+        "Q7_cong_inox_01.jpg",
+    ],
+)
+def test_t074_camera_and_chat_file_names_with_digits_stay_real(file_name):
+    result = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{file_name}")
+    assert result.tags == ImageTags(
+        project_code="CT012", category="Cổng inox", area="Quận 7", phase="truoc"
+    ), file_name
+
+
+@pytest.mark.parametrize(
+    "ai_dir",
+    [
+        "AIgen",
+        "AIGen",
+        "aigen",
+        "AIgen 2025",
+        "Ảnh mô phỏng",
+        "Hình mô phỏng 3D",
+        "mo phong",
+        "MoPhong",
+        "mophong",
+        unicodedata.normalize("NFD", "Ảnh mô phỏng"),
+    ],
+)
+def test_t074_aigen_and_simulated_folders_are_ai(ai_dir):
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{ai_dir}/x.png",
+        f"{ai_dir}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+    ):
+        assert tags_of(rel_path).tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    assert is_ai_name(ai_dir) is True
+
+
+@pytest.mark.parametrize("name", ["Nhà anh Phong", "Mô tơ cổng cuốn", "Mộ Phong", "Ảnh dựng khung"])
+def test_t074_words_near_simulated_stay_real(name):
+    tags = tags_for_folder(f"CT015 - {name} - Q7/truoc").tags
+    assert not tags.is_ai, name
+    assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc"), name
+
+
+def test_t074_folder_names_still_split_the_old_way():
+    """Đổi cách tách tên file không đổi cách đọc tên thư mục: vẫn tách cả chữ hoa và chữ dính
+    số ("TanPhu", "Q7", "CT012")."""
+    assert tags_for_folder("CT012-CongInox-TanPhu/Truoc").tags == ImageTags(
+        project_code="CT012", category="Cổng inox", area="Tân Phú", phase="truoc"
+    )
+    assert tags_for_folder("Q7").tags.area == "Quận 7"
+
+
 def test_province_with_its_district_and_real_conflicts():
     """SL-T052-2: quận/huyện kèm tỉnh/thành chứa nó thì lấy quận/huyện; còn lại vẫn để trống."""
     assert tags_for_folder("CT012 - Cổng - Dĩ An, Bình Dương").tags.area == "Dĩ An"
@@ -2139,6 +2233,23 @@ def test_t074_file_with_oversized_cell_is_moved_aside_not_jammed(store, case):
     hostile = store.path.read_bytes()
     with closing(sqlite3.connect(store.path)) as conn:
         assert conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
+    assert image_tags_module._is_healthy(store.path) is False
+    store.set(REF, ImageTags(area="Quận 7"))
+    assert store.get(REF).tags.area == "Quận 7"
+    assert store.recovered_from is not None and store.recovered_from.read_bytes() == hostile
+
+
+def test_t074_huge_create_statement_is_moved_aside_not_jammed(store):
+    """Câu ``CREATE`` dài quá giới hạn độ dài trong ``sqlite_master``: chính câu đọc
+    ``sqlite_master`` báo ``SQLITE_TOOBIG``. ``_is_healthy`` coi là hỏng (trả ``False``, không ném
+    lại), nên file bị đổi tên thay vì kẹt ở câu "Không mở được…"."""
+    build_sqlite(store.path, f"{T052_FILE}; CREATE TABLE khac (x /* {'c' * TOO_LONG} */)")
+    hostile = store.path.read_bytes()
+    with closing(sqlite3.connect(store.path)) as conn:
+        image_tags_module._guard(conn)
+        with pytest.raises(sqlite3.DataError) as info:
+            conn.execute("SELECT name FROM sqlite_master").fetchall()
+    assert image_tags_module._is_too_big(info.value)
     assert image_tags_module._is_healthy(store.path) is False
     store.set(REF, ImageTags(area="Quận 7"))
     assert store.get(REF).tags.area == "Quận 7"

@@ -461,14 +461,6 @@ def test_get_many_and_resolve_many_force_ai_per_ref_asked(tmp_path):
 # ===== Lỗi mới về tên (LC-T052-1 còn sót) =======================================================
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-3: tên file chỉ tách ở dấu cách/gạch (không tách chữ dính số), nên tên công cụ "
-        "hay 'AI' dính số phiên bản/số thứ tự không nhận là ảnh AI, dù tên thư mục cùng chữ thì "
-        "nhận (AI01, dalle3, flux1, gpt4o, Gemini2…)"
-    ),
-)
 @pytest.mark.parametrize(
     "file_name",
     [
@@ -512,13 +504,6 @@ def test_sl_t070_4_real_proper_names_are_not_ai(name):
     assert (tags.project_code, tags.area, tags.phase) == ("CT015", "Quận 7", "truoc")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-5: cụm tiếng Việt 'mô phỏng' (ảnh mô phỏng, hình mô phỏng 3D: ảnh dựng, không "
-        "phải ảnh chụp công trình) không nhận là ảnh AI, ảnh giữ mã công trình/khu vực thật"
-    ),
-)
 @pytest.mark.parametrize("ai_dir", ["Ảnh mô phỏng", "Hình mô phỏng 3D", "mo phong"])
 def test_sl_t070_5_simulated_image_phrase_is_ai(ai_dir):
     assert tags_of(f"{BASE}/{ai_dir}/x.png") == AI_ONLY
