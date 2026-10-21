@@ -9,11 +9,13 @@ from __future__ import annotations
 import os
 import stat
 import sys
+import unicodedata
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from seo_app.images import folders
 from seo_app.images.folders import (
     DEFAULT_MAX_ENTRIES,
     IMAGE_EXTENSIONS,
@@ -24,6 +26,7 @@ from seo_app.images.folders import (
     ImageRef,
     SkipCounts,
     _is_link_stat,
+    _match_disk_name,
 )
 
 IS_WINDOWS = os.name == "nt"
@@ -960,3 +963,197 @@ def test_scan_of_deep_tree_is_fast(tmp_path):
     listing = ImageLibrary([root]).list_folder(0, recursive=True, max_depth=1000)
     assert listing.total_images == 1 and not listing.truncated
     assert time.perf_counter() - started < 5
+
+
+# ----- tên trên ổ (T-076, LC-T055-1) ---------------------------------------------------------
+#
+# "CongAI" là thư mục ảnh AI nhờ tách chữ hoa, "congai" thì không (T-052): ``ImageRef`` trả ra phải
+# theo tên trên ổ, không theo chữ đã gõ, dù ổ Windows/Mac tìm ra cùng một thư mục.
+
+PROJECT = "CT012 - Cổng inox - Tân Phú"
+ON_DISK = f"{PROJECT}/CongAI/Cong.PNG"
+TYPED = "ct012 - cổng INOX - tân phú/congai/cong.png"
+
+
+def case_insensitive(folder: Path) -> bool:
+    probe = folder / "Thu-Hoa-Thuong"
+    probe.mkdir()
+    try:
+        return (folder / "thu-hoa-thuong").exists()
+    finally:
+        probe.rmdir()
+
+
+@pytest.fixture(params=["he-dieu-hanh", "xem-thu-muc-cha"])
+def name_source(request, monkeypatch) -> str:
+    """Chạy cả hai cách lấy tên trên ổ trên mọi máy: cách của hệ điều hành đang chạy (Windows: từ
+    đường đã ``resolve``), và cách của Mac/Linux (xem tên trong thư mục cha từng tầng)."""
+    if request.param == "xem-thu-muc-cha":
+        monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    return request.param
+
+
+@pytest.fixture
+def camel(tmp_path: Path) -> Path:
+    root = tmp_path / "anh"
+    write(root / ON_DISK, b"\x89PNG anh AI")
+    write(root / PROJECT / "truoc" / "IMG_0001.jpg")
+    return root
+
+
+def test_stat_image_returns_disk_names(camel, name_source):
+    """``ref`` gõ khác hoa thường vẫn tìm ra ảnh (ổ không phân biệt hoa thường), nhưng
+    ``ImageEntry.ref`` và ``name`` theo tên trên ổ, cả tên thư mục lẫn tên file."""
+    lib = ImageLibrary([camel])
+    exact = lib.stat_image(ImageRef(0, ON_DISK))
+    assert exact.ref == ImageRef(0, ON_DISK) and exact.name == "Cong.PNG"
+    if not case_insensitive(camel):
+        raises_safely(lambda: lib.stat_image(ImageRef(0, TYPED)), camel)
+        return
+    entry = lib.stat_image(ImageRef(0, TYPED))
+    assert entry.ref == ImageRef(0, ON_DISK) and entry.name == "Cong.PNG"
+    assert (entry.size, entry.modified) == (exact.size, exact.modified)
+    assert lib.read_image_bytes(entry.ref) == b"\x89PNG anh AI"
+
+
+def test_list_folder_returns_disk_names(camel, name_source):
+    """``rel_dir`` gõ khác hoa thường: ``rel_dir``, ``SubFolder.rel_path`` và ``ImageRef`` trả ra
+    theo tên trên ổ (để "mở thư mục chứa ảnh" theo đường dẫn ghi trong nháp không ra ảnh thật)."""
+    lib = ImageLibrary([camel])
+    typed_dir = TYPED.rsplit("/", 2)[0]
+    if not case_insensitive(camel):
+        raises_safely(lambda: lib.list_folder(0, typed_dir), camel)
+        return
+    listing = lib.list_folder(0, typed_dir, recursive=True)
+    assert listing.rel_dir == PROJECT
+    assert [sub.rel_path for sub in listing.subfolders] == [f"{PROJECT}/CongAI", f"{PROJECT}/truoc"]
+    assert [entry.ref.rel_path for entry in listing.images] == [
+        ON_DISK,
+        f"{PROJECT}/truoc/IMG_0001.jpg",
+    ]
+    inner = lib.list_folder(0, TYPED.rsplit("/", 1)[0])
+    assert inner.rel_dir == f"{PROJECT}/CongAI"
+    assert [entry.ref for entry in inner.images] == [ImageRef(0, ON_DISK)]
+
+
+NFC_AREA = "Tân Phú"
+NFD_AREA = unicodedata.normalize("NFD", NFC_AREA)
+
+
+@pytest.mark.parametrize(
+    ("names", "typed", "expected"),
+    [
+        (["CongAI", "congai"], "congai", "congai"),  # ổ phân biệt hoa thường: trùng hẳn thắng
+        (["congai", "CongAI"], "CongAI", "CongAI"),
+        (["Ảnh khác", "CongAI"], "congai", "CongAI"),  # ổ không phân biệt: tên trên ổ
+        ([NFD_AREA], "tân phú", NFD_AREA),  # Mac lưu tên dạng NFD
+        ([NFC_AREA, NFD_AREA], NFD_AREA, NFD_AREA),  # NTFS, ext4: hai thư mục khác nhau
+    ],
+)
+def test_match_disk_name(names, typed, expected):
+    assert _match_disk_name(iter(names), typed, lambda: False) == expected
+
+
+@pytest.mark.parametrize(
+    ("names", "message"),
+    [([], "Không tìm thấy"), (["Ảnh khác"], "Không tìm thấy"), (["CongAI", "CONGAI"], "tên khác")],
+    ids=["rong", "khong-co", "hai-ten-cung-khoa"],
+)
+def test_match_disk_name_refuses_when_unsure(names, message):
+    exc = raises_safely(lambda: _match_disk_name(iter(names), "congai", lambda: False))
+    assert message in str(exc)
+
+
+def test_match_disk_name_stops_at_exact_name_and_on_time():
+    def names():
+        yield "CongAI"
+        yield "congai"
+        raise AssertionError("không đọc tiếp sau tên trùng hẳn")
+
+    assert _match_disk_name(names(), "congai", lambda: False) == "congai"
+    exc = raises_safely(lambda: _match_disk_name(iter(["a", "congai"]), "congai", lambda: True))
+    assert "chậm" in str(exc)
+
+
+def test_disk_names_are_not_limited_by_entry_budget(tmp_path, name_source):
+    """LC-T055-3 (T-076): xem tên trong thư mục cha không bị ngân sách số mục của lần quét: ảnh
+    trong thư mục con của gốc rất nhiều mục (ở đây ngân sách 3 mục) vẫn kiểm được, tên trên ổ."""
+    root = tmp_path / "anh"
+    for number in range(30):
+        write(root / f"{number:04d}.jpg")
+    write(root / "Zz Cong trinh" / "a.jpg")
+    lib = ImageLibrary([root], max_entries=3)
+    assert lib.list_folder(0).truncated
+    assert lib.stat_image(ImageRef(0, "Zz Cong trinh/a.jpg")).ref.rel_path == "Zz Cong trinh/a.jpg"
+    if case_insensitive(root):
+        found = lib.stat_image(ImageRef(0, "zz cong trinh/a.jpg"))
+        assert found.ref.rel_path == "Zz Cong trinh/a.jpg"
+
+
+def test_disk_name_lookup_has_time_limit(tmp_path, monkeypatch):
+    """Cách của Mac/Linux có giới hạn thời gian (ổ mạng, Drive chậm): quá giờ thì báo lỗi."""
+    monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    root = tmp_path / "anh"
+    for number in range(20):
+        write(root / f"{number:04d}.jpg")
+    write(root / "Zz" / "a.jpg")
+    if not case_insensitive(root):
+        pytest.skip("ổ phân biệt hoa thường: 'zz' không trỏ tới 'Zz'")
+    ticks = iter(range(10_000))
+    lib = ImageLibrary([root], max_seconds=3, clock=lambda: float(next(ticks)))
+    exc = raises_safely(lambda: lib.stat_image(ImageRef(0, "zz/a.jpg")), tmp_path)
+    assert "chậm" in str(exc)
+
+
+def test_disk_name_lookup_lists_only_folders_on_the_path(camel, monkeypatch):
+    """Cách của Mac/Linux chỉ đọc tên của đúng các thư mục trên đường đi (mỗi tầng một lần), bên
+    trong gốc, và không mở file ảnh nào."""
+    monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    listed: list[object] = []
+    opened: list[str] = []
+    real_scandir, real_open = os.scandir, os.open
+
+    def spy_scandir(target):
+        listed.append(target)
+        return real_scandir(target)
+
+    def spy_open(path, *args, **kwargs):
+        opened.append(os.fsdecode(path))
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", spy_scandir)
+    monkeypatch.setattr("seo_app.images.folders.os.open", spy_open)
+    ImageLibrary([camel]).stat_image(ImageRef(0, ON_DISK))
+    assert len(listed) == 3  # gốc, thư mục công trình, CongAI
+    root = camel.resolve()
+    for target in listed:
+        assert isinstance(target, int) or Path(target).is_relative_to(root)
+    assert not [path for path in opened if path.lower().endswith((".png", ".jpg"))]
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda lib: lib.stat_image(ImageRef(0, "album/a.jpg")),
+        lambda lib: lib.list_folder(0, "album"),
+    ],
+    ids=["stat_image", "list_folder"],
+)
+def test_entry_swapped_during_name_lookup_is_refused(tmp_path, monkeypatch, name_source, call):
+    """LC-T055-2 (T-076): ngay sau khi kiểm đường đi, thư mục bị đổi tên đi và một thư mục khác
+    được đổi tên thành tên đó: báo lỗi, không trả tên của mục này kèm số liệu của mục kia."""
+    root = tmp_path / "anh"
+    write(root / "album" / "a.jpg", b"AAAA")
+    write(root / "khac" / "a.jpg", b"KHAC, dai hon")
+    original = ImageLibrary._resolve_inside
+
+    def check_then_swap(self, root_path, parts):
+        result = original(self, root_path, parts)
+        if parts[:1] == ("album",) and not (root / "album-cu").exists():
+            os.rename(root / "album", root / "album-cu")
+            os.rename(root / "khac", root / "album")
+        return result
+
+    monkeypatch.setattr(ImageLibrary, "_resolve_inside", check_then_swap)
+    exc = raises_safely(lambda: call(ImageLibrary([root])), tmp_path)
+    assert "thay đổi" in str(exc)
