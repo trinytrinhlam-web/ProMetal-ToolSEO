@@ -34,26 +34,18 @@ SPLIT_TOOL_NAMES = [
     "Co-Pilot",
     "See Dream",
 ]
-_REASON = (
-    "LC-T074-1: dấu hiệu tên công cụ một từ ('midjourney', 'firefly', 'copilot', 'seedream') "
-    "chỉ khớp một chữ; gõ tách bằng dấu cách hay gạch nối thành hai chữ không khớp, ảnh AI giữ mã "
-    "công trình, khu vực, trước/sau như ảnh thật"
-)
 
 
-@pytest.mark.xfail(strict=True, reason=_REASON)
 @pytest.mark.parametrize("name", SPLIT_TOOL_NAMES)
 def test_lc_t074_1_split_tool_name_in_folder_is_ai(name):
     assert tags_for_image(ImageRef(0, f"{BASE}/{name}/IMG_0001.jpg")).tags == AI_ONLY
 
 
-@pytest.mark.xfail(strict=True, reason=_REASON)
 @pytest.mark.parametrize("name", SPLIT_TOOL_NAMES)
 def test_lc_t074_1_split_tool_name_in_file_name_is_ai(name):
     assert tags_for_image(ImageRef(0, f"{BASE}/{name} 0001.png")).tags == AI_ONLY
 
 
-@pytest.mark.xfail(strict=True, reason=_REASON)
 @pytest.mark.parametrize("name", ["Mid Journey", "Fire Fly", "Co-Pilot", "See Dream"])
 def test_lc_t074_1_split_tool_name_as_root_folder_is_ai(name):
     assert is_ai_name(f"G:/My Drive/{name}") is True

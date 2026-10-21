@@ -528,14 +528,6 @@ def _other_tab_saves(path: Path) -> str:
             return "bi-chan" if "locked" in str(exc) else str(exc)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T074-1: get_many giữ giao dịch đọc (khóa đọc) suốt phần xử lý Python từng dòng "
-        "(_row_to_tag, tags_for_image), không chỉ lúc đọc file; lần lưu ở tab khác phải chờ hết, "
-        "trang lớn nhiều thẻ sửa tay (đọc quá 5 giây) thì lần lưu báo 'đang bận'"
-    ),
-)
 def test_sl_t074_1_save_in_other_tab_does_not_wait_for_row_processing(store, monkeypatch):
     refs = [REF, *(ImageRef(0, f"{FOLDER}/IMG_{n:04d}.jpg") for n in range(2, 5))]
     for ref in refs[1:]:
@@ -573,26 +565,11 @@ CAMEL_CASE_AI_FOLDERS = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T074-2: tên thư mục chỉ đọc kiểu tách chữ hoa (split_case=True), nên tên công cụ AI "
-        "một từ viết hoa ở giữa ('MidJourney' thành 'mid journey') không khớp dấu hiệu "
-        "'midjourney': ảnh AI giữ mã công trình, khu vực, trước/sau như ảnh thật"
-    ),
-)
 @pytest.mark.parametrize("folder", CAMEL_CASE_AI_FOLDERS)
 def test_sl_t074_2_camel_case_tool_name_in_folder_is_ai(folder):
     assert tags_for_image(ImageRef(0, f"{BASE}/{folder}/IMG_0001.jpg")).tags == AI_ONLY
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T074-2: is_ai_name đọc tên thư mục gốc cùng cách, nên gốc tên 'MidJourney', 'FireFly' "
-        "không bị coi là thư mục ảnh AI"
-    ),
-)
 @pytest.mark.parametrize("folder", ["MidJourney", "FireFly", "SeeDream", "HaiLuo", "CoPilot"])
 def test_sl_t074_2_camel_case_tool_name_as_root_folder_is_ai(folder):
     assert is_ai_name(f"G:/My Drive/{folder}") is True

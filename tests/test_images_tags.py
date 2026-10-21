@@ -879,6 +879,141 @@ def test_t074_folder_names_still_split_the_old_way():
     assert tags_for_folder("Q7").tags.area == "Quận 7"
 
 
+# T-077 (LC-T074-1, gồm SL-T074-2): tên công cụ tạo ảnh gõ khác dạng chuẩn. Tên công cụ một chữ
+# (``_AI_TOOLS``) viết hoa thêm một chữ ở giữa ("MidJourney") thì kiểu đọc tách theo chữ hoa ra hai
+# chữ ("mid journey"); tên thư mục nay đọc thêm kiểu không tách, như tên file.
+ONE_WORD_AI_TOOLS = [
+    "Gemini",
+    "Imagen",
+    "Midjourney",
+    "DALLE",
+    "ChatGPT",
+    "SDXL",
+    "Firefly",
+    "Copilot",
+    "Designer",
+    "Bing",
+    "Leonardo",
+    "Ideogram",
+    "Flux",
+    "Grok",
+    "Kling",
+    "Dreamina",
+    "Jimeng",
+    "Seedream",
+    "ComfyUI",
+    "Runway",
+    "Krea",
+    "Canva",
+    "Recraft",
+    "NightCafe",
+    "SeaArt",
+    "Hailuo",
+    "Sora",
+]
+
+
+def capital_inside(name: str) -> list[str]:
+    """Chữ đầu viết hoa, thêm **một** chữ hoa ở mỗi vị trí còn lại: "MidJourney", "FireFly"…"""
+    word = name.lower()
+    return [
+        word[0].upper() + word[1:i] + word[i].upper() + word[i + 1 :] for i in range(1, len(word))
+    ]
+
+
+@pytest.mark.parametrize("tool", ONE_WORD_AI_TOOLS)
+def test_t077_one_word_tool_name_with_a_capital_inside_is_ai(tool):
+    """Thư mục bên dưới gốc (ở mọi tầng, kèm chữ khác, dính số), thư mục gốc (``is_ai_name``) và
+    tên file: mọi chỗ viết hoa đều là ảnh AI."""
+    ai_only = ImageTags(source=SOURCE_AI, category="Cổng inox")
+    for name in capital_inside(tool):
+        for rel_path in (
+            f"CT012 - Cổng inox - Quận 7/truoc/{name}/x.png",
+            f"{name}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+            f"CT012 - Cổng inox - Quận 7/truoc/Ảnh {name} v6/x.png",
+            f"CT012 - Cổng inox - Quận 7/truoc/{name}2/x.png",
+            f"CT012 - Cổng inox - Quận 7/truoc/{name}_0001.png",
+        ):
+            assert tags_of(rel_path).tags == ai_only, rel_path
+        assert is_ai_name(f"G:/My Drive/{name}") is True, name
+
+
+# Tên ghép từ hai chữ tiếng Anh, hay bị gõ tách: dấu cách, gạch nối, gạch dưới, dấu chấm.
+SPLIT_AI_TOOL_NAMES = [
+    "Mid Journey",
+    "mid journey",
+    "MID JOURNEY",
+    "Mid-Journey",
+    "Mid_Journey",
+    "Mid.Journey",
+    "Ảnh Mid Journey v6",
+    "Fire Fly",
+    "fire-fly",
+    "Adobe Fire Fly 3",
+    "Co Pilot",
+    "Co-Pilot",
+    "co_pilot",
+    "Microsoft Co-Pilot",
+    "See Dream",
+    "See-Dream 4.0",
+]
+
+
+@pytest.mark.parametrize("name", SPLIT_AI_TOOL_NAMES)
+def test_t077_tool_name_typed_as_two_words_is_ai(name):
+    """Thư mục bên dưới gốc, thư mục gốc (``is_ai_name``) và tên file."""
+    ai_only = ImageTags(source=SOURCE_AI, category="Cổng inox")
+    for rel_path in (
+        f"CT012 - Cổng inox - Quận 7/truoc/{name}/x.png",
+        f"{name}/CT012 - Cổng inox - Quận 7/truoc/x.png",
+        f"CT012 - Cổng inox - Quận 7/truoc/{name} 0001.png",
+    ):
+        assert tags_of(rel_path).tags == ai_only, rel_path
+    assert is_ai_name(f"G:/My Drive/{name}") is True
+
+
+# Đối chứng: tên ảnh thật gõ liền (CamelCase) hay không dấu, có cặp chữ tiếng Việt liền nhau hay
+# một nửa của tên công cụ tách đôi: vẫn là ảnh thật dù đọc theo cách nào. Không ghép mọi cặp chữ:
+# "so ra" không thành "sora".
+REAL_NAMES_READ_BOTH_WAYS = [
+    "CongSatQuan7",
+    "NhaChiMai",
+    "NhaAnhHai",
+    "CuaSoRaBanCong",
+    "Cua so ra ban cong",
+    "MaiCheSanThuong",
+    "NhaCoPhuong",
+    "Nha co Phuong",
+    "Nhà cô Lan",
+    "LanCanInox304",
+    "KhoAnh2025",
+    "CongTyDesignHome",
+    "Dream Home",
+    "Mid Town",
+    "Fire Station",
+]
+
+
+@pytest.mark.parametrize("name", REAL_NAMES_READ_BOTH_WAYS)
+def test_t077_real_names_stay_real_when_read_both_ways(name):
+    tags = tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{name}/IMG_0001.jpg").tags
+    assert not tags.is_ai, name
+    assert (tags.project_code, tags.area, tags.phase) == ("CT012", "Quận 7", "truoc"), name
+    assert is_ai_name(name) is False, name
+    assert not tags_of(f"CT012 - Cổng inox - Quận 7/truoc/{name} 01.jpg").tags.is_ai, name
+
+
+def test_t077_lone_word_equal_to_a_tool_name_leans_to_ai_and_leaks_nothing():
+    """Đánh đổi có chủ ý (Lá Chắn T-074, thử T6): thư mục chỉ có chữ "SoRa" (gõ liền "so ra") đọc
+    kiểu không tách là "sora" (công cụ Sora) nên là ảnh AI: ảnh chỉ mất thẻ công trình, không chữ
+    nào của tên đi ra. Tên dài hơn có các chữ đó ("CuaSoRaBanCong") vẫn là ảnh thật."""
+    result = tags_of("CT012 - Cổng inox - Quận 7/truoc/SoRa/IMG_0001.jpg")
+    assert result.tags == ImageTags(source=SOURCE_AI, category="Cổng inox")
+    assert is_ai_name("SoRa") is True
+    for text in output_strings(result):
+        assert "sora" not in fold(text), text
+
+
 def test_province_with_its_district_and_real_conflicts():
     """SL-T052-2: quận/huyện kèm tỉnh/thành chứa nó thì lấy quận/huyện; còn lại vẫn để trống."""
     assert tags_for_folder("CT012 - Cổng - Dĩ An, Bình Dương").tags.area == "Dĩ An"
@@ -2314,6 +2449,62 @@ def test_t074_change_made_between_operations_is_caught_at_next_check(store):
     store.set(REF, ImageTags(area="Tân Phú"))
     assert store.get(REF).tags.area == "Tân Phú"
     assert store.recovered_from is not None
+
+
+def test_t077_get_many_reads_all_chunks_in_checked_transaction_then_releases_lock(
+    store, monkeypatch
+):
+    """SL-T074-1: ``get_many`` đọc mọi nhóm dòng (hai thư mục gốc, mỗi gốc hai câu ``IN``) trong
+    **một** giao dịch đã kiểm cấu trúc (LC-T070-2: ``BEGIN``, câu kiểm ``sqlite_master``, rồi mới
+    tới các câu đọc), rồi mới kiểm từng dòng khi giao dịch đã đóng: lúc đó kết nối khác lấy ngay
+    được khóa ghi độc quyền, nên tab khác lưu thẻ không phải chờ phần kiểm dòng."""
+    chunk = image_tags_module._QUERY_CHUNK
+    refs = [ImageRef(root, f"anh-{n}.jpg") for root in (0, 1) for n in range(chunk + 1)]
+    store.set(REF, ImageTags(area="Quận 7"))
+    raw_insert(store.path, *(good_row(ref.rel_path, root_index=ref.root_index) for ref in refs))
+    real_connect = sqlite3.connect
+    statements: list[str] = []
+
+    class Tracing(sqlite3.Connection):
+        def execute(self, sql, *args):
+            statements.append(sql)
+            return super().execute(sql, *args)
+
+    def lock_is_free() -> bool:
+        with closing(real_connect(store.path, timeout=0, isolation_level=None)) as other:
+            try:
+                other.execute("BEGIN EXCLUSIVE")
+            except sqlite3.OperationalError:
+                return False
+            other.execute("ROLLBACK")
+            return True
+
+    real_row_to_tag = ImageTagStore._row_to_tag
+    first_row: list[tuple[int, bool]] = []  # (số câu SQL đã chạy, khóa đã nhả) ở dòng đầu tiên
+
+    def row_to_tag(self, row):
+        if not first_row:
+            first_row.append((len(statements), lock_is_free()))
+        return real_row_to_tag(self, row)
+
+    monkeypatch.setattr(
+        image_tags_module.sqlite3,
+        "connect",
+        lambda *args, **kwargs: real_connect(*args, factory=Tracing, **kwargs),
+    )
+    monkeypatch.setattr(ImageTagStore, "_row_to_tag", row_to_tag)
+    found = store.get_many(refs)
+    assert set(found) == set(refs)
+    assert {item.tags.area for item in found.values()} == {"Quận 1"}
+    reads = [sql for sql in statements if sql.startswith(image_tags_module._SELECT)]
+    assert len(reads) == 4  # 2 thư mục gốc × 2 nhóm (400 khóa + 1 khóa)
+    assert statements == [
+        "PRAGMA trusted_schema = OFF",
+        "BEGIN",
+        image_tags_module._MASTER_SQL,
+        *reads,
+    ]
+    assert first_row == [(len(statements), True)]
 
 
 def test_old_manual_tags_are_pruned(tmp_path):

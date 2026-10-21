@@ -16,9 +16,13 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
   phải khớp đúng hai bảng app tạo (đúng câu ``CREATE TABLE``, kèm chỉ mục tự sinh của khóa chính),
   không thừa dòng, không dòng nào lặp lại (T-074); có khung nhìn, trigger, bảng ảo,
   ``WITHOUT ROWID``, chỉ mục hay bảng lạ thì coi là hỏng. Kiểm ở mỗi lần mở, nên file bị thay khi
-  app đang chạy cũng bị bắt; và kiểm **trong cùng giao dịch** với thao tác (T-074), nên chương
-  trình khác không đổi được cấu trúc giữa lúc kiểm và lúc dùng. Nhờ vậy chỉ câu SQL của app được
-  chạy trên file.
+  app đang chạy cũng bị bắt; và kiểm **trong cùng giao dịch** với thao tác (T-074), nên cấu trúc
+  app dùng luôn là cấu trúc vừa kiểm: ở chế độ nhật ký thường (app không đổi chế độ của file),
+  chương trình khác mở file qua SQLite phải chờ giao dịch xong mới ghi được; ở chế độ WAL (chương
+  trình khác có thể đặt sẵn), nó ghi được trong lúc app **đọc**, nhưng lần đọc đó vẫn chỉ thấy
+  bản đã kiểm (SQLite giữ ảnh chụp của file từ câu kiểm), còn lần ghi của app thì giữ quyền ghi từ
+  đầu. Thay đổi chen vào như vậy bị bắt ở lần kiểm sau. Nhờ vậy chỉ câu SQL của app được chạy trên
+  file.
 - Lớp phòng sau, nếu lớp kiểm trên bị lách: mỗi truy vấn bị giới hạn số bước (``_MAX_VM_STEPS``)
   và độ dài mỗi giá trị (``_MAX_SQLITE_LENGTH``, T-074): truy vấn đệ quy bị dừng, giá trị khổng lồ
   bị từ chối. Đó là giới hạn số bước và độ dài, **không phải giới hạn thời gian**: một truy vấn lạ
@@ -259,25 +263,28 @@ class ImageTagStore:
         by_root: dict[int, list[str]] = {}
         for root_index, key in wanted:
             by_root.setdefault(root_index, []).append(key)
-        found: dict[ImageRef, ManualTag] = {}
+        # Mọi câu đọc nằm trong một giao dịch đã kiểm cấu trúc (LC-T070-2); kiểm từng dòng sau khi
+        # giao dịch đóng (T-077, SL-T074-1), để lần lưu ở tab khác không phải chờ phần đó.
+        rows: list[tuple] = []
         with self._connect() as conn:
             for root_index, keys in by_root.items():
                 for start in range(0, len(keys), _QUERY_CHUNK):
                     chunk = keys[start : start + _QUERY_CHUNK]
                     marks = ", ".join("?" * len(chunk))
-                    rows = conn.execute(
+                    rows += conn.execute(
                         f"{_SELECT} WHERE root_index = ? AND ref_key IN ({marks})",
                         (*_SELECT_LIMITS, root_index, *chunk),
                     ).fetchall()
-                    for row in rows:
-                        item = self._row_to_tag(row)
-                        if item is None:
-                            continue
-                        for ref in wanted.get((item.ref.root_index, ref_key(item.ref)), ()):
-                            # Khóa không phân biệt hoa thường, dấu hiệu ảnh AI thì có thể
-                            # ("khoai" / "KhoAI"): ép ảnh AI theo đúng ảnh được hỏi (LC-T052-3).
-                            tags = _keep_ai(item.tags, tags_for_image(ref).tags)
-                            found[ref] = ManualTag(ref=ref, tags=tags, saved_at=item.saved_at)
+        found: dict[ImageRef, ManualTag] = {}
+        for row in rows:
+            item = self._row_to_tag(row)
+            if item is None:
+                continue
+            for ref in wanted.get((item.ref.root_index, ref_key(item.ref)), ()):
+                # Khóa không phân biệt hoa thường, dấu hiệu ảnh AI thì có thể ("khoai" /
+                # "KhoAI"): ép ảnh AI theo đúng ảnh được hỏi (LC-T052-3).
+                tags = _keep_ai(item.tags, tags_for_image(ref).tags)
+                found[ref] = ManualTag(ref=ref, tags=tags, saved_at=item.saved_at)
         return found
 
     def set(self, ref: ImageRef, tags: ImageTags) -> ManualTag:
@@ -558,10 +565,10 @@ def _guard(conn: sqlite3.Connection) -> None:
 
 def _begin(conn: sqlite3.Connection, *, write: bool) -> None:
     """Mở giao dịch **trước** khi kiểm cấu trúc (LC-T070-2), để kiểm và dùng file nằm trong cùng
-    một giao dịch: khóa giữ tới khi commit/rollback, nên chương trình khác không đổi được cấu trúc
-    giữa lúc kiểm và lúc dùng (nó nhận "database is locked"). Ghi: ``BEGIN IMMEDIATE`` (giữ quyền
-    ghi ngay); đọc: ``BEGIN`` (giữ khóa đọc, hay ảnh chụp ở chế độ WAL, từ câu đọc đầu tiên, tức
-    câu kiểm ``sqlite_master``)."""
+    một giao dịch: cấu trúc app dùng luôn là cấu trúc vừa kiểm (chế độ WAL: xem docstring module).
+    Ghi: ``BEGIN IMMEDIATE`` (giữ quyền ghi ngay; chương trình khác muốn ghi phải chờ, hay nhận
+    "database is locked"); đọc: ``BEGIN`` (giữ khóa đọc, hay ảnh chụp ở chế độ WAL, từ câu đọc đầu
+    tiên, tức câu kiểm ``sqlite_master``)."""
     conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
 
 
