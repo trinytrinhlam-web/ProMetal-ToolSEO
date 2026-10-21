@@ -713,6 +713,10 @@ def test_apply_links_only_in_requested_section():
         "<p>[{}]</p>",
         "<script>{}</script>",
         "<p><!-- {} --></p>",
+        "<xmp>{}</xmp>",
+        "<noframes>{}</noframes>",
+        "<form><p>{}</p></form>",
+        "<plaintext>{}",
     ],
 )
 def test_never_inserts_in_forbidden_places(wrapper):
@@ -947,6 +951,7 @@ def one(href, index=INDEX, html_text=None):
         f"{SITE}//sua-cua-keo-tphcm/./",
         f"{SITE}/khac/../sua-cua-keo-tphcm/",
         "/sua-cua-keo-tphcm/",
+        " \t/sua-cua-keo-tphcm/\n ",  # trình duyệt bỏ dấu cách, tab, xuống dòng ở hai đầu
     ],
 )
 def test_published_internal_link_ok_after_normalizing(href):
@@ -1031,6 +1036,8 @@ def test_external_links_only_listed(href):
         "ftp://suachuacuasat.com/x",
         "bai-viet-tuong-doi",
         "https:sua-cua-keo-tphcm",
+        " https://suachuacuasat.com/sua-cua-keo-tphcm/",  # dấu cách không ngắt ở đầu
+        "https://suachuacuasat.com/sua-cua-keo-tphcm/​",  # ký tự rộng 0 ở cuối
     ],
 )
 def test_dangerous_or_odd_links_block(href):

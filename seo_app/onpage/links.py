@@ -42,7 +42,7 @@ from pydantic import BaseModel, Field
 from seo_app.content.models import Section
 from seo_app.content.rules import IGNORABLE_NOT_CF
 from seo_app.onpage.meta import SLUG_TRAILING_STOPWORDS, Level, has_link, worst
-from seo_app.sanitize import is_safe_url
+from seo_app.sanitize import DANGEROUS_TAGS, is_safe_url
 from seo_app.storage.site_index import SiteIndex
 from seo_app.text import remove_accents
 from seo_app.wordpress.client import PublishedItem, is_site_link
@@ -608,14 +608,14 @@ def check_suggestions(
 # ------------------------------------------------------------------ chèn link vào HTML
 
 _VOID_TAGS = frozenset(
-    {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
-     "source", "track", "wbr"}
+    {"area", "base", "br", "col", "embed", "frame", "hr", "img", "input", "keygen", "link",
+     "meta", "param", "source", "track", "wbr"}
 )  # fmt: skip
-# Không bao giờ chèn link bên trong các thẻ này (link lồng link, tiêu đề, mã, chú thích ảnh…).
-_NO_LINK_TAGS = frozenset(
-    {"a", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "kbd", "samp", "var", "script",
-     "style", "textarea", "title", "template", "svg", "math", "button", "select", "option",
-     "label", "iframe", "noscript", "object", "figcaption", "caption", "head"}
+# Không bao giờ chèn link bên trong các thẻ này (link lồng link, tiêu đề, mã, chú thích ảnh…),
+# cả các thẻ bộ lọc HTML bỏ luôn nội dung (``DANGEROUS_TAGS``: script, xmp, plaintext…).
+_NO_LINK_TAGS = DANGEROUS_TAGS | frozenset(
+    {"a", "h1", "h2", "h3", "h4", "h5", "h6", "code", "pre", "kbd", "samp", "var", "label",
+     "figcaption", "caption"}
 )  # fmt: skip
 # Thẻ coi là một "đoạn văn" (mỗi đoạn tối đa một link).
 _PARAGRAPH_TAGS = frozenset(
@@ -894,6 +894,9 @@ class _Anchors(HTMLParser):
     handle_startendtag = handle_starttag
 
 
+# Trình duyệt chỉ bỏ dấu cách và ký tự điều khiển C0 ở hai đầu link (không bỏ dấu cách không
+# ngắt: " https://…" là link tương đối, sẽ bị Chặn).
+_URL_TRIM = "".join(map(chr, range(0x21)))
 _MSG_PUBLISHED = "Link tới bài đã đăng."
 _MSG_NOT_PUBLISHED = (
     "Link nội bộ tới trang chưa đăng, đã xóa hoặc gõ sai (không có trong danh sách bài đã đăng)."
@@ -914,7 +917,7 @@ def _classify(
     def result(kind, level, message, post_id=None) -> LinkCheck:
         return LinkCheck(href, kind, level, message, post_id)
 
-    value = href.strip()
+    value = href.strip(_URL_TRIM)
     if not value:
         return result(LinkKind.OTHER, Level.WARN, "Link rỗng (trỏ về chính trang này).")
     if any(ch.isspace() or unicodedata.category(ch) in _HIDDEN_CATEGORIES for ch in value) or (
