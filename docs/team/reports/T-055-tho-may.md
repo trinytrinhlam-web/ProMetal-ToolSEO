@@ -4,8 +4,8 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-055](../tickets/T-055-nhap-luu-lua-chon-anh.md) |
-| Ngày nộp | 2026-10-20 |
-| Kết quả | Hoàn thành (kèm sửa 1 dòng test cũ ngoài phạm vi, Chỉ Huy B duyệt). **Lượt 2:** đã sửa SL-T055-1 → 3 (mục "Lượt 2" cuối báo cáo) |
+| Ngày nộp | 2026-10-20 (lượt 3: 2026-10-21) |
+| Kết quả | Hoàn thành (kèm sửa 1 dòng test cũ ngoài phạm vi, Chỉ Huy B duyệt). **Lượt 2:** đã sửa SL-T055-1 → 3 (mục "Lượt 2"). **Lượt 3:** sửa dữ liệu test sau T-070 theo LC-T055-4 (mục "Lượt 3" cuối báo cáo) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -229,3 +229,105 @@ $ uvx bandit -q seo_app/storage/drafts.py
 - **T-048 (tùy Chỉ Huy):** nếu `stat_image` trả `ImageRef` theo tên thật trên ổ (trên Windows `resolve` đã cho tên thật khi kiểm tên 8.3, `folders.py:513-517`; trên Mac `resolve` giữ chữ đã gõ nên cần cách khác) thì `drafts.py` bỏ được bước xem thư mục.
 - **Lá Chắn:** soát `_FolderNames` (`drafts.py:745`: chỉ đi qua `list_folder`, không ghép đường dẫn tuyệt đối, câu báo không có đường dẫn) và `_ai_wording` (`:307`) theo F1, C6.
 - **Soi Lỗi:** chạy lại trên Mac (APFS không phân biệt hoa thường, tên NFD) và ổ phân biệt hoa thường; thử thư mục gốc hơn 5.000 mục.
+
+## Lượt 3 (2026-10-21): sửa dữ liệu test sau T-070 (LC-T055-4)
+
+Theo biên bản Lá Chắn `docs/team/reports/T-055-la-chan.md`: dòng LC-T055-4 và mục "Điều kiện" số 1. Nhánh `team/T-055` đã có `main` mới nhất (Chỉ Huy đưa vào ở `15a9726`). Số dòng trong mục này là số dòng **sau lượt 3**.
+
+### Tóm tắt (cho chủ dự án)
+
+- Phiếu T-070 (đã ở `main`) dạy app nhận tên thư mục "genai" là ảnh AI, viết hoa hay thường đều vậy. Test của phiếu này lại dùng "genai" làm ví dụ cho tên **không** phải ảnh AI. Vì thế, trên nhánh đã có `main`, 1 test của tôi hỏng, và 2 test khác vẫn qua nhưng không còn kiểm đúng điều cần kiểm. Code của app vẫn đúng.
+- Tôi đổi ví dụ sang "CongAI" (là ảnh AI, vì chữ "AI" viết hoa đứng tách ra) và "congai" (không phải ảnh AI). Đầu mỗi test có thêm một câu kiểm lại ví dụ: nếu sau này app đổi cách nhận tên làm ví dụ sai đi, test báo hỏng ngay chứ không lặng lẽ qua.
+- Chỉ sửa file test, không sửa code của app.
+- Test của tôi qua hết. Còn đúng 1 test hỏng, ở file của Soi Lỗi (`test_sl_t055_1_case_only_folder_rename_keeps_ai`), cùng nguyên nhân. Theo lời giao, Soi Lỗi sửa file đó sau tôi.
+
+### Đã thay đổi (lượt 3)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_drafts_images.py` | Đổi cặp tên thử `GenAI`/`genai`/`GENAI` sang `CongAI`/`congai`/`CONGAI` ở 4 test (7 ca). Thêm hàm kiểm điều kiện đầu `assert_ai_only_by_case` (`:886`), gọi ở đầu cả 4 test. Import thêm `tags_for_image`. Sửa chú thích của `CAMEL_AI_PATH` (`:881-883`) |
+| `docs/team/reports/T-055-tho-may.md` | Mục này, dòng "Kết quả" ở đầu báo cáo |
+
+Không sửa `seo_app/**`, không sửa `tests/test_soi_loi_t055.py` hay test nào khác (`git diff --stat`: chỉ 2 file trên).
+
+### Kiểm cặp tên trước khi dùng
+
+Chạy `tags_for_image(ImageRef(0, …))` và `is_ai_name(…)` trên nhánh hiện tại (đã có T-070), bằng script tạm trong thư mục nháp của phiên (không commit):
+
+| Tên thư mục (trong `CT012 - Cổng inox - Tân Phú/…/cong.png`) | Ảnh AI | Thẻ |
+|---|---|---|
+| `CongAI` | có (tách chữ hoa: "Cong AI") | `ai`, không mã công trình, không khu vực; hạng mục "Cổng" |
+| `congai`, `Congai`, `CONGAI` | không | `that`, `CT012`, `Tân Phú`, "Cổng inox" |
+| `GenAI`, `genai`, `Genai`, `GENAI` | có, cả 4 kiểu | `ai`: đây là lý do phải đổi |
+
+`is_ai_name`: `CongAI` → đúng; `congai`, `Congai`, `CONGAI` → sai. Ghi chú: ảnh trong `CongAI` có hạng mục "Cổng" (chữ "Cong" khớp vật "Cổng", thư mục sâu hơn được ưu tiên), không phải "Cổng inox" như ảnh trong `GenAI`. Test của tôi không kiểm hạng mục của ảnh này nên không ảnh hưởng; Soi Lỗi nên biết khi đổi `test_soi_loi_t055.py`.
+
+### Từng test
+
+| Test | Trước (nhánh đã có `main`) | Sau |
+|---|---|---|
+| `test_case_variant_of_ai_folder_reads_real_name_and_stays_ai` (2 ca, `:904`) | Qua, nhưng phần "vẫn là ảnh AI, alt có «Minh họa»" qua oan: chữ `genai` trong nháp tự là ảnh AI | Trên ổ `CongAI`, nháp ghi `congai`: chỉ ra ảnh AI khi thẻ đọc theo tên trên ổ. Câu điều kiện đầu đặt **trước** bước bỏ qua (`skip`) nên chạy cả trên ổ phân biệt hoa thường |
+| `test_exact_folder_name_wins_on_case_sensitive_disk` (`:943`) | **Hỏng** (`assert not result.is_ai`: `genai` nay là ảnh AI) | Ổ có cả `CongAI` lẫn `congai`, nháp ghi `congai`: ra đúng thư mục `congai`, ảnh thật |
+| `test_single_case_insensitive_match_takes_real_name` (`:953`) | Qua, phần `is_ai` qua oan | Ổ có `CongAI`, nháp ghi `congai`: ra `CongAI`, ảnh AI |
+| `test_unconfirmed_folder_name_is_unavailable` (3 ca, `:966`) | Qua | Nháp ghi `congai`; ca "hai tên cùng khóa" là `CongAI`/`CONGAI`. Câu điều kiện đầu ghi rõ lý do không được đoán: đoán theo chữ trong nháp là ra ảnh thật |
+
+Các câu `assert` cũ giữ nguyên, chỉ đổi chữ trong dữ liệu (`genai/cong.png` → `congai/cong.png`…). Ví dụ `GenAI`/`genai` ở mục "Lượt 2" phía trên là theo nhánh trước khi có T-070; nay ứng với `CongAI`/`congai`.
+
+### Thử đột biến (test có kiểm đúng ý không)
+
+Plugin pytest tạm trong thư mục nháp của phiên (không commit, không sửa file nào của repo) làm hỏng cách sửa SL-T055-1 ngay trong bộ nhớ, rồi chạy `tests/test_drafts_images.py`. Số test hỏng càng nhiều càng tốt (test bắt được lỗi):
+
+| Đột biến | Trước khi sửa | Sau khi sửa |
+|---|---|---|
+| Không xem tên thật (`_FolderNames.real_ref` trả nguyên chữ nháp, như thử của Lá Chắn) | 10 hỏng, trong đó 1 là test vốn đã hỏng | 9 hỏng, đều bắt đúng |
+| Bỏ bước "trùng hẳn trước" (lấy luôn tên trùng không phân biệt hoa thường đầu tiên) | 2 hỏng, trong đó 1 là test vốn đã hỏng | 2 hỏng, đều bắt đúng |
+| `ref` theo tên trên ổ nhưng **thẻ theo chữ trong nháp** (đúng lỗi SL-T055-1) | 1 hỏng, chính là test vốn đã hỏng: **không test nào bắt được** | **3 hỏng** (`test_case_variant…` ×2, `test_single_case…`) |
+| Luật nhận tên đổi: thêm `congai` là ảnh AI (như T-070 đã làm với `genai`) | không áp dụng | 7 hỏng, cả 7 ở câu điều kiện đầu (`:891`) |
+| Không đột biến | 1 hỏng | 0 hỏng |
+
+### Bằng chứng (lượt 3)
+
+Máy Windows 11 của chủ dự án, Python 3.12, worktree `wt-T-055`, nhánh `team/T-055` (đầu nhánh trước lượt 3: `15a9726`). Có 2 agent khác chạy song song trên máy.
+
+```
+$ uv run pytest tests/test_drafts_images.py tests/test_soi_loi_t055.py      # trước khi sửa
+FAILED tests/test_drafts_images.py::test_exact_folder_name_wins_on_case_sensitive_disk
+FAILED tests/test_soi_loi_t055.py::test_sl_t055_1_case_only_folder_rename_keeps_ai
+2 failed, 298 passed, 1 skipped, 4 xfailed in 24.53s
+
+$ uv run pytest tests/test_drafts_images.py                                  # sau khi sửa
+173 passed, 1 skipped in 10.21s
+
+$ uv run pytest tests/test_drafts_images.py tests/test_soi_loi_t055.py tests/test_storage_drafts.py
+    tests/test_app_drafts.py tests/test_soi_loi_t016_t020.py tests/test_soi_loi_t021_t017.py
+    tests/test_images_folders.py tests/test_images_tags.py tests/test_app_pages.py
+FAILED tests/test_soi_loi_t055.py::test_sl_t055_1_case_only_folder_rename_keeps_ai
+1 failed, 1067 passed, 14 skipped, 4 xfailed in 165.09s (0:02:45)
+(Lá Chắn trên cây gộp: 2 failed, 1066 passed, 14 skipped, 4 xfailed. Test hỏng còn lại thuộc file
+ của Soi Lỗi, chờ Soi Lỗi sửa; không phải hỏng vì quá giờ. 14 bỏ qua như lượt 2, đều vì máy Windows
+ này không cho tạo symlink hay test quyền kiểu POSIX. 4 xfailed là SL-T055-4 ×3, SL-T055-5, có từ
+ lượt 2 của Soi Lỗi)
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan tests/test_drafts_images.py
+"results": {}
+```
+
+### Đối chiếu (lượt 3, điều kiện 1 của Lá Chắn)
+
+- [x] Đổi cặp tên thử sang cặp chỉ là ảnh AI nhờ tách chữ hoa (`CongAI` / `congai` / `CONGAI`), đã kiểm bằng `tags_for_image` trên nhánh hiện tại trước khi dùng
+- [x] Thêm `assert` điều kiện đầu (`tags_for_image(tên trên ổ).tags.is_ai and not tags_for_image(tên trong nháp).tags.is_ai`) cho các test SL-T055-1 (kèm phần SL-T055-2 "alt có «Minh họa»") trong file của tôi
+- [x] Không đổi điều kiện kiểm của test nào, không sửa code ứng dụng, không sửa `tests/test_soi_loi_t055.py`
+- [ ] 9 file test liên quan qua hết trên nhánh: **còn 1 test hỏng ở file của Soi Lỗi**, chờ Soi Lỗi sửa (mục dưới)
+
+### Còn lại cho Soi Lỗi (`tests/test_soi_loi_t055.py`)
+
+- `test_sl_t055_1_case_only_folder_rename_keeps_ai` (`:479`) vẫn hỏng: `assert picked.source == SOURCE_REAL` (`:487`), vì `Genai` nay là ảnh AI ngay từ lúc chọn. Cặp thay thế: chọn ảnh khi thư mục tên `Congai` (ảnh thật), rồi đổi tên thành `CongAI`.
+- 4 test Lá Chắn nêu là qua oan cũng nằm trong file này: `test_sl_t055_1_case_variant_cannot_launder_ai_folder` (×2, `:465`), `test_prefixed_alt_never_loses_approval[thu-muc-AI-hoa-thuong]`, `test_prefix_is_not_repeated_over_many_save_open_cycles`. Các chỗ khác dùng `CAMEL_AI_PATH`/`GENAI_VARIANT` (`:62`, `:723`) cũng nên đổi cùng lúc.
+- Lưu ý: ảnh trong `CongAI` có hạng mục "Cổng" chứ không phải "Cổng inox" (bảng "Kiểm cặp tên" ở trên).
+
+### Đề xuất (lượt 3)
+
+- **Phiếu dọn ở điều kiện 3 của Lá Chắn** (có đụng `drafts.py`): docstring của `_FolderNames` (`seo_app/storage/drafts.py:748-751`) còn ghi `"GenAI"` là ảnh AI còn `"genai"` thì không. Sau T-070 câu này sai. Lượt này chỉ được sửa dữ liệu test nên tôi không sửa; nên đổi sang `CongAI`/`congai` trong phiếu đó.
