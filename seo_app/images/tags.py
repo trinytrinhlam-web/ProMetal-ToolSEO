@@ -39,9 +39,11 @@ An toàn (góp ý Lá Chắn T-046 số 3; điều kiện Lá Chắn T-048 LC-T0
   ``Copilot``, ``Designer``, ``Leonardo``…) được tìm ở **mọi chỗ** trong tên mọi thư mục bên dưới
   gốc, kể cả phần không khớp danh sách (``Ảnh do AI tạo``, ``AI images``), và trong tên file ảnh
   (``Gemini_Generated_Image_….png``, ``Designer (3).png``, ``AI01.png``, ``dalle3_….png``: tên file
-  tách cả chỗ chữ dính số, không tách theo chữ hoa). Thấy ở đâu thì cả nhánh, hay ảnh đó, là ảnh
-  AI. Không chắc thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa
-  chữ nào ra ngoài. Tên thư mục gốc không được đọc: nơi gọi kiểm nó bằng ``is_ai_name``.
+  tách cả chỗ chữ dính số, không tách theo chữ hoa). Tên thư mục đọc theo cả hai cách: tách theo
+  chữ hoa (``ẢnhAI``) và như tên file (``MidJourney``); tên công cụ hay bị gõ tách đôi cũng được
+  nhận (``Mid Journey``, ``Co-Pilot``; T-077). Thấy ở đâu thì cả nhánh, hay ảnh đó, là ảnh AI.
+  Không chắc thì nghiêng về ảnh AI: nhận nhầm chỉ làm ảnh mất thẻ công trình, không đưa chữ nào
+  ra ngoài. Tên thư mục gốc không được đọc: nơi gọi kiểm nó bằng ``is_ai_name``.
 - Module chỉ xử lý chữ: không đọc ổ đĩa, không mở hay ghi file.
 """
 
@@ -238,6 +240,13 @@ _AI_TOOLS = (
     "SeaArt",
     "Hailuo",
     "Sora",
+    # T-077 (LC-T074-1): tên ghép từ hai chữ tiếng Anh, hay bị gõ tách bằng dấu cách hay gạch nối
+    # ("Mid Journey", "Co-Pilot": gạch nối cũng tách chữ). Chỉ thêm đúng các tên này, không ghép
+    # mọi cặp chữ liền nhau: "Cua so ra ban cong" (cửa sổ ra ban công) không được thành "Sora".
+    "Mid Journey",
+    "Fire Fly",
+    "Co Pilot",
+    "See Dream",
 )
 _AI_WORDS = (
     "AI",
@@ -485,10 +494,11 @@ _MAX_MARKER_WORDS = max(len(marker) for marker in _AI_MARKERS)
 
 def _has_ai_marker(text: str, *, split_case: bool) -> bool:
     """``text`` (đã làm sạch) có dấu hiệu ảnh AI ở bất cứ chỗ nào (SL-T052-1). Tên thư mục do
-    người gõ: tách cả chữ dính liền ("ẢnhAI", "GenAI"). Tên file có thể là chuỗi ngẫu nhiên
-    ("xAI3kQ"): không tách theo chữ hoa (``split_case=False``), chỉ tách ở dấu cách, dấu câu, gạch
-    dưới và chỗ chữ dính số (T-074, SL-T070-3: "AI01", "dalle3", "Gemini2"). "xAI3kQ" thành
-    "xai 3 kq": không có "ai" đứng riêng, vẫn là ảnh thật."""
+    người gõ: đọc cả kiểu tách chữ dính liền theo chữ hoa ("ẢnhAI", "GenAI") lẫn kiểu không tách
+    ("MidJourney" là chữ "midjourney", T-077), xem ``_parse_dir_name``. Tên file có thể là chuỗi
+    ngẫu nhiên ("xAI3kQ"): chỉ đọc kiểu không tách theo chữ hoa (``split_case=False``), tách ở dấu
+    cách, dấu câu, gạch dưới và chỗ chữ dính số (T-074, SL-T070-3: "AI01", "dalle3", "Gemini2").
+    "xAI3kQ" thành "xai 3 kq": không có "ai" đứng riêng, vẫn là ảnh thật."""
     words = _tokens(text, split_case=split_case)
     return any(
         tuple(words[start : start + length]) in _AI_MARKERS
@@ -852,7 +862,10 @@ def _joined_area(parts: Sequence[str], index: int) -> list[_Item] | None:
 
 def _parse_dir_name(name: str) -> _DirTags:
     cleaned = clean_folder_name(name)
-    result = _DirTags(ai=_has_ai_marker(cleaned, split_case=True))
+    # Dấu hiệu ảnh AI đọc theo hai cách: tách theo chữ hoa ("ẢnhAI", "GenAI") và không tách, như
+    # tên file (T-077, LC-T074-1: "MidJourney", "HaiLuo" là tên công cụ một chữ gõ hoa giữa chữ).
+    ai = _has_ai_marker(cleaned, split_case=True) or _has_ai_marker(cleaned, split_case=False)
+    result = _DirTags(ai=ai)
     parts = _split_parts(cleaned)
     index = 0
     while index < len(parts):
