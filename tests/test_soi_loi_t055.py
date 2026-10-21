@@ -763,10 +763,6 @@ class CaseSensitiveDisk:
     [("congai/cong.png", ("CongAI",)), ("CongAI/cong.png", ("congai",))],
     ids=["nhap-congai-chi-thay-CongAI", "nhap-CongAI-chi-thay-congai"],
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-4: tên thư mục 'thật' lấy từ danh sách bị cắt, không kiểm lại là cùng file",
-)
 def test_sl_t055_4_real_name_must_point_to_the_checked_file(monkeypatch, library, draft_path, seen):
     """SL-T055-4 (Thấp). Ổ phân biệt hoa thường có cả ``CongAI/cong.png`` (ảnh AI) lẫn
     ``congai/cong.png`` (một file khác). ``stat_image`` thấy đúng file nháp ghi; danh sách thư mục
@@ -788,10 +784,6 @@ def test_sl_t055_4_real_name_must_point_to_the_checked_file(monkeypatch, library
         assert result.is_ai
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-4: thư mục bị tráo giữa lúc stat và lúc xem tên, ref trỏ sang file khác",
-)
 def test_sl_t055_4_folder_swapped_during_check_on_real_disk(monkeypatch, library, root):
     """SL-T055-4 trên ổ thật (Windows, Mac): giữa lúc ``stat_image`` và lúc xem tên thư mục, thư mục
     chứa ảnh bị đổi tên đi và một thư mục khác được đổi tên thành tên trùng hoa thường. ``ref``
@@ -815,10 +807,6 @@ def test_sl_t055_4_folder_swapped_during_check_on_real_disk(monkeypatch, library
         assert library.stat_image(result.ref).size == result.entry.size
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T055-5: thư mục cha quá nhiều mục thì ảnh thật bình thường cũng không dùng được",
-)
 def test_sl_t055_5_plain_real_image_usable_when_parent_listing_is_cut(monkeypatch, library):
     """SL-T055-5 (Thấp). Nháp ghi đúng tên như trên ổ (không khác hoa thường), ảnh còn nguyên.
     Thư mục gốc có hơn 5.000 mục (hay ổ chậm, quét quá 10 giây) nên thư mục công trình chưa nằm

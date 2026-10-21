@@ -13,6 +13,9 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
   junction Windows (``os.scandir`` coi junction là thư mục thường nên phải kiểm riêng). Sau đó
   ``resolve(strict=True)`` và bắt buộc ``is_relative_to(gốc)``. Mục ẩn/hệ thống và tên ngắn
   8.3 cũng bị từ chối, để ``ImageRef`` theo đúng luật của lúc quét.
+- ``ImageRef`` trả ra (``list_folder``, ``stat_image``) theo tên trên ổ, không theo chữ người gọi
+  gõ (T-076, LC-T055-1): ổ Windows, Mac không phân biệt hoa thường nên ``congai`` vẫn mở được thư
+  mục ``CongAI``, còn thẻ ảnh đọc từ tên thư mục thì phân biệt.
 - Khi quét, thư mục được "giữ" để không bị tráo giữa lúc kiểm và lúc đọc (xem phần "giữ thư
   mục trong lúc quét").
 - Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``.
@@ -63,6 +66,9 @@ _WINDOWS_DEVICE_NAMES = frozenset(
 # ổ gắn vào thư mục, symlink WSL). File "chỉ trực tuyến" của OneDrive/Drive không có bit này.
 _REPARSE_NAME_SURROGATE = 0x20000000
 _UF_HIDDEN = getattr(stat, "UF_HIDDEN", 0)
+# Windows: ``resolve`` (hỏi chính handle của mục) trả tên đúng như lưu trên ổ, kể cả hoa thường.
+# Mac/Linux: ``resolve`` giữ nguyên chữ đã gõ, phải xem tên trong thư mục cha (T-076).
+_NAMES_FROM_RESOLVE = os.name == "nt"
 
 _MSG_BAD_PATH = "Đường dẫn ảnh không hợp lệ."
 _MSG_NOT_FOUND = (
@@ -73,6 +79,7 @@ _MSG_OUTSIDE = "Đường dẫn nằm ngoài thư mục ảnh được phép."
 _MSG_UNREADABLE = "Không đọc được mục này (không có quyền hoặc ổ đĩa vừa bị ngắt)."
 _MSG_HIDDEN = "App không đọc thư mục hay file ẩn, file hệ thống."
 _MSG_ALIAS = "Đường dẫn ảnh không hợp lệ (tên ngắn hoặc tên khác của cùng một mục)."
+_MSG_SLOW = "Ổ đĩa đang chậm nên chưa kiểm được tên thư mục, hãy thử lại."
 
 
 class ImageFolderError(Exception):
@@ -135,6 +142,27 @@ def _parse_rel(rel_path: object, *, allow_empty: bool) -> tuple[str, ...]:
 def _name_key(name: str) -> str:
     """Khóa so tên: không phân biệt hoa thường, cùng dạng Unicode (Mac lưu tên dạng NFD)."""
     return unicodedata.normalize("NFC", name).casefold()
+
+
+def _match_disk_name(names: Iterable[str], name: str, time_is_up: Callable[[], bool]) -> str:
+    """Tên trên ổ của ``name``, tìm trong danh sách tên của thư mục cha (T-076, Mac/Linux).
+
+    Trùng hẳn thì là chính nó (ổ phân biệt hoa thường có thể có cả ``CongAI`` lẫn ``congai``: hai
+    thư mục khác nhau). Không thì phải có đúng một tên trùng không phân biệt hoa thường và dạng
+    Unicode (Mac không phân biệt cả hai, và có thể lưu tên dạng NFD).
+    """
+    key = _name_key(name)
+    found: list[str] = []
+    for on_disk in names:
+        if on_disk == name:
+            return name
+        if _name_key(on_disk) == key:
+            found.append(on_disk)
+        if time_is_up():
+            raise ImageFolderError(_MSG_SLOW)
+    if len(found) != 1:
+        raise ImageFolderError(_MSG_ALIAS if found else _MSG_NOT_FOUND)
+    return found[0]
 
 
 def _is_image_name(name: str) -> bool:
@@ -517,6 +545,72 @@ class ImageLibrary:
             raise ImageFolderError(_MSG_ALIAS)
         return resolved, last
 
+    def _disk_names(
+        self, root: Path, parts: tuple[str, ...], resolved: Path, last: os.stat_result
+    ) -> tuple[str, ...]:
+        """Tên trên ổ của ``parts`` (đã qua ``_resolve_inside``, ra ``resolved`` và ``last``).
+
+        ``ImageRef`` trả ra phải theo tên trên ổ, không theo chữ người gọi gõ (T-076, LC-T055-1):
+        thẻ ảnh đọc từ tên thư mục phân biệt hoa thường ("CongAI" là thư mục ảnh AI nhờ tách chữ
+        hoa, "congai" thì không), còn ổ Windows, Mac thì không.
+
+        - Windows: lấy từ ``resolved`` (hỏi chính handle của mục, như phép kiểm tên 8.3).
+        - Mac/Linux: ``resolve`` giữ nguyên chữ đã gõ, nên xác nhận từng tầng bằng tên trong thư
+          mục cha (``_listed_names``).
+
+        Rồi kiểm mục ở tên trên ổ đúng là mục ``last`` (so định danh): bị tráo giữa chừng thì báo
+        lỗi, không trả tên của mục này kèm số liệu của mục khác (LC-T055-2).
+        """
+        if not parts:
+            return parts
+        if _NAMES_FROM_RESOLVE:
+            real = resolved.relative_to(root).parts
+        else:
+            real = self._listed_names(root, parts)
+        if len("/".join(real)) > MAX_REL_PATH_CHARS or not all(map(_is_safe_name, real)):
+            raise ImageFolderError(_MSG_BAD_PATH)
+        try:
+            again = os.lstat(root.joinpath(*real))
+        except FileNotFoundError:
+            raise _ChangedError() from None
+        except OSError:
+            raise ImageFolderError(_MSG_UNREADABLE) from None
+        if _is_link_stat(again) or not _same_file(again, last):
+            raise _ChangedError()
+        return real
+
+    def _listed_names(self, root: Path, parts: tuple[str, ...]) -> tuple[str, ...]:
+        """Mac/Linux: tên trên ổ của từng phần, xem trong thư mục cha từ gốc xuống (T-076).
+
+        Chỉ đọc tên, không ``stat``, không mở file. Không giới hạn số mục như khi quét (ảnh trong
+        thư mục con của gốc hơn 5.000 mục vẫn kiểm được, LC-T055-3), chỉ giới hạn thời gian. Thư
+        mục cha mở từng tầng không đi theo liên kết (``O_NOFOLLOW``), như khi quét.
+        """
+        deadline = self._clock() + self._max_seconds
+
+        def time_is_up() -> bool:
+            return self._clock() > deadline
+
+        real: list[str] = []
+        for part in parts:
+            fd = None
+            try:
+                if _SCANDIR_BY_FD:
+                    fd = _posix_open_dir(root, tuple(real))
+                with os.scandir(root.joinpath(*real) if fd is None else fd) as entries:
+                    names = (entry.name for entry in entries)
+                    real.append(_match_disk_name(names, part, time_is_up))
+            except FileNotFoundError:
+                raise ImageFolderError(_MSG_NOT_FOUND) from None
+            except (NotADirectoryError, PermissionError):
+                raise ImageFolderError(_MSG_UNREADABLE) from None
+            except OSError:  # ELOOP: một tầng vừa bị tráo thành symlink
+                raise _ChangedError() from None
+            finally:
+                if fd is not None:
+                    os.close(fd)
+        return tuple(real)
+
     # ----- xem thư mục -------------------------------------------------------------------
 
     def list_folder(
@@ -534,6 +628,10 @@ class ImageLibrary:
         ``recursive=True`` gom cả ảnh trong các thư mục con (tối đa ``max_depth`` tầng), ví dụ
         ảnh ở ``truoc/`` và ``sau/`` của một công trình. Không mở file ảnh nào khi quét (chỉ đọc
         tên và ``stat``), nên không làm Google Drive tải file "chỉ trực tuyến" về.
+
+        ``rel_dir`` gõ khác hoa thường (hay khác dạng Unicode, trên Mac) vẫn mở được thư mục,
+        nhưng ``FolderListing.rel_dir``, ``SubFolder.rel_path`` và ``ImageRef`` trả ra đều theo tên
+        trên ổ (T-076).
         """
         if type(page) is not int or page < 1:
             raise ImageFolderError("Số trang không hợp lệ.")
@@ -546,6 +644,7 @@ class ImageLibrary:
         directory, dir_stat = self._resolve_inside(root, parts)
         if not stat.S_ISDIR(dir_stat.st_mode):
             raise ImageFolderError("Đây không phải là thư mục.")
+        parts = self._disk_names(root, parts, directory, dir_stat)
 
         scan = _Scan(
             root_index=root_index,
@@ -596,7 +695,8 @@ class ImageLibrary:
 
     # ----- một ảnh -----------------------------------------------------------------------
 
-    def _checked_file(self, ref: object) -> tuple[Path, os.stat_result]:
+    def _checked_file(self, ref: object) -> tuple[Path, Path, os.stat_result]:
+        """Kiểm ``ref`` là file ảnh dùng được; trả (gốc, đường dẫn đã ``resolve``, ``lstat``)."""
         if not isinstance(ref, ImageRef):
             raise ImageFolderError(_MSG_BAD_PATH)
         root = self._root(ref.root_index)
@@ -606,7 +706,7 @@ class ImageLibrary:
         if _is_hidden_stat(lst):
             raise ImageFolderError("App không đọc file ẩn hoặc file hệ thống.")
         self._check_size(lst.st_size)
-        return path, lst
+        return root, path, lst
 
     def _check_size(self, size: int) -> None:
         if size <= 0:
@@ -616,9 +716,16 @@ class ImageLibrary:
             raise ImageFolderError(f"Ảnh quá lớn ({_format_mb(size)} MB), tối đa {limit} MB.")
 
     def stat_image(self, ref: ImageRef) -> ImageEntry:
-        """Kiểm một ảnh (ví dụ ảnh lưu trong nháp) còn dùng được không, không mở file."""
-        _path, lst = self._checked_file(ref)
-        return ImageEntry(ref=ref, name=ref.name, size=lst.st_size, modified=lst.st_mtime)
+        """Kiểm một ảnh (ví dụ ảnh lưu trong nháp) còn dùng được không, không mở file.
+
+        ``ImageEntry.ref`` theo tên trên ổ (T-076), như ``ImageRef`` của ``list_folder``: ``ref``
+        gõ khác hoa thường (hay khác dạng Unicode, trên Mac) vẫn tìm ra ảnh, nhưng kết quả mang
+        tên thật. Dùng ``entry.ref`` (không dùng ``ref`` đã đưa vào) làm khóa, để đọc thẻ ảnh.
+        """
+        root, path, lst = self._checked_file(ref)
+        real = self._disk_names(root, ref.parts, path, lst)
+        found = ref if real == ref.parts else ImageRef(ref.root_index, "/".join(real))
+        return ImageEntry(ref=found, name=found.name, size=lst.st_size, modified=lst.st_mtime)
 
     def read_image_bytes(self, ref: ImageRef) -> bytes:
         """Đọc nguyên nội dung một ảnh (không quá giới hạn dung lượng).
@@ -626,7 +733,7 @@ class ImageLibrary:
         Trả bytes thay vì đường dẫn hay đối tượng file, để đường dẫn tuyệt đối không ra khỏi
         module. Chưa kiểm nội dung có đúng là ảnh không: việc đó của bước mở ảnh (T-046 mục 2).
         """
-        path, lst = self._checked_file(ref)
+        _root, path, lst = self._checked_file(ref)
         flags = os.O_RDONLY
         for name in ("O_BINARY", "O_NOINHERIT", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK"):
             # O_NOFOLLOW: file bị tráo thành symlink ngay trước khi mở thì báo lỗi.
