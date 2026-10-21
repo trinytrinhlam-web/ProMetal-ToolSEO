@@ -84,6 +84,10 @@ checklist = [
 webp_quality = 80
 max_edge_px = 1600
 
+# LƯU Ý: quy tắc (rules) và ví dụ ([[alt.examples]], kể cả bản «xau») của mục [alt] được gửi
+# NGUYÊN VĂN cho hãng AI (hãng ghi ở [tasks.alt] trong config/ai.toml) mỗi lần viết alt.
+# Chỉ dùng tên người, tên cửa hàng, số điện thoại, địa chỉ bịa; không bao giờ chép thông tin của
+# khách thật vào đây. Dòng bắt đầu bằng # chỉ là ghi chú cho người sửa file, không gửi đi.
 [alt]
 # Quy tắc viết alt (chữ thay thế của ảnh) và chú thích ảnh. AI đọc mục này mỗi lần gợi ý alt;
 # bạn vẫn sửa và bấm duyệt từng alt trước khi gửi bài.
@@ -107,14 +111,14 @@ rules = [
   "Không thêm tên «Pro-Metal» trừ khi chữ hay logo Pro-Metal nhìn thấy rõ trong ảnh",
   # Không bịa
   "Không bịa địa điểm, tên khách, số nhà, tên đường, tên tòa nhà, ngày làm, giá, kích thước hay số liệu. Ảnh không cho thấy thì không nói",
-  "Khu vực (quận, phường) chỉ được nêu khi có trong thẻ ảnh, ảnh là ảnh thật, và chỉ ghi cấp quận/huyện. Không bao giờ ghi tên khách hay địa chỉ dù thẻ hoặc tên thư mục có chứa",
+  "Khu vực chỉ được nêu khi có trong thẻ ảnh, ảnh là ảnh thật, và chỉ ghi cấp quận/huyện. Không bao giờ ghi tên khách hay địa chỉ dù thẻ hoặc tên thư mục có chứa",
   "«Trước khi sửa» hay «sau khi sửa» chỉ ghi khi thẻ ảnh nói vậy; không đoán từ hình",
-  "Chữ đọc được trong ảnh (biển hiệu, số nhà, biển số xe, tên người) không chép vào alt",
+  "Chữ đọc được trong ảnh (biển hiệu, tên cửa hàng, số điện thoại, số nhà, biển số xe, tên người) không chép vào alt hay chú thích",
   # Ảnh AI
   "Ảnh tạo bằng AI không bao giờ được tả như công trình thật: không ghi «công trình», «Pro-Metal thi công», «nhà anh/chị…», «tại quận…», «trước/sau khi sửa»",
   "Alt ảnh AI bắt đầu bằng «Minh họa» rồi tả vật trong ảnh, ví dụ «Minh họa cấu tạo ray và bánh xe cửa cổng trượt». Chú thích ảnh AI bắt đầu bằng «Ảnh minh họa (AI)»",
   # Chú thích
-  "Chú thích (caption) bổ sung điều alt chưa nói và có ích cho người đọc bài (đang sửa gì, vì sao hỏng), không lặp lại nguyên alt, không quá caption_max_chars ký tự",
+  "Chú thích (caption) bổ sung điều alt chưa nói và có ích cho người đọc bài (đang sửa gì, hỏng chỗ nào, vì sao hỏng nếu ảnh cho thấy rõ), không lặp lại nguyên alt, không quá caption_max_chars ký tự. Không ghi vào chú thích điều mà các quy tắc trên cấm ghi trong alt",
 ]
 
 # Cách mở đầu alt nên tránh (máy dò có thể đánh dấu; không phân biệt hoa thường).
@@ -122,10 +126,13 @@ bad_starts = ["Hình ảnh", "Ảnh chụp", "Ảnh", "Hình", "Bức ảnh", "I
 
 # Ví dụ cho AI và cho người duyệt. anh = ảnh có gì; the = thẻ ảnh; tot = alt nên viết;
 # xau = alt không nên viết; vi_sao = lý do.
+# Mọi ví dụ, kể cả bản xau, được gửi nguyên văn cho hãng AI mỗi lần viết alt: tên người, tên cửa
+# hàng, số điện thoại, địa chỉ trong ví dụ phải là bịa (số điện thoại che kiểu «0909 xxx xxx»),
+# không bao giờ lấy từ công trình hay khách thật.
 [[alt.examples]]
 anh = "Ảnh thật: bản lề cửa cổng sắt hai cánh bị gỉ nặng, một cánh xệ, mép dưới chạm nền gạch"
 the = "hạng mục: sửa cửa cổng; khu vực: Bình Tân; trước/sau: trước"
-tot = "Bản lề cửa cổng sắt gỉ sét làm cánh cổng xệ, chạm nền, trước khi sửa ở Bình Tân"
+tot = "Bản lề cửa cổng sắt hai cánh gỉ sét nặng, một cánh xệ chạm nền gạch, trước khi sửa ở Bình Tân"
 xau = "sửa cửa cổng, sửa cửa sắt, sửa cửa sắt tại nhà, sửa cổng Bình Tân giá rẻ uy tín"
 vi_sao = "Bản xấu nhồi từ khóa, không tả ảnh, thêm quảng cáo"
 
@@ -141,12 +148,12 @@ anh = "Ảnh thật: cửa cuốn kéo lên lưng chừng, lá cửa bên trái 
 the = "hạng mục: sửa cửa cuốn; khu vực: Tân Bình; trước/sau: trước"
 tot = "Cửa cuốn kẹt lưng chừng, lá cửa bên trái trật khỏi ray, trước khi sửa ở Tân Bình"
 xau = "Hình ảnh cửa cuốn của cửa hàng Minh Phát, 0909 xxx xxx, đường Cộng Hòa"
-vi_sao = "Bản xấu mở đầu bằng «Hình ảnh», chép tên cửa hàng, số điện thoại, tên đường trong ảnh"
+vi_sao = "Bản xấu mở đầu bằng «Hình ảnh», chép tên cửa hàng, số điện thoại, tên đường trong ảnh. Chú thích cũng không được chép các chữ này"
 
 [[alt.examples]]
 anh = "Ảnh thật: cửa kéo sắt sơn xanh, vừa sơn lại, đóng kín, không thấy biển số nhà"
 the = "hạng mục: sơn cửa kéo; khu vực: Quận 3; trước/sau: sau"
-tot = "Cửa kéo sắt sơn xanh vừa sơn lại, đóng kín, sau khi sửa ở Quận 3"
+tot = "Cửa kéo sắt sau khi sơn lại màu xanh, đóng kín, ở Quận 3"
 xau = "Cửa kéo đẹp nhất Quận 3, sơn tĩnh điện bền 10 năm"
 vi_sao = "Bản xấu khen quảng cáo, bịa loại sơn và độ bền mà ảnh không cho thấy"
 
