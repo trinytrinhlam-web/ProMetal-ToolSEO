@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 09:34 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 09:38 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,7 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Soi Lỗi · T-055 kiểm lại lượt 2 | `team/T-055` | 18:32 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (2 Trung bình SL-T055-1, -2; 1 Thấp). 19:46 Thợ Máy lượt 2 **xong** (`2c95844`: sửa SL-T055-1 → -3, gỡ 7 `xfail`; test liên quan 936 qua). ⏳ **21/10 Soi Lỗi đang kiểm lại**; rồi Lá Chắn | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Lá Chắn (chưa giao) | `team/T-055` | 18:32 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (2 Trung bình SL-T055-1, -2; 1 Thấp). 19:46 Thợ Máy lượt 2 **xong** (`2c95844`: sửa SL-T055-1 → -3, gỡ 7 `xfail`; test liên quan 936 qua). 09:35 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (`1504d29`: 3 lỗi cũ sửa thật, test không bị làm yếu; 2 Thấp mới SL-T055-4 tên thư mục "thật" có thể trỏ sang file khác trên ổ phân biệt hoa thường hoặc khi đổi tên đúng lúc, SL-T055-5 thư mục gốc hơn 5.000 mục thì ảnh "chưa kiểm được"). ⏳ **Chờ giao Lá Chắn** | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) | Chặn shortcode WordPress trong chữ AI, meta SEO, alt và chú thích ảnh (LC-T042-3, LC-T054-1 Trung bình) | Lá Chắn · T-061 kiểm chặn shortcode | `team/T-061` | 19:06 Thợ Máy **xong** (`7c5a405`). 19:47 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`64525d3`; 45.000 chuỗi ngẫu nhiên không lọt; 7 file test cũ không bị làm yếu; 2 Thấp SL-T061-1 chữ SEO `[<>…]`, SL-T061-2 chữ có sẵn trong file ảnh tải tay). ⏳ **21/10 Lá Chắn đang kiểm** | [Thợ Máy](reports/T-061-tho-may.md) · [Soi Lỗi](reports/T-061-soi-loi.md) |
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Thợ Máy · T-074 dọn thẻ ảnh lượt 2 | `team/T-074` | ⏳ **21/10 Thợ Máy đang làm** (nhánh từ `main` sau khi gộp T-070) | |
 

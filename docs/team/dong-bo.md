@@ -34,12 +34,12 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 09:34. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 09:38. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | đã gộp (`588c76f`), nhánh và worktree đã xóa | ✅ Windows 9.740 qua, 0 hỏng; ruff sạch; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-074 |
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`2c95844`) | ✅ 20/10 19:46 Thợ Máy lượt 2 xong (SL-T055-1 → -3; 936 test liên quan qua) | ⏳ Soi Lỗi kiểm lại (phiên "Soi Lỗi · T-055 kiểm lại lượt 2 nháp nhớ ảnh", giao 09:12); rồi Lá Chắn |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`1504d29`) | ✅ 21/10 09:35 Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (SL-T055-1 → -3 đã sửa; 2 Thấp mới SL-T055-4, -5) | ⏳ Chờ chủ dự án cho giao Lá Chắn |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress (ưu tiên) | `team/T-061` (`64525d3`) | ✅ 20/10 19:47 Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (2 Thấp SL-T061-1, -2) | ⏳ Lá Chắn kiểm đầy đủ (phiên "Lá Chắn · T-061 kiểm chặn shortcode", giao 09:13) |
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (từ `main` `da87dbf`) | Lập 20/10 19:50 | ⏳ Thợ Máy làm (phiên "Thợ Máy · T-074 dọn thẻ ảnh lượt 2", giao 09:14) |
 | Chờ phiếu trước | | T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-075** |
@@ -47,6 +47,10 @@ Chỉ Huy B, cập nhật 2026-10-21 09:34. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 09:38 · Chỉ Huy B
+
+- **Soi Lỗi T-055 lượt 2 ĐẠT CÓ ĐIỀU KIỆN** (`1504d29`, đã đối chiếu báo cáo và diff): SL-T055-1 → -3 sửa thật; 3 test lượt 1 Thợ Máy đổi không bị làm yếu; 2 lỗi Thấp mới SL-T055-4 (tên thư mục "thật" có thể trỏ sang file khác: ổ phân biệt hoa thường có danh sách bị cắt, hoặc đổi tên đúng lúc mở nháp), SL-T055-5 (thư mục gốc hơn 5.000 mục thì ảnh thật "chưa kiểm được"). Chờ chủ dự án cho giao Lá Chắn. Đang chạy: Lá Chắn T-061, Thợ Máy T-074.
 
 ### 2026-10-21 09:34 · Chỉ Huy B
 
