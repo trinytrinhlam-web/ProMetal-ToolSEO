@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (Lá Chắn T-074: **phải gộp trước T-056**) |
 | Phụ thuộc | T-074 đã gộp |
-| Trạng thái | Mới |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -47,3 +47,4 @@ A3, F1, F3.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 1 của Lá Chắn T-074. Làm trên nhánh tạm `team/T-077`, tạo từ `main` sau khi T-074 gộp. Phải gộp trước T-056. Trong lúc chờ: đặt tên thư mục ảnh AI theo cách viết liền chuẩn (Midjourney, Firefly, Copilot).
+- 2026-10-21 12:03 (Chỉ Huy B): chủ dự án cho giao. Nhánh `team/T-077` tạo từ `main` sau khi gộp T-074.
