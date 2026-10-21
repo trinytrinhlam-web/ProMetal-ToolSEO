@@ -34,20 +34,24 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-21 11:02. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-21 11:16. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
 | [T-070](tickets/T-070-don-loi-the-anh.md) Dọn lỗi thẻ ảnh (GĐ3) | đã gộp (`588c76f`), nhánh và worktree đã xóa | ✅ Windows 9.740 qua, 0 hỏng; ruff sạch; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-074 |
 | [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) Nháp nhớ ảnh đã chọn (GĐ3) | `team/T-055` (`91305e0`) | ✅ 21/10 10:49 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (1 Trung bình LC-T055-1, 3 Thấp); điều kiện đã chép vào T-056, T-063; lập T-076 | ⏳ Trước khi gộp: đưa `main` vào nhánh, Thợ Máy sửa `tests/test_drafts_images.py`, Soi Lỗi sửa `tests/test_soi_loi_t055.py` (LC-T055-4); chờ chủ dự án cho giao |
 | [T-061](tickets/T-061-shortcode-trong-bai-ai.md) Chặn shortcode WordPress | đã gộp (`975d323`), nhánh và worktree đã xóa | ✅ Windows 9.915 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-059, T-060 |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (`8ce0117`) | ✅ 21/10 09:56 Thợ Máy xong (1.087 test liên quan qua) | ⏳ Soi Lỗi rút gọn đang kiểm (phiên "Soi Lỗi · T-074 kiểm nhanh thẻ ảnh"; đã nhắn thêm ca `MidJourney` Lá Chắn T-055 nêu) |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 (GĐ3, trước T-056) | `team/T-074` (`eec8fc7`) | ✅ 21/10 11:15 Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (2 Thấp SL-T074-1, -2) | ⏳ Chờ chủ dự án cho giao Lá Chắn rút gọn |
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` (gấp, LC-T061-1 Cao) | `team/T-075` (`f6a8220`) | ✅ 21/10 10:44 Thợ Máy xong (`certifi` 2026.10.19; 927 test liên quan qua) | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn, Lá Chắn rút gọn |
 | Chờ phiếu trước | | T-076 (sau T-055, nên trước T-056); T-065, T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-039 hết chờ (GĐ4); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-077** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-21 11:16 · Chỉ Huy B
+
+- **Soi Lỗi T-074 rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`eec8fc7`, đã đối chiếu báo cáo): 6 yêu cầu làm đúng, thử lại các cách lách T-070 và kiểu khó hơn (WAL, 7 kiểu sửa mục lục): không lọt; tên ảnh máy ảnh, điện thoại, Zalo vẫn là ảnh thật. 2 Thấp: SL-T074-1 (giao dịch đọc giữ khóa khi đọc rất nhiều thẻ, lần lưu ở tab khác chờ, quá 5 giây báo bận), SL-T074-2 (tên thư mục công cụ AI viết hoa giữa chữ "MidJourney", "FireFly"… ra ảnh thật; có từ trước, Lá Chắn T-055 nêu). Chờ chủ dự án cho giao Lá Chắn rút gọn. Không còn phiên con nào chạy.
 
 ### 2026-10-21 11:02 · Chỉ Huy B
 
