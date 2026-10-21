@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-21 |
 | Giai đoạn | Chung (bảo mật toàn máy) |
 | Mức ưu tiên | **Cao** (Lá Chắn T-075, LC-T075-1) |
-| Phụ thuộc | Nâng công cụ: chờ chủ dự án duyệt (`rules.md` mục 4) |
-| Trạng thái | Chờ chủ dự án duyệt |
+| Phụ thuộc | Chủ dự án duyệt nâng `uv` 2026-10-21 13:39 |
+| Trạng thái | Đang làm (máy Windows xong; chờ máy Mac; phần Thợ Máy, Thư Ký chưa giao) |
 
 ## Mục tiêu
 
@@ -42,3 +42,4 @@ D1, D3.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo đề xuất của Lá Chắn T-075. Lời dặn «không dùng Wi-Fi công cộng» bỏ được khi đủ 3 việc: T-075 gộp và cả 2 máy mở lại app; cả 2 máy nâng `uv` ≥ 0.13.4; Windows và macOS đã cập nhật như thường lệ.
+- 2026-10-21 13:39 (Chỉ Huy B): chủ dự án duyệt. Máy Windows: `uv self update` từ 0.12.23 lên **0.13.4** (Chỉ Huy chạy). Máy Mac: chủ dự án tự chạy `uv self update`. Phần `required-version` (Thợ Máy) và README (Thư Ký) chưa giao.
