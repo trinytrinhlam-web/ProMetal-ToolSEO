@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 11:16 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 11:23 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy + Soi Lỗi (sửa dữ liệu test, chưa giao) | `team/T-055` | 20/10 Thợ Máy lượt 2 xong; 21/10 09:35 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (2 Thấp). 21/10 10:49 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`, Opus tạm): an toàn với file trên máy; 1 Trung bình LC-T055-1 (quét thư mục theo đường dẫn trong nháp có thể làm ảnh AI thành ảnh thật) → điều kiện T-056, sửa tận gốc ở T-076; 3 Thấp. ⏳ **Trước khi gộp:** đưa `main` vào nhánh, sửa dữ liệu test cũ sau T-070 (LC-T055-4: `genai` nay là ảnh AI, 2 test hỏng trên bản gộp) | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
-| [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Lá Chắn rút gọn (chưa giao) | `team/T-074` | 21/10 09:56 Thợ Máy **xong** (`8ce0117`; 1.087 test liên quan qua). 11:15 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`eec8fc7`: 6 yêu cầu làm đúng; 2 Thấp: SL-T074-1 đọc thẻ rất nhiều ảnh làm lần lưu ở tab khác chờ, quá 5 giây báo bận; SL-T074-2 thư mục tên công cụ AI viết hoa giữa chữ như "MidJourney", "FireFly" vẫn ra ảnh thật, có từ trước). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-074-tho-may.md) · [Soi Lỗi](reports/T-074-soi-loi.md) |
-| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Soi Lỗi, Lá Chắn rút gọn (chưa giao) | `team/T-075` | 21/10 10:44 Thợ Máy **xong** (`f6a8220`: `certifi` 2026.7.22 → 2026.10.19, `uv.lock` chỉ đổi 3 dòng; test chốt phiên bản và gốc emSign; `pip-audit` PyPI + OSV sạch; 927 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn, Lá Chắn rút gọn** | [Thợ Máy](reports/T-075-tho-may.md) |
+| [T-055](tickets/T-055-nhap-luu-lua-chon-anh.md) | GĐ3 · G3-9: nháp lưu lựa chọn ảnh | Thợ Máy · T-055 lượt 3 sửa dữ liệu test | `team/T-055` | 20/10 Thợ Máy lượt 2 xong; 21/10 09:35 Soi Lỗi lượt 2 **ĐẠT CÓ ĐIỀU KIỆN** (2 Thấp). 21/10 10:49 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`, Opus tạm): an toàn với file trên máy; 1 Trung bình LC-T055-1 (quét thư mục theo đường dẫn trong nháp có thể làm ảnh AI thành ảnh thật) → điều kiện T-056, sửa tận gốc ở T-076; 3 Thấp. 11:23 Chỉ Huy đưa `main` vào nhánh (`15a9726`, không xung đột). ⏳ **Thợ Máy lượt 3 đang sửa dữ liệu test** (LC-T055-4: `genai` nay là ảnh AI); rồi Soi Lỗi sửa `tests/test_soi_loi_t055.py` | [Thợ Máy](reports/T-055-tho-may.md) · [Soi Lỗi](reports/T-055-soi-loi.md) · [Lá Chắn](reports/T-055-la-chan.md) |
+| [T-074](tickets/T-074-don-the-anh-luot-2.md) | Dọn thẻ ảnh lượt 2 (LC-T070-1, -2; SL-T070-2, -3, -5). **Phải gộp trước T-056** | Lá Chắn · T-074 kiểm nhanh thẻ ảnh | `team/T-074` | 21/10 09:56 Thợ Máy **xong** (`8ce0117`; 1.087 test liên quan qua). 11:15 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`eec8fc7`: 6 yêu cầu làm đúng; 2 Thấp: SL-T074-1 đọc thẻ rất nhiều ảnh làm lần lưu ở tab khác chờ, quá 5 giây báo bận; SL-T074-2 thư mục tên công cụ AI viết hoa giữa chữ như "MidJourney", "FireFly" vẫn ra ảnh thật, có từ trước). ⏳ **11:23 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-074-tho-may.md) · [Soi Lỗi](reports/T-074-soi-loi.md) |
+| [T-075](tickets/T-075-nang-certifi.md) | **Gấp:** nâng `certifi` lên 2026.10.19 (LC-T061-1 Cao). Chủ dự án duyệt 21/10 | Soi Lỗi · T-075 kiểm nhanh certifi | `team/T-075` | 21/10 10:44 Thợ Máy **xong** (`f6a8220`: `certifi` 2026.7.22 → 2026.10.19, `uv.lock` chỉ đổi 3 dòng; test chốt phiên bản và gốc emSign; `pip-audit` PyPI + OSV sạch; 927 test liên quan qua). ⏳ **11:23 Soi Lỗi rút gọn đang kiểm**; rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-075-tho-may.md) |
 
 ## Chờ
 
