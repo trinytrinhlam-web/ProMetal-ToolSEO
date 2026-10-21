@@ -54,6 +54,7 @@ _Mục mới nhất ở trên cùng._
 - **Thợ Máy T-075 xong** (`f6a8220`, đã đối chiếu diff): `certifi` 2026.7.22 → 2026.10.19, `uv.lock` chỉ đổi khối `certifi`; test chốt mới; `pip-audit` PyPI + OSV sạch; 927 test liên quan qua. Chờ chủ dự án cho giao Soi Lỗi rút gọn, Lá Chắn rút gọn.
 - **Lá Chắn T-055 ĐẠT CÓ ĐIỀU KIỆN** (`91305e0`): an toàn F1/F3; 1 Trung bình LC-T055-1 (quét thư mục theo đường dẫn trong nháp làm SL-T055-1 quay lại) → điều kiện 2a–d vào T-056, sửa tận gốc ở **T-076** (lập mới); 3 Thấp: LC-T055-2, -3 → T-076; **LC-T055-4 phải sửa trước khi gộp**: trên bản gộp với `main` 2 test hỏng vì `genai` nay là ảnh AI (T-070), đổi sang cặp `CongAI`/`congai`. Điều kiện 4 chép vào T-063. Đề xuất ngoài phạm vi: `MidJourney` (J hoa) vẫn ra ảnh thật trên `main` → đã nhắn Soi Lỗi T-074 đang kiểm.
 - Soi Lỗi T-074 vẫn đang chạy. Số phiếu tiếp theo: **T-077**.
+- 11:03: chủ dự án kết nối lại Google Docs; đã cập nhật file Drive "Bảng tiến độ SEO App, 21/10/2026" (cùng link với bản 20/10, chỉ đổi ngày trong tên).
 
 ### 2026-10-21 10:58 · Chỉ Huy B
 
