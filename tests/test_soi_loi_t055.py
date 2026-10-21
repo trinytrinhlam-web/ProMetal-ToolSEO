@@ -8,23 +8,33 @@ Bổ sung cho ``tests/test_drafts_images.py`` của Thợ Máy, tập trung vào
 - Alt, chú thích, prompt đọc từ nháp; nháp khuôn 1 do code của ``main`` lưu thật;
   ``schema_version``.
 
+Lượt 2 (sau khi Thợ Máy sửa SL-T055-1 → 3): tên thư mục thật trên ổ (``_FolderNames``: Mac NFD,
+đổi tên/xóa/tráo liên kết giữa chừng, không mở file ảnh, danh sách bị cắt) và tiền tố ảnh AI
+(không lặp, không mất "đã duyệt" oan).
+
 Lỗi tìm được đánh dấu ``xfail(strict=True)`` kèm mã SL-T055-x (xem
 ``docs/team/reports/T-055-soi-loi.md``). Mọi test dùng thư mục tạm, ảnh giả, không gọi mạng.
 """
 
 from __future__ import annotations
 
+import builtins
+import dataclasses
+import io
 import json
 import os
 import sqlite3
+import unicodedata
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
 from seo_app.content import OutlineItem
-from seo_app.images.alt import AI_ALT_PREFIX
-from seo_app.images.folders import ImageLibrary, ImageRef
+from seo_app.images import folders
+from seo_app.images.alt import AI_ALT_PREFIX, AI_CAPTION_PREFIX
+from seo_app.images.folders import ImageEntry, ImageFolderError, ImageLibrary, ImageRef, SubFolder
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, FolderTags, ImageTags, tags_for_image
 from seo_app.storage import drafts
 from seo_app.storage.drafts import (
@@ -705,3 +715,338 @@ def test_round_trip_many_images_keeps_every_choice(store, library, root):
     assert set(checked) == {1, 2, 3, 4, 6, 7}
     assert all(checked[i].available for i in (1, 2, 4, 6, 7))
     assert checked[3].is_generated and checked[3].is_ai
+
+
+# ===== Lượt 2: tên thư mục thật trên ổ (SL-T055-1 đã sửa bằng ``_FolderNames``) ================
+
+
+GENAI_VARIANT = CAMEL_AI_PATH.replace("GenAI", "genai")  # nháp ghi chữ thường
+
+
+class CaseSensitiveDisk:
+    """Giả ổ **phân biệt** hoa thường (Linux, APFS bản phân biệt, thư mục NTFS bật phân biệt hoa
+    thường): ``stat_image`` chỉ thấy đúng tên trong ``files`` (mỗi file một cỡ để biết là file
+    nào); ``list_folder`` của thư mục gốc chỉ trả ``seen`` và báo đã cắt (thư mục quá 5.000 mục hay
+    quét quá 10 giây nên tên còn lại chưa được xem)."""
+
+    def __init__(self, monkeypatch, files: dict[str, int], seen: tuple[str, ...]) -> None:
+        def stat_image(_library, ref):
+            if ref.rel_path not in files:
+                raise ImageFolderError("Không tìm thấy ảnh hoặc thư mục này.")
+            return ImageEntry(ref=ref, name=ref.name, size=files[ref.rel_path], modified=0.0)
+
+        def list_folder(_library, root_index, rel_dir="", **kwargs):
+            assert rel_dir == ""
+            subfolders = tuple(SubFolder(rel_path=name, name=name) for name in seen)
+            return SimpleNamespace(subfolders=subfolders, truncated=True)
+
+        monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+        monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+
+
+@pytest.mark.parametrize(
+    ("draft_path", "seen"),
+    [("genai/cong.png", ("GenAI",)), ("GenAI/cong.png", ("genai",))],
+    ids=["nhap-genai-chi-thay-GenAI", "nhap-GenAI-chi-thay-genai"],
+)
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T055-4: tên thư mục 'thật' lấy từ danh sách bị cắt, không kiểm lại là cùng file",
+)
+def test_sl_t055_4_real_name_must_point_to_the_checked_file(monkeypatch, library, draft_path, seen):
+    """SL-T055-4 (Thấp). Ổ phân biệt hoa thường có cả ``GenAI/cong.png`` (ảnh AI) lẫn
+    ``genai/cong.png`` (một file khác). ``stat_image`` thấy đúng file nháp ghi; danh sách thư mục
+    gốc bị cắt nên chỉ thấy tên kia. ``_FolderNames`` lấy tên kia làm "tên thật" (trùng không phân
+    biệt hoa thường, đúng một) và đổi ``ref``, ``entry.ref`` sang **file khác** mà không kiểm lại:
+    ảnh vẫn "dùng được", đọc ảnh sau này ra ảnh khác ảnh đã chọn; ca thứ hai còn làm ảnh nháp ghi
+    trong thư mục ``GenAI`` thành ảnh thật. Mong đợi: ``ref`` dùng được thì đúng là file đã kiểm."""
+    files = {"GenAI/cong.png": 111, "genai/cong.png": 222}
+    CaseSensitiveDisk(monkeypatch, files, seen)
+    result = check_chosen_image(real_image(rel_path=draft_path), library)
+    if result.available:
+        assert result.ref == ImageRef(0, draft_path)
+        assert result.entry.size == files[result.ref.rel_path]
+    if draft_path.startswith("GenAI/"):
+        assert result.is_ai
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T055-4: thư mục bị tráo giữa lúc stat và lúc xem tên, ref trỏ sang file khác",
+)
+def test_sl_t055_4_folder_swapped_during_check_on_real_disk(monkeypatch, library, root):
+    """SL-T055-4 trên ổ thật (Windows, Mac): giữa lúc ``stat_image`` và lúc xem tên thư mục, thư mục
+    chứa ảnh bị đổi tên đi và một thư mục khác được đổi tên thành tên trùng hoa thường. ``ref``
+    chuyển sang file của thư mục kia, ``entry`` vẫn là số liệu của file cũ."""
+    write(root / "Genai" / "cong.png", b"\x89PNG anh da chon")
+    write(root / "Khac" / "cong.png", b"\x89PNG mot anh khac han, dai hon")
+    if not (root / "genai").exists():
+        pytest.skip("ổ phân biệt hoa thường: nháp 'genai' không trỏ tới 'Genai'")
+    original = ImageLibrary.list_folder
+
+    def swap_then_list(self, root_index, rel_dir="", **kwargs):
+        if rel_dir == "":
+            os.rename(root / "Genai", root / "Genai cu")
+            os.rename(root / "Khac", root / "GenAI")
+        return original(self, root_index, rel_dir, **kwargs)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", swap_then_list)
+    result = check_chosen_image(real_image(rel_path="genai/cong.png"), library)
+    monkeypatch.undo()
+    if result.available:
+        assert library.stat_image(result.ref).size == result.entry.size
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T055-5: thư mục cha quá nhiều mục thì ảnh thật bình thường cũng không dùng được",
+)
+def test_sl_t055_5_plain_real_image_usable_when_parent_listing_is_cut(monkeypatch, library):
+    """SL-T055-5 (Thấp). Nháp ghi đúng tên như trên ổ (không khác hoa thường), ảnh còn nguyên.
+    Thư mục gốc có hơn 5.000 mục (hay ổ chậm, quét quá 10 giây) nên thư mục công trình chưa nằm
+    trong phần đã xem: lượt 1 ảnh dùng được, lượt 2 báo "Chưa kiểm được tên thư mục" cho **mọi**
+    ảnh thật trong đó. Thử trên ổ thật Windows: gốc 5.200 ảnh tên bắt đầu bằng số (xếp trước
+    "CT012…") thì ảnh không dùng được; giao diện quét gốc cũng dừng ở 5.000 mục nên không mở tới
+    thư mục chứa ảnh như câu báo khuyên. Mong đợi: ảnh vẫn dùng được, thẻ ảnh thật."""
+    original = ImageLibrary.list_folder
+
+    def cut(self, root_index, rel_dir="", **kwargs):
+        listing = original(self, root_index, rel_dir, **kwargs)
+        return dataclasses.replace(listing, subfolders=(), truncated=True)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", cut)
+    result = check_chosen_image(real_image(), library)
+    assert result.available, result.message
+    assert result.ref == ImageRef(0, REAL_PATH) and not result.is_ai
+    assert result.tags.project_code == "CT012"
+
+
+class MacDisk:
+    """Giả ổ Mac (APFS mặc định): tìm tên không phân biệt hoa thường và dạng Unicode,
+    ``list_folder`` trả tên đúng như lưu trên ổ (ở đây là dạng NFD)."""
+
+    def __init__(self, monkeypatch, files: list[str]) -> None:
+        stored = [unicodedata.normalize("NFD", name) for name in files]
+        self.listed: list[str] = []
+
+        def key(text: str) -> str:
+            return unicodedata.normalize("NFC", text).casefold()
+
+        def stat_image(_library, ref):
+            if not any(key(name) == key(ref.rel_path) for name in stored):
+                raise ImageFolderError("Không tìm thấy ảnh hoặc thư mục này.")
+            return ImageEntry(ref=ref, name=ref.name, size=10, modified=0.0)
+
+        def list_folder(_library, root_index, rel_dir="", **kwargs):
+            self.listed.append(rel_dir)
+            depth = len(rel_dir.split("/")) if rel_dir else 0
+            found: dict[str, str] = {}
+            for name in stored:
+                parts = name.split("/")
+                if len(parts) > depth + 1 and key("/".join(parts[:depth])) == key(rel_dir):
+                    found["/".join(parts[: depth + 1])] = parts[depth]
+            subfolders = tuple(SubFolder(rel_path=path, name=sub) for path, sub in found.items())
+            return SimpleNamespace(subfolders=subfolders, truncated=False)
+
+        monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+        monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+
+
+def test_mac_nfd_folder_names_keep_ai_and_real_tags(monkeypatch, library):
+    """Mac lưu tên dạng NFD, nháp ghi NFC (và chữ thường "genai"): vẫn lấy đúng tên trên ổ, ảnh
+    trong "GenAI" là ảnh AI không mã công trình; ảnh thật giữ mã công trình, khu vực."""
+    disk = MacDisk(monkeypatch, [CAMEL_AI_PATH, REAL_PATH])
+    ai = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    assert ai.available and ai.is_ai and ai.tags.project_code == ""
+    assert ai.ref.rel_path == unicodedata.normalize("NFD", CAMEL_AI_PATH)
+    real = check_chosen_image(real_image(), library)
+    assert real.available and not real.is_ai
+    assert (real.tags.project_code, real.tags.area) == ("CT012", "Tân Phú")
+    assert disk.listed[0] == ""
+
+
+def test_ntfs_nfc_and_nfd_sibling_folders_are_told_apart(library, root):
+    """Ổ không gộp dạng Unicode (NTFS, ext4) có thể có cả "Tân Phú" dạng NFC lẫn NFD cạnh nhau: tên
+    trong nháp trùng hẳn thì lấy đúng thư mục đó, không báo "chưa kiểm được"."""
+    nfc = "Tân Phú"
+    nfd = unicodedata.normalize("NFD", nfc)
+    write(root / nfc / "GenAI" / "a.png", b"\x89PNG")
+    write(root / nfd / "truoc" / "a.png", b"\x89PNG")
+    if len({path.name for path in root.iterdir()} & {nfc, nfd}) != 2:
+        pytest.skip("ổ gộp NFC/NFD (Mac): không có hai thư mục riêng")
+    if not is_case_insensitive(root / nfc):
+        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
+    ai = check_chosen_image(real_image(rel_path=f"{nfc}/genai/a.png"), library)
+    assert ai.available and ai.is_ai and ai.ref.rel_path == f"{nfc}/GenAI/a.png"
+    real = check_chosen_image(real_image(rel_path=f"{nfd}/TRUOC/a.png"), library)
+    assert real.available and not real.is_ai and real.ref.rel_path == f"{nfd}/truoc/a.png"
+
+
+def test_check_opens_no_image_file(monkeypatch, library):
+    """Kiểm tên thư mục chỉ mở thư mục (đọc tên, ``stat``), không mở file ảnh nào: Drive "chỉ trực
+    tuyến" không bị tải về. Theo dõi ``os.open``, ``open`` và chỗ giữ thư mục của Windows."""
+    opened: list[str] = []
+    real_os_open, real_open, real_hold = os.open, builtins.open, folders._win_hold_dir
+
+    def spy_os_open(path, *args, **kwargs):
+        opened.append(os.fsdecode(path))
+        return real_os_open(path, *args, **kwargs)
+
+    def spy_open(path, *args, **kwargs):
+        opened.append(os.fsdecode(path) if isinstance(path, str | bytes | os.PathLike) else "")
+        return real_open(path, *args, **kwargs)
+
+    def spy_hold(path):
+        opened.append(str(path))
+        return real_hold(path)
+
+    monkeypatch.setattr(os, "open", spy_os_open)
+    monkeypatch.setattr(builtins, "open", spy_open)
+    monkeypatch.setattr(io, "open", spy_open)
+    monkeypatch.setattr(folders, "_win_hold_dir", spy_hold)
+    monkeypatch.setattr(ImageLibrary, "read_image_bytes", None)
+    result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    monkeypatch.undo()
+    if result.available:  # ổ không phân biệt hoa thường: đã xem tên thư mục
+        assert opened and result.is_ai and result.ref.rel_path == CAMEL_AI_PATH
+    assert not [path for path in opened if path.lower().endswith((".png", ".jpg", ".jpeg"))]
+
+
+@pytest.mark.parametrize("change", ["doi-ten", "xoa"])
+def test_folder_renamed_or_deleted_during_check(monkeypatch, library, root, tmp_path, change):
+    """Thư mục trên đường tới ảnh bị đổi tên hay xóa giữa lúc ``stat_image`` và lúc xem tên: ảnh
+    không dùng được, câu báo không có đường dẫn máy, không sập."""
+    original = ImageLibrary.list_folder
+
+    def change_then_list(self, root_index, rel_dir="", **kwargs):
+        if rel_dir == PROJECT:
+            target = root / PROJECT / "GenAI"
+            if change == "xoa":
+                (target / "cong.png").unlink()
+                target.rmdir()
+            else:
+                os.rename(target, root / PROJECT / "GenAI cu")
+        return original(self, root_index, rel_dir, **kwargs)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", change_then_list)
+    result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    assert not result.available
+    assert str(tmp_path) not in result.message and "\\" not in result.message
+
+
+@windows_only
+def test_junction_swapped_in_during_check_is_unavailable(monkeypatch, library, root, tmp_path):
+    """Thư mục công trình bị tráo thành junction trỏ ra ngoài gốc giữa lúc ``stat_image`` và lúc
+    xem tên: không đi theo, ảnh không dùng được, không lộ đường dẫn."""
+    import _winapi
+    import shutil
+
+    outside = tmp_path / "ngoai"
+    write(outside / "GenAI" / "cong.png", OUTSIDE_BYTES)
+    original = ImageLibrary.list_folder
+
+    def swap_then_list(self, root_index, rel_dir="", **kwargs):
+        if rel_dir == "":
+            shutil.rmtree(root / PROJECT)
+            _winapi.CreateJunction(str(outside), str(root / PROJECT))
+        return original(self, root_index, rel_dir, **kwargs)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", swap_then_list)
+    try:
+        result = check_chosen_image(real_image(rel_path=GENAI_VARIANT), library)
+    finally:
+        monkeypatch.undo()
+        if (root / PROJECT).is_junction():
+            os.rmdir(root / PROJECT)  # gỡ junction, không đụng thư mục đích
+    assert not result.available
+    assert str(tmp_path) not in result.message
+
+
+# ===== Lượt 2: tiền tố ảnh AI (SL-T055-2 đã sửa) ==============================================
+
+
+PREFIXED_ALT = "Minh họa cổng inox hai cánh"
+
+
+def ai_way(case: str, tag_store: ImageTagStore) -> tuple[DraftImage, dict]:
+    """Ảnh có alt đã duyệt **đã có** tiền tố, chú thích chưa có, theo từng cách thành ảnh AI."""
+    texts = {"alt": PREFIXED_ALT, "alt_approved": True, "caption": "Cổng hai cánh mới sơn"}
+    if case == "nhap-ghi-AI":
+        return real_image(source=SOURCE_AI, **texts), {}
+    if case == "thu-muc-AI-hoa-thuong":
+        return real_image(rel_path=GENAI_VARIANT, **texts), {}
+    if case == "the-sua-tay-AI":
+        tag_store.set(ImageRef(0, REAL_PATH), ImageTags(source=SOURCE_AI))
+        return real_image(**texts), {"tag_store": tag_store}
+    if case == "goc-AI":
+        return real_image(**texts), {"ai_roots": {0}}
+    return DraftImage(source=SOURCE_AI, prompt="cổng", **texts), {}
+
+
+@pytest.mark.parametrize(
+    "case", ["nhap-ghi-AI", "thu-muc-AI-hoa-thuong", "the-sua-tay-AI", "goc-AI", "anh-tao-bang-AI"]
+)
+def test_prefixed_alt_never_loses_approval(store, library, root, tag_store, case):
+    """Không mất "đã duyệt" oan: alt đã có «Minh họa» thì giữ nguyên và vẫn đã duyệt; chú thích
+    được thêm tiền tố mà không kéo theo alt."""
+    image, kwargs = ai_way(case, tag_store)
+    if case == "thu-muc-AI-hoa-thuong" and not is_case_insensitive(root):
+        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
+    saved = store.save(snapshot_with(image))
+    result = check_draft_images(store.load(saved.id), library, **kwargs)[1]
+    assert result.is_ai
+    assert (result.image.alt, result.image.alt_approved) == (PREFIXED_ALT, True)
+    assert result.image.caption == f"{AI_CAPTION_PREFIX}: cổng hai cánh mới sơn"
+
+
+def test_prefix_is_not_repeated_over_many_save_open_cycles(store, library, root):
+    """Mở nháp, kiểm, lưu lại bằng ``checked.image`` (như giao diện sẽ làm) nhiều lần: tiền tố chỉ
+    thêm một lần, không thành «Minh họa minh họa…»; duyệt lại một lần thì giữ "đã duyệt"."""
+    if not is_case_insensitive(root):
+        pytest.skip("ổ phân biệt hoa thường: 'genai' là thư mục khác")
+    images = (
+        real_image(rel_path=GENAI_VARIANT),  # thư mục AI, nháp ghi ảnh thật, chữ thường
+        real_image(source=SOURCE_AI),  # nháp ghi AI
+        DraftImage(source=SOURCE_AI, prompt="cổng", alt="Cổng inox", alt_approved=True),
+    )
+    draft_id = store.save(snapshot_with(*images)).id
+    seen = []
+    for cycle in range(5):
+        loaded = store.load(draft_id)
+        checked = check_draft_images(loaded, library)
+        parts = list(loaded.parts)
+        for index, item in checked.items():
+            image = item.image
+            if cycle == 1:
+                image = image.model_copy(update={"alt_approved": True})  # người dùng duyệt lại
+            parts[index] = parts[index].model_copy(update={"chosen_image": image})
+        draft_id = store.save(loaded.model_copy(update={"parts": parts})).id
+        seen.append(
+            [
+                (c.is_ai, c.image.alt, c.image.caption, c.image.alt_approved)
+                for c in checked.values()
+            ]
+        )
+    for row in seen:
+        for is_ai, alt, caption, _approved in row:
+            assert is_ai
+            assert alt.startswith(f"{AI_ALT_PREFIX} ")
+            assert AI_ALT_PREFIX.casefold() not in alt[len(AI_ALT_PREFIX) :].casefold()
+            assert not caption or (
+                caption.startswith(AI_CAPTION_PREFIX) and caption.count("minh họa") == 1
+            )
+    assert [approved for *_rest, approved in seen[0]] == [False, False, False]
+    assert seen[2] == seen[3] == seen[4]
+    assert all(approved for *_rest, approved in seen[4])
+
+
+@pytest.mark.parametrize("value", [False, 0, "", [], {}], ids=repr)
+def test_v1_non_null_image_values_are_still_counted(store, value):
+    """Đối chứng cho SL-T055-3: chỉ ``null`` là "chưa chọn ảnh"; giá trị khác (sửa tay) vẫn đếm."""
+    data = json.loads(REAL_V1_DRAFT)
+    data["parts"][0]["chosen_image"] = None
+    data["parts"][1]["chosen_image"] = value
+    put_raw(store, REAL_V1_ID, json.dumps(data, ensure_ascii=False))
+    loaded = store.load(REAL_V1_ID)
+    assert loaded.dropped_images == 1
+    assert loaded.parts[1].text == "Bản lề gỉ, cánh xệ."
