@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 15:46 (Chỉ Huy B)._
+_Cập nhật: 2026-10-21 16:04 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,8 +34,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Soi Lỗi · T-076 kiểm tên thư mục trên ổ | `team/T-076` | 14:41 Thợ Máy **xong** (`3bb126e`: đủ yêu cầu 1–4; `list_folder`, `stat_image` trả tên trên ổ; đổi tên giữa chừng thì báo "chưa kiểm được"; thư mục gốc hơn 5.000 mục vẫn dùng được; gỡ `xfail` SL-T055-4, -5; test liên quan 1.435 qua). ⏳ **14:53 Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-076-tho-may.md) |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Soi Lỗi · T-039 kiểm liên kết nội bộ | `team/T-039` | 14:45 Thợ Máy **xong** (`bf1f889`: `seo_app/onpage/links.py` mới; AI chỉ thấy ID + tiêu đề, code kiểm từng gợi ý, chèn link bằng `html.parser`, kiểm link nháp/hỏng; `prompts.py` chỉ thêm; 24 file test liên quan 2.320 qua). ⏳ **14:53 Soi Lỗi đang kiểm** | [Thợ Máy](reports/T-039-tho-may.md) |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Lá Chắn rút gọn (chưa giao) | `team/T-076` | Thợ Máy xong (`3bb126e`). 15:42 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`a1a48da`: 4 yêu cầu làm đúng, lớp chặn T-048 giữ nguyên; 1 Thấp SL-T076-1: đổi tên đúng lúc kiểm sang thư mục có bản sao y hệt thì lẫn sang bản sao). ⏳ **Chờ giao Lá Chắn rút gọn (F1)** | [Thợ Máy](reports/T-076-tho-may.md) · [Soi Lỗi](reports/T-076-soi-loi.md) |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy lượt 2 (chưa giao) | `team/T-039` | Thợ Máy xong (`bf1f889`). 16:01 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`5b4ec03`: 24 cách chèn link ngoài đều không lọt; chỉ bài đã đăng thành đích; **1 Trung bình SL-T039-6**: biến `_pending` trùng tên bộ đệm của `HTMLParser` bản Python 3.12.15 làm `apply_links` dừng hẳn hoặc bỏ oan đoạn cuối; 5 Thấp SL-T039-1 → -5). ⏳ **Chờ giao Thợ Máy lượt 2 sửa SL-T039-6** trước Lá Chắn | [Thợ Máy](reports/T-039-tho-may.md) · [Soi Lỗi](reports/T-039-soi-loi.md) |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) | Quy tắc alt: chữ trong ảnh không chép vào alt lẫn chú thích (C10 Lá Chắn T-051, LC-T062-1); trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-065` | 15:16 Ngòi Bút **xong** (`bded957`: chỉ `config/content.toml` mục `[alt]`; cấm chép chữ trong ảnh vào cả alt lẫn chú thích; sửa 2 ví dụ theo SL-T051-7; bỏ «phường»; chú thích "quy tắc, ví dụ gửi nguyên văn cho hãng AI, chỉ dùng thông tin bịa"). ⏳ **Chờ giao Soi Lỗi rút gọn**; rồi Lá Chắn rút gọn | [Ngòi Bút](reports/T-065-ngoi-but.md) |
 
 ## Chờ
