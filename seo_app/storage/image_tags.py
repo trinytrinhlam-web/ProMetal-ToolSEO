@@ -272,7 +272,7 @@ class ImageTagStore:
             raise TagError(_MSG_AI_FOLDER)
         saved_at = datetime.now(ZoneInfo(self.timezone))
         key = ref_key(ref)
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO manual_tags "
                 f"({', '.join(_COLUMNS)}) VALUES ({', '.join('?' * len(_COLUMNS))})",
@@ -304,7 +304,7 @@ class ImageTagStore:
         """Bỏ thẻ sửa tay của ``ref`` (quay về thẻ đọc từ tên thư mục). ``False``: không có."""
         if not _storable(_check_ref(ref)):
             return False
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             cursor = conn.execute(
                 "DELETE FROM manual_tags WHERE root_index = ? AND ref_key = ?",
                 (ref.root_index, ref_key(ref)),
@@ -313,7 +313,7 @@ class ImageTagStore:
 
     def clear_all(self) -> int:
         """Bỏ mọi thẻ sửa tay trên máy này. Trả số thẻ đã bỏ."""
-        with self._connect() as conn:
+        with self._connect(write=True) as conn:
             return conn.execute("DELETE FROM manual_tags").rowcount
 
     def list_manual(
@@ -372,14 +372,17 @@ class ImageTagStore:
         return ManualTag(ref=ref, tags=_keep_ai(tags, tags_for_image(ref).tags), saved_at=saved_at)
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
+    def _connect(self, *, write: bool = False) -> Iterator[sqlite3.Connection]:
+        """Kết nối trong **một** giao dịch, đã kiểm cấu trúc file. ``write``: thao tác ghi."""
         self._prepare()
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
                 conn.text_factory = bytes  # tự giải mã UTF-8 từng ô (``_row_to_tag``)
-                # File bị thay khi app đang chạy (SL-T052-9, -10): kiểm cấu trúc trước khi đọc.
+                _begin(conn, write=write)
+                # File bị thay khi app đang chạy (SL-T052-9, -10): kiểm cấu trúc trước khi đọc,
+                # trong cùng giao dịch với thao tác (LC-T070-2).
                 if _app_tables(conn) != _APP_TABLES:
                     self._ready = False  # lần sau kiểm lại: đổi tên file lạ, tạo file mới
                     raise ImageTagStoreError(_MSG_BROKEN)
@@ -415,6 +418,13 @@ class ImageTagStore:
                     self.recovered_from = self._move_aside()
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
+                conn.text_factory = bytes
+                # File có thể bị thay ngay sau ``_is_healthy`` (LC-T070-2): kiểm lại trong giao
+                # dịch ghi, trước ``CREATE``/``INSERT``. Lạ thì chưa ghi gì; lần sau kiểm lại từ
+                # đầu, đổi tên file lạ.
+                _begin(conn, write=True)
+                if _app_tables(conn) is None:
+                    raise ImageTagStoreError(_MSG_BROKEN)
                 for sql in _CREATE_TABLES:
                     conn.execute(sql)
                 conn.execute(
@@ -510,6 +520,15 @@ def _guard(conn: sqlite3.Connection) -> None:
     conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
 
 
+def _begin(conn: sqlite3.Connection, *, write: bool) -> None:
+    """Mở giao dịch **trước** khi kiểm cấu trúc (LC-T070-2), để kiểm và dùng file nằm trong cùng
+    một giao dịch: khóa giữ tới khi commit/rollback, nên chương trình khác không đổi được cấu trúc
+    giữa lúc kiểm và lúc dùng (nó nhận "database is locked"). Ghi: ``BEGIN IMMEDIATE`` (giữ quyền
+    ghi ngay); đọc: ``BEGIN`` (giữ khóa đọc, hay ảnh chụp ở chế độ WAL, từ câu đọc đầu tiên, tức
+    câu kiểm ``sqlite_master``)."""
+    conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+
+
 @cache
 def _expected_schema() -> dict[bytes, frozenset[tuple]]:
     """Các dòng ``sqlite_master`` (loại, tên, bảng, câu lệnh) của hai bảng app tạo, theo tên bảng.
@@ -533,13 +552,21 @@ def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
     trong file đều khớp đúng ``_expected_schema``; có gì khác thì ``None`` (LC-T052-2, SL-T052-9).
 
     Bắt được: khung nhìn, trigger, bảng ảo (``USING …``), ``WITHOUT ROWID``, ``CHECK``, cột sinh,
-    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``.
+    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``, và đang ở
+    trong giao dịch của thao tác (``_begin``).
+
+    Đọc vào **danh sách** (LC-T070-1): nhiều dòng hơn số mong đợi, hay một dòng ``(loại, tên)``
+    lặp lại, thì ``None``. So theo tập hợp thì một dòng chỉ mục lặp lại (``writable_schema``) gộp
+    vào dòng cũ và đẩy một trigger ra ngoài ``LIMIT``. Vẫn đọc có ``LIMIT``: không đọc vô hạn.
     """
     expected = _expected_schema()
-    limit = sum(len(items) for items in expected.values()) + 1
+    limit = sum(len(items) for items in expected.values())
+    rows = [tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit + 1))]
+    if len(rows) > limit or len({row[:2] for row in rows}) != len(rows):
+        return None
     found: dict[bytes, set[tuple]] = {}
-    for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit)):
-        found.setdefault(row[2], set()).add(tuple(row))
+    for row in rows:
+        found.setdefault(row[2], set()).add(row)
     for name, items in found.items():
         if name not in expected or items != expected[name]:
             return None
@@ -559,6 +586,9 @@ def _is_healthy(path: Path) -> bool:
             # File chưa tin cậy: không chạy hàm trong view/trigger/chỉ mục của nó khi kiểm.
             _guard(conn)
             conn.text_factory = bytes
+            # Mọi bước kiểm nằm trong một giao dịch đọc (LC-T070-2): cấu trúc không đổi được giữa
+            # ``_app_tables`` và ``quick_check``.
+            _begin(conn, write=False)
             # Trước mọi truy vấn khác (LC-T052-2): khung nhìn hay trigger đệ quy không bao giờ
             # được chạy, kể cả bởi ``quick_check`` (kiểm ``CHECK``, cột sinh).
             tables = _app_tables(conn)

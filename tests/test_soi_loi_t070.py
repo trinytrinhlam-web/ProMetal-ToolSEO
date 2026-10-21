@@ -388,13 +388,6 @@ RECURSIVE = (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: _app_tables đọc sqlite_master với LIMIT 5 và so theo tập hợp; một dòng chỉ "
-        "mục tự sinh lặp lại (writable_schema) đẩy trigger ra ngoài LIMIT, file độc qua kiểm"
-    ),
-)
 def test_sl_t070_1_duplicate_master_row_cannot_hide_a_trigger(tmp_path):
     path = tmp_path / "image_tags.sqlite"
     _hide_trigger_behind_duplicate_row(path, MUTATE)
@@ -403,13 +396,6 @@ def test_sl_t070_1_duplicate_master_row_cannot_hide_a_trigger(tmp_path):
     assert _is_healthy(path) is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: trigger ẩn sau dòng lặp chạy ở mỗi lần set: đổi khu vực vừa lưu "
-        "(Tân Phú → Quận 1), file không bị đổi tên kể cả khi tạo kho mới"
-    ),
-)
 def test_sl_t070_1_hidden_trigger_never_changes_saved_tags(tmp_path):
     path = tmp_path / "image_tags.sqlite"
     _hide_trigger_behind_duplicate_row(path, MUTATE)
@@ -419,13 +405,6 @@ def test_sl_t070_1_hidden_trigger_never_changes_saved_tags(tmp_path):
         assert store.get(REF).tags.area == "Tân Phú"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T070-1: trigger đệ quy ẩn sau dòng lặp: mỗi lần set bị giới hạn số bước dừng rồi báo "
-        "lỗi, nhưng _is_healthy vẫn cho qua nên file không bao giờ bị đổi tên: kẹt mãi"
-    ),
-)
 def test_sl_t070_1_hidden_recursive_trigger_does_not_jam_store(tmp_path, monkeypatch):
     monkeypatch.setattr(image_tags_module, "_MAX_VM_STEPS", 200_000)
     path = tmp_path / "image_tags.sqlite"
