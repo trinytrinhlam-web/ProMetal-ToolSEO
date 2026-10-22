@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-22 13:51. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-22 18:07. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -45,16 +45,23 @@ Chỉ Huy B, cập nhật 2026-10-22 13:51. Agent chạy ở phiên con dưới 
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`49ed923`) | ✅ 22/10 13:35 Soi Lỗi lượt 3 ĐẠT (0 lỗi) | ⏳ Lá Chắn đầy đủ (phiên "Lá Chắn · T-039 kiểm liên kết nội bộ") |
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`c7b2394`) | ✅ 22/10 13:45 Thợ Máy xong (Windows 1.452 test liên quan qua; Mac/Linux mới giả lập) | ⏳ Soi Lỗi Windows (phiên "Soi Lỗi · T-079 kiểm đọc ảnh an toàn") + phiên cloud Linux (`task_8fde0958`, kết quả ở `team/T-079-linux`, không báo về); rồi Lá Chắn |
-| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh (GĐ3, trước T-056) | `team/T-069` (`b8489fa`) | ✅ 22/10 13:21 Thư Ký xong | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-069 kiểm nhanh README ảnh") |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp vào `main` trên máy (`089f685`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; chủ dự án "tiếp tục" | ⏳ Chạy toàn bộ test Windows (cùng T-069); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-039` |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`089d115`, đã có kết quả Linux) | ✅ Soi Lỗi Windows ĐẠT CÓ ĐIỀU KIỆN, Soi Lỗi Linux (cloud) ĐẠT | ⏳ Lá Chắn (phiên "Lá Chắn · T-079 kiểm đọc ảnh an toàn") |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (từ `main` sau gộp T-039, T-069) | Chủ dự án "tiếp tục" | ⏳ Thợ Máy (phiên "Thợ Máy · T-066 dọn lớp ảnh gửi AI") |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (từ `main` sau gộp T-039, T-069) | Chủ dự án "tiếp tục" | ⏳ Thợ Máy (phiên "Thợ Máy · T-071 dọn chèn ảnh nháp") |
+| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp vào `main` trên máy (`5d17f5e`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏳ Chạy toàn bộ test Windows (cùng T-039); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-069` |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
-| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
+| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-040, T-041 (GĐ4, hết chờ sau T-039); T-060 (dọn client WordPress, trước T-041); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-22 18:07 · Chỉ Huy B
+
+- **Lá Chắn T-039 ĐẠT CÓ ĐIỀU KIỆN** (`7f9fd80`, 2 Thấp; điều kiện → T-040, T-041, GĐ5). **Lá Chắn T-069 rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`5104e17`, 2 Thấp chữ README). **Soi Lỗi T-079 Windows ĐẠT CÓ ĐIỀU KIỆN** (`79b55e7`, SL-T079-1 Thấp). **Phiên cloud Linux T-079 ĐẠT** (`e7fdebd` trên `team/T-079-linux`: 0 lọt qua hơn 1,3 triệu lượt đọc khi bị tráo).
+- Chủ dự án ("Tiếp tục"): gộp T-039 (`089f685`) và T-069 (`5d17f5e`) vào `main`, không xung đột; đang chạy toàn bộ test Windows. Gộp `team/T-079-linux` vào `team/T-079` (`089d115`). Giao Lá Chắn T-079 (F1), Thợ Máy T-066, Thợ Máy T-071 (file không trùng nhau). Điều kiện Lá Chắn T-039 chép vào T-040, T-041; LC-T069-2 chép vào T-056.
 
 ### 2026-10-22 13:51 · Chỉ Huy B
 

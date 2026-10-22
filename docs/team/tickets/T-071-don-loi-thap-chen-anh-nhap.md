@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi gộp T-056) |
 | Phụ thuộc | T-054 đã gộp; nên sau T-070 (cần `ImageTags` ổn định) |
-| Trạng thái | Mới |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ W1–W4, 2.3, F2.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 5 của Lá Chắn T-054. Làm trên nhánh tạm `team/T-071`, tạo từ `main` sau khi T-054 gộp.
+- 2026-10-22 18:07 (Chỉ Huy B): giao (chủ dự án "tiếp tục"). Nhánh `team/T-071` tạo từ `main` sau khi gộp T-039, T-069. Phiếu trước T-056.

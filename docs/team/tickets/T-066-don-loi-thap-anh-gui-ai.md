@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (gộp trước T-056 và trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-050 đã gộp; nên sau T-049 (bản gửi AI không còn hồ sơ màu) |
-| Trạng thái | Mới |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -47,3 +47,4 @@ A3.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 1 của Lá Chắn T-050. Việc này đổi thiết kế T-046 mục 3: bản gửi AI **không còn hồ sơ màu** (Chỉ Huy B duyệt, vì T-049 đã buộc bản gửi AI không kèm hồ sơ màu theo điều kiện 2 của Lá Chắn T-050).
+- 2026-10-22 18:07 (Chỉ Huy B): giao (chủ dự án "tiếp tục"). Nhánh `team/T-066` tạo từ `main` sau khi gộp T-039, T-069. Phiếu trước T-056.
