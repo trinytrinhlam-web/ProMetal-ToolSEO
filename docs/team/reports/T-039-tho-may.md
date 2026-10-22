@@ -297,3 +297,105 @@ Không có: cả 6 lỗi đã sửa và gỡ `xfail`.
 ### Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 3 (2026-10-22) · sửa SL-T039-7 → 9 (Soi Lỗi lượt 2)
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Thợ Máy (`tho-may`) · model: Opus 5.5 (`claude-opus-5-5`) |
+| Nhánh | `team/T-039`, nhận ở `96fb3df`. Commit: `ed5805f` (sửa và test), commit báo cáo này |
+| Kết quả | Hoàn thành: sửa đủ 3 lỗi (SL-T039-7 bắt buộc, SL-T039-8, SL-T039-9), gỡ hết 10 dấu `xfail` |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Đã sửa lỗi bắt buộc (SL-T039-7).** Phần kiểm tên website thêm ở lượt 2 có thể chạy rất chậm nếu bài có một link cố ý gõ tên website cực dài bằng chữ lạ (link 8.000 ký tự mất 50 giây). Nay link như vậy được kiểm gần như tức thì, bài dài gấp đôi thì chỉ chậm gấp đôi; kết quả kiểm giữ nguyên như lượt 2.
+- **Sửa luôn 2 lỗi nhỏ.** Đoạn "mã" có dấu ngoặc vuông không còn làm phần chèn link bỏ oan link bắt buộc hay đặt link vào chỗ "[cần bổ sung: …]". Link bài nháp gõ tay dạng `?p[]=12` nay bị chặn như `?p=12`.
+- **Không còn lỗi nào để lại.**
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/onpage/links.py` | `_browser_host` không còn mã punycode nhãn dài (SL-T039-7); `_Run.in_code` và `_masked_runs` bỏ qua dấu ngoặc trong `<code>` (SL-T039-8); `_php_name` cắt tên ở "[…]" (SL-T039-9) |
+| `tests/test_onpage_links.py` | Thêm 8 hàm test, 21 ca (261 → 282 ca). Không sửa test có sẵn |
+| `tests/test_soi_loi_t039.py` | Chỉ gỡ 3 dấu `xfail` (10 ca). Không đổi điều kiện kiểm nào |
+| `docs/team/reports/T-039-tho-may.md` | Mục này |
+
+Không đụng `seo_app/sanitize.py`, `seo_app/content/prompts.py`, `app/**`, `seo_app/wordpress/**`; không nới bộ lọc nào.
+
+### Đã sửa
+
+| Lỗi | Cách sửa | Chỗ sửa (`seo_app/onpage/links.py`) |
+|---|---|---|
+| **SL-T039-7**: `check_links` chạy bậc hai với tên máy dài không phải ASCII (punycode trong `.encode("idna")`) | Theo hướng Soi Lỗi đề xuất: tách nhãn ở `.`, `。`, `．`, `｡`; nhãn không phải ASCII qua `nameprep` (tuyến tính). Nhãn vẫn còn chữ không phải ASCII **sau** `nameprep` mà dài quá 63 ký tự thì không thể là tên máy thật: trả nguyên tên máy (là "ra ngoài" như lượt 1), không mã punycode. Nhãn ≤ 63 ký tự vẫn qua `ToASCII` như lượt 2 (punycode chỉ chạy trên tối đa 63 ký tự), nên tên miền tiếng nước ngoài viết dạng chữ (`bücher.de`) vẫn đổi đúng như trình duyệt. Không chặn theo độ dài chữ gốc: `suachuacuasat` + 100 ký tự U+FE0F + `.com` vẫn Chặn (test canh của Soi Lỗi qua) | `_browser_host`, `_HOST_DOTS`, `_MAX_LABEL` |
+| **SL-T039-8**: dấu ngoặc trong `mã` tính khác nhau giữa `check_suggestions` và `apply_links` | `_TextRuns` ghi thêm nút chữ nào nằm trong `<code>` đang mở (`_Run.in_code`); `_masked_runs` bỏ qua dấu ngoặc của các nút đó (không mở, không đóng "[…]"), như `_mask_code` che `mã` trước khi che "[…]". `<code>` bị đóng ngầm không tính: bộ lọc HTML đóng hẳn nó ở đó | `_Run`, `_TextRuns.__flush`, `_masked_runs` |
+| **SL-T039-9**: `?p[]=12`, `?page_id[]=10`, `?name[]=…` là "Link về trang chủ" | Như PHP: "[" có "]" phía sau là biến dạng mảng, tên dừng ở "[" (`?p[]=`, `?p[0]=` là `p`); "[" không đóng vẫn đổi thành "_" như lượt 2. Dùng chung cho link bắt buộc trong phiếu | `_php_name` |
+
+### Test mới (`tests/test_onpage_links.py`)
+
+| Lỗi | Test |
+|---|---|
+| SL-T039-7 | `test_check_links_linear_on_long_hosts` (4 ca tốc độ: một nhãn dài nhiều chữ Hán **khác nhau**, ca mà chữ toàn khổ ở lượt 2 không đo được vì `nameprep` đổi chữ toàn khổ về ASCII; nhãn ASCII dài có "%"; nhãn lẫn ASCII và chữ có dấu; hàng nghìn nhãn ngắn không phải ASCII, mỗi nhãn vẫn mã punycode), `test_long_non_ascii_label_is_never_own_site`, `test_idn_site_written_in_unicode_still_blocks` (nhãn ngắn vẫn đổi punycode như trình duyệt) |
+| SL-T039-8 | `test_brackets_inside_code_are_ignored` (3 ca), `test_check_and_apply_see_same_placeholders` (thử ngẫu nhiên 1.500 bài dựng từ Markdown có in đậm, `mã`, "[" "]" ở mọi chỗ: gợi ý `check_suggestions` nhận thì `place_links` chèn được, và chèn vào đoạn `check_suggestions` thấy cụm từ ngoài "[…]") |
+| SL-T039-9 | `test_php_array_names_block` (6 dạng), `test_php_array_names_of_other_params_still_ok` (`?a[name]=`, `?x[p]=`, `?pp[]=`, `?p.x[0]=` vẫn Nên), `test_required_link_with_php_array_name_blocks` |
+
+**Test mới đỏ trên code cũ:** nạp `links.py` của `96fb3df` (lượt 2) thay bản mới bằng plugin pytest để ngoài repo: **11/21** ca mới của tôi đỏ, đúng 3 lỗi (2 ca mã, test thử ngẫu nhiên, 6 dạng mảng PHP, link bắt buộc dạng mảng, ca tốc độ chữ Hán); **cả 10** ca `test_sl7_*`, `test_sl8_*`, `test_sl9_*` của Soi Lỗi đỏ. Các ca còn lại là test canh hành vi đúng vốn có.
+
+### Bằng chứng
+
+Windows 11 (máy chủ dự án), worktree `wt-T-039`, Python 3.12.15, có agent khác chạy song song.
+
+```
+# Đo trước khi sửa (thời gian CPU, check_links với một link có tên máy n chữ Hán khác nhau):
+n = 500: 0,094 s · n = 1.000: 0,391 s · n = 2.000: 1,5 s        (dài gấp đôi → chậm gấp 4)
+# Sau khi sửa: n = 2.000: 0,016 s · n = 8.000: 0,047 s · n = 32.000: 0,016 s   (dưới độ phân giải đồng hồ Windows)
+
+$ uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py
+492 passed in 25.55s                    # trước lượt 3: 461 passed, 10 xfailed
+
+$ for i in 1..5; uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py -k linear
+37 passed, 455 deselected               (5/5 lượt, gồm test_sl7_* và 4 ca tốc độ mới)
+
+$ uv run pytest <25 file, đúng danh sách các lượt trước>
+2620 passed, 1 skipped, 18 xfailed in 293.92s (0:04:53)
+# 1 bỏ qua và 18 xfail là của các file khác, có từ trước (Soi Lỗi lượt 2: 2589 passed, 1 skipped,
+# 28 xfailed; nay 2589 + 10 ca gỡ xfail + 21 ca mới = 2620)
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check seo_app/onpage/links.py tests/test_onpage_links.py tests/test_soi_loi_t039.py
+3 files already formatted
+
+$ PYTHONUTF8=1 uvx --offline bandit seo_app/onpage/links.py
+No issues identified.
+$ PYTHONUTF8=1 uvx --offline detect-secrets scan --all-files seo_app/onpage/links.py \
+    tests/test_onpage_links.py tests/test_soi_loi_t039.py
+"results": {}          # mồi tiếng Việt có khóa giả (ngoài repo, đã xóa): bắt đúng, dòng 2
+```
+
+**Thử ngẫu nhiên (script để ngoài repo):**
+
+- `fuzz_nfd.py` của Soi Lỗi (chữ NFD bị thẻ, thực thể cắt ở mọi chỗ, trên HTML gốc và HTML đã lọc): 5 hạt giống × 3.000 = 15.000 bài, 15.803 lần chèn, 0 lần cắt đôi chữ có dấu.
+- 3 script lượt 1 (16.000 mẫu): đạt, 2.572 lần chèn.
+- `fuzz_round2.py` (HTML chưa lọc, 7 × 5.000 mẫu, 7.715 lần chèn) và `fuzz_round2c.py` (đầu vào đã lọc, có thẻ bộ lọc bỏ, 6 × 5.000 mẫu, 7.326 lần chèn): đạt. Bộ kiểm "không link mới nào sau '[' chưa đóng" của hai script này nay bỏ qua dấu ngoặc trong `<code>`, theo quy tắc mới (bản cập nhật: thư mục ghi chú chung, `T-039-tho-may-luot-3-scripts/`).
+
+### Lỗi để lại
+
+Không có: cả 3 lỗi đã sửa và gỡ `xfail`.
+
+### Rủi ro và điểm cần chú ý (lượt 3)
+
+- **Markdown che `mã` rộng hơn HTML.** `markdown_blocks` che từ dấu ` đầu tới dấu ` cuối của **dòng** (có từ lượt 1, cố ý che rộng). Dòng có từ 2 đoạn `mã` trở lên mà có dấu ngoặc nằm **giữa** hai đoạn mã: `check_suggestions` không tính dấu ngoặc đó, `apply_links` thì tính, nên link có thể bị bỏ qua (kèm lý do; link bắt buộc thì `check_links` báo thiếu). Chỉ theo hướng an toàn: không bao giờ chèn vào "[…]". Bài sửa cửa hầu như không có đoạn mã; test thử ngẫu nhiên vì vậy chỉ sinh tối đa một đoạn mã mỗi dòng.
+- **Nhãn không phải ASCII ≤ 63 ký tự** vẫn mã punycode như lượt 2 (để `bücher.de` đổi đúng). Chi phí mỗi nhãn có giới hạn; hàng nghìn nhãn như vậy vẫn tuyến tính (ca `many-idn-labels`).
+- **Chưa chạy được trên Python 3.12.3** (máy chỉ có 3.12.15 và 3.14.6). Code lượt 3 chỉ dùng thêm `encodings.idna.nameprep` và `ToASCII` (hàm có trong tài liệu Python từ lâu); hai hàm cho kết quả giống hệt nhau trên 3.12.15 và 3.14.6 (`bücher` → `xn--bcher-kva`, chữ toàn khổ → ASCII, bỏ U+FE0F). Suy luận: 3.12.3 cũng vậy, chưa chạy thử.
+- Các điểm của lượt 2 vẫn giữ: gọi theo thứ tự `sanitize_html` → `apply_links` → `sanitize_html` → `check_links`; `?attachment_id=`, `?cat=` để Giai đoạn 5 quyết.
+
+### Đề xuất
+
+- Không có việc mới. Các đề xuất của lượt 2 (thứ tự gọi ở Giai đoạn 5, ghim bản vá Python, `?attachment_id=`/`?cat=`) vẫn giữ.
+
+### Câu hỏi cho chủ dự án
+
+Không có.
