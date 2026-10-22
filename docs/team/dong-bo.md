@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-22 13:30. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-22 13:47. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -45,9 +45,9 @@ Chỉ Huy B, cập nhật 2026-10-22 13:30. Agent chạy ở phiên con dưới 
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`34e143a`) | ✅ 22/10 10:12 Thợ Máy lượt 3 xong | ⏳ Soi Lỗi rút gọn (nhắn lại phiên "Soi Lỗi · T-039 kiểm lại lượt 2"); rồi Lá Chắn |
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (từ `main` sau gộp T-076, T-063) | Chủ dự án chọn cách A | ⏳ Thợ Máy làm (phiên "Thợ Máy · T-079 đọc ảnh an toàn") |
-| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh (GĐ3, trước T-056) | `team/T-069` (từ `main` sau gộp T-076, T-063) | Chủ dự án cho giao | ⏳ Thư Ký làm (phiên "Thư Ký · T-069 README ảnh") |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`49ed923`) | ✅ 22/10 13:35 Soi Lỗi lượt 3 ĐẠT (0 lỗi) | ⏳ Chờ chủ dự án cho giao Lá Chắn (đầy đủ) |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`c7b2394`) | ✅ 22/10 13:45 Thợ Máy xong (Windows 1.452 test liên quan qua; Mac/Linux mới giả lập) | ⏳ Chờ chủ dự án cho giao Soi Lỗi (Windows) + phiên cloud Linux; rồi Lá Chắn |
+| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh (GĐ3, trước T-056) | `team/T-069` (`b8489fa`) | ✅ 22/10 13:21 Thư Ký xong | ⏳ Chờ chủ dự án cho giao Lá Chắn rút gọn |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
 | Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
@@ -55,6 +55,12 @@ Chỉ Huy B, cập nhật 2026-10-22 13:30. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-22 13:47 · Chỉ Huy B
+
+- **Thư Ký T-069 xong** (`b8489fa`, diff chỉ `README.md` + báo cáo). Chờ Lá Chắn rút gọn.
+- **Soi Lỗi T-039 lượt 3 ĐẠT** (`49ed923`, 0 lỗi; SL-T039-1 → -9 đóng). Chờ Lá Chắn đầy đủ.
+- **Thợ Máy T-079 xong** (`c7b2394`, diff trong phạm vi: `folders.py`, `drafts.py` phần LC-T076-3, test; các file `xfail` chỉ gỡ dấu): vá SL-T063-2, -3 cho Mac/Linux (fd từng tầng) và Windows (hỏi lại vị trí của chính file đã mở); SL-T063-1, -4, -5, LC-T076-3. Phần Mac/Linux mới chạy giả lập trên Windows → đề xuất Soi Lỗi trên Windows + phiên cloud Linux. Không còn phiên con nào chạy.
 
 ### 2026-10-22 13:30 · Chỉ Huy B
 
