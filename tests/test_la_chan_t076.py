@@ -39,13 +39,6 @@ pytestmark = pytest.mark.skipif(
 PROJECT = "CT012 - Cổng inox - Tân Phú"
 DISK = f"{PROJECT}/CongAI/cong.png"
 DRAFT = f"{PROJECT}/congai/cong.png"
-XFAIL = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T076-1: ổ trả lại chữ đã gõ khi resolve (Google Drive for Desktop trên Windows) thì "
-        "stat_image/list_folder trả ImageRef theo chữ đã gõ, ảnh AI 'CongAI' ra ảnh thật"
-    ),
-)
 
 
 def typed_resolve(self: Path, strict: bool = False) -> Path:
@@ -135,13 +128,11 @@ def test_fake_drive_full_listing_still_catches_case_variant(root, monkeypatch):
 # ----- LC-T076-1: đang hỏng trên ổ giả lập --------------------------------------------------
 
 
-@XFAIL
 def test_lc_t076_1_stat_image_returns_disk_name(root, monkeypatch):
     monkeypatch.setattr(Path, "resolve", typed_resolve)
     assert ImageLibrary([root]).stat_image(ImageRef(0, DRAFT)).ref == ImageRef(0, DISK)
 
 
-@XFAIL
 def test_lc_t076_1_list_folder_returns_disk_names(root, monkeypatch):
     monkeypatch.setattr(Path, "resolve", typed_resolve)
     listing = ImageLibrary([root]).list_folder(0, f"{PROJECT}/congai")
@@ -149,7 +140,6 @@ def test_lc_t076_1_list_folder_returns_disk_names(root, monkeypatch):
     assert [entry.ref for entry in listing.images] == [ImageRef(0, DISK)]
 
 
-@XFAIL
 def test_lc_t076_1_scanned_by_draft_folder_stays_ai(root, monkeypatch):
     """LC-T055-1 (thử 1, 4 của Lá Chắn T-055) trên ổ Drive: "mở thư mục chứa ảnh" theo đường dẫn
     ghi trong nháp rồi truyền ``scanned``."""
@@ -159,7 +149,6 @@ def test_lc_t076_1_scanned_by_draft_folder_stays_ai(root, monkeypatch):
     assert_ai(check_draft_images(draft_snapshot(), lib, scanned=scanned)[1])
 
 
-@XFAIL
 @pytest.mark.parametrize("scan", ["khong-quet", "quet-tu-goc"])
 def test_lc_t076_1_cut_parent_listing_stays_ai(root, monkeypatch, scan):
     """Thư mục công trình đông nên danh sách bị cắt: lớp phòng thứ hai giữ tên ``stat_image`` trả
@@ -175,7 +164,6 @@ def test_lc_t076_1_cut_parent_listing_stays_ai(root, monkeypatch, scan):
     assert_ai(checked)
 
 
-@XFAIL
 def test_lc_t076_1_image_picked_again_from_draft_folder_is_ai(root, monkeypatch):
     monkeypatch.setattr(Path, "resolve", typed_resolve)
     (entry,) = ImageLibrary([root]).list_folder(0, f"{PROJECT}/congai").images

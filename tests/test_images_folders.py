@@ -965,10 +965,12 @@ def test_scan_of_deep_tree_is_fast(tmp_path):
     assert time.perf_counter() - started < 5
 
 
-# ----- tên trên ổ (T-076, LC-T055-1) ---------------------------------------------------------
+# ----- tên trên ổ (T-076, LC-T055-1, LC-T076-1) ----------------------------------------------
 #
 # "CongAI" là thư mục ảnh AI nhờ tách chữ hoa, "congai" thì không (T-052): ``ImageRef`` trả ra phải
-# theo tên trên ổ, không theo chữ đã gõ, dù ổ Windows/Mac tìm ra cùng một thư mục.
+# theo tên trên ổ, không theo chữ đã gõ, dù ổ Windows/Mac tìm ra cùng một thư mục. Tên lấy từ thư
+# mục cha, không từ ``resolve``: ổ Google Drive for Desktop của Windows trả lại chữ đã gõ khi
+# ``resolve`` (LC-T076-1).
 
 PROJECT = "CT012 - Cổng inox - Tân Phú"
 ON_DISK = f"{PROJECT}/CongAI/Cong.PNG"
@@ -984,12 +986,23 @@ def case_insensitive(folder: Path) -> bool:
         probe.rmdir()
 
 
-@pytest.fixture(params=["he-dieu-hanh", "xem-thu-muc-cha"])
+def typed_resolve(self: Path, strict: bool = False) -> Path:
+    """Như ``resolve`` của ổ Google Drive for Desktop trên Windows (đo trên máy chủ dự án,
+    LC-T076-1): trả lại đúng chữ đã gõ; danh sách thư mục vẫn cho tên trên ổ."""
+    if strict:
+        os.lstat(self)  # không có thì FileNotFoundError, như resolve thật
+    return Path(os.path.abspath(self))
+
+
+@pytest.fixture(params=["he-dieu-hanh", "xem-thu-muc-cha", "resolve-tra-chu-da-go"])
 def name_source(request, monkeypatch) -> str:
-    """Chạy cả hai cách lấy tên trên ổ trên mọi máy: cách của hệ điều hành đang chạy (Windows: từ
-    đường đã ``resolve``), và cách của Mac/Linux (xem tên trong thư mục cha từng tầng)."""
+    """Chạy mọi cách lấy tên trên ổ trên mọi máy: cách của hệ điều hành đang chạy (Windows: hỏi thư
+    mục cha từng mục), cách của Mac/Linux (đọc tên trong thư mục cha từng tầng), và cách của hệ
+    điều hành đang chạy trên ổ trả lại chữ đã gõ khi ``resolve`` (như Google Drive for Desktop)."""
     if request.param == "xem-thu-muc-cha":
         monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    elif request.param == "resolve-tra-chu-da-go":
+        monkeypatch.setattr(Path, "resolve", typed_resolve)
     return request.param
 
 
@@ -1157,3 +1170,80 @@ def test_entry_swapped_during_name_lookup_is_refused(tmp_path, monkeypatch, name
     monkeypatch.setattr(ImageLibrary, "_resolve_inside", check_then_swap)
     exc = raises_safely(lambda: call(ImageLibrary([root])), tmp_path)
     assert "thay đổi" in str(exc)
+
+
+@windows_only
+def test_windows_asks_the_parent_folder_one_entry_per_level(camel, monkeypatch):
+    """LC-T076-1: Windows hỏi thư mục cha đúng một mục mỗi tầng (``FindFirstFileW``), tầng sau đi
+    theo tên trên ổ của tầng trước; không đọc cả thư mục (``os.scandir``), không lấy tên từ
+    ``resolve``. Ổ trả lại chữ đã gõ khi ``resolve`` vẫn ra tên trên ổ."""
+    if not case_insensitive(camel):
+        pytest.skip("thư mục tạm bật phân biệt hoa thường")
+    asked: list[str] = []
+    real_lookup = folders._win_listed_name
+
+    def spy_lookup(path):
+        asked.append(Path(path).relative_to(camel).as_posix())
+        return real_lookup(path)
+
+    def no_scandir(target):
+        raise AssertionError("không đọc cả thư mục để lấy tên")
+
+    monkeypatch.setattr(folders, "_win_listed_name", spy_lookup)
+    monkeypatch.setattr("seo_app.images.folders.os.scandir", no_scandir)
+    monkeypatch.setattr(Path, "resolve", typed_resolve)
+    entry = ImageLibrary([camel]).stat_image(ImageRef(0, TYPED))
+    assert entry.ref == ImageRef(0, ON_DISK) and entry.name == "Cong.PNG"
+    assert asked == [
+        "ct012 - cổng INOX - tân phú",
+        f"{PROJECT}/congai",
+        f"{PROJECT}/CongAI/cong.png",
+    ]
+
+
+@windows_only
+@pytest.mark.parametrize("source", ["hoi-tung-muc", "doc-thu-muc-cha"])
+def test_short_8_3_name_refused_when_resolve_keeps_typed_text(tmp_path, monkeypatch, source):
+    """Ổ trả lại chữ đã gõ khi ``resolve`` thì phép chặn tên ngắn 8.3 của ``_resolve_inside`` (so
+    với tên ``resolve`` trả) không bắt được; bước lấy tên trên ổ vẫn từ chối, vì thư mục cha chỉ
+    liệt kê tên dài: một file không có hai ``ImageRef``."""
+    import ctypes
+
+    def short_path(path: Path) -> str:
+        buffer = ctypes.create_unicode_buffer(1024)
+        ctypes.windll.kernel32.GetShortPathNameW(str(path), buffer, 1024)
+        return buffer.value
+
+    root = tmp_path / "anh"
+    target = write(root / "Thu muc dai ten lam nhe" / "Anh rat dai ten.jpg")
+    short_file, short_root = short_path(target), short_path(root)
+    if "~" not in Path(short_file).relative_to(short_root).as_posix():
+        pytest.skip("ổ này tắt tên ngắn 8.3")
+    rel = Path(short_file).relative_to(short_root).as_posix()
+    if source == "doc-thu-muc-cha":
+        monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    monkeypatch.setattr(Path, "resolve", typed_resolve)
+    lib = ImageLibrary([root])
+    assert lib.stat_image(ImageRef(0, "Thu muc dai ten lam nhe/Anh rat dai ten.jpg"))
+    raises_safely(lambda: lib.stat_image(ImageRef(0, rel)), tmp_path)
+    raises_safely(lambda: lib.list_folder(0, rel.split("/")[0]), tmp_path)
+
+
+@windows_only
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [(2, "Không tìm thấy"), (3, "Không tìm thấy"), (5, "Không đọc được")],
+    ids=["khong-co-file", "khong-co-duong-dan", "khong-co-quyen"],
+)
+def test_windows_lookup_failure_is_a_plain_message(camel, monkeypatch, error, message):
+    """Ổ không trả lời được khi hỏi tên (mục vừa mất, không có quyền đọc thư mục cha): báo lỗi gọn,
+    không có đường dẫn máy, không quay về chữ đã gõ."""
+    import ctypes
+
+    def failing(path, data):
+        ctypes.set_last_error(error)
+        return ctypes.c_void_p(-1).value
+
+    monkeypatch.setattr(folders._kernel32(), "FindFirstFileW", failing)
+    exc = raises_safely(lambda: ImageLibrary([camel]).stat_image(ImageRef(0, ON_DISK)), camel)
+    assert message in str(exc)

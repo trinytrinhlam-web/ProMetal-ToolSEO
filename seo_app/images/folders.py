@@ -15,7 +15,9 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
   8.3 cũng bị từ chối, để ``ImageRef`` theo đúng luật của lúc quét.
 - ``ImageRef`` trả ra (``list_folder``, ``stat_image``) theo tên trên ổ, không theo chữ người gọi
   gõ (T-076, LC-T055-1): ổ Windows, Mac không phân biệt hoa thường nên ``congai`` vẫn mở được thư
-  mục ``CongAI``, còn thẻ ảnh đọc từ tên thư mục thì phân biệt.
+  mục ``CongAI``, còn thẻ ảnh đọc từ tên thư mục thì phân biệt. Tên trên ổ lấy từ thư mục cha (tên
+  ổ liệt kê ra), không từ ``resolve``: ổ Google Drive for Desktop của Windows trả lại đúng chữ đã
+  gõ khi ``resolve`` (LC-T076-1).
 - Khi quét, thư mục được "giữ" để không bị tráo giữa lúc kiểm và lúc đọc (xem phần "giữ thư
   mục trong lúc quét").
 - Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``.
@@ -66,9 +68,14 @@ _WINDOWS_DEVICE_NAMES = frozenset(
 # ổ gắn vào thư mục, symlink WSL). File "chỉ trực tuyến" của OneDrive/Drive không có bit này.
 _REPARSE_NAME_SURROGATE = 0x20000000
 _UF_HIDDEN = getattr(stat, "UF_HIDDEN", 0)
-# Windows: ``resolve`` (hỏi chính handle của mục) trả tên đúng như lưu trên ổ, kể cả hoa thường.
-# Mac/Linux: ``resolve`` giữ nguyên chữ đã gõ, phải xem tên trong thư mục cha (T-076).
+# Cách lấy tên trên ổ (T-076). Không máy nào lấy tên từ ``resolve``: trên Mac/Linux, và trên ổ
+# Google Drive for Desktop của Windows (đo trên máy chủ dự án, LC-T076-1), ``resolve`` trả lại đúng
+# chữ đã gõ. ``True`` (Windows): hỏi thư mục cha đúng mục đó, từng tầng (``FindFirstFileW``).
+# ``False`` (Mac/Linux): đọc tên trong thư mục cha (``_listed_names``). Tên hằng có từ lượt 1 (khi
+# Windows còn lấy tên từ ``resolve``), giữ lại vì test đặt hằng này để chạy cách của Mac/Linux.
 _NAMES_FROM_RESOLVE = os.name == "nt"
+_ERROR_FILE_NOT_FOUND = 2
+_ERROR_PATH_NOT_FOUND = 3
 
 _MSG_BAD_PATH = "Đường dẫn ảnh không hợp lệ."
 _MSG_NOT_FOUND = (
@@ -145,7 +152,7 @@ def _name_key(name: str) -> str:
 
 
 def _match_disk_name(names: Iterable[str], name: str, time_is_up: Callable[[], bool]) -> str:
-    """Tên trên ổ của ``name``, tìm trong danh sách tên của thư mục cha (T-076, Mac/Linux).
+    """Tên trên ổ của ``name``, tìm trong danh sách tên của thư mục cha (T-076).
 
     Trùng hẳn thì là chính nó (ổ phân biệt hoa thường có thể có cả ``CongAI`` lẫn ``congai``: hai
     thư mục khác nhau). Không thì phải có đúng một tên trùng không phân biệt hoa thường và dạng
@@ -253,6 +260,10 @@ def _kernel32():  # chỉ gọi trên Windows
         wintypes.DWORD,
     ]
     k32.GetFinalPathNameByHandleW.restype = wintypes.DWORD
+    k32.FindFirstFileW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.WIN32_FIND_DATAW)]
+    k32.FindFirstFileW.restype = wintypes.HANDLE
+    k32.FindClose.argtypes = [wintypes.HANDLE]
+    k32.FindClose.restype = wintypes.BOOL
     return k32
 
 
@@ -311,6 +322,27 @@ def _win_final_path(fd: int) -> str | None:
     if not 0 < length < _FINAL_PATH_CHARS:
         return None
     return buffer.value
+
+
+def _win_listed_name(path: Path) -> str:
+    """Tên của mục cuối ``path`` do thư mục cha liệt kê ra (Windows, ``FindFirstFileW``).
+
+    Hỏi thư mục cha đúng một mục: không đọc cả thư mục, không mở file (Drive "chỉ trực tuyến"
+    không bị tải về). Ổ trả tên đã lưu (``cFileName``) cả khi ``resolve`` trả lại chữ đã gõ (ổ
+    Google Drive for Desktop, LC-T076-1); thư mục bật phân biệt hoa thường thì chỉ khớp đúng chữ.
+    Tên đã qua ``_is_safe_name`` nên không có ký tự đại diện (``*``, ``?``, ``<``, ``>``, ``"``);
+    ổ còn khớp cả tên ngắn 8.3 (trả tên dài), chỗ gọi so khóa tên để loại.
+    """
+    from ctypes import wintypes
+
+    k32 = _kernel32()
+    data = wintypes.WIN32_FIND_DATAW()
+    handle = k32.FindFirstFileW(str(path), ctypes.byref(data))
+    if handle in (None, 0, ctypes.c_void_p(-1).value):
+        missing = ctypes.get_last_error() in (_ERROR_FILE_NOT_FOUND, _ERROR_PATH_NOT_FOUND)
+        raise ImageFolderError(_MSG_NOT_FOUND if missing else _MSG_UNREADABLE)
+    k32.FindClose(handle)
+    return data.cFileName
 
 
 def _path_key(path: str) -> str:
@@ -546,25 +578,27 @@ class ImageLibrary:
         return resolved, last
 
     def _disk_names(
-        self, root: Path, parts: tuple[str, ...], resolved: Path, last: os.stat_result
+        self, root: Path, parts: tuple[str, ...], last: os.stat_result
     ) -> tuple[str, ...]:
-        """Tên trên ổ của ``parts`` (đã qua ``_resolve_inside``, ra ``resolved`` và ``last``).
+        """Tên trên ổ của ``parts`` (đã qua ``_resolve_inside``; ``last`` là ``lstat`` mục cuối).
 
         ``ImageRef`` trả ra phải theo tên trên ổ, không theo chữ người gọi gõ (T-076, LC-T055-1):
         thẻ ảnh đọc từ tên thư mục phân biệt hoa thường ("CongAI" là thư mục ảnh AI nhờ tách chữ
-        hoa, "congai" thì không), còn ổ Windows, Mac thì không.
+        hoa, "congai" thì không), còn ổ Windows, Mac thì không. Tên lấy từ thư mục cha từng tầng,
+        không từ ``resolve`` (ổ Google Drive for Desktop của Windows trả lại đúng chữ đã gõ,
+        LC-T076-1):
 
-        - Windows: lấy từ ``resolved`` (hỏi chính handle của mục, như phép kiểm tên 8.3).
-        - Mac/Linux: ``resolve`` giữ nguyên chữ đã gõ, nên xác nhận từng tầng bằng tên trong thư
-          mục cha (``_listed_names``).
+        - Windows: hỏi thư mục cha đúng mục đó (``_found_names``).
+        - Mac/Linux: đọc tên trong thư mục cha (``_listed_names``).
 
-        Rồi kiểm mục ở tên trên ổ đúng là mục ``last`` (so định danh): bị tráo giữa chừng thì báo
-        lỗi, không trả tên của mục này kèm số liệu của mục khác (LC-T055-2).
+        Không lấy được tên thì báo lỗi, không quay về chữ đã gõ. Rồi kiểm mục ở tên trên ổ đúng là
+        mục ``last`` (so định danh): bị tráo giữa chừng thì báo lỗi, không trả tên của mục này kèm
+        số liệu của mục khác (LC-T055-2).
         """
         if not parts:
             return parts
         if _NAMES_FROM_RESOLVE:
-            real = resolved.relative_to(root).parts
+            real = self._found_names(root, parts)
         else:
             real = self._listed_names(root, parts)
         if len("/".join(real)) > MAX_REL_PATH_CHARS or not all(map(_is_safe_name, real)):
@@ -578,6 +612,19 @@ class ImageLibrary:
         if _is_link_stat(again) or not _same_file(again, last):
             raise _ChangedError()
         return real
+
+    def _found_names(self, root: Path, parts: tuple[str, ...]) -> tuple[str, ...]:
+        """Windows: tên trên ổ của từng phần, hỏi thư mục cha đúng mục đó từ gốc xuống (T-076).
+
+        Mỗi tầng một lần hỏi ổ (``_win_listed_name``), không đọc cả thư mục. Cùng luật chọn tên như
+        ``_listed_names`` (``_match_disk_name``): tên ổ trả về phải trùng hẳn, hoặc trùng không phân
+        biệt hoa thường và dạng Unicode; tên ngắn 8.3 (ổ trả tên dài, khác khóa) bị từ chối.
+        """
+        real: list[str] = []
+        for part in parts:
+            listed = _win_listed_name(root.joinpath(*real, part))
+            real.append(_match_disk_name((listed,), part, lambda: False))
+        return tuple(real)
 
     def _listed_names(self, root: Path, parts: tuple[str, ...]) -> tuple[str, ...]:
         """Mac/Linux: tên trên ổ của từng phần, xem trong thư mục cha từ gốc xuống (T-076).
@@ -631,7 +678,7 @@ class ImageLibrary:
 
         ``rel_dir`` gõ khác hoa thường (hay khác dạng Unicode, trên Mac) vẫn mở được thư mục,
         nhưng ``FolderListing.rel_dir``, ``SubFolder.rel_path`` và ``ImageRef`` trả ra đều theo tên
-        trên ổ (T-076).
+        trên ổ (T-076), kể cả trên ổ trả lại chữ đã gõ khi ``resolve`` (LC-T076-1).
         """
         if type(page) is not int or page < 1:
             raise ImageFolderError("Số trang không hợp lệ.")
@@ -644,7 +691,7 @@ class ImageLibrary:
         directory, dir_stat = self._resolve_inside(root, parts)
         if not stat.S_ISDIR(dir_stat.st_mode):
             raise ImageFolderError("Đây không phải là thư mục.")
-        parts = self._disk_names(root, parts, directory, dir_stat)
+        parts = self._disk_names(root, parts, dir_stat)
 
         scan = _Scan(
             root_index=root_index,
@@ -720,10 +767,11 @@ class ImageLibrary:
 
         ``ImageEntry.ref`` theo tên trên ổ (T-076), như ``ImageRef`` của ``list_folder``: ``ref``
         gõ khác hoa thường (hay khác dạng Unicode, trên Mac) vẫn tìm ra ảnh, nhưng kết quả mang
-        tên thật. Dùng ``entry.ref`` (không dùng ``ref`` đã đưa vào) làm khóa, để đọc thẻ ảnh.
+        tên thật, kể cả trên ổ trả lại chữ đã gõ khi ``resolve`` (LC-T076-1). Dùng ``entry.ref``
+        (không dùng ``ref`` đã đưa vào) làm khóa, để đọc thẻ ảnh.
         """
-        root, path, lst = self._checked_file(ref)
-        real = self._disk_names(root, ref.parts, path, lst)
+        root, _path, lst = self._checked_file(ref)
+        real = self._disk_names(root, ref.parts, lst)
         found = ref if real == ref.parts else ImageRef(ref.root_index, "/".join(real))
         return ImageEntry(ref=found, name=found.name, size=lst.st_size, modified=lst.st_mtime)
 
