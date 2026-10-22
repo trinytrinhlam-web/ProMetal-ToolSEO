@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-22 10:16. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-22 13:10. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -44,15 +44,22 @@ Chỉ Huy B, cập nhật 2026-10-22 10:16. Agent chạy ở phiên con dưới 
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 | đã gộp (`ae2ae8e`), nhánh và worktree đã xóa | ✅ Windows 10.135 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-077 |
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ (GĐ3) | `team/T-076` (`3dbf956`) | ✅ 22/10 10:11 Lá Chắn lượt 2 ĐẠT CÓ ĐIỀU KIỆN (gộp được ngay; LC-T076-3 → T-079) | ⏳ Chờ chủ dự án cho gộp |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`34e143a`) | ✅ 22/10 10:12 Thợ Máy lượt 3 xong | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn; rồi Lá Chắn |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp vào `main` trên máy (`4ca5a2d`) | ✅ chủ dự án cho gộp | ⏳ Chạy toàn bộ test Windows (cùng T-063); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-076` |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`34e143a`) | ✅ 22/10 10:12 Thợ Máy lượt 3 xong | ⏳ Soi Lỗi rút gọn (nhắn lại phiên "Soi Lỗi · T-039 kiểm lại lượt 2"); rồi Lá Chắn |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (từ `main` sau gộp T-076, T-063) | Chủ dự án chọn cách A | ⏳ Thợ Máy làm (phiên "Thợ Máy · T-079 đọc ảnh an toàn") |
+| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh (GĐ3, trước T-056) | `team/T-069` (từ `main` sau gộp T-076, T-063) | Chủ dự án cho giao | ⏳ Thư Ký làm (phiên "Thư Ký · T-069 README ảnh") |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
-| [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | `team/T-063` (`b7a44cc`) | ✅ 22/10 10:14 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (SL-T063-2 Cao Mac/Linux, Thấp Windows) | ⏳ Chờ chủ dự án: gộp báo cáo + test; chọn thứ tự T-079/T-056 (A/B) |
-| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
+| [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp vào `main` trên máy (`103b6ee`) | ✅ chủ dự án cho gộp | ⏳ Chạy toàn bộ test Windows (cùng T-076); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-063` |
+| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-22 13:10 · Chỉ Huy B
+
+- **Quyết định chủ dự án** ("Làm tiếp theo đề xuất của bạn"): gộp T-076 và T-063; **cách A** (T-079 trước T-056); giao Soi Lỗi rút gọn T-039 lượt 3, Thợ Máy T-079, Thư Ký T-069. Đã ghi vào T-056, T-079.
+- Gộp T-076 (`4ca5a2d`) rồi T-063 (`103b6ee`) vào `main`, không xung đột; đang chạy toàn bộ test Windows. Nhánh `team/T-079`, `team/T-069` tạo từ `main` sau commit này.
 
 ### 2026-10-22 10:28 · Chỉ Huy B
 

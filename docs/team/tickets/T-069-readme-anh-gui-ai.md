@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi gộp T-056) |
 | Phụ thuộc | T-062 đã gộp; nên sau T-052 |
-| Trạng thái | Mới |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -51,3 +51,4 @@ Không có (soát bí mật như mọi phiếu tài liệu).
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-052** (điều kiện 4), cho mục "Đặt thư mục ảnh": ảnh AI để trong thư mục con có chữ "AI" (ví dụ `Ảnh AI`) bên dưới thư mục đã khai báo; chưa khai báo thư mục ảnh AI làm một mục `IMAGE_FOLDERS` riêng cho tới khi T-056 xử lý; thư mục ảnh thật không có chữ "AI" đứng riêng hay tên công cụ AI (ảnh sẽ mất thẻ).
 - 2026-10-20 (Chỉ Huy B): **Điều kiện Lá Chắn T-070** (điều kiện 3), cho mục "Đặt thư mục ảnh": liệt kê các chữ làm ảnh thành ảnh AI (AI, minh họa, tên công cụ…); gõ tên thư mục ảnh thật **có dấu**; tránh tên công cụ đứng riêng (Sora, Flux, Designer, Canva, Bing…); không để ảnh lấy từ mạng hay ảnh tham khảo trong thư mục ảnh.
 - 2026-10-21 (Chỉ Huy B): **Điều kiện Lá Chắn T-074** (điều kiện 3): gõ tên công cụ tạo ảnh theo cách viết liền chuẩn (Midjourney, Firefly, Copilot, Seedream); nếu app báo mãi "Không mở được file lưu thẻ ảnh…" thì đóng chương trình khác đang mở file, hoặc xóa `data/image_tags.sqlite` (chỉ mất thẻ sửa tay).
+- 2026-10-22 13:10 (Chỉ Huy B): chủ dự án cho giao. Nhánh `team/T-069` tạo từ `main` mới nhất (đã có T-052, T-062, T-070, T-074, T-077 nên làm đủ cả phần 1 và phần 2). Thêm: chủ dự án hiện chưa có máy Mac; README không cần đổi phần Mac nhưng không được hứa điều chưa kiểm trên Mac.
