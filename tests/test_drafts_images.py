@@ -611,6 +611,18 @@ def test_scanned_images_need_no_folder_listing(store, library, monkeypatch):
     assert checked[1].available and checked[2].available
 
 
+def test_scanned_ref_typed_from_draft_does_not_skip_the_folder_check(store, library, monkeypatch):
+    """``scanned`` chỉ bỏ bước đối chiếu khi trùng hẳn tên trên ổ: ``ImageRef`` dựng từ chữ trong
+    nháp (khác hoa thường) không trùng nên vẫn xem tên thư mục, như khi không có ``scanned``."""
+    other_case = variant_case(REAL_PATH)
+    saved = store.save(snapshot_with(real_image(rel_path=other_case)))
+    calls = spy_list_folder(monkeypatch)
+    result = check_draft_images(store.load(saved.id), library, scanned=[ImageRef(0, other_case)])[1]
+    if result.available:  # ổ không phân biệt hoa thường
+        assert result.ref == ImageRef(0, REAL_PATH)
+        assert calls == [(0, "", False), (0, PROJECT, False)]
+
+
 def make_junction(link: Path, target: Path) -> None:
     import _winapi
 
@@ -656,45 +668,63 @@ def test_check_needs_the_right_types(library):
         check_chosen_image({"root_index": 0, "rel_path": REAL_PATH}, library)
 
 
-# ----- khóa theo ImageRef của kết quả quét ---------------------------------------------------
+# ----- ImageRef theo tên trên ổ; kết quả quét chỉ để bỏ bước đối chiếu (T-076) ----------------
 
 
 def variant_case(rel_path: str) -> str:
     return rel_path.upper()
 
 
-def test_scanned_ref_becomes_the_key(store, library, roots):
+def test_ref_is_the_disk_name_with_or_without_scan(store, library, roots):
+    """``ref`` là ``ImageRef`` theo tên trên ổ do ``stat_image`` trả (T-076), cả thư mục lẫn tên
+    file, có hay không có kết quả quét."""
     listing = library.list_folder(0, f"{PROJECT}/truoc")
-    scanned = listing.images[0].ref
-    assert scanned == ImageRef(0, REAL_PATH)
+    assert listing.images[0].ref == ImageRef(0, REAL_PATH)
     other_case = variant_case(REAL_PATH)
     saved = store.save(snapshot_with(real_image(rel_path=other_case)))
     loaded = store.load(saved.id)
-
-    with_scan = check_draft_images(loaded, library, scanned=listing.images)[1]
-    assert with_scan.ref == scanned  # đúng ImageRef của kết quả quét, không phải chữ trong nháp
-    assert with_scan.available  # stat_image chạy trên ImageRef của kết quả quét
-
-    without_scan = check_draft_images(loaded, library)[1]
     case_insensitive = (roots[0] / other_case).exists()
-    assert without_scan.available == case_insensitive
-    if case_insensitive:
-        # Chưa quét: tên thư mục lấy đúng như trên ổ (SL-T055-1), tên file giữ như nháp (tên file
-        # không đổi thẻ). Thẻ theo tên thư mục thật.
-        real_dirs = ImageRef(0, f"{PROJECT}/truoc/{other_case.rsplit('/', 1)[1]}")
-        assert without_scan.ref == real_dirs and without_scan.entry.ref == real_dirs
-        assert without_scan.tags.project_code == "CT012" and not without_scan.is_ai
-    else:
-        assert without_scan.ref == ImageRef(0, other_case)
+    for kwargs in ({}, {"scanned": listing.images}):
+        result = check_draft_images(loaded, library, **kwargs)[1]
+        assert result.available == case_insensitive
+        if case_insensitive:
+            assert result.ref == result.entry.ref == ImageRef(0, REAL_PATH)
+            assert result.tags.project_code == "CT012" and not result.is_ai
+        else:
+            # Ổ phân biệt hoa thường: tên viết hoa là một file khác (không có). Kết quả quét không
+            # đổi sang file "trùng không phân biệt hoa thường".
+            assert result.ref == ImageRef(0, other_case)
 
 
-def test_scanned_refs_match_other_unicode_form(store, library):
+def test_scanned_ref_never_switches_to_another_file(store, library, roots):
+    """Kết quả quét không đổi ảnh được kiểm (T-076): nháp ghi dạng NFD, kết quả quét có dạng NFC.
+    Ổ phân biệt dạng Unicode (NTFS) thì NFD là tên khác, không có file: không dùng được (trước T-076
+    app lấy luôn file NFC của kết quả quét). Ổ Mac: cùng một file, ``ref`` theo tên trên ổ."""
     nfd = unicodedata.normalize("NFD", REAL_PATH)
     assert nfd != REAL_PATH
     saved = store.save(snapshot_with(real_image(rel_path=nfd)))
     result = check_draft_images(store.load(saved.id), library, scanned=[ImageRef(0, REAL_PATH)])[1]
-    assert result.ref == ImageRef(0, REAL_PATH)
-    assert result.available
+    if (roots[0] / nfd).exists():
+        assert result.available
+        assert result.ref == library.stat_image(ImageRef(0, REAL_PATH)).ref
+    else:
+        assert not result.available and result.ref == ImageRef(0, nfd)
+
+
+def test_scanned_sibling_with_other_unicode_form_is_not_used(store, library, roots):
+    """Ổ không gộp dạng Unicode (NTFS, ext4) có cả thư mục "Tân Phú" NFC lẫn NFD: nháp ghi NFD, kết
+    quả quét chỉ có ảnh bên NFC. Ảnh dùng là ảnh bên NFD (đúng cỡ của nó), không phải ảnh quét."""
+    nfc = "Tân Phú"
+    nfd = unicodedata.normalize("NFD", nfc)
+    write(roots[0] / nfc / "a.jpg", b"\xff\xd8 ben NFC, dai hon")
+    write(roots[0] / nfd / "a.jpg", b"\xff\xd8 ben NFD")
+    if len({path.name for path in roots[0].iterdir()} & {nfc, nfd}) != 2:
+        pytest.skip("ổ gộp NFC/NFD (Mac): không có hai thư mục riêng")
+    scanned = library.list_folder(0, nfc).images
+    assert [entry.ref for entry in scanned] == [ImageRef(0, f"{nfc}/a.jpg")]
+    result = check_chosen_image(real_image(rel_path=f"{nfd}/a.jpg"), library, scanned=scanned)
+    assert result.available and result.ref == ImageRef(0, f"{nfd}/a.jpg")
+    assert result.entry.size == len(b"\xff\xd8 ben NFD")
 
 
 def test_scanned_ref_of_other_root_is_not_used(store, library):
@@ -917,54 +947,192 @@ def test_case_variant_of_ai_folder_reads_real_name_and_stays_ai(
     assert result.image.alt.startswith(AI_ALT_PREFIX) and not result.image.alt_approved
 
 
+@pytest.mark.parametrize(
+    "scan", ["khong-quet", "quet-theo-nhap", "ref-theo-nhap", "entry-theo-nhap", "quet-tu-goc"]
+)
+def test_lc_t055_1_case_variant_stays_ai_whatever_scanned_is(
+    store, library, roots, tag_store, scan
+):
+    """LC-T055-1 (T-076). Nháp ghi ``…/congai/cong.png`` (nguồn "that", alt đã duyệt), trên ổ là
+    ``CongAI``: ảnh AI, alt có «Minh họa» và phải duyệt lại, cả khi ``scanned`` quét theo đường dẫn
+    trong nháp (``list_folder`` với thư mục ghi trong nháp, ``ImageRef``/``ImageEntry`` dựng từ chữ
+    trong nháp), không chỉ khi đi từ thư mục gốc xuống."""
+    variant = CAMEL_AI_PATH.replace("CongAI", "congai")
+    assert_ai_only_by_case(CAMEL_AI_PATH, variant)
+    write(roots[0] / CAMEL_AI_PATH, b"\x89PNG fake")
+    if not case_insensitive_disk(roots[0]):
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác, không trỏ tới 'CongAI'")
+    typed_ref = ImageRef(0, variant)
+    scanned: tuple = ()
+    if scan == "quet-theo-nhap":
+        scanned = library.list_folder(0, variant.rsplit("/", 1)[0]).images
+    elif scan == "ref-theo-nhap":
+        scanned = (typed_ref,)
+    elif scan == "entry-theo-nhap":
+        scanned = (ImageEntry(ref=typed_ref, name="cong.png", size=10, modified=0.0),)
+    elif scan == "quet-tu-goc":
+        scanned = library.list_folder(0, f"{PROJECT}/CongAI").images
+    result = check_one(
+        store, library, real_image(rel_path=variant), tag_store=tag_store, scanned=scanned
+    )
+    assert result.available
+    assert result.ref == result.entry.ref == ImageRef(0, CAMEL_AI_PATH)
+    assert_ai_without_project(result.tags)
+    assert result.image.alt.startswith(f"{AI_ALT_PREFIX} ") and not result.image.alt_approved
+    assert result.image.caption.startswith(AI_CAPTION_PREFIX)
+
+
+def test_lc_t055_1_folder_opened_by_draft_path_lists_disk_names(library, roots, tag_store):
+    """LC-T055-1: "mở thư mục chứa ảnh" theo đường dẫn ghi trong nháp (``congai``) rồi chọn lại ảnh
+    trong danh sách đó: ``ImageRef`` theo tên trên ổ (``CongAI``), ảnh chọn lại là ảnh AI."""
+    write(roots[0] / CAMEL_AI_PATH, b"\x89PNG fake")
+    if not case_insensitive_disk(roots[0]):
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác, không trỏ tới 'CongAI'")
+    listing = library.list_folder(0, f"{PROJECT}/congai")
+    assert listing.rel_dir == f"{PROJECT}/CongAI"
+    (entry,) = listing.images
+    assert entry.ref == ImageRef(0, CAMEL_AI_PATH)
+    picked = DraftImage.from_library(entry, tag_store.resolve(entry.ref).tags, alt="Cổng inox")
+    assert picked.source == SOURCE_AI and picked.rel_path == CAMEL_AI_PATH
+
+
+def test_lc_t055_3_image_under_crowded_root_is_still_checked(store, roots):
+    """LC-T055-3 (T-076): thư mục gốc quá nhiều mục (ở đây ngân sách 2 mục cho dễ thử) nên danh
+    sách thư mục bị cắt: ảnh thật ở thư mục con vẫn dùng được, thẻ theo tên trên ổ; ảnh trong thư
+    mục AI nháp ghi chữ thường vẫn là ảnh AI."""
+    for number in range(6):
+        write(roots[0] / f"000{number}.jpg")
+    crowded = ImageLibrary(roots, max_entries=2)
+    assert crowded.list_folder(0).truncated
+    write(roots[0] / CAMEL_AI_PATH, b"\x89PNG fake")
+    variant = CAMEL_AI_PATH.replace("CongAI", "congai")
+    images = (real_image(), real_image(rel_path=variant))
+    checked = check_draft_images(store.load(store.save(snapshot_with(*images)).id), crowded)
+    assert checked[1].available, checked[1].message
+    assert checked[1].ref == ImageRef(0, REAL_PATH) and checked[1].tags.project_code == "CT012"
+    if case_insensitive_disk(roots[0]):
+        assert checked[2].available and checked[2].ref == ImageRef(0, CAMEL_AI_PATH)
+        assert_ai_without_project(checked[2].tags)
+    else:
+        assert not checked[2].available
+
+
 class FakeDisk:
     """Giả ``ImageLibrary.stat_image``/``list_folder`` (chạy như nhau trên mọi máy): thư mục gốc có
-    thư mục con ``names``; ``stat_image`` luôn thấy ảnh (như ổ không phân biệt hoa thường)."""
+    thư mục con ``names``. ``stat_image`` luôn thấy ảnh và trả lại đúng chữ đã gõ, như ổ không phân
+    biệt hoa thường mà không cho biết tên thật: trường hợp lớp phòng thứ hai (đối chiếu tên thư mục
+    với danh sách) phải bắt. ``files``: (cỡ, giờ sửa) của từng đường dẫn, mặc định (10, 0)."""
 
-    def __init__(self, monkeypatch, names=(), error: str = "") -> None:
+    def __init__(
+        self, monkeypatch, names=(), error: str = "", truncated: bool = False, files=None
+    ) -> None:
         self.names = names
         self.error = error
         self.calls = 0
+        self.stats: list[str] = []
 
         def stat_image(_library, ref):
-            return ImageEntry(ref=ref, name=ref.name, size=10, modified=0.0)
+            self.stats.append(ref.rel_path)
+            size, modified = (files or {}).get(ref.rel_path, (10, 0.0))
+            return ImageEntry(ref=ref, name=ref.name, size=size, modified=modified)
 
         def list_folder(_library, root_index, rel_dir="", **kwargs):
             self.calls += 1
             if self.error:
                 raise ImageFolderError(self.error)
             subfolders = tuple(SubFolder(rel_path=name, name=name) for name in self.names)
-            return SimpleNamespace(subfolders=subfolders)
+            return SimpleNamespace(subfolders=subfolders, truncated=truncated)
 
         monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
         monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
 
 
-def test_exact_folder_name_wins_on_case_sensitive_disk(monkeypatch, library):
+@pytest.mark.parametrize("truncated", [False, True], ids=["xem-het", "bi-cat"])
+def test_exact_folder_name_wins_on_case_sensitive_disk(monkeypatch, library, truncated):
     """Ổ phân biệt hoa thường có cả "CongAI" lẫn "congai": nháp ghi "congai" là đúng thư mục
     "congai" (một thư mục khác, không phải thư mục ảnh AI)."""
     assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
-    FakeDisk(monkeypatch, names=("CongAI", "congai"))
+    FakeDisk(monkeypatch, names=("CongAI", "congai"), truncated=truncated)
     result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
     assert result.available and result.ref == ImageRef(0, "congai/cong.png")
     assert not result.is_ai
 
 
 def test_single_case_insensitive_match_takes_real_name(monkeypatch, library):
+    """Ổ không cho biết tên trên ổ (``stat_image`` trả lại chữ đã gõ), danh sách xem hết, đúng một
+    tên trùng không phân biệt hoa thường: hỏi lại tên cũ vẫn ra kết quả cũ (LC-T076-2), rồi kiểm
+    ảnh ở tên của danh sách bằng ``stat_image`` (LC-T055-2): dùng tên đó, số liệu của lần mới."""
     assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
-    FakeDisk(monkeypatch, names=("Ảnh khác", "CongAI"))
+    disk = FakeDisk(monkeypatch, names=("Ảnh khác", "CongAI"))
     result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
     assert result.available and result.ref == ImageRef(0, "CongAI/cong.png")
+    assert result.entry.ref == result.ref
+    assert disk.stats == ["congai/cong.png", "congai/cong.png", "CongAI/cong.png"]
     assert result.is_ai
+
+
+def test_lc_t076_2_folder_renamed_between_checks_is_unavailable(monkeypatch, library, store):
+    """LC-T076-2 (= SL-T076-1): ``stat_image`` cho tên trên ổ ``CongAI``; lúc lớp phòng thứ hai xem
+    danh sách thì thư mục đã là ``Congai`` (một bản sao cùng cỡ, cùng giờ sửa) và hỏi lại tên cũ
+    thì ổ trả tên mới: thư mục vừa đổi tên, ảnh không dùng được, không hỏi tới ảnh ở tên mới; thẻ
+    theo tên đã kiểm (ảnh AI)."""
+    assert_ai_only_by_case("CongAI/cong.png", "Congai/cong.png")
+    asked: list[str] = []
+
+    def stat_image(_library, ref):
+        asked.append(ref.rel_path)
+        on_disk = "CongAI/cong.png" if len(asked) == 1 else "Congai/cong.png"
+        return ImageEntry(ref=ImageRef(0, on_disk), name="cong.png", size=10, modified=0.0)
+
+    def list_folder(_library, root_index, rel_dir="", **kwargs):
+        subfolders = (SubFolder(rel_path="Congai", name="Congai"),)
+        return SimpleNamespace(subfolders=subfolders, truncated=False)
+
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    image = real_image(rel_path="CongAI/cong.png")
+    result = check_draft_images(store.load(store.save(snapshot_with(image)).id), library)[1]
+    assert not result.available and result.entry is None
+    assert "mở lại từ thư mục ảnh gốc" in result.message
+    assert asked == ["CongAI/cong.png", "CongAI/cong.png"]
+    assert_ai_without_project(result.tags)
+
+
+@pytest.mark.parametrize("other", [(30, 0.0), (10, 99.0)], ids=["khac-co", "khac-gio-sua"])
+def test_lc_t055_2_name_from_listing_must_be_the_checked_file(monkeypatch, library, store, other):
+    """LC-T055-2 (T-076): ảnh ở tên theo danh sách khác cỡ hay giờ sửa với ảnh vừa kiểm (thư mục bị
+    tráo giữa chừng): ảnh không dùng được, không trỏ sang file khác với số liệu của file cũ."""
+    FakeDisk(
+        monkeypatch,
+        names=("CongAI",),
+        files={"congai/cong.png": (10, 0.0), "CongAI/cong.png": other},
+    )
+    image = real_image(rel_path="congai/cong.png")
+    result = check_draft_images(store.load(store.save(snapshot_with(image)).id), library)[1]
+    assert not result.available and result.entry is None
+    assert "Chưa kiểm được tên thư mục" in result.message
+    assert "mở lại từ thư mục ảnh gốc" in result.message
+
+
+@pytest.mark.parametrize("names", [(), ("CongAI",)], ids=["chua-thay", "chi-trung-khong-phan-biet"])
+def test_lc_t055_2_cut_listing_keeps_name_from_stat_image(monkeypatch, library, names):
+    """LC-T055-2, LC-T055-3 (T-076): danh sách bị cắt (thư mục cha quá nhiều mục, quét quá giờ) mà
+    chưa thấy tên trùng hẳn: không nhận tên chỉ trùng không phân biệt hoa thường (ổ phân biệt hoa
+    thường có thể có cả "CongAI" lẫn "congai"), giữ tên ``stat_image`` trả (trên ổ thật là tên trên
+    ổ, T-076) và ảnh vẫn dùng được, không kiểm lại ở tên khác."""
+    disk = FakeDisk(monkeypatch, names=names, truncated=True)
+    result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
+    assert result.available and result.ref == ImageRef(0, "congai/cong.png")
+    assert disk.stats == ["congai/cong.png"]
 
 
 @pytest.mark.parametrize(
     "names",
     [(), ("CongAI", "CONGAI"), ("Ảnh khác",)],
-    ids=["quet-chua-toi", "hai-ten-cung-khoa", "khong-thay"],
+    ids=["khong-con", "hai-ten-cung-khoa", "khong-thay"],
 )
 def test_unconfirmed_folder_name_is_unavailable(monkeypatch, library, store, tmp_path, names):
-    """Không lấy được tên thật (thư mục quá nhiều mục hay quét quá giờ nên chưa thấy, hai tên chỉ
+    """Danh sách xem hết mà không xác nhận được tên (thư mục vừa đổi tên hay bị xóa, hai tên chỉ
     khác hoa thường): ảnh không dùng được, không đoán theo chữ trong nháp; nháp vẫn giữ lựa chọn."""
     assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")  # đoán theo nháp là ra ảnh thật
     FakeDisk(monkeypatch, names=names)
@@ -973,6 +1141,7 @@ def test_unconfirmed_folder_name_is_unavailable(monkeypatch, library, store, tmp
     result = check_draft_images(store.load(saved.id), library)[1]
     assert not result.available and result.entry is None
     assert "Chưa kiểm được tên thư mục" in result.message
+    assert "mở lại từ thư mục ảnh gốc" in result.message
     assert str(tmp_path) not in result.message
     assert store.load(saved.id).parts[1].chosen_image == image
 
