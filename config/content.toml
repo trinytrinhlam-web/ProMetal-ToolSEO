@@ -118,7 +118,7 @@ rules = [
   "Ảnh tạo bằng AI không bao giờ được tả như công trình thật: không ghi «công trình», «Pro-Metal thi công», «nhà anh/chị…», «tại quận…», «trước/sau khi sửa»",
   "Alt ảnh AI bắt đầu bằng «Minh họa» rồi tả vật trong ảnh, ví dụ «Minh họa cấu tạo ray và bánh xe cửa cổng trượt». Chú thích ảnh AI bắt đầu bằng «Ảnh minh họa (AI)»",
   # Chú thích
-  "Chú thích (caption) bổ sung điều alt chưa nói và có ích cho người đọc bài (đang sửa gì, hỏng chỗ nào, vì sao hỏng nếu ảnh cho thấy rõ), không lặp lại nguyên alt, không quá caption_max_chars ký tự. Không ghi vào chú thích điều mà các quy tắc trên cấm ghi trong alt",
+  "Chú thích (caption) bổ sung điều alt chưa nói và có ích cho người đọc bài (đang sửa gì, hỏng chỗ nào, vì sao hỏng nếu ảnh cho thấy rõ), không lặp lại nguyên alt, không quá caption_max_chars ký tự. Không ghi vào chú thích điều mà các quy tắc trên cấm ghi trong alt (thông tin cá nhân, chữ trong ảnh, khu vực hay trước/sau không có trong thẻ, quảng cáo, điều ảnh không cho thấy, tả ảnh AI như công trình thật…); riêng độ dài, dấu câu và chữ mở đầu thì chú thích theo quy tắc này và quy tắc ảnh AI, không theo quy tắc của alt",
 ]
 
 # Cách mở đầu alt nên tránh (máy dò có thể đánh dấu; không phân biệt hoa thường).
@@ -144,10 +144,10 @@ xau = "Thợ Pro-Metal thay bánh xe cho nhà anh Tuấn ở Quận 7, xong tron
 vi_sao = "Bản xấu bịa tên khách, khu vực, thời gian; thẻ không có khu vực"
 
 [[alt.examples]]
-anh = "Ảnh thật: cửa cuốn kéo lên lưng chừng, lá cửa bên trái lệch khỏi ray, có biển hiệu cửa hàng ghi tên và số điện thoại"
+anh = "Ảnh thật: cửa cuốn kéo lên lưng chừng, lá cửa bên trái lệch khỏi ray, có biển hiệu cửa hàng ghi tên, số điện thoại và tên đường"
 the = "hạng mục: sửa cửa cuốn; khu vực: Tân Bình; trước/sau: trước"
-tot = "Cửa cuốn kẹt lưng chừng, lá cửa bên trái trật khỏi ray, trước khi sửa ở Tân Bình"
-xau = "Hình ảnh cửa cuốn của cửa hàng Minh Phát, 0909 xxx xxx, đường Cộng Hòa"
+tot = "Cửa cuốn kéo lên lưng chừng, lá cửa bên trái trật khỏi ray, trước khi sửa ở Tân Bình"
+xau = "Hình ảnh cửa cuốn của cửa hàng Minh Phát, 0909 xxx xxx, đường Mây Trắng"
 vi_sao = "Bản xấu mở đầu bằng «Hình ảnh», chép tên cửa hàng, số điện thoại, tên đường trong ảnh. Chú thích cũng không được chép các chữ này"
 
 [[alt.examples]]

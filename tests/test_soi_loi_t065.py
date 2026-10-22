@@ -170,15 +170,7 @@ def test_rules_and_examples_have_no_house_number_email_or_web_address():
     assert re.findall(r"\S+@\S+|https?://|www\.|\.com\b|\.vn\b", text.casefold()) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T065-1: ví dụ 3 (bản xấu) ghi «đường Cộng Hòa», tên đường thật ở Tân Bình, trùng "
-        "địa chỉ chi nhánh thật trong config/business_profile.md (249 Cộng Hòa, Tân Bình), cùng "
-        "khu vực của thẻ ví dụ; trái chú thích mới «địa chỉ trong ví dụ phải là bịa» và gợi ý "
-        "LC-T062-1 «không chép … tên đường thật»"
-    ),
-)
+# SL-T065-1: đã sửa ở T-065 lượt 2 (Ngòi Bút đổi «đường Cộng Hòa» thành tên đường bịa), gỡ xfail.
 def test_sl_t065_1_example_street_names_are_not_real_addresses_from_profile():
     profile = _nfc(BUSINESS_PROFILE_FILE.read_text(encoding="utf-8")).casefold()
     streets = re.findall(r"\bđường +([A-ZĐ]\w*(?: [A-ZĐ]\w*)*)", _all_alt_text())
