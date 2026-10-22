@@ -313,3 +313,123 @@ $ for i in 1..5; uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t03
 ### Câu hỏi cho chủ dự án (lượt 2)
 
 Không có.
+
+---
+
+## Lượt 3 (2026-10-22) · kiểm lại rút gọn sau khi Thợ Máy sửa SL-T039-7 → 9
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
+| Nhánh kiểm | `team/T-039`, đầu nhánh lúc nhận `34e143a` (Thợ Máy lượt 3: `ed5805f` sửa và test, `34e143a` báo cáo) |
+| Mức kiểm | Rút gọn (Chỉ Huy B giao, chủ dự án đã duyệt): kiểm 3 lỗi của lượt 2, soát test, tìm lỗi mới do lượt 3 |
+| **Kết luận** | **ĐẠT**: chuyển Lá Chắn được. **3/3 lỗi đã sửa thật**; cả 9 lỗi SL-T039-1 → 9 của phiếu nay đã đóng. **Không có lỗi mới.** 2 quan sát không tính là lỗi (đều theo hướng an toàn) |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Cả 3 lỗi nhỏ lần trước đã được sửa thật.** Phần kiểm tên website nay chạy nhanh với mọi kiểu link: link có tên website 2.000 chữ Hán từ 1,2 giây xuống 0,009 giây, và dài gấp 4 thì chỉ chậm khoảng gấp 4. Đoạn "mã" có dấu ngoặc vuông không còn làm mất link bắt buộc hay đặt link vào chỗ "[cần bổ sung: …]". Link bài nháp dạng `?p[]=12` nay bị chặn.
+- **Kết quả kiểm link giữ y như lần trước:** so 90.000 tên website viết lạ tạo ngẫu nhiên, kết quả giống hệt bản trước. Link thật của site vẫn được chấp nhận; link ra ngoài viết lạ vẫn được báo "ra ngoài".
+- **Không tìm thấy lỗi mới.** Tôi ghi lại một trường hợp rất hiếm (đoạn mã vắt qua 2 dòng): link không được chèn, chứ không bao giờ chèn sai chỗ. Việc này để xử lý khi làm Giai đoạn 5.
+- Cả 9 lỗi Soi Lỗi tìm ra ở phiếu này đã được sửa. **Phiếu chuyển sang Lá Chắn được.**
+
+### Đã thay đổi (lượt 3)
+
+| File | Thay đổi |
+|---|---|
+| `docs/team/reports/T-039-soi-loi.md` | Mục này |
+
+Không có lỗi mới nên không thêm test. Không sửa code ứng dụng, không sửa test.
+
+### Kiểm từng lỗi của lượt 2
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T039-7 | **Đã sửa** | `_browser_host` (`links.py:1029-1052`) tách nhãn rồi `nameprep` từng nhãn; nhãn còn chữ không phải ASCII mà dài quá 63 ký tự thì trả nguyên tên máy; chỉ mã punycode nhãn ≤ 63 ký tự. **Đo lại** 9 dạng tên máy dài, với link 2.000 / 8.000 / 32.000 ký tự (mục Bằng chứng 3): mọi dạng tuyến tính, gồm chữ Hán khác nhau một nhãn (8,8 / 40,6 / 148 ms; lượt 2: 1.203 ms ở cỡ 2.000), ASCII dài có `%2E` (0,6 / 2,2 / 8,8 ms), chữ toàn khổ (11 / 25 / 133 ms), ASCII lẫn chữ có dấu, nhiều nhãn ngắn chữ Hán, dấu chấm `。`. **Kết quả giữ nguyên lượt 2:** so `_browser_host` lượt 3 với lượt 2 (`96fb3df`) trên 90.000 tên máy ngẫu nhiên (3 hạt giống; ghép từ tên site, `%2E`, `。`, `．`, chữ toàn khổ, chữ Hán, `xn--`, U+FE0F, U+034F, chữ Ả Rập, `ß`, `ﬁ`…): **0 khác biệt**. Chạy lại 25 ca biên của lượt 2: 15 dạng link thật của site vẫn y như cũ (Nên; `http://…:80` vẫn Cảnh báo http như lượt 2), 10 dạng link ngoài viết lạ vẫn "ra ngoài", `%73uachuacuasat.com` vẫn Chặn. Hai test canh U+FE0F, U+034F của Soi Lỗi qua |
+| SL-T039-8 | **Đã sửa** | `_Run.in_code` (`links.py:672`), `_masked_runs` bỏ qua ngoặc trong `<code>` (`links.py:802-804`). 2 ca `test_sl8_*` qua: ca 1 nay chèn được, `check_links` Nên (lượt 2: Chặn "Thiếu link bắt buộc"); ca 2 nay chèn ở đoạn sau, không còn trong "[…]". Script thử riêng `fuzz_sl8.py` (mục Bằng chứng 4): 15.000 bài Markdown nhiều đoạn, có in đậm, in nghiêng, `mã` chứa `[`, `]`, `[x]`, `]y[`, cụm từ nằm trong mã, ngoặc trong in đậm; 3 cụm từ cho 3 bài đích mỗi bài. Kết quả: **13.682/13.682** gợi ý `check_suggestions` nhận đều được `place_links` chèn, đúng đoạn `markdown_blocks` thấy cụm từ ngoài "[…]"; trên HTML đã lọc không link mới nào nằm sau "[" chưa đóng (bỏ qua chữ trong `<code>`); chữ người đọc thấy không đổi |
+| SL-T039-9 | **Đã sửa** | `_php_name` (`links.py:188-196`): "[" có "]" phía sau thì tên dừng ở "[", đúng như cách PHP đọc tên biến dạng mảng (kể cả "]" đứng trước "[", "[" đứng đầu tên). 7 ca `test_sl9_*` qua; `?preview[]=true`, `?p[0]=12`, `?page_id[]=10`, `?name[]=…` đều Chặn. Tên khác vẫn Nên: `?a[name]=1`, `?names=x`, `?pname=1`, `?page=2` (chạy lại ca biên lượt 2) |
+
+### Soát test lượt 3 (`git diff 96fb3df..34e143a -- tests/`)
+
+- `tests/test_soi_loi_t039.py`: chỉ gỡ đúng 3 dấu `xfail` (10 ca: SL-T039-7: 1, SL-T039-8: 2, SL-T039-9: 7). **Không dòng nào khác đổi.**
+- `tests/test_onpage_links.py`: thêm 8 hàm, 21 ca. Đọc từng test: kiểm đúng ý (nhãn dài không phải ASCII là "ra ngoài", tên miền quốc tế ngắn vẫn đổi punycode, ngoặc trong mã, thử ngẫu nhiên 1.500 bài cho `check_suggestions`/`place_links`, tên mảng PHP Chặn và tên khác vẫn Nên, link bắt buộc dạng mảng, 4 test tốc độ tên máy dài).
+- Kiểm lời Thợ Máy "test mới đỏ trên code cũ": nạp `links.py` lượt 2 (`96fb3df`) bằng plugin pytest (ngoài repo) rồi chạy 31 ca liên quan: **21 đỏ** (11 ca mới của Thợ Máy và cả 10 ca của Soi Lỗi), 10 ca canh qua. Khớp báo cáo Thợ Máy.
+
+### Lỗi mới
+
+Không có.
+
+### Quan sát (không tính là lỗi)
+
+- **Đoạn `mã` vắt qua 2 dòng: `check_suggestions` và `apply_links` vẫn có thể lệch.** Markdown cho đoạn mã kéo sang dòng sau (đặc tả CommonMark ghi rõ), nhưng `_mask_code` (`links.py:469`) chỉ che mã trong từng dòng. Thử 3 ca, link bắt buộc #10:
+
+  | Ca | Lượt 2 | Lượt 3 |
+  |---|---|---|
+  | ``"Giá [cần bổ sung `x\n]` gọi dịch vụ sửa cửa kéo."`` (mã vắt dòng chứa "]") | nhận, chèn, Nên | `check_suggestions` nhận, `place_links` bỏ qua, `check_links` Chặn "Thiếu link bắt buộc" |
+  | ``"Gõ `a\n[0` rồi gọi dịch vụ sửa cửa kéo."`` (mã vắt dòng chứa "[") | không nhận | không nhận |
+  | ``"Giá [cần bổ sung `a` ] `b` gọi dịch vụ sửa cửa kéo."`` (2 đoạn mã một dòng, Thợ Máy đã ghi) | không nhận | không nhận |
+
+  Ca 1 là ca duy nhất đổi so với lượt 2. Theo quy tắc mới (ngoặc trong mã không mở, không đóng "[…]"), cụm từ ở ca 1 nằm trong chỗ "[cần bổ sung …]", nên `apply_links` không chèn là đúng. Chỗ lệch nằm ở `markdown_blocks` không nhận ra đoạn mã vắt dòng, cùng gốc với giới hạn "≥ 2 đoạn mã một dòng" Thợ Máy đã ghi. Hậu quả chỉ theo hướng an toàn: link không được chèn (hoặc AI phải chọn cụm từ khác), không bao giờ chèn vào "[…]". Bài sửa cửa hầu như không có đoạn mã, đoạn mã vắt dòng càng hiếm. App chưa có bộ chuyển Markdown → HTML (Giai đoạn 5 mới làm), nên chưa biết HTML thật sẽ ra sao.
+- **Giữ từ lượt 2:** dấu tổ hợp bị thẻ tách khỏi chữ cái (HTML bất thường) vẫn như mục Quan sát lượt 2, lượt 3 không đổi. Chưa chạy trên Python 3.12.3 (máy chỉ có 3.12.15 và 3.14.6). `nameprep`, `ToASCII` có trong `encodings.idna` từ rất lâu; suy luận là 3.12.3 cho kết quả như nhau, chưa chạy thử.
+
+### Bằng chứng (lượt 3)
+
+Chạy trên Windows 11 (máy chủ dự án), worktree `wt-T-039`, Python 3.12.15, có agent khác chạy song song.
+
+#### 1. Test của phiếu
+
+```
+$ uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py
+492 passed in 35.86s                    # lượt 2: 461 passed, 10 xfailed; nay 10 ca gỡ xfail + 21 ca mới
+```
+
+#### 2. Test liên quan (25 file, đúng danh sách các lượt trước)
+
+```
+$ uv run pytest tests/test_ai_images.py tests/test_app_pages.py … tests/test_soi_loi_t039.py
+2620 passed, 1 skipped, 18 xfailed in 300.38s (0:05:00)
+# 1 bỏ qua và 18 xfail là của các file khác, có từ trước; khớp số Thợ Máy lượt 3. Lượt 2:
+# 2589 passed, 1 skipped, 28 xfailed; nay 2589 + 10 ca gỡ xfail + 21 ca mới = 2620
+
+$ uv run ruff check .
+All checks passed!
+$ PYTHONUTF8=1 uvx --offline detect-secrets scan --all-files docs/team/reports/T-039-soi-loi.md
+"results": {}
+```
+
+#### 3. Tốc độ
+
+`check_links` với một link có tên máy dài, thời gian CPU mỗi lần gọi (script `p_speed.py`):
+
+| Dạng tên máy | 2.000 ký tự | 8.000 | 32.000 | Kết quả |
+|---|---|---|---|---|
+| Một nhãn chữ Hán khác nhau (ca SL-T039-7) | 8,8 ms (lượt 2: 1.203 ms) | 40,6 ms | 148 ms | ra ngoài, Cảnh báo |
+| Một nhãn ASCII dài có `%2E` | 0,6 ms | 2,2 ms | 8,8 ms | ra ngoài, Cảnh báo |
+| Một nhãn chữ toàn khổ | 11,3 ms | 25,4 ms | 133 ms | ra ngoài, Cảnh báo |
+| ASCII dài + một chữ có dấu | 6,8 ms | 24,3 ms | 104 ms | ra ngoài, Cảnh báo |
+| Nhiều nhãn chữ Hán ngắn (2 chữ) | 22,6 ms | 88,5 ms | 391 ms | ra ngoài, Cảnh báo |
+| Nhiều nhãn 12 chữ Hán khác nhau | 33,9 ms | 117 ms | 531 ms | ra ngoài, Cảnh báo |
+| Nhãn đầu 63 chữ Hán + nhiều nhãn | 2,8 ms | 6,0 ms | 15,6 ms | ra ngoài, Cảnh báo |
+| Tên site + nhiều U+FE0F | 1,7 ms | 4,3 ms | 15,6 ms | nội bộ, **Chặn** |
+| Nhiều dấu chấm `。` | 7,3 ms | 25,4 ms | 109 ms | ra ngoài, Cảnh báo |
+
+```
+$ for i in 1..5; uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py -k linear
+37 passed, 455 deselected   (5/5 lượt, gồm test_sl7_* và 4 test tốc độ mới của Thợ Máy)
+```
+
+#### 4. Thử ngẫu nhiên và ca biên (script để ngoài repo)
+
+- `diff_host.py`: `_browser_host` lượt 3 so với lượt 2 trên 3 × 30.000 tên máy ngẫu nhiên: 0 khác biệt.
+- `fuzz_sl8.py` (mới, ngoặc trong mã): 5 hạt giống × 3.000 bài, 13.682 link được chèn: đạt cả 4 điều kiện ghi ở SL-T039-8.
+- Script lượt 3 của Thợ Máy (`fuzz_round2.py`, `fuzz_round2c.py`, bộ kiểm đã bỏ qua ngoặc trong `<code>`) với hạt giống mới 8101 và 8102, mỗi lượt 5.000 mẫu: đạt cả 4 lượt.
+- `fuzz_nfd.py` (lượt 2) với hạt giống mới 6 và 7, mỗi hạt 3.000 bài: đạt, 6.421 link được chèn, 0 lần cắt đôi chữ có dấu.
+- `probe_cases.py` (37 ca biên lượt 2) và `p_multiline_code.py` (3 ca mã vắt dòng, mục Quan sát): kết quả như đã ghi ở trên.
+
+### Đề xuất (lượt 3)
+
+- **Chỉ Huy:** chuyển T-039 sang Lá Chắn.
+- **Giai đoạn 5:** khi chọn bộ chuyển Markdown → HTML, thêm test đối chiếu `markdown_blocks` với HTML thật của bộ chuyển đó, nhất là đoạn mã vắt dòng và nhiều đoạn mã trên một dòng. Nếu lệch: cho `_mask_code` che đoạn mã theo cả khối văn bản thay vì theo dòng (đúng cách Markdown ghép dấu `), hoặc kiểm gợi ý ngay trên HTML. Các đề xuất của lượt 2 vẫn giữ (thứ tự gọi `sanitize_html` → `apply_links` → `sanitize_html` → `check_links`).
+
+### Câu hỏi cho chủ dự án (lượt 3)
+
+Không có.
