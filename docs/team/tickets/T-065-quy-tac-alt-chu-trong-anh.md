@@ -51,3 +51,4 @@ A1.
 - 2026-10-21 14:53 (Chỉ Huy B): chủ dự án cho giao. Nhánh `team/T-065` tạo từ `main` sau khi gộp T-077. Mức kiểm: Soi Lỗi rút gọn, Lá Chắn rút gọn (A1).
 - 2026-10-22 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`docs/team/reports/T-065-soi-loi.md`): SL-T065-1 Thấp: ví dụ «alt xấu» ghi «đường Cộng Hòa» (tên đường thật, trùng chi nhánh Pro-Metal), trái chính dòng nhắc «chỉ dùng thông tin bịa»; thay bằng tên đường bịa trước Lá Chắn. 2 góp ý câu chữ không bắt buộc.
 - 2026-10-22 09:01 (Chỉ Huy B): **Ngòi Bút lượt 2 xong** (`95d1fb7`): «đường Cộng Hòa» → «đường Mây Trắng» (tên bịa); 20 file test liên quan 2.438 qua. Giao Lá Chắn rút gọn.
+- 2026-10-22 09:44 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT** (`4887a28`, 0 lỗi): C10/LC-T051-1, LC-T062-1 đóng. Gộp được ngay; chờ chủ dự án cho gộp.
