@@ -177,3 +177,123 @@ Commit trên `team/T-039`: `cf9c1cb` (code + test), `6e56314` (gọn một chỗ
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-22) · sửa theo báo cáo Soi Lỗi `T-039-soi-loi.md`
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Thợ Máy (`tho-may`) · model: Opus 5.5 (`claude-opus-5-5`) |
+| Nhánh | `team/T-039`, nhận ở `5b4ec03`. Commit: `706fc0a` (SL-T039-6), `61c98ce` (SL-T039-1 → 5), commit báo cáo này |
+| Kết quả | Hoàn thành: sửa đủ 6 lỗi (SL-T039-6 bắt buộc và SL-T039-1 → 5), gỡ hết 29 dấu `xfail` |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Đã sửa lỗi chính (SL-T039-6).** Trên máy có Python mới (máy Windows hiện tại), phần chèn link có thể dừng hẳn với vài bài có chữ thừa ở cuối, vì một biến của phần mềm trùng tên với biến Python vừa thêm. Tôi đổi tên theo cách Python bảo đảm không bao giờ trùng nữa, kể cả với các bản Python sau này; có test chạy đúng trên mọi bản Python.
+- **Sửa luôn 5 lỗi nhỏ.** Chữ tiếng Việt dán từ máy Mac nay được nhận đúng; không còn chèn link vào chỗ "[cần bổ sung: …]" khi trong đó có chữ in đậm; bước kiểm link chặn thêm vài kiểu link bài nháp gõ tay và kiểu tên website viết lạ; AI trả `true` hay `"1"` thay cho số thì bị coi là trả sai (bấm thử lại), không tự hiểu thành số 1.
+- **Không còn lỗi nào để lại.** Có một lưu ý cho Giai đoạn 5 (thứ tự gọi bộ lọc HTML và phần chèn link), đã ghi ngay trong code.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/onpage/links.py` | Sửa 6 lỗi (bảng dưới); thẻ đóng lạc không tách đoạn; docstring ghi thứ tự gọi `sanitize_html`; lời báo link dạng tham số |
+| `tests/test_onpage_links.py` | Thêm 17 hàm test, 69 ca (192 → 261 ca). Không sửa test có sẵn |
+| `tests/test_soi_loi_t039.py` | Chỉ gỡ 29 dấu `xfail`, bỏ 2 hằng không còn dùng (`_STDLIB_PENDING`, `_SL6`), sửa lời chú thích phía trên. Không đổi điều kiện kiểm nào |
+| `docs/team/reports/T-039-tho-may.md` | Mục này |
+
+Không đụng `seo_app/sanitize.py`, `seo_app/content/prompts.py`, `app/**`, `seo_app/wordpress/**`; không nới bộ lọc nào.
+
+### Đã sửa
+
+| Lỗi | Cách sửa | Chỗ sửa (`seo_app/onpage/links.py`) |
+|---|---|---|
+| **SL-T039-6** (Trung bình): `_TextRuns._pending` trùng bộ đệm `HTMLParser._pending` của Python 3.12.15 → `IndexError` hoặc bỏ oan đoạn cuối | Mọi biến và hàm riêng của `_TextRuns` đổi sang dạng `__x` (Python tự đổi thành `_TextRuns__x`, không thể trùng tên riêng nào của `HTMLParser`/`ParserBase`, kể cả tên thêm ở bản vá sau): `_pending` → `__text_parts`, `_pending_start` → `__text_start`; `_stack`, `_open`, `_flush`, `_pos`… cũng vậy. Tên công khai giữ nguyên (`runs`, `linked`, `read`: `HTMLParser` không có). Đã soát `_Anchors` (chỉ có `hrefs`, `ids`: không trùng) | lớp `_TextRuns` |
+| **SL-T039-1**: thân bài dạng NFD (dán từ Mac) làm mọi gợi ý bị bỏ oan | So ở dạng NFC: cụm từ (`_anchor_words`, sau bước kiểm độ dài) và thân phần (`check_suggestions`). Khi chèn: chữ của nút chữ đổi sang NFC kèm bảng vị trí (`_nfc_offsets`) để tìm, rồi bọc đúng **chữ gốc** (không đổi chữ người đọc thấy); chữ gốc ở vị trí đó phải ra đúng các từ của cụm từ (`_find_in_run`). Chỉ gộp các dạng tương đương chuẩn (NFC), không dùng NFKC (NFKC là "sửa giùm": `m²` thành `m2`) | `_anchor_words`, `check_suggestions`, `_nfc_offsets`, `_find_in_run`, `place_links` |
+| **SL-T039-2**: link lọt vào `[cần bổ sung: <strong>…</strong> …]` | Che "[…]" theo **đoạn văn** thay vì theo nút chữ, như Soi Lỗi đề xuất (`_masked_runs`): "[" chưa đóng ở nút chữ trước tiếp tục che các nút chữ sau trong cùng đoạn tới "]"; không có "]" thì che tới hết đoạn (như `markdown_blocks`) | `_masked_runs`, `place_links` |
+| **SL-T039-3**: `?%20p=`, `?page.id=`, `?name=`, `?pagename=`… thành "trang chủ" | Đọc tên tham số như PHP (WordPress): cắt ở ký tự NUL, bỏ dấu cách đầu, đổi " ", ".", "[" thành "_" (`_php_name`); thêm `name`, `pagename` vào nhóm Chặn. Dùng chung cho kiểm link và link bắt buộc trong phiếu | `_php_name`, `_DRAFT_PARAMS`, `_is_draft_query` |
+| **SL-T039-4**: `suachuacuasat%2Ecom`, chữ toàn khổ, dấu `。` xếp "ra ngoài"; `https://…:80` được Nên | Đọc tên máy như trình duyệt (giải mã `%`, ánh xạ IDNA có sẵn trong thư viện chuẩn: `_browser_host`): ra đúng tên website mà viết khác → **Chặn** "tên website viết dạng lạ", kể cả khi trỏ tới bài đã đăng (không tính là đã có link bắt buộc). Cổng của giao thức kia (`https…:80`, `http…:443`) → Chặn. Tên máy khác vẫn là "ra ngoài" (Cảnh báo) như cũ | `_browser_host`, `_WRONG_PORT`, `_classify` |
+| **SL-T039-5**: khuôn AI đổi `true`, `"1"`, `1.0` thành số | `Field(strict=True)` cho `post_id`, `section`: sai kiểu thì khuôn báo sai (lớp AI báo "AI trả về dữ liệu không đúng khuôn. Bấm thử lại."), không sửa giùm. Khuôn JSON gửi AI không đổi (vẫn `integer`, có test) | `LinkSuggestion` |
+
+### Thêm ngoài 6 lỗi (cùng file, theo hướng chặt hơn)
+
+- **Thẻ đóng lạc không tách đoạn.** Bộ thử ngẫu nhiên lượt này tìm ra: thẻ đóng không có thẻ mở (`</h2>`, `</div>`, `</p>`… đứng một mình) làm bộ đọc tách đoạn, trong khi trình duyệt bỏ qua và `sanitize_html` bỏ hẳn các thẻ này nên chữ hai bên vẫn là một đoạn. Hệ quả cũ: "[" trước thẻ lạc không che chữ sau nó, và đoạn đó nhận được 2 link. Nay thẻ đóng lạc không tách đoạn (`_TextRuns.handle_endtag`, test `test_stray_end_tag_does_not_split_paragraph`).
+- **Ghi rõ thứ tự gọi** trong docstring: `apply_links` nên chạy trên HTML **đã** qua `sanitize_html` rồi lọc lại; `check_links` chạy trên HTML cuối đã lọc (đề xuất của Soi Lỗi ở mục Rủi ro).
+- Lời báo Chặn của link dạng tham số nói thêm "mở theo mã số/slug" (vì `?name=` nay cũng bị Chặn, kể cả khi trỏ tới bài đã đăng): `_MSG_DRAFT`, `_required_notice`. Không test nào bám câu chữ cũ (`grep`).
+
+### Test mới (`tests/test_onpage_links.py`)
+
+| Lỗi | Test |
+|---|---|
+| SL-T039-6 | `test_html_readers_never_shadow_htmlparser_names` (đọc cây cú pháp của `_TextRuns`, `_Anchors`: tên riêng phải dạng `__x`, tên công khai không trùng `HTMLParser`; so cả với các tên có từ 3.12.15 nên **đúng ý trên mọi bản Python**, kể cả 3.12.3 chưa có `_pending`), `test_text_runs_unaffected_by_stdlib_pending_buffer` (giả lập `close()` của 3.12.15 đọc nốt bộ đệm `_pending`: tái hiện đúng lỗi cũ trên mọi bản Python) |
+| SL-T039-1 | `test_nfd_body_and_anchor_match_both_ways`, `test_nfd_html_gets_link_around_original_text` (NFD cả bài, lẫn NFC/NFD, NFD có chỗ "[…]"; chữ trong link là chữ gốc, đúng vị trí), `test_nfd_html_never_wraps_part_of_a_letter` |
+| SL-T039-2 | `test_placeholder_split_by_tags_never_linked` (thẻ, chú thích cắt ngoặc; "[" không đóng không lan sang đoạn sau; sau "]" vẫn chèn được), `test_stray_end_tag_does_not_split_paragraph`, `test_placeholder_never_linked_when_applied_on_sanitized_html` |
+| SL-T039-3 | `test_php_renamed_and_slug_query_forms_block` (10 dạng), `test_other_query_names_still_ok` (`?pages=`, `?names=`, `?x=name`… vẫn Nên), `test_required_link_by_slug_query_blocks` (Chặn cả khi danh sách chưa tải đủ) |
+| SL-T039-4 | `test_own_site_written_oddly_blocks` (8 dạng, không tính là đã có link bắt buộc), `test_odd_external_hosts_stay_external` (tên máy khác viết lạ, giải mã hỏng, quá dài: vẫn "ra ngoài") |
+| SL-T039-5 | `test_ai_json_wrong_number_types_rejected` (10 ca, cả đường JSON lẫn tạo trực tiếp), `test_ai_schema_still_plain_integers` |
+| Tốc độ | `test_apply_links_linear_round_2` (chữ NFD dài, "[" kéo qua hàng nghìn nút chữ), `test_check_links_linear_on_odd_hosts` (nhiều tên máy lạ, tên toàn khổ rất dài, hàng nghìn nhãn) |
+
+**Test mới đỏ trên code cũ:** nạp `links.py` của `5b4ec03` thay cho bản mới (plugin pytest để ngoài repo, không sửa repo) rồi chạy 69 ca mới: **45 đỏ**, đúng các lỗi trên; 24 ca còn lại là test canh hành vi đúng vốn có (link ngoài viết lạ vẫn "ra ngoài", tham số thường vẫn Nên, khuôn JSON vẫn `integer`, thứ tự gọi khuyên dùng…).
+
+### Bằng chứng
+
+Windows 11 (máy chủ dự án), worktree `wt-T-039`, Python 3.12.15, có agent khác chạy song song.
+
+```
+# Sau commit 706fc0a (chỉ SL-T039-6):
+$ uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py
+372 passed, 21 xfailed in 20.15s        # 21 xfail = 21 ca SL-T039-1 → 5, chưa sửa ở commit này
+
+# Bản cuối:
+$ uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py
+459 passed in 19.83s                    # 261 + 198; trước lượt 2: 361 passed, 29 xfailed
+
+$ uv run pytest <25 file, đúng danh sách Soi Lỗi đã chạy ở mục Bằng chứng 2 của T-039-soi-loi.md>
+2587 passed, 1 skipped, 18 xfailed in 190.04s (0:03:10)
+# 1 bỏ qua và 18 xfail là của các file khác, có từ trước (lượt Soi Lỗi: 2489 passed, 1 skipped,
+# 47 xfailed; nay 2489 + 29 ca gỡ xfail + 69 ca mới = 2587)
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check seo_app/onpage/links.py tests/test_onpage_links.py tests/test_soi_loi_t039.py
+3 files already formatted
+
+$ PYTHONUTF8=1 uvx --offline bandit seo_app/onpage/links.py
+No issues identified.
+$ PYTHONUTF8=1 uvx --offline detect-secrets scan --all-files seo_app/onpage/links.py \
+    tests/test_onpage_links.py tests/test_soi_loi_t039.py docs/team/reports/T-039-tho-may.md
+"results": {}
+```
+
+Kiểm công cụ trước: file mồi có chữ tiếng Việt và khóa giả (thư mục tạm ngoài repo, quét xong đã xóa) bị bắt đúng "AWS Access Key", dòng 2.
+
+**Thử ngẫu nhiên (ngoài bộ test, script để ngoài repo):**
+
+- 3 script của lượt 1 (16.000 mẫu): đạt hết, 2.572 lần chèn thật (lượt 1: 2.778; ít hơn vì nay "[…]" bị che qua nhiều nút chữ và thẻ đóng lạc không tách đoạn).
+- `fuzz_round2.py`: HTML **chưa lọc**, chữ NFD/NFC lẫn lộn, ngoặc bị thẻ cắt, chữ thừa cuối bài không có thẻ đóng (đúng dạng gây SL-T039-6). 7 hạt giống × 5.000 = 35.000 mẫu, 7.715 lần chèn: không ném lỗi; chữ người đọc thấy không đổi; `href` mới chỉ từ danh sách bài, số link mới bằng số báo đã chèn; chữ trong link (NFC) đúng cụm từ; link mới còn sau `sanitize_html`; không link mới nào nằm sau "[" chưa đóng trong cùng khối (đo trên HTML đã lọc).
+- `fuzz_round2c.py`: như trên, thêm các thẻ bộ lọc bỏ (`<section>`, `<details>`, `<h1>`, `<nav>`…), đầu vào **đã qua** `sanitize_html` (thứ tự gọi khuyên dùng). 6 × 5.000 = 30.000 mẫu, 7.324 lần chèn: đạt.
+
+### Lỗi để lại
+
+Không có: cả 6 lỗi đã sửa và gỡ `xfail`.
+
+### Rủi ro và điểm cần chú ý (lượt 2)
+
+- **Chưa chạy được trên Python 3.12.3** (máy này chỉ có 3.12.15; tôi không tải bản khác). Hai test SL-T039-6 mới viết để không phụ thuộc bản Python (quy tắc tên, giả lập bộ đệm); 8 ca `test_sl6_*` của Soi Lỗi nay là test thường. Lượt chạy trên cloud (3.12.3) sẽ xác nhận.
+- **HTML chưa lọc có thẻ bộ lọc bỏ đi** (`<section>`, `<details>`, `<h1>`…) hoặc dấu "]" trong `<script>`: bộ đọc tính đoạn văn theo HTML trước lọc, còn HTML gửi đi không còn các thẻ này, nên quy tắc "[…]" và "mỗi đoạn một link" có thể lệch (script `fuzz_round2b.py`, chạy trên HTML chưa lọc, gặp lệch ở cả 4 hạt giống). Không phải lỗ bảo mật: `href` vẫn chỉ từ danh sách bài và đã escape, `sanitize_html` vẫn vô hiệu `[` `]`. Gọi theo thứ tự lọc → chèn → lọc (đã ghi trong docstring `apply_links`) thì hết lệch (30.000 mẫu ở trên). HTML do app dựng từ Markdown không có các thẻ này.
+- **SL-T039-5:** khuôn chặt nên một gợi ý sai kiểu làm **cả** câu trả lời AI bị báo "không đúng khuôn" (như khi `anchor` sai kiểu, vốn đã vậy từ lượt 1); người dùng bấm thử lại. Khuôn JSON gửi AI vẫn là `integer` nên AI có "structured output" gần như không trả sai kiểu.
+- **SL-T039-1:** chỉ gộp các dạng tương đương chuẩn (NFC). Chữ toàn khổ hay ký tự vô hình (AI thấy bản NFKC) vẫn có thể làm gợi ý bị bỏ oan như đã ghi ở lượt 1: cố ý, theo hướng an toàn.
+- **SL-T039-3:** `?attachment_id=5`, `?cat=3` (Soi Lỗi ghi "cùng họ, chưa đưa vào test") vẫn được xếp "Link về trang chủ". Đây là link tới tệp Media và chuyên mục, không phải bài nháp; xếp thế nào (Chặn như `/category/…` hay Cảnh báo) nên quyết cùng Giai đoạn 5, khi người dùng được tự gõ link.
+- **SL-T039-4:** chỉ sửa ở `check_links`. Link bắt buộc ghi trong phiếu mà dùng tên website viết lạ vẫn bị coi là "không thuộc website" (Chặn), hướng an toàn.
+
+### Đề xuất
+
+- **Giai đoạn 5:** gọi theo thứ tự `sanitize_html` → `apply_links` → `sanitize_html` → `check_links` (đã ghi trong docstring hai hàm).
+- **Chỉ Huy:** cân nhắc ghim bản vá Python trong `.python-version` như Soi Lỗi đề xuất (SL-T039-6 cho thấy bản vá nhỏ cũng đổi hành vi thư viện chuẩn).
+- Khi làm Giai đoạn 5: quyết cách xếp loại `?attachment_id=`, `?cat=` (mục trên).
+- Script thử ngẫu nhiên lượt 2 và plugin nạp code cũ: thư mục ghi chú chung, `T-039-tho-may-luot-2-scripts/` (cách chạy ghi trong `T-039-tho-may-luot-2.md` cùng thư mục).
+
+### Câu hỏi cho chủ dự án
+
+Không có.
