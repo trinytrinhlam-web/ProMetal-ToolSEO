@@ -1108,6 +1108,69 @@ def test_module_never_calls_network():
     assert from_client <= {"PublishedItem", "is_site_link"}  # không lấy WordPressClient
 
 
+# ------------------------------------------------------------------ lượt 2: SL-T039-1 → 6
+
+
+# Tên ``HTMLParser`` có từ bản vá 3.12.15 mà bản cũ hơn (3.12.3 trên cloud) chưa có: test dưới kiểm
+# cả các tên này để chạy đúng ý trên mọi bản Python.
+_NEWER_HTMLPARSER_NAMES = frozenset(
+    {"_pending", "_pending_len", "_parse_threshold", "_escapable", "_support_cdata",
+     "_set_support_cdata", "scripting"}
+)  # fmt: skip
+_OVERRIDES = frozenset({"__init__", "unknown_decl"})  # cùng các hàm ``handle_*``: cố ý ghi đè
+
+
+@pytest.mark.parametrize("parser", [links_module._TextRuns, links_module._Anchors])
+def test_html_readers_never_shadow_htmlparser_names(parser):
+    """SL-T039-6, không phụ thuộc bản Python: lớp đọc HTML của ``links.py`` không đặt tên nào trùng
+    tên của ``HTMLParser``, kể cả tên thư viện chuẩn thêm ở bản vá sau này. Tên riêng phải dạng
+    ``__x`` (Python đổi thành ``_TênLớp__x``, không bao giờ trùng); tên công khai chỉ là hàm cố ý
+    ghi đè hoặc tên ``HTMLParser`` không có."""
+    (cls,) = ast.parse(inspect.getsource(parser)).body
+    names = {node.name for node in cls.body if isinstance(node, ast.FunctionDef)}
+    for node in cls.body:
+        if isinstance(node, ast.Assign):
+            names |= {target.id for target in node.targets if isinstance(target, ast.Name)}
+    names |= {
+        node.attr
+        for node in ast.walk(cls)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.ctx, ast.Store)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    }
+    assert "runs" in names or "hrefs" in names  # đọc đúng lớp
+    base = set(dir(HTMLParser)) | set(vars(HTMLParser())) | _NEWER_HTMLPARSER_NAMES
+    for name in names:
+        if name.startswith("__") and not name.endswith("__"):
+            continue  # Python đổi thành "_TênLớp__x"
+        assert not name.startswith("_") or name in _OVERRIDES, name
+        assert name not in base or name in _OVERRIDES or name.startswith("handle_"), name
+
+
+def test_text_runs_unaffected_by_stdlib_pending_buffer(monkeypatch):
+    """SL-T039-6 trên mọi bản Python: giả lập ``close()`` của ``HTMLParser`` 3.12.15, vốn đọc nốt
+    chữ còn trong bộ đệm ``self._pending``. Biến cũ ``_TextRuns._pending`` (chữ đã giải mã) bị đọc
+    lại như HTML: ``IndexError`` hoặc bỏ oan đoạn cuối bài."""
+    close = HTMLParser.close
+
+    def close_with_buffer(self):
+        pending = vars(self).get("_pending")
+        if pending:
+            self.rawdata += "".join(pending)
+            pending.clear()
+        close(self)
+
+    monkeypatch.setattr(HTMLParser, "close", close_with_buffer)
+    for html_text in (
+        "<p>Gọi dịch vụ sửa cửa kéo tận nơi.</p>\n&lt;b&gt;\n",
+        "<p>Mở bài.</p>Gọi dịch vụ sửa cửa kéo &lt;b&gt; ngay",
+        "Gọi dịch vụ sửa cửa kéo\n<?",
+    ):
+        placed = place_links(html_text, [link(0, "dịch vụ sửa cửa kéo", 10)], INDEX)
+        assert links_in(placed.html) == [(SERVICE.link, "dịch vụ sửa cửa kéo")], html_text
+
+
 # ------------------------------------------------------------------ tốc độ (tuyến tính)
 
 PARAGRAPH = "<p>Ray bám bụi và cát làm bánh xe không lăn, cửa kéo kẹt &amp; kêu.</p>\n"

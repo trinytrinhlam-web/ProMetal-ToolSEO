@@ -684,13 +684,10 @@ def test_random_html_only_index_hrefs_added_and_text_unchanged():
     assert applied_total > 40  # thử có chèn thật, không chỉ toàn bỏ qua
 
 
-# Python 3.12.15 trở đi: ``HTMLParser`` có bộ đệm riêng tên ``_pending`` (bản vá bảo mật), trùng
-# tên với biến ``_TextRuns._pending`` của ``links.py``. Python cũ hơn không có, lỗi không xảy ra.
-_STDLIB_PENDING = "_pending" in vars(HTMLParser())
-_SL6 = "SL-T039-6: _TextRuns._pending trùng tên bộ đệm của HTMLParser (Python 3.12.15+)"
+# SL-T039-6 (đã sửa ở lượt 2 của Thợ Máy): Python 3.12.15 trở đi ``HTMLParser`` có bộ đệm riêng
+# tên ``_pending`` (bản vá bảo mật), trùng tên biến cũ ``_TextRuns._pending`` của ``links.py``.
 
 
-@pytest.mark.xfail(_STDLIB_PENDING, strict=True, reason=_SL6)
 @pytest.mark.parametrize(
     "html_text",
     [
@@ -708,7 +705,6 @@ def test_sl6_trailing_text_never_crashes_nor_dropped(html_text):
     assert visible(placed.html) == visible(html_text)
 
 
-@pytest.mark.xfail(_STDLIB_PENDING, strict=True, reason=_SL6)
 def test_sl6_random_html_never_raises():
     """Như thử ngẫu nhiên ở trên nhưng không thêm thẻ đóng cuối: ``place_links`` ném IndexError."""
     rng = random.Random(39)
@@ -720,7 +716,6 @@ def test_sl6_random_html_never_raises():
         assert visible(placed.html) == visible(html_text), html_text
 
 
-@pytest.mark.xfail(_STDLIB_PENDING, strict=True, reason=_SL6)
 def test_sl6_parsers_do_not_shadow_htmlparser_attributes():
     """Lớp đọc HTML của ``links.py`` không được đặt biến trùng tên biến riêng của ``HTMLParser``
     (tên riêng của thư viện chuẩn có thể thêm ở bản vá bất kỳ, như ``_pending`` ở 3.12.15)."""

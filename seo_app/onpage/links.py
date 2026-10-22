@@ -649,102 +649,108 @@ class _TextRuns(HTMLParser):
     Phần: ``<h2>`` thứ k mở đầu phần k (phần 0 là mở bài, trước ``<h2>`` đầu tiên). Vị trí của
     nút chữ lấy từ ``getpos()``; nút chữ nào giải mã lại từ HTML gốc không ra đúng chữ đã đọc
     (cấu trúc lạ bộ đọc bỏ qua) thì không chèn vào đó.
+
+    Biến và hàm riêng của lớp này đặt tên ``__x`` (Python đổi thành ``_TextRuns__x``) để không
+    bao giờ trùng tên riêng của ``HTMLParser``: thư viện chuẩn thêm tên riêng ở cả bản vá nhỏ
+    (Python 3.12.15 thêm bộ đệm ``_pending``, trùng biến cũ của lớp này: SL-T039-6). Ngoài các
+    hàm ``handle_*`` cố ý ghi đè, tên công khai (``runs``, ``linked``, ``read``) không có trong
+    ``HTMLParser`` (test ``test_html_readers_never_shadow_htmlparser_names``).
     """
 
     def __init__(self, source: str) -> None:
         super().__init__(convert_charrefs=True)
-        self.source = source
+        self.__source = source
         self.runs: list[_Run] = []
         self.linked: set[tuple[str, int]] = set()  # đoạn văn đã có sẵn <a href>
-        self._line_starts = [0]
+        self.__line_starts = [0]
         newline = source.find("\n")
         while newline != -1:
-            self._line_starts.append(newline + 1)
+            self.__line_starts.append(newline + 1)
             newline = source.find("\n", newline + 1)
         # Thẻ đang mở, kèm đoạn văn chứa nó (None: chưa ở trong đoạn nào). Đếm sẵn số thẻ mở
         # theo tên và số thẻ cấm chèn để mỗi bước O(1): HTML lồng rất sâu không làm chậm.
-        self._stack: list[tuple[str, tuple[str, int] | None]] = []
-        self._open: dict[str, int] = {}
-        self._serial = 0
-        self._blocked = 0  # số thẻ cấm chèn đang mở
-        self._dangling: set[str] = set()  # thẻ trong _REOPENED_TAGS bị đóng ngầm
-        self._section = 0
-        self._root_block = 0
-        self._pending_start = -1
-        self._pending: list[str] = []
+        self.__stack: list[tuple[str, tuple[str, int] | None]] = []
+        self.__open: dict[str, int] = {}
+        self.__serial = 0
+        self.__blocked = 0  # số thẻ cấm chèn đang mở
+        self.__dangling: set[str] = set()  # thẻ trong _REOPENED_TAGS bị đóng ngầm
+        self.__section = 0
+        self.__root_block = 0
+        self.__text_start = -1  # nút chữ đang đọc dở: vị trí đầu và các mẩu chữ
+        self.__text_parts: list[str] = []
 
-    def _pos(self) -> int:
+    def __pos(self) -> int:
         line, column = self.getpos()
-        return self._line_starts[line - 1] + column
+        return self.__line_starts[line - 1] + column
 
-    def _paragraph(self) -> tuple[str, int]:
-        if self._stack and self._stack[-1][1] is not None:
-            return self._stack[-1][1]
-        return "", self._root_block
+    def __paragraph(self) -> tuple[str, int]:
+        if self.__stack and self.__stack[-1][1] is not None:
+            return self.__stack[-1][1]
+        return "", self.__root_block
 
-    def _flush(self, end: int) -> None:
-        if self._pending_start < 0:
+    def __flush(self, end: int) -> None:
+        if self.__text_start < 0:
             return
-        start, text = self._pending_start, "".join(self._pending)
-        self._pending_start, self._pending = -1, []
+        start, text = self.__text_start, "".join(self.__text_parts)
+        self.__text_start, self.__text_parts = -1, []
         allowed = (
-            not self._blocked
-            and not self._dangling
-            and html.unescape(self.source[start:end]) == text
+            not self.__blocked
+            and not self.__dangling
+            and html.unescape(self.__source[start:end]) == text
         )
-        self.runs.append(_Run(start, end, text, self._section, self._paragraph(), allowed))
+        self.runs.append(_Run(start, end, text, self.__section, self.__paragraph(), allowed))
 
     def handle_starttag(self, tag, attrs):
-        self._flush(self._pos())
+        self.__flush(self.__pos())
         if tag == "h2":
-            self._section += 1
+            self.__section += 1
         if tag in _BLOCK_TAGS:
-            self._root_block += 1
+            self.__root_block += 1
         if tag == "a":
-            self._dangling.discard("a")  # "<a>" mới đóng hẳn link cũ
+            self.__dangling.discard("a")  # "<a>" mới đóng hẳn link cũ
             if any(name == "href" for name, _ in attrs):
-                self.linked.add(self._paragraph())
+                self.linked.add(self.__paragraph())
         if tag not in _VOID_TAGS:  # "<a/>" vẫn là thẻ mở với trình duyệt
-            self._serial += 1
+            self.__serial += 1
             if tag in _PARAGRAPH_TAGS:
-                paragraph = (tag, self._serial)
+                paragraph = (tag, self.__serial)
             else:
-                paragraph = self._stack[-1][1] if self._stack else None
-            self._stack.append((tag, paragraph))
-            self._open[tag] = self._open.get(tag, 0) + 1
-            self._blocked += tag in _NO_LINK_TAGS
+                paragraph = self.__stack[-1][1] if self.__stack else None
+            self.__stack.append((tag, paragraph))
+            self.__open[tag] = self.__open.get(tag, 0) + 1
+            self.__blocked += tag in _NO_LINK_TAGS
 
     handle_startendtag = handle_starttag
 
     def handle_endtag(self, tag):
-        self._flush(self._pos())
+        self.__flush(self.__pos())
         if tag in _BLOCK_TAGS:
-            self._root_block += 1
-        self._dangling.discard(tag)
-        if self._open.get(tag):  # thẻ đóng lạc (không có thẻ mở) thì bỏ qua
-            while self._stack:
-                name, _ = self._stack.pop()
-                self._open[name] -= 1
-                self._blocked -= name in _NO_LINK_TAGS
+            self.__root_block += 1
+        self.__dangling.discard(tag)
+        if self.__open.get(tag):  # thẻ đóng lạc (không có thẻ mở) thì bỏ qua
+            while self.__stack:
+                name, _ = self.__stack.pop()
+                self.__open[name] -= 1
+                self.__blocked -= name in _NO_LINK_TAGS
                 if name == tag:
                     break
                 if name in _REOPENED_TAGS:
-                    self._dangling.add(name)
+                    self.__dangling.add(name)
 
     def handle_data(self, data):
-        if self._pending_start < 0:
-            self._pending_start = self._pos()
-        self._pending.append(data)
+        if self.__text_start < 0:
+            self.__text_start = self.__pos()
+        self.__text_parts.append(data)
 
-    def _boundary(self, _data=None) -> None:
-        self._flush(self._pos())
+    def __boundary(self, _data=None) -> None:
+        self.__flush(self.__pos())
 
-    handle_comment = handle_decl = handle_pi = unknown_decl = _boundary
+    handle_comment = handle_decl = handle_pi = unknown_decl = __boundary
 
     def read(self) -> _TextRuns:
-        self.feed(self.source)
+        self.feed(self.__source)
         self.close()
-        self._flush(len(self.source))
+        self.__flush(len(self.__source))
         return self
 
 
