@@ -542,15 +542,20 @@ def test_slow_directory_iteration_is_cut_off(tmp_path, monkeypatch):
 
 
 def test_unreadable_subfolder_is_counted_not_fatal(tmp_path, monkeypatch):
+    """Thư mục con không có quyền đọc: quét cả cây vẫn xong, đếm vào ``unreadable``. Nhận thư mục
+    khóa theo định danh trên ổ (không theo tên): Windows quét theo đường dẫn, Mac/Linux quét bằng
+    ``os.scandir(fd)`` (SL-T063-1: bản cũ so ``Path(path).name`` nên hỏng trên Mac/Linux)."""
     root = tmp_path / "anh"
     write(root / "ok" / "a.jpg")
     write(root / "khoa" / "b.jpg")
+    locked = os.stat(root / "khoa")
     real_scandir = os.scandir
 
-    def fake_scandir(path):
-        if Path(path).name == "khoa":
-            raise PermissionError(13, "Access denied", str(path))
-        return real_scandir(path)
+    def fake_scandir(target):
+        st = os.fstat(target) if isinstance(target, int) else os.stat(target)
+        if (st.st_dev, st.st_ino) == (locked.st_dev, locked.st_ino):
+            raise PermissionError(13, "Access denied", str(target))
+        return real_scandir(target)
 
     monkeypatch.setattr("seo_app.images.folders.os.scandir", fake_scandir)
     lib = ImageLibrary([root])
@@ -611,9 +616,15 @@ def test_read_detects_swapped_file(tmp_path, monkeypatch):
     other = write(tmp_path / "khac.jpg", b"OTHER")
     lib = ImageLibrary([root])
     real_open = os.open
-    monkeypatch.setattr(
-        "seo_app.images.folders.os.open", lambda path, flags: real_open(other, flags)
-    )
+
+    def open_other(path, flags, *args, **kwargs):
+        # Chỉ tráo chính file ảnh. Mac/Linux mở thư mục từng tầng rồi mở ``a.jpg`` trong thư mục
+        # đã mở (``dir_fd``), Windows mở theo đường dẫn: cả hai đều nhận file khác.
+        if os.fsdecode(path).endswith("a.jpg"):
+            return real_open(other, flags)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr("seo_app.images.folders.os.open", open_other)
     exc = raises_safely(lambda: lib.read_image_bytes(ImageRef(0, "a.jpg")), tmp_path)
     assert "thay đổi" in str(exc)
 
