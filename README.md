@@ -136,6 +136,11 @@ max_tokens = 32000
 - `effort` là mức "suy nghĩ" của AI (`low`, `medium`, `high`, `xhigh`, `max`): càng cao càng kỹ nhưng chậm và tốn tiền hơn. Claude và ChatGPT dùng đúng mức bạn ghi. Gemini chỉ có 3 mức (`low`, `medium`, `high`): `xhigh` và `max` được tính là `high`. Mô hình không có chế độ suy nghĩ thì app tự bỏ qua `effort`.
 - Việc đang dùng hãng nào thì hãng đó phải có khóa. Thiếu khóa thì ngay khi mở **Soạn bài**, app báo màu vàng và khóa tạm các bước dùng AI.
 
+**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (đang ghi Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. Giao diện chưa có nút viết alt; đọc trước để chọn khóa cho đúng:
+
+- Nên dùng Claude (đang ghi sẵn) hoặc khóa **trả phí** của OpenAI / Gemini.
+- Khóa Gemini **miễn phí**: Google được dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Muốn dùng khóa miễn phí cho việc viết alt thì báo Chỉ Huy để ghi vào sổ rủi ro trước.
+
 ### 7.3. Thử mù: chọn mô hình viết hay nhất
 
 Không biết nên dùng hãng nào? Cho 2–3 mô hình viết cùng một đề, chấm điểm không biết tên, rồi mới xem bài nào của ai.
@@ -190,13 +195,80 @@ Dấu `…` là chỗ app điền tên cụ thể (tên hãng, tên mô hình, c
 | "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú." | Bộ lọc an toàn của hãng chặn. Đổi cách viết từ khóa hoặc ghi chú. |
 | "Thư viện của … chưa cài hoặc sai phiên bản. Đóng app, chạy lại run.bat / run.command…" | Đóng app, bấm đúp `run.bat` / `run.command` để app cài đúng thư viện. |
 
-## 8. Cập nhật phiên bản mới
+## 8. Đặt thư mục ảnh
+
+App lấy ảnh công trình từ các thư mục bạn khai báo (USB, thư mục Google Drive for Desktop…) và đọc **thẻ** của mỗi ảnh từ **tên thư mục**: mã công trình, hạng mục, khu vực, trước/sau, ảnh thật hay ảnh AI. Màn hình chọn ảnh trong bài chưa có; đặt thư mục theo cách dưới đây ngay từ bây giờ để app đọc đúng thẻ.
+
+**Khai báo thư mục**
+
+1. Mở `.env`, điền dòng `IMAGE_FOLDERS`. Nhiều thư mục thì ngăn cách bằng dấu `;`, ví dụ:
+   ```
+   IMAGE_FOLDERS=E:/anh-cong-trinh;G:/My Drive/Anh SEO
+   ```
+   Trên Mac, ví dụ: `/Volumes/USB/anh-cong-trinh`.
+2. Tắt app rồi mở lại. Vào **Cài đặt → 🖼️ Ảnh**: mỗi thư mục hiện "✅ tìm thấy" hoặc "⚠️ không thấy trên máy này".
+
+- Khai báo thư mục **chứa** các thư mục công trình, đừng khai báo từng công trình: app không đọc tên của chính thư mục đã khai báo, chỉ đọc tên các thư mục bên dưới nó.
+- Thêm thư mục mới thì ghi vào **cuối** dòng, đừng đổi thứ tự các thư mục đã có: app nhớ ảnh theo số thứ tự thư mục trong dòng này, đổi thứ tự thì thẻ sửa tay không còn khớp đúng ảnh.
+- Đừng để thư mục phần mềm (thư mục có `run.bat`, trong đó có thư mục `data/`) nằm trong Google Drive hay trong thư mục ảnh: app ghi file riêng vào `data/`, nên các file đó sẽ lên Drive hoặc lẫn vào thư mục ảnh.
+
+**Đặt tên thư mục công trình**
+
+Mỗi công trình một thư mục; ảnh trước và sau khi làm để trong hai thư mục con:
+
+```
+Anh SEO/                            ← thư mục đã khai báo
+├── CT012 - Cổng inox - Tân Phú/
+│   ├── truoc/                      ảnh trước khi làm
+│   ├── sau/                        ảnh sau khi làm
+│   └── Ảnh AI/                     ảnh tạo bằng AI cho công trình này (nếu có)
+└── Ảnh AI/                         ảnh tạo bằng AI dùng chung
+```
+
+- Tên thư mục công trình gồm các phần cách nhau bằng ` - ` (gạch ngang, hai bên có dấu cách), thứ tự nào cũng được:
+  - mã công trình: `CT` và số, ví dụ `CT012`;
+  - hạng mục: ghép từ danh sách có sẵn, ví dụ `Cổng inox`, `Cửa kéo`, `Lan can sắt`, `Mái tôn`;
+  - khu vực: một quận/huyện của TP.HCM, Bình Dương hoặc Bà Rịa – Vũng Tàu, ví dụ `Tân Phú`, `Quận 7`, `Dĩ An`.
+- Phần nào không có trong danh sách của app (tên khách, số điện thoại, địa chỉ, năm) thì app bỏ qua cả phần đó và không gửi đi đâu. Vì vậy hãy tách bằng ` - `: viết `CT012 - Cổng inox - Nhà anh Tuấn - Tân Phú`, đừng viết `CT012 Cổng inox nhà anh Tuấn - Tân Phú` (phần đầu có tên khách nên mất luôn mã và hạng mục).
+- Thư mục trước/sau: `truoc` / `sau`, hoặc `Trước`, `Trước khi làm`, `Hiện trạng`, `Sau`, `Sau khi làm`, `Hoàn thành`… Ảnh để thẳng trong thư mục công trình thì không có thẻ trước/sau.
+- Một thư mục ghi hai khu vực khác nhau (`Quận 7 - Tân Phú`) thì app để trống khu vực, không đoán.
+- App hiểu cả tên không dấu (`Tan Phu`, `q7`), nhưng **nên gõ có dấu** (xem phần dưới).
+
+**Ảnh AI**
+
+- Để ảnh tạo bằng AI trong một thư mục con có chữ **AI**, ví dụ `Ảnh AI`, nằm **bên dưới** thư mục đã khai báo (trong thư mục công trình, hoặc ngay dưới thư mục đã khai báo như hình trên). Ảnh AI không bao giờ mang mã công trình, khu vực, trước/sau (chỉ giữ hạng mục), để bài viết không giới thiệu ảnh AI như công trình thật.
+- Đừng khai báo riêng một thư mục ảnh AI (ví dụ `G:/My Drive/Ảnh AI`) thành một mục của `IMAGE_FOLDERS`: app không đọc tên chính thư mục đã khai báo, nên hiện giờ ảnh trong đó bị coi là ảnh thật.
+- Các chữ làm ảnh thành ảnh AI. App tìm ở tên **mọi** thư mục bên dưới thư mục đã khai báo và ở **tên file ảnh**, không phân biệt hoa thường:
+  - chữ `AI` đứng riêng (`Ảnh AI`, `Hình AI`, `ai`, `IMG_AI_01.jpg`), và `GenAI`, `AI images`;
+  - `minh họa`, `trí tuệ nhân tạo`, `phối cảnh`, `mô phỏng`, `render`, `do máy tạo`, `tạo tự động`;
+  - tên công cụ tạo ảnh: Gemini, Imagen, Nano Banana, ChatGPT, GPT, DALL-E, Midjourney, Stable Diffusion, SDXL, Firefly, Copilot, Designer, Bing, Image Creator, Leonardo, Ideogram, Flux, Grok, Kling, Dreamina, Jimeng, Seedream, ComfyUI, Runway, Krea, Canva, Recraft, NightCafe, SeaArt, Hailuo, Sora. Tên file mặc định khi tải ảnh từ các công cụ này (ví dụ `Gemini_Generated_Image_….png`, `Designer (3).png`) cũng được nhận ra.
+- Gõ tên công cụ theo cách viết chuẩn, liền một chữ: `Midjourney`, `Firefly`, `Copilot`, `Seedream`. App nhận được vài kiểu gõ tách (`Mid Journey`, `Co-Pilot`) nhưng không phải mọi kiểu: `Hai Luo`, `Leo nardo` thì không.
+
+**Thư mục ảnh thật: tránh các chữ trên**
+
+- Tên thư mục ảnh thật đừng có chữ `AI` đứng riêng hay tên công cụ đứng riêng (`Sora`, `Flux`, `Designer`, `Canva`, `Bing`…), ví dụ `Thuốc hàn Flux`, `Công ty Designer Home`: cả thư mục bị coi là ảnh AI và **mất thẻ** công trình.
+- Gõ tên thư mục ảnh thật **có dấu**: `Nhà chị Ái`, `Nhà anh Minh Hòa` là ảnh thật; gõ không dấu `Nha chi Ai`, `Nha anh Minh Hoa` thì app đọc ra chữ `AI`, `minh họa` và coi là ảnh AI.
+- Không để ảnh lấy từ mạng, ảnh tham khảo, ảnh của nơi khác trong thư mục ảnh: app không phân biệt được và coi chúng là ảnh công trình thật.
+
+**App không ghi gì vào thư mục ảnh**
+
+- App chỉ đọc ảnh: không đổi tên, không di chuyển, không ghi file nào vào thư mục ảnh hay Drive.
+- Thẻ bạn sửa tay trong app (khi có màn hình chọn ảnh) chỉ nhớ trên **máy đang dùng**, trong file `data/image_tags.sqlite`; máy kia không thấy. Muốn hai máy cùng thấy thì đổi tên thư mục trên Drive.
+- Ảnh trong thư mục ảnh AI (hoặc tên file có dấu hiệu AI) luôn là ảnh AI, sửa tay không đổi được thành ảnh thật. Muốn đổi thì đổi tên hoặc chuyển ảnh sang thư mục khác.
+
+**Lỗi thường gặp**
+
+| App báo | Cách xử lý |
+|---|---|
+| "Không mở được file lưu thẻ ảnh (có thể chương trình khác đang giữ file, hoặc không có quyền ghi). Ảnh vẫn dùng thẻ đọc từ tên thư mục." (báo mãi, thử lại vẫn vậy) | Đóng chương trình khác đang mở file `data/image_tags.sqlite` (phần mềm xem file SQLite, phần mềm sao lưu…) rồi thử lại. Vẫn báo thì tắt app, xóa file `data/image_tags.sqlite`, mở lại app: chỉ mất các thẻ sửa tay, ảnh dùng lại thẻ đọc từ tên thư mục. |
+
+## 9. Cập nhật phiên bản mới
 
 - Với GitHub Desktop: mở dự án, bấm **Fetch origin**, rồi bấm **Pull origin** nếu có.
 - Sau đó chạy `run.bat` / `run.command` như bình thường. Thư viện mới (nếu có) sẽ được cài tự động.
 - File `.env` của bạn không bị ghi đè.
 
-## 9. Xử lý sự cố
+## 10. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
