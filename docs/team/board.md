@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-21 16:18 (Chỉ Huy B)._
+_Cập nhật: 2026-10-22 07:51 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Lá Chắn · T-076 kiểm nhanh tên thư mục | `team/T-076` | Thợ Máy xong (`3bb126e`). 15:42 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`a1a48da`: 4 yêu cầu làm đúng, lớp chặn T-048 giữ nguyên; 1 Thấp SL-T076-1: đổi tên đúng lúc kiểm sang thư mục có bản sao y hệt thì lẫn sang bản sao). ⏳ **16:18 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-076-tho-may.md) · [Soi Lỗi](reports/T-076-soi-loi.md) |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy · T-039 lượt 2 sửa lỗi chèn link | `team/T-039` | Thợ Máy xong (`bf1f889`). 16:01 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`5b4ec03`: 24 cách chèn link ngoài đều không lọt; chỉ bài đã đăng thành đích; **1 Trung bình SL-T039-6**: biến `_pending` trùng tên bộ đệm của `HTMLParser` bản Python 3.12.15 làm `apply_links` dừng hẳn hoặc bỏ oan đoạn cuối; 5 Thấp SL-T039-1 → -5). ⏳ **16:18 Thợ Máy lượt 2 đang sửa SL-T039-6** (và Thấp nếu gọn); rồi Soi Lỗi kiểm lại, Lá Chắn | [Thợ Máy](reports/T-039-tho-may.md) · [Soi Lỗi](reports/T-039-soi-loi.md) |
-| [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) | Quy tắc alt: chữ trong ảnh không chép vào alt lẫn chú thích (C10 Lá Chắn T-051, LC-T062-1); trước T-056 | Soi Lỗi · T-065 kiểm nhanh quy tắc alt | `team/T-065` | 15:16 Ngòi Bút **xong** (`bded957`: chỉ `config/content.toml` mục `[alt]`; cấm chép chữ trong ảnh vào cả alt lẫn chú thích; sửa 2 ví dụ theo SL-T051-7; bỏ «phường»; chú thích "quy tắc, ví dụ gửi nguyên văn cho hãng AI, chỉ dùng thông tin bịa"). ⏳ **16:18 Soi Lỗi rút gọn đang kiểm**; rồi Lá Chắn rút gọn | [Ngòi Bút](reports/T-065-ngoi-but.md) |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (LC-T055-1 Trung bình, LC-T055-2, -3); nên gộp trước T-056 | Thợ Máy lượt 2 (chưa giao) | `team/T-076` | Thợ Máy xong (`3bb126e`). Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`a1a48da`; 1 Thấp). 21/10 16:32 Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`ca1e91d`, Opus tạm): an toàn F1, F3; **1 Trung bình LC-T076-1**: trên ổ Google Drive for Desktop của Windows, `resolve` trả đúng chữ đã gõ nên ảnh AI vẫn có thể thành ảnh thật; 1 Thấp LC-T076-2 = SL-T076-1. **Chưa nên gộp.** ⏳ **Chờ giao Thợ Máy lượt 2** | [Thợ Máy](reports/T-076-tho-may.md) · [Soi Lỗi](reports/T-076-soi-loi.md) · [Lá Chắn](reports/T-076-la-chan.md) |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (ứng viên, AI gợi ý anchor, chèn link bằng code) | Thợ Máy · T-039 lượt 2 sửa lỗi chèn link | `team/T-039` | Thợ Máy xong (`bf1f889`). 16:01 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`5b4ec03`: 24 cách chèn link ngoài đều không lọt; chỉ bài đã đăng thành đích; **1 Trung bình SL-T039-6**: biến `_pending` trùng tên bộ đệm của `HTMLParser` bản Python 3.12.15 làm `apply_links` dừng hẳn hoặc bỏ oan đoạn cuối; 5 Thấp SL-T039-1 → -5). ⏳ **(dừng 21/10 chiều vì hết hạn mức, 22/10 07:5x nhắn làm tiếp) 16:18 Thợ Máy lượt 2 đang sửa SL-T039-6** (và Thấp nếu gọn); rồi Soi Lỗi kiểm lại, Lá Chắn | [Thợ Máy](reports/T-039-tho-may.md) · [Soi Lỗi](reports/T-039-soi-loi.md) |
+| [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) | Quy tắc alt: chữ trong ảnh không chép vào alt lẫn chú thích (C10 Lá Chắn T-051, LC-T062-1); trước T-056 | Ngòi Bút sửa nhanh (chưa giao) | `team/T-065` | Ngòi Bút xong (`bded957`). 21/10 16:25 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`8f41ba0`: 4 yêu cầu đúng, 16 quy tắc, 6 ví dụ, ảnh AI vẫn «Minh họa»; 1 Thấp SL-T065-1: ví dụ «alt xấu» dùng «đường Cộng Hòa» là tên đường thật). ⏳ **Chờ giao Ngòi Bút thay tên đường bịa**, rồi Lá Chắn rút gọn | [Ngòi Bút](reports/T-065-ngoi-but.md) · [Soi Lỗi](reports/T-065-soi-loi.md) |
 
 ## Chờ
 
