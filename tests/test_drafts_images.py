@@ -1059,15 +1059,43 @@ def test_exact_folder_name_wins_on_case_sensitive_disk(monkeypatch, library, tru
 
 
 def test_single_case_insensitive_match_takes_real_name(monkeypatch, library):
-    """Danh sách xem hết, đúng một tên trùng không phân biệt hoa thường: dùng tên đó, và kiểm lại
-    ảnh ở tên đó bằng ``stat_image`` (LC-T055-2), dùng số liệu của lần kiểm mới."""
+    """Ổ không cho biết tên trên ổ (``stat_image`` trả lại chữ đã gõ), danh sách xem hết, đúng một
+    tên trùng không phân biệt hoa thường: hỏi lại tên cũ vẫn ra kết quả cũ (LC-T076-2), rồi kiểm
+    ảnh ở tên của danh sách bằng ``stat_image`` (LC-T055-2): dùng tên đó, số liệu của lần mới."""
     assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
     disk = FakeDisk(monkeypatch, names=("Ảnh khác", "CongAI"))
     result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
     assert result.available and result.ref == ImageRef(0, "CongAI/cong.png")
     assert result.entry.ref == result.ref
-    assert disk.stats == ["congai/cong.png", "CongAI/cong.png"]
+    assert disk.stats == ["congai/cong.png", "congai/cong.png", "CongAI/cong.png"]
     assert result.is_ai
+
+
+def test_lc_t076_2_folder_renamed_between_checks_is_unavailable(monkeypatch, library, store):
+    """LC-T076-2 (= SL-T076-1): ``stat_image`` cho tên trên ổ ``CongAI``; lúc lớp phòng thứ hai xem
+    danh sách thì thư mục đã là ``Congai`` (một bản sao cùng cỡ, cùng giờ sửa) và hỏi lại tên cũ
+    thì ổ trả tên mới: thư mục vừa đổi tên, ảnh không dùng được, không hỏi tới ảnh ở tên mới; thẻ
+    theo tên đã kiểm (ảnh AI)."""
+    assert_ai_only_by_case("CongAI/cong.png", "Congai/cong.png")
+    asked: list[str] = []
+
+    def stat_image(_library, ref):
+        asked.append(ref.rel_path)
+        on_disk = "CongAI/cong.png" if len(asked) == 1 else "Congai/cong.png"
+        return ImageEntry(ref=ImageRef(0, on_disk), name="cong.png", size=10, modified=0.0)
+
+    def list_folder(_library, root_index, rel_dir="", **kwargs):
+        subfolders = (SubFolder(rel_path="Congai", name="Congai"),)
+        return SimpleNamespace(subfolders=subfolders, truncated=False)
+
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    image = real_image(rel_path="CongAI/cong.png")
+    result = check_draft_images(store.load(store.save(snapshot_with(image)).id), library)[1]
+    assert not result.available and result.entry is None
+    assert "mở lại từ thư mục ảnh gốc" in result.message
+    assert asked == ["CongAI/cong.png", "CongAI/cong.png"]
+    assert_ai_without_project(result.tags)
 
 
 @pytest.mark.parametrize("other", [(30, 0.0), (10, 99.0)], ids=["khac-co", "khac-gio-sua"])

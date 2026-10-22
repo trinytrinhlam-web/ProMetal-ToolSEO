@@ -473,10 +473,6 @@ def test_deep_path_with_case_variants_gets_disk_names(tmp_path, name_source):
 # ===== Lỗi mới ===============================================================================
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T076-1: lớp phòng thứ hai nhận file khác khi cùng cỡ và giờ sửa (bản sao)",
-)
 def test_sl_t076_1_swapped_copy_with_same_size_and_time_is_not_used(tmp_path, monkeypatch):
     """SL-T076-1 (Thấp). Nháp (nguồn "that", alt đã duyệt) ghi ``…/CongAI/cong.png`` (ảnh AI nhờ
     tách chữ hoa). Giữa lúc ``stat_image`` và lúc lớp phòng thứ hai xem danh sách thư mục, thư mục

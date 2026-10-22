@@ -743,11 +743,12 @@ class _FolderNames:
     Thẻ đọc từ tên thư mục phân biệt hoa thường ("CongAI" là thư mục ảnh AI nhờ tách chữ hoa,
     "congai" thì không), còn ổ Windows, Mac thì không: nháp ghi ``…/congai/…`` (sửa tay, hay thư mục
     được đổi hoa thường sau khi chọn ảnh) vẫn trỏ tới thư mục ``CongAI``. Từ T-076,
-    ``ImageLibrary.stat_image`` đã trả ``ImageRef`` theo tên trên ổ; đây là lớp phòng thứ hai, cho
-    ổ trả lại đúng chữ đã gõ. Xem tên bằng ``library.list_folder`` từng tầng, từ thư mục gốc xuống:
-    không đệ quy, chỉ đọc tên và ``stat``, không mở file ảnh (Drive "chỉ trực tuyến" không bị tải
-    về); mỗi thư mục xem một lần cho cả nháp. Tên file không cần: tên file chỉ dùng để nhận ảnh AI
-    và không tách chữ hoa (``tags_for_image``).
+    ``ImageLibrary.stat_image`` đã trả ``ImageRef`` theo tên trên ổ, lấy từ chính thư mục cha (không
+    từ ``resolve``, LC-T076-1); đây là lớp phòng thứ hai: danh sách cho tên khác nghĩa là thư mục
+    vừa đổi tên giữa hai lần xem (xem ``_check_images``). Xem tên bằng ``library.list_folder`` từng
+    tầng, từ thư mục gốc xuống: không đệ quy, chỉ đọc tên và ``stat``, không mở file ảnh (Drive "chỉ
+    trực tuyến" không bị tải về); mỗi thư mục xem một lần cho cả nháp. Tên file không cần: tên file
+    chỉ dùng để nhận ảnh AI và không tách chữ hoa (``tags_for_image``).
     """
 
     def __init__(self, library: ImageLibrary) -> None:
@@ -833,13 +834,15 @@ def check_draft_images(
       ``library.stat_image``: số thứ tự gốc không còn khai báo, file mất, đi qua liên kết, quá lớn…
       thì ``entry`` là ``None`` kèm ``message``. Không mở file ảnh (Drive "chỉ trực tuyến" không bị
       tải về). Đọc ảnh sau này cũng phải qua ``library.read_image_bytes(ref)``.
-    - ``ref`` là ``ImageRef`` theo tên trên ổ do ``stat_image`` trả (T-076, LC-T055-1), không theo
-      chữ hoa thường trong nháp, nên thẻ đọc từ tên thư mục thật (SL-T055-1).
+    - ``ref`` là ``ImageRef`` theo tên trên ổ do ``stat_image`` trả (T-076, LC-T055-1; tên lấy từ
+      thư mục cha, kể cả trên ổ Google Drive for Desktop, LC-T076-1), không theo chữ hoa thường
+      trong nháp, nên thẻ đọc từ tên thư mục thật (SL-T055-1).
     - Ảnh nháp ghi là ảnh thật còn được đối chiếu tên thư mục với danh sách thư mục (lớp phòng thứ
-      hai, ``list_folder`` không đệ quy, mỗi thư mục một lần cho cả nháp). Danh sách cho tên khác
-      thì ``stat_image`` lại ở tên đó: khác cỡ hay giờ sửa thì ảnh không dùng được, kèm ``message``
-      (LC-T055-2). Danh sách bị cắt (thư mục cha hơn 5.000 mục, quét quá giờ) mà chưa thấy tên
-      trùng hẳn thì giữ tên ``stat_image`` trả (LC-T055-3).
+      hai, ``list_folder`` không đệ quy, mỗi thư mục một lần cho cả nháp). Danh sách xem hết mà cho
+      tên khác tên ``stat_image`` vừa trả thì thư mục vừa đổi tên: ảnh không dùng được, kèm
+      ``message``, kể cả khi ảnh ở tên mới cùng cỡ, cùng giờ sửa (bản sao; LC-T055-2, LC-T076-2).
+      Danh sách bị cắt (thư mục cha hơn 5.000 mục, quét quá giờ) mà chưa thấy tên trùng hẳn thì
+      giữ tên ``stat_image`` trả (LC-T055-3).
     - ``scanned`` (**điều kiện**): ``ImageEntry``/``ImageRef`` lấy từ ``ImageLibrary.list_folder``,
       tức theo tên trên ổ. Chỉ dùng để bỏ bước đối chiếu ở trên, cho ảnh mà ``ImageRef`` do
       ``stat_image`` trả **trùng hẳn** (cùng gốc, cùng từng chữ) một ``ImageRef`` trong
@@ -925,10 +928,18 @@ def _check_images(
             ):
                 real = folder_names.real_ref(ref)
                 if real != ref:
-                    # LC-T055-2: kiểm lại ảnh ở tên theo danh sách; phải là ảnh vừa kiểm (cùng cỡ,
-                    # cùng giờ sửa) mới dùng, và dùng số liệu của lần kiểm mới.
+                    # Danh sách thư mục cho tên khác tên ``stat_image`` vừa trả. ``ImageLibrary``
+                    # lấy tên từ chính thư mục cha (LC-T076-1) nên đây là thư mục vừa đổi tên giữa
+                    # hai lần xem: hỏi lại tên cũ thì ổ trả tên khác, ảnh không dùng được, không
+                    # nhận ảnh ở tên mới dù cùng cỡ, cùng giờ sửa (bản sao, LC-T076-2 = SL-T076-1).
+                    # Chỉ dùng tên của danh sách khi hỏi lại tên cũ vẫn ra đúng kết quả cũ (thư
+                    # viện không cho biết tên trên ổ) và ảnh ở tên mới cùng cỡ, cùng giờ sửa; dùng
+                    # số liệu mới (LC-T055-2).
+                    if library.stat_image(ref) != entry:
+                        raise ImageFolderError(_MSG_FOLDER_NAME)
                     again = library.stat_image(real)
-                    if (again.size, again.modified) != (entry.size, entry.modified):
+                    same = (again.size, again.modified) == (entry.size, entry.modified)
+                    if again.ref != real or not same:
                         raise ImageFolderError(_MSG_FOLDER_NAME)
                     ref, entry = again.ref, again
         except ImageFolderError as exc:
