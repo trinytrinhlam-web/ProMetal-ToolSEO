@@ -47,3 +47,4 @@ F1, F3.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo báo cáo Soi Lỗi T-063 (cloud, 2026-10-22). Chờ T-076 gộp và Lá Chắn xét mức SL-T063-2 rồi mới giao.
+- 2026-10-22 10:16 (Chỉ Huy B): **Lá Chắn T-063** (`docs/team/reports/T-063-la-chan.md`, nhánh `team/T-063`): SL-T063-2 **Cao trên Mac/Linux, Thấp trên Windows** (thử tráo thật trên Windows >15.000 lần đọc: 0 lọt nội dung, 0 lọt cỡ; nhưng khi ép kẻ tấn công luôn thắng thì Windows cũng lọt, tức lỗi nằm trong code). **Bắt buộc trước khi app chạy trên Mac hoặc Linux** (kể cả phiên cloud Linux); Lá Chắn kiểm lại, gỡ 2 test `xfail` Windows của Lá Chắn và các `xfail` POSIX khi XPASS. Thêm vào phạm vi: **LC-T076-3** (= SL-T076-2, Thấp: bước hỏi lại tên cũ không so định danh file giữa các lần hỏi; biên bản Lá Chắn T-076 lượt 2), và xóa dấu `xfail` SL-T063-4 trong `tests/test_images_folders_t063.py` (T-076 đã sửa; chỉ hiện trên Linux/Mac).
