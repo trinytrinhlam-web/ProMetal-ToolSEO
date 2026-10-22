@@ -169,3 +169,147 @@ $ for i in 1..15; uv run pytest <2 file> -k linear (sau khi tăng cỡ)      →
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-22) · kiểm lại sau khi Thợ Máy sửa SL-T039-1 → 6
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
+| Nhánh kiểm | `team/T-039`, đầu nhánh lúc nhận `c0e5806` (Thợ Máy lượt 2: `706fc0a` SL-T039-6, `61c98ce` SL-T039-1 → 5, `c0e5806` báo cáo) |
+| Mức kiểm | Đầy đủ: kiểm lại 6 lỗi cũ, soát test đã đổi, tìm lỗi mới do lượt 2 |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: chuyển Lá Chắn được. **6/6 lỗi cũ đã sửa thật.** Lỗi mới: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp** (SL-T039-7 → 9), mỗi lỗi có test `xfail(strict=True)`. Điều kiện: nên sửa SL-T039-7 trước khi gộp (lỗi do lượt 2 gây ra, trái yêu cầu "chạy tuyến tính" của phiếu; việc nhỏ) |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Cả 6 lỗi lần trước đã được sửa thật.** Phần chèn link không còn dừng hẳn trên máy có Python mới. Chữ tiếng Việt dán từ máy Mac được nhận đúng. Không còn chèn link vào chỗ "[cần bổ sung: …]" có chữ in đậm. Phần mềm chặn thêm các kiểu link bài nháp gõ lạ và tên website viết lạ. AI trả sai kiểu số thì bị coi là trả sai, không tự đoán.
+- **Chữ dán từ máy Mac được thử rất kỹ:** 15.000 bài thử ngẫu nhiên, có cả thẻ chen vào giữa chữ cái và dấu. Link luôn bao đúng cụm từ, chưa lần nào cắt đôi một chữ có dấu, chữ người đọc thấy không đổi.
+- **Tìm thêm 3 lỗi nhỏ (Thấp).** Không lỗi nào làm link trỏ sai địa chỉ hay lộ thông tin:
+  1. Phần kiểm tên website mới thêm có thể **chạy rất chậm** (link dài 8.000 ký tự mất 50 giây) nếu bài có một link gõ cố ý với tên website cực dài bằng chữ lạ (ví dụ chữ Hán). Link thật không bao giờ như vậy, nhưng phiếu yêu cầu mọi phần chạy nhanh đều theo độ dài bài. Sửa nhỏ.
+  2. Bài có đoạn "mã" (chữ trong dấu `) chứa dấu ngoặc vuông: phần chèn link có thể bỏ oan link bắt buộc, hoặc đặt link vào chỗ "[cần bổ sung: …]". Bài sửa cửa hầu như không có đoạn mã.
+  3. Vài kiểu link bài nháp gõ tay rất hiếm (`?p[]=12`) vẫn bị coi là "link về trang chủ".
+- **Đề xuất:** Thợ Máy sửa lỗi 1 trước khi gộp (một lượt ngắn); lỗi 2 và 3 làm cùng lượt đó hoặc cùng T-041, trước Giai đoạn 5. Phiếu chuyển sang Lá Chắn được.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t039.py` | Thêm 4 hàm test, 12 trường hợp: 10 ca `xfail(strict=True)` cho SL-T039-7 (1), SL-T039-8 (2), SL-T039-9 (7); 2 ca thường (đang qua) canh hướng sửa SL-T039-7. Không sửa test có sẵn |
+| `docs/team/reports/T-039-soi-loi.md` | Mục này |
+
+Không sửa code ứng dụng, không sửa test của Thợ Máy.
+
+### Kiểm từng lỗi cũ
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T039-6 (Trung bình) | **Đã sửa** | Đọc code: mọi biến, hàm riêng của `_TextRuns` (`links.py:667-777`) đặt dạng `__x`, Python đổi thành `_TextRuns__x` nên không thể trùng tên của `HTMLParser`. Soát tên: so `vars(HTMLParser())`, `dir(HTMLParser)` với mọi tên của `_TextRuns` (sau khi đọc một bài) và `_Anchors`. **3.12.15**: `vars` có 13 tên, gồm `_pending`, `_pending_len`, `_parse_threshold`, `_escapable`, `_support_cdata`, `scripting`. **3.14.6**: 10 tên, không có `_pending`. Cả hai bản: giao nhau rỗng; tên công khai `runs`, `linked`, `read`, `hrefs`, `ids` không có trong `HTMLParser`. **3.12.3: máy không có** (chỉ 3.12.15 và 3.14.6; tôi không tải thêm). Suy luận cho 3.12.3: tên dạng `_TextRuns__x` không thể trùng ở bản nào; 3.12.3 chỉ có ít tên hơn 3.12.15 (theo mã nguồn CPython, chưa chạy). Test `test_html_readers_never_shadow_htmlparser_names` của Thợ Máy so cả các tên mới của 3.12.15 nên đúng ý trên 3.12.3. 8 ca `test_sl6_*` nay là test thường và qua; mẫu tái hiện gốc chèn đúng |
+| SL-T039-1 (Thấp) | **Đã sửa** | `check_suggestions` so ở dạng NFC. `place_links` tìm trên chữ NFC kèm bảng vị trí (`_nfc_offsets`, `links.py:800`), bọc **chữ gốc**, rồi kiểm lại chữ gốc ra đúng các từ (`_find_in_run`, `links.py:819`). Bảng vị trí chỉ có ở đầu mỗi cụm "chữ cái + dấu", nên không thể bọc nửa chữ. Thử ngẫu nhiên riêng (mục Bằng chứng 4): 15.000 bài, chữ NFD/NFC lẫn lộn; thẻ, chú thích, `<wbr>`, `<br>` và thực thể (`&#769;`) chen vào **mọi chỗ, kể cả giữa chữ cái và dấu**; chạy trên HTML gốc lẫn HTML đã qua `sanitize_html`. Kết quả: không ném lỗi, chữ người đọc thấy không đổi, chữ trong link (NFC) đúng cụm từ, **0 lần** ký tự đầu link hoặc ký tự ngay sau link là dấu tổ hợp. Một trường hợp biên có từ lượt 1: mục Quan sát |
+| SL-T039-2 (Thấp) | **Đã sửa** | `_masked_runs` (`links.py:780`) che "[…]" theo đoạn văn. 2 ca `test_sl2_*` qua. Còn một biến thể qua đoạn `mã`: SL-T039-8 |
+| SL-T039-3 (Thấp) | **Đã sửa** cả 8 dạng đã báo | `_php_name` (`links.py:187`); thêm `?name=`, `?pagename=` vào nhóm Chặn. Link thật của site không bị chặn oan: 15 dạng (`www.`, chữ hoa, `:443`, dấu chấm cuối, `?utm_source=`, `#gia`, `?s=`, `?names=`, `?pname=`, `?page=2`, `?a[name]=1`…) vẫn cho kết quả như lượt 1. Còn dạng tên mảng của PHP: SL-T039-9 |
+| SL-T039-4 (Thấp) | **Đã sửa** | `_browser_host` (`links.py:1009`), `_WRONG_PORT`. Link ngoài viết lạ vẫn "ra ngoài" (10 dạng: `例え.jp`, `xn--…`, `ｅｘａｍｐｌｅ.com`, `suachuacuasat.com.evil.com`, `suachuacuasat%2Ecom.evil.com`, `suachuacuasat.com%2F.evil.com`…). Nhưng cách đổi tên máy mới gây SL-T039-7 (tốc độ) |
+| SL-T039-5 (Thấp) | **Đã sửa** | `Field(strict=True)` (`links.py:114-115`). Không bỏ oan gợi ý đúng: khuôn JSON gửi AI vẫn là `integer` ở đường OpenAI (`openai.pydantic_function_tool`) lẫn Anthropic (`transform_schema`), tôi đã in ra kiểm. Cả 3 hãng đọc câu trả lời từ chữ JSON: `gemini_provider.py:341` và `openai_provider.py:236` dùng `model_validate_json`; với Anthropic, `parsed_output` của thư viện gọi `validate_json` (`anthropic/lib/_parse/_response.py:19`). Số nguyên thật vì vậy luôn qua |
+
+### Soát test lượt 2 (`git diff 5b4ec03..c0e5806 -- tests/`)
+
+- `tests/test_soi_loi_t039.py`: chỉ gỡ đúng 29 dấu `xfail` (SL-1: 2, SL-2: 2, SL-6: 8, SL-3: 8, SL-4: 4, SL-5: 5 ca), bỏ 2 hằng không còn dùng (`_STDLIB_PENDING`, `_SL6`) và sửa lời chú thích. **Không thân test nào đổi**, không điều kiện kiểm nào bị nới.
+- `tests/test_onpage_links.py`: thêm 17 hàm, 69 ca. Đọc từng test: kiểm đúng ý (tên riêng của lớp đọc HTML, giả lập bộ đệm `_pending` trên mọi bản Python, NFD hai chiều, che "[…]" qua thẻ, thẻ đóng lạc, gọi trên HTML đã lọc, tham số PHP, tên máy lạ, khuôn chặt, tốc độ). Thiếu một ca: test tốc độ tên máy dài (`long-fullwidth-host`) dùng chữ toàn khổ. Nameprep đổi chữ toàn khổ về ASCII nên ca này không đi qua bước punycode, vì vậy không bắt được SL-T039-7.
+
+### Lỗi mới
+
+| Mã | Mức | Tóm tắt | Test (`tests/test_soi_loi_t039.py`) |
+|---|---|---|---|
+| SL-T039-7 | Thấp | `check_links` chạy **bậc hai** với tên máy dài không phải ASCII (do `_browser_host` của lượt 2) | `test_sl7_check_links_linear_on_long_non_ascii_host` (xfail) · canh hướng sửa: `test_own_site_with_ignored_marks_in_host_still_blocks` (2 ca, đang qua) |
+| SL-T039-8 | Thấp | Dấu ngoặc trong đoạn `mã`: `check_suggestions` và `apply_links` thấy chỗ "[…]" khác nhau. Hậu quả: bỏ oan link bắt buộc (hồi quy từ bản sửa SL-T039-2) hoặc link lọt vào "[…]" | `test_sl8_code_brackets_seen_same_by_check_and_apply` (2 ca, xfail) |
+| SL-T039-9 | Thấp | Tên tham số dạng mảng PHP (`?p[]=12`, `?page_id[]=10`, `?name[]=…`) vẫn là "Link về trang chủ" (bản sửa SL-T039-3 chưa hết) | `test_sl9_php_array_query_forms_block` (7 ca, xfail) |
+
+#### SL-T039-7 (Thấp) · `check_links` chạy bậc hai với tên máy dài không phải ASCII
+
+- **Tái hiện:** `check_links('<p><a href="https://' + "".join(chr(0x4E00 + i) for i in range(n)) + '.vn/">x</a></p>', INDEX)`. Đo trên máy Windows, Python 3.12.15 (đồng hồ thường): n = 2.000 mất 2,9 giây; n = 4.000 mất 12,6 giây; n = 8.000 mất **50 giây**. Code lượt 1 (`5b4ec03`, đo thời gian CPU, n = 500 → 2.000): dưới 0,02 giây. Test đo 3 lần: dài gấp 4 thì chậm gấp 14–21 lần (hàm tuyến tính chỉ khoảng 4 lần).
+- **Nguyên nhân:** `_browser_host` (`links.py:1009-1017`) chạy `unquote(host).encode("idna")` cho mọi tên máy không phải ASCII (hoặc có `%`) mà không phải tên site (`links.py:1061`). Bộ mã IDNA của Python (`encodings/idna.py`, `ToASCII`) mã **punycode** nhãn không phải ASCII, rồi mới kiểm độ dài 63. Punycode của Python chạy bậc hai theo độ dài nhãn khi nhãn có nhiều chữ khác nhau.
+- **Mong đợi:** tuyến tính (phiếu, Yêu cầu 7: "Có test tốc độ tuyến tính"; docstring `links.py:24-25`: "Mọi hàm chạy tuyến tính theo độ dài bài").
+- **Hậu quả:** app treo khi kiểm link nếu HTML có một link như vậy. Hiện chưa có đường đi tới đây: `check_links` chưa nối vào app. AI cũng không đưa link vào bài được (`clean_ai_text` bỏ link Markdown, `apply_links` chỉ chèn link từ danh sách bài). Từ Giai đoạn 5, người dùng tự gõ hoặc dán link mới có thể gặp. Không lộ gì.
+- **Sửa gợi ý (Thợ Máy):** bỏ hẳn bước mã punycode. Chạy `encodings.idna.nameprep` cho từng nhãn (tách ở `.`, `。`, `．`, `｡`); bước này tuyến tính. Nhãn nào vẫn còn chữ không phải ASCII thì không thể là tên site (tên site là ASCII): trả nguyên tên máy. **Không** chặn theo độ dài chữ gốc. Nhãn dài hơn 63 ký tự vẫn có thể ra đúng tên site sau khi nameprep bỏ ký tự vô nghĩa: `suachuacuasat` + 100 ký tự U+FE0F + `.com` hiện bị Chặn đúng, nhưng chặn độ dài thô sẽ xếp nó thành "ra ngoài". Test `test_own_site_with_ignored_marks_in_host_still_blocks` canh việc này (đã thử: đỏ với cách chặn độ dài thô). Bản sao `links.py` sửa theo cách nameprep (ngoài repo) qua cả 3 test này và toàn bộ 2 file test của phiếu.
+
+#### SL-T039-8 (Thấp) · Dấu ngoặc trong đoạn `mã`: hai hàm thấy chỗ "[…]" khác nhau
+
+- **Tái hiện 1 (hồi quy):** thân phần Markdown ``"Gõ `a[0` rồi gọi dịch vụ sửa cửa kéo."``, HTML `"<p>Gõ <code>a[0</code> rồi gọi dịch vụ sửa cửa kéo.</p>"`, gợi ý cho trang dịch vụ bắt buộc #10. `check_suggestions` **nhận** gợi ý. `place_links` lại **bỏ qua** ("không thấy cụm từ ở chỗ chèn được"), nên `check_links(..., required_ids)` **Chặn** "Thiếu link bắt buộc tới «Sửa cửa kéo tại TP.HCM»". Code lượt 1: chèn đúng, Nên.
+- **Tái hiện 2:** Markdown ``"Giá [cần bổ sung: `x]` thay ray mới] tùy.\n\nThợ thay ray mới rất nhanh."``, HTML tương ứng có `<code>x]</code>`. `check_suggestions` coi "thay ray mới" ở đoạn đầu nằm trong "[…]" và chỉ nhận nhờ đoạn sau. `apply_links` lại chèn vào **đoạn đầu**, giữa "[cần bổ sung: …]". Code lượt 1 cũng vậy (biến thể của SL-T039-2 chưa hết).
+- **Nguyên nhân:** `markdown_blocks` che đoạn `mã` (`_mask_code`, `links.py:463`, gọi ở `:533`) **trước** khi che "[…]" (`:510`), nên dấu ngoặc trong mã không được tính. `_masked_runs` (`links.py:780-797`) lại tính dấu ngoặc ở mọi nút chữ, kể cả trong `<code>` (docstring ghi đây là chủ ý). Ở lượt 1 mỗi nút chữ che riêng, nên "[" trong `<code>` không lan sang chữ phía sau.
+- **Mong đợi:** với HTML dựng từ Markdown, hai hàm thấy cùng một chỗ "[…]". Gợi ý đã nhận thì chèn được, và không chèn vào chỗ `check_suggestions` coi là "[…]".
+- **Hậu quả nhỏ:** bài về sửa cửa hầu như không có đoạn mã. Không phải lỗ bảo mật: `href` vẫn từ danh sách bài, `sanitize_html` vẫn vô hiệu `[` `]`.
+- **Sửa gợi ý:** `_TextRuns` ghi thêm nút chữ nào nằm trong `<code>` (đã có bộ đếm thẻ mở); `_masked_runs` bỏ qua dấu ngoặc của các nút đó, như `_mask_code`. Bản sao thử (ngoài repo): qua cả 2 ca và toàn bộ test của phiếu.
+
+#### SL-T039-9 (Thấp) · Tên tham số dạng mảng PHP lọt kiểm link nháp
+
+- **Tái hiện:** `check_links('<p><a href="https://suachuacuasat.com/?p[]=12">x</a></p>', INDEX)` cho Nên, "Link về trang chủ." Tương tự với `?p[0]=12`, `?p%5B%5D=12`, `?page_id[]=10`, `?name[]=bai-nhap`, `?pagename[x]=trang-nhap`. `/sua-cua-keo-tphcm/?preview_id[]=12` cho Nên, "Link tới bài đã đăng."
+- **Vì sao không phải trang chủ:** PHP đọc tên `p[]`, `p[0]` là biến `p` dạng mảng. WordPress vì vậy vẫn nhận tham số `p`, `page_id`, `name`…, không mở trang chủ. Đây là suy luận theo cách PHP đọc tên tham số; tôi không thử trên site thật vì site không có bản thử. Các dạng này cùng họ với `?p=` mà phiếu yêu cầu Chặn.
+- **Nguyên nhân:** `_php_name` (`links.py:187-190`) đổi mọi "[" thành "_". PHP chỉ làm vậy khi "[" không có "]" phía sau; có "]" thì tên biến dừng ở "[".
+- **Mong đợi:** Chặn như `?p=12`.
+- **Sửa gợi ý:** trong `_php_name`, nếu sau dấu "[" đầu tiên có "]" thì cắt tên tại "[", rồi mới đổi " ", "." thành "_". Hàm này dùng chung cho link bắt buộc (`_resolve_required`). Bản sao thử: qua cả 7 ca. Chỉ gặp khi người dùng tự gõ link.
+
+### Quan sát (không tính là lỗi)
+
+- **Dấu tổ hợp bị thẻ tách khỏi chữ cái.** Ví dụ HTML bất thường `"Gọi thợ sửa cửa<b>́</b> kéo"`: dấu sắc nằm trong thẻ sau, người đọc thấy "cửá". Với cụm từ "thợ sửa cửa", link bao "thợ sửa cửa" và dấu nằm ngoài link. Cơ chế này có từ lượt 1 với chữ không dấu: `"ke<b>́o</b>"` với cụm từ kết thúc ở "…ke" thì lượt 1 và lượt 2 đều chèn. Lượt 2 chỉ làm dạng NFD cũng gặp được. Nguyên nhân: kiểm "đứng trọn từ" chỉ xét trong một nút chữ. HTML dựng từ Markdown không tách chữ cái khỏi dấu, và `check_suggestions` chỉ nhận cụm từ có nguyên văn trong thân bài. Thực tế gần như không gặp: 15.000 bài thử ngẫu nhiên không gặp lần nào.
+- **Chưa chạy trên Python 3.12.3** (máy không có). Các test SL-T039-6 không phụ thuộc bản Python; lượt chạy trên cloud sẽ xác nhận.
+- **Dạng `?attachment_id=`, `?cat=`** vẫn là "Link về trang chủ", như Thợ Máy đã ghi (để Giai đoạn 5 quyết). Tôi không tính vào SL-T039-9.
+
+### Bằng chứng (lượt 2)
+
+Chạy trên Windows 11 (máy chủ dự án), worktree `wt-T-039`, Python 3.12.15, có agent khác chạy song song.
+
+#### 1. Test của phiếu (bản cuối, sau khi thêm test mới)
+
+```
+$ uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py
+461 passed, 10 xfailed in 29.04s
+# trước lượt kiểm này (Thợ Máy): 459 passed; nay thêm 12 ca của Soi Lỗi: 2 qua, 10 xfail (SL-T039-7 → 9)
+```
+
+#### 2. Test liên quan (25 file, đúng danh sách lượt 1, mục Bằng chứng 2)
+
+```
+$ uv run pytest tests/test_ai_images.py tests/test_app_pages.py … tests/test_soi_loi_t039.py
+2589 passed, 1 skipped, 28 xfailed in 232.31s (0:03:52)
+# 1 bỏ qua và 18 trong 28 xfail là của các file khác, có từ trước (Thợ Máy lượt 2: 2587 passed,
+# 1 skipped, 18 xfailed); 10 xfail còn lại là SL-T039-7 → 9; 2587 + 2 ca canh mới = 2589
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check tests/test_soi_loi_t039.py
+1 file already formatted
+$ PYTHONUTF8=1 uvx --offline detect-secrets scan --all-files tests/test_soi_loi_t039.py docs/team/reports/T-039-soi-loi.md
+"results": {}
+```
+
+Kiểm công cụ trước: file mồi có chữ tiếng Việt và khóa giả (thư mục tạm ngoài repo, quét xong đã xóa) bị bắt đúng "AWS Access Key", dòng 2.
+
+#### 3. Test mới đỏ đúng lỗi, và qua khi lỗi được sửa
+
+- Chạy với `--runxfail`: SL-T039-7 đỏ vì tỉ lệ thời gian ("gấp 4 độ dài thì chậm gấp 14.3 / 20.6 / 14.2 lần", ngưỡng 9). SL-T039-8 đỏ vì `placed.applied == ()` (ca 1) và vì link nằm ở đoạn đầu (ca 2). SL-T039-9 đỏ vì `Level.GOOD`. Chạy riêng SL-T039-7 6 lần: 6/6 `xfailed`, không lần nào qua oan.
+- Bản sao `links.py` giả lập 3 bản sửa theo gợi ý ở trên (để ngoài repo, nạp bằng plugin pytest như Thợ Máy đã làm; không sửa repo): `uv run pytest tests/test_soi_loi_t039.py tests/test_onpage_links.py --runxfail` cho **471 passed**. Nghĩa là test mới qua được khi lỗi được sửa và không vướng test cũ.
+
+#### 4. Thử ngẫu nhiên (script để ngoài repo)
+
+- Script riêng của Soi Lỗi (chữ NFD bị thẻ/thực thể cắt ở mọi chỗ, chạy trên HTML gốc và HTML đã qua `sanitize_html`): 5 hạt giống × 3.000 bài = 15.000 bài (30.000 lượt chèn), 15.803 link được chèn. Đạt hết như ghi ở SL-T039-1.
+- Script của Thợ Máy với hạt giống mới: `fuzz_round2.py` và `fuzz_round2c.py`, hạt giống 7101 và 7102, mỗi lượt 5.000 mẫu. Đạt cả 4 lượt.
+
+#### 5. Tốc độ
+
+```
+$ for i in 1..5; uv run pytest tests/test_onpage_links.py tests/test_soi_loi_t039.py -k linear
+32 passed, 438 deselected, 1 xfailed   (5/5 lượt; xfail là test_sl7_*)
+```
+
+32 test tốc độ (của Thợ Máy và Soi Lỗi, gồm 6 test tốc độ mới của Thợ Máy lượt 2) qua cả 5 lượt, không lượt nào đỏ oan. Hàm mới `_nfc_offsets`, `_masked_runs` chạy tuyến tính (test `test_apply_links_linear_round_2` của Thợ Máy); `unicodedata.normalize` của Python 3.12.15 cũng không chạy bậc hai với dãy dấu tổ hợp dài xen thứ tự (đo 20.000 → 320.000 dấu: dưới 0,3 giây). Chỗ duy nhất không tuyến tính tìm được là SL-T039-7.
+
+### Đề xuất (lượt 2)
+
+- **Thợ Máy, lượt ngắn trước khi gộp:** sửa SL-T039-7 theo hướng nameprep ở trên, gỡ `xfail` của `test_sl7_*`. Có thể làm luôn SL-T039-8 và SL-T039-9: cùng file, sửa nhỏ, đã có hướng sửa và test.
+- Nếu Chỉ Huy muốn gộp ngay: SL-T039-8, SL-T039-9 để cùng T-041 hoặc trước Giai đoạn 5 (khi người dùng được tự gõ link). SL-T039-7 phải sửa trước khi `check_links` được nối vào app.
+- Thêm vào test tốc độ của Thợ Máy một tên máy dài gồm nhiều chữ không phải ASCII khác nhau (ngoài chữ toàn khổ), như `test_sl7_*`.
+
+### Câu hỏi cho chủ dự án (lượt 2)
+
+Không có.

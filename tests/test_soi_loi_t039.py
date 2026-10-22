@@ -37,6 +37,7 @@ from seo_app.onpage.links import (
     apply_links,
     check_links,
     check_suggestions,
+    markdown_blocks,
     place_links,
     select_candidates,
 )
@@ -605,6 +606,47 @@ def test_sl2_no_link_inside_placeholder_split_by_tag(html_text):
     assert links_in(out) == [(STUCK.link, "thay ray mới")]
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T039-8: dấu ngoặc trong `mã` tính khác nhau giữa check_suggestions và apply_links",
+)
+@pytest.mark.parametrize(
+    "markdown, html_text, anchor, post_id",
+    [
+        # "[" nằm trong `mã`: check_suggestions nhận, apply_links lại che hết đoạn → link bắt
+        # buộc thành "thiếu" (lượt 1 vẫn chèn được).
+        (
+            "Gõ `a[0` rồi gọi dịch vụ sửa cửa kéo.",
+            "<p>Gõ <code>a[0</code> rồi gọi dịch vụ sửa cửa kéo.</p>",
+            "dịch vụ sửa cửa kéo",
+            10,
+        ),
+        # "]" nằm trong `mã`: check_suggestions coi cả "[…]" là chỗ chờ bổ sung, apply_links lại
+        # coi "]" trong mã là dấu đóng → link lọt vào chỗ "[cần bổ sung: …]" của đoạn đầu.
+        (
+            "Giá [cần bổ sung: `x]` thay ray mới] tùy.\n\nThợ thay ray mới rất nhanh.",
+            "<p>Giá [cần bổ sung: <code>x]</code> thay ray mới] tùy.</p>"
+            "<p>Thợ thay ray mới rất nhanh.</p>",
+            "thay ray mới",
+            11,
+        ),
+    ],
+    ids=["mo-ngoac-trong-ma", "dong-ngoac-trong-ma"],
+)
+def test_sl8_code_brackets_seen_same_by_check_and_apply(markdown, html_text, anchor, post_id):
+    """HTML dựng từ Markdown: ``check_suggestions`` (đọc Markdown, che `mã` trước rồi mới che
+    "[…]") và ``apply_links`` (đọc HTML) phải thấy cùng một chỗ "[…]"."""
+    review = check_suggestions(
+        ai_json((post_id, 0, anchor)), [Section(heading="M", body=markdown)], CANDS
+    )
+    assert review.links == (link(0, anchor, post_id),)
+    placed = place_links(html_text, review.links, INDEX)
+    assert placed.applied == review.links  # gợi ý đã nhận thì chèn được
+    for paragraph, block in zip(placed.html.split("</p>"), markdown_blocks(markdown), strict=False):
+        if "<a" in paragraph:  # đoạn được chèn: cụm từ phải nằm ngoài "[…]" theo check_suggestions
+            assert anchor in block, placed.html
+
+
 def test_href_only_from_index_and_escaped():
     odd = PublishedItem(
         id=70,
@@ -882,6 +924,25 @@ def test_sl3_php_and_wordpress_query_forms_block(href):
     assert one(href).level is Level.BLOCK
 
 
+@pytest.mark.xfail(strict=True, reason="SL-T039-9: tên tham số dạng mảng PHP (?p[]=) lọt kiểm link")
+@pytest.mark.parametrize(
+    "href",
+    [
+        f"{SITE}/?p[]=12",  # PHP đọc "p[]" là biến "p" dạng mảng: WordPress không mở trang chủ
+        f"{SITE}/?p[0]=12",
+        f"{SITE}/?p%5B%5D=12",
+        f"{SITE}/?page_id[]=10",
+        f"{SITE}/?name[]=bai-nhap",
+        f"{SITE}/?pagename[x]=trang-nhap",
+        f"{SITE}/sua-cua-keo-tphcm/?preview_id[]=12",
+    ],
+)
+def test_sl9_php_array_query_forms_block(href):
+    """Như ``?p=12``: link cùng site có tham số mở bài theo mã số/slug thì Chặn. ``_php_name``
+    đã đổi " ", "." và "[" chưa đóng như PHP, nhưng chưa cắt tên ở "[…]" (biến dạng mảng)."""
+    assert one(href).level is Level.BLOCK
+
+
 @pytest.mark.parametrize(
     "href",
     [
@@ -893,6 +954,20 @@ def test_sl3_php_and_wordpress_query_forms_block(href):
 )
 def test_sl4_odd_host_or_port_forms_block(href):
     assert one(href).level is Level.BLOCK
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "suachuacuasat" + "️" * 100 + ".com",  # trình duyệt bỏ ký tự chọn kiểu chữ
+        "suachuacuasat" + "͏" * 70 + ".com",  # và dấu nối chữ vô hình: vẫn là chính site
+    ],
+)
+def test_own_site_with_ignored_marks_in_host_still_blocks(host):
+    """Canh cách sửa SL-T039-7: nhãn dài hơn 63 ký tự vẫn có thể ra đúng tên site sau bước bỏ ký
+    tự vô nghĩa (nameprep), nên không được chặn độ dài trên chữ gốc rồi xếp "ra ngoài"."""
+    result = one(f"https://{host}/sua-cua-keo-tphcm/")
+    assert (result.kind, result.level) == (LinkKind.INTERNAL, Level.BLOCK)
 
 
 # ================================================================== 6. khuôn AI (A2)
@@ -976,6 +1051,22 @@ def test_check_suggestions_linear_on_hostile_body(make):
         check_suggestions(raw, [Section(heading="M", body=body)], cands)
 
     assert_scales_linearly(run, make, label="kiểm gợi ý")
+
+
+@pytest.mark.xfail(
+    strict=True, reason="SL-T039-7: check_links chạy bậc hai với tên máy dài không phải ASCII"
+)
+def test_sl7_check_links_linear_on_long_non_ascii_host():
+    """``_browser_host`` (lượt 2) đổi tên máy lạ bằng bộ mã IDNA của Python; nhãn không phải ASCII
+    được mã punycode mà không giới hạn độ dài trước, và punycode chạy bậc hai theo độ dài nhãn
+    (đo 2026-10-22: link 2.000 ký tự mất 1,7 giây CPU, 8.000 ký tự mất 50 giây; lượt 1 tức thì).
+    Tên máy thật mỗi nhãn tối đa 63 ký tự, nên chặn độ dài trước khi đổi là đủ."""
+
+    def make(k):
+        host = "".join(chr(0x4E00 + i) for i in range(k * 250))  # 1.000 chữ khác nhau, một nhãn
+        return f'<p><a href="https://{host}.vn/">x</a></p>'
+
+    assert_scales_linearly(lambda t: check_links(t, INDEX), make, label="kiểm link")
 
 
 def test_select_candidates_linear_in_site_size():
