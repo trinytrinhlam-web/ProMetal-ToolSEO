@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-22 07:51. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-22 08:20. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -44,14 +44,18 @@ Chỉ Huy B, cập nhật 2026-10-22 07:51. Agent chạy ở phiên con dưới 
 | [T-074](tickets/T-074-don-the-anh-luot-2.md) Dọn thẻ ảnh lượt 2 | đã gộp (`ae2ae8e`), nhánh và worktree đã xóa | ✅ Windows 10.135 qua, 0 hỏng; đã đẩy `main` | Điều kiện đã chép vào T-056, T-069; dọn tiếp ở T-077 |
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
-| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ (GĐ3, nên trước T-056) | `team/T-076` (`ca1e91d`) | ✅ 21/10 16:32 Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (LC-T076-1 Trung bình, LC-T076-2 Thấp; chưa nên gộp); điều kiện đã chép vào T-056, T-063, T-076 | ⏳ Chờ chủ dự án cho giao Thợ Máy lượt 2 |
+| [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ (GĐ3, nên trước T-056) | `team/T-076` (`ca1e91d`) | ✅ 21/10 16:32 Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (LC-T076-1 Trung bình, LC-T076-2 Thấp; chưa nên gộp); điều kiện đã chép vào T-056, T-063, T-076 | ⏳ Thợ Máy lượt 2 (nhắn lại phiên "Thợ Máy · T-076 tên thư mục trên ổ"); rồi Soi Lỗi rút gọn, Lá Chắn rút gọn |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | `team/T-039` (`5b4ec03` + việc dở chưa commit) | Thợ Máy lượt 2 dừng 21/10 chiều vì hết hạn mức | ⏳ 22/10 07:5x nhắn làm tiếp (phiên "Thợ Máy · T-039 lượt 2 sửa lỗi chèn link"); rồi Soi Lỗi kiểm lại, Lá Chắn |
-| [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt (GĐ3, trước T-056) | `team/T-065` (`8f41ba0`) | ✅ 21/10 16:25 Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (SL-T065-1 Thấp: tên đường thật trong ví dụ) | ⏳ Chờ chủ dự án cho giao Ngòi Bút sửa nhanh, rồi Lá Chắn rút gọn |
+| [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt (GĐ3, trước T-056) | `team/T-065` (`8f41ba0`) | ✅ 21/10 16:25 Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (SL-T065-1 Thấp: tên đường thật trong ví dụ) | ⏳ Ngòi Bút lượt 2 (nhắn lại phiên "Ngòi Bút · T-065 quy tắc alt"); rồi Lá Chắn rút gọn (chủ dự án đã duyệt) |
 | Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-066, T-069, T-071 (còn chỗ, trước T-056); T-063 (cần máy Linux/Mac); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-079** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-22 08:20 · Chỉ Huy B
+
+- Chủ dự án ("có"): Thợ Máy T-076 lượt 2 (LC-T076-1, -2) và Ngòi Bút T-065 lượt 2 (SL-T065-1), sau đó Lá Chắn rút gọn T-065. Giao bằng cách nhắn lại đúng phiên con đã làm phiếu (giữ ngữ cảnh). Đang chạy: Thợ Máy T-039 lượt 2, Thợ Máy T-076 lượt 2, Ngòi Bút T-065 lượt 2.
 
 ### 2026-10-22 07:51 · Chỉ Huy B
 
