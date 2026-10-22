@@ -58,6 +58,10 @@ Chỉ Huy B, cập nhật 2026-10-22 18:07. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-22 18:16 · Chỉ Huy B
+
+- Thợ Máy T-071 hỏi phạm vi (yêu cầu 5 làm hỏng 7 chỗ test ngoài phạm vi). Chỉ Huy chọn **A** (bỏ `ai_generated`, ảnh AI theo `tags.source`; sửa cơ học 7 chỗ test, không đổi điều kiện kiểm; Soi Lỗi soát theo R5). Đã ghi vào phiếu T-071.
+
 ### 2026-10-22 18:07 · Chỉ Huy B
 
 - **Lá Chắn T-039 ĐẠT CÓ ĐIỀU KIỆN** (`7f9fd80`, 2 Thấp; điều kiện → T-040, T-041, GĐ5). **Lá Chắn T-069 rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`5104e17`, 2 Thấp chữ README). **Soi Lỗi T-079 Windows ĐẠT CÓ ĐIỀU KIỆN** (`79b55e7`, SL-T079-1 Thấp). **Phiên cloud Linux T-079 ĐẠT** (`e7fdebd` trên `team/T-079-linux`: 0 lọt qua hơn 1,3 triệu lượt đọc khi bị tráo).
