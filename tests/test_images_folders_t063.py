@@ -391,3 +391,105 @@ def test_sl_t063_4_scanned_case_sibling_does_not_replace_draft_image(tmp_path, f
     assert result.available
     assert result.ref.rel_path == rel_path
     assert lib.read_image_bytes(result.ref) == files[rel_path]
+
+
+# ----- Lá Chắn T-063: cùng lỗ hổng SL-T063-2/-3 trên WINDOWS (ép kẻ tấn công "luôn thắng") -------
+#
+# Soi Lỗi đo SL-T063-2 trên Linux (tráo nguyên tử ``renameat2(RENAME_EXCHANGE)``). Lá Chắn thử trên
+# Windows: cách tráo thật (đổi tên thư mục ↔ junction ``_winapi.CreateJunction``, nhiều luồng, người
+# dùng thường) KHÔNG lọt nội dung lần nào (>15.000 lần đọc; Lá Chắn T-048 cũng 0/11.192) vì Windows
+# không đổi chỗ nguyên tử được và khóa file chặn đổi tên khi app đang giữ handle. NHƯNG khi ép trạng
+# thái (như fixture ``swap_world`` của POSIX: x là junction đúng lúc ``lstat``/``open`` mục cuối),
+# Windows **vẫn lọt nội dung và cỡ** — tức là lỗ hổng nằm trong CODE, Windows chỉ được cứu nhờ đặc
+# tính hệ điều hành (đua khó thắng), không nhờ ``folders.py``. Hai test này ép trạng thái để chứng
+# minh lỗ hổng CODE trên Windows; dùng junction nên không cần admin. (Biên bản: T-063-la-chan.)
+
+
+@pytest.fixture
+def win_swap_world(tmp_path, monkeypatch):
+    """Windows: ``anh/x/bi-mat.jpg`` (mồi) và ``ngoai/bi-mat.jpg`` (ngoài gốc, khác cỡ).
+
+    Kẻ tấn công "luôn thắng": mỗi lần app ``lstat`` hay ``open`` một đường dẫn tận cùng là
+    ``bi-mat.jpg``, ``x`` được tráo thành junction ra ``ngoai`` (``rename`` + ``CreateJunction``,
+    không cần admin), xong thì trả lại thư mục thật; mọi lời gọi khác thấy ``x`` là thư mục thật.
+    """
+    import _winapi
+
+    root = tmp_path / "anh"
+    write(root / "x" / "bi-mat.jpg", DECOY)
+    outside = write(tmp_path / "ngoai" / "bi-mat.jpg", SECRET).parent
+    park = tmp_path / "cat-tam"
+    real_lstat, real_open = os.lstat, os.open
+
+    def basename(path) -> str:
+        try:
+            return os.path.basename(os.fsdecode(path))
+        except TypeError:
+            return ""
+
+    def while_swapped(call, path, *args, **kwargs):
+        os.rename(root / "x", park)
+        _winapi.CreateJunction(str(outside), str(root / "x"))
+        try:
+            return call(path, *args, **kwargs)
+        finally:
+            os.rmdir(root / "x")
+            os.rename(park, root / "x")
+
+    def fake_lstat(path, *args, **kwargs):
+        if basename(path) == "bi-mat.jpg":
+            return while_swapped(real_lstat, path, *args, **kwargs)
+        return real_lstat(path, *args, **kwargs)
+
+    def fake_open(path, *args, **kwargs):
+        if basename(path) == "bi-mat.jpg":
+            return while_swapped(real_open, path, *args, **kwargs)
+        return real_open(path, *args, **kwargs)
+
+    def attack() -> None:
+        monkeypatch.setattr("seo_app.images.folders.os.lstat", fake_lstat)
+        monkeypatch.setattr("seo_app.images.folders.os.open", fake_open)
+
+    return root, attack
+
+
+@pytest.mark.skipif(not IS_WINDOWS, reason="cách tráo junction của Windows: thử trên Windows")
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T063-2 (Windows): lỗ hổng nằm trong code đọc chung mọi hệ điều hành; khi kẻ tấn "
+    "công thắng hai lần tráo thì read_image_bytes trả nội dung file ngoài gốc. Thực tế đua này "
+    "gần như không thắng được trên Windows (biên bản); T-079 phải vá / giải trình.",
+)
+def test_sl_t063_2_windows_swap_cannot_read_outside_content(win_swap_world, tmp_path):
+    """Như ``test_sl_t063_2_...`` nhưng dùng junction của Windows. Mong đợi: báo lỗi gọn hoặc ra ảnh
+    mồi, không bao giờ ra nội dung file ngoài gốc (F1)."""
+    root, attack = win_swap_world
+    lib = ImageLibrary([root])
+    assert lib.read_image_bytes(ImageRef(0, "x/bi-mat.jpg")) == DECOY  # chưa bị tấn công
+    attack()
+    try:
+        data = lib.read_image_bytes(ImageRef(0, "x/bi-mat.jpg"))
+    except ImageFolderError as exc:
+        assert_no_abs_path(str(exc), tmp_path)
+    else:
+        assert data != SECRET, "đọc được nội dung file ngoài thư mục ảnh (Windows)"
+
+
+@pytest.mark.skipif(not IS_WINDOWS, reason="cách tráo junction của Windows: thử trên Windows")
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T063-3 (Windows): stat_image trả cỡ, giờ sửa của file ngoài gốc khi x bị tráo thành "
+    "junction đúng lúc lstat mục cuối. Cùng gốc với SL-T063-2; T-079 vá cùng.",
+)
+def test_sl_t063_3_windows_swap_gives_no_outside_size(win_swap_world, tmp_path):
+    """Như ``test_sl_t063_3_...`` nhưng dùng junction của Windows."""
+    root, attack = win_swap_world
+    lib = ImageLibrary([root])
+    assert lib.stat_image(ImageRef(0, "x/bi-mat.jpg")).size == len(DECOY)
+    attack()
+    try:
+        entry = lib.stat_image(ImageRef(0, "x/bi-mat.jpg"))
+    except ImageFolderError as exc:
+        assert_no_abs_path(str(exc), tmp_path)
+    else:
+        assert entry.size != len(SECRET), "trả cỡ của file ngoài thư mục ảnh (Windows)"
