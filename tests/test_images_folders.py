@@ -6,6 +6,7 @@ trên Windows; symlink chạy trên Mac/Linux (và trên Windows nếu máy cho 
 
 from __future__ import annotations
 
+import errno
 import os
 import stat
 import sys
@@ -1258,3 +1259,189 @@ def test_windows_lookup_failure_is_a_plain_message(camel, monkeypatch, error, me
     monkeypatch.setattr(folders._kernel32(), "FindFirstFileW", failing)
     exc = raises_safely(lambda: ImageLibrary([camel]).stat_image(ImageRef(0, ON_DISK)), camel)
     assert message in str(exc)
+
+
+# ----- T-079: đọc, ``stat`` một ảnh qua chính mục đã mở (SL-T063-2, -3, -5; LC-T076-3) --------
+#
+# ``read_image_bytes``, ``stat_image`` không đi theo chuỗi đường dẫn đã kiểm: Mac/Linux mở thư mục
+# cha từng tầng từ gốc (``O_NOFOLLOW``) rồi mở/``stat`` file trong chính thư mục đã mở; Windows hỏi
+# đường dẫn thật của chính handle vừa mở. Ca tráo "luôn thắng" của Soi Lỗi, Lá Chắn T-063 nằm ở
+# ``tests/test_images_folders_t063.py``.
+
+
+def _read_swapped(lib: ImageLibrary) -> bytes:
+    return lib.read_image_bytes(ImageRef(0, "x/bi-mat.jpg"))
+
+
+def _stat_swapped(lib: ImageLibrary):
+    return lib.stat_image(ImageRef(0, "x/bi-mat.jpg"))
+
+
+SWAP_CALLS = pytest.mark.parametrize(
+    "call", [_read_swapped, _stat_swapped], ids=["read_image_bytes", "stat_image"]
+)
+
+
+@pytest.fixture
+def x_tree(tmp_path: Path) -> tuple[Path, Path]:
+    """``anh/x/bi-mat.jpg`` (ảnh mồi, 3 byte) và ``ngoai/bi-mat.jpg`` (ngoài gốc, khác cỡ)."""
+    root = tmp_path / "anh"
+    write(root / "x" / "bi-mat.jpg", b"moi")
+    write(tmp_path / "ngoai" / "bi-mat.jpg", b"SECRET ngoai goc, dai hon")
+    return root, tmp_path / "ngoai"
+
+
+@pytest.mark.parametrize(
+    ("error", "message", "is_link"),
+    [
+        (FileNotFoundError(2, "x"), "Không tìm thấy", False),
+        (PermissionError(13, "x"), "Không đọc được", False),
+        (NotADirectoryError(20, "x"), "vừa bị thay đổi", True),
+        (OSError(errno.ELOOP, "x"), "vừa bị thay đổi", True),
+    ],
+    ids=["khong-co", "khong-co-quyen", "enotdir", "eloop"],
+)
+def test_open_error_message(error, message, is_link):
+    """Lỗi khi mở từng tầng (Mac/Linux) thành câu báo. Tầng vừa được kiểm là thư mục, nên ENOTDIR
+    (Linux trả cho symlink khi mở bằng ``O_DIRECTORY | O_NOFOLLOW``, SL-T063-5) và ELOOP là "vừa bị
+    thay đổi", quét thì đếm vào ``links``; không báo "không có quyền"."""
+    exc = folders._open_error(error)
+    assert message in str(exc)
+    assert isinstance(exc, folders._LinkError) is is_link
+
+
+def test_stat_image_gives_file_id_of_the_checked_file(tree):
+    """``stat_image`` trả định danh của file (``file_id``); kết quả quét không có. Hai
+    ``ImageEntry`` so như cũ (không tính ``file_id``), ``repr`` không hiện."""
+    lib = ImageLibrary([tree["root"]])
+    entry = lib.stat_image(ImageRef(0, "a.jpg"))
+    st = os.stat(tree["root"] / "a.jpg")
+    assert entry.file_id == (st.st_dev, st.st_ino)
+    (listed,) = [e for e in lib.list_folder(0).images if e.name == "a.jpg"]
+    assert listed.file_id is None and listed == entry
+    assert "file_id" not in repr(entry)
+
+
+@windows_only
+@SWAP_CALLS
+def test_windows_unknown_final_path_is_refused(x_tree, monkeypatch, call):
+    """Không hỏi được đường dẫn thật của handle vừa mở thì không đọc, không trả số liệu (an toàn
+    trước; ổ nào ``resolve(strict=True)`` được thì trả lời được câu hỏi này)."""
+    root, _outside = x_tree
+    monkeypatch.setattr(folders, "_win_final_path", lambda fd: None)
+    exc = raises_safely(lambda: call(ImageLibrary([root])), root.parent)
+    assert "thay đổi" in str(exc)
+
+
+@windows_only
+def test_windows_stat_handle_opened_through_swapped_folder_is_refused(x_tree, monkeypatch):
+    """SL-T063-3 (Windows): kẻ tráo thắng cả lúc ``lstat`` mục cuối lẫn lúc mở handle hỏi thuộc
+    tính (``x`` là junction ra ngoài đúng hai lúc đó), nên so định danh không phân biệt được. Đường
+    dẫn thật của handle (ngoài gốc) phải chặn: không trả cỡ file ngoài gốc."""
+    root, outside = x_tree
+    park = root.parent / "cat-tam"
+    real_lstat, real_win_open = os.lstat, folders._win_open
+
+    def swapped(call, path, *args, **kwargs):
+        if os.path.basename(os.fsdecode(path)) != "bi-mat.jpg":
+            return call(path, *args, **kwargs)
+        os.rename(root / "x", park)
+        make_junction(root / "x", outside)
+        try:
+            return call(path, *args, **kwargs)
+        finally:
+            os.rmdir(root / "x")
+            os.rename(park, root / "x")
+
+    def lstat(path, *args, **kwargs):
+        return swapped(real_lstat, path, *args, **kwargs)
+
+    def win_open(path, access):
+        return swapped(real_win_open, path, access)
+
+    lib = ImageLibrary([root])
+    assert _stat_swapped(lib).size == 3  # chưa bị tấn công
+    monkeypatch.setattr("seo_app.images.folders.os.lstat", lstat)
+    monkeypatch.setattr(folders, "_win_open", win_open)
+    exc = raises_safely(lambda: _stat_swapped(lib), root.parent)
+    assert "thay đổi" in str(exc)
+
+
+@windows_only
+def test_windows_stat_image_asks_attributes_only(tree, monkeypatch):
+    """``stat_image`` trên Windows mở chính file ảnh chỉ để hỏi thuộc tính (như ``os.lstat``), không
+    có quyền đọc nội dung: Drive "chỉ trực tuyến" không bị tải về."""
+    opened: list[tuple[str, int]] = []
+    real_win_open = folders._win_open
+
+    def spy(path, access):
+        opened.append((Path(path).name, access))
+        return real_win_open(path, access)
+
+    monkeypatch.setattr(folders, "_win_open", spy)
+    assert ImageLibrary([tree["root"]]).stat_image(ImageRef(0, "a.jpg")).size == 4
+    assert opened == [("a.jpg", folders._FILE_READ_ATTRIBUTES)]
+
+
+@posix_only
+def test_posix_image_is_opened_inside_the_opened_folder(tree, monkeypatch):
+    """Mac/Linux: ảnh mở bằng tên trong thư mục cha đã mở (``dir_fd``), không theo đường dẫn;
+    ``stat_image`` không mở file ảnh."""
+    calls: list[tuple[str, object]] = []
+    real_open = os.open
+
+    def spy(path, flags, *args, **kwargs):
+        calls.append((os.fsdecode(path), kwargs.get("dir_fd")))
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr("seo_app.images.folders.os.open", spy)
+    lib = ImageLibrary([tree["root"]])
+    rel = "CT012 - Cổng inox - Hải Châu/sau/IMG_0002.jpeg"
+    assert lib.stat_image(ImageRef(0, rel)).size > 0
+    assert not [path for path, _dir_fd in calls if path.endswith(".jpeg")]
+    calls.clear()
+    assert lib.read_image_bytes(ImageRef(0, rel)).startswith(b"\xff\xd8")
+    image_opens = [(path, dir_fd) for path, dir_fd in calls if path.endswith(".jpeg")]
+    assert [path for path, _dir_fd in image_opens] == ["IMG_0002.jpeg"]
+    assert isinstance(image_opens[0][1], int)
+
+
+@posix_only
+@SWAP_CALLS
+def test_posix_folder_swapped_before_opening_levels_is_refused(x_tree, monkeypatch, call):
+    """Ngay sau khi kiểm đường đi, ``x`` bị tráo thành symlink ra ngoài trước khi app mở từng tầng:
+    ``openat(O_DIRECTORY | O_NOFOLLOW)`` từ chối, câu báo "vừa bị thay đổi" (SL-T063-5), không
+    lọt nội dung hay số liệu ngoài gốc."""
+    root, outside = x_tree
+    real_open_dir = folders._posix_open_dir
+
+    def swap_then_open(root_path, parts):
+        if parts == ("x",) and not (root / "x").is_symlink():
+            os.rename(root / "x", root.parent / "x-cu")
+            (root / "x").symlink_to(outside, target_is_directory=True)
+        return real_open_dir(root_path, parts)
+
+    monkeypatch.setattr(folders, "_posix_open_dir", swap_then_open)
+    exc = raises_safely(lambda: call(ImageLibrary([root])), root.parent)
+    assert "thay đổi" in str(exc)
+
+
+@posix_only
+@SWAP_CALLS
+def test_posix_file_swapped_to_symlink_after_folder_is_opened(x_tree, monkeypatch, call):
+    """Thư mục cha đã mở xong thì file ảnh bị tráo thành symlink ra ngoài: mở, ``stat`` file trong
+    thư mục đã mở đều không đi theo symlink (``O_NOFOLLOW``, ``follow_symlinks=False``)."""
+    root, outside = x_tree
+    image = root / "x" / "bi-mat.jpg"
+    real_open_dir = folders._posix_open_dir
+
+    def open_then_swap(root_path, parts):
+        fd = real_open_dir(root_path, parts)
+        if parts == ("x",) and not image.is_symlink():
+            os.rename(image, root.parent / "cu.jpg")
+            image.symlink_to(outside / "bi-mat.jpg")
+        return fd
+
+    monkeypatch.setattr(folders, "_posix_open_dir", open_then_swap)
+    exc = raises_safely(lambda: call(ImageLibrary([root])), root.parent)
+    assert "SECRET" not in str(exc)
