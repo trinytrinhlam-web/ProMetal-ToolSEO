@@ -28,13 +28,13 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Chỉ Huy B**, từ 2026-10-20 08:38 (chủ dự án báo A đã dừng, giao B nhận quyền). Phiên mới của B từ 2026-10-21 09:02 (chủ dự án xác nhận phiên này là B).
+**Không ai giữ** (Chỉ Huy B trả quyền 2026-10-22 18:34: chủ dự án bảo dừng các việc đang làm).
 
 ## Đang làm dở
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-22 18:07. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-22 18:34 (bàn giao). Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -45,11 +45,11 @@ Chỉ Huy B, cập nhật 2026-10-22 18:07. Agent chạy ở phiên con dưới 
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp vào `main` trên máy (`089f685`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; chủ dự án "tiếp tục" | ⏳ Chạy toàn bộ test Windows (cùng T-069); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-039` |
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`089d115`, đã có kết quả Linux) | ✅ Soi Lỗi Windows ĐẠT CÓ ĐIỀU KIỆN, Soi Lỗi Linux (cloud) ĐẠT | ⏳ Lá Chắn (phiên "Lá Chắn · T-079 kiểm đọc ảnh an toàn") |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (từ `main` sau gộp T-039, T-069) | Chủ dự án "tiếp tục" | ⏳ Thợ Máy (phiên "Thợ Máy · T-066 dọn lớp ảnh gửi AI") |
-| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (từ `main` sau gộp T-039, T-069) | Chủ dự án "tiếp tục" | ⏳ Thợ Máy (phiên "Thợ Máy · T-071 dọn chèn ảnh nháp") |
-| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp vào `main` trên máy (`5d17f5e`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏳ Chạy toàn bộ test Windows (cùng T-039); qua thì đẩy `main`, xóa nhánh và worktree `wt-T-069` |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp vào `main` **trên máy** (`089f685`), **chưa đẩy**; nhánh `team/T-039` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏸ Toàn bộ test bị dừng ở ~70%, đã có 1 hỏng chưa rõ tên. Phiên sau: chạy lại toàn bộ test trên `main` máy này; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-039` |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`6e84375`: việc dở của Lá Chắn) | ✅ Soi Lỗi Windows ĐẠT CÓ ĐIỀU KIỆN, Soi Lỗi Linux (cloud) ĐẠT | ⏸ Lá Chắn bị dừng giữa chừng (phiên "Lá Chắn · T-079 kiểm đọc ảnh an toàn"); phiên sau nhắn lại phiên đó làm tiếp hoặc giao Lá Chắn mới |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`9b41e6a`, commit "VIỆC DỞ") | Thợ Máy làm dở | ⏸ Phiên sau nhắn lại phiên "Thợ Máy · T-066 dọn lớp ảnh gửi AI" làm tiếp |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`9c0f8b8`, commit "VIỆC DỞ") | Thợ Máy làm dở; Chỉ Huy đã trả lời câu hỏi phạm vi (cách A) | ⏸ Phiên sau nhắn lại phiên "Thợ Máy · T-071 dọn chèn ảnh nháp" làm tiếp |
+| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp vào `main` **trên máy** (`5d17f5e`), **chưa đẩy**; nhánh `team/T-069` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏸ Như T-039 (cùng lượt test); xóa nhánh và worktree `wt-T-069` sau khi đẩy |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
 | Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-040, T-041 (GĐ4, hết chờ sau T-039); T-060 (dọn client WordPress, trước T-041); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-080** |
@@ -57,6 +57,14 @@ Chỉ Huy B, cập nhật 2026-10-22 18:07. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-22 18:34 · Chỉ Huy B · BÀN GIAO
+
+- **Chủ dự án bảo dừng các việc đang làm.** Đã dừng 3 phiên con (Lá Chắn T-079, Thợ Máy T-066, Thợ Máy T-071; phiên T-071 tự chạy lại vì tin nhắn xếp hàng nên dừng lần 2) và lượt toàn bộ test. Việc dở đã commit "VIỆC DỞ" và đẩy lên `team/T-079` (`6e84375`), `team/T-066` (`9b41e6a`), `team/T-071` (`9c0f8b8`).
+- **`main` trên máy đi trước GitHub**: có 2 lần gộp **chưa qua toàn bộ test**: T-039 (`089f685`), T-069 (`5d17f5e`), cùng các commit tài liệu sau đó (gồm bàn giao này). Lượt toàn bộ test (18:07) bị dừng ở khoảng 70% và **đã có 1 test hỏng chưa rõ tên** (có thể do máy đang chạy 3 agent). Không đẩy `main` để giữ quy tắc "`main` chỉ chứa code đã kiểm". **Phiên sau (A hay B, cùng máy này): chạy lại `uv run pytest` trên `main` ở `D:\ProMetal-ToolSEO\ProMetal-ToolSEO`; hỏng thì tìm nguyên nhân (chạy riêng lại); qua thì đẩy `main`, xóa nhánh và worktree T-039, T-069.**
+- Cloud: 2 phiên Linux đã xong (T-063, T-079-linux), không còn chạy.
+- App xem thử đang chạy ở `http://localhost:8501` (dịch vụ xem trước của phiên B); tắt khi đóng phiên.
+- Việc kế tiếp: Lá Chắn T-079 → gộp T-079; T-066, T-071 làm tiếp → Soi Lỗi rút gọn → Lá Chắn rút gọn; rồi T-056 (Họa Sĩ, màn hình chọn ảnh). GĐ4: T-040 (Ngòi Bút), T-060, T-041. Chờ chủ dự án: việc website ở `TIEN-DO.md` mục 4. Số phiếu tiếp theo: **T-080**.
 
 ### 2026-10-22 18:16 · Chỉ Huy B
 
