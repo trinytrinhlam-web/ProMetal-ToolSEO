@@ -89,8 +89,9 @@ class InternalLink:
     """Một link nội bộ đã kiểm, lưu riêng khỏi chữ Markdown (T-033 mục 4.3, bước 1).
 
     ``section``: số thứ tự phần (0 = mở bài, như ``Flag.section``). ``anchor``: cụm từ có sẵn
-    trong thân phần đó (khoảng trắng đã gộp thành một dấu cách). ``post_id``: ID bài đích trong
-    danh sách bài đã đăng. **Không có địa chỉ**: địa chỉ chỉ lấy từ ``SiteIndex`` lúc chèn.
+    trong thân phần đó (dạng NFC, khoảng trắng đã gộp thành một dấu cách). ``post_id``: ID bài
+    đích trong danh sách bài đã đăng. **Không có địa chỉ**: địa chỉ chỉ lấy từ ``SiteIndex`` lúc
+    chèn.
     Dữ liệu đọc lại từ file nháp cũng là chưa tin cậy: ``apply_links`` kiểm lại từ đầu.
     """
 
@@ -108,8 +109,10 @@ class InternalLink:
 
 
 class LinkSuggestion(BaseModel):
-    post_id: int = Field(description="ID bài đích, đúng một ID trong <danh_sach_bai>")
-    section: int = Field(description="Số phần chứa cụm từ, như [Phần N]: 0 = mở bài")
+    # ``strict``: AI trả ``true``, ``"1"``, ``1.0`` thì khuôn báo sai, không tự đổi thành số 1
+    # (sai thì bỏ, không sửa giùm; SL-T039-5). Khuôn JSON gửi AI vẫn là "integer".
+    post_id: int = Field(strict=True, description="ID bài đích, đúng một ID trong <danh_sach_bai>")
+    section: int = Field(strict=True, description="Số phần chứa cụm từ, như [Phần N]: 0 = mở bài")
     anchor: str = Field(description="Cụm 2-8 từ chép NGUYÊN VĂN từ thân phần đó")
 
 
@@ -172,12 +175,23 @@ def _items_by_path(index: SiteIndex) -> dict[str, PublishedItem]:
     return keys
 
 
-# Tham số của link bài nháp / xem trước (YC-603): "?p=12", "?page_id=3", "preview=true"…
-_DRAFT_PARAMS = frozenset({"p", "page_id", "preview", "preview_id", "preview_nonce"})
+# Tham số của link bài nháp / xem trước (YC-603): "?p=12", "?page_id=3", "preview=true"…, và
+# "?name=", "?pagename=": WordPress mở bài/trang theo slug (bài nháp thì người đọc gặp trang 404).
+_DRAFT_PARAMS = frozenset(
+    {"p", "page_id", "preview", "preview_id", "preview_nonce", "name", "pagename"}
+)
+# PHP đổi " ", "." và "[" (không đóng) trong tên tham số thành "_" (SL-T039-3).
+_PHP_NAME = str.maketrans(" .[", "___")
+
+
+def _php_name(name: str) -> str:
+    """Tên tham số như PHP (WordPress) đọc: cắt ở ký tự NUL, bỏ dấu cách đầu, đổi " ", ".", "["
+    thành "_". "?%20p=", "?page.id=" chính là "?p=", "?page_id=" với WordPress."""
+    return name.partition("\x00")[0].lstrip(" ").translate(_PHP_NAME).casefold()
 
 
 def _is_draft_query(query: str) -> bool:
-    return any(name.casefold() in _DRAFT_PARAMS for name, _ in parse_qsl(query, True))
+    return any(_php_name(name) in _DRAFT_PARAMS for name, _ in parse_qsl(query, True))
 
 
 def _is_admin_path(key: str) -> bool:
@@ -331,7 +345,11 @@ def _required_notice(why: str, shown: object, level: Level) -> Notice:
     if why == "ngoai":
         return Notice(Level.BLOCK, f"Link bắt buộc «{shown}» không thuộc website.")
     if why == "nhap":
-        return Notice(Level.BLOCK, f"Link bắt buộc «{shown}» là link bài nháp hoặc xem trước.")
+        return Notice(
+            Level.BLOCK,
+            f"Link bắt buộc «{shown}» là link dạng bài nháp, xem trước hoặc mở theo mã số/slug "
+            "(?p=, ?name=…): ghi đường dẫn đầy đủ của bài.",
+        )
     if why == "sai":
         return Notice(Level.BLOCK, f"Link bắt buộc «{shown}» sai dạng.")
     return Notice(
@@ -372,12 +390,14 @@ _HIDDEN_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn"})
 
 
 def _anchor_words(anchor: object) -> tuple[list[str], str]:
-    """Các từ của anchor, hoặc ([], lý do bỏ). Kiểm độ dài TRƯỚC mọi bước khác (tuyến tính)."""
+    """Các từ (dạng NFC) của anchor, hoặc ([], lý do bỏ). Kiểm độ dài TRƯỚC mọi bước khác
+    (tuyến tính)."""
     if not isinstance(anchor, str):
         return [], "cụm từ không phải chữ"
     if len(anchor) > 2 * MAX_ANCHOR_CHARS:
         return [], "cụm từ dài quá"
-    words = anchor.split()
+    # NFC: chữ có dấu dựng sẵn và chữ tổ hợp (dán từ máy Mac) nhìn y hệt nhau là một (SL-T039-1).
+    words = unicodedata.normalize("NFC", anchor).split()
     text = " ".join(words)
     if not text:
         return [], "cụm từ trống"
@@ -582,8 +602,9 @@ def check_suggestions(
             if not problem and anchor.casefold() in used_anchors:
                 problem = "cụm từ trùng với link khác"
             if not problem:
-                if section not in blocks:
-                    blocks[section] = markdown_blocks(parts[section].body)
+                if section not in blocks:  # so ở dạng NFC như cụm từ (``_anchor_words``)
+                    body = unicodedata.normalize("NFC", parts[section].body)
+                    blocks[section] = markdown_blocks(body)
                 pattern = _anchor_pattern(words)
                 hits = [b for b, text in enumerate(blocks[section]) if _find(text, pattern)]
                 free = [b for b in hits if (section, b) not in used_blocks]
@@ -653,8 +674,8 @@ class _TextRuns(HTMLParser):
     Biến và hàm riêng của lớp này đặt tên ``__x`` (Python đổi thành ``_TextRuns__x``) để không
     bao giờ trùng tên riêng của ``HTMLParser``: thư viện chuẩn thêm tên riêng ở cả bản vá nhỏ
     (Python 3.12.15 thêm bộ đệm ``_pending``, trùng biến cũ của lớp này: SL-T039-6). Ngoài các
-    hàm ``handle_*`` cố ý ghi đè, tên công khai (``runs``, ``linked``, ``read``) không có trong
-    ``HTMLParser`` (test ``test_html_readers_never_shadow_htmlparser_names``).
+    hàm cố ý ghi đè (``handle_*``, ``unknown_decl``), tên công khai (``runs``, ``linked``,
+    ``read``) không có trong ``HTMLParser``. Test canh: ``test_html_readers_never_shadow_*``.
     """
 
     def __init__(self, source: str) -> None:
@@ -724,10 +745,12 @@ class _TextRuns(HTMLParser):
 
     def handle_endtag(self, tag):
         self.__flush(self.__pos())
-        if tag in _BLOCK_TAGS:
-            self.__root_block += 1
         self.__dangling.discard(tag)
-        if self.__open.get(tag):  # thẻ đóng lạc (không có thẻ mở) thì bỏ qua
+        # Thẻ đóng lạc (không có thẻ mở) thì bỏ qua, kể cả không tách đoạn: bộ lọc HTML bỏ hẳn
+        # thẻ này nên chữ hai bên vẫn là một đoạn ("[" trước nó vẫn che chữ sau nó).
+        if self.__open.get(tag):
+            if tag in _BLOCK_TAGS:
+                self.__root_block += 1
             while self.__stack:
                 name, _ = self.__stack.pop()
                 self.__open[name] -= 1
@@ -754,6 +777,67 @@ class _TextRuns(HTMLParser):
         return self
 
 
+def _masked_runs(runs: Sequence[_Run]) -> list[str]:
+    """Chữ của từng nút chữ, che chỗ "[…]" theo **đoạn văn** chứ không theo nút chữ: "[cần bổ
+    sung: <strong>giá</strong> thay ray mới]" bị thẻ cắt thành nhiều nút chữ vẫn bị che hết
+    (SL-T039-2). Như ``markdown_blocks``: "[" không có "]" thì che tới hết đoạn. Tính dấu ngoặc ở
+    mọi nút chữ người đọc thấy, cả nút không chèn được (mã, link có sẵn…)."""
+    unclosed: set[tuple[str, int]] = set()  # đoạn văn còn "[" chưa đóng
+    masked: list[str] = []
+    for run in runs:
+        carried = run.paragraph in unclosed
+        text = "[" + run.text if carried else run.text  # che tiếp từ đầu nút chữ
+        last = text.rfind("[")
+        if last != -1 and text.find("]", last) == -1:
+            unclosed.add(run.paragraph)
+        else:
+            unclosed.discard(run.paragraph)
+        text = _mask_brackets(text)
+        masked.append(text[1:] if carried else text)
+    return masked
+
+
+def _nfc_offsets(text: str) -> tuple[str, dict[int, int] | None]:
+    """``text`` dạng NFC, kèm vị trí trong ``text`` của đầu mỗi cụm (chữ cái + dấu tổ hợp đi sau)
+    theo vị trí trong chữ NFC. ``None``: ``text`` đã là NFC, vị trí như nhau."""
+    if unicodedata.is_normalized("NFC", text):
+        return text, None
+    pieces: list[str] = []
+    offsets: dict[int, int] = {}
+    size = start = 0
+    for end in range(1, len(text) + 1):
+        if end == len(text) or not unicodedata.combining(text[end]):
+            offsets[size] = start
+            piece = unicodedata.normalize("NFC", text[start:end])
+            pieces.append(piece)
+            size += len(piece)
+            start = end
+    offsets[size] = len(text)
+    return "".join(pieces), offsets
+
+
+def _find_in_run(
+    text: str,
+    normalized: tuple[str, dict[int, int] | None],
+    pattern: re.Pattern[str],
+    words: Sequence[str],
+) -> tuple[int, int] | None:
+    """Vị trí trong ``text`` (chữ gốc của nút chữ) của lần xuất hiện đầu tiên của cụm từ, tìm
+    trên chữ NFC (``normalized``: chữ đã che "[…]" rồi qua ``_nfc_offsets``). Chữ gốc dạng tổ
+    hợp NFD (dán từ máy Mac) vẫn tìm được cụm từ NFC của AI và ngược lại (SL-T039-1); chữ trong
+    link là chữ gốc, kiểm lại phải đúng các từ của cụm từ."""
+    norm, offsets = normalized
+    span = _find(norm, pattern)
+    if span is None or offsets is None:
+        return span
+    start, end = offsets.get(span[0]), offsets.get(span[1])
+    if start is None or end is None:
+        return None
+    if unicodedata.normalize("NFC", text[start:end]).split() != list(words):
+        return None
+    return start, end
+
+
 @dataclass(frozen=True)
 class LinkPlacement:
     """Kết quả chèn: HTML mới, link đã chèn, câu báo cho từng link bỏ qua."""
@@ -772,6 +856,8 @@ def place_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex)
     for r, run in enumerate(runs):
         if run.allowed and run.paragraph not in reader.linked:
             by_section.setdefault(run.section, []).append(r)
+    masked = _masked_runs(runs)
+    normalized: dict[int, tuple[str, dict[int, int] | None]] = {}
     taken: set[tuple[str, int]] = set()
     used_targets: set[int] = set()
     used_anchors: set[str] = set()
@@ -798,7 +884,9 @@ def place_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex)
             pattern = _anchor_pattern(words)
             for r in by_section.get(link.section, ()):
                 if runs[r].paragraph not in taken:
-                    span = _find(_mask_brackets(runs[r].text), pattern)
+                    if r not in normalized:
+                        normalized[r] = _nfc_offsets(masked[r])
+                    span = _find_in_run(runs[r].text, normalized[r], pattern, words)
                     if span is not None:
                         hit = (r, *span)
                         break
@@ -844,7 +932,9 @@ def apply_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex)
 
     Phần k bắt đầu ở thẻ ``<h2>`` thứ k: Giai đoạn 5 dựng mỗi phần thành một ``<h2>`` + thân,
     tiêu đề con trong thân là ``<h3>`` trở xuống. HTML trả về **vẫn phải** qua ``sanitize_html``
-    trước khi gửi lên WordPress.
+    trước khi gửi lên WordPress. Nên gọi trên HTML **đã** qua ``sanitize_html`` (bộ lọc bỏ thẻ lạ
+    như ``<section>``, nội dung ``<script>``…): khi đó đoạn văn và chỗ "[…]" hàm này thấy đúng
+    như HTML gửi đi.
     """
     return place_links(html_text, links, index).html
 
@@ -909,8 +999,22 @@ _MSG_NOT_PUBLISHED = (
 )
 _MSG_UNKNOWN = "Danh sách bài trên site chưa tải đủ nên chưa kết luận được link này còn hay hỏng."
 _MSG_DRAFT = (
-    "Link dạng bài nháp hoặc xem trước (?p=, ?page_id=, preview=…): người đọc không mở được."
+    "Link dạng bài nháp, xem trước hoặc mở theo mã số/slug (?p=, ?page_id=, ?name=, preview=…): "
+    "người đọc có thể không mở được, dùng đường dẫn đầy đủ của bài đã đăng."
 )
+# Cổng chuẩn của giao thức kia: "https://…:80", "http://…:443" không mở được.
+_WRONG_PORT = {"http": 443, "https": 80}
+
+
+def _browser_host(host: str) -> str:
+    """Tên máy như trình duyệt đọc: giải mã "%", đổi chữ toàn khổ, dấu chấm "。"… theo IDNA
+    ("suachuacuasat%2Ecom", "ｓｕａ….com" là chính site). Không đổi được thì giữ nguyên."""
+    if host.isascii() and "%" not in host:
+        return host
+    try:
+        return unquote(host).encode("idna").decode("ascii").lower().rstrip(".")
+    except UnicodeError:
+        return host
 
 
 def _classify(
@@ -953,6 +1057,20 @@ def _classify(
         if "@" in parts.netloc:
             return result(
                 LinkKind.EXTERNAL, Level.BLOCK, "Link có «@» trong tên máy (dạng giả địa chỉ)."
+            )
+        if host not in hosts and _browser_host(host) in hosts:  # SL-T039-4
+            return result(
+                LinkKind.INTERNAL,
+                Level.BLOCK,
+                "Tên website viết dạng lạ (mã %, chữ toàn khổ, dấu «。»…): trình duyệt hiểu "
+                "khác điều ta thấy, dùng đúng tên website.",
+            )
+        if host in hosts and port == _WRONG_PORT.get(scheme):
+            return result(
+                LinkKind.INTERNAL,
+                Level.BLOCK,
+                "Link tới website qua cổng của giao thức khác (https…:80, http…:443): người đọc "
+                "không mở được.",
             )
         if host not in hosts or port not in (None, 80, 443):
             return result(
@@ -1004,12 +1122,16 @@ def _classify(
 def check_links(html_text: str, index: SiteIndex, required_ids: Iterable[int] = ()) -> LinkReport:
     """Kiểm mọi link ``<a href>`` trong HTML cuối của bài (YC-603, YC-604; M7 #11).
 
-    ``index`` phải vừa tải lại từ site (``SiteIndexStore.refresh``) ngay trước khi gửi nháp.
+    ``html_text`` là HTML cuối, **đã** qua ``sanitize_html`` (đọc trước bộ lọc thì link trong
+    ``<noscript>``, ``<template>`` vẫn được tính dù bộ lọc bỏ hẳn). ``index`` phải vừa tải lại
+    từ site (``SiteIndexStore.refresh``) ngay trước khi gửi nháp.
 
     - Nội bộ (cùng tên miền, có hoặc không "www.", hoặc đường dẫn ``/…``): so với danh sách bài
       đã đăng sau khi chuẩn hóa (``path_key``). Không có trong danh sách → Chặn (bài nháp, hẹn giờ,
       đã xóa, gõ sai); ``index.truncated`` thì chỉ Cảnh báo, không kết luận "link hỏng".
-      Dạng ``?p=``, ``?page_id=``, ``preview=…``, trang quản trị → Chặn.
+      Dạng ``?p=``, ``?page_id=``, ``?name=``, ``?pagename=``, ``preview=…`` (cả dạng PHP tự đổi
+      tên như ``?page.id=``), trang quản trị, tên website viết dạng lạ (``%2E``, chữ toàn khổ),
+      ``https://…:80`` → Chặn.
     - Ra ngoài → Cảnh báo, chỉ liệt kê (``LinkReport.external``): **không gọi tới** link nào.
     - ``#muc``: phải có ``id`` tương ứng trong bài, không có → Cảnh báo.
     - ``required_ids`` (link bắt buộc theo phiếu, ``Candidates.required_ids``): bài nào chưa có

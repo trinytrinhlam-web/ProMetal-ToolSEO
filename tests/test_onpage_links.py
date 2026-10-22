@@ -5,12 +5,14 @@ Không gọi mạng: danh sách bài là ``SiteIndex`` dựng tay, hoặc tải 
 
 import ast
 import inspect
+import unicodedata
 from datetime import datetime
 from html.parser import HTMLParser
 from zoneinfo import ZoneInfo
 
 import pytest
 from fake_wordpress import BASE_URL
+from pydantic import ValidationError
 from timing import assert_scales_linearly
 
 from seo_app.content import prompts
@@ -1111,6 +1113,10 @@ def test_module_never_calls_network():
 # ------------------------------------------------------------------ lượt 2: SL-T039-1 → 6
 
 
+def nfd(text):
+    return unicodedata.normalize("NFD", text)
+
+
 # Tên ``HTMLParser`` có từ bản vá 3.12.15 mà bản cũ hơn (3.12.3 trên cloud) chưa có: test dưới kiểm
 # cả các tên này để chạy đúng ý trên mọi bản Python.
 _NEWER_HTMLPARSER_NAMES = frozenset(
@@ -1169,6 +1175,199 @@ def test_text_runs_unaffected_by_stdlib_pending_buffer(monkeypatch):
     ):
         placed = place_links(html_text, [link(0, "dịch vụ sửa cửa kéo", 10)], INDEX)
         assert links_in(placed.html) == [(SERVICE.link, "dịch vụ sửa cửa kéo")], html_text
+
+
+def test_nfd_body_and_anchor_match_both_ways():
+    """SL-T039-1: chữ tổ hợp NFD (dán từ máy Mac) và chữ dựng sẵn NFC nhìn y hệt nhau là một.
+    AI đọc bài đã qua NFKC nên chép cụm từ NFC; cụm từ lưu lại luôn ở dạng NFC."""
+    nfd_parts = [Section(heading="Mở bài", body=nfd(PARTS[0].body))]
+    review = check_suggestions(suggest((10, 0, "dịch vụ sửa cửa kéo")), nfd_parts, CANDIDATES)
+    assert review.links == (link(0, "dịch vụ sửa cửa kéo", 10),)
+    review = check_suggestions(suggest((10, 0, nfd("dịch vụ sửa cửa kéo"))), PARTS, CANDIDATES)
+    assert review.links == (link(0, "dịch vụ sửa cửa kéo", 10),)
+    # Trùng cụm từ khác dạng (NFC / NFD) vẫn là trùng.
+    rows = [(10, 0, "dịch vụ sửa cửa kéo"), (11, 0, nfd("Dịch vụ sửa cửa kéo"))]
+    review = check_suggestions(suggest(*rows), nfd_parts, CANDIDATES)
+    assert len(review.links) == 1
+
+
+@pytest.mark.parametrize(
+    "html_text",
+    [
+        nfd("<p>Nếu không tự làm được, hãy gọi dịch vụ sửa cửa kéo tận nơi.</p>"),
+        "<p>Hãy gọi dịch vụ s" + nfd("ửa cửa") + " kéo tận nơi.</p>",  # lẫn NFC và NFD
+        nfd("<p>Giá [cần bổ sung: dịch vụ sửa cửa kéo] tùy. Gọi dịch vụ sửa cửa kéo nhé.</p>"),
+    ],
+)
+def test_nfd_html_gets_link_around_original_text(html_text):
+    """SL-T039-1: cụm từ NFC tìm được trong HTML NFD; chữ trong link là chữ gốc (không đổi chữ
+    người đọc thấy), đúng vị trí, không nằm trong chỗ "[…]"."""
+    placed = place_links(html_text, [link(0, "dịch vụ sửa cửa kéo", 10)], INDEX)
+    ((href, text),) = links_in(placed.html)
+    assert href == SERVICE.link
+    assert unicodedata.normalize("NFC", text) == "dịch vụ sửa cửa kéo"
+    assert placed.html.replace(f'<a href="{SERVICE.link}">', "").replace("</a>", "") == html_text
+    assert placed.html.rfind("]") < placed.html.index("<a ")
+
+
+def test_nfd_html_never_wraps_part_of_a_letter():
+    html_text = nfd("<p>Gọi thợ sửa cửa kéo tận nơi.</p>")
+    for anchor in ("sửa cửa ke", nfd("sửa cửa ke"), "thợ sư", "tận no"):
+        assert place_links(html_text, [link(0, anchor, 10)], INDEX).applied == (), anchor
+
+
+@pytest.mark.parametrize(
+    "html_text, paragraph",
+    [
+        ("<p>Giá [cần bổ sung: <strong>giá</strong> thay ray mới] tùy.</p>", None),
+        ("<p>Giá [cần bổ sung:<!-- x --> thay ray mới].</p>", None),
+        ("<p>[xem <em>thêm</em> <b>dịch</b> vụ thay ray mới]</p>", None),
+        ("<p>[cần bổ sung: <em>giá</em> thay ray mới</p><p>Gọi thay ray mới.</p>", 1),
+        ("<p>[cần bổ sung: <b>giá</b>] Gọi thay ray mới.</p>", 0),
+    ],
+)
+def test_placeholder_split_by_tags_never_linked(html_text, paragraph):
+    """SL-T039-2: chỗ "[…]" bị thẻ, chú thích cắt thành nhiều nút chữ vẫn bị che theo cả đoạn văn;
+    "[" không đóng che tới hết đoạn (không sang đoạn sau), sau "]" thì chèn được."""
+    placed = place_links(html_text, [link(0, "thay ray mới", 11)], INDEX)
+    if paragraph is None:
+        assert placed.applied == () and placed.html == html_text
+        return
+    assert links_in(placed.html) == [(STUCK.link, "thay ray mới")]
+    assert "<a " in placed.html.split("</p>")[paragraph]
+
+
+@pytest.mark.parametrize("stray", ["</h2>", "</div>", "</li>", "</p>", "</ul>", "</td>"])
+def test_stray_end_tag_does_not_split_paragraph(stray):
+    """Thẻ đóng lạc (không có thẻ mở): trình duyệt bỏ qua, bộ lọc HTML bỏ hẳn, nên chữ hai bên
+    vẫn là một đoạn: "[" trước nó vẫn che chữ sau, và đoạn đó chỉ có một link."""
+    html_text = f"Giá [cần bổ sung: giá{stray} thay ray mới tùy loại."
+    assert place_links(html_text, [link(0, "thay ray mới", 11)], INDEX).applied == ()
+    html_text = f"Gọi dịch vụ sửa cửa kéo{stray} hoặc thay bánh xe cửa kéo."
+    links = [link(0, "dịch vụ sửa cửa kéo", 10), link(0, "thay bánh xe cửa kéo", 12)]
+    assert len(place_links(html_text, links, INDEX).applied) == 1
+
+
+@pytest.mark.parametrize(
+    "html_text",
+    [
+        "<section>Giá [cần bổ sung: giá</section><section>thay ray mới tùy loại.</section>",
+        "<details><summary>Giá [cần bổ sung</summary>thay ray mới tùy loại.</details>",
+        "<p>Giá [cần bổ sung: <script>]</script> thay ray mới tùy loại.</p>",
+    ],
+)
+def test_placeholder_never_linked_when_applied_on_sanitized_html(html_text):
+    """Cách gọi khuyên dùng (docstring ``apply_links``): chèn trên HTML đã lọc rồi lọc lại. Thẻ lạ
+    bộ lọc bỏ (``<section>``, ``<details>``), nội dung ``<script>`` không còn: chỗ "[…]" thấy
+    đúng như HTML gửi đi."""
+    clean = sanitize_html(html_text)
+    out = sanitize_html(apply_links(clean, [link(0, "thay ray mới", 11)], INDEX))
+    assert links_in(out) == [] and out == clean
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        f"{SITE}/?%20%20p=12",  # PHP bỏ dấu cách đầu tên tham số
+        f"{SITE}/?+p=12",
+        f"{SITE}/?p%00x=12",  # PHP cắt tên ở ký tự NUL
+        f"{SITE}/?PAGE.ID=10",  # PHP đổi "." , " ", "[" không đóng thành "_"
+        f"{SITE}/?page+id=10",
+        f"{SITE}/?page[id=10",
+        f"{SITE}/sua-cua-keo-tphcm/?preview%20nonce=abc",
+        f"{SITE}/?name=bai-nhap",  # WordPress mở bài theo slug
+        f"{SITE}/?name=sua-cua-keo-tphcm",  # kể cả bài đã đăng: phải dùng đường dẫn đẹp
+        f"{SITE}/?pagename=khu-vuc-phuc-vu",
+    ],
+)
+def test_php_renamed_and_slug_query_forms_block(href):
+    """SL-T039-3: WordPress đọc các dạng này như ``?p=``, ``?page_id=``, ``?preview_nonce=``."""
+    assert one(href).level is Level.BLOCK
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        f"{SITE}/sua-cua-keo-tphcm/?utm_source=zalo",
+        f"{SITE}/sua-cua-keo-tphcm/?pages=2",
+        f"{SITE}/sua-cua-keo-tphcm/?names=x",
+        f"{SITE}/sua-cua-keo-tphcm/?x=name",
+        f"{SITE}/sua-cua-keo-tphcm/?pp=1",
+    ],
+)
+def test_other_query_names_still_ok(href):
+    result = one(href)
+    assert (result.level, result.post_id) == (Level.GOOD, 10)
+
+
+def test_required_link_by_slug_query_blocks():
+    """Link bắt buộc dạng ``?name=``: Chặn như ``?p=``, kể cả khi danh sách bài chưa tải đủ (lúc
+    đó "không có trong danh sách" chỉ là Cảnh báo)."""
+    for entry in (f"{SITE}/?name=sua-cua-keo-tphcm", f"{SITE}/?page.id=10"):
+        result = select_candidates(
+            make_index(*ALL, truncated=True), kind="dich_vu", title="x", required=[entry]
+        )
+        assert result.items == () and result.level is Level.BLOCK, entry
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "https://suachuacuasat%2Ecom/sua-cua-keo-tphcm/",  # cả khi trỏ tới bài đã đăng
+        "https://www.suachuacuasat%2ecom/sua-cua-keo-tphcm/",
+        "https://%73uachuacuasat.com/sua-cua-keo-tphcm/",
+        "https://ＳＵＡＣＨＵＡＣＵＡＳＡＴ.ＣＯＭ/sua-cua-keo-tphcm/",
+        "https://suachuacuasat．com/sua-cua-keo-tphcm/",
+        "https://suachuacuasat｡com/sua-cua-keo-tphcm/",
+        "https://suachuacuasat.com:80/sua-cua-keo-tphcm/",  # https qua cổng của http
+        "http://suachuacuasat.com:443/sua-cua-keo-tphcm/",
+    ],
+)
+def test_own_site_written_oddly_blocks(href):
+    """SL-T039-4: trình duyệt đọc các tên máy này thành chính site; dạng lạ thì Chặn, không tính là
+    đã có link bắt buộc."""
+    result = one(href)
+    assert (result.kind, result.level, result.post_id) == (LinkKind.INTERNAL, Level.BLOCK, None)
+    report = check_links(f'<p><a href="{href}">x</a></p>', INDEX, required_ids=[10])
+    assert any("Thiếu link bắt buộc" in n.message for n in report.missing)
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "https://evil%2Eexample/",
+        "https://ｅｖｉｌ.example/",
+        "https://suachuacuasat%2Ecom.evil.example/",
+        "https://%ff.example/",  # giải mã ra ký tự hỏng
+        "https://" + "ｓ" * 300 + ".com/",  # tên quá dài
+        "https://suachuacuasat%2E%2Ecom/",
+    ],
+)
+def test_odd_external_hosts_stay_external(href):
+    result = one(href)
+    assert (result.kind, result.level) == (LinkKind.EXTERNAL, Level.WARN)
+
+
+@pytest.mark.parametrize("value", ["true", "false", '"10"', "10.0", "null"])
+@pytest.mark.parametrize("field", ["post_id", "section"])
+def test_ai_json_wrong_number_types_rejected(field, value):
+    """SL-T039-5: khuôn không tự đổi ``true``, ``"10"``, ``10.0`` thành số (sai thì bỏ)."""
+    row = {"post_id": "10", "section": "0", "anchor": '"dịch vụ sửa cửa kéo"', field: value}
+    raw = '{"links": [{' + ", ".join(f'"{k}": {v}' for k, v in row.items()) + "}]}"
+    with pytest.raises(ValidationError):
+        LinkSuggestions.model_validate_json(raw)
+    with pytest.raises(ValidationError):
+        LinkSuggestion(**{"post_id": 10, "section": 0, "anchor": "a b", field: True})
+
+
+def test_ai_schema_still_plain_integers():
+    """Khuôn JSON gửi AI không đổi: hai trường số vẫn là "integer"."""
+    props = LinkSuggestion.model_json_schema()["properties"]
+    assert props["post_id"]["type"] == props["section"]["type"] == "integer"
+    ok = LinkSuggestions.model_validate_json(
+        '{"links": [{"post_id": 10, "section": 0, "anchor": "dịch vụ sửa cửa kéo"}]}'
+    )
+    assert ok.links[0].post_id == 10 and ok.links[0].section == 0
 
 
 # ------------------------------------------------------------------ tốc độ (tuyến tính)
@@ -1242,3 +1441,34 @@ def test_markdown_blocks_linear(make):
         check_suggestions(raw, [Section(heading="M", body=body)], CANDIDATES)
 
     assert_scales_linearly(run, make, label="khối Markdown")
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "<p>" + nfd("Cửa kéo kẹt, gọi thợ sửa ngay. ") * (k * 1500) + "dịch vụ sửa",
+        lambda k: "<p>[" + "<b>dịch vụ sửa cửa kéo</b>" * (k * 1500) + "</p>",
+        lambda k: "<p>" + "[x<b>]</b> cửa kéo kẹt " * (k * 1500) + "</p>",
+    ],
+    ids=["nfd", "open-bracket-runs", "bracket-pairs"],
+)
+def test_apply_links_linear_round_2(make):
+    """Lượt 2: chữ NFD (đổi sang NFC kèm bảng vị trí), che "[…]" theo đoạn văn qua nhiều nút chữ."""
+    links = [link(0, "dịch vụ sửa cửa kéo", 10), link(0, "không có ở đâu", 11)]
+    assert_scales_linearly(lambda text: place_links(text, links, INDEX), make, label="lượt 2")
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "".join(
+            f'<p><a href="https://suachuacuasat%2Ecom/bai-{i}/?page.id={i}">x</a></p>'
+            for i in range(k * 300)
+        ),
+        lambda k: f'<p><a href="https://{"ｓ" * (k * 4000)}.com/">x</a></p>',
+        lambda k: f'<p><a href="https://{"a%2E" * (k * 2000)}com/">x</a></p>',
+    ],
+    ids=["many-odd-hosts", "long-fullwidth-host", "many-labels"],
+)
+def test_check_links_linear_on_odd_hosts(make):
+    assert_scales_linearly(lambda text: check_links(text, INDEX), make, label="tên máy lạ")

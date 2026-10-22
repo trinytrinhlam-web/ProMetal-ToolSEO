@@ -561,7 +561,6 @@ def test_nfd_html_with_nfd_anchor_works_and_never_wraps_wrong_text():
             assert nfc(visible(out)) == nfc(body)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-1: chữ tổ hợp NFD (dán từ máy Mac) bị bỏ oan")
 def test_sl1_nfd_body_accepts_ai_anchor():
     """AI đọc bài đã qua NFKC nên luôn chép cụm từ dạng NFC; thân bài NFD thì mọi gợi ý bị bỏ."""
     body = nfd("Nếu không tự làm được, hãy gọi dịch vụ sửa cửa kéo tận nơi.")
@@ -573,7 +572,6 @@ def test_sl1_nfd_body_accepts_ai_anchor():
     assert review.links
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-1: chữ tổ hợp NFD (dán từ máy Mac) bị bỏ oan")
 def test_sl1_nfd_html_places_nfc_anchor():
     html_text = "<p>" + nfd("Nếu không tự làm được, hãy gọi dịch vụ sửa cửa kéo tận nơi.") + "</p>"
     placed = place_links(html_text, [link(0, "dịch vụ sửa cửa kéo", 10)], INDEX)
@@ -592,7 +590,6 @@ def test_placeholder_in_single_text_node_never_linked():
         assert placed.applied == (), html_text
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-2: link lọt vào chỗ [cần bổ sung: …] có thẻ ở giữa")
 @pytest.mark.parametrize(
     "html_text",
     [
@@ -868,7 +865,6 @@ def test_required_link_must_survive_in_final_html():
     assert any("Thiếu link bắt buộc" in n.message for n in report.missing)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-3: dạng tham số PHP tự đổi tên lọt kiểm link nháp")
 @pytest.mark.parametrize(
     "href",
     [
@@ -886,7 +882,6 @@ def test_sl3_php_and_wordpress_query_forms_block(href):
     assert one(href).level is Level.BLOCK
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-4: tên máy/cổng dạng lạ của chính site bị xếp sai")
 @pytest.mark.parametrize(
     "href",
     [
@@ -903,7 +898,6 @@ def test_sl4_odd_host_or_port_forms_block(href):
 # ================================================================== 6. khuôn AI (A2)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-5: khuôn AI tự đổi kiểu (true thành 1)")
 @pytest.mark.parametrize(
     "post_id, section", [("true", "0"), ('"1"', "0"), ("1.0", "0"), ("1", "false"), ("1", '"0"')]
 )
