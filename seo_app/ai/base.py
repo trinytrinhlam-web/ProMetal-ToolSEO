@@ -7,7 +7,6 @@ import os
 import re
 import threading
 import traceback
-import zlib
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -463,8 +462,8 @@ IMAGE_MIME_MESSAGE = "Ảnh gửi AI chỉ nhận JPEG, PNG hoặc WebP."
 IMAGE_EMPTY_MESSAGE = "Ảnh gửi AI bị rỗng (không có dữ liệu)."
 IMAGE_BROKEN_MESSAGE = "Ảnh gửi AI bị hỏng hoặc không đúng định dạng đã khai báo."
 IMAGE_METADATA_MESSAGE = (
-    "Ảnh gửi AI vẫn còn thông tin kèm theo ngoài phần ảnh (EXIF, XMP, chú thích…, có thể có vị "
-    "trí GPS). Phần mềm không gửi ảnh này cho AI."
+    "Ảnh gửi AI vẫn còn thông tin kèm theo ngoài phần ảnh (EXIF, XMP, chú thích, hồ sơ màu…, có "
+    "thể có vị trí GPS). Phần mềm không gửi ảnh này cho AI."
 )
 
 
@@ -496,8 +495,8 @@ def prepare_images(images: Sequence[ImageInput]) -> tuple[ImageInput, ...]:
     ``ImageInput`` (ví dụ chuỗi đường dẫn), quá ``MAX_IMAGES`` ảnh, ảnh rỗng, quá
     ``MAX_IMAGE_BYTES`` / ``MAX_TOTAL_IMAGE_BYTES``, MIME ngoài ``IMAGE_MIMES``, nội dung không
     đúng MIME hoặc hỏng cấu trúc, hoặc có khối ngoài danh sách cho phép (EXIF, XMP, chú thích,
-    khối riêng…). Ảnh là dữ liệu chưa tin cậy: chỉ đọc cấu trúc khối, không giải nén phần ảnh
-    (chỉ giải nén hồ sơ màu của PNG, có giới hạn dung lượng).
+    hồ sơ màu, khối riêng…). Ảnh là dữ liệu chưa tin cậy: chỉ đọc cấu trúc khối, không giải nén
+    gì.
     """
     if isinstance(images, (str, bytes, bytearray, memoryview, ImageInput)) or not isinstance(
         images, Sequence
@@ -549,84 +548,70 @@ def _has_metadata_marker(data: bytes) -> bool:
     return any(marker in data for marker in _METADATA_MARKERS)
 
 
-# Kiểm theo DANH SÁCH CHO PHÉP (Soi Lỗi SL-T050-2): chỉ nhận khối cần để giải mã và hiện đúng
-# màu, và khối được nhận phải đúng khuôn của nó (không còn chỗ nhét chữ tự do); mọi khối khác
-# (EXIF, XMP, IPTC, chú thích, khối riêng của hãng máy ảnh…) đều bị từ chối, kể cả loại chưa
-# biết. Không kiểm được dữ liệu giấu bên trong phần ảnh nén hay bên trong nội dung hồ sơ màu
-# (dòng mô tả hồ sơ): bản gửi AI phải được dựng lại từ điểm ảnh (T-049).
+# Kiểm theo DANH SÁCH CHO PHÉP (Soi Lỗi SL-T050-2, Lá Chắn LC-T050-3): chặn metadata do phần
+# mềm thật ghi (EXIF, XMP, IPTC, chú thích, hồ sơ màu, khối riêng của hãng máy ảnh…) và mọi loại
+# khối chưa biết; khối được nhận phải đúng độ dài theo khuôn, khối chỉ cần một lần thì không được
+# lặp. **Không** chống được ảnh dựng cố ý: dữ liệu vẫn giấu được trong phần ảnh nén, bảng giải mã
+# (DQT, DHT được phép lặp) và các trường cố định (mật độ điểm ảnh, cờ…). Bảo đảm thật là bản gửi
+# AI được dựng lại từ điểm ảnh, không kèm hồ sơ màu (T-049); lớp này chỉ là lưới cuối.
+#
+# Hồ sơ màu (JPEG APP2 "ICC_PROFILE", PNG iCCP, WebP ICCP) luôn bị từ chối (LC-T050-1, T-066): hồ
+# sơ đúng khuôn hoàn toàn vẫn chở được chữ trong thẻ mô tả, còn bản gửi AI của T-049 không có hồ
+# sơ màu. Nhờ vậy lớp kiểm không phải giải nén gì.
 
-# Hồ sơ màu ICC (JPEG APP2, PNG iCCP, WebP ICCP): đầu hồ sơ 128 byte + số thẻ (4 byte); 4 byte
-# đầu là độ dài cả hồ sơ, byte 36–39 là chữ ký "acsp".
-_ICC_MIN_LENGTH = 132
-
-
-def _icc_ok(profile: bytes) -> bool:
-    """Hồ sơ màu đúng khuôn: khai đúng độ dài (không có dữ liệu nối sau), có chữ ký ``acsp``."""
-    return (
-        len(profile) >= _ICC_MIN_LENGTH
-        and int.from_bytes(profile[:4], "big") == len(profile)
-        and profile[36:40] == b"acsp"
-    )
-
-
-# JPEG, khối cần để giải mã: khung ảnh SOF0–SOF15 (trừ C4, C8, CC là mã khác), DHT (C4), DAC
-# (CC, bảng mã số học), DQT (DB), DNL (DC), DRI (DD), SOS (DA); RST0–7 nằm trong dữ liệu quét;
-# SOI, EOI.
-_JPEG_FRAME = frozenset(
-    {*range(0xC0, 0xC4), *range(0xC5, 0xC8), *range(0xC9, 0xCC), *range(0xCD, 0xD0)}
-)
-_JPEG_DECODE = _JPEG_FRAME | {0xC4, 0xCC, 0xDB, 0xDC, 0xDD, 0xDA}
-# Khối APPn được nhận, chỉ khi đúng khuôn:
+# JPEG, khối cần để giải mã (SOI, EOI; RST0–7 nằm trong dữ liệu quét):
+# - khung ảnh SOF0/SOF1/SOF2 (các loại Pillow ghi), chỉ một khung, đúng 6 + 3·N byte (N: số thành
+#   phần màu, 1–4); không nhận khung ảnh không tổn hao, phân cấp, mã số học và bảng DAC (LC-T050-2);
+# - đầu lượt quét SOS đúng 4 + 2·N byte; DRI, DNL đúng 2 byte (SL-T050-6);
+# - bảng lượng tử DQT, bảng mã DHT: không kiểm độ dài (giá trị bảng vốn là dữ liệu tùy ý).
+_JPEG_FRAME = frozenset({0xC0, 0xC1, 0xC2})
+_JPEG_SOS = 0xDA
+_JPEG_TWO_BYTES = frozenset({0xDC, 0xDD})  # DNL, DRI
+_JPEG_DECODE = _JPEG_FRAME | _JPEG_TWO_BYTES | {_JPEG_SOS, 0xC4, 0xDB}
+_JPEG_MAX_COMPONENTS = 4
+# Khối APPn được nhận, mỗi loại tối đa một lần (SL-T050-6), chỉ khi đúng khuôn:
 # - APP0 "JFIF\0" đúng 14 byte (phiên bản, đơn vị, mật độ điểm ảnh, ảnh nhỏ 0×0): Pillow luôn
 #   ghi. Không nhận ảnh nhỏ nhúng hay "JFXX" (chỗ giấu được ảnh gốc chưa cắt).
-# - APP2 "ICC_PROFILE\0" + số thứ tự + tổng số khối + một phần hồ sơ màu (ảnh iPhone Display P3
-#   mất hồ sơ thì màu sai). Pillow chép khi có ``icc_profile``, hồ sơ lớn chia nhiều khối; các
-#   khối phải đánh số đủ 1…N và ghép lại thành hồ sơ đúng khuôn.
 # - APP14 "Adobe" đúng 12 byte: cờ biến đổi màu, cần để giải mã đúng JPEG CMYK/YCCK.
 _JFIF = b"JFIF\x00"
 _JFIF_LENGTH = 14
-_JPEG_ICC = b"ICC_PROFILE\x00"
 _ADOBE = b"Adobe"
 _ADOBE_LENGTH = 12
+_JPEG_APP = frozenset({0xE0, 0xEE})
 
 
-def _jpeg_app_ok(marker: int, payload: bytes, icc_parts: list[tuple[int, int, bytes]]) -> bool:
-    """Khối APPn là APP0 JFIF, APP2 ICC hay APP14 Adobe đúng khuôn. Phần hồ sơ màu được gom vào
-    ``icc_parts`` (số thứ tự, tổng số khối, dữ liệu) để kiểm khi hết ảnh."""
+def _jpeg_app_ok(marker: int, payload: bytes) -> bool:
+    """Khối APPn là APP0 JFIF hay APP14 Adobe đúng khuôn."""
     if marker == 0xE0:  # hai byte cuối: rộng × cao của ảnh nhỏ nhúng, phải là 0 × 0
         return (
             payload.startswith(_JFIF) and len(payload) == _JFIF_LENGTH and payload[12:] == b"\0\0"
         )
-    if marker == 0xEE:
-        return payload.startswith(_ADOBE) and len(payload) == _ADOBE_LENGTH
-    if marker == 0xE2 and payload.startswith(_JPEG_ICC) and len(payload) > len(_JPEG_ICC) + 2:
-        at = len(_JPEG_ICC)
-        icc_parts.append((payload[at], payload[at + 1], payload[at + 2 :]))
-        return True
-    return False
+    return payload.startswith(_ADOBE) and len(payload) == _ADOBE_LENGTH
 
 
-def _jpeg_icc_ok(parts: list[tuple[int, int, bytes]]) -> bool:
-    """Các khối hồ sơ màu đánh số đủ 1…N, mỗi số một lần, cùng tổng N; ghép lại đúng khuôn."""
-    if not parts:
-        return True
-    count = parts[0][1]
-    if any(total != count for _, total, _ in parts):
-        return False
-    if sorted(seq for seq, _, _ in parts) != list(range(1, count + 1)):
-        return False
-    return _icc_ok(b"".join(chunk for _, _, chunk in sorted(parts, key=lambda part: part[0])))
+def _jpeg_decode_ok(marker: int, payload: bytes) -> bool:
+    """Khối giải mã đúng độ dài theo số thành phần màu: phần dư là chỗ nhét chữ (SL-T050-6)."""
+    if marker in _JPEG_FRAME:  # độ chính xác, cao, rộng (5 byte), N, rồi 3 byte mỗi thành phần
+        count = payload[5] if len(payload) > 5 else 0
+        return 1 <= count <= _JPEG_MAX_COMPONENTS and len(payload) == 6 + 3 * count
+    if marker == _JPEG_SOS:  # N, 2 byte mỗi thành phần, rồi 3 byte (lượt quét progressive)
+        count = payload[0] if payload else 0
+        return 1 <= count <= _JPEG_MAX_COMPONENTS and len(payload) == 4 + 2 * count
+    if marker in _JPEG_TWO_BYTES:
+        return len(payload) == 2
+    return True  # DQT, DHT
 
 
 def _check_jpeg(data: bytes) -> str | None:
     """Đi qua mọi khối JPEG, kể cả giữa các lượt quét của ảnh progressive, tới mã kết thúc (EOI)
-    ở đúng cuối file. ``"format"``: sai cấu trúc, có khung ảnh thứ hai hoặc dữ liệu nối sau EOI;
-    ``"metadata"``: có khối ngoài danh sách cho phép hoặc khối cho phép sai khuôn; ``None``: ổn."""
+    ở đúng cuối file. ``"format"``: sai cấu trúc (kể cả khối giải mã sai độ dài), có khung ảnh
+    thứ hai hoặc dữ liệu nối sau EOI; ``"metadata"``: có khối ngoài danh sách cho phép, APPn sai
+    khuôn hay lặp lại; ``None``: ổn."""
     if not data.startswith(b"\xff\xd8\xff"):
         return "format"
     i, n = 2, len(data)
     seen_frame = seen_scan = False
-    icc_parts: list[tuple[int, int, bytes]] = []
+    seen_app: set[int] = set()
     while True:
         if i >= n or data[i] != 0xFF:
             return "format"
@@ -637,25 +622,27 @@ def _check_jpeg(data: bytes) -> str | None:
         marker = data[i]
         i += 1
         if marker == 0xD9:  # EOI: chỉ hợp lệ sau khối ảnh và ở đúng cuối file
-            if not seen_scan or i != n:
-                return "format"
-            return None if _jpeg_icc_ok(icc_parts) else "metadata"
+            return None if seen_scan and i == n else "format"
         if marker in (0x00, 0xD8) or 0xD0 <= marker <= 0xD7 or i + 2 > n:
             return "format"  # RST chỉ được nằm trong dữ liệu quét (_skip_entropy đã bỏ qua)
         length = int.from_bytes(data[i : i + 2], "big")
         if length < 2 or i + length > n:
             return "format"
-        if 0xE0 <= marker <= 0xEF:
-            if not _jpeg_app_ok(marker, data[i + 2 : i + length], icc_parts):
-                return "metadata"  # APPn khác (EXIF, XMP, IPTC, MPF…) hay APPn sai khuôn
+        payload = data[i + 2 : i + length]
+        if marker in _JPEG_APP:
+            if marker in seen_app or not _jpeg_app_ok(marker, payload):
+                return "metadata"  # JFIF/Adobe sai khuôn hay lặp lại: chỗ nhét chữ
+            seen_app.add(marker)
         elif marker not in _JPEG_DECODE:
-            return "metadata"  # COM, TEM, mã chưa biết
+            return "metadata"  # APPn khác (EXIF, XMP, hồ sơ màu, IPTC, MPF…), COM, DAC, mã lạ
+        elif not _jpeg_decode_ok(marker, payload):
+            return "format"
         elif marker in _JPEG_FRAME:
             if seen_frame:
                 return "format"  # khung ảnh thứ hai: chỗ giấu được một ảnh khác
             seen_frame = True
         i += length
-        if marker == 0xDA:  # SOS: tiếp theo là dữ liệu ảnh nén, đi tới mã khối kế tiếp
+        if marker == _JPEG_SOS:  # tiếp theo là dữ liệu ảnh nén, đi tới mã khối kế tiếp
             seen_scan = True
             i = _skip_entropy(data, i)
 
@@ -680,38 +667,32 @@ def _skip_entropy(data: bytes, i: int) -> int:
 
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-# PNG, chunk được nhận kèm độ dài tối đa của phần dữ liệu (``None``: không giới hạn riêng); mỗi
-# chunk chỉ một lần, trừ IDAT:
-# - chunk chính IHDR (đúng 13 byte), PLTE, IDAT, IEND (cần để giải mã);
-# - tRNS (độ trong suốt), gAMA, cHRM, sRGB, pHYs (mật độ điểm ảnh: Pillow tự ghi khi ảnh nguồn
-#   có dpi), sBIT, bKGD: độ dài cố định và nhỏ, không chứa chữ tự do;
-# - iCCP (hồ sơ màu nén, như APP2 của JPEG): xem ``_check_png_icc``.
-# Không nhận: eXIf, tEXt/zTXt/iTXt (chữ tự do, XMP), tIME, chunk ảnh động, chunk riêng.
-_PNG_ALLOWED: dict[bytes, int | None] = {
-    b"IHDR": 13, b"PLTE": 768, b"IDAT": None, b"IEND": 0, b"tRNS": 256, b"gAMA": 4,
-    b"cHRM": 32, b"sRGB": 1, b"iCCP": None, b"pHYs": 9, b"sBIT": 4, b"bKGD": 6,
-}  # fmt: skip
-_PNG_IHDR_LENGTH = 13
-# iCCP = tên hồ sơ + "\0" + cách nén (0) + hồ sơ nén zlib. Tên hồ sơ là chữ tự do (1–79 ký tự),
-# nên chỉ nhận đúng tên Pillow luôn ghi.
-_PNG_ICC_HEADER = b"ICC Profile\x00\x00"
+# PNG, chunk được nhận; mỗi chunk chỉ một lần, trừ IDAT (các IDAT phải liền nhau, sau IDAT chỉ còn
+# IEND):
+# - chunk chính IHDR (đúng 13 byte, loại màu và độ sâu bit hợp lệ), IDAT, IEND (rỗng);
+# - PLTE: chỉ ảnh bảng màu (loại màu 3), 3 byte mỗi màu, tối đa 2^(độ sâu bit) màu (SL-T050-6);
+# - tRNS (độ trong suốt) đúng độ dài theo loại màu: ảnh xám 2 byte, ảnh RGB 6 byte, ảnh bảng màu
+#   1 byte mỗi màu, không quá số màu của PLTE; ảnh có kênh alpha không có tRNS;
+# - gAMA (4 byte), sRGB (1 byte), pHYs (9 byte, mật độ điểm ảnh: Pillow tự ghi khi ảnh nguồn có
+#   dpi). Pillow chỉ ghi các chunk này khi được yêu cầu; giữ để không từ chối nhầm.
+# Không nhận: iCCP (hồ sơ màu), cHRM, sBIT, bKGD (Pillow chỉ ghi khi được truyền ``pnginfo``, bản
+# gửi AI không cần), eXIf, tEXt/zTXt/iTXt (chữ tự do, XMP), tIME, chunk ảnh động, chunk riêng.
+_PNG_FIXED_LENGTH = {b"IHDR": 13, b"IEND": 0, b"gAMA": 4, b"sRGB": 1, b"pHYs": 9}
+_PNG_ALLOWED = frozenset({*_PNG_FIXED_LENGTH, b"PLTE", b"tRNS", b"IDAT"})
+_PNG_PALETTE = 3  # loại màu "bảng màu"
+# Độ sâu bit hợp lệ theo loại màu (0 xám, 2 RGB, 3 bảng màu, 4 xám + alpha, 6 RGB + alpha).
+_PNG_BIT_DEPTHS = {0: (1, 2, 4, 8, 16), 2: (8, 16), 3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
+_PNG_TRNS_LENGTH = {0: 2, 2: 6}
 
 
-def _check_png_icc(payload: bytes) -> str | None:
-    """Chunk iCCP: tên đúng ``ICC Profile``, hồ sơ giải nén (có giới hạn, chống bom giải nén) đúng
-    khuôn, không có gì sau dòng nén."""
-    if not payload.startswith(_PNG_ICC_HEADER):
-        return "metadata"
-    stream = zlib.decompressobj()
-    try:
-        profile = stream.decompress(payload[len(_PNG_ICC_HEADER) :], MAX_IMAGE_BYTES)
-    except zlib.error:
-        return "format"
-    if not stream.eof:
-        return "format"  # dòng nén cụt, hoặc hồ sơ lớn quá giới hạn
-    if stream.unused_data or not _icc_ok(profile):
-        return "metadata"
-    return None
+def _png_ihdr_ok(payload: bytes) -> bool:
+    """IHDR: độ sâu bit hợp với loại màu, nén và lọc kiểu 0, xen dòng 0 hoặc 1 (Adam7)."""
+    bit_depth, color_type = payload[8], payload[9]
+    return (
+        bit_depth in _PNG_BIT_DEPTHS.get(color_type, ())
+        and payload[10:12] == b"\0\0"
+        and payload[12] in (0, 1)
+    )
 
 
 def _check_png(data: bytes) -> str | None:
@@ -720,23 +701,42 @@ def _check_png(data: bytes) -> str | None:
         return "format"
     i, n = len(_PNG_SIGNATURE), len(data)
     seen: set[bytes] = set()
+    bit_depth = color_type = colors = 0  # colors: số màu của PLTE
     while i + 12 <= n:
         length = int.from_bytes(data[i : i + 4], "big")
         kind = data[i + 4 : i + 8]
+        payload = data[i + 8 : i + 8 + length]
         if not kind.isalpha() or i + 12 + length > n:
             return "format"
         if not seen and kind != b"IHDR":
             return "format"
         if kind not in _PNG_ALLOWED:
             return "metadata"
-        limit = _PNG_ALLOWED[kind]
-        if (kind in seen and kind != b"IDAT") or (limit is not None and length > limit):
+        if kind in seen and kind != b"IDAT":
             return "format"
-        if kind == b"IHDR" and length != _PNG_IHDR_LENGTH:
+        if b"IDAT" in seen and kind not in (b"IDAT", b"IEND"):
+            return "format"  # chunk nằm sau dữ liệu ảnh (nhờ vậy các IDAT luôn liền nhau)
+        if kind in _PNG_FIXED_LENGTH and length != _PNG_FIXED_LENGTH[kind]:
             return "format"
-        if kind == b"iCCP" and (problem := _check_png_icc(data[i + 8 : i + 8 + length])):
-            return problem
-        if kind == b"IEND":
+        if kind == b"IHDR":
+            if not _png_ihdr_ok(payload):
+                return "format"
+            bit_depth, color_type = payload[8], payload[9]
+        elif kind == b"PLTE":
+            if color_type != _PNG_PALETTE:
+                return "metadata"  # bảng màu "gợi ý" của ảnh không dùng bảng màu: chỗ nhét chữ
+            colors, rest = divmod(length, 3)
+            if rest or not 1 <= colors <= 1 << bit_depth:
+                return "format"
+        elif kind == b"tRNS":
+            if color_type == _PNG_PALETTE:
+                if not 1 <= length <= colors:  # thiếu PLTE thì colors = 0: cũng sai
+                    return "format"
+            elif length != _PNG_TRNS_LENGTH.get(color_type):
+                return "format"  # sai độ dài, hoặc ảnh có kênh alpha (không được có tRNS)
+        elif kind == b"IDAT" and color_type == _PNG_PALETTE and not colors:
+            return "format"  # ảnh bảng màu thiếu PLTE
+        elif kind == b"IEND":
             # Không nhận dữ liệu nối sau IEND (chỗ giấu được bất cứ thứ gì).
             return None if i + 12 + length == n else "format"
         seen.add(kind)
@@ -744,13 +744,13 @@ def _check_png(data: bytes) -> str | None:
     return "format"
 
 
-# WebP, chunk được nhận (mỗi loại một lần): VP8X (đầu ảnh mở rộng, đúng 10 byte), ICCP (hồ sơ
-# màu, Pillow ghi khi có ``icc_profile``), ALPH (độ trong suốt), và đúng một chunk ảnh VP8/VP8L.
-# Ảnh dạng đơn giản (chunk đầu là VP8/VP8L) chỉ có đúng chunk đó.
-# Không nhận: EXIF, XMP, mọi chunk khác (kể cả "exif", "xmp " viết thường, chunk riêng); ảnh động
-# ANIM/ANMF (khung ANMF chứa được chunk tùy ý; bản gửi AI là ảnh tĩnh).
+# WebP, chunk được nhận (mỗi loại một lần): VP8X (đầu ảnh mở rộng, đúng 10 byte), ALPH (độ trong
+# suốt), và đúng một chunk ảnh VP8/VP8L. Ảnh dạng đơn giản (chunk đầu là VP8/VP8L) chỉ có đúng
+# chunk đó.
+# Không nhận: ICCP (hồ sơ màu), EXIF, XMP, mọi chunk khác (kể cả "exif", "xmp " viết thường,
+# chunk riêng); ảnh động ANIM/ANMF (khung ANMF chứa được chunk tùy ý; bản gửi AI là ảnh tĩnh).
 _WEBP_IMAGE_CHUNKS = frozenset({b"VP8 ", b"VP8L"})
-_WEBP_ALLOWED = frozenset({*_WEBP_IMAGE_CHUNKS, b"VP8X", b"ALPH", b"ICCP"})
+_WEBP_ALLOWED = frozenset({*_WEBP_IMAGE_CHUNKS, b"VP8X", b"ALPH"})
 _WEBP_ANIMATION = frozenset({b"ANIM", b"ANMF"})
 _WEBP_VP8X_LENGTH = 10
 
@@ -780,8 +780,6 @@ def _check_webp(data: bytes) -> str | None:
             return "format"
         if seen and seen[0] in _WEBP_IMAGE_CHUNKS:
             return "format"  # dạng đơn giản có thêm chunk sau ảnh
-        if kind == b"ICCP" and not _icc_ok(data[i + 8 : i + 8 + size]):
-            return "metadata"
         seen.append(kind)
         i += 8 + size + (size & 1)  # chunk lẻ có 1 byte đệm
     if len(_WEBP_IMAGE_CHUNKS.intersection(seen)) != 1:

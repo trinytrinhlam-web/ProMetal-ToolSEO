@@ -198,8 +198,9 @@ def test_webp_metadata_or_wrong_size_is_rejected(data):
     assert not accepted(data, "image/webp")
 
 
-# Ảnh sạch thật do Pillow tạo (kể cả có hồ sơ màu ICC) vẫn phải qua: lớp kiểm không được chặn
-# nhầm bản gửi AI hợp lệ của T-049.
+# Ảnh sạch thật do Pillow tạo vẫn phải qua: lớp kiểm không được chặn nhầm bản gửi AI hợp lệ của
+# T-049. T-066 (Lá Chắn LC-T050-1, Chỉ Huy B duyệt): bản gửi AI không còn hồ sơ màu, nên ảnh kèm
+# hồ sơ màu ICC (kể cả sRGB chuẩn) bị từ chối như metadata.
 @pytest.mark.parametrize(
     ("fmt", "mime", "args"),
     [
@@ -211,9 +212,13 @@ def test_webp_metadata_or_wrong_size_is_rejected(data):
         ("WEBP", "image/webp", {"lossless": True}),
     ],
 )
-def test_clean_pillow_images_with_icc_pass(fmt, mime, args):
+def test_clean_pillow_images_pass_and_icc_is_rejected(fmt, mime, args):
     if args.get("icc_profile") is True:
-        args = {**args, "icc_profile": srgb_icc()}
+        data = pillow(fmt, size=(64, 48), **{**args, "icc_profile": srgb_icc()})
+        with pytest.raises(AIError) as info:
+            prepare_images([ImageInput(data=data, mime=mime)])
+        assert str(info.value) == IMAGE_METADATA_MESSAGE
+        args = {key: value for key, value in args.items() if key != "icc_profile"}
     data = pillow(fmt, size=(64, 48), **args)
     (prepared,) = prepare_images([ImageInput(data=data, mime=mime)])
     assert prepared.data == data and prepared.mime == mime
@@ -722,8 +727,8 @@ def webp_iccp(profile):
     return make_webp(webp_chunk(b"ICCP", profile), VP8L, first=VP8X_ICC)
 
 
-# Đối chứng: cùng cách dựng, hồ sơ màu không có đuôi thì qua (test xfail dưới đây hỏng vì đuôi,
-# không phải vì khuôn ảnh dựng sai).
+# Đối chứng cũ "hồ sơ màu không có đuôi thì qua": T-066 từ chối mọi hồ sơ màu (Chỉ Huy B duyệt
+# đổi ca này), nên cùng cách dựng, hồ sơ không đuôi cũng bị từ chối như metadata.
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
@@ -733,23 +738,20 @@ def webp_iccp(profile):
     ],
     ids=["jpeg", "png", "webp"],
 )
-def test_icc_builders_without_tail_pass(data, mime):
-    assert accepted(data, mime)
+def test_icc_builders_without_tail_are_rejected_too(data, mime):
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime=mime)])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
 
 
 # --- SL-T050-5: hồ sơ màu ICC chỉ được kiểm phần đầu (độ dài, "acsp"), không kiểm bảng thẻ:
 # sau phần đầu chở được EXIF thô có GPS, đường dẫn, gói XMP. Trong PNG, hồ sơ được nén nên cả
 # chuỗi "Exif\0\0" hay XMP cũng qua mắt bộ dò chuỗi ``_has_metadata_marker``.
+# Thợ Máy T-066 đã sửa (từ chối mọi hồ sơ màu): gỡ dấu xfail.
 _EXIF_IN_ICC = icc_with_tail(b"Exif\x00\x00" + RAW_TIFF)
 _SPLIT_AT = _EXIF_IN_ICC.index(b"Exif") + 2  # tách "Ex" | "if\0\0" qua hai khối APP2
 
-SL5 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T050-5: hồ sơ màu ICC chỉ kiểm phần đầu, chở được EXIF/GPS hay chữ tùy ý",
-)
 
-
-@SL5
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
@@ -772,11 +774,8 @@ def test_icc_profile_with_data_outside_tag_table_is_rejected(data, mime):
 # --- SL-T050-6: khối được nhận lặp lại không giới hạn hoặc dài hơn khuôn của nó, chở được chữ
 # tùy ý (đủ cho một tọa độ GPS hay đường dẫn). Chỉ APPn được kiểm khuôn; Pillow (bản gửi AI của
 # T-049) ghi mỗi khối một lần, đúng độ dài, và không ghi PLTE cho ảnh RGB hay cHRM.
+# Thợ Máy T-066 đã sửa: gỡ dấu xfail.
 SOF_1X1 = b"\x08\x00\x01\x00\x01\x01\x01\x11\x00"  # 8 bit, 1×1 điểm ảnh, 1 thành phần màu
-SL6 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T050-6: khối được nhận lặp lại hoặc dài hơn khuôn, chở được chữ tùy ý",
-)
 
 
 @pytest.mark.parametrize(
@@ -788,7 +787,6 @@ def test_decode_segments_in_right_shape_pass(data):
     assert accepted(data, "image/jpeg")
 
 
-@SL6
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
@@ -859,11 +857,16 @@ def textured(mode, size):
     ],
 )  # fmt: skip
 def test_more_clean_pillow_images_pass(mode, fmt, size, args):
-    if args.get("icc_profile") == "srgb":
-        args = {**args, "icc_profile": srgb_icc()}
-    out = io.BytesIO()
-    textured(mode, size).save(out, fmt, **args)
+    image = textured(mode, size)
     mime = f"image/{fmt.lower()}"
+    if args.get("icc_profile") == "srgb":
+        # T-066: kèm hồ sơ màu thì bị từ chối; cùng ảnh, cùng cách lưu mà không kèm thì qua.
+        with_icc = io.BytesIO()
+        image.save(with_icc, fmt, **{**args, "icc_profile": srgb_icc()})
+        assert not accepted(with_icc.getvalue(), mime)
+        args = {key: value for key, value in args.items() if key != "icc_profile"}
+    out = io.BytesIO()
+    image.save(out, fmt, **args)
     (prepared,) = prepare_images([ImageInput(data=out.getvalue(), mime=mime)])
     assert prepared.data == out.getvalue()
 
@@ -880,7 +883,7 @@ def gps_exif():
 @pytest.mark.parametrize("fmt", ["JPEG", "PNG", "WEBP"])
 def test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy(fmt, heif_registry_restored):  # noqa: F811
     """Ảnh iPhone HEIC có EXIF + GPS, XMP, hồ sơ màu; mở bằng Pillow qua pillow-heif như T-049 sẽ
-    làm. Bản gửi AI chỉ chép hồ sơ màu thì qua; lỡ chép EXIF thì bị từ chối."""
+    làm. Bản gửi AI không chép gì thì qua; lỡ chép hồ sơ màu (T-066) hay EXIF thì bị từ chối."""
     pillow_heif.register_heif_opener()
     heic = io.BytesIO()
     Image.new("RGB", (320, 240), (20, 120, 200)).save(
@@ -893,13 +896,14 @@ def test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy(fmt, heif_registry
         icc, exif = photo.info["icc_profile"], photo.info["exif"]
     mime = f"image/{fmt.lower()}"
     clean = io.BytesIO()
-    small.save(clean, fmt, icc_profile=icc)
+    small.save(clean, fmt)
     assert accepted(clean.getvalue(), mime)
-    leaky = io.BytesIO()
-    small.save(leaky, fmt, icc_profile=icc, exif=exif)
-    with pytest.raises(AIError) as info:
-        prepare_images([ImageInput(data=leaky.getvalue(), mime=mime)])
-    assert str(info.value) == IMAGE_METADATA_MESSAGE
+    for leaked in ({"icc_profile": icc}, {"icc_profile": icc, "exif": exif}):
+        leaky = io.BytesIO()
+        small.save(leaky, fmt, **leaked)
+        with pytest.raises(AIError) as info:
+            prepare_images([ImageInput(data=leaky.getvalue(), mime=mime)])
+        assert str(info.value) == IMAGE_METADATA_MESSAGE
 
 
 def test_pillow_resaved_jpeg_with_comment_is_rejected_if_comment_is_copied():
@@ -922,7 +926,9 @@ def test_png_iccp_decompression_bomb_is_rejected():
     assert len(data) < 200_000
     with pytest.raises(AIError) as info:
         prepare_images([ImageInput(data=data, mime="image/png")])
-    assert str(info.value) == IMAGE_BROKEN_MESSAGE
+    # T-066: mọi hồ sơ màu bị từ chối ngay, không giải nén (trước đây: giải nén tới 5 MB rồi báo
+    # "hỏng").
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
 
 
 # --- Thẻ, từ khóa: chữ tiếng Việt thường gặp không bị chặn nhầm; đường dẫn thật không lọt.
