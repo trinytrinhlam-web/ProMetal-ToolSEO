@@ -43,3 +43,4 @@ D1, D3.
 
 - Lập theo đề xuất của Lá Chắn T-075. Lời dặn «không dùng Wi-Fi công cộng» bỏ được khi đủ 3 việc: T-075 gộp và cả 2 máy mở lại app; cả 2 máy nâng `uv` ≥ 0.13.4; Windows và macOS đã cập nhật như thường lệ.
 - 2026-10-21 13:39 (Chỉ Huy B): chủ dự án duyệt. Máy Windows: `uv self update` từ 0.12.23 lên **0.13.4** (Chỉ Huy chạy). Máy Mac: chủ dự án tự chạy `uv self update`. Phần `required-version` (Thợ Máy) và README (Thư Ký) chưa giao.
+- 2026-10-22 09:01 (Chỉ Huy B): Chủ dự án báo 2026-10-22: **hiện chưa có máy Mac**. Bỏ bước nâng `uv` trên Mac cho tới khi có máy Mac. Máy Windows đã xong (0.13.4). Phần `required-version` (Thợ Máy) và README (Thư Ký) vẫn chưa giao.
