@@ -5,7 +5,8 @@ commit ảnh thật), GPS là tọa độ giả, tên khách là tên giả.
 
 Test ``xfail(strict=True)`` là lỗi tìm được (SL-T054-1…3 trong
 ``docs/team/reports/T-054-soi-loi.md``): sửa xong thì test thành XPASS và báo hỏng, khi đó chỉ
-cần xóa dòng ``@pytest.mark.xfail``. SL-T054-2 đã sửa ở T-061 (đã gỡ ``xfail``).
+cần xóa dòng ``@pytest.mark.xfail``. SL-T054-2 đã sửa ở T-061, SL-T054-1 và SL-T054-3 ở T-071
+(đã gỡ ``xfail``).
 """
 
 import base64
@@ -741,11 +742,6 @@ def test_tao_nhap_tra_du_lieu_sai_van_liet_ke_anh(fake_wp, wp_client, site, web,
     assert [(r.method, path(r)) for r in fake_wp.requests][-1] == ("POST", POSTS)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T054-3: lỗi sau lệnh tạo nháp (201 sai dữ liệu, hết giờ, 5xx) không báo bài "
-    "nháp có thể đã được tạo",
-)
 @pytest.mark.parametrize(
     "answer",
     [
