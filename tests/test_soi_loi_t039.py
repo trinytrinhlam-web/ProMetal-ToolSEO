@@ -606,10 +606,6 @@ def test_sl2_no_link_inside_placeholder_split_by_tag(html_text):
     assert links_in(out) == [(STUCK.link, "thay ray mới")]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T039-8: dấu ngoặc trong `mã` tính khác nhau giữa check_suggestions và apply_links",
-)
 @pytest.mark.parametrize(
     "markdown, html_text, anchor, post_id",
     [
@@ -924,7 +920,6 @@ def test_sl3_php_and_wordpress_query_forms_block(href):
     assert one(href).level is Level.BLOCK
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T039-9: tên tham số dạng mảng PHP (?p[]=) lọt kiểm link")
 @pytest.mark.parametrize(
     "href",
     [
@@ -1053,9 +1048,6 @@ def test_check_suggestions_linear_on_hostile_body(make):
     assert_scales_linearly(run, make, label="kiểm gợi ý")
 
 
-@pytest.mark.xfail(
-    strict=True, reason="SL-T039-7: check_links chạy bậc hai với tên máy dài không phải ASCII"
-)
 def test_sl7_check_links_linear_on_long_non_ascii_host():
     """``_browser_host`` (lượt 2) đổi tên máy lạ bằng bộ mã IDNA của Python; nhãn không phải ASCII
     được mã punycode mà không giới hạn độ dài trước, và punycode chạy bậc hai theo độ dài nhãn

@@ -32,6 +32,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from encodings.idna import ToASCII, nameprep
 from enum import StrEnum
 from html.parser import HTMLParser
 from itertools import islice
@@ -185,9 +186,14 @@ _PHP_NAME = str.maketrans(" .[", "___")
 
 
 def _php_name(name: str) -> str:
-    """Tên tham số như PHP (WordPress) đọc: cắt ở ký tự NUL, bỏ dấu cách đầu, đổi " ", ".", "["
-    thành "_". "?%20p=", "?page.id=" chính là "?p=", "?page_id=" với WordPress."""
-    return name.partition("\x00")[0].lstrip(" ").translate(_PHP_NAME).casefold()
+    """Tên tham số như PHP (WordPress) đọc: cắt ở ký tự NUL, bỏ dấu cách đầu; "[" có "]" phía sau
+    là biến dạng mảng nên tên dừng ở "[" ("?p[]=", "?p[0]=" là "p", SL-T039-9); còn lại đổi " ",
+    ".", "[" thành "_". "?%20p=", "?page.id=" chính là "?p=", "?page_id=" với WordPress."""
+    name = name.partition("\x00")[0].lstrip(" ")
+    head, bracket, rest = name.partition("[")
+    if bracket and "]" in rest:
+        name = head
+    return name.translate(_PHP_NAME).casefold()
 
 
 def _is_draft_query(query: str) -> bool:
@@ -654,7 +660,8 @@ _REOPENED_TAGS = frozenset({"a", "code"})
 
 @dataclass(frozen=True)
 class _Run:
-    """Một nút chữ: vị trí trong HTML gốc, chữ đã giải mã, phần, đoạn văn, chèn được không."""
+    """Một nút chữ: vị trí trong HTML gốc, chữ đã giải mã, phần, đoạn văn, chèn được không, có
+    nằm trong ``<code>`` không."""
 
     start: int
     end: int
@@ -662,6 +669,7 @@ class _Run:
     section: int
     paragraph: tuple[str, int]
     allowed: bool
+    in_code: bool
 
 
 class _TextRuns(HTMLParser):
@@ -719,7 +727,12 @@ class _TextRuns(HTMLParser):
             and not self.__dangling
             and html.unescape(self.__source[start:end]) == text
         )
-        self.runs.append(_Run(start, end, text, self.__section, self.__paragraph(), allowed))
+        # Chỉ tính "<code>" đang mở: "<code>" bị đóng ngầm thì bộ lọc HTML đóng hẳn ở đó, chữ
+        # phía sau trong HTML gửi đi không còn là mã.
+        in_code = bool(self.__open.get("code"))
+        self.runs.append(
+            _Run(start, end, text, self.__section, self.__paragraph(), allowed, in_code)
+        )
 
     def handle_starttag(self, tag, attrs):
         self.__flush(self.__pos())
@@ -780,11 +793,15 @@ class _TextRuns(HTMLParser):
 def _masked_runs(runs: Sequence[_Run]) -> list[str]:
     """Chữ của từng nút chữ, che chỗ "[…]" theo **đoạn văn** chứ không theo nút chữ: "[cần bổ
     sung: <strong>giá</strong> thay ray mới]" bị thẻ cắt thành nhiều nút chữ vẫn bị che hết
-    (SL-T039-2). Như ``markdown_blocks``: "[" không có "]" thì che tới hết đoạn. Tính dấu ngoặc ở
-    mọi nút chữ người đọc thấy, cả nút không chèn được (mã, link có sẵn…)."""
+    (SL-T039-2). Như ``markdown_blocks``: "[" không có "]" thì che tới hết đoạn, và dấu ngoặc
+    trong ``<code>`` không tính (``_mask_code`` che `mã` trước khi che "[…]": SL-T039-8). Dấu
+    ngoặc ở mọi nút chữ khác người đọc thấy đều tính, cả nút không chèn được (link có sẵn…)."""
     unclosed: set[tuple[str, int]] = set()  # đoạn văn còn "[" chưa đóng
     masked: list[str] = []
     for run in runs:
+        if run.in_code:  # không chèn vào mã; ngoặc trong mã không mở, không đóng "[…]"
+            masked.append("\x00" * len(run.text))
+            continue
         carried = run.paragraph in unclosed
         text = "[" + run.text if carried else run.text  # che tiếp từ đầu nút chữ
         last = text.rfind("[")
@@ -1004,17 +1021,35 @@ _MSG_DRAFT = (
 )
 # Cổng chuẩn của giao thức kia: "https://…:80", "http://…:443" không mở được.
 _WRONG_PORT = {"http": 443, "https": 80}
+# Dấu chấm giữa các nhãn của tên máy theo IDNA (RFC 3490 mục 3.1): ".", "。", "．", "｡".
+_HOST_DOTS = re.compile("[.。．｡]")
+_MAX_LABEL = 63  # nhãn dài nhất của một tên máy
 
 
 def _browser_host(host: str) -> str:
-    """Tên máy như trình duyệt đọc: giải mã "%", đổi chữ toàn khổ, dấu chấm "。"… theo IDNA
-    ("suachuacuasat%2Ecom", "ｓｕａ….com" là chính site). Không đổi được thì giữ nguyên."""
+    """Tên máy như trình duyệt đọc: giải mã "%", rồi từng nhãn theo IDNA (``nameprep``: bỏ ký tự
+    vô nghĩa, đổi chữ toàn khổ, chữ hoa…), dấu chấm "。" cũng là dấu chấm ("suachuacuasat%2Ecom",
+    "ｓｕａ….com" là chính site). Không đổi được thì giữ nguyên.
+
+    Nhãn vẫn còn chữ không phải ASCII sau ``nameprep`` mà dài quá 63 ký tự thì không là tên máy
+    thật: giữ nguyên tên máy, không mã punycode (punycode của Python chạy bậc hai theo độ dài
+    nhãn: SL-T039-7). Không chặn theo độ dài chữ gốc: ``nameprep`` có thể bỏ bớt ký tự."""
     if host.isascii() and "%" not in host:
         return host
+    labels = _HOST_DOTS.split(unquote(host))
+    if len(labels) > 1 and not labels[-1]:
+        labels.pop()  # một dấu chấm cuối
+    out: list[str] = []
     try:
-        return unquote(host).encode("idna").decode("ascii").lower().rstrip(".")
+        for label in labels:
+            if not label.isascii():
+                label = nameprep(label)
+                if not label.isascii() and len(label) > _MAX_LABEL:
+                    return host
+            out.append(ToASCII(label).decode("ascii"))
     except UnicodeError:
         return host
+    return ".".join(out).lower()
 
 
 def _classify(

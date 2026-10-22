@@ -5,6 +5,7 @@ Không gọi mạng: danh sách bài là ``SiteIndex`` dựng tay, hoặc tải 
 
 import ast
 import inspect
+import random
 import unicodedata
 from datetime import datetime
 from html.parser import HTMLParser
@@ -1370,6 +1371,131 @@ def test_ai_schema_still_plain_integers():
     assert ok.links[0].post_id == 10 and ok.links[0].section == 0
 
 
+# ------------------------------------------------------------------ lượt 3: SL-T039-7 → 9
+
+
+def test_long_non_ascii_label_is_never_own_site():
+    """SL-T039-7: nhãn vẫn còn chữ không phải ASCII sau ``nameprep`` mà dài quá 63 ký tự thì không
+    là tên máy thật (trình duyệt không mở được): vẫn là "ra ngoài" như lượt 1, không mã punycode."""
+    for host in ("suachuacuasat" + "中" * 100 + ".com", "中" * 64 + ".suachuacuasat.com"):
+        result = one(f"https://{host}/sua-cua-keo-tphcm/")
+        assert (result.kind, result.level) == (LinkKind.EXTERNAL, Level.WARN), host
+
+
+def test_idn_site_written_in_unicode_still_blocks():
+    """Nhãn không phải ASCII ngắn vẫn đổi như trình duyệt (punycode, nhãn tối đa 63 ký tự): site
+    "xn--bcher-kva.de" viết thành "bücher.de" là chính site, viết dạng lạ thì Chặn."""
+    site = "https://xn--bcher-kva.de"
+    index = make_index(item(1, "sach", "Sách", site=site), site=site)
+    result = one("https://bücher.de/sach/", index)
+    assert (result.kind, result.level) == (LinkKind.INTERNAL, Level.BLOCK)
+    assert one("https://xn--bcher-kva.de/sach/", index).level is Level.GOOD
+
+
+@pytest.mark.parametrize(
+    "html_text, paragraph",
+    [
+        ("<p>Gõ <code>a[0</code> rồi gọi dịch vụ sửa cửa kéo.</p>", 0),  # "[" trong mã không mở
+        ("<p>Mã <code>[</code> và <code>]</code>: gọi dịch vụ sửa cửa kéo.</p>", 0),
+        # "]" trong mã không đóng chỗ "[cần bổ sung: …]": chèn ở đoạn sau.
+        (
+            "<p>[cần bổ sung: <code>x]</code> dịch vụ sửa cửa kéo]</p>"
+            "<p>Gọi dịch vụ sửa cửa kéo.</p>",
+            1,
+        ),
+    ],
+)
+def test_brackets_inside_code_are_ignored(html_text, paragraph):
+    """SL-T039-8: như ``markdown_blocks`` (che `mã` trước khi che "[…]"), dấu ngoặc trong
+    ``<code>`` không mở cũng không đóng chỗ "[…]"."""
+    placed = place_links(html_text, [link(0, "dịch vụ sửa cửa kéo", 10)], INDEX)
+    assert links_in(placed.html) == [(SERVICE.link, "dịch vụ sửa cửa kéo")]
+    assert "<a " in placed.html.split("</p>")[paragraph]
+
+
+_MD_PIECES = ["dịch vụ sửa cửa kéo", " ", " ", "[", "]", "[cần bổ sung: ", "giá", "gọi", "**giá**"]
+_MD_CODE = ["`a[0`", "`x]`", "`[`", "`]`", "`mã`"]
+
+
+def _md_paragraph(rng):
+    """Một đoạn Markdown ngẫu nhiên và HTML bộ chuyển Markdown dựng từ nó. Tối đa một đoạn `mã`
+    mỗi dòng: ``markdown_blocks`` che từ dấu ` đầu tới dấu ` cuối của dòng (che rộng)."""
+    while True:
+        pieces = [rng.choice(_MD_PIECES) for _ in range(rng.randint(1, 12))]
+        if rng.random() < 0.7:
+            pieces.insert(rng.randint(0, len(pieces)), rng.choice(_MD_CODE))
+        markdown = "".join(pieces).strip()
+        if markdown:
+            break
+    html_text = "".join(
+        f"<code>{p[1:-1]}</code>" if p.startswith("`") else p.replace("**giá**", "<b>giá</b>")
+        for p in pieces
+    )
+    return markdown, f"<p>{html_text.strip()}</p>"
+
+
+def test_check_and_apply_see_same_placeholders():
+    """SL-T039-2, SL-T039-8: HTML dựng từ Markdown (thẻ in đậm, `mã` ở bất kỳ đâu, "[" "]" ở mọi
+    nút chữ): gợi ý ``check_suggestions`` nhận thì ``place_links`` chèn được, và chèn vào đoạn mà
+    ``check_suggestions`` thấy cụm từ nằm ngoài "[…]" (thử ngẫu nhiên, cố định hạt giống)."""
+    rng = random.Random(3039)
+    anchor = "dịch vụ sửa cửa kéo"
+    accepted = 0
+    for _ in range(1500):
+        paragraphs = [_md_paragraph(rng) for _ in range(rng.randint(1, 3))]
+        markdown = "\n\n".join(md for md, _ in paragraphs)
+        html_text = "".join(h for _, h in paragraphs)
+        review = check_suggestions(
+            suggest((10, 0, anchor)), [Section(heading="M", body=markdown)], CANDIDATES
+        )
+        placed = place_links(html_text, review.links, INDEX)
+        assert placed.applied == review.links, (markdown, html_text)
+        blocks = markdown_blocks(markdown)
+        assert len(blocks) == len(paragraphs), markdown
+        for block, part in zip(blocks, placed.html.split("</p>"), strict=False):
+            if "<a " in part:
+                assert anchor in block, (markdown, placed.html)
+        accepted += bool(review.links)
+    assert accepted > 200  # có chèn thật, không chỉ toàn bỏ
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        f"{SITE}/?p[]=12",  # PHP đọc "p[]", "p[0]" là biến "p" dạng mảng
+        f"{SITE}/?P[0]=12",
+        f"{SITE}/?p%5B%5D=12",
+        f"{SITE}/?page.id[]=10",  # "." trước "[" vẫn thành "_": biến "page_id"
+        f"{SITE}/?%20name[x]=bai-nhap",
+        f"{SITE}/sua-cua-keo-tphcm/?preview[a][b]=1",
+    ],
+)
+def test_php_array_names_block(href):
+    """SL-T039-9: "[" có "]" phía sau là biến dạng mảng, tên dừng ở "[" như PHP."""
+    assert one(href).level is Level.BLOCK
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        f"{SITE}/sua-cua-keo-tphcm/?a[name]=1",  # biến "a", không phải "name"
+        f"{SITE}/sua-cua-keo-tphcm/?x[p]=1",
+        f"{SITE}/sua-cua-keo-tphcm/?pp[]=1",
+        f"{SITE}/sua-cua-keo-tphcm/?p.x[0]=1",  # biến "p_x"
+    ],
+)
+def test_php_array_names_of_other_params_still_ok(href):
+    result = one(href)
+    assert (result.level, result.post_id) == (Level.GOOD, 10)
+
+
+def test_required_link_with_php_array_name_blocks():
+    result = select_candidates(
+        make_index(*ALL, truncated=True), kind="dich_vu", title="x", required=[f"{SITE}/?p[]=12"]
+    )
+    assert result.items == () and result.level is Level.BLOCK
+
+
 # ------------------------------------------------------------------ tốc độ (tuyến tính)
 
 PARAGRAPH = "<p>Ray bám bụi và cát làm bánh xe không lăn, cửa kéo kẹt &amp; kêu.</p>\n"
@@ -1472,3 +1598,24 @@ def test_apply_links_linear_round_2(make):
 )
 def test_check_links_linear_on_odd_hosts(make):
     assert_scales_linearly(lambda text: check_links(text, INDEX), make, label="tên máy lạ")
+
+
+def _han(n):
+    return "".join(map(chr, range(0x4E00, 0x4E00 + n)))  # n chữ Hán khác nhau
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: f'<p><a href="https://{_han(k * 1000)}.vn/">x</a></p>',
+        lambda k: f'<p><a href="https://{"a" * (k * 4000)}%2Ecom/">x</a></p>',
+        lambda k: f'<p><a href="https://{"ab" * (k * 2000)}é.com/">x</a></p>',
+        lambda k: f'<p><a href="https://{"中文." * (k * 1000)}vn/">x</a></p>',
+    ],
+    ids=["long-cjk-label", "long-ascii-label-percent", "long-mixed-label", "many-idn-labels"],
+)
+def test_check_links_linear_on_long_hosts(make):
+    """SL-T039-7: một nhãn dài gồm nhiều chữ khác nhau không phải ASCII (ca chữ toàn khổ ở trên
+    không đo được: ``nameprep`` đổi chữ toàn khổ về ASCII nên không tới bước punycode), một nhãn
+    ASCII dài có "%", nhãn lẫn ASCII và chữ có dấu, hàng nghìn nhãn ngắn không phải ASCII."""
+    assert_scales_linearly(lambda text: check_links(text, INDEX), make, label="tên máy dài")
