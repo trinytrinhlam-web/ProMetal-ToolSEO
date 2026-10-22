@@ -6,6 +6,7 @@
 | Phiếu | [T-076](../tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) |
 | Ngày nộp | 2026-10-21 |
 | Kết quả | Hoàn thành (kiểm đầy đủ). **Kết luận: ĐẠT CÓ ĐIỀU KIỆN**, chuyển Lá Chắn (rút gọn, F1) được |
+| Lượt 2 | 2026-10-22, rút gọn: **ĐẠT CÓ ĐIỀU KIỆN** (SL-T076-1 đã sửa; 1 Thấp mới SL-T076-2), chuyển Lá Chắn được. Xem mục "Lượt 2" cuối báo cáo |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -165,3 +166,139 @@ Script `exp_perf.py` (thư mục nháp): gốc 200 thư mục công trình, mộ
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-22, rút gọn): LC-T076-1, LC-T076-2
+
+| Mục | Nội dung |
+|---|---|
+| Lời giao | Chỉ Huy B (chủ dự án đã duyệt), kiểm rút gọn sau Thợ Máy lượt 2 |
+| Nhánh | `team/T-076`, đầu nhánh lúc kiểm `006b13b` (code lượt 2: `3930e94` LC-T076-1, `491609b` LC-T076-2) |
+| Đã đọc | Biên bản Lá Chắn `docs/team/reports/T-076-la-chan.md`, báo cáo Thợ Máy mục "Lượt 2", ghi chú cuối phiếu (trên `origin/main` `400fa8c`) |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp mới** (SL-T076-2). SL-T076-1 đã sửa. **Chuyển Lá Chắn (rút gọn, F1) được** |
+
+### Tóm tắt (cho chủ dự án)
+
+Lá Chắn thấy ổ Google Drive trên máy Windows trả lại đúng chữ đã gõ khi app hỏi "tên thật của thư mục". Nay app hỏi tên ngay ở **thư mục chứa nó**. Tôi thử lại trên ổ thường thật và trên ổ giả lập đúng kiểu Google Drive: nháp ghi `congai`, trên ổ là `CongAI`, thì ảnh **luôn là ảnh AI**, câu mô tả có «Minh họa» và phải duyệt lại. Khi app không hỏi được (thư mục vừa bị xóa, hay không có quyền xem thư mục chứa nó; tôi thử thật bằng cách bỏ quyền trên một thư mục tạm) thì app báo lỗi gọn, ảnh "không dùng được", không đoán theo chữ trong nháp.
+
+Lỗi nhỏ tôi ghi ở lượt 1 (SL-T076-1, bản sao y hệt được dùng thay ảnh AI khi thư mục bị đổi tên đúng lúc) **đã hết** với kiểu đổi tên một lần. Nhưng còn một khe hẹp hơn (**SL-T076-2, Thấp**): nếu thư mục bị đổi tên đi **rồi đổi lại** đúng trong vài phần nghìn giây app đang kiểm, app vẫn có thể dùng bản sao như ảnh thật. Rất khó xảy ra, không đọc được gì ngoài thư mục ảnh. Cách sửa tôi đề xuất ở lượt 1 (cách (a)) đóng hẳn khe này; đổi lại phải sửa 3 test cũ cho khớp (1 của tôi, 2 của Thợ Máy): hai test giả một kiểu ổ mà từ lượt 2 app không còn gặp, một test đếm đúng bước "hỏi lại" của cách hiện nay.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t076.py` | `name_source` thêm kiểu "`resolve` trả chữ đã gõ" (như `typed_resolve` của Lá Chắn), nên mọi test tên trên ổ của tôi chạy thêm kiểu này (21 ca). Thêm 2 hàm test chỉ chạy trên Windows (mục vừa mất giữa hai tầng hỏi: 4 ca; ổ trả tên khác khóa: 3 ca), 1 hàm giữ câu so tên ở lần hỏi tên mới của lớp phòng thứ hai (`test_copy_under_a_third_spelling_at_last_check_is_not_used`, đột biến M10 bên dưới) và 2 hàm `xfail(strict=True)` SL-T076-2. Docstring đầu file, docstring SL-T076-1 (ghi đã sửa). Không đổi `assert` của test cũ. Tổng 18 hàm, 77 ca (75 qua, 2 `xfail`) |
+| `docs/team/reports/T-076-soi-loi.md` | Mục này |
+
+Không sửa code ứng dụng, không sửa test của người khác.
+
+### Bằng chứng (lượt 2)
+
+Máy Windows 11 Pro của chủ dự án, Python 3.12.15, worktree `wt-T-076`, nhánh `team/T-076` tại `006b13b` (code không đổi). Máy chạy song song agent khác (số giây chỉ để tham khảo).
+
+```
+$ uv run pytest tests/test_images_folders.py tests/test_drafts_images.py tests/test_soi_loi_t055.py \
+    tests/test_soi_loi_t076.py tests/test_la_chan_t076.py tests/test_storage_drafts.py \
+    tests/test_images_tags.py tests/test_app_pages.py tests/test_images_folders_soi_loi.py \
+    tests/test_images_process.py tests/test_soi_loi_t052.py tests/test_soi_loi_t067.py \
+    -q -p no:cacheprovider -rsxX
+(2026-10-22 09:16–09:26 +07, trước khi sửa file của tôi)
+1503 passed, 9 skipped, 7 xfailed in 581.17s (0:09:41)
+
+$ <cùng lệnh, có file của tôi>
+(2026-10-22 09:36–09:38 +07)
+1532 passed, 9 skipped, 9 xfailed in 137.75s (0:02:17)
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check tests/test_soi_loi_t076.py
+1 file already formatted
+
+$ PYTHONUTF8=1 uvx detect-secrets scan --all-files .   # thư mục nháp chứa bản chép file test và báo cáo
+"results": {}   (file mồi có chữ tiếng Việt: có PYTHONUTF8 bắt 2/2, không có thì 0; đã xóa)
+```
+
+- 8 file của lời giao lượt 2, thêm 4 file như lượt 1 (test Soi Lỗi T-048 và các file gọi `stat_image`/`list_folder`). Lượt đầu khớp số của Thợ Máy (1.503 qua, 9 bỏ qua, 7 `xfail`). 9 bỏ qua đều do máy Windows; 7 `xfail` có từ trước, không thuộc phiếu (R2-1 ×2, R2-2 của T-048; SL-T067-1 ×4). Không còn `xfail` nào của LC-T076-1 hay SL-T076-1.
+- Lượt cuối: 1.503 + 29 ca qua mới của tôi (file của tôi từ 46 ca lên 77 ca: 75 qua, 2 `xfail`) = 1.532 qua; 9 `xfail` = 7 có từ trước + 2 ca SL-T076-2. 0 hỏng.
+
+### Việc 1 · LC-T076-1: Windows lấy tên ở thư mục cha (`FindFirstFileW`)
+
+| Điều cần xác nhận | Kết quả | Bằng chứng |
+|---|---|---|
+| Không còn lấy tên từ `resolve` | **ĐẠT** | `_disk_names` (`folders.py:580-614`) gọi `_found_names` (Windows, `:616-627`: mỗi tầng hỏi thư mục cha đúng một mục bằng `_win_listed_name`, `:327-345`) hoặc `_listed_names` (Mac/Linux); bỏ tham số `resolved`. Chú thích `_NAMES_FROM_RESOLVE` (`:71-76`) và các docstring nói đúng cách mới |
+| Ổ giả "`resolve` trả chữ đã gõ" (như `typed_resolve` của Lá Chắn): nháp `…/congai/cong.png`, trên ổ `CongAI` → ảnh AI, «Minh họa», bỏ "đã duyệt" | **ĐẠT** | `test_lc_t055_1_draft_case_variant_stays_ai_both_name_sources[resolve-tra-chu-da-go-*]` (4 ca: không quét, `list_folder` theo thư mục ghi trong nháp một tầng và đệ quy từ thư mục công trình gõ khác hoa thường, `ImageRef` dựng từ chữ trong nháp). 6 ca của Lá Chắn (B, D, E, F: quét theo nháp, danh sách thư mục cha bị cắt, chọn lại ảnh) nay qua, đã gỡ `xfail`. Mọi test tên trên ổ khác của tôi (ổ phân biệt hoa thường, tên chỉ khác dấu, 3 kiểu chữ "ệ", xóa, tráo liên kết, kết quả quét cũ, sâu 20 tầng) cũng chạy kiểu này: qua |
+| Ổ NTFS thật | **ĐẠT** | Cùng các test ở kiểu "hệ điều hành" (`resolve` thật). Script thử lại trên ổ thật: thư mục bật phân biệt hoa thường có cả `CongAI` lẫn `congai` (`fsutil`): mỗi tên ra đúng chính nó, đúng cỡ; nháp `CongAI` ảnh AI, nháp `congai` ảnh thật, cả khi danh sách bị cắt. Ổ chia sẻ SMB (`\\localhost\C$`): `stat_image`, `list_folder` ra `…/CongAI/Cong.PNG` |
+| Hỏi không được: mục vừa mất | **ĐẠT** | Mục bị xóa ngay sau khi kiểm đường đi: `test_folder_deleted_right_after_path_check` (12 ca, cả 3 kiểu). **Mới:** mục bị xóa **giữa hai tầng hỏi** (hỏi được thư mục công trình, rồi `CongAI` mất trước lần hỏi kế): "Không tìm thấy…", danh sách lần hỏi chỉ có tầng đầu, nháp "không dùng được", với `resolve` thật và `resolve` trả chữ đã gõ (`test_entry_vanishing_between_lookup_levels_is_not_found`, 4 ca) |
+| Hỏi không được: không có quyền xem thư mục cha | **ĐẠT** (thử thật bằng script) | Script `exp_acl.py` (thư mục tạm): `icacls <thư mục công trình> /deny <người dùng>:(RD)` (bỏ quyền xem danh sách, chỉ thư mục đó), gỡ và xóa ngay sau khi thử. Kiểm đường đi (`_resolve_inside`) **vẫn qua** ở cả 3 kiểu, nên lỗi nằm đúng ở bước lấy tên: `stat_image` (tên đúng và gõ khác hoa thường), `list_folder` đều báo "Không đọc được mục này (không có quyền hoặc ổ đĩa vừa bị ngắt).", không có đường dẫn máy, không xích lỗi hệ điều hành; nháp "không dùng được". Không lần nào trả chữ đã gõ. Thợ Máy có test giả lỗi 5 của `FindFirstFileW` (`test_windows_lookup_failure_is_a_plain_message`) |
+| Ổ trả một tên khác khóa (tên khác hẳn, dài hơn, kiểu 8.3) | **ĐẠT** | Không nhận tên ổ trả, không quay về chữ đã gõ: `stat_image`, `list_folder` báo lỗi gọn, nháp "không dùng được" (`test_lookup_answer_with_another_name_is_refused`, 3 ca, trên ổ `resolve` trả chữ đã gõ). Thợ Máy có test tên 8.3 thật (`test_short_8_3_name_refused_when_resolve_keeps_typed_text`) |
+| Lớp chặn T-048, câu báo | **Giữ** | `_resolve_inside`, `_Scan`, `read_image_bytes` không đổi một dòng ở lượt 2 (`git diff a1a48da..006b13b -- seo_app/images/folders.py`); test T-048 (`tests/test_images_folders_soi_loi.py`) và `tests/test_soi_loi_t055.py` không đổi, qua. Tráo junction ra ngoài gốc đúng lúc lấy tên: `test_link_swapped_in_after_path_check` nay 12 ca (thêm kiểu `resolve` trả chữ đã gõ): lỗi gọn, không trả tên hay số liệu ngoài gốc |
+
+### Việc 2 · LC-T076-2: cách "hỏi lại tên cũ" có cho cùng kết quả với cách (a) trên ổ thật không
+
+**Với kiểu tráo một lần (SL-T076-1): có.** Test của tôi `test_sl_t076_1_swapped_copy_with_same_size_and_time_is_not_used` (ổ thật, bản sao cùng cỡ, cùng giờ sửa) nay qua: lần hỏi lại `CongAI/cong.png` ra `Congai/cong.png` (ổ không phân biệt hoa thường tìm ra thư mục mới), khác kết quả cũ, nên "không dùng được", thẻ ảnh AI. `test_folder_swapped_during_check_does_not_switch_to_another_file` (khác cỡ) cũng qua.
+
+**Còn khe: SL-T076-2 (Thấp, mới).** Lần hỏi lại chỉ cho biết tên cũ **lúc hỏi lại**, không cho biết tên lúc xem danh sách. Nếu thư mục đổi tên đi lúc xem danh sách rồi đổi lại trước lần hỏi lại, thì hỏi lại ra đúng kết quả cũ, và lớp phòng thứ hai lại nhận ảnh ở tên của danh sách khi cùng cỡ, cùng giờ sửa. Cách (a) (danh sách nói khác thì không dùng được) không có khe này. Từ lượt 2, `ImageLibrary` thật luôn trả tên trên ổ (Windows hỏi thư mục cha, Mac/Linux đọc thư mục cha), nên nhánh "nhận tên của danh sách" chỉ còn chạy được khi thư mục bị đổi tên giữa các lần xem.
+
+#### SL-T076-2 · Thấp · Thư mục đổi tên đi rồi đổi lại đúng lúc kiểm: vẫn nhận bản sao ở tên khác
+
+- **Tái hiện** (ổ thật NTFS, đổi tên thật, chỉ canh thời điểm bằng `monkeypatch`):
+  - `test_sl_t076_2_folder_renamed_away_and_back_still_switches_to_copy` (ổ không phân biệt hoa thường, mặc định của Windows và Mac): nháp (nguồn "that", alt đã duyệt) ghi `CT012 - Cổng inox - Tân Phú/CongAI/cong.png` (ảnh AI nhờ tách chữ hoa); thư mục `Khac` có bản sao `cong.png` cùng nội dung, cùng giờ sửa (File Explorer giữ giờ sửa khi chép). Ngay trước lúc lớp phòng thứ hai xem danh sách thư mục công trình: `CongAI` → `CongAI cu`, `Khac` → `Congai`; xem xong đổi lại như cũ; ngay sau lần hỏi lại tên cũ lại đổi như lần đầu.
+  - `test_sl_t076_2_case_sensitive_disk_one_rename_away_and_back` (ổ phân biệt hoa thường thật, `fsutil`): có sẵn `CongAI/cong.png` và bản sao `congai/cong.png`. Chỉ cần `CongAI` vắng mặt đúng lúc xem danh sách (đổi tên đi, xem xong đổi lại).
+- **Mong đợi:** không dùng được, hoặc đúng file đã chọn và vẫn là ảnh AI (việc 1 lượt 1: "đổi tên đúng lúc kiểm → báo không dùng được, không lẫn sang file khác").
+- **Thực tế** (script `exp_sl2.py` in đủ kết quả ca thứ nhất): ba lần `stat_image`: `CongAI/cong.png` ra `CongAI/cong.png`; hỏi lại `CongAI/cong.png` ra `CongAI/cong.png` (giống hệt); `Congai/cong.png` ra `Congai/cong.png`. Ảnh **dùng được**, `ref` là `…/Congai/cong.png` (bản sao, số định danh khác file đã chọn), thẻ `that` / CT012 / Tân Phú, alt «Bản lề cổng inox bị gỉ trước khi sửa» không «Minh họa», **vẫn "đã duyệt"**. Ca thứ hai cũng dùng bản sao. `--runxfail`: cả hai hỏng đúng ở câu so định danh file.
+- **Nguyên nhân:** `drafts.py:938-944`: hỏi lại tên cũ rồi `stat_image` ở tên của danh sách, so tên và (cỡ, giờ sửa); không lần nào so định danh file, và các lần hỏi ở những thời điểm khác nhau.
+- **Điều kiện xảy ra:** đổi tên đi và đổi lại trong khe vài mili giây giữa các lần hỏi (ổ không phân biệt hoa thường: đổi 3 lần, có bản sao ở thư mục khác; ổ phân biệt hoa thường: đổi đi rồi đổi lại, có bản sao ở thư mục chỉ khác hoa thường), nháp ghi "that" cho ảnh trong thư mục AI (sửa tay, hay chọn trước khi đổi tên). Hẹp hơn SL-T076-1. Không đọc ra ngoài thư mục ảnh (F1 giữ: mọi lần hỏi qua đủ lớp chặn, đọc sau qua `read_image_bytes`). Nên **Thấp**.
+- **Hướng sửa:**
+  - (a) Như lượt 1: danh sách xem hết mà không có đúng tên `stat_image` trả thì không dùng được (`_MSG_FOLDER_NAME`); bỏ nhánh nhận tên của danh sách. Thử trên bản sao code lượt 2 (thư mục nháp): 2 ca SL-T076-2 thành `XPASS(strict)`; 3 test phải đổi theo: `test_single_case_insensitive_match_takes_real_name`, `test_lc_t076_2_folder_renamed_between_checks_is_unavailable` (của Thợ Máy; test sau chỉ hỏng ở câu đếm lần gọi `stat_image`, kết quả vẫn "không dùng được") và `test_mac_nfd_folder_names_keep_ai_and_real_tags` (Soi Lỗi T-055). Ba test này dùng ổ giả mà `stat_image` trả lại chữ đã gõ; từ lượt 2 `ImageLibrary` thật không còn kiểu đó. Nếu Chỉ Huy chọn (a), Soi Lỗi nhận sửa test T-055 của mình theo nghĩa mới (giả ổ Mac mà `stat_image` trả tên NFD, hoặc đòi "không dùng được").
+  - (b) Giữ cách hiện tại nhưng so **định danh** file (`st_dev`, `st_ino`) của ảnh ở tên mới với ảnh đã kiểm (cần một hàm riêng của `ImageLibrary`, đường dẫn tuyệt đối không ra khỏi module).
+  - Hoặc chủ dự án chấp nhận rủi ro (ghi sổ rủi ro), vì rất hẹp.
+
+### Việc 3 · Soát test (`git diff a1a48da..team/T-076 -- tests/`)
+
+- `tests/test_soi_loi_t076.py`: `0 thêm, 4 xóa`, đúng khối `@pytest.mark.xfail(strict=True, reason="SL-T076-1…")`.
+- `tests/test_la_chan_t076.py` (so với bản của Lá Chắn `ca1e91d`): `0 thêm, 12 xóa`: hằng `XFAIL` (7 dòng) và 5 dòng `@XFAIL`. Không đổi `assert`, dữ liệu thử, `typed_resolve`.
+- `tests/test_drafts_images.py`: `31 thêm, 3 xóa`. `test_single_case_insensitive_match_takes_real_name` **không bị làm yếu**: giữ mọi câu kiểm cũ (dùng được, `ref` và `entry.ref` là `CongAI/cong.png`, ảnh AI), danh sách lần gọi `stat_image` thêm đúng lần hỏi lại tên cũ (`["congai/cong.png", "congai/cong.png", "CongAI/cong.png"]`), tức kiểm thêm bước mới; 2 dòng còn lại là docstring. Thêm `test_lc_t076_2_folder_renamed_between_checks_is_unavailable`.
+- `tests/test_images_folders.py`: `95 thêm, 5 xóa`: 5 dòng xóa là chú thích mục, dòng `@pytest.fixture(params=[...])` (nay thêm kiểu thứ ba) và 2 dòng docstring; không xóa câu kiểm nào. Thêm `typed_resolve`, 3 test chỉ chạy trên Windows.
+- `tests/test_soi_loi_t055.py`, `tests/test_images_folders_soi_loi.py`: không đổi.
+
+### Thử đột biến (lượt 2)
+
+Chép `seo_app` sang thư mục nháp, sửa một chỗ, chạy 5 file `tests/test_soi_loi_t076.py`, `tests/test_la_chan_t076.py`, `tests/test_images_folders.py`, `tests/test_drafts_images.py`, `tests/test_soi_loi_t055.py` với `PYTHONPATH` trỏ vào bản sửa (đã kiểm `seo_app` nạp từ bản sửa). Script `mutate2.py` ở thư mục nháp, không commit.
+
+| Đột biến | Test hỏng |
+|---|---|
+| M6 · Windows lấy tên theo chữ đã gõ (như lượt 1 trên ổ Drive): `_found_names` trả nguyên phần đã gõ | 42 (Soi Lỗi T-076 20, Lá Chắn T-076 7, Thợ Máy thư mục ảnh 8, nháp 7) |
+| M7 · Nhận tên ổ trả về mà không so khóa với tên đã gõ | 1 (`test_short_8_3_name_refused_when_resolve_keeps_typed_text` của Thợ Máy). Tên khác hẳn thì bước so định danh cuối (`lstat` ở tên mới) vẫn chặn, nên test "tên khác khóa" của tôi không phân biệt được đột biến này; chỉ tên 8.3 (cùng mục) mới lọt |
+| M8 · Hỏi lỗi thì quay về chữ đã gõ | 7 (Soi Lỗi 4: mục vừa mất giữa hai tầng hỏi; Thợ Máy 3: lỗi 2, 3, 5 của `FindFirstFileW`) |
+| M9 · Bỏ bước hỏi lại tên cũ | 4 (Soi Lỗi 2: SL-T076-1 hỏng, 1 ca SL-T076-2 thành `XPASS`; Thợ Máy 2) |
+| M10 · Bỏ câu so tên ở lần hỏi tên mới (`again.ref != real`) | **0** lúc đầu. Thêm `test_copy_under_a_third_spelling_at_last_check_is_not_used` (bản sao mang tên thứ ba `CONGAI` đúng lúc hỏi tên mới): nay **1** (chạy riêng file của tôi) |
+
+Số M6–M9 đếm trước khi thêm test M10. Test M10 không đổi kết quả với code đúng và vẫn qua với cách (a).
+
+### Đo thời gian (lượt 2)
+
+Script `exp_perf.py` của lượt 1 (gốc 200 thư mục công trình, một thư mục 3.000 ảnh, 300 thư mục mỗi thư mục một ảnh, đường 151 tầng), lấy lần nhanh nhất trong 3 lần (nháp 300 ảnh: 2 lần), cách của Windows. `main` = `d9e279f`, lượt 1 = `a1a48da` (tên từ `resolve`), lượt 2 = `006b13b` (`FindFirstFileW` từng tầng), dựng bằng `git archive`. Mỗi cột một lượt đo, máy đang chạy agent khác nên số dao động.
+
+| Việc (giây) | `main` cục bộ | lượt 1 cục bộ | lượt 2 cục bộ | `main` SMB | lượt 1 SMB | lượt 2 SMB |
+|---|---|---|---|---|---|---|
+| 48 lần `stat_image` trong thư mục 3.000 ảnh, tên đúng | 0,090 | 0,092 | 0,153 | 0,603 | 1,198 | 0,791 |
+| như trên, nháp gõ khác hoa thường | 0,072 | 0,088 | 0,183 | 0,673 | 0,840 | 0,864 |
+| `list_folder` thư mục 3.000 ảnh | 0,177 | 0,195 | 0,267 | 0,235 | 0,246 | 0,262 |
+| `stat_image` sâu 151 tầng | 0,050 | 0,047 | 0,135 | 0,370 | 0,510 | 0,708 |
+| `check_draft_images` 300 ảnh / 300 thư mục | 1,23 | 1,54 | 1,89 | 8,47 | 12,0 | 13,0 |
+
+Mỗi tầng của đường dẫn thêm một lần hỏi ổ, nên lượt 2 chậm hơn `main` một chút: 48 ảnh xem trước thêm khoảng 0,06 giây trên ổ cục bộ, khoảng 0,2 giây trên ổ SMB; kiểm nháp 300 ảnh chậm hơn khoảng 50%; đường rất sâu chậm hơn rõ (151 tầng: 2–3 lần). Không phụ thuộc số ảnh trong thư mục (không đọc cả thư mục). Không xếp thành lỗi; trên ổ Google Drive chưa đo được (không đụng Drive thật của chủ dự án). T-056 vẫn nên kiểm ảnh nháp một lần khi mở nháp.
+
+### Rủi ro và điểm cần chú ý (lượt 2)
+
+- **Ổ ảo trả lại chữ của truy vấn khi `FindFirstFileW`:** ổ NTFS, ổ chia sẻ Windows (đã thử) và Google Drive for Desktop (Lá Chắn đo) trả tên đã lưu. Một ổ ảo tự viết (WinFsp, Dokan) về lý thuyết có thể trả lại chữ của truy vấn; khi đó lớp phòng thứ hai của nháp vẫn đối chiếu với danh sách thư mục, trừ khi danh sách thư mục cha bị cắt (Thợ Máy đã ghi). Chưa có ổ như vậy để thử.
+- **Đổi hành vi có chủ đích:** người dùng không có quyền xem danh sách một thư mục trên đường đi (vẫn mở được thư mục con) thì ảnh nay "không dùng được"; trước lượt 2 (tên từ `resolve`) vẫn dùng được. Hiếm với thư mục ảnh cá nhân; đúng ý lời giao ("hỏi không được thì báo lỗi gọn").
+- **Phép chặn tên 8.3 của `read_image_bytes`** vẫn dựa vào `resolve` (`_resolve_inside`), nên trên ổ vừa trả lại chữ đã gõ khi `resolve` **vừa** có tên 8.3, `read_image_bytes` đọc được file qua tên ngắn, còn `stat_image`, `list_folder` nay từ chối. Đã thử bằng script `exp_83.py` (ổ NTFS có tên 8.3, `resolve` giả trả chữ đã gõ): `read_image_bytes(ImageRef(0, "THUMUC~1/ANHRAT~1.JPG"))` đọc được, `stat_image` báo "Không tìm thấy…"; với `resolve` thật cả hai từ chối. Vẫn là cùng một file trong thư mục ảnh (F1 giữ). Chưa thấy ổ thật nào có cả hai điều kiện (Google Drive không có tên 8.3, theo Lá Chắn; ổ chia sẻ Windows trả tên trên ổ khi `resolve`), và ảnh của nháp, ảnh xem trước (`PreviewCache.get`) đều đi qua `stat_image` trước khi đọc. Lá Chắn đã ghi nhận; tôi cũng chỉ ghi nhận, không thành lỗi. Nếu muốn khép hẳn: `_checked_file` gọi luôn bước lấy tên trên ổ.
+- Hằng `_NAMES_FROM_RESOLVE` nay sai nghĩa với tên (Thợ Máy giữ vì test của tôi đặt nó). Khi đổi tên hằng, Soi Lỗi sửa theo trong `tests/test_soi_loi_t076.py`.
+- Phần mở thư mục bằng `fd` của Mac/Linux vẫn chưa chạy trên máy nào (từ 2026-10-22 chủ dự án chưa có máy Mac; T-063 chạy bằng máy cloud Linux khi chủ dự án đồng ý).
+
+### Kết luận lượt 2
+
+- **ĐẠT CÓ ĐIỀU KIỆN.** LC-T076-1 sửa đúng (ổ giả "`resolve` trả chữ đã gõ", ổ NTFS thật, ổ SMB, ổ phân biệt hoa thường thật; hỏi không được thì báo lỗi gọn, không quay về chữ đã gõ, kể cả thiếu quyền thật). SL-T076-1 đã sửa. Lỗi mới: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T076-2).
+- **Chuyển Lá Chắn được** (rút gọn, F1). Điều kiện: Chỉ Huy quyết SL-T076-2: sửa theo cách (a) (Soi Lỗi sửa test T-055 của mình theo), cách (b), hay chủ dự án ghi sổ rủi ro. Không bắt buộc trước T-056 về bảo mật (Thấp, F1 giữ), nhưng sửa rẻ nếu chọn (a).

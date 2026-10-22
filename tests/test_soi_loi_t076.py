@@ -13,8 +13,13 @@ Bổ sung cho test của Thợ Máy (``tests/test_images_folders.py`` mục "tê
   (quét trước khi đổi tên thư mục); ổ chậm khi kiểm nháp.
 - Lớp chặn T-048 trên đường lấy tên mới: câu báo không lộ đường dẫn máy, không trả tên ngoài gốc.
 
-Test thư mục ảnh chạy cả hai cách lấy tên (``name_source``): cách của hệ điều hành đang chạy và
-cách của Mac/Linux (xem tên trong thư mục cha), như test của Thợ Máy.
+Test thư mục ảnh chạy mọi cách lấy tên (``name_source``): cách của hệ điều hành đang chạy, cách
+của Mac/Linux (xem tên trong thư mục cha), như test của Thợ Máy; từ lượt 2 thêm ổ trả lại chữ đã
+gõ khi ``resolve`` (như Google Drive for Desktop của Windows, LC-T076-1).
+
+Lượt 2 (Windows hỏi tên ở thư mục cha bằng ``FindFirstFileW``; lớp phòng thứ hai hỏi lại tên cũ):
+mục vừa mất giữa hai tầng hỏi, ổ trả tên khác khóa, không quay về chữ đã gõ; thư mục đổi tên đi
+rồi đổi lại đúng lúc kiểm (SL-T076-2).
 
 Lỗi tìm được đánh dấu ``xfail(strict=True)`` kèm mã SL-T076-x (xem
 ``docs/team/reports/T-076-soi-loi.md``). Mọi test dùng thư mục tạm, ảnh giả, không gọi mạng.
@@ -115,12 +120,23 @@ def assert_ai_wording(result) -> None:
     assert result.image.caption.startswith(AI_CAPTION_PREFIX)
 
 
-@pytest.fixture(params=["he-dieu-hanh", "xem-thu-muc-cha"])
+def typed_resolve(self: Path, strict: bool = False) -> Path:
+    """Như ``resolve`` của ổ Google Drive for Desktop trên Windows (Lá Chắn đo trên máy chủ dự án,
+    LC-T076-1): trả lại đúng chữ đã gõ; danh sách thư mục vẫn cho tên trên ổ."""
+    if strict:
+        os.lstat(self)  # không có thì FileNotFoundError, như resolve thật
+    return Path(os.path.abspath(self))
+
+
+@pytest.fixture(params=["he-dieu-hanh", "xem-thu-muc-cha", "resolve-tra-chu-da-go"])
 def name_source(request, monkeypatch) -> str:
-    """Cả hai cách lấy tên trên ổ: của hệ điều hành đang chạy (Windows: từ ``resolve``), và của
-    Mac/Linux (xem tên trong thư mục cha từng tầng)."""
+    """Mọi cách lấy tên trên ổ: của hệ điều hành đang chạy (Windows: hỏi thư mục cha từng mục,
+    ``FindFirstFileW``), của Mac/Linux (đọc tên trong thư mục cha từng tầng), và của hệ điều hành
+    đang chạy trên ổ trả lại chữ đã gõ khi ``resolve`` (như Google Drive for Desktop, lượt 2)."""
     if request.param == "xem-thu-muc-cha":
         monkeypatch.setattr(folders, "_NAMES_FROM_RESOLVE", False)
+    elif request.param == "resolve-tra-chu-da-go":
+        monkeypatch.setattr(Path, "resolve", typed_resolve)
     return request.param
 
 
@@ -207,10 +223,11 @@ def test_case_sensitive_disk_draft_keeps_the_named_folder(both_folders, name_sou
     "scan", ["khong-quet", "quet-theo-nhap", "quet-de-quy-theo-nhap", "ref-theo-nhap"]
 )
 def test_lc_t055_1_draft_case_variant_stays_ai_both_name_sources(tmp_path, name_source, scan):
-    """LC-T055-1 (yêu cầu 1) ở **cả hai** cách lấy tên (test nháp của Thợ Máy chỉ chạy cách của
-    hệ điều hành đang chạy): nháp ghi ``ct012 - cổng INOX - tân phú/congai/cong.png`` (khác hoa
-    thường cả thư mục công trình), trên ổ là ``…/CongAI/…``: ảnh AI, «Minh họa», bỏ "đã duyệt",
-    cả khi ``scanned`` là ``list_folder`` theo đường dẫn trong nháp (một tầng hay đệ quy)."""
+    """LC-T055-1 (yêu cầu 1) ở **mọi** cách lấy tên (test nháp của Thợ Máy chỉ chạy cách của hệ
+    điều hành đang chạy), kể cả ổ trả lại chữ đã gõ khi ``resolve`` (LC-T076-1, lượt 2): nháp ghi
+    ``ct012 - cổng INOX - tân phú/congai/cong.png`` (khác hoa thường cả thư mục công trình), trên
+    ổ là ``…/CongAI/…``: ảnh AI, «Minh họa», bỏ "đã duyệt", cả khi ``scanned`` là ``list_folder``
+    theo đường dẫn trong nháp (một tầng hay đệ quy)."""
     root = tmp_path / "anh"
     write(root / AI_PATH, AI_BYTES)
     write(root / PROJECT / "truoc" / "IMG_0001.jpg")
@@ -470,6 +487,125 @@ def test_deep_path_with_case_variants_gets_disk_names(tmp_path, name_source):
     assert entry.ref.rel_path == "/".join(disk) + "/Anh.JPG"
 
 
+# ===== Lượt 2: Windows hỏi tên ở thư mục cha (LC-T076-1) ====================================
+
+
+windows_only = pytest.mark.skipif(not IS_WINDOWS, reason="cách hỏi từng mục của Windows")
+
+
+@windows_only
+@pytest.mark.parametrize("resolve_kind", ["that", "tra-chu-da-go"])
+@pytest.mark.parametrize("call", ["stat_image", "nhap"])
+def test_entry_vanishing_between_lookup_levels_is_not_found(
+    tmp_path, monkeypatch, resolve_kind, call
+):
+    """LC-T076-1 (lượt 2): hỏi được tên ở tầng trên, nhưng thư mục tầng dưới vừa bị xóa trước lần
+    hỏi kế tiếp: báo "không tìm thấy" gọn, không quay về chữ đã gõ, cả trên ổ trả lại chữ đã gõ
+    khi ``resolve``; nháp thì ảnh không dùng được."""
+    root = tmp_path / "anh"
+    write(root / AI_PATH, AI_BYTES)
+    if not case_insensitive(root):
+        pytest.skip("thư mục tạm bật phân biệt hoa thường")
+    if resolve_kind == "tra-chu-da-go":
+        monkeypatch.setattr(Path, "resolve", typed_resolve)
+    real_lookup = folders._win_listed_name
+    asked: list[str] = []
+
+    def lookup_then_delete(path):
+        name = real_lookup(path)
+        asked.append(name)
+        if len(asked) == 1:
+            shutil.rmtree(root / PROJECT / "CongAI")
+        return name
+
+    monkeypatch.setattr(folders, "_win_listed_name", lookup_then_delete)
+    lib = ImageLibrary([root])
+    if call == "stat_image":
+        exc = raises_safely(lambda: lib.stat_image(ImageRef(0, LOWER_PATH)), tmp_path)
+        message = str(exc)
+    else:
+        result = check_chosen_image(real_image(LOWER_PATH), lib)
+        assert not result.available and result.entry is None
+        message = result.message
+        assert_no_abs_path(message, tmp_path)
+    assert "Không tìm thấy" in message
+    assert asked == [PROJECT]
+
+
+@windows_only
+@pytest.mark.parametrize("listed", ["Khac", "congai-x", "CONG~1"], ids=["ten-khac", "dai", "8-3"])
+def test_lookup_answer_with_another_name_is_refused(tmp_path, monkeypatch, listed):
+    """Ổ trả một tên khác khóa với tên đã gõ (tên khác hẳn, dài hơn, kiểu 8.3) khi hỏi một mục:
+    từ chối gọn, không nhận tên ổ trả, không quay về chữ đã gõ (trên ổ trả lại chữ đã gõ khi
+    ``resolve``, phép chặn tên khác của ``_resolve_inside`` không giúp được)."""
+    root = tmp_path / "anh"
+    write(root / AI_PATH, AI_BYTES)
+    if not case_insensitive(root):
+        pytest.skip("thư mục tạm bật phân biệt hoa thường")
+    monkeypatch.setattr(Path, "resolve", typed_resolve)
+    real_lookup = folders._win_listed_name
+
+    def odd_lookup(path):
+        return listed if Path(path).name == "congai" else real_lookup(path)
+
+    monkeypatch.setattr(folders, "_win_listed_name", odd_lookup)
+    lib = ImageLibrary([root])
+    raises_safely(lambda: lib.stat_image(ImageRef(0, LOWER_PATH)), tmp_path)
+    raises_safely(lambda: lib.list_folder(0, f"{PROJECT}/congai"), tmp_path)
+    result = check_chosen_image(real_image(LOWER_PATH), lib)
+    assert not result.available
+
+
+def test_copy_under_a_third_spelling_at_last_check_is_not_used(tmp_path, monkeypatch):
+    """LC-T076-2 (lượt 2): lớp phòng thứ hai chỉ nhận ảnh ở tên của danh sách khi ``stat_image``
+    ở tên đó trả **đúng** tên đó. Ở đây danh sách thấy ``Congai`` (đổi tên đi rồi đổi lại như
+    SL-T076-2), hỏi lại tên cũ ra kết quả cũ, nhưng tới lần hỏi tên mới thì bản sao (cùng cỡ, cùng
+    giờ sửa) đang mang tên thứ ba ``CONGAI``: ổ tìm ra ``CONGAI``, khác tên của danh sách, nên không
+    dùng được. Bỏ câu so tên đó thì app dùng bản sao ở ``CONGAI`` (thử đột biến)."""
+    root = tmp_path / "anh"
+    assert_ai_only_by_case(AI_PATH, f"{PROJECT}/CONGAI/cong.png")
+    chosen = write(root / AI_PATH, AI_BYTES)
+    copy = write(root / PROJECT / "Khac" / "cong.png", AI_BYTES)
+    first = os.stat(chosen)
+    os.utime(copy, ns=(first.st_atime_ns, first.st_mtime_ns))
+    if not case_insensitive(root):
+        pytest.skip("ổ phân biệt hoa thường: cần ổ tìm tên không phân biệt hoa thường")
+    project = root / PROJECT
+    original_list, original_stat = ImageLibrary.list_folder, ImageLibrary.stat_image
+    steps: list[str] = []
+
+    def list_folder(self, root_index, rel_dir="", **kwargs):
+        if rel_dir != PROJECT or steps:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        os.rename(project / "CongAI", project / "CongAI cu")
+        os.rename(project / "Khac", project / "Congai")
+        steps.append("doi")
+        try:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        finally:
+            os.rename(project / "Congai", project / "Khac")
+            os.rename(project / "CongAI cu", project / "CongAI")
+            steps.append("tra")
+
+    def stat_image(self, ref):
+        entry = original_stat(self, ref)
+        if steps == ["doi", "tra"] and ref.rel_path == AI_PATH:  # vừa hỏi lại tên cũ
+            os.rename(project / "CongAI", project / "CongAI cu")
+            os.rename(project / "Khac", project / "CONGAI")
+            steps.append("ten-thu-ba")
+        return entry
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    result = check_chosen_image(real_image(AI_PATH), ImageLibrary([root]))
+    monkeypatch.undo()
+    # Tên thứ ba chỉ có khi còn bước hỏi lại tên cũ (cách (a) không hỏi lại, ảnh không dùng được).
+    assert steps[:2] == ["doi", "tra"]
+    if result.available:
+        assert os.stat(root / result.ref.rel_path).st_ino == first.st_ino
+    assert_ai_wording(result)
+
+
 # ===== Lỗi mới ===============================================================================
 
 
@@ -481,7 +617,8 @@ def test_sl_t076_1_swapped_copy_with_same_size_and_time_is_not_used(tmp_path, mo
     tên trùng không phân biệt hoa thường (``Congai``), ``stat_image`` lại ở đó: cùng cỡ, cùng giờ
     sửa nên nhận. Mong đợi: không dùng được, hoặc đúng file đã kiểm và vẫn là ảnh AI. Thực tế: dùng
     được, ``ref`` là file ở ``Congai`` (file khác), **ảnh thật** CT012, alt không có «Minh họa» vẫn
-    "đã duyệt" (trái điều kiện Lá Chắn T-052 số 3; T-076 việc 1: "không lẫn sang file khác")."""
+    "đã duyệt" (trái điều kiện Lá Chắn T-052 số 3; T-076 việc 1: "không lẫn sang file khác").
+    Lượt 2 đã sửa (LC-T076-2: hỏi lại tên cũ, ổ trả tên mới nên không dùng được)."""
     root = tmp_path / "anh"
     other_case = f"{PROJECT}/Congai/cong.png"
     assert_ai_only_by_case(AI_PATH, other_case)
@@ -507,4 +644,107 @@ def test_sl_t076_1_swapped_copy_with_same_size_and_time_is_not_used(tmp_path, mo
     assert swapped
     if result.available:
         assert os.stat(root / result.ref.rel_path).st_ino == first.st_ino  # đúng file đã chọn
+    assert_ai_wording(result)
+
+
+SL_T076_2 = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T076-2: thư mục đổi tên đi rồi đổi lại đúng lúc kiểm thì lần hỏi lại tên cũ vẫn ra kết "
+        "quả cũ, lớp phòng thứ hai nhận bản sao cùng cỡ, cùng giờ sửa ở tên khác"
+    ),
+)
+
+
+@SL_T076_2
+def test_sl_t076_2_folder_renamed_away_and_back_still_switches_to_copy(tmp_path, monkeypatch):
+    """SL-T076-2 (Thấp, phần còn lại của SL-T076-1 sau lượt 2). Như SL-T076-1 (nháp "that" ghi
+    ``…/CongAI/cong.png``, thư mục ``Khac`` có bản sao cùng cỡ, cùng giờ sửa), nhưng thư mục được
+    đổi qua lại: trước lúc xem danh sách ``CongAI`` → ``CongAI cu``, ``Khac`` → ``Congai``; xem xong
+    đổi lại như cũ; ngay sau lần hỏi lại tên cũ (ra đúng kết quả cũ) lại đổi như lần đầu. Lớp phòng
+    thứ hai nhận ảnh ở ``Congai`` (cùng cỡ, cùng giờ sửa). Mong đợi: không dùng được, hoặc đúng file
+    đã chọn và vẫn là ảnh AI (cách (a) của Soi Lỗi: danh sách nói khác thì không dùng được). Thực
+    tế: dùng được, ``ref`` là bản sao, **ảnh thật** CT012, alt không «Minh họa» vẫn "đã duyệt"."""
+    root = tmp_path / "anh"
+    assert_ai_only_by_case(AI_PATH, f"{PROJECT}/Congai/cong.png")
+    chosen = write(root / AI_PATH, AI_BYTES)
+    copy = write(root / PROJECT / "Khac" / "cong.png", AI_BYTES)
+    first = os.stat(chosen)
+    os.utime(copy, ns=(first.st_atime_ns, first.st_mtime_ns))
+    if not case_insensitive(root):
+        pytest.skip("ổ phân biệt hoa thường: xem test dưới")
+    project = root / PROJECT
+
+    def swap_in() -> None:
+        os.rename(project / "CongAI", project / "CongAI cu")
+        os.rename(project / "Khac", project / "Congai")
+
+    def swap_back() -> None:
+        os.rename(project / "Congai", project / "Khac")
+        os.rename(project / "CongAI cu", project / "CongAI")
+
+    original_list, original_stat = ImageLibrary.list_folder, ImageLibrary.stat_image
+    steps: list[str] = []
+
+    def list_folder(self, root_index, rel_dir="", **kwargs):
+        if rel_dir != PROJECT or steps:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        swap_in()
+        steps.append("doi")
+        try:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        finally:
+            swap_back()
+            steps.append("tra")
+
+    def stat_image(self, ref):
+        entry = original_stat(self, ref)
+        if steps == ["doi", "tra"] and ref.rel_path == AI_PATH:  # vừa hỏi lại tên cũ
+            swap_in()
+            steps.append("doi-lai")
+        return entry
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    result = check_chosen_image(real_image(AI_PATH), ImageLibrary([root]))
+    monkeypatch.undo()
+    # Lần đổi thứ hai chỉ có khi còn bước hỏi lại tên cũ (cách sửa khác có thể không hỏi lại).
+    assert steps[:2] == ["doi", "tra"]
+    if result.available:
+        assert os.stat(root / result.ref.rel_path).st_ino == first.st_ino  # đúng file đã chọn
+    assert_ai_wording(result)
+
+
+@SL_T076_2
+def test_sl_t076_2_case_sensitive_disk_one_rename_away_and_back(both_folders, monkeypatch):
+    """SL-T076-2 trên ổ thật phân biệt hoa thường: có sẵn ``CongAI/cong.png`` (ảnh AI) và
+    ``congai/cong.png`` là bản sao (cùng cỡ, cùng giờ sửa). Chỉ cần ``CongAI`` vắng mặt đúng lúc
+    lớp phòng thứ hai xem danh sách (đổi tên đi, xem xong đổi lại): danh sách chỉ có ``congai``,
+    hỏi lại tên cũ ra đúng kết quả cũ, ảnh ở ``congai`` cùng cỡ, cùng giờ sửa nên được nhận: ảnh
+    thật. Mong đợi như test trên."""
+    chosen, copy = both_folders / AI_PATH, both_folders / LOWER_PATH
+    copy.write_bytes(AI_BYTES)
+    first = os.stat(chosen)
+    os.utime(copy, ns=(first.st_atime_ns, first.st_mtime_ns))
+    project = both_folders / PROJECT
+    original_list = ImageLibrary.list_folder
+    steps: list[str] = []
+
+    def list_folder(self, root_index, rel_dir="", **kwargs):
+        if rel_dir != PROJECT or steps:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        os.rename(project / "CongAI", project / "CongAI tam")
+        steps.append("doi")
+        try:
+            return original_list(self, root_index, rel_dir, **kwargs)
+        finally:
+            os.rename(project / "CongAI tam", project / "CongAI")
+            steps.append("tra")
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    result = check_chosen_image(real_image(AI_PATH), ImageLibrary([both_folders]))
+    monkeypatch.undo()
+    assert steps == ["doi", "tra"]
+    if result.available:
+        assert os.stat(both_folders / result.ref.rel_path).st_ino == first.st_ino
     assert_ai_wording(result)
