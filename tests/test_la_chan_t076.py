@@ -210,13 +210,6 @@ def snapshot_of(*images: DraftImage) -> DraftSnapshot:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T076-3 = SL-T076-2: lớp phòng thứ hai nhận bản sao ở tên của danh sách thư mục (đã nhớ "
-        "từ ảnh trước của nháp) khi hỏi lại tên cũ ra kết quả cũ"
-    ),
-)
 def test_lc_t076_3_cached_listing_and_one_rename_on_case_sensitive_folder(tmp_path, monkeypatch):
     """Thư mục công trình **phân biệt** hoa thường có ``congai/cong.png`` là bản sao y hệt (cùng cỡ,
     cùng giờ sửa) của ảnh AI ở ``X/cong.png``. Nháp 2 ảnh: ảnh 1 ở ``truoc/`` làm danh sách thư mục

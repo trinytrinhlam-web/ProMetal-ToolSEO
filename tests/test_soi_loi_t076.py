@@ -647,16 +647,6 @@ def test_sl_t076_1_swapped_copy_with_same_size_and_time_is_not_used(tmp_path, mo
     assert_ai_wording(result)
 
 
-SL_T076_2 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T076-2: thư mục đổi tên đi rồi đổi lại đúng lúc kiểm thì lần hỏi lại tên cũ vẫn ra kết "
-        "quả cũ, lớp phòng thứ hai nhận bản sao cùng cỡ, cùng giờ sửa ở tên khác"
-    ),
-)
-
-
-@SL_T076_2
 def test_sl_t076_2_folder_renamed_away_and_back_still_switches_to_copy(tmp_path, monkeypatch):
     """SL-T076-2 (Thấp, phần còn lại của SL-T076-1 sau lượt 2). Như SL-T076-1 (nháp "that" ghi
     ``…/CongAI/cong.png``, thư mục ``Khac`` có bản sao cùng cỡ, cùng giờ sửa), nhưng thư mục được
@@ -715,7 +705,6 @@ def test_sl_t076_2_folder_renamed_away_and_back_still_switches_to_copy(tmp_path,
     assert_ai_wording(result)
 
 
-@SL_T076_2
 def test_sl_t076_2_case_sensitive_disk_one_rename_away_and_back(both_folders, monkeypatch):
     """SL-T076-2 trên ổ thật phân biệt hoa thường: có sẵn ``CongAI/cong.png`` (ảnh AI) và
     ``congai/cong.png`` là bản sao (cùng cỡ, cùng giờ sửa). Chỉ cần ``CongAI`` vắng mặt đúng lúc

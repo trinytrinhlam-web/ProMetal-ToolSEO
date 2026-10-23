@@ -1098,6 +1098,86 @@ def test_lc_t076_2_folder_renamed_between_checks_is_unavailable(monkeypatch, lib
     assert_ai_without_project(result.tags)
 
 
+@pytest.mark.parametrize(
+    ("ids", "available"),
+    [
+        ({"congai/cong.png": (7, 1), "CongAI/cong.png": (7, 2)}, False),
+        ({"congai/cong.png": (7, 1), "CongAI/cong.png": (7, 1)}, True),
+        ({"congai/cong.png": None, "CongAI/cong.png": None}, True),
+    ],
+    ids=["ban-sao-khac-dinh-danh", "cung-mot-file", "o-khong-co-dinh-danh"],
+)
+def test_lc_t076_3_file_at_listing_name_must_be_the_same_file(monkeypatch, library, ids, available):
+    """LC-T076-3 (T-079): ổ không cho biết tên trên ổ (``stat_image`` trả lại chữ đã gõ), danh sách
+    cho đúng một tên khác hoa thường. Ảnh ở tên của danh sách cùng cỡ, cùng giờ sửa nhưng khác định
+    danh (``file_id``) là bản sao: không dùng được. Cùng định danh: dùng tên của danh sách. Ổ không
+    cho biết định danh (``None`` cả hai lần): chỉ so được cỡ, giờ sửa, như trước T-079."""
+    assert_ai_only_by_case("CongAI/cong.png", "congai/cong.png")
+    asked: list[str] = []
+
+    def stat_image(_library, ref):
+        asked.append(ref.rel_path)
+        file_id = ids[ref.rel_path]
+        return ImageEntry(ref=ref, name=ref.name, size=10, modified=0.0, file_id=file_id)
+
+    def list_folder(_library, root_index, rel_dir="", **kwargs):
+        subfolders = (SubFolder(rel_path="CongAI", name="CongAI"),)
+        return SimpleNamespace(subfolders=subfolders, truncated=False)
+
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    result = check_chosen_image(real_image(rel_path="congai/cong.png"), library)
+    assert asked == ["congai/cong.png", "congai/cong.png", "CongAI/cong.png"]
+    assert result.available is available
+    if available:
+        assert result.ref == ImageRef(0, "CongAI/cong.png") and result.entry.ref == result.ref
+        assert result.entry.file_id == ids["CongAI/cong.png"]
+        assert result.is_ai
+    else:
+        assert result.entry is None
+        assert "mở lại từ thư mục ảnh gốc" in result.message
+
+
+def test_lc_t076_3_old_name_asked_again_must_be_the_same_file(monkeypatch, library):
+    """LC-T076-3 (= SL-T076-2, T-079): hỏi lại tên cũ ra cùng tên, cùng cỡ, cùng giờ sửa nhưng khác
+    định danh (thư mục đổi tên đi rồi một bản sao được đặt vào tên cũ): ảnh không dùng được, không
+    hỏi tới ảnh ở tên của danh sách."""
+    assert_ai_only_by_case("CongAI/cong.png", "Congai/cong.png")
+    asked: list[str] = []
+
+    def stat_image(_library, ref):
+        asked.append(ref.rel_path)
+        file_id = (7, len(asked))  # mỗi lần hỏi là một file khác
+        return ImageEntry(ref=ref, name=ref.name, size=10, modified=0.0, file_id=file_id)
+
+    def list_folder(_library, root_index, rel_dir="", **kwargs):
+        subfolders = (SubFolder(rel_path="Congai", name="Congai"),)
+        return SimpleNamespace(subfolders=subfolders, truncated=False)
+
+    monkeypatch.setattr(ImageLibrary, "stat_image", stat_image)
+    monkeypatch.setattr(ImageLibrary, "list_folder", list_folder)
+    result = check_chosen_image(real_image(rel_path="CongAI/cong.png"), library)
+    assert not result.available and result.entry is None
+    assert "mở lại từ thư mục ảnh gốc" in result.message
+    assert asked == ["CongAI/cong.png", "CongAI/cong.png"]
+    assert_ai_without_project(result.tags)
+
+
+def test_stat_image_on_real_disk_gives_file_id(roots):
+    """``ImageLibrary.stat_image`` thật trả định danh của file đã kiểm (``file_id``): bản sao cùng
+    cỡ, cùng giờ sửa có định danh khác (cái mà bước hỏi lại tên ở trên dựa vào, LC-T076-3)."""
+    chosen = write(roots[0] / "CongAI" / "cong.png", b"\x89PNG anh AI")
+    copy = write(roots[0] / "Khac" / "cong.png", b"\x89PNG anh AI")
+    first = os.stat(chosen)
+    os.utime(copy, ns=(first.st_atime_ns, first.st_mtime_ns))
+    library = ImageLibrary(roots)
+    entry = library.stat_image(ImageRef(0, "CongAI/cong.png"))
+    other = library.stat_image(ImageRef(0, "Khac/cong.png"))
+    assert entry.file_id == (first.st_dev, first.st_ino)
+    assert (other.size, other.modified) == (entry.size, entry.modified)
+    assert other.file_id != entry.file_id
+
+
 @pytest.mark.parametrize("other", [(30, 0.0), (10, 99.0)], ids=["khac-co", "khac-gio-sua"])
 def test_lc_t055_2_name_from_listing_must_be_the_checked_file(monkeypatch, library, store, other):
     """LC-T055-2 (T-076): ảnh ở tên theo danh sách khác cỡ hay giờ sửa với ảnh vừa kiểm (thư mục bị

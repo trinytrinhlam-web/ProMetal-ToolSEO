@@ -841,6 +841,7 @@ def check_draft_images(
       hai, ``list_folder`` không đệ quy, mỗi thư mục một lần cho cả nháp). Danh sách xem hết mà cho
       tên khác tên ``stat_image`` vừa trả thì thư mục vừa đổi tên: ảnh không dùng được, kèm
       ``message``, kể cả khi ảnh ở tên mới cùng cỡ, cùng giờ sửa (bản sao; LC-T055-2, LC-T076-2).
+      Các lần hỏi lại so cả định danh file (``ImageEntry.file_id``, LC-T076-3).
       Danh sách bị cắt (thư mục cha hơn 5.000 mục, quét quá giờ) mà chưa thấy tên trùng hẳn thì
       giữ tên ``stat_image`` trả (LC-T055-3).
     - ``scanned`` (**điều kiện**): ``ImageEntry``/``ImageRef`` lấy từ ``ImageLibrary.list_folder``,
@@ -933,12 +934,21 @@ def _check_images(
                     # hai lần xem: hỏi lại tên cũ thì ổ trả tên khác, ảnh không dùng được, không
                     # nhận ảnh ở tên mới dù cùng cỡ, cùng giờ sửa (bản sao, LC-T076-2 = SL-T076-1).
                     # Chỉ dùng tên của danh sách khi hỏi lại tên cũ vẫn ra đúng kết quả cũ (thư
-                    # viện không cho biết tên trên ổ) và ảnh ở tên mới cùng cỡ, cùng giờ sửa; dùng
-                    # số liệu mới (LC-T055-2).
-                    if library.stat_image(ref) != entry:
+                    # viện không cho biết tên trên ổ) và ảnh ở tên mới là **cùng một file**: cùng
+                    # cỡ, cùng giờ sửa, cùng định danh trên ổ (``file_id``) với lần hỏi đầu; dùng
+                    # số liệu mới (LC-T055-2). So định danh giữa các lần hỏi: thư mục đổi tên đi
+                    # rồi đổi lại, hay danh sách nhớ từ ảnh trước của nháp, không làm bản sao ở
+                    # tên khác thành ảnh đã chọn (LC-T076-3 = SL-T076-2). Ổ không cho biết định
+                    # danh (``file_id`` là ``None`` cả hai lần) thì chỉ so được cỡ, giờ sửa.
+                    first = library.stat_image(ref)
+                    if first != entry or first.file_id != entry.file_id:
                         raise ImageFolderError(_MSG_FOLDER_NAME)
                     again = library.stat_image(real)
-                    same = (again.size, again.modified) == (entry.size, entry.modified)
+                    same = (again.size, again.modified, again.file_id) == (
+                        entry.size,
+                        entry.modified,
+                        entry.file_id,
+                    )
                     if again.ref != real or not same:
                         raise ImageFolderError(_MSG_FOLDER_NAME)
                     ref, entry = again.ref, again

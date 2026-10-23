@@ -20,6 +20,11 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
   gõ khi ``resolve`` (LC-T076-1).
 - Khi quét, thư mục được "giữ" để không bị tráo giữa lúc kiểm và lúc đọc (xem phần "giữ thư
   mục trong lúc quét").
+- Đọc một ảnh, lấy số liệu một ảnh (``read_image_bytes``, ``stat_image``) không đi theo chuỗi đường
+  dẫn đã kiểm (T-079, SL-T063-2, -3): một tầng giữa bị tráo thành liên kết ngay sau lúc kiểm thì
+  đường dẫn đi xuyên ra ngoài gốc. Mac/Linux mở thư mục cha từng tầng từ gốc (``O_NOFOLLOW``) rồi
+  mở/``stat`` file trong chính thư mục đã mở; Windows hỏi đường dẫn thật của chính handle vừa mở
+  (phải đúng là ``gốc/parts``). Số liệu và nội dung lấy từ mục đã mở, không từ ``lstat`` theo tên.
 - Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``.
 - Quét có ngân sách (số mục, số giây), phân trang; vượt ngân sách thì dừng và báo "còn nữa".
 - Chỉ đọc: module không tạo, sửa, đổi tên hay xóa gì trong thư mục ảnh (quyết định 3A).
@@ -39,7 +44,7 @@ import time
 import unicodedata
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 # JPEG, PNG, WebP, HEIC/HEIF (iPhone, quyết định 1A), AVIF. Không nhận GIF, BMP, TIFF, .lnk.
@@ -87,6 +92,8 @@ _MSG_UNREADABLE = "Không đọc được mục này (không có quyền hoặc 
 _MSG_HIDDEN = "App không đọc thư mục hay file ẩn, file hệ thống."
 _MSG_ALIAS = "Đường dẫn ảnh không hợp lệ (tên ngắn hoặc tên khác của cùng một mục)."
 _MSG_SLOW = "Ổ đĩa đang chậm nên chưa kiểm được tên thư mục, hãy thử lại."
+_MSG_IMAGE_CHANGED = "Ảnh vừa bị thay đổi trong lúc đọc, hãy thử lại."
+_MSG_CANNOT_OPEN = "Không mở được ảnh (không có quyền hoặc file vừa bị đổi)."
 
 
 class ImageFolderError(Exception):
@@ -200,6 +207,11 @@ def _same_file(a: os.stat_result, b: os.stat_result) -> bool:
     return (a.st_dev, a.st_ino) == (b.st_dev, b.st_ino)
 
 
+def _file_id(st: os.stat_result) -> tuple[int, int] | None:
+    """Định danh của mục trên ổ (số ổ, số inode); ổ không có số inode thì ``None``."""
+    return (st.st_dev, st.st_ino) if st.st_ino else None
+
+
 # ----- giữ thư mục trong lúc quét (L1) ------------------------------------------------------
 #
 # Kiểm đường dẫn rồi mới ``scandir`` theo tên thì có khe: thư mục bị tráo thành junction ở giữa
@@ -215,6 +227,8 @@ def _same_file(a: os.stat_result, b: os.stat_result) -> bool:
 # - Ổ không cho giữ thư mục (Windows, ổ lạ): kiểm cả đường đi trước và sau khi quét, so định danh.
 
 _SCANDIR_BY_FD = os.scandir in os.supports_fd  # Mac/Linux có, Windows không
+# Mở, ``stat`` một mục trong thư mục đã mở (``openat``, ``fstatat``): Mac/Linux có, Windows không.
+_OPEN_BY_DIR_FD = os.open in os.supports_dir_fd and os.stat in os.supports_dir_fd
 _FILE_LIST_DIRECTORY = 0x0001
 _FILE_READ_ATTRIBUTES = 0x0080
 _FILE_SHARE_READ_WRITE = 0x0001 | 0x0002  # cố ý không có FILE_SHARE_DELETE (0x0004)
@@ -267,27 +281,35 @@ def _kernel32():  # chỉ gọi trên Windows
     return k32
 
 
-@contextlib.contextmanager
-def _win_hold_dir(path: Path) -> Iterator[int | None]:
-    """Mở và giữ thư mục trên Windows; trả fd, hoặc None nếu ổ không cho mở kiểu này."""
+def _win_open(path: Path, access: int) -> int | None:
+    """Mở chính mục ``path`` trên Windows (tầng cuối là reparse point thì mở chính nó, không đi
+    theo), không chia sẻ quyền xóa; trả fd (``os.close`` đóng luôn handle), hoặc None nếu không mở
+    được."""
     import msvcrt
 
     k32 = _kernel32()
     handle = k32.CreateFileW(
         str(path),
-        _FILE_LIST_DIRECTORY | _FILE_READ_ATTRIBUTES,
+        access,
         _FILE_SHARE_READ_WRITE,
         None,
         _OPEN_EXISTING,
         _FILE_FLAG_BACKUP_SEMANTICS | _FILE_FLAG_OPEN_REPARSE_POINT,
         None,
     )
-    fd = None
-    if handle not in (None, 0, ctypes.c_void_p(-1).value):
-        try:
-            fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
-        except OSError:
-            k32.CloseHandle(handle)
+    if handle in (None, 0, ctypes.c_void_p(-1).value):
+        return None
+    try:
+        return msvcrt.open_osfhandle(handle, os.O_RDONLY)
+    except OSError:
+        k32.CloseHandle(handle)
+        return None
+
+
+@contextlib.contextmanager
+def _win_hold_dir(path: Path) -> Iterator[int | None]:
+    """Mở và giữ thư mục trên Windows; trả fd, hoặc None nếu ổ không cho mở kiểu này."""
+    fd = _win_open(path, _FILE_LIST_DIRECTORY | _FILE_READ_ATTRIBUTES)
     try:
         yield fd
     finally:
@@ -324,6 +346,18 @@ def _win_final_path(fd: int) -> str | None:
     return buffer.value
 
 
+def _win_handle_at(fd: int, path: Path) -> bool:
+    """Mục đang mở (hỏi đường dẫn thật từ chính handle, không theo tên) đúng là ``path``.
+
+    Mở theo đường dẫn thì Windows đi xuyên junction, symlink ở các tầng giữa: tầng giữa vừa bị tráo
+    thì đường dẫn thật của handle nằm chỗ khác (SL-T063-2). ``path`` phải ghép từ gốc đã ``resolve``
+    (cùng cách hỏi đường dẫn thật). Không hỏi được thì coi như không đúng (an toàn trước): ổ nào
+    ``resolve(strict=True)`` được (``_resolve_inside``) thì ổ đó trả lời được câu hỏi này.
+    """
+    final = _win_final_path(fd)
+    return final is not None and _path_key(final) == _path_key(str(path))
+
+
 def _win_listed_name(path: Path) -> str:
     """Tên của mục cuối ``path`` do thư mục cha liệt kê ra (Windows, ``FindFirstFileW``).
 
@@ -355,7 +389,11 @@ def _path_key(path: str) -> str:
 
 
 def _posix_open_dir(root: Path, parts: tuple[str, ...]) -> int:
-    """Mở thư mục ``gốc/parts`` từng tầng một, không đi theo liên kết nào (Mac/Linux)."""
+    """Mở thư mục ``gốc/parts`` từng tầng một, không đi theo liên kết nào (Mac/Linux).
+
+    Cần quyền đọc danh sách mỗi tầng (thư mục chỉ có quyền "đi qua" thì không mở được, như khi
+    quét). Lỗi ``OSError`` để chỗ gọi đổi thành câu báo (``_open_error``).
+    """
     flags = os.O_RDONLY
     for name in ("O_DIRECTORY", "O_NOFOLLOW", "O_CLOEXEC", "O_NONBLOCK"):
         flags |= getattr(os, name, 0)
@@ -369,6 +407,20 @@ def _posix_open_dir(root: Path, parts: tuple[str, ...]) -> int:
         os.close(fd)
         raise
     return fd
+
+
+def _open_error(exc: OSError) -> ImageFolderError:
+    """Câu báo cho lỗi khi mở thư mục từng tầng (``_posix_open_dir``) hay đọc tên trong đó.
+
+    Các tầng vừa được kiểm là thư mục thật, nên ``ELOOP`` (một tầng là symlink) và ``ENOTDIR`` đều
+    là thư mục vừa bị thay đổi, không phải "không có quyền": Linux trả ``ENOTDIR`` thay ``ELOOP``
+    khi mở symlink bằng ``O_DIRECTORY | O_NOFOLLOW`` (SL-T063-5), và tầng vừa thành file cũng vậy.
+    """
+    if isinstance(exc, FileNotFoundError):
+        return ImageFolderError(_MSG_NOT_FOUND)
+    if isinstance(exc, PermissionError):
+        return ImageFolderError(_MSG_UNREADABLE)
+    return _ChangedError()
 
 
 def _format_mb(size: int) -> str:
@@ -419,6 +471,10 @@ class ImageEntry:
     name: str
     size: int  # byte
     modified: float  # thời điểm sửa (giây kể từ epoch), dùng làm khóa cache ảnh xem trước
+    # Định danh của file trên ổ (số ổ, số inode), chỉ ``stat_image`` điền: so hai lần hỏi xem có
+    # phải cùng một file không (bản sao cùng cỡ, cùng giờ sửa vẫn khác định danh; LC-T076-3).
+    # ``None``: không biết (kết quả quét, ổ không có số inode). Không tính khi so ``ImageEntry``.
+    file_id: tuple[int, int] | None = field(default=None, compare=False, repr=False)
 
 
 @dataclass(frozen=True)
@@ -647,12 +703,8 @@ class ImageLibrary:
                 with os.scandir(root.joinpath(*real) if fd is None else fd) as entries:
                     names = (entry.name for entry in entries)
                     real.append(_match_disk_name(names, part, time_is_up))
-            except FileNotFoundError:
-                raise ImageFolderError(_MSG_NOT_FOUND) from None
-            except (NotADirectoryError, PermissionError):
-                raise ImageFolderError(_MSG_UNREADABLE) from None
-            except OSError:  # ELOOP: một tầng vừa bị tráo thành symlink
-                raise _ChangedError() from None
+            except OSError as exc:  # ELOOP, ENOTDIR: một tầng vừa bị tráo thành symlink
+                raise _open_error(exc) from None
             finally:
                 if fd is not None:
                     os.close(fd)
@@ -769,35 +821,126 @@ class ImageLibrary:
         gõ khác hoa thường (hay khác dạng Unicode, trên Mac) vẫn tìm ra ảnh, nhưng kết quả mang
         tên thật, kể cả trên ổ trả lại chữ đã gõ khi ``resolve`` (LC-T076-1). Dùng ``entry.ref``
         (không dùng ``ref`` đã đưa vào) làm khóa, để đọc thẻ ảnh.
+
+        Số liệu (cỡ, giờ sửa, ``file_id``) lấy từ chính mục trong thư mục ảnh (``_opened_stat``),
+        không từ ``lstat`` theo chuỗi đường dẫn (SL-T063-3).
         """
         root, _path, lst = self._checked_file(ref)
         real = self._disk_names(root, ref.parts, lst)
+        st = self._opened_stat(root, real, lst)
         found = ref if real == ref.parts else ImageRef(ref.root_index, "/".join(real))
-        return ImageEntry(ref=found, name=found.name, size=lst.st_size, modified=lst.st_mtime)
+        return ImageEntry(
+            ref=found,
+            name=found.name,
+            size=st.st_size,
+            modified=st.st_mtime,
+            file_id=_file_id(st),
+        )
+
+    def _opened_stat(
+        self, root: Path, parts: tuple[str, ...], expected: os.stat_result
+    ) -> os.stat_result:
+        """Số liệu của ảnh ``gốc/parts`` lấy từ chính mục nằm trong thư mục ảnh (SL-T063-3).
+
+        ``lstat`` theo chuỗi đường dẫn (``_resolve_inside``) đi xuyên một tầng giữa vừa bị tráo
+        thành liên kết, nên không lấy số liệu từ đó. Không mở file để đọc (Drive "chỉ trực tuyến"
+        không bị tải về):
+
+        - Mac/Linux: mở thư mục cha từng tầng từ gốc (``_posix_open_dir``, ``O_NOFOLLOW``), rồi
+          ``stat`` mục cuối trong chính thư mục đã mở, không đi theo symlink.
+        - Windows: mở chính mục cuối chỉ để hỏi thuộc tính (như ``os.lstat`` của Python trên
+          Windows), đường dẫn thật của handle phải đúng là ``gốc/parts`` (``_win_handle_at``), rồi
+          lấy số liệu trên handle đó.
+
+        Mục phải là file thường, không ẩn, không quá giới hạn, cùng định danh với ``expected`` (mục
+        vừa kiểm theo đường dẫn): khác là bị tráo giữa chừng.
+        """
+        if _OPEN_BY_DIR_FD:
+            try:
+                fd = _posix_open_dir(root, parts[:-1])
+            except OSError as exc:
+                raise _open_error(exc) from None
+            try:
+                st = os.stat(parts[-1], dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError:
+                raise ImageFolderError(_MSG_NOT_FOUND) from None
+            except OSError:
+                raise ImageFolderError(_MSG_UNREADABLE) from None
+            finally:
+                os.close(fd)
+        else:
+            path = root.joinpath(*parts)
+            fd = _win_open(path, _FILE_READ_ATTRIBUTES)
+            if fd is None:
+                raise ImageFolderError(_MSG_UNREADABLE)
+            try:
+                if not _win_handle_at(fd, path) or _win_handle_is_link(fd):
+                    raise ImageFolderError(_MSG_IMAGE_CHANGED)
+                st = os.fstat(fd)
+            finally:
+                os.close(fd)
+        if (
+            _is_link_stat(st)
+            or not stat.S_ISREG(st.st_mode)
+            or _is_hidden_stat(st)
+            or not _same_file(st, expected)
+        ):
+            raise ImageFolderError(_MSG_IMAGE_CHANGED)
+        self._check_size(st.st_size)
+        return st
+
+    def _open_image(self, root: Path, parts: tuple[str, ...], path: Path) -> int:
+        """Mở file ảnh ``gốc/parts`` (``path``: đường dẫn đã ``resolve`` của ``_checked_file``) để
+        đọc; chắc chắn file đã mở nằm trong thư mục ảnh (SL-T063-2). Trả fd.
+
+        - Mac/Linux: mở thư mục cha từng tầng từ gốc (``O_NOFOLLOW`` mỗi tầng), rồi mở file trong
+          chính thư mục đó, cũng ``O_NOFOLLOW``: không tầng nào đi theo symlink.
+        - Windows (``os`` không mở được file trong thư mục đã mở): mở theo ``path``, rồi hỏi đường
+          dẫn thật của chính handle vừa mở; phải đúng là ``gốc/parts``, không thì một tầng vừa bị
+          tráo thành junction (hay symlink) và file đã mở nằm chỗ khác.
+        """
+        flags = os.O_RDONLY
+        names = ("O_BINARY", "O_NOINHERIT", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK", "O_NOCTTY")
+        for name in names:
+            # O_NOFOLLOW: file bị tráo thành symlink ngay trước khi mở thì báo lỗi.
+            # O_NONBLOCK: file bị tráo thành FIFO thì không treo (file thường không bị ảnh hưởng).
+            # O_NOCTTY: file bị tráo thành thiết bị đầu cuối thì không thành terminal của app.
+            flags |= getattr(os, name, 0)
+        if _OPEN_BY_DIR_FD:
+            try:
+                dir_fd = _posix_open_dir(root, parts[:-1])
+            except OSError as exc:
+                raise _open_error(exc) from None
+            try:
+                return os.open(parts[-1], flags, dir_fd=dir_fd)
+            except OSError:
+                raise ImageFolderError(_MSG_CANNOT_OPEN) from None
+            finally:
+                os.close(dir_fd)
+        try:
+            fd = os.open(path, flags)
+        except OSError:
+            raise ImageFolderError(_MSG_CANNOT_OPEN) from None
+        if not _win_handle_at(fd, root.joinpath(*parts)):
+            os.close(fd)
+            raise ImageFolderError(_MSG_IMAGE_CHANGED)
+        return fd
 
     def read_image_bytes(self, ref: ImageRef) -> bytes:
         """Đọc nguyên nội dung một ảnh (không quá giới hạn dung lượng).
 
         Trả bytes thay vì đường dẫn hay đối tượng file, để đường dẫn tuyệt đối không ra khỏi
         module. Chưa kiểm nội dung có đúng là ảnh không: việc đó của bước mở ảnh (T-046 mục 2).
+        File mở qua ``_open_image`` (không đi theo chuỗi đường dẫn, SL-T063-2), phải đúng là file
+        vừa kiểm (so định danh trên fd đã mở).
         """
-        _root, path, lst = self._checked_file(ref)
-        flags = os.O_RDONLY
-        for name in ("O_BINARY", "O_NOINHERIT", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK"):
-            # O_NOFOLLOW: file bị tráo thành symlink ngay trước khi mở thì báo lỗi.
-            # O_NONBLOCK: file bị tráo thành FIFO thì không treo (file thường không bị ảnh hưởng).
-            flags |= getattr(os, name, 0)
-        try:
-            fd = os.open(path, flags)
-        except OSError:
-            raise ImageFolderError(
-                "Không mở được ảnh (không có quyền hoặc file vừa bị đổi)."
-            ) from None
+        root, path, lst = self._checked_file(ref)
+        fd = self._open_image(root, ref.parts, path)
         with os.fdopen(fd, "rb") as handle:
             opened = os.fstat(handle.fileno())
             same_file = (opened.st_dev, opened.st_ino) == (lst.st_dev, lst.st_ino)
             if not stat.S_ISREG(opened.st_mode) or (lst.st_ino and not same_file):
-                raise ImageFolderError("Ảnh vừa bị thay đổi trong lúc đọc, hãy thử lại.")
+                raise ImageFolderError(_MSG_IMAGE_CHANGED)
             self._check_size(opened.st_size)
             try:
                 data = handle.read(self._max_file_bytes + 1)
@@ -894,12 +1037,8 @@ class _Scan:
     def _scan_by_fd(self, parts: tuple[str, ...], depth: int) -> list[tuple[tuple[str, ...], int]]:
         try:
             fd = _posix_open_dir(self.root, parts)
-        except FileNotFoundError:
-            raise ImageFolderError(_MSG_NOT_FOUND) from None
-        except (NotADirectoryError, PermissionError):
-            raise ImageFolderError(_MSG_UNREADABLE) from None
-        except OSError:  # ELOOP: một tầng là symlink
-            raise _ChangedError() from None
+        except OSError as exc:  # ELOOP, ENOTDIR: một tầng là symlink (SL-T063-5)
+            raise _open_error(exc) from None
         try:
             return self._read_entries(fd, parts, depth)
         finally:

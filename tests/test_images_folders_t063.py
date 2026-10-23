@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import socket
-import sys
 from pathlib import Path
 
 import pytest
@@ -181,13 +180,6 @@ def test_subfolder_swapped_during_recursive_scan_is_skipped(tmp_path, monkeypatc
 
 
 @posix_only
-@pytest.mark.xfail(
-    sys.platform.startswith("linux"),
-    strict=True,
-    reason="SL-T063-5: Linux trả ENOTDIR (không phải ELOOP) cho openat(O_DIRECTORY | O_NOFOLLOW) "
-    "trên symlink, nên thư mục bị tráo thành symlink bị báo 'không có quyền / ổ bị ngắt' và đếm "
-    "vào unreadable",
-)
 def test_sl_t063_5_swapped_folder_is_reported_as_link_not_unreadable(tmp_path, monkeypatch):
     """Mong đợi (như chú thích ``_scan_by_fd``: "ELOOP: một tầng là symlink"): thư mục bị tráo
     thành symlink đếm vào ``links``; xem thẳng thư mục đó thì báo "vừa bị thay đổi" hay "liên kết
@@ -310,11 +302,6 @@ def swap_world(tmp_path, monkeypatch):
 
 
 @posix_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T063-2: thư mục bị tráo thành symlink hai lần (lúc lstat mục cuối và lúc open) "
-    "thì read_image_bytes đọc được nội dung file ngoài gốc",
-)
 def test_sl_t063_2_folder_swapped_twice_cannot_read_outside_content(swap_world, tmp_path):
     """Đường đi: ``_resolve_inside`` lấy ``lstat`` của mục cuối qua ``x`` lúc ``x`` là symlink
     (ra file ngoài gốc), ``resolve`` lúc ``x`` là thư mục thật (vẫn trong gốc), rồi ``os.open``
@@ -334,11 +321,6 @@ def test_sl_t063_2_folder_swapped_twice_cannot_read_outside_content(swap_world, 
 
 
 @posix_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T063-3: thư mục bị tráo thành symlink lúc lstat mục cuối thì stat_image trả cỡ, "
-    "giờ sửa của file ngoài gốc",
-)
 def test_sl_t063_3_folder_swapped_during_stat_gives_no_outside_size(swap_world, tmp_path):
     """``stat_image`` không mở file nhưng trả cỡ, giờ sửa lấy từ ``lstat`` đi qua ``x`` lúc ``x`` là
     symlink. Mong đợi: báo lỗi gọn hoặc trả số liệu của ảnh mồi, không của file ngoài gốc."""
@@ -367,11 +349,6 @@ def test_sl_t063_3_folder_swapped_during_stat_gives_no_outside_size(swap_world, 
         ({"x/A.jpg": b"\xff\xd8 chu hoa", "x/a.jpg": b"\xff\xd8 chu thuong"}, "x/a.jpg"),
     ],
     ids=["thu-muc-khac-hoa-thuong", "file-khac-hoa-thuong"],
-)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T063-4: trên ổ phân biệt hoa thường, check_chosen_image(scanned=...) đổi ảnh nháp "
-    "sang file khác chỉ khác hoa thường (T-076 sửa; gộp T-076 thì bỏ xfail này)",
 )
 def test_sl_t063_4_scanned_case_sibling_does_not_replace_draft_image(tmp_path, files, rel_path):
     """Ổ phân biệt hoa thường (Linux; Mac khi định dạng APFS phân biệt hoa thường): ``CongAI`` và
@@ -454,12 +431,6 @@ def win_swap_world(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(not IS_WINDOWS, reason="cách tráo junction của Windows: thử trên Windows")
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T063-2 (Windows): lỗ hổng nằm trong code đọc chung mọi hệ điều hành; khi kẻ tấn "
-    "công thắng hai lần tráo thì read_image_bytes trả nội dung file ngoài gốc. Thực tế đua này "
-    "gần như không thắng được trên Windows (biên bản); T-079 phải vá / giải trình.",
-)
 def test_sl_t063_2_windows_swap_cannot_read_outside_content(win_swap_world, tmp_path):
     """Như ``test_sl_t063_2_...`` nhưng dùng junction của Windows. Mong đợi: báo lỗi gọn hoặc ra ảnh
     mồi, không bao giờ ra nội dung file ngoài gốc (F1)."""
@@ -476,11 +447,6 @@ def test_sl_t063_2_windows_swap_cannot_read_outside_content(win_swap_world, tmp_
 
 
 @pytest.mark.skipif(not IS_WINDOWS, reason="cách tráo junction của Windows: thử trên Windows")
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T063-3 (Windows): stat_image trả cỡ, giờ sửa của file ngoài gốc khi x bị tráo thành "
-    "junction đúng lúc lstat mục cuối. Cùng gốc với SL-T063-2; T-079 vá cùng.",
-)
 def test_sl_t063_3_windows_swap_gives_no_outside_size(win_swap_world, tmp_path):
     """Như ``test_sl_t063_3_...`` nhưng dùng junction của Windows."""
     root, attack = win_swap_world
