@@ -220,6 +220,52 @@ def test_forced_swap_with_ref_typed_in_other_case_never_describes_outside(
     assert not x.is_junction() and (x / "bi-mat.jpg").read_bytes() == DECOY
 
 
+@windows_only
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image"])
+def test_kelvin_sibling_seen_by_lstat_and_resolve_is_not_opened(tmp_path, monkeypatch, call):
+    """Đường lọt thật trên ``main`` 417efea (tráo thật: lọt nội dung 39/2.783 vòng): ``x`` là
+    junction tới ``x`` của thư mục anh em tên dấu Kelvin đúng lúc ``lstat`` mục ảnh và lúc
+    ``resolve``, thư mục thật lúc mở. ``is_relative_to`` (so chữ thường) và khóa tên (``casefold``)
+    coi tên anh em là gốc, nên ``resolve`` trả đường dẫn trong thư mục anh em; bản cũ mở thẳng
+    đường dẫn đó (không cần thắng lúc mở). T-080 không mở theo đường dẫn ``resolve`` trả: đọc ra
+    ảnh mồi hoặc báo lỗi, không bao giờ ra nội dung, cỡ file ngoài."""
+    import _winapi
+
+    base = tmp_path / "cha"
+    root = base / ROOT_NFC
+    write(root / "x" / "bi-mat.jpg", DECOY)
+    target = base / TWINS["anh-em-dau-kelvin"] / "x"
+    write(target / "bi-mat.jpg", SECRET)
+    assert len(os.listdir(base)) == 2, "ổ coi hai tên là một"
+    lib = ImageLibrary([root])
+    x, park = root / "x", tmp_path / "cat-tam"
+
+    def swapped(real):
+        def wrapped(path, *args, **kwargs):
+            if basename(path) != "bi-mat.jpg":
+                return real(path, *args, **kwargs)
+            x.rename(park)
+            _winapi.CreateJunction(str(target), str(x))
+            try:
+                return real(path, *args, **kwargs)
+            finally:
+                os.rmdir(x)
+                park.rename(x)
+
+        return wrapped
+
+    with monkeypatch.context() as patch:
+        patch.setattr(folders.os, "lstat", swapped(os.lstat))
+        patch.setattr(Path, "resolve", swapped(Path.resolve))
+        try:
+            result = getattr(lib, call)(ImageRef(0, "x/bi-mat.jpg"))
+        except ImageFolderError as exc:
+            assert_no_abs_path(str(exc), tmp_path)
+        else:
+            assert (result if call == "read_image_bytes" else result.size) in (DECOY, len(DECOY))
+    assert not x.is_junction() and (x / "bi-mat.jpg").read_bytes() == DECOY
+
+
 # ----- SL-T080-1: handle hỏi thuộc tính mở hỏng vì thư mục vừa bị dời đi (Windows) --------------
 
 
