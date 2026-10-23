@@ -1023,9 +1023,11 @@ class WordPressClient:
 
         - Website phải trả ``201 Created`` (LC-T071-1): mã khác có thể là ảnh **đã có** (plugin
           trả lại ảnh trùng), ghi alt vào đó là sửa ảnh có sẵn (R3). Khi đó báo lỗi, không ghi gì.
-        - Alt, tiêu đề, chú thích không còn "[" trần (``escape_shortcodes``, T-061): WordPress
-          chèn alt vào ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy
-          shortcode.
+        - Sau khi tải, **luôn** ghi đè cả ba ô alt, tiêu đề, chú thích (LC-T061-3): ô trống cũng
+          gửi chuỗi rỗng, tiêu đề trống thì lấy tên file đã làm sạch (như WordPress tự đặt). Nếu
+          không, WordPress lấy ba ô từ chữ nằm trong file người dùng chọn (EXIF, IPTC, XMP).
+        - Cả ba không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn alt vào
+          ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
         """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
@@ -1034,33 +1036,34 @@ class WordPressClient:
             raise WordPressError(f"File '{filename}' không phải ảnh được hỗ trợ ({allowed}).")
         if not data:
             raise WordPressError(f"File '{filename}' rỗng.")
-        safe_name = f"{slugify(Path(filename).stem) or 'anh'}{suffix}"
+        stem = slugify(Path(filename).stem) or "anh"
+        safe_name = f"{stem}{suffix}"
+        # Kiểm TRƯỚC khi tải: ảnh đã lên mà không ghi đè được thì chữ trong file ở lại website.
+        fields = {"alt_text": alt_text or "", "title": title or stem, "caption": caption or ""}
+        if not all(isinstance(value, str) for value in fields.values()):
+            raise WordPressError(
+                "Alt, tiêu đề, chú thích của ảnh phải là chữ. Chưa gửi gì lên website."
+            )
 
         media_id, media = self._post_media(data, safe_name, content_type, new_only=True)
 
-        extra = {
-            key: escape_shortcodes(value)
-            for key, value in {"alt_text": alt_text, "title": title, "caption": caption}.items()
-            if value
-        }
-        if extra:
-            updated = self._json(
-                self._request(
-                    "POST",
-                    f"/wp/v2/media/{media_id}",
-                    json=extra,
-                    params={"_fields": _MEDIA_FIELDS},
-                )
+        updated = self._json(
+            self._request(
+                "POST",
+                f"/wp/v2/media/{media_id}",
+                json={key: escape_shortcodes(value) for key, value in fields.items()},
+                params={"_fields": _MEDIA_FIELDS},
             )
-            if isinstance(updated, dict):
-                media = updated
+        )
+        if isinstance(updated, dict):
+            media = updated
 
         source_url = media.get("source_url")
         saved_alt = media.get("alt_text")
         return Media(
             id=media_id,
             source_url=source_url if isinstance(source_url, str) else "",
-            alt_text=saved_alt if isinstance(saved_alt, str) else alt_text,
+            alt_text=saved_alt if isinstance(saved_alt, str) else fields["alt_text"],
         )
 
     def upload_media_file(self, path: Path, **kwargs: Any) -> Media:

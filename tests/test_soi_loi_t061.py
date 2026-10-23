@@ -476,10 +476,6 @@ def test_ban_python_doc_chu_trong_file_anh_cua_wordpress():
     assert wp_runs_shortcode(f'<img alt="{meta["alt"]}">')  # prepend_attachment → do_shortcode
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T061-2: upload_media để WordPress lấy tiêu đề, chú thích, alt từ chữ trong file ảnh",
-)
 @pytest.mark.parametrize("alt_text", ["", "Cổng sắt mới sơn"])
 def test_sl_t061_2_chu_trong_file_anh_khong_thanh_chu_media(
     fake_wp, wp_client, media_site, alt_text

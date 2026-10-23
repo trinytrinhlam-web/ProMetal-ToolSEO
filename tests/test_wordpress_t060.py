@@ -5,7 +5,7 @@
 - LC-T042-4: câu lỗi cố định kèm mã HTTP, không chép lời máy chủ, không chép ``WORDPRESS_URL``.
 - LC-T042-5: ``WORDPRESS_URL`` không được có đoạn đường là file (``.pht``, ``.cgi``…).
 - LC-T061-2: chữ SEO có «<» liền ký tự không phải khoảng trắng ASCII bị chặn.
-- LC-T071-1: ``upload_media`` chỉ nhận ``201``; alt, tiêu đề, chú thích không còn «[» trần.
+- LC-T061-3, LC-T071-1: ``upload_media`` chỉ nhận ``201``, luôn ghi đè alt, tiêu đề, chú thích.
 
 Chỉ site giả (``FakeWordPress``), không gọi WordPress thật hay mạng thật.
 """
@@ -402,12 +402,55 @@ def test_mau_shortcode_dung_chung_voi_t056_khong_doi():
     assert not client_module._has_shortcode("[<>embed]")  # chặn ở bước «<» riêng của _seo_text
 
 
-# ================================================================ LC-T071-1: ảnh
+# ================================================================ LC-T061-3, LC-T071-1: ảnh
 
 
 def media_site(fake, *, status=201):
     fake.on("POST", MEDIA, (status, {"id": 9, "source_url": SOURCE_URL}, {}))
     fake.on("POST", f"{MEDIA}/9", lambda r: {"id": 9, "source_url": SOURCE_URL, **body(r)})
+
+
+def test_upload_media_luon_ghi_de_ca_ba_o_ke_ca_khi_trong(fake_wp, wp_client):
+    """LC-T061-3: ô trống cũng gửi (chuỗi rỗng), tiêu đề trống lấy tên file đã làm sạch; nếu
+    không, WordPress lấy tiêu đề, chú thích, alt từ chữ nằm trong file ảnh."""
+    media_site(fake_wp)
+    media = wp_client.upload_media(JPEG, "Ảnh Cổng Inox.JPG")
+    upload, update = fake_wp.requests
+    assert urlsplit(upload.url).path == MEDIA
+    assert urlsplit(update.url).path == f"{MEDIA}/9"
+    assert body(update) == {"alt_text": "", "title": "anh-cong-inox", "caption": ""}
+    assert parse_qs(urlsplit(update.url).query) == {"_fields": ["id,source_url,alt_text"]}
+    assert media.id == 9 and media.alt_text == ""
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "sent"),
+    [
+        ({"alt_text": "Cổng"}, {"alt_text": "Cổng", "title": "cong", "caption": ""}),
+        ({"title": "Cổng inox"}, {"alt_text": "", "title": "Cổng inox", "caption": ""}),
+        ({"caption": "Sau khi sơn"}, {"alt_text": "", "title": "cong", "caption": "Sau khi sơn"}),
+    ],
+)
+def test_upload_media_o_co_chu_giu_nguyen_o_trong_van_ghi_de(fake_wp, wp_client, kwargs, sent):
+    media_site(fake_wp)
+    wp_client.upload_media(JPEG, "cong.jpg", **kwargs)
+    assert body(fake_wp.requests[-1]) == sent
+
+
+def test_upload_media_o_none_coi_nhu_trong_van_ghi_de(fake_wp, wp_client):
+    media_site(fake_wp)
+    wp_client.upload_media(JPEG, "cong.jpg", alt_text=None, title=None, caption=None)
+    assert body(fake_wp.requests[-1]) == {"alt_text": "", "title": "cong", "caption": ""}
+
+
+@pytest.mark.parametrize("field", ["alt_text", "title", "caption"])
+@pytest.mark.parametrize("value", [5, b"[code_snippet id=1]", ["x"], {"raw": "x"}])
+def test_upload_media_o_khong_phai_chu_bi_chan_truoc_khi_tai(fake_wp, wp_client, field, value):
+    """Không tải ảnh khi chưa chắc ghi đè được 3 ô: nếu không, chữ trong file ở lại website."""
+    media_site(fake_wp)
+    with pytest.raises(WordPressError, match="Chưa gửi gì"):
+        wp_client.upload_media(JPEG, "cong.jpg", **{field: value})
+    assert fake_wp.requests == []
 
 
 def test_upload_media_ba_o_khong_con_ngoac_vuong_tran(fake_wp, wp_client):
