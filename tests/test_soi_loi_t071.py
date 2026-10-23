@@ -420,11 +420,6 @@ def test_shortcode_trong_chu_thich_anh_ai_van_bi_vo_hieu_sau_khi_go_gach_cheo(
         assert "[" not in text and "]" not in text and "\\" not in text
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T071-1: AI tự viết tiền tố «Minh họa» trong ngoặc vuông rồi «:» hay «[» "
-    "(«[Minh họa]: …») thì alt, chú thích ảnh AI lên website còn dấu «\\»",
-)
 @pytest.mark.parametrize(
     ("alt", "caption"),
     [
