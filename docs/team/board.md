@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 11:10 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 13:51 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,8 +34,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Thợ Máy · T-080 dọn đọc ảnh (thử USB) · cloud Linux | `team/T-080` | 23/10 Thợ Máy **xong** (`a88c4e8`: 3 lỗi sửa, gỡ 15 `xfail`; 1.223 test liên quan qua). ⏳ **09:40 Thợ Máy thử ổ USB FAT32** (chủ dự án đồng ý, chỉ đọc thuộc tính) + **lượt cloud Linux** (3 ca SL-T079-L-1, nhánh `team/T-080-linux`); xong thì Soi Lỗi rút gọn | [Thợ Máy](reports/T-080-tho-may.md) |
-| [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI (SL-T071-1). Phải gộp trước T-056 | Thợ Máy · T-081 dấu gạch chéo alt ảnh AI | `team/T-081` | ⏳ **11:10 Thợ Máy đang làm** | |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Lá Chắn rút gọn (chưa giao) | `team/T-080` | 23/10 Thợ Máy xong (`a88c4e8`; USB FAT32 không báo oan). Soi Lỗi Linux **ĐẠT** (cloud), Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`51b1ddb`: ép thắng 0/380, tráo thật 0 lọt; SL-T080-1, -2, -L-1 Thấp, chỉ sai câu báo). Đã gộp nhánh Linux (`170f7a3`). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-080-tho-may.md) · [Soi Lỗi](reports/T-080-soi-loi.md) · [Soi Lỗi Linux](reports/T-080-soi-loi-linux.md) |
+| [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI (SL-T071-1). Phải gộp trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-081` | 23/10 Thợ Máy **xong** (`96e9e11`: bỏ «\» sót sau tiền tố AI, 2 dòng code; gỡ 2 `xfail`; 1.358 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Thợ Máy](reports/T-081-tho-may.md) |
 
 ## Chờ
 

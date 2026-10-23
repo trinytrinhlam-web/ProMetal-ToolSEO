@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (phải xong trước khi gộp T-056) |
 | Phụ thuộc | T-071 đã gộp vào `main` (test `xfail` của SL-T071-1 nằm trong `tests/test_soi_loi_t071.py`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Thợ Máy xong, chờ Soi Lỗi rút gọn |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ W3 (mục 2.3), A3 theo mặc định.
 
 - Lập từ điều kiện của Soi Lỗi T-071 (SL-T071-1). Chủ dự án chọn phiếu riêng (2026-10-23) để không phải kiểm lại T-071. Nhánh `team/T-081` tạo từ `main` sau khi gộp T-071.
 - 2026-10-23 11:10 (Chỉ Huy B): T-071 đã gộp; nhánh `team/T-081` tạo từ `main` `c124b1a`, worktree `wt-T-081`. Giao Thợ Máy (chủ dự án duyệt "làm khi có agent rảnh").
+- 2026-10-23 13:51 (Chỉ Huy B): **Thợ Máy xong** (`96e9e11`, code `3a91bd5`): `_strip_ai_prefix` bỏ cả dấu «\» của `escape_link_syntax` ngay sau «]» của tiền tố (2 dòng code); đủ 7 biến thể + «[Minh họa](…)»; gỡ 2 `xfail` SL-T071-1; 1.358 test liên quan qua. Ghi chú: «[Minh họa]: [Mẹo]: một-chữ» nay báo "AI không viết được alt" (như «Minh họa: [Mẹo]: cổng» từ trước). Chờ Soi Lỗi rút gọn.
