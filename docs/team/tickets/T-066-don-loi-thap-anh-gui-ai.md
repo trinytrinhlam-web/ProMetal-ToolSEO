@@ -48,3 +48,4 @@ A3.
 
 - Lập theo điều kiện 1 của Lá Chắn T-050. Việc này đổi thiết kế T-046 mục 3: bản gửi AI **không còn hồ sơ màu** (Chỉ Huy B duyệt, vì T-049 đã buộc bản gửi AI không kèm hồ sơ màu theo điều kiện 2 của Lá Chắn T-050).
 - 2026-10-22 18:07 (Chỉ Huy B): giao (chủ dự án "tiếp tục"). Nhánh `team/T-066` tạo từ `main` sau khi gộp T-039, T-069. Phiếu trước T-056.
+- 2026-10-23 07:57 (Chỉ Huy B): Thợ Máy **xong** (`66f58dd`): mọi hồ sơ màu trong ảnh gửi AI bị từ chối, siết khối JPEG/PNG theo SL-T050-6, gỡ 15 `xfail`; ảnh sạch do `make_ai_image` tạo vẫn qua; 1.266 test liên quan qua. Chờ Soi Lỗi rút gọn.

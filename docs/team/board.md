@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-22 18:34 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 07:57 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,15 +34,16 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) | Đọc ảnh bằng thư mục đã mở từng tầng (SL-T063-2 Cao trên Mac/Linux, Thấp trên Windows; SL-T063-1, -3, -5; LC-T076-3). **Chủ dự án chọn cách A: gộp trước T-056** | Lá Chắn · T-079 kiểm đọc ảnh an toàn | `team/T-079` | 22/10 13:45 Thợ Máy **xong** (`c7b2394`: Mac/Linux đọc và `stat` bằng thư mục đã mở từng tầng; Windows mở file rồi hỏi lại chính file đã mở nằm ở đâu, ép kẻ tấn công thắng cũng không lọt; SL-T063-1, -3, -4, -5, LC-T076-3 sửa; 11 file liên quan 1.452 qua; phần Mac/Linux mới chạy bằng giả lập). Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`79b55e7`; 1 Thấp SL-T079-1). Soi Lỗi Linux trên cloud **ĐẠT** (hơn 1,3 triệu lượt đọc khi bị tráo: 0 lọt; 1 Thấp SL-T079-L-1). ⏸ **18:34 chủ dự án bảo dừng**: Lá Chắn đang kiểm thì dừng; việc dở (`tests/test_la_chan_t079.py` nháp) đã đẩy lên `team/T-079` (`6e84375`). Phiên sau giao lại Lá Chắn | [Thợ Máy](reports/T-079-tho-may.md) · [Soi Lỗi Windows](reports/T-079-soi-loi.md) · [Soi Lỗi Linux](reports/T-079-soi-loi-linux.md) |
-| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Thợ Máy · T-071 dọn chèn ảnh nháp | `team/T-071` | ⏸ **18:34 chủ dự án bảo dừng**: Thợ Máy làm dở, đã đẩy lên `team/T-071` (`9c0f8b8`, commit "VIỆC DỞ"). Phiên sau nhắn lại phiên Thợ Máy cũ làm tiếp | |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Thợ Máy · T-066 dọn lớp ảnh gửi AI | `team/T-066` | ⏸ **18:34 chủ dự án bảo dừng**: Thợ Máy làm dở, đã đẩy lên `team/T-066` (`9b41e6a`, commit "VIỆC DỞ"). Phiên sau nhắn lại phiên Thợ Máy cũ làm tiếp | |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) | Đọc ảnh bằng thư mục đã mở từng tầng (SL-T063-2 Cao trên Mac/Linux, Thấp trên Windows; SL-T063-1, -3, -5; LC-T076-3). **Chủ dự án chọn cách A: gộp trước T-056** | Chỉ Huy (chờ cho gộp) | `team/T-079` | 22/10 13:45 Thợ Máy **xong** (`c7b2394`: Mac/Linux đọc và `stat` bằng thư mục đã mở từng tầng; Windows mở file rồi hỏi lại chính file đã mở nằm ở đâu, ép kẻ tấn công thắng cũng không lọt; SL-T063-1, -3, -4, -5, LC-T076-3 sửa; 11 file liên quan 1.452 qua; phần Mac/Linux mới chạy bằng giả lập). Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`79b55e7`; 1 Thấp SL-T079-1). Soi Lỗi Linux trên cloud **ĐẠT** (hơn 1,3 triệu lượt đọc khi bị tráo: 0 lọt; 1 Thấp SL-T079-L-1). 23/10 07:55 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`f915841`, Opus tạm): SL-T063-2, -3 đóng; 3 Thấp → T-080; **gộp được ngay**. ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-079-tho-may.md) · [Soi Lỗi Windows](reports/T-079-soi-loi.md) · [Soi Lỗi Linux](reports/T-079-soi-loi-linux.md) · [Lá Chắn](reports/T-079-la-chan.md) |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-071` | 23/10 Thợ Máy **xong** (`6046a8f`: yêu cầu 1–6, cách A, bảng trước/sau 7 chỗ test; 2.180 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-071-tho-may.md) |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-066` | 23/10 Thợ Máy **xong** (`66f58dd`: hồ sơ màu luôn bị từ chối, siết khối theo SL-T050-6, gỡ 15 `xfail`; 1.266 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-066-tho-may.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Thợ Máy | T-079 gộp; chủ dự án chọn sửa hay ghi sổ rủi ro |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
@@ -147,4 +148,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-080
+## Số phiếu tiếp theo: T-081

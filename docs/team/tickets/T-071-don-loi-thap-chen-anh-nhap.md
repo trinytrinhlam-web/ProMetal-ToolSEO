@@ -51,3 +51,4 @@ W1–W4, 2.3, F2.
 - Lập theo điều kiện 5 của Lá Chắn T-054. Làm trên nhánh tạm `team/T-071`, tạo từ `main` sau khi T-054 gộp.
 - 2026-10-22 18:07 (Chỉ Huy B): giao (chủ dự án "tiếp tục"). Nhánh `team/T-071` tạo từ `main` sau khi gộp T-039, T-069. Phiếu trước T-056.
 - 2026-10-22 18:16 (Chỉ Huy B): Thợ Máy hỏi phạm vi yêu cầu 5. Chỉ Huy chọn **A**: bỏ hẳn `ai_generated` của `DraftImage` (phần gửi nháp), ảnh AI chỉ theo `tags.source == SOURCE_AI`; cho sửa **cơ học** 7 chỗ test ngoài phạm vi (`tests/test_soi_loi_t054.py` dòng 289, 337-338, 363, 472; `tests/test_shortcode_t061.py:419`; `tests/test_soi_loi_t061.py:243`), không đổi điều kiện kiểm; test dòng 363 giữ đủ 7 chuỗi độc, phần chặt hơn chỉ thêm; báo cáo có bảng trước/sau để Soi Lỗi soát theo R5.
+- 2026-10-23 07:57 (Chỉ Huy B): Thợ Máy **xong** (`6046a8f`): yêu cầu 1–6; cách A (bỏ `ai_generated`); bảng trước/sau 7 chỗ test trong báo cáo; 16 file liên quan 2.180 qua. Chờ Soi Lỗi rút gọn (soát R5 cho 7 chỗ test).
