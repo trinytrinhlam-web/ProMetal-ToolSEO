@@ -11,7 +11,7 @@ import os
 import stat
 import sys
 import unicodedata
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 
 import pytest
@@ -1445,3 +1445,190 @@ def test_posix_file_swapped_to_symlink_after_folder_is_opened(x_tree, monkeypatc
     monkeypatch.setattr(folders, "_posix_open_dir", open_then_swap)
     exc = raises_safely(lambda: call(ImageLibrary([root])), root.parent)
     assert "SECRET" not in str(exc)
+
+
+# ----- T-080: so đường dẫn thật từng chữ (LC-T079-1), câu báo chỉ tả mục trong thư mục ảnh
+# (LC-T079-2), lỗi ``resolve`` khi bị tráo (LC-T079-3) ------------------------------------------
+#
+# Ca tráo "luôn thắng" sang thư mục anh em tên trông y hệt: ``tests/test_soi_loi_t079.py`` (đọc,
+# ``stat``), ``tests/test_la_chan_t079.py`` (xem thư mục; câu báo tả file ngoài thư mục ảnh).
+
+LOOKALIKE = unicodedata.normalize("NFC", "Cổng Strasse Kho")
+LOOKALIKE_NAMES = {
+    "hoa-thuong": str.upper,
+    "nfd": lambda name: unicodedata.normalize("NFD", name),
+    "sharp-s": lambda name: name.replace("ss", "ß"),
+    "dau-kelvin": lambda name: name.replace("K", "\u212a"),
+}
+
+
+@pytest.mark.parametrize(
+    ("final", "path", "same"),
+    [
+        ("\\\\?\\C:\\Ảnh\\x\\a.jpg", "C:\\Ảnh\\x\\a.jpg", True),
+        ("\\\\?\\UNC\\may\\chia-se\\Ảnh\\a.jpg", "\\\\may\\chia-se\\Ảnh\\a.jpg", True),
+        ("\\\\?\\C:\\", "C:\\", True),
+        ("\\\\?\\D:\\Ảnh\\", "D:\\Ảnh", True),
+        ("\\\\?\\C:\\Ảnh\\y\\a.jpg", "C:\\Ảnh\\x\\a.jpg", False),
+        *[
+            (f"\\\\?\\C:\\{rename(LOOKALIKE)}\\a.jpg", f"C:\\{LOOKALIKE}\\a.jpg", False)
+            for rename in LOOKALIKE_NAMES.values()
+        ],
+    ],
+    ids=["trung", "o-mang", "goc-o-dia", "dau-cheo-cuoi", "khac-thu-muc", *LOOKALIKE_NAMES],
+)
+def test_same_win_path_compares_every_character(final, path, same):
+    """LC-T079-1: đường dẫn thật của handle phải trùng từng chữ (chỉ bỏ tiền tố đường dẫn dài, dấu
+    ``\\`` cuối). Tên chỉ khác hoa thường, dạng Unicode, ``ß``/``ss``, dấu Kelvin là mục khác trên
+    ổ (thư mục "anh em" trông y hệt), không được gộp như khóa so tên ``_name_key``."""
+    assert folders._same_win_path(final, PureWindowsPath(path)) is same
+
+
+def _call(lib: ImageLibrary, call: str, rel: str):
+    if call == "list_folder":
+        return lib.list_folder(0, rel.rsplit("/", 1)[0])
+    return getattr(lib, call)(ImageRef(0, rel))
+
+
+@windows_only
+@pytest.mark.parametrize("rename", LOOKALIKE_NAMES.values(), ids=LOOKALIKE_NAMES.keys())
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_windows_final_path_in_lookalike_folder_is_refused(tmp_path, monkeypatch, rename, call):
+    """LC-T079-1: đường dẫn thật của handle (file đang đọc, đang ``stat``, thư mục đang giữ khi xem)
+    nằm trong thư mục tên chỉ khác ở hoa thường, dạng Unicode, ``ß``, dấu Kelvin: đó là thư mục anh
+    em khác trên ổ. Không đọc, không trả số liệu, không liệt kê."""
+    root = tmp_path / "anh"
+    write(root / LOOKALIKE / "a.jpg", b"AAAA")
+    lib = ImageLibrary([root])
+    _call(lib, call, f"{LOOKALIKE}/a.jpg")  # chưa bị tráo: dùng được
+    real_final_path = folders._win_final_path
+
+    def lookalike_final_path(fd):
+        final = real_final_path(fd)
+        return final and final.replace(LOOKALIKE, rename(LOOKALIKE))
+
+    monkeypatch.setattr(folders, "_win_final_path", lookalike_final_path)
+    exc = raises_safely(lambda: _call(lib, call, f"{LOOKALIKE}/a.jpg"), tmp_path)
+    assert "thay đổi" in str(exc)
+
+
+@pytest.fixture(params=["ntfs", "tra-chu-da-mo"])
+def final_path_source(request, monkeypatch) -> str:
+    """Đường dẫn thật của handle theo tên đã lưu (NTFS), hay theo đúng chữ đã mở như ổ Google Drive
+    for Desktop (LC-T076-1: ``resolve`` cũng trả lại chữ đã gõ)."""
+    if request.param == "tra-chu-da-mo":
+        opened: dict[int, str] = {}
+        real_open, real_win_open = os.open, folders._win_open
+
+        def remember(fd, path):
+            if fd is not None:
+                opened[fd] = os.path.abspath(os.fsdecode(path))
+            return fd
+
+        def echo_open(path, flags, *args, **kwargs):
+            return remember(real_open(path, flags, *args, **kwargs), path)
+
+        monkeypatch.setattr("seo_app.images.folders.os.open", echo_open)
+        monkeypatch.setattr(
+            folders, "_win_open", lambda path, access: remember(real_win_open(path, access), path)
+        )
+        monkeypatch.setattr(folders, "_win_final_path", lambda fd: "\\\\?\\" + opened[fd])
+        monkeypatch.setattr(Path, "resolve", typed_resolve)
+    return request.param
+
+
+@windows_only
+def test_windows_ref_typed_in_other_case_opens_by_disk_names(camel, final_path_source):
+    """Windows mở ảnh, thư mục theo tên trên ổ rồi so đường dẫn thật từng chữ (LC-T079-1), nên
+    ``ref`` gõ khác hoa thường vẫn đọc, kiểm, xem được: trên NTFS (đường dẫn thật theo tên đã lưu)
+    lẫn trên ổ trả lại đúng chữ đã mở."""
+    if not case_insensitive(camel):
+        pytest.skip("thư mục tạm bật phân biệt hoa thường")
+    lib = ImageLibrary([camel])
+    assert lib.read_image_bytes(ImageRef(0, TYPED)) == b"\x89PNG anh AI"
+    assert lib.stat_image(ImageRef(0, TYPED)).ref == ImageRef(0, ON_DISK)
+    listing = lib.list_folder(0, TYPED.rsplit("/", 1)[0])
+    assert [entry.ref for entry in listing.images] == [ImageRef(0, ON_DISK)]
+
+
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image"])
+def test_problem_of_image_inside_folder_is_still_described(tmp_path, call):
+    """LC-T079-2: câu báo cỡ, loại tả mục lấy lại trong thư mục ảnh (cùng định danh với mục vừa
+    kiểm), nên ảnh có vấn đề thật vẫn được báo đúng vấn đề, không thành "vừa bị thay đổi", kể cả
+    khi ``ref`` gõ khác hoa thường (mục lấy lại theo tên trên ổ)."""
+    root = tmp_path / "anh"
+    write(root / "lon.jpg", b"x" * (2 * 1024 * 1024))
+    write(root / "rong.jpg", b"")
+    (root / "thu-muc.jpg").mkdir()
+    lib = ImageLibrary([root], max_file_bytes=1024 * 1024)
+    expected = {
+        "lon.jpg": "Ảnh quá lớn (2,0 MB), tối đa 1,0 MB.",
+        "rong.jpg": "File ảnh rỗng (0 byte).",
+        "thu-muc.jpg": "Đây không phải là file ảnh.",
+    }
+    typed = [name.upper() for name in expected] if case_insensitive(root) else []
+    for name in [*expected, *typed]:
+        exc = raises_safely(lambda name=name: getattr(lib, call)(ImageRef(0, name)), tmp_path)
+        assert str(exc) == expected[name.lower()]
+
+
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image"])
+def test_problem_seen_only_by_path_lstat_is_reported_as_changed(tmp_path, monkeypatch, call):
+    """LC-T079-2: ``lstat`` theo đường dẫn thấy ảnh quá lớn, nhưng mục lấy lại trong thư mục ảnh
+    (cùng file, vừa nhỏ lại) dùng được: báo "vừa bị thay đổi", không báo cỡ ``lstat`` đã thấy."""
+    root = tmp_path / "anh"
+    image = write(root / "a.jpg", b"x" * 2048)
+    original = ImageLibrary._opened_stat
+
+    def shrink_then_stat(self, root_path, parts, expected):
+        with open(image, "r+b") as handle:
+            handle.truncate(4)
+        return original(self, root_path, parts, expected)
+
+    monkeypatch.setattr(ImageLibrary, "_opened_stat", shrink_then_stat)
+    lib = ImageLibrary([root], max_file_bytes=1024)
+    exc = raises_safely(lambda: getattr(lib, call)(ImageRef(0, "a.jpg")), tmp_path)
+    assert "thay đổi" in str(exc) and "MB" not in str(exc)
+
+
+RESOLVE_ERRORS = [
+    pytest.param(lambda: RuntimeError("Symlink loop"), "vừa bị thay đổi", id="vong-lien-ket"),
+    pytest.param(lambda: OSError(errno.ELOOP, "x"), "vừa bị thay đổi", id="eloop"),
+    pytest.param(lambda: OSError(errno.EINVAL, "x"), "vừa bị thay đổi", id="einval"),
+    pytest.param(lambda: NotADirectoryError(errno.ENOTDIR, "x"), "vừa bị thay đổi", id="enotdir"),
+    pytest.param(lambda: PermissionError(errno.EACCES, "x"), "Không đọc được", id="khong-quyen"),
+    pytest.param(lambda: OSError(errno.EIO, "x"), "Không đọc được", id="loi-o-dia"),
+    # Lỗi Windows: xét theo mã lỗi Windows (1921: vòng liên kết), không theo ``errno`` (Python đổi
+    # mọi lỗi Windows lạ, như 59 của ổ mạng, thành EINVAL).
+    pytest.param(
+        lambda: OSError(0, "x", None, 1921),
+        "vừa bị thay đổi",
+        id="windows-vong-lien-ket",
+        marks=windows_only,
+    ),
+    pytest.param(
+        lambda: OSError(0, "x", None, 59), "Không đọc được", id="windows-o-mang", marks=windows_only
+    ),
+]
+
+
+@pytest.mark.parametrize(("make_error", "message"), RESOLVE_ERRORS)
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_resolve_error_after_checked_levels(tmp_path, monkeypatch, make_error, message, call):
+    """LC-T079-3 (SL-T079-L-1): vòng ``lstat`` vừa thấy mọi tầng là mục thật, nên ``resolve`` gặp
+    vòng liên kết, EINVAL (tầng vừa là symlink rồi thành thư mục lại), ENOTDIR là đường dẫn vừa bị
+    tráo: báo "vừa bị thay đổi", không báo "không có quyền". Không có quyền, lỗi ổ đĩa, lỗi Windows
+    khác vẫn là "Không đọc được"."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    real_resolve = Path.resolve
+
+    def failing_resolve(self, strict=False):
+        if self.name in ("x", "a.jpg"):
+            raise make_error()
+        return real_resolve(self, strict=strict)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", failing_resolve)
+    exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    assert message in str(exc)

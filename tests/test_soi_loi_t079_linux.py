@@ -241,12 +241,6 @@ def test_real_atomic_swap_race_never_leaks_outside_content_or_size(tmp_path):
 
 
 @posix_only
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T079-L-1 (soi-loi): _resolve_inside đổi OSError(EINVAL) của resolve(strict=True) "
-    "(tầng vừa là symlink lúc resolve lstat, vừa thành thư mục lại lúc readlink) thành 'Không đọc "
-    "được mục này (không có quyền…)' thay vì 'vừa bị thay đổi'. An toàn, chỉ sai câu báo",
-)
 @pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
 def test_sl_t079_l_1_resolve_race_is_reported_as_changed(tmp_path, monkeypatch, call):
     """Đo thật trên cloud (ca 8a, 8 giây): khoảng 1.100 lần mỗi việc báo "Không đọc được mục này
