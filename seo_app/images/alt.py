@@ -356,6 +356,11 @@ _WRAPPERS = {
 _MAX_WRAP = 3
 # Dấu cách và dấu câu dính sau tiền tố («Minh họa: », «Minh họa! », «Minh họa… », «Minh họa – »).
 _AFTER_PREFIX = " :,.;!?…-–—|/·•"
+# ``escape_link_syntax`` thêm «\» ngay sau «]» khi theo sau là «[», «(» hay «:» (nhãn đầu dòng:
+# «[Minh họa]\: …»).
+# Bỏ «]» của tiền tố thì bỏ luôn dấu «\» đó, như ``plain_image_text`` gỡ nếu «]» còn; để lại thì
+# nó mồ côi lên website («Minh họa \: cổng», Soi Lỗi SL-T071-1).
+_LINK_ESCAPES = ("\\:", "\\[", "\\(")
 _ALT_SEP = " "
 _CAPTION_SEP = ": "
 
@@ -368,6 +373,8 @@ def _strip_ai_prefix(text: str) -> str:
 
     Ngoặc mở trước tiền tố mà ngay sau tiền tố không có ngoặc đóng thì là ngoặc bọc cả câu
     («Minh họa cửa cuốn»): bỏ ngoặc đóng ở cuối câu, nếu giữa câu không còn ngoặc đóng nào khác.
+    Ngoặc đóng là «]» mà ngay sau còn dấu «\\» của ``escape_link_syntax`` («[Minh họa]\\: cổng»,
+    «[Minh họa]\\[cổng sắt]») thì bỏ cả dấu «\\» đó (SL-T071-1); dấu «\\» ở chỗ khác giữ nguyên.
     Không có tiền tố thì giữ nguyên ``text``, kể cả ngoặc."""
     while True:
         size = 0
@@ -381,6 +388,8 @@ def _strip_ai_prefix(text: str) -> str:
         closing = "".join(_WRAPPERS[ch] for ch in reversed(text[:size]))
         if closing and rest.startswith(closing):
             rest = rest[len(closing) :]
+            if closing.endswith("]") and rest.startswith(_LINK_ESCAPES):
+                rest = rest[1:]
         elif closing and rest.endswith(closing) and closing not in rest[: -len(closing)]:
             rest = rest[: -len(closing)]
         text = rest.lstrip(_AFTER_PREFIX)
