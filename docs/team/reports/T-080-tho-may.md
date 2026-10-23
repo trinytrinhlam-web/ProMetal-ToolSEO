@@ -5,9 +5,9 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-080](../tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) |
 | Ngày nộp | 2026-10-23 |
-| Nhánh | `team/T-080` (tạo từ `main` `417efea`, đã có T-079). Commit: `da5846a` (sửa `folders.py`, gỡ `xfail`), `bc68739` (test mới), `62a16f5` (đọc ảnh Windows chỉ hỏi lại tên khi cần), commit báo cáo này |
+| Nhánh | `team/T-080` (tạo từ `main` `417efea`, đã có T-079). Commit: `da5846a` (sửa `folders.py`, gỡ `xfail`), `bc68739` (test mới), `62a16f5` (đọc ảnh Windows chỉ hỏi lại tên khi cần), `a88c4e8` (báo cáo), commit bổ sung phần ổ USB vào báo cáo (không đổi code) |
 | Máy | Windows 11 Pro 10.0.26300, Python 3.12.15, uv 0.13.4, người dùng thường; máy chạy song song agent khác. Không có Linux/Mac |
-| Kết quả | **Hoàn thành trên Windows.** Phần Mac/Linux: đọc code kỹ và chạy giả lập; 3 ca SL-T079-L-1 (chỉ chạy trên Linux/Mac) chờ lượt cloud Linux |
+| Kết quả | **Hoàn thành trên Windows**, đã thử thêm ổ USB FAT32 thật (không phải sửa gì). Phần Mac/Linux: đọc code kỹ và chạy giả lập; 3 ca SL-T079-L-1 (chỉ chạy trên Linux/Mac) chờ lượt cloud Linux |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -17,7 +17,7 @@ Ba lỗi nhỏ Lá Chắn để lại sau T-079 đã được sửa:
 2. **Câu báo lỗi nói về file bên ngoài** (LC-T079-2). Khi bị tráo, app không còn báo kiểu "Ảnh quá lớn (5,0 MB)" về một file nằm ngoài thư mục ảnh, chỉ báo "Ảnh vừa bị thay đổi, hãy thử lại". Ảnh có vấn đề thật (quá lớn, rỗng, là thư mục) vẫn được báo đúng như trước.
 3. **Câu báo sai nghĩa** (LC-T079-3). Khi bị tráo, app báo "vừa bị thay đổi, hãy thử lại" thay vì "không có quyền".
 
-Dùng bình thường không thấy gì khác. Tôi thử trên ổ cứng, ổ mạng chia sẻ và hai ổ Google Drive của máy (với Drive: chỉ đọc thông tin, không mở nội dung, không ghi tên file nào ra): kết quả giống hệt bản cũ, tốc độ như cũ. Phần chạy trên Mac/Linux tôi chỉ kiểm được bằng đọc code và giả lập; còn 3 ca chỉ chạy trên Linux/Mac cần một lượt cloud Linux. Chưa thử ổ USB (FAT32) vì phiếu không giao: đề nghị cho thử (chỉ đọc thông tin) trước khi dùng ảnh từ USB (mục Câu hỏi).
+Dùng bình thường không thấy gì khác. Tôi thử trên ổ cứng, ổ mạng chia sẻ, hai ổ Google Drive và ổ USB FAT32 của máy (với Drive và USB: chỉ đọc thông tin, không mở nội dung, không ghi gì, không ghi tên file nào ra): kết quả giống hệt bản cũ, tốc độ như cũ. Trên USB (chủ dự án cho thử), cả 727 ảnh đều dùng được, kể cả khi gõ tên khác chữ hoa/thường, không ảnh nào bị báo "vừa bị thay đổi" oan, nên không phải sửa thêm gì. Phần chạy trên Mac/Linux tôi chỉ kiểm được bằng đọc code và giả lập; còn 3 ca chỉ chạy trên Linux/Mac cần một lượt cloud Linux.
 
 ## Đã thay đổi
 
@@ -127,6 +127,22 @@ Với mỗi ảnh: `stat_image` (cỡ, giờ sửa, `file_id` trùng `lstat`), c
 
 Không ổ nào có ca "chỉ khác hoa thường" hay "khác dạng Unicode". Trên Google Drive, gốc gõ chữ hoa hết thì `resolve` trả lại đúng chữ đã gõ và đường dẫn thật của handle cũng theo đúng chữ đã mở (khớp LC-T076-1); app mở theo đúng chữ đó nên vẫn trùng từng chữ.
 
+### Ổ USB FAT32 thật (chủ dự án đồng ý qua Chỉ Huy B, 2026-10-23; `probe_usb_t080.py`)
+
+Giới hạn giữ đúng lời đồng ý: chỉ đọc danh sách thư mục, thuộc tính (`lstat`), handle chỉ hỏi thuộc tính và đường dẫn thật của handle, hỏi tên trong thư mục cha; **không mở nội dung file nào, không ghi gì vào ổ, không in tên file, thư mục hay nhãn ổ nào** (chỉ số đếm và câu báo cố định của app). `read_image_bytes` mở nội dung nên **không gọi**; thay vào đó làm lại đúng các bước kiểm của đường đọc ảnh tới ngay trước khi đọc (`_checked_file`, chọn tên để mở, so đường dẫn thật từng chữ, so định danh, cỡ) trên handle chỉ hỏi thuộc tính, cho cả bản T-080 lẫn `main`. Bỏ qua mục ẩn/hệ thống như app.
+
+- Ổ `F:`: **FAT32**, ổ rời; ổ báo **không** phân biệt hoa thường khi tìm (không có cờ `FILE_CASE_SENSITIVE_SEARCH`), có giữ chữ hoa thường.
+- Lượt thử rộng: cả cây thư mục không ẩn (336 thư mục, tối đa 8 tầng).
+
+| Phép thử | Kết quả |
+|---|---|
+| Đường dẫn thật của handle so với tên trong danh sách, 3.782 mục (file: 95 tên 8.3 chữ hoa, 1.103 tên 8.3 có chữ thường, 2.239 tên dài; thư mục: 6, 154, 185) | **3.782/3.782 trùng từng chữ**; 0 chỉ khác hoa thường, 0 khác dạng Unicode, 0 không hỏi được |
+| 727 ảnh, gốc là ổ: `stat_image` và bước kiểm đọc theo tên trong danh sách / gõ chữ hoa / gõ chữ thường | 727 / 727 / 699 (28 ảnh vốn đã chữ thường) **được**, `ref` trả về theo tên trên ổ; **giống `main`** từng ca |
+| 277 ảnh, gốc là một thư mục ảnh trên USB, gốc gõ đúng / chữ thường / chữ hoa (3 lượt); mỗi lượt `ref` theo tên trong danh sách / gõ chữ hoa / gõ chữ thường | Mỗi lượt 277 / 277 / 170 (107 ảnh vốn đã chữ thường) **được**, giống `main` |
+| `list_folder` (gốc là ổ: 164 lần; gốc là thư mục ảnh: 50 lần × 3 kiểu gõ gốc; mỗi thư mục gõ đúng, chữ hoa, chữ thường) | **Giống `main`** từng lần (số ảnh, tên ảnh, thư mục con, số bỏ qua); **0** lần báo "vừa bị thay đổi" hay đếm thư mục con vào liên kết |
+
+**Không có mục nào bị báo "vừa bị thay đổi" oan**, nên **không sửa code** (không cần bước so không phân biệt hoa thường cho ổ không phân biệt hoa thường). Ổ FAT32 báo đường dẫn thật theo đúng tên trong danh sách, kể cả tên 8.3 có chữ thường (nhóm tôi lo nhất).
+
 ### Không rò handle (`leak_perf_t080.py leak`)
 
 3.000 vòng × 18 lời gọi qua mọi nhánh mới (đọc, `stat`, xem thư mục; `ref` gõ khác hoa thường; ảnh quá lớn, rỗng, là thư mục, không có; thư mục anh em bị từ chối; lỗi `resolve`), mỗi vòng 14 lỗi gọn: **handle trước 165, sau 164 (chênh −1)**.
@@ -173,7 +189,7 @@ Script thử nằm ở thư mục ghi chú chung của nhóm phiên, `T-080-tho-
 
 ## Đối chiếu tiêu chí xong
 
-- [x] (1) LC-T079-1: so từng chữ ở `_win_handle_at` (đọc, `stat`) và `_scan_held` (xem thư mục); ép thắng 7/7 kiểu bị chặn; đọc thật trên NTFS, ổ mạng, Google Drive vẫn được (Drive chỉ đọc thuộc tính, không mở nội dung, không in tên)
+- [x] (1) LC-T079-1: so từng chữ ở `_win_handle_at` (đọc, `stat`) và `_scan_held` (xem thư mục); ép thắng 7/7 kiểu bị chặn; đọc thật trên NTFS, ổ mạng, Google Drive, USB FAT32 vẫn được (Drive, USB chỉ đọc thông tin, không mở nội dung, không in tên)
 - [x] (2) LC-T079-2: câu báo chỉ tả mục trong thư mục ảnh (6 ca LC-T079-2 qua; ca 5 MB của Lá Chắn: "vừa bị thay đổi"); ảnh có vấn đề thật vẫn báo đúng (`test_problem_of_image_inside_folder_is_still_described`)
 - [x] (3) LC-T079-3: "vừa bị thay đổi" khi `resolve` gặp liên kết (`test_resolve_error_after_checked_levels`, 24 ca); 3 ca SL-T079-L-1 chờ Linux
 - [x] (4) Gỡ `xfail`: 8 ca SL-T079-1, 7 ca LC-T079 (chỉ xóa dấu); 3 ca SL-T079-L-1 giữ, ghi bên dưới
@@ -195,7 +211,7 @@ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py 
 
 ## Rủi ro và điểm cần chú ý
 
-- **So từng chữ dựa vào việc ổ báo đường dẫn thật khớp tên trong danh sách thư mục** (tên đã lưu, hay đúng chữ đã mở). Đã đo đúng trên NTFS, ổ mạng SMB (máy chủ NTFS), Google Drive for Desktop. **Chưa thử**: USB/thẻ nhớ FAT32, exFAT; ổ mạng máy chủ Linux (Samba); ổ đám mây khác. Nếu một ổ báo đường dẫn thật khác chữ hoa thường so với danh sách, ảnh trên ổ đó sẽ báo "Ảnh vừa bị thay đổi, hãy thử lại" (an toàn trước, không lọt gì, nhưng không dùng được ảnh). `probe_t080.py` chỉ đọc thuộc tính, không in tên, chạy được ngay cho ổ USB.
+- **So từng chữ dựa vào việc ổ báo đường dẫn thật khớp tên trong danh sách thư mục** (tên đã lưu, hay đúng chữ đã mở). Đã đo đúng trên NTFS, ổ mạng SMB (máy chủ NTFS), Google Drive for Desktop, USB FAT32. **Chưa thử**: exFAT (thẻ nhớ, USB lớn); ổ mạng máy chủ Linux (Samba); ổ đám mây khác. Nếu một ổ báo đường dẫn thật khác chữ hoa thường so với danh sách, ảnh trên ổ đó sẽ báo "Ảnh vừa bị thay đổi, hãy thử lại" (an toàn trước, không lọt gì, nhưng không dùng được ảnh). `probe_usb_t080.py` (chỉ đọc thông tin, không in tên) chạy được ngay cho ổ mới.
 - Đọc ảnh trên Windows với `ref` gõ khác tên trên ổ (hiếm: `ref` lấy từ danh sách thư mục hoặc từ `stat_image`) thêm một bước hỏi tên từng tầng, như `stat_image` vốn có.
 - `_checked_file` chỉ tốn thêm khi ảnh có vấn đề (lấy lại mục trong thư mục ảnh rồi mới báo). Ổ không cho mở handle hỏi thuộc tính (rất hiếm) thì ảnh có vấn đề báo "Không đọc được mục này…" thay câu cụ thể.
 - `_open_image` giữ chữ ký `(root, parts, path)` vì test của Soi Lỗi bọc hàm này theo đúng chữ ký; `path` nay là `gốc/parts` viết như ổ báo tên.
@@ -204,9 +220,9 @@ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py 
 ## Đề xuất
 
 - **Chỉ Huy:** chuyển Soi Lỗi rút gọn rồi Lá Chắn rút gọn (F1). Lượt cloud Linux chạy lệnh ở trên, xóa `xfail` SL-T079-L-1 khi XPASS.
-- **Trước khi dùng ảnh từ USB** (ổ `F:` FAT32 đang cắm trên máy này): chạy `probe_t080.py` trên ổ đó, chỉ đọc thuộc tính, không in tên (cần chủ dự án đồng ý, xem Câu hỏi). Nếu có ảnh "chỉ khác hoa thường" thì thêm bước so không phân biệt hoa thường cho ổ không phân biệt hoa thường (cờ ổ `FILE_CASE_SENSITIVE_SEARCH`).
+- Ổ USB `F:` FAT32: đã thử (mục Bằng chứng), dùng được. Khi có thẻ nhớ hay USB exFAT, chạy `probe_usb_t080.py` một lượt (chỉ đọc thông tin) trước khi dùng ảnh từ đó; nếu có ảnh "chỉ khác hoa thường" thì thêm bước so không phân biệt hoa thường cho ổ không phân biệt hoa thường (cờ ổ `FILE_CASE_SENSITIVE_SEARCH`).
 - Ghi nhận, để nguyên: câu "Không tìm thấy / liên kết tắt / ẩn" của `_resolve_inside` khi bị tráo (mức có/không, Lá Chắn T-079 không bắt sửa); ENOTDIR ở vòng `lstat` (`ref` dạng `a.jpg/b.jpg` trên Linux báo "không đọc được" thay "không tìm thấy").
 
 ## Câu hỏi cho chủ dự án
 
-1. Cho thử ổ USB `F:` (FAT32) đang cắm trên máy, **chỉ đọc thông tin file, không mở nội dung, không ghi tên file nào ra**, như đã làm với Google Drive? Đề xuất: **Có**, để chắc ảnh từ USB vẫn dùng được sau bản sửa.
+Không có. (Câu hỏi trước "cho thử ổ USB `F:`": chủ dự án đồng ý, Chỉ Huy B chuyển ngày 2026-10-23; đã thử, kết quả ở mục Bằng chứng.)
