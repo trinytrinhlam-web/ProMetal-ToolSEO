@@ -297,17 +297,21 @@ def test_upload_media_with_alt(fake_wp, wp_client):
     assert upload.body == b"JPEGDATA"
     assert upload.headers["Content-Type"] == "image/jpeg"
     assert upload.headers["Content-Disposition"] == 'attachment; filename="anh-cua-sat.jpg"'
-    assert body(update) == {"alt_text": "Cửa sắt sơn đen"}
+    # LC-T061-3 (T-060): luôn ghi đè cả 3 ô; tiêu đề trống lấy tên file đã làm sạch.
+    assert body(update) == {"alt_text": "Cửa sắt sơn đen", "title": "anh-cua-sat", "caption": ""}
     assert media.id == 9
     assert media.alt_text == "Cửa sắt sơn đen"
 
 
-def test_upload_media_without_metadata_is_one_request(fake_wp, wp_client):
+def test_upload_media_without_metadata_still_overwrites_fields(fake_wp, wp_client):
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 5, "source_url": "u"}, {}))
+    fake_wp.on("POST", "/wp-json/wp/v2/media/5", {"id": 5, "source_url": "u"})
     media = wp_client.upload_media(b"x", "!!!.webp")
-    assert len(fake_wp.requests) == 1
+    # LC-T061-3 (T-060): ô trống vẫn ghi đè, để WordPress không lấy chữ nằm trong file ảnh.
+    assert len(fake_wp.requests) == 2
     assert fake_wp.requests[0].headers["Content-Type"] == "image/webp"
     assert 'filename="anh.webp"' in fake_wp.requests[0].headers["Content-Disposition"]
+    assert body(fake_wp.requests[1]) == {"alt_text": "", "title": "anh", "caption": ""}
     assert media.id == 5
 
 
@@ -315,6 +319,7 @@ def test_upload_media_file(tmp_path, fake_wp, wp_client):
     image = tmp_path / "cổng inox.png"
     image.write_bytes(b"PNGDATA")
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 6, "source_url": "u"}, {}))
+    fake_wp.on("POST", "/wp-json/wp/v2/media/6", {"id": 6, "source_url": "u"})  # LC-T061-3
     wp_client.upload_media_file(image)
     assert fake_wp.requests[0].body == b"PNGDATA"
     assert 'filename="cong-inox.png"' in fake_wp.requests[0].headers["Content-Disposition"]

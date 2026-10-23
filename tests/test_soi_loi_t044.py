@@ -317,6 +317,7 @@ def test_non_string_site_url_does_not_crash_page(project_root, fake_wp, home):
 def test_null_source_url_does_not_crash_page(project_root, fake_wp, monkeypatch):
     media = {"id": 9, "source_url": None}
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, media, {}))
+    fake_wp.on("POST", "/wp-json/wp/v2/media/9", media)  # LC-T061-3 (T-060): luôn ghi đè 3 ô
     post = {"id": 42, "status": "draft", "title": "A"}
     fake_wp.on("POST", "/wp-json/wp/v2/posts", (201, post, {}))
     fake_file_uploader(monkeypatch, FakeUpload("anh.jpg", b"\xff\xd8\xff"))
