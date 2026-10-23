@@ -10,18 +10,23 @@ Mỗi test gắn với một điều kiện trong mục "Ghi chú của Chỉ Hu
 from __future__ import annotations
 
 import dataclasses
+import html
 import io
+import json
 import os
 import re
+import sqlite3
 import threading
 import time
+from contextlib import closing
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 import streamlit as st
 import test_app_pages as pages
 from fake_ai import ALT, RESEARCH, FakeProvider
-from fake_wordpress import BASE_URL
+from fake_wordpress import BASE_URL, make_session
 from PIL import ExifTags, Image
 from PIL.TiffImagePlugin import IFDRational
 from streamlit.testing.v1 import AppTest
@@ -37,11 +42,12 @@ from seo_app.content.rules import load_alt_rules, load_image_settings
 from seo_app.images import process as image_process
 from seo_app.images.alt import AI_ALT_PREFIX
 from seo_app.images.folders import ImageLibrary, ImageRef
-from seo_app.images.tags import SOURCE_AI, SOURCE_REAL
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags
 from seo_app.storage import DraftPart, DraftSnapshot, DraftStore
 from seo_app.storage.drafts import DraftImage
 from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
 from seo_app.text import escape_markdown
+from seo_app.wordpress.client import DraftImagesError, WordPressClient
 
 env = pages.env  # mật khẩu thử, không có khóa AI thật
 fake_ai = pages.fake_ai
@@ -739,3 +745,485 @@ def test_tags_read_per_page_at_most_200(project_root, tmp_path, monkeypatch):
     assert max(sizes) <= 200
     source = (project_root / "app" / "views" / "write.py").read_text(encoding="utf-8")
     assert ".get_many(" not in source and "store().get(" not in source
+
+
+# ============================================================================ mở nháp (T-055)
+
+
+def test_open_draft_uses_checked_image_not_draft_fields(project_root, root):
+    """Ảnh của nháp được kiểm lại khi mở (``check_draft_images``); hiện, duyệt theo kết quả kiểm
+    (thẻ theo thư mục thật), không theo trường trong nháp (Lá Chắn T-055 b)."""
+    chosen = DraftImage(
+        source=SOURCE_REAL,
+        root_index=0,
+        rel_path=REAL_FILE,
+        category="Cổng sắt",  # nháp ghi khác thư mục thật
+        alt="Bản lề cổng gỉ",
+        alt_approved=True,
+        caption="Bản lề gỉ sau 3 năm",
+    )
+    at, pid = open_article(project_root, article(chosen))
+    checked = at.session_state[f"pick-{pid}"]
+    assert checked.available and checked.ref == ImageRef(0, REAL_FILE)
+    assert (checked.tags.category, checked.tags.project_code) == ("Cổng inox", "CT012")
+    assert at.session_state[f"alt-{pid}"] == "Bản lề cổng gỉ"
+    assert at.session_state[f"altok-{pid}"] is True
+    assert "Mã CT012 · Cổng inox · Tân Phú · Trước khi làm" in "\n".join(texts(at)).replace(
+        "\\", ""
+    )
+
+
+@pytest.mark.parametrize(
+    ("root_index", "rel_path", "expected"),
+    [
+        (0, f"{PROJECT}/truoc/DA_XOA.jpg", "Không tìm thấy ảnh"),
+        (7, REAL_FILE, "Không có thư mục ảnh với số thứ tự này"),
+    ],
+)
+def test_open_draft_unusable_image_shows_checked_message(
+    project_root, root, root_index, rel_path, expected
+):
+    """Ảnh của nháp không dùng được trên máy này: hiện ``checked.message``, không cho duyệt alt."""
+    chosen = DraftImage(
+        source=SOURCE_REAL,
+        root_index=root_index,
+        rel_path=rel_path,
+        alt="Bản lề",
+        alt_approved=True,
+    )
+    at, pid = open_article(project_root, article(chosen))
+    checked = at.session_state[f"pick-{pid}"]
+    assert not checked.available and expected in checked.message
+    assert escape_markdown(checked.message) in [w.value for w in at.warning]
+    assert not any(box.key == f"alt-{pid}" for box in at.text_input)
+    to_publish(at)
+    assert any("Ảnh ở mục" in w.value for w in at.warning)
+    assert button(at, "📤 Gửi nháp").disabled
+
+
+def test_broken_image_in_draft_dropped_and_reported(project_root, root):
+    """Ảnh trong nháp bị sửa tay sai khuôn: bỏ ảnh đó, báo số ảnh bỏ, phần chữ giữ nguyên
+    (``snapshot.dropped_images``, Lá Chắn T-055 b)."""
+    snap = article(DraftImage(source=SOURCE_REAL, root_index=0, rel_path=REAL_FILE, alt="Bản lề"))
+    store().save(snap)
+    with closing(sqlite3.connect(drafts.DEFAULT_DRAFTS_FILE)) as conn:
+        (data,) = conn.execute("SELECT data FROM drafts WHERE id = ?", (snap.id,)).fetchone()
+        data = json.loads(data)
+        data["parts"][1]["chosen_image"]["rel_path"] = "../ngoai/anh.jpg"
+        conn.execute(
+            "UPDATE drafts SET data = ? WHERE id = ?",
+            (json.dumps(data, ensure_ascii=False), snap.id),
+        )
+        conn.commit()
+    at = pages.open_page(project_root, "write.py")
+    run_ok(button(at, "Mở", key=f"open-{snap.id}").click().run())
+    assert any("1 ảnh đã chọn trong nháp bị hỏng nên đã bỏ" in w.value for w in at.warning)
+    pid = at.session_state["part_ids"][1]
+    assert f"pick-{pid}" not in at.session_state
+    assert at.session_state[f"texts-{pid}"] == ["Bản lề gỉ thì thay cả cặp."]
+
+
+# ---- 2a (Lá Chắn T-055, giữ bắt buộc test theo Lá Chắn T-076): nháp ghi thư mục chữ thường
+
+AI_DISK = f"{PROJECT}/CongAI/cong.png"
+AI_DRAFT = f"{PROJECT}/congai/cong.png"
+
+
+def typed_resolve(self: Path, strict: bool = False) -> Path:
+    """Như ``resolve`` của ổ Google Drive for Desktop trên Windows: trả lại đúng chữ đã gõ
+    (giống ``tests/test_la_chan_t076.py``)."""
+    if strict:
+        os.lstat(self)
+    return Path(os.path.abspath(self))
+
+
+@pytest.fixture
+def drive(tmp_path, monkeypatch) -> Path:
+    """Ảnh AI ở ``CongAI`` (tách chữ hoa mới nhận ra "AI"); thư mục công trình đông (A00…A09
+    xếp trước ``CongAI``) để ca danh sách bị cắt không thấy ``CongAI``."""
+    root = tmp_path / "Drive"
+    png = io.BytesIO()
+    Image.new("RGB", (64, 48), (90, 200, 90)).save(png, "PNG")
+    write(root / AI_DISK, png.getvalue())
+    for number in range(10):
+        (root / PROJECT / f"A{number:02d}").mkdir()
+    if not (root / AI_DRAFT).exists():
+        pytest.skip("ổ phân biệt hoa thường: 'congai' là thư mục khác")
+    monkeypatch.setenv("IMAGE_FOLDERS", str(root))
+    return root
+
+
+def assert_ai_tags(at: AppTest, pid: int) -> None:
+    tags = at.session_state[f"pick-{pid}"].tags
+    assert tags.is_ai, tags
+    assert (tags.project_code, tags.area, tags.phase) == ("", "", "")
+
+
+@pytest.mark.parametrize("how", ["image_folder", "draft_path"])
+@pytest.mark.parametrize("crowded", [False, True], ids=["full", "cut"])
+@pytest.mark.parametrize("disk", ["ntfs", "typed_resolve"])
+def test_2a_lowercase_folder_in_draft_stays_ai(
+    project_root, drive, monkeypatch, fake_ai, how, crowded, disk
+):
+    """Nháp ghi ``…/congai/cong.png``, trên ổ là ``CongAI``: mở nháp, mở thư mục (bằng nút «Mở thư
+    mục chứa ảnh», hay theo đúng đường dẫn ghi trong nháp), chọn lại ảnh → ảnh AI, alt «Minh họa».
+    Chạy trên ổ thường, ổ giả "resolve trả chữ đã gõ" (Google Drive for Desktop), và khi danh sách
+    thư mục cha bị cắt (Lá Chắn T-055 2a, T-076)."""
+    if disk == "typed_resolve":
+        if not IS_WINDOWS:
+            pytest.skip("chỉ cách lấy tên của Windows dùng resolve; Mac/Linux xem thư mục cha")
+        monkeypatch.setattr(Path, "resolve", typed_resolve)
+    if crowded:
+
+        def small(cls, settings, **kwargs):
+            return cls(settings.image_folders, max_entries=3)
+
+        monkeypatch.setattr(ImageLibrary, "from_settings", classmethod(small))
+    chosen = DraftImage(
+        source=SOURCE_REAL,
+        root_index=0,
+        rel_path=AI_DRAFT,
+        category="Cổng inox",
+        alt="Bản lề cổng inox bị gỉ trước khi sửa",
+        alt_approved=True,
+        caption="Bản lề gỉ sau 3 năm mưa nắng",
+    )
+    at, pid = open_article(project_root, article(chosen))
+    assert_ai_tags(at, pid)  # mở nháp
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+    assert at.session_state[f"altok-{pid}"] is False
+
+    if how == "image_folder":
+        run_ok(by_key(at, f"openfolder-{pid}").click().run())
+    else:  # mở theo đúng chữ ghi trong nháp
+        at.session_state["_browse"] = {
+            "pid": pid,
+            "root": 0,
+            "dir": "",
+            "page": 1,
+            "walk": AI_DRAFT.split("/")[:-1],
+        }
+        run_ok(at.run())
+    if crowded:
+        assert at.session_state["_scans"][(0, PROJECT, 1)].truncated
+    assert listing(at).rel_dir == f"{PROJECT}/CongAI"
+    choose(at, "cong.png")
+    assert_ai_tags(at, pid)
+    write_alt(at, pid)
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+    approve(at, pid)
+    saved = saved_image(at)
+    assert (saved.source, saved.rel_path) == (SOURCE_AI, AI_DISK)
+
+
+# =================================================================== gửi nháp kèm ảnh
+
+
+def path_of(request) -> str:
+    return urlsplit(request.url).path
+
+
+def body_of(request):
+    return json.loads(request.body) if request.body else None
+
+
+class Site:
+    """WordPress giả cho «Gửi nháp» kèm ảnh: nhận ảnh (201), ghi alt, tạo nháp, đặt ảnh đại diện."""
+
+    def __init__(self, fake) -> None:
+        self.fake = fake
+        self.post_status = "draft"
+        self.next_id = 900
+        self.names: dict[int, str] = {}
+        fake.on("POST", MEDIA, self.create_media)
+        for media_id in range(900, 920):
+            fake.on("POST", f"{MEDIA}/{media_id}", self.update_media)
+        fake.on("POST", POSTS, self.create_post)
+        fake.on("GET", f"{POSTS}/{POST_ID}", lambda _r: {"id": POST_ID, "status": "draft"})
+        fake.on(
+            "POST", f"{POSTS}/{POST_ID}", lambda r: {"id": POST_ID, "status": "draft", **body_of(r)}
+        )
+
+    def create_media(self, request):
+        disposition = request.headers["Content-Disposition"]
+        name = re.fullmatch(r'attachment; filename="([^"]+)"', disposition).group(1)
+        media_id, self.next_id = self.next_id, self.next_id + 1
+        self.names[media_id] = name
+        return (201, {"id": media_id, "source_url": f"{UPLOADS}{name}"}, {})
+
+    def update_media(self, request):
+        media_id = int(path_of(request).rsplit("/", 1)[1])
+        return {
+            "id": media_id,
+            "source_url": f"{UPLOADS}{self.names[media_id]}",
+            **body_of(request),
+        }
+
+    def create_post(self, _request):
+        return (201, {"id": POST_ID, "status": self.post_status, "title": {"raw": "T"}}, {})
+
+    def uploads(self) -> list:
+        return [r for r in self.fake.requests if (r.method, path_of(r)) == ("POST", MEDIA)]
+
+    def file_names(self) -> list[str]:
+        return [self.names[media_id] for media_id in sorted(self.names)]
+
+    def media_writes(self) -> list[dict]:
+        return [
+            body_of(r)
+            for r in self.fake.requests
+            if r.method == "POST" and path_of(r).startswith(f"{MEDIA}/")
+        ]
+
+    def posts(self) -> list[dict]:
+        return [body_of(r) for r in self.fake.requests if (r.method, path_of(r)) == ("POST", POSTS)]
+
+
+@pytest.fixture
+def site(monkeypatch, fake_wp) -> Site:
+    """Trang dựng ``WordPressClient`` thật nối vào WordPress giả (không gọi mạng)."""
+
+    def from_settings(cls, settings, **kwargs):
+        return cls(BASE_URL, "lam", "abcd efgh ijkl", session=make_session(fake_wp))
+
+    monkeypatch.setattr(WordPressClient, "from_settings", classmethod(from_settings))
+    return Site(fake_wp)
+
+
+@dataclasses.dataclass
+class SendSpy:
+    calls: list = dataclasses.field(default_factory=list)
+    errors: list = dataclasses.field(default_factory=list)
+
+
+@pytest.fixture
+def sent(monkeypatch) -> SendSpy:
+    spy = SendSpy()
+    original = WordPressClient.create_draft_with_images
+
+    def create(self, title, parts, **kwargs):
+        spy.calls.append((title, list(parts)))
+        try:
+            return original(self, title, parts, **kwargs)
+        except Exception as exc:
+            spy.errors.append(exc)
+            raise
+
+    monkeypatch.setattr(WordPressClient, "create_draft_with_images", create)
+    return spy
+
+
+def ready_image(project_root, snap: DraftSnapshot | None = None) -> tuple[AppTest, int]:
+    at, pid = open_article(project_root, snap)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    approve(at, pid)
+    return at, pid
+
+
+def to_publish(at: AppTest) -> AppTest:
+    at.session_state["step"] = 4
+    return run_ok(at.run())
+
+
+def send(at: AppTest) -> AppTest:
+    return run_ok(button(at, "📤 Gửi nháp").click().run())
+
+
+def flatten(node):
+    """Phần tử trên trang theo đúng thứ tự hiện."""
+    children = getattr(node, "children", None)
+    if children:
+        for child in children.values():
+            yield from flatten(child)
+    else:
+        yield node
+
+
+def test_send_draft_with_real_image(project_root, root, fake_ai, site, sent):
+    """Chỉ gửi khi bấm; cảnh báo ảnh (có GPS) công khai ngay trước nút; ``DraftImage`` mang thẻ
+    ``ImageTags`` đã kiểm của chính ảnh đó; ảnh lên còn GPS; bài là nháp (Lá Chắn T-054 4a, 4b,
+    T-071 3a)."""
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    assert site.fake.requests == [] and sent.calls == []
+    elements = list(flatten(at.main))
+    index = next(i for i, e in enumerate(elements) if getattr(e, "label", "") == "📤 Gửi nháp")
+    assert "xem được công khai" in elements[index - 1].value  # cảnh báo nằm ngay trước nút
+    send(at)
+    ((title, parts),) = sent.calls
+    assert title == "Sửa cổng inox Tân Phú"
+    assert parts[:3] == [
+        "<p>Cổng inox ở Tân Phú bị xệ cánh.</p>",
+        "<h2>Bản lề cổng</h2>",
+        "<p>Bản lề gỉ thì thay cả cặp.</p>",
+    ]
+    (image,) = parts[3:]
+    assert type(image.tags) is ImageTags
+    assert image.tags == at.session_state[f"pick-{pid}"].tags
+    assert image.tags.source == SOURCE_REAL and image.tags.project_code == "CT012"
+    assert (image.alt, image.caption) == (ALT.alt, ALT.caption)
+    assert site.file_names() == ["cong-inox-tan-phu-ct012.webp"]
+    (upload,) = site.uploads()
+    with Image.open(io.BytesIO(upload.body)) as web:
+        assert web.format == "WEBP"
+        assert web.getexif().get_ifd(ExifTags.IFD.GPSInfo)  # GPS lên website (quyết định 5A)
+    (media,) = site.media_writes()
+    assert media["alt_text"] == ALT.alt and not html.unescape(media["title"]).startswith("[AI]")
+    (post,) = site.posts()
+    assert post["status"] == "draft" and "<figure" in post["content"]
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+    assert button(at, "📤 Gửi nháp").disabled  # gửi lại phải xác nhận tạo thêm bài nháp mới
+    run_ok(at.checkbox(key="_wp_again").check().run())
+    assert not button(at, "📤 Gửi nháp").disabled
+
+
+def test_send_ai_image_named_and_titled_as_ai(project_root, tmp_path, monkeypatch, fake_ai, site):
+    """Ảnh AI lên website với tên ``minh-hoa-ai-…``, tiêu đề media ``[AI] …``, alt «Minh họa»
+    (Lá Chắn T-071 điều kiện 3a)."""
+    ai_root = tmp_path / "Ảnh AI"
+    write(ai_root / "cong.jpg", jpeg())
+    monkeypatch.setenv("IMAGE_FOLDERS", str(ai_root))
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    choose(at, "cong.jpg")
+    write_alt(at, pid)
+    approve(at, pid)
+    to_publish(at)
+    send(at)
+    (name,) = site.file_names()
+    assert name.startswith("minh-hoa-ai-")
+    (media,) = site.media_writes()
+    assert html.unescape(media["title"]).startswith("[AI] ")
+    assert media["alt_text"].startswith(f"{AI_ALT_PREFIX} ")
+
+
+@pytest.mark.parametrize("step", ["create", "upload"])
+def test_send_errors_shown_in_full_and_maybe_draft_locks_resend(
+    project_root, root, fake_ai, site, sent, step
+):
+    """Lỗi gửi: hiện đủ ``str(exc)`` (escape), liệt kê ảnh đã lên thư viện, ``maybe_uploaded``;
+    ``maybe_draft`` thì nhắc kiểm Bài viết → Nháp và khóa nút tới khi người dùng xác nhận, không
+    tự gửi lại (Lá Chắn T-054 4c, T-071 3b)."""
+    route = POSTS if step == "create" else MEDIA
+    site.fake.on("POST", route, lambda _r: (502, {"code": "x", "message": "Bad gateway"}, {}))
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    (error,) = sent.errors
+    assert isinstance(error, DraftImagesError)
+    assert escape_markdown(str(error)) in [e.value for e in at.error]
+    if step == "create":
+        assert error.maybe_draft and error.uploaded
+        listed = "\n".join(t.value for t in at.text)
+        assert error.uploaded[0].file_name in listed and error.uploaded[0].source_url in listed
+        assert any("bài nháp có thể đã có trên website" in e.value for e in at.error)
+        assert button(at, "📤 Gửi nháp").disabled
+        count = len(site.fake.requests)
+        run_ok(at.run())
+        assert len(site.fake.requests) == count  # không tự gửi lại
+        run_ok(at.checkbox(key="_wp_checked").check().run())
+        assert not button(at, "📤 Gửi nháp").disabled
+    else:
+        assert error.maybe_uploaded and not error.maybe_draft
+        assert any("có thể vẫn đã lên thư viện Media" in w.value for w in at.warning)
+        assert not button(at, "📤 Gửi nháp").disabled
+
+
+def test_post_not_draft_is_flagged(project_root, root, fake_ai, site):
+    """Website trả bài không ở trạng thái nháp (app không xin): báo rõ (Soi Lỗi T-054 G9)."""
+    site.post_status = "publish"
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    assert any("không phải nháp" in e.value for e in at.error)
+
+
+def test_shortcode_like_segments_listed_before_send(project_root, root, fake_ai, site):
+    """Trước nút «Gửi nháp», liệt kê mọi đoạn dạng shortcode trong tiêu đề, nội dung, alt, chú
+    thích, kèm lời nhắc (Lá Chắn T-061, LC-T061-4)."""
+    snap = article(
+        parts=[
+            DraftPart(heading="Mở bài", versions=["Xem [code_snippet id=3] nhé."]),
+            DraftPart(heading="Bản lề [embed]", versions=["Thân bài."], image="Ảnh bản lề"),
+        ]
+    )
+    at, pid = open_article(project_root, snap)
+    choose_real(at, pid)
+    run_ok(
+        at.text_input(key=f"alt-{pid}").input("Bản lề [caption]gỉ[/caption] trước khi sửa").run()
+    )
+    approve(at, pid)
+    to_publish(at)
+    warning = next(w.value for w in at.warning if "đoạn dạng shortcode" in w.value)
+    reminder = "WordPress sẽ chạy đoạn này nếu bạn sửa và lưu bài trong trang quản trị; nên xóa"
+    assert reminder in warning
+    for segment in ("[code_snippet id=3]", "[embed]", "[caption]", "[/caption]"):
+        assert escape_markdown(segment) in warning
+    assert escape_markdown("Alt ảnh ở mục «Bản lề [embed]»") in warning
+    assert site.fake.requests == []
+
+
+def test_no_shortcode_warning_for_plain_article(project_root, root, fake_ai, site):
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    assert not any("đoạn dạng shortcode" in w.value for w in at.warning)
+
+
+def test_same_image_in_two_spots_uploaded_once(project_root, root, fake_ai, site):
+    """Một ảnh đặt ở hai chỗ, cùng alt: chỉ tải một lần (Soi Lỗi T-054 G10); chọn ảnh đại diện."""
+    snap = article(
+        parts=[
+            DraftPart(heading="Mở bài", versions=["Mở bài."]),
+            DraftPart(heading="Bản lề", versions=["Phần một."], image="Ảnh một"),
+            DraftPart(heading="Cánh cổng", versions=["Phần hai."], image="Ảnh hai"),
+        ]
+    )
+    at, first = open_article(project_root, snap)
+    second = at.session_state["part_ids"][2]
+    choose_real(at, first)
+    browse(at, second)  # mở lại đúng thư mục vừa xem
+    choose(at, "IMG_0001.jpg")
+    for pid in (first, second):
+        write_alt(at, pid)
+        approve(at, pid)
+    to_publish(at)
+    run_ok(at.selectbox(key="_featured").select(second).run())
+    send(at)
+    assert len(site.uploads()) == 1
+    (post,) = site.posts()
+    assert post["content"].count("<figure") == 2
+
+
+def test_image_checked_again_right_before_upload(project_root, root, fake_ai, site, monkeypatch):
+    """Ngay trước khi tải, kiểm lại ảnh (``check_chosen_image``, LC-T055-2): ảnh vừa thành ảnh AI
+    (thẻ sửa ở tab khác) thì dừng, chưa gửi gì, alt thêm «Minh họa» và phải duyệt lại."""
+    calls = []
+    original = drafts.check_chosen_image
+
+    def check(image, *args, **kwargs):
+        calls.append(image)
+        return original(image, *args, **kwargs)
+
+    monkeypatch.setattr(drafts, "check_chosen_image", check)
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    before = len(calls)
+    tag_store().set(ImageRef(0, REAL_FILE), ImageTags(source=SOURCE_AI, category="Cổng inox"))
+    send(at)
+    assert len(calls) == before + 1 and calls[-1].rel_path == REAL_FILE
+    assert site.fake.requests == []
+    assert any("vừa thay đổi" in m.value for m in at.markdown)
+    assert at.session_state[f"pick-{pid}"].tags.is_ai
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+    assert button(at, "📤 Gửi nháp").disabled  # alt đổi: phải duyệt lại
+
+
+def test_deleted_image_stops_send(project_root, root, fake_ai, site):
+    at, pid = ready_image(project_root)
+    to_publish(at)
+    (root / REAL_FILE).unlink()
+    send(at)
+    assert site.fake.requests == []
+    assert any("Chưa gửi gì lên website" in e.value for e in at.error)
+    assert any("Không tìm thấy ảnh" in m.value for m in at.markdown)

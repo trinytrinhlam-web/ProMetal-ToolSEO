@@ -1994,12 +1994,8 @@ def draft_panel() -> None:
     if len(ready) > 1:
         if S.get("_featured") not in ready:
             S.pop("_featured", None)
-        st.selectbox(
-            "Ảnh đại diện",
-            ready,
-            format_func=lambda pid: f"Ảnh ở mục «{part_name(pid)}»",
-            key="_featured",
-        )
+        labels = {pid: f"Ảnh ở mục «{part_name(pid)}»" for pid in ready}
+        st.selectbox("Ảnh đại diện", ready, format_func=labels.get, key="_featured")
     findings = shortcode_findings(ready)
     if findings:
         lines = "\n".join(
