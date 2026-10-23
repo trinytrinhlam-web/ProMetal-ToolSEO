@@ -96,13 +96,15 @@ COMPOSE_PREFIXES = (
     "manual-",
     *IMAGE_PREFIXES,
 )
-# Khóa của cả bài (không theo phần) bị xóa cùng bài: cửa sổ chọn ảnh, kết quả gửi nháp.
-COMPOSE_KEYS = ("_browse", "_featured", "_wp_result", "_wp_sent", "_wp_maybe_draft")
+# Khóa của cả bài (không theo phần) bị xóa cùng bài: cửa sổ chọn ảnh, kết quả gửi nháp, bản sao
+# ô nhập.
+COMPOSE_KEYS = ("_browse", "_featured", "_wp_result", "_wp_sent", "_wp_maybe_draft", "_kept")
 # Ô nhập chỉ hiện ở một bước. Streamlit tự xóa giá trị của ô không được vẽ, nên mỗi lần chạy
 # gán lại để chuyển bước không mất từ khóa, chất liệu thật, tiêu đề mục, alt ảnh (và nháp không
-# lưu thiếu).
+# lưu thiếu). Sang trang khác rồi quay lại thì trang này không chạy nên không gán lại được: lấy
+# lại từ bản sao ``_kept`` (``remember_inputs``).
 KEEP_PREFIXES = ("real-", "h-", "kind-", "prompt-", "alt-", "cap-", "altok-")
-KEEP_KEYS = ("keyword", "outline_title")
+KEEP_KEYS = ("keyword", "outline_title", "step")
 DRAFT_FLAGS = ("draft_id", "_draft_saved_json", "_draft_saved_at", "_draft_baseline")
 
 # Chỗ cần ảnh (T-056). Nhãn của segmented_control cố định giữa các lần chạy.
@@ -110,7 +112,7 @@ REAL, AI_KIND = "Ảnh thật", "Ảnh AI"
 IMAGE_KINDS = [REAL, AI_KIND]
 BROWSE_PAGE_SIZE = 12  # ảnh mỗi trang khi chọn ảnh: mỗi ảnh một ảnh xem trước
 BROWSE_COLUMNS = 4
-SCAN_WAIT_SECONDS = 25  # chờ một lần quét lâu nhất (ImageLibrary tự dừng quét sau 10 giây)
+SCAN_WAIT_SECONDS = 15  # chờ một lần quét lâu nhất (ImageLibrary tự dừng quét sau 10 giây)
 MAX_SCANS_KEPT = 40  # số trang thư mục đã quét giữ trong phiên
 MAX_SHOWN_SHORTCODE = 80  # ký tự tối đa của một đoạn dạng shortcode khi liệt kê
 # Dãy từ 9 chữ số trở lên, có thể ngăn bằng dấu cách, chấm, gạch, ngoặc: giống số điện thoại
@@ -141,7 +143,9 @@ def init_state() -> None:
         S.keyword = S.pop("_start_keyword")
     if "_open_draft" in S:  # bấm «Mở» ở khung Bài đang soạn dở (phải chạy trước khi vẽ ô nhập)
         open_draft(S.pop("_open_draft"))
-    for key in [k for k in S if k in KEEP_KEYS or str(k).startswith(KEEP_PREFIXES)]:
+    for key, value in S.get("_kept", {}).items():  # vừa quay lại từ trang khác
+        S.setdefault(key, value)
+    for key in [k for k in S if is_kept(k)]:
         S[key] = S[key]
     S.setdefault("step", 0)
     S.setdefault("keyword", "")
@@ -161,6 +165,19 @@ def init_state() -> None:
     S.setdefault("meta_desc", demo.META_DESCRIPTIONS[0])
     if "_goto" in S:  # đổi bước sau khi AI chạy xong (phải đặt trước khi vẽ thanh bước)
         S.step = S.pop("_goto")
+
+
+def is_kept(key: object) -> bool:
+    return key in KEEP_KEYS or str(key).startswith(KEEP_PREFIXES)
+
+
+def remember_inputs() -> None:
+    """Cuối mỗi lần chạy: bản sao các ô nhập của bài vào khóa thường (không phải ô nhập).
+
+    Sang trang khác ở menu trên cùng, Streamlit xóa giá trị các ô nhập của trang này; không có bản
+    sao thì quay lại sẽ thấy từ khóa, chất liệu thật, alt trống, và lần tự lưu sau ghi đè nháp
+    bằng ô trống."""
+    S._kept = {key: S[key] for key in S if is_kept(key)}
 
 
 def reset_compose() -> None:
@@ -2132,3 +2149,4 @@ else:
     step_publish()
 
 autosave(saved_note)
+remember_inputs()

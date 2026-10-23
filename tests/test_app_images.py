@@ -9,27 +9,39 @@ Mỗi test gắn với một điều kiện trong mục "Ghi chú của Chỉ Hu
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import os
+import re
+import threading
+import time
 from pathlib import Path
 
 import pytest
+import streamlit as st
 import test_app_pages as pages
-from fake_ai import ALT, RESEARCH
+from fake_ai import ALT, RESEARCH, FakeProvider
 from fake_wordpress import BASE_URL
 from PIL import ExifTags, Image
 from PIL.TiffImagePlugin import IFDRational
 from streamlit.testing.v1 import AppTest
 
+import seo_app.ai as ai_module
+import seo_app.images.alt as alt_module
 import seo_app.storage.drafts as drafts
 import seo_app.storage.image_tags as image_tags
+from seo_app.ai import AIError
+from seo_app.ai import registry as ai_registry
 from seo_app.content import OutlineItem
+from seo_app.content.rules import load_alt_rules, load_image_settings
 from seo_app.images import process as image_process
+from seo_app.images.alt import AI_ALT_PREFIX
 from seo_app.images.folders import ImageLibrary, ImageRef
-from seo_app.images.tags import SOURCE_REAL
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL
 from seo_app.storage import DraftPart, DraftSnapshot, DraftStore
 from seo_app.storage.drafts import DraftImage
-from seo_app.storage.image_tags import ImageTagStore
+from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
+from seo_app.text import escape_markdown
 
 env = pages.env  # mật khẩu thử, không có khóa AI thật
 fake_ai = pages.fake_ai
@@ -141,8 +153,13 @@ def run_ok(at: AppTest) -> AppTest:
     return at
 
 
+def by_key(at: AppTest, key: str):
+    return next(b for b in at.button if b.key == key)
+
+
 def browse(at: AppTest, pid: int) -> AppTest:
-    return run_ok(button(at, "📁 Chọn ảnh từ thư mục", key=f"browse-{pid}").click().run())
+    """Bấm «Chọn ảnh từ thư mục» (hay «Chọn ảnh khác» khi đã có ảnh)."""
+    return run_ok(by_key(at, f"browse-{pid}").click().run())
 
 
 def listing(at: AppTest):
@@ -239,3 +256,486 @@ def test_choose_image_write_alt_approve_and_save(project_root, root, fake_ai):
     assert (saved.root_index, saved.rel_path, saved.source) == (0, REAL_FILE, SOURCE_REAL)
     assert saved.alt == ALT.alt and saved.alt_approved is True
     assert saved.category == "Cổng inox"
+
+
+def test_ai_kind_prompt_view_edit_and_saved(project_root, root):
+    """Ảnh AI: prompt xem (khung có nút sao chép), sửa được, nháp nhớ prompt (CLAUDE.md). Tạo
+    ảnh trong app đang hoãn nên nút tạo ảnh bị khóa, không gọi AI."""
+    at, pid = open_article(project_root)
+    at.session_state[f"kind-{pid}"] = "Ảnh AI"
+    run_ok(at.run())
+    assert [c.value for c in at.code] == ["Ảnh bản lề gỉ trước khi sửa"]
+    assert by_key(at, f"gen-{pid}").disabled
+    run_ok(at.text_area(key=f"prompt-{pid}").input("Bản lề inox gỉ, ảnh chụp gần").run())
+    assert [c.value for c in at.code] == ["Bản lề inox gỉ, ảnh chụp gần"]
+    saved = saved_image(at)
+    assert (saved.source, saved.root_index, saved.prompt) == (
+        SOURCE_AI,
+        None,
+        "Bản lề inox gỉ, ảnh chụp gần",
+    )
+    # Mở lại nháp: vẫn là ảnh AI, prompt còn nguyên.
+    again, pid2 = open_article(project_root, store().load(at.session_state["draft_id"]))
+    assert again.session_state[f"kind-{pid2}"] == "Ảnh AI"
+    assert [c.value for c in again.code] == ["Bản lề inox gỉ, ảnh chụp gần"]
+
+
+def test_switching_pages_keeps_inputs_and_draft(project_root, root, fake_ai):
+    """Sang trang khác ở menu rồi quay lại: Streamlit xóa giá trị các ô nhập của trang Soạn bài.
+    Trang lấy lại từ bản sao, nên không mất alt đã duyệt, từ khóa, bước đang làm, và lần tự lưu
+    sau không ghi đè nháp bằng ô trống (phát hiện khi làm T-056)."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    approve(at, pid)
+    run_ok(at.switch_page("views/home.py").run())
+    run_ok(at.switch_page("views/write.py").run())
+    assert at.session_state["step"] == 2
+    assert at.session_state["keyword"] == "sửa cổng inox"
+    assert at.session_state[f"alt-{pid}"] == ALT.alt
+    assert at.session_state[f"altok-{pid}"] is True
+    saved = store().load(at.session_state["draft_id"])
+    assert saved.keyword == "sửa cổng inox"
+    assert saved.parts[1].chosen_image.alt == ALT.alt
+    assert saved.parts[1].chosen_image.alt_approved is True
+
+
+# ============================================== quét thư mục: khi nào, trong luồng nào, giữ lại
+
+
+def spy_scans(monkeypatch) -> list[tuple[str, tuple]]:
+    calls: list[tuple[str, tuple]] = []
+    original = ImageLibrary.list_folder
+
+    def spy(self, *args, **kwargs):
+        calls.append((threading.current_thread().name, args))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", spy)
+    return calls
+
+
+def test_scan_in_own_thread_kept_in_session_rescan_on_request(project_root, root, monkeypatch):
+    """Quét trong luồng riêng; kết quả giữ trong phiên, chuyển trang rồi quay lại không quét lại;
+    chỉ «Quét lại» mới quét lại (Soi Lỗi T-048, Lá Chắn T-048)."""
+    calls = spy_scans(monkeypatch)
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, PROJECT)
+    assert [args[:2] for _name, args in calls] == [(0, ""), (0, PROJECT)]
+    assert all(name.startswith("quet-anh") for name, _args in calls)
+    run_ok(at.run())
+    run_ok(at.switch_page("views/home.py").run())
+    run_ok(at.switch_page("views/write.py").run())
+    assert len(calls) == 2
+    assert at.session_state["_browse"]["dir"] == PROJECT
+    run_ok(by_key(at, "browse-up").click().run())
+    assert len(calls) == 2  # thư mục gốc đã quét trong phiên này
+    run_ok(by_key(at, "browse-rescan").click().run())
+    assert [args[:2] for _name, args in calls[2:]] == [(0, "")]
+
+
+def test_slow_drive_does_not_hold_the_page(project_root, root, monkeypatch):
+    """Ổ chậm (Google Drive): trang không chờ mãi, báo đang quét; lần quét chạy tiếp ở nền."""
+    release = threading.Event()
+    original = ImageLibrary.list_folder
+
+    def slow(self, *args, **kwargs):
+        release.wait(90)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(ImageLibrary, "list_folder", slow)
+    at, pid = open_article(project_root)
+    try:
+        started = time.monotonic()
+        by_key(at, f"browse-{pid}").click().run(timeout=90)
+        assert not at.exception, at.exception
+        assert time.monotonic() - started < 60
+        assert any("đang quét thư mục này ở nền" in i.value for i in at.info)
+    finally:
+        release.set()
+    run_ok(by_key(at, "scan-wait").click().run(timeout=90))
+    assert [sub.name for sub in listing(at).subfolders] == [PROJECT]
+
+
+# ======================================================== tên lấy từ máy, đường dẫn, lối tắt
+
+WEIRD = "[bấm](evil.example) _đậm_ \u200bẩn \u05d0\u05d1"
+WEIRD_FILE = "anh\u200b_[x](y).jpg"
+
+
+def test_names_from_disk_escaped_isolated_never_html(project_root, root):
+    """Tên thư mục, tên file là dữ liệu chưa tin cậy: không thành link hay định dạng, ký tự vô
+    hình hiện thành «�», cả tên cô lập hướng chữ; không bao giờ vào HTML (LC-T048-4 b, U1)."""
+    write(root / WEIRD / WEIRD_FILE, jpeg())
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    assert "\u2068[bấm](evil.example) _đậm_ \ufffdẩn \u05d0\u05d1\u2069" in (
+        at.selectbox(key="_browse_sub").options
+    )
+    open_sub(at, WEIRD)
+    choose(at, WEIRD_FILE)
+    assert not any("\u200b" in text for text in texts(at))
+    markdown = [m.value for m in [*at.markdown, *at.caption, *at.warning]]
+    assert not any("](evil.example)" in v or "[x](y)" in v for v in markdown)
+    assert any(escape_markdown("\u2068anh\ufffd_[x](y).jpg\u2069") in v for v in markdown)
+    assert any(
+        escape_markdown(f"\u2068{WEIRD}\u2069".replace("\u200b", "\ufffd")) in v for v in markdown
+    )
+    for element in [*at.markdown, *at.caption]:
+        if element.proto.allow_html:
+            assert "evil" not in element.value and "[x]" not in element.value
+
+
+def test_no_absolute_path_on_the_page(project_root, root, fake_ai):
+    """Không hiện đường dẫn tuyệt đối (yêu cầu 3, U2); không dùng ``ImageLibrary._folders``."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    browse(at, pid)
+    shown = "\n".join(texts(at))
+    for secret in {str(root), str(root.parent), root.as_posix(), str(Path.home())}:
+        assert secret not in shown
+    assert "Anh cong trinh" in shown  # chỉ tên thư mục gốc
+    source = (project_root / "app" / "views" / "write.py").read_text(encoding="utf-8")
+    # Chỉ được nhắc tới trong lời giải thích «không dùng ``ImageLibrary._folders``».
+    assert not re.search(r"(?<!ImageLibrary)\._folders", source)
+
+
+def make_link(link: Path, target: Path) -> None:
+    """Lối tắt tới thư mục: junction trên Windows (không cần quyền quản trị), symlink nơi khác."""
+    if IS_WINDOWS:
+        import _winapi
+
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        link.symlink_to(target, target_is_directory=True)
+
+
+def test_root_through_link_is_reported_without_path(project_root, tmp_path, monkeypatch):
+    """Thư mục gốc đi qua lối tắt thì báo, không hiện đường dẫn (ghi nhận Lá Chắn T-048)."""
+    direct = tmp_path / "Anh that"
+    write(direct / "a.jpg", jpeg())
+    target = tmp_path / "noi khac" / "Anh tro toi"
+    write(target / "b.jpg", jpeg())
+    link = tmp_path / "Anh qua loi tat"
+    make_link(link, target)
+    monkeypatch.setenv("IMAGE_FOLDERS", f"{direct};{link}")
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    assert not any("lối tắt" in w.value for w in at.warning)
+    run_ok(at.selectbox(key="_browse_root").select(1).run())
+    assert any("đi qua lối tắt" in w.value for w in at.warning)
+    assert [entry.name for entry in listing(at).images] == ["b.jpg"]
+    shown = "\n".join(texts(at))
+    assert str(target) not in shown and str(tmp_path) not in shown
+
+
+# ======================================================================== ảnh xem trước
+
+
+def test_st_image_only_gets_preview_cache_bytes(project_root, root, monkeypatch, fake_ai):
+    """``st.image`` chỉ nhận byte của ``PreviewCache.get`` (LC-T058-2, Lá Chắn T-049 điều kiện 3):
+    không đường dẫn, không byte gốc, không ảnh Pillow."""
+    made: list[bytes] = []
+    original_get = image_process.PreviewCache.get
+
+    def get(self, library, ref):
+        data = original_get(self, library, ref)
+        made.append(data)
+        return data
+
+    monkeypatch.setattr(image_process.PreviewCache, "get", get)
+    shown: list[object] = []
+    original_image = st.image
+
+    def image(data, *args, **kwargs):
+        shown.append(data)
+        return original_image(data, *args, **kwargs)
+
+    monkeypatch.setattr(st, "image", image)
+    at, pid = open_article(project_root)
+    shown.clear()  # bỏ logo của trang đăng nhập (file cố định của app)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    originals = {path.read_bytes() for path in root.rglob("*.jpg")}
+    assert shown
+    for data in shown:
+        assert type(data) is bytes
+        assert data in made and data not in originals
+        with Image.open(io.BytesIO(data)) as preview:
+            assert preview.format == "JPEG" and max(preview.size) <= 320
+
+
+def test_preview_errors_are_vietnamese_without_trace(project_root, root, monkeypatch):
+    """Lỗi đọc ảnh hiện câu tiếng Việt của module ảnh; lỗi lạ hiện câu cố định, không dấu vết lỗi,
+    không chữ của lỗi gốc (Lá Chắn T-049 điều kiện 3)."""
+    write(root / PROJECT / "truoc" / "IMG_0003.jpg", b"day khong phai anh <?php echo 1; ?>")
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, PROJECT)
+    open_sub(at, "truoc")
+    names = [entry.name for entry in listing(at).images]
+    assert by_key(at, f"choose-{names.index('IMG_0003.jpg')}").disabled
+    assert not by_key(at, f"choose-{names.index('IMG_0001.jpg')}").disabled
+    message = (
+        "File này không phải ảnh JPEG, PNG, WebP hoặc HEIC đọc được (có thể bị đổi đuôi hoặc hỏng)."
+    )
+    assert escape_markdown(message) in [c.value for c in at.caption]
+
+    def broken(self, library, ref):
+        raise RuntimeError(r"C:\Users\bi-mat\anh.jpg")
+
+    monkeypatch.setattr(image_process.PreviewCache, "get", broken)
+    run_ok(at.run())
+    shown = "\n".join(texts(at))
+    assert "bi-mat" not in shown
+    assert escape_markdown("Không xử lý được ảnh này. Hãy thử ảnh khác.") in shown
+
+
+def test_gps_text_notice_and_image_settings(project_root, root, monkeypatch):
+    """«Ảnh không có vị trí GPS» khi không có GPS; hiện ``WebImage.notice`` khi có (Lá Chắn T-049,
+    T-067); ``make_web_image`` nhận cấu hình ``load_image_settings()`` (Lá Chắn T-062)."""
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, PROJECT)
+    open_sub(at, "sau")
+    choose(at, "IMG_0002.jpg")
+    assert "Ảnh không có vị trí GPS." in [c.value for c in at.caption]
+
+    seen: list[dict] = []
+    original = image_process.make_web_image
+    notice = "Thông tin GPS của ảnh gốc bị hỏng nên ảnh nén không có vị trí GPS."
+
+    def with_notice(data, **kwargs):
+        seen.append(kwargs)
+        return dataclasses.replace(original(data, **kwargs), notice=notice)
+
+    monkeypatch.setattr(image_process, "make_web_image", with_notice)
+    at.session_state["_web_info"] = {}
+    run_ok(at.run())
+    assert any(escape_markdown(notice) in c.value for c in at.caption)
+    settings = load_image_settings()
+    assert seen == [{"max_edge_px": settings.max_edge_px, "webp_quality": settings.webp_quality}]
+
+
+# ========================================================================= alt bằng AI
+
+
+def test_alt_only_on_click_for_chosen_image_with_ai_copy(project_root, root, monkeypatch, fake_ai):
+    """AI chỉ viết alt khi bấm, cho đúng ảnh đã chọn; ảnh gửi AI là byte của ``make_ai_image``
+    (Lá Chắn T-050 a, Soi Lỗi T-066); ``ai_generated`` theo thẻ, ``rules=load_alt_rules()``,
+    router ``prepare=("alt",)`` (Lá Chắn T-062)."""
+    made, calls, prepared = [], [], []
+    original_make = image_process.make_ai_image
+
+    def make(data, **kwargs):
+        result = original_make(data, **kwargs)
+        made.append(result)
+        return result
+
+    monkeypatch.setattr(image_process, "make_ai_image", make)
+    original_suggest = alt_module.suggest_alt
+
+    def suggest(ai, image, **kwargs):
+        calls.append((image, kwargs))
+        return original_suggest(ai, image, **kwargs)
+
+    monkeypatch.setattr(alt_module, "suggest_alt", suggest)
+    original_router = ai_module.AIRouter
+
+    def router(*args, **kwargs):
+        prepared.append(kwargs.get("prepare"))
+        return original_router(*args, **kwargs)
+
+    monkeypatch.setattr(ai_module, "AIRouter", router)
+    at, pid = open_article(project_root)
+    choose_real(at, pid)  # duyệt thư mục (2 ảnh) rồi chọn: chưa gửi ảnh nào cho AI
+    assert (made, calls, fake_ai.image_calls) == ([], [], [])
+    write_alt(at, pid)
+    ((image, kwargs),) = calls
+    (ai_copy,) = made
+    assert image.data == ai_copy.data and image.mime == "image/jpeg"
+    assert fake_ai.image_calls[0][1][0].data == ai_copy.data
+    assert kwargs["ai_generated"] is False
+    assert kwargs["tags"] == {
+        "Hạng mục": "Cổng inox",
+        "Khu vực": "Tân Phú",
+        "Giai đoạn": "Trước khi làm",
+    }
+    assert kwargs["rules"] == load_alt_rules()
+    assert ("alt",) in prepared
+
+
+def test_alt_ai_errors_shown_as_message(project_root, root, monkeypatch):
+    """Lỗi AI hiện đúng câu ``AIError`` bằng ``st.error``, không ``st.exception`` (Lá Chắn T-050
+    c, T-062): không có khóa AI, rồi hãng AI báo lỗi."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    assert any("ANTHROPIC_API_KEY" in e.value for e in at.error)
+    assert not at.exception
+
+    class Failing(FakeProvider):
+        def generate(self, task, **kwargs):
+            raise AIError("Hãng AI đang quá tải. Thử lại sau ít phút.")
+
+    monkeypatch.setattr(ai_registry, "make_provider", lambda name, settings: Failing())
+    write_alt(at, pid)
+    assert "Hãng AI đang quá tải. Thử lại sau ít phút." in [e.value for e in at.error]
+    assert at.session_state[f"alt-{pid}"] == ""
+
+
+def test_alt_needs_approval_and_phone_numbers_warn(project_root, root, fake_ai):
+    """Alt, chú thích sửa được trong ô; sửa thì phải duyệt lại; dãy số giống số điện thoại thì
+    nhắc (Lá Chắn T-050 b, d)."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    assert at.checkbox(key=f"altok-{pid}").disabled  # chưa có alt thì chưa duyệt được
+    write_alt(at, pid)
+    approve(at, pid)
+    run_ok(at.text_input(key=f"alt-{pid}").input("Cổng nhà anh Tư, gọi 0909 123 456").run())
+    assert at.session_state[f"altok-{pid}"] is False
+    assert any("số điện thoại" in w.value for w in at.warning)
+    run_ok(at.text_input(key=f"alt-{pid}").input("Cổng inox 2 cánh cao 2,4 m").run())
+    assert not any("số điện thoại" in w.value for w in at.warning)
+    run_ok(at.text_input(key=f"cap-{pid}").input("Liên hệ 028.3812.3456").run())
+    assert any("số điện thoại" in w.value for w in at.warning)
+
+
+# ================================================================= ảnh thật / ảnh AI, thẻ
+
+
+def test_ai_root_folder_makes_every_image_ai(project_root, tmp_path, monkeypatch, fake_ai):
+    """Thư mục gốc tên có dấu hiệu AI: mọi ảnh trong đó là ảnh AI, kèm lý do; alt «Minh họa»
+    (Lá Chắn T-052 c, T-070 g, h)."""
+    ai_root = tmp_path / "Ảnh AI"
+    write(ai_root / REAL_FILE, jpeg())
+    monkeypatch.setenv("IMAGE_FOLDERS", str(ai_root))
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    tags = at.session_state[f"pick-{pid}"].tags
+    assert tags.is_ai and (tags.project_code, tags.area, tags.phase) == ("", "", "")
+    shown = "\n".join(texts(at))
+    assert "🤖 Ảnh AI" in shown and "tên thư mục ảnh gốc có chữ AI" in shown
+    assert not any(b.key == f"markai-{pid}" for b in at.button)
+    write_alt(at, pid)
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+
+
+def test_root_link_to_ai_folder_counts_as_ai(project_root, tmp_path, monkeypatch, fake_ai):
+    """Gốc khai báo tên thường nhưng là lối tắt tới thư mục tên AI: xét cả tên sau ``resolve()``
+    (Lá Chắn T-070 g)."""
+    target = tmp_path / "Ảnh AI tạo"
+    write(target / "cong.jpg", jpeg())
+    link = tmp_path / "Anh chung"
+    make_link(link, target)
+    monkeypatch.setenv("IMAGE_FOLDERS", str(link))
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    choose(at, "cong.jpg")
+    assert at.session_state[f"pick-{pid}"].tags.is_ai
+
+
+def test_mark_ai_saves_manual_tag_and_rewrites_alt(project_root, root, fake_ai):
+    """Một bấm đổi sang ảnh AI (``ImageTagStore.set(source="ai")``); alt, chú thích thêm «Minh
+    họa» và phải duyệt lại; AI viết alt như ảnh AI; nháp nhớ ảnh AI (Lá Chắn T-052 b)."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    approve(at, pid)
+    run_ok(by_key(at, f"markai-{pid}").click().run())
+    tags = at.session_state[f"pick-{pid}"].tags
+    assert tags.is_ai and tags.category == "Cổng inox"
+    assert (tags.project_code, tags.area, tags.phase) == ("", "", "")
+    assert tag_store().get(ImageRef(0, REAL_FILE)).tags.source == SOURCE_AI
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+    assert at.session_state[f"altok-{pid}"] is False
+    assert at.session_state[f"kind-{pid}"] == "Ảnh AI"
+    assert "ảnh đã được đánh dấu là ảnh AI" in "\n".join(texts(at))
+    run_ok(by_key(at, f"altai-{pid}").click().run())
+    assert (
+        at.session_state[f"alt-{pid}"]
+        == f"{AI_ALT_PREFIX} cổng inox 304 hai cánh màu bạc vừa lắp xong trước nhà phố"
+    )
+    assert saved_image(at).source == SOURCE_AI
+
+
+def test_mark_ai_store_failure_still_ai_in_session(project_root, root, monkeypatch, fake_ai):
+    """Lưu thẻ hỏng (file bận): trong phiên vẫn là ảnh AI, hiện câu lỗi; không viết alt như ảnh
+    thật (Lá Chắn T-074 j)."""
+
+    def busy(self, ref, tags):
+        raise ImageTagStoreError("File lưu thẻ ảnh đang bận, thử lại sau.")
+
+    monkeypatch.setattr(ImageTagStore, "set", busy)
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    run_ok(by_key(at, f"markai-{pid}").click().run())
+    assert any("Chưa lưu được dấu «ảnh AI»" in w.value for w in at.warning)
+    assert at.session_state[f"pick-{pid}"].tags.is_ai
+    assert tag_store().get(ImageRef(0, REAL_FILE)) is None
+    write_alt(at, pid)
+    assert at.session_state[f"alt-{pid}"].startswith(f"{AI_ALT_PREFIX} ")
+    # Chọn lại đúng ảnh đó trong phiên: vẫn là ảnh AI.
+    browse(at, pid)
+    choose(at, "IMG_0001.jpg")
+    assert at.session_state[f"pick-{pid}"].tags.is_ai
+
+
+def test_broken_tag_file_reported_by_name_only(project_root, root):
+    """File thẻ sửa tay hỏng được cất sang một bên: chỉ hiện tên file (Lá Chắn T-052 d)."""
+    path = image_tags.DEFAULT_IMAGE_TAGS_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"day khong phai SQLite " * 50)
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, PROJECT)
+    open_sub(at, "truoc")  # trang ảnh: đọc thẻ (resolve_many) lần đầu
+    found = [w.value for w in at.warning if "File lưu thẻ ảnh sửa tay bị hỏng" in w.value]
+    (moved,) = path.parent.glob("image_tags.hong-*")
+    assert len(found) == 1 and escape_markdown(moved.name) in found[0]
+    assert str(path.parent) not in found[0]
+
+
+def test_unmatched_folder_words_only_counted(project_root, tmp_path, monkeypatch):
+    """Phần tên thư mục không khớp danh sách chỉ hiện dạng số, không vào dòng thẻ (Lá Chắn T-052
+    e)."""
+    folder = "CT012 - Nhà anh Tuấn - Tân Phú"
+    write(tmp_path / "Anh" / folder / "IMG_1.jpg", jpeg())
+    monkeypatch.setenv("IMAGE_FOLDERS", str(tmp_path / "Anh"))
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, folder)
+    choose(at, "IMG_1.jpg")
+    captions = [c.value for c in at.caption]
+    tag_line = next(c for c in captions if c.startswith("Thẻ:"))
+    assert "Tuấn" not in tag_line and "Tân Phú" in tag_line
+    assert "1 phần tên thư mục không khớp danh sách thẻ nên bị bỏ qua." in captions
+
+
+def test_tags_read_per_page_at_most_200(project_root, tmp_path, monkeypatch):
+    """Thẻ đọc bằng ``resolve_many`` theo từng trang (≤ 200 ảnh), không cho cả lần quét
+    (SL-T074-1); trang không đọc thẻ bằng ``get``/``get_many`` (Lá Chắn T-052 a)."""
+    folder = "CT001 - Cổng sắt - Quận 7"
+    for number in range(15):
+        write(tmp_path / "Anh" / folder / f"IMG_{number:02d}.jpg", jpeg(size=(40, 30)))
+    monkeypatch.setenv("IMAGE_FOLDERS", str(tmp_path / "Anh"))
+    sizes: list[int] = []
+    original = ImageTagStore.resolve_many
+
+    def spy(self, refs):
+        refs = list(refs)
+        sizes.append(len(refs))
+        return original(self, refs)
+
+    monkeypatch.setattr(ImageTagStore, "resolve_many", spy)
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, folder)
+    assert sizes[-1] == 12 and listing(at).total_images == 15
+    run_ok(by_key(at, "page-next").click().run())
+    assert sizes[-1] == 3
+    assert max(sizes) <= 200
+    source = (project_root / "app" / "views" / "write.py").read_text(encoding="utf-8")
+    assert ".get_many(" not in source and "store().get(" not in source
