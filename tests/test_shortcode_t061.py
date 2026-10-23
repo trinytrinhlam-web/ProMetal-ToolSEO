@@ -22,6 +22,7 @@ from pillow_heif import options as heif_options
 import seo_app.wordpress.client as client_module
 from seo_app.images.html import figure_html, plain_image_text
 from seo_app.images.process import make_web_image
+from seo_app.images.tags import SOURCE_AI, ImageTags
 from seo_app.sanitize import escape_shortcodes, sanitize_html
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import DraftImage
@@ -416,7 +417,7 @@ def test_ngoac_vuong_thuong_trong_alt_chu_thich_van_hien_dung(fake_wp, wp_client
     """Chiều 2: alt, chú thích có ngoặc vuông thường hiện đúng như người dùng đã duyệt."""
     alt = "Cổng [mẫu 2026] sơn tĩnh điện"
     caption = "[Lưu ý] sơn lại cổng sau 3 năm"
-    image = DraftImage(web, alt=alt, caption=caption, ai_generated=True)
+    image = DraftImage(web, alt=alt, caption=caption, tags=ImageTags(source=SOURCE_AI))
     wp_client.create_draft_with_images("Sửa cổng", [image])
 
     content = body(posts_of(fake_wp, "POST", POSTS)[0])["content"]
