@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 13:51 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 13:53 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,14 +34,15 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Lá Chắn rút gọn (chưa giao) | `team/T-080` | 23/10 Thợ Máy xong (`a88c4e8`; USB FAT32 không báo oan). Soi Lỗi Linux **ĐẠT** (cloud), Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`51b1ddb`: ép thắng 0/380, tráo thật 0 lọt; SL-T080-1, -2, -L-1 Thấp, chỉ sai câu báo). Đã gộp nhánh Linux (`170f7a3`). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-080-tho-may.md) · [Soi Lỗi](reports/T-080-soi-loi.md) · [Soi Lỗi Linux](reports/T-080-soi-loi-linux.md) |
-| [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI (SL-T071-1). Phải gộp trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-081` | 23/10 Thợ Máy **xong** (`96e9e11`: bỏ «\» sót sau tiền tố AI, 2 dòng code; gỡ 2 `xfail`; 1.358 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Thợ Máy](reports/T-081-tho-may.md) |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Lá Chắn · T-080 kiểm nhanh đọc ảnh | `team/T-080` | 23/10 Thợ Máy xong (`a88c4e8`; USB FAT32 không báo oan). Soi Lỗi Linux **ĐẠT** (cloud), Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`51b1ddb`: ép thắng 0/380, tráo thật 0 lọt; SL-T080-1, -2, -L-1 Thấp, chỉ sai câu báo). Đã gộp nhánh Linux (`170f7a3`). ⏳ **13:53 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-080-tho-may.md) · [Soi Lỗi](reports/T-080-soi-loi.md) · [Soi Lỗi Linux](reports/T-080-soi-loi-linux.md) |
+| [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI (SL-T071-1). Phải gộp trước T-056 | Soi Lỗi · T-081 kiểm nhanh alt ảnh AI | `team/T-081` | 23/10 Thợ Máy **xong** (`96e9e11`: bỏ «\» sót sau tiền tố AI, 2 dòng code; gỡ 2 `xfail`; 1.358 test liên quan qua). ⏳ **13:53 Soi Lỗi rút gọn đang kiểm** | [Thợ Máy](reports/T-081-tho-may.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
+| [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | Sửa câu báo đọc ảnh khi bị tráo thư mục (SL-T080-1, -2, -L-1). Thấp, sau T-056 | Thợ Máy | T-080 gộp; T-056 xong |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
@@ -149,4 +150,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-082
+## Số phiếu tiếp theo: T-083
