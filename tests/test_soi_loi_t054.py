@@ -5,7 +5,8 @@ commit ảnh thật), GPS là tọa độ giả, tên khách là tên giả.
 
 Test ``xfail(strict=True)`` là lỗi tìm được (SL-T054-1…3 trong
 ``docs/team/reports/T-054-soi-loi.md``): sửa xong thì test thành XPASS và báo hỏng, khi đó chỉ
-cần xóa dòng ``@pytest.mark.xfail``. SL-T054-2 đã sửa ở T-061 (đã gỡ ``xfail``).
+cần xóa dòng ``@pytest.mark.xfail``. SL-T054-2 đã sửa ở T-061, SL-T054-1 và SL-T054-3 ở T-071
+(đã gỡ ``xfail``).
 """
 
 import base64
@@ -30,6 +31,7 @@ import seo_app.wordpress.client as client_module
 from seo_app.images import html as image_html
 from seo_app.images.alt import AltSuggestion, clean_suggestion
 from seo_app.images.process import make_web_image
+from seo_app.images.tags import SOURCE_AI, ImageTags, TagError
 from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, escape_shortcodes, sanitize_html
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import (
@@ -286,7 +288,10 @@ def test_byte_va_moi_lenh_gui_di_khong_co_ten_khach_ten_file_goc(fake_wp, wp_cli
     )
     assert b"SN987654321" in original and "Tuấn".encode() in original  # tiền đề: ảnh gốc có
     web = make_web_image(original)
-    send(wp_client, [DraftImage(web, alt="Cổng inox", category="Cổng inox", area="Tân Phú")])
+    send(
+        wp_client,
+        [DraftImage(web, alt="Cổng inox", tags=ImageTags(category="Cổng inox", area="Tân Phú"))],
+    )
 
     assert file_names(fake_wp) == ["cong-inox-tan-phu.webp"]
     for request in fake_wp.requests:
@@ -334,8 +339,14 @@ def test_ten_file_chi_lay_tu_image_file_name(fake_wp, wp_client, site, web, monk
     send(
         wp_client,
         [
-            DraftImage(web, alt=alt, category="Cổng inox", area="Tân Phú", project_code="CT012"),
-            DraftImage(web, alt="Minh họa cổng", category="Cổng inox", ai_generated=True),
+            DraftImage(
+                web,
+                alt=alt,
+                tags=ImageTags(category="Cổng inox", area="Tân Phú", project_code="CT012"),
+            ),
+            DraftImage(
+                web, alt="Minh họa cổng", tags=ImageTags(source=SOURCE_AI, category="Cổng inox")
+            ),
         ],
     )
     assert file_names(fake_wp) == [name for _, name in calls]
@@ -360,7 +371,16 @@ def test_ten_file_chi_lay_tu_image_file_name(fake_wp, wp_client, site, web, monk
 def test_ten_file_khong_the_chen_header_hay_doi_duoi(
     fake_wp, wp_client, site, web, category
 ):
-    send(wp_client, [DraftImage(web, alt="Cổng", category=category)])
+    # T-071 (LC-T054-4): thẻ chỉ nhận ``ImageTags``, chuỗi độc không thành thẻ được, và thẻ
+    # không phải ``ImageTags`` bị từ chối trước mọi request.
+    with pytest.raises(TagError):
+        ImageTags(category=category)
+    with pytest.raises(WordPressError):
+        send(wp_client, [DraftImage(web, alt="Cổng", tags=category)])
+    assert fake_wp.requests == []
+    # Chữ tự do còn vào tên file là alt (ảnh không có thẻ): chuỗi độc đi qua cùng
+    # ``image_file_name`` như ``category`` trước đây.
+    send(wp_client, [DraftImage(web, alt=category)])
     disposition = uploads(fake_wp)[0].headers["Content-Disposition"]
     assert re.fullmatch(r'attachment; filename="[a-z0-9-]+\.webp"', disposition)
     assert "\r" not in disposition and "\n" not in disposition
@@ -460,16 +480,14 @@ def test_anh_that_chu_ai_mo_dau_ngoac_vuong_khong_con_dau_gach_cheo(fake_wp, wp_
     assert "\\" not in json.dumps(body(describes(fake_wp)[0]), ensure_ascii=False)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T054-1: alt/chú thích ảnh AI mở đầu bằng «[…]:» còn dấu «\\» khi gửi WordPress",
-)
 def test_sl_t054_1_anh_ai_chu_mo_dau_ngoac_vuong_con_dau_gach_cheo(fake_wp, wp_client, site, web):
     suggestion = clean_suggestion(
         AltSuggestion(alt="[Trước khi sửa]: cổng sắt gỉ sét", caption="[Lưu ý]: sơn lại cổng"),
         ai_generated=True,
     )
-    image = DraftImage(web, alt=suggestion.alt, caption=suggestion.caption, ai_generated=True)
+    image = DraftImage(
+        web, alt=suggestion.alt, caption=suggestion.caption, tags=ImageTags(source=SOURCE_AI)
+    )
     send(wp_client, [image])
     page = _Figures(sent_content(fake_wp))
     assert page.imgs[0]["alt"] == "Minh họa [Trước khi sửa]: cổng sắt gỉ sét"
@@ -741,11 +759,6 @@ def test_tao_nhap_tra_du_lieu_sai_van_liet_ke_anh(fake_wp, wp_client, site, web,
     assert [(r.method, path(r)) for r in fake_wp.requests][-1] == ("POST", POSTS)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T054-3: lỗi sau lệnh tạo nháp (201 sai dữ liệu, hết giờ, 5xx) không báo bài "
-    "nháp có thể đã được tạo",
-)
 @pytest.mark.parametrize(
     "answer",
     [

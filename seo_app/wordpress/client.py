@@ -12,7 +12,7 @@ import html.entities
 import re
 import unicodedata
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
@@ -25,6 +25,7 @@ from seo_app.text import slugify
 
 if TYPE_CHECKING:
     from seo_app.images.process import WebImage
+    from seo_app.images.tags import ImageTags
 
 DEFAULT_TIMEOUT = 30
 PER_PAGE = 100
@@ -183,7 +184,6 @@ _SEO_WRITTEN_NO_KEYWORD = (
 # Alt/chú thích dài hơn thì báo lỗi trước khi tải (alt AI gợi ý mặc định ≤ 125, chú thích ≤ 200).
 MAX_IMAGE_ALT_CHARS = 500
 MAX_IMAGE_CAPTION_CHARS = 1000
-MAX_IMAGE_TAG_CHARS = 200
 AI_MEDIA_TITLE_PREFIX = "[AI] "  # tiêu đề media của ảnh AI (thiết kế T-046 mục 4)
 _WEBP_TYPE = "image/webp"
 
@@ -208,6 +208,14 @@ _MEDIA_ODD_ANSWER = (
 _MEDIA_BAD_URL = (
     "WordPress trả về địa chỉ ảnh không phải https trên đúng website. Chưa tạo bài nháp."
 )
+_MEDIA_NOT_CREATED = (
+    "WordPress không xác nhận đã tạo ảnh mới trong thư viện Media (cần mã 201 Created). Chưa ghi "
+    "alt cho ảnh này, chưa tạo bài nháp."
+)
+_MEDIA_SAME_ID = (
+    "WordPress trả cùng một mã ảnh cho hai ảnh khác nhau trong lần gửi này (có thể là một ảnh đã "
+    "có trên website). Phần mềm không ghi alt đè lên ảnh đó, chưa tạo bài nháp."
+)
 _DRAFT_IMAGES_LEFT = (
     " Đã có {count} ảnh lên thư viện Media trước khi lỗi (danh sách bên dưới). Phần mềm không xóa "
     "ảnh: ảnh vẫn xem được công khai qua đường dẫn; nếu không dùng, hãy tự xóa trong trang quản "
@@ -218,7 +226,14 @@ _DRAFT_IMAGE_MAYBE = (
     " Ảnh đang tải lúc lỗi có thể vẫn đã lên thư viện Media: kiểm tra Media → Thư viện trong "
     "trang quản trị."
 )
-_DRAFT_UNEXPECTED = "Gửi nháp kèm ảnh gặp lỗi không mong đợi ({kind}). Chưa tạo bài nháp."
+# Lỗi ở chính lệnh tạo nháp mà không phải lời từ chối 4xx rõ ràng (LC-T054-2, SL-T054-3).
+_DRAFT_MAYBE_CREATED = (
+    " Bài nháp có thể vẫn đã được tạo dù có lỗi: trước khi gửi lại, mở trang quản trị WordPress, "
+    "kiểm tra Bài viết → Nháp (và Media → Thư viện) để không tạo thêm một bài nháp trùng và tải "
+    "lại ảnh lần nữa."
+)
+_DRAFT_NOT_CREATED = " Chưa tạo bài nháp."
+_DRAFT_UNEXPECTED = "Gửi nháp kèm ảnh gặp lỗi không mong đợi ({kind})."
 _FEATURED_NOT_SET = (
     "Đã tạo bài nháp kèm ảnh nhưng chưa đặt được ảnh đại diện. {reason} Có thể đặt tay trong "
     "trang quản trị WordPress."
@@ -370,6 +385,13 @@ class Media:
     alt_text: str = ""
 
 
+def _no_tags() -> ImageTags:
+    """Thẻ mặc định của ``DraftImage``: ảnh thật, chưa có thẻ nào. Nhập muộn như module ảnh."""
+    from seo_app.images.tags import ImageTags
+
+    return ImageTags()
+
+
 @dataclass(frozen=True)
 class DraftImage:
     """Một ảnh người dùng đã chọn và duyệt, để ``create_draft_with_images`` tải lên (T-054).
@@ -379,20 +401,19 @@ class DraftImage:
       điều kiện 4).
     - ``alt``, ``caption``: chữ người dùng đã duyệt. Có thể còn ký tự ngắt rộng 0 và escape
       Markdown của ``clean_ai_text``: client tự gỡ (``plain_image_text``) trước khi dùng.
-    - ``category``, ``area``, ``project_code``: thẻ **đã chuẩn hóa** (lấy từ ``ImageTags``),
-      chỉ dùng để đặt tên file qua ``naming.image_file_name``. Không bao giờ truyền tên thư mục
-      hay tên file gốc vào đây (tên file ảnh công khai trên web).
-    - ``ai_generated``: ảnh AI (tên file ``minh-hoa-ai-…``, tiêu đề media ``[AI] …``).
+    - ``tags``: thẻ của ảnh, **chỉ** nhận ``ImageTags`` (T-052): mã công trình, hạng mục, khu vực
+      đều thuộc danh sách cố định, không phải chữ tự do (LC-T054-4). Chỉ dùng để đặt tên file
+      qua ``naming.image_file_name``, nên tên file công khai không mang tên thư mục, tên file gốc
+      hay tên khách (Lá Chắn T-049 điều kiện 4). Client kiểm đúng lớp và chạy lại bước kiểm của
+      ``ImageTags`` trước khi dùng. ``tags.source == "ai"``: ảnh AI (tên file ``minh-hoa-ai-…``,
+      tiêu đề media ``[AI] …``). Mặc định: ảnh thật, chưa có thẻ.
     - ``featured``: làm ảnh đại diện. Không ảnh nào được đánh dấu thì lấy ảnh đầu tiên trong bài.
     """
 
     image: WebImage
     alt: str
     caption: str = ""
-    category: str = ""
-    area: str = ""
-    project_code: str = ""
-    ai_generated: bool = False
+    tags: ImageTags = field(default_factory=_no_tags)
     featured: bool = False
 
 
@@ -424,11 +445,17 @@ class DraftWithImages:
 
 
 class DraftImagesError(WordPressError):
-    """Gửi nháp kèm ảnh lỗi giữa chừng, **trước khi** có bài nháp (W2, góp ý Lá Chắn T-046 số 8).
+    """Gửi nháp kèm ảnh lỗi giữa chừng: ở bước tải ảnh, ghi alt (chưa gửi lệnh tạo nháp), hoặc ở
+    chính lệnh tạo nháp (W2, góp ý Lá Chắn T-046 số 8). Không phải lỗi đặt ảnh đại diện: lúc đó
+    bài nháp đã có, hàm trả kết quả kèm ``message``.
 
     ``uploaded``: ảnh ĐÃ lên thư viện Media trước khi lỗi. Phần mềm không xóa ảnh nào (không có
     hàm xóa); giao diện liệt kê ``uploaded`` để người dùng tự xử lý. ``maybe_uploaded``: ảnh đang
-    tải lúc lỗi có thể đã lên mà website không trả mã (lỗi mạng, máy chủ).
+    tải lúc lỗi có thể đã lên mà website không trả mã (lỗi mạng, máy chủ, câu trả lời sai dạng).
+    ``maybe_draft``: lỗi ở lệnh tạo nháp mà không phải lời từ chối 4xx rõ ràng (hết giờ, mất
+    mạng, 5xx, chuyển hướng, câu trả lời 2xx sai dạng): bài nháp **có thể đã có** trên website,
+    người dùng kiểm Bài viết → Nháp trước khi gửi lại (LC-T054-2, SL-T054-3). ``maybe_draft``
+    tắt thì chưa có bài nháp nào được tạo.
     """
 
     def __init__(
@@ -437,12 +464,14 @@ class DraftImagesError(WordPressError):
         *,
         uploaded: Sequence[UploadedImage] = (),
         maybe_uploaded: bool = False,
+        maybe_draft: bool = False,
         status_code: int | None = None,
         code: str = "",
     ) -> None:
         super().__init__(message, status_code=status_code, code=code)
         self.uploaded = tuple(uploaded)
         self.maybe_uploaded = maybe_uploaded
+        self.maybe_draft = maybe_draft
 
 
 @dataclass(frozen=True)
@@ -453,6 +482,7 @@ class _PlannedImage:
     file_name: str
     alt: str  # chữ thường đã gỡ ký tự ngắt, escape Markdown (alt_text gửi REST)
     caption: str  # chữ thường; escape HTML khi gửi
+    ai_generated: bool  # thẻ đã kiểm lại có ``source == "ai"``
 
 
 class WordPressClient:
@@ -941,11 +971,14 @@ class WordPressClient:
         return self.upload_media(path.read_bytes(), path.name, **kwargs)
 
     def _post_media(
-        self, data: bytes, file_name: str, content_type: str
+        self, data: bytes, file_name: str, content_type: str, *, new_only: bool = False
     ) -> tuple[int, dict[str, Any]]:
         """Gửi đúng ``data`` (không sửa byte nào) lên thư viện Media; trả (mã ảnh, câu trả lời).
 
         ``file_name`` phải là tên đã làm sạch (chữ thường không dấu, ``-``, đuôi ảnh).
+        ``new_only``: chỉ nhận câu trả lời ``201 Created`` (website xác nhận vừa tạo mục mới;
+        WordPress lõi luôn trả 201). Mã khác có thể là mục đã có sẵn trên website (plugin trả lại
+        ảnh trùng byte): ghi alt cho mã đó là sửa ảnh có sẵn (R3, LC-T054-5).
         """
         response = self._request(
             "POST",
@@ -957,6 +990,8 @@ class WordPressClient:
             },
             params={"_fields": _MEDIA_FIELDS},
         )
+        if new_only and response.status_code != 201:
+            raise WordPressError(_MEDIA_NOT_CREATED)
         media = self._json(response)
         # SL-T042-4, LC-T044-1: chỉ nhận id là số nguyên dương thật (``True``, ``"7"``, ``7.9``
         # không được thành ảnh 1 hay ảnh 7 của người khác).
@@ -990,17 +1025,20 @@ class WordPressClient:
 
         Thứ tự, đều qua ``ALLOWED_ROUTES``:
         1. Kiểm mọi thứ **trước khi gửi**: tiêu đề, từng ảnh (đúng ``WebImage`` WebP, alt không
-           rỗng), tối đa một ảnh đại diện. Sai thì ``WordPressError``, chưa có request nào.
-        2. Từng ảnh: ``POST /wp/v2/media`` với đúng ``image.data``; ``POST /wp/v2/media/<mã>``
-           ghi alt, tiêu đề, chú thích cho đúng mã website vừa trả. Tên file chỉ từ
-           ``naming.image_file_name`` (thẻ đã chuẩn hóa, alt đã duyệt). Địa chỉ ảnh phải là
+           rỗng, thẻ là ``ImageTags`` hợp lệ), tối đa một ảnh đại diện. Sai thì
+           ``WordPressError``, chưa có request nào.
+        2. Từng ảnh: ``POST /wp/v2/media`` với đúng ``image.data``; website phải trả
+           ``201 Created`` với mã ảnh chưa gặp trong lần gửi này (LC-T054-5); rồi
+           ``POST /wp/v2/media/<mã>`` ghi alt, tiêu đề, chú thích cho đúng mã đó. Tên file chỉ từ
+           ``naming.image_file_name`` (thẻ ``ImageTags``, alt đã duyệt). Địa chỉ ảnh phải là
            ``https://`` trên đúng website (``is_site_link``).
         3. ``create_draft``: bài luôn ``draft``; không bao giờ sửa bài có sẵn.
         4. ``set_featured_image``: chỉ bài nháp vừa tạo, hỏi lại site bài còn nháp (``_own_draft``).
            Lỗi ở bước này không làm mất bài: trả kết quả kèm ``message``.
 
         Lỗi ở bước 2–3: ``DraftImagesError`` liệt kê ảnh đã lên thư viện (``uploaded``). Phần
-        mềm **không xóa** ảnh nào (W2).
+        mềm **không xóa** ảnh nào (W2). Lỗi ở chính lệnh tạo nháp mà không phải lời từ chối 4xx
+        rõ ràng: ``maybe_draft``, câu báo nói bài nháp có thể đã có (LC-T054-2).
         """
         from seo_app.images.html import ImageHtmlError, figure_html
 
@@ -1018,12 +1056,17 @@ class WordPressClient:
         uploaded: list[UploadedImage] = []
         sent: dict[int, UploadedImage] = {}  # id(DraftImage) → ảnh đã tải
         uploading = False  # đang ở lệnh POST /wp/v2/media (ảnh có thể đã lên mà chưa có mã)
+        creating = False  # đã tới lệnh tạo nháp (bài có thể đã có dù lệnh báo lỗi)
         try:
             for item in planned:
                 uploading = True
                 media_id, created = self._post_media(
-                    item.source.image.data, item.file_name, _WEBP_TYPE
+                    item.source.image.data, item.file_name, _WEBP_TYPE, new_only=True
                 )
+                if any(image.id == media_id for image in uploaded):
+                    # LC-T054-5: một mã cho hai lần tải. Không ghi alt (đè alt ảnh trước, hay ảnh
+                    # có sẵn trên website); ảnh vừa gửi có thể đã lên với mã khác.
+                    raise WordPressError(_MEDIA_SAME_ID)
                 uploading = False
                 uploaded.append(
                     UploadedImage(media_id, item.file_name, "", self.edit_link(media_id))
@@ -1043,6 +1086,7 @@ class WordPressClient:
                 )
                 for part in items
             ]
+            creating = True
             post = self.create_draft(
                 title,
                 "\n".join(content),
@@ -1053,12 +1097,29 @@ class WordPressClient:
             )
         except (WordPressError, ImageHtmlError) as exc:
             status = exc.status_code if isinstance(exc, WordPressError) else None
-            maybe = uploading and (status is None or status >= 500)
-            raise _draft_images_error(str(exc), uploaded, maybe, status) from None
-        except Exception as exc:
-            # Lỗi lạ (không nên có): vẫn phải báo ảnh nào đã công khai trên website (W2).
+            # Chỉ lời từ chối 4xx là rõ ràng "website không làm". Hết giờ, mất mạng, 5xx, chuyển
+            # hướng, câu trả lời sai dạng: lệnh có thể đã chạy xong trên website.
+            unsure = status is None or not 400 <= status < 500
+            reason = str(exc)
+            if creating and not unsure:
+                reason = reason.rstrip() + _DRAFT_NOT_CREATED
             raise _draft_images_error(
-                _DRAFT_UNEXPECTED.format(kind=type(exc).__name__), uploaded, uploading, None
+                reason,
+                uploaded,
+                maybe_uploaded=uploading and unsure,
+                maybe_draft=creating and unsure,
+                status=status,
+            ) from None
+        except Exception as exc:
+            # Lỗi lạ (không nên có): vẫn phải báo ảnh nào đã công khai trên website (W2), và
+            # không khẳng định "chưa tạo bài nháp" khi lỗi xảy ra ở lệnh tạo nháp.
+            reason = _DRAFT_UNEXPECTED.format(kind=type(exc).__name__)
+            raise _draft_images_error(
+                reason if creating else reason + _DRAFT_NOT_CREATED,
+                uploaded,
+                maybe_uploaded=uploading,
+                maybe_draft=creating,
+                status=None,
             ) from exc
 
         if featured is None:
@@ -1078,6 +1139,7 @@ class WordPressClient:
         """Kiểm nội dung và ảnh, đặt tên file. Không gửi gì. Trả (ảnh theo thứ tự, ảnh đại diện)."""
         from seo_app.images.html import plain_image_text
         from seo_app.images.naming import image_file_name
+        from seo_app.images.tags import ImageTags
 
         planned: list[_PlannedImage] = []
         seen: set[int] = set()
@@ -1092,13 +1154,15 @@ class WordPressClient:
             seen.add(id(part))
             number = len(planned) + 1
             _check_web_image(part.image, number)
-            tags = (part.category, part.area, part.project_code)
-            if (
-                any(type(tag) is not str or len(tag) > MAX_IMAGE_TAG_CHARS for tag in tags)
-                or type(part.ai_generated) is not bool
-                or type(part.featured) is not bool
-            ):
+            # Thẻ chỉ từ ``ImageTags`` (LC-T054-4): đúng lớp (không nhận lớp con, chữ, dict), rồi
+            # dựng lại để chạy lại bước kiểm danh sách cố định (``replace`` gọi
+            # ``__post_init__``), phòng đối tượng bị sửa sau khi tạo (``object.__setattr__``).
+            if type(part.tags) is not ImageTags or type(part.featured) is not bool:
                 raise WordPressError(_IMAGE_BAD_TAGS.format(n=number))
+            try:
+                tags = replace(part.tags)
+            except (TypeError, ValueError):  # ``TagError`` là ``ValueError``
+                raise WordPressError(_IMAGE_BAD_TAGS.format(n=number)) from None
             alt, caption = plain_image_text(part.alt), plain_image_text(part.caption)
             if not alt:
                 raise WordPressError(_IMAGE_NO_ALT.format(n=number))
@@ -1110,15 +1174,15 @@ class WordPressClient:
                 )
             # Tên file chỉ từ thẻ đã chuẩn hóa và alt đã duyệt (Lá Chắn T-049 điều kiện 4).
             file_name = image_file_name(
-                category=part.category,
-                area=part.area,
-                project_code=part.project_code,
+                category=tags.category,
+                area=tags.area,
+                project_code=tags.project_code,
                 alt=alt,
-                ai_generated=part.ai_generated,
+                ai_generated=tags.is_ai,
                 taken=names,
             )
             names.append(file_name)
-            planned.append(_PlannedImage(part, file_name, alt, caption))
+            planned.append(_PlannedImage(part, file_name, alt, caption, tags.is_ai))
         chosen = [item.source for item in planned if item.source.featured]
         if len(chosen) > 1:
             raise WordPressError(_DRAFT_TWO_FEATURED)
@@ -1136,7 +1200,7 @@ class WordPressClient:
         đã gỡ ký tự vô hình: WordPress chèn ``alt_text`` vào ``<img>`` của nội dung trang ảnh
         (``prepend_attachment``, cả trong câu trả lời REST có ``description``) rồi chạy shortcode.
         """
-        title = f"{AI_MEDIA_TITLE_PREFIX}{item.alt}" if item.source.ai_generated else item.alt
+        title = f"{AI_MEDIA_TITLE_PREFIX}{item.alt}" if item.ai_generated else item.alt
         payload = {
             "alt_text": escape_shortcodes(item.alt),
             "title": escape_shortcodes(html.escape(title, quote=True)),
@@ -1513,17 +1577,28 @@ def _is_term_ids(value: object) -> bool:
 
 
 def _draft_images_error(
-    message: str, uploaded: Sequence[UploadedImage], maybe: bool, status: int | None
+    message: str,
+    uploaded: Sequence[UploadedImage],
+    *,
+    maybe_uploaded: bool,
+    maybe_draft: bool,
+    status: int | None,
 ) -> DraftImagesError:
-    """Câu báo lỗi gửi nháp kèm ảnh: lý do, rồi ảnh đã lên thư viện (không xóa, W2)."""
+    """Câu báo lỗi gửi nháp kèm ảnh: lý do, bài nháp có thể đã có (lỗi ở lệnh tạo nháp), rồi
+    ảnh đã lên thư viện (không xóa, W2)."""
+    tail = _DRAFT_MAYBE_CREATED if maybe_draft else ""
     if uploaded:
-        tail = _DRAFT_IMAGES_LEFT.format(count=len(uploaded))
-    else:
-        tail = "" if maybe else _DRAFT_IMAGES_NONE
-    if maybe:
+        tail += _DRAFT_IMAGES_LEFT.format(count=len(uploaded))
+    elif not maybe_uploaded:
+        tail += _DRAFT_IMAGES_NONE
+    if maybe_uploaded:
         tail += _DRAFT_IMAGE_MAYBE
     return DraftImagesError(
-        message.rstrip() + tail, uploaded=uploaded, maybe_uploaded=maybe, status_code=status
+        message.rstrip() + tail,
+        uploaded=uploaded,
+        maybe_uploaded=maybe_uploaded,
+        maybe_draft=maybe_draft,
+        status_code=status,
     )
 
 

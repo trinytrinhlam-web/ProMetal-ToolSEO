@@ -23,6 +23,7 @@ from pillow_heif import options as heif_options
 
 import seo_app.wordpress.client as client_module
 from seo_app.images.process import make_web_image
+from seo_app.images.tags import SOURCE_AI, ImageTags
 from seo_app.sanitize import sanitize_html
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import DraftImage
@@ -240,7 +241,7 @@ def test_moi_lenh_ghi_khong_con_ngoac_vuong_tran(fake_wp, wp_client, site, web, 
     wp_client.set_featured_image(42, 101)
     wp_client.create_draft_with_images(
         chu,
-        [f"<p>{chu}</p>", DraftImage(web, alt=chu, caption=chu, ai_generated=True)],
+        [f"<p>{chu}</p>", DraftImage(web, alt=chu, caption=chu, tags=ImageTags(source=SOURCE_AI))],
         excerpt=chu,
     )
     # Không qua oan: đủ 2 lệnh tạo nháp, 2 lệnh tải ảnh, 2 lệnh ghi chữ ảnh, 2 lệnh ghi bài 42.

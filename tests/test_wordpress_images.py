@@ -10,24 +10,34 @@ kiện 4; T-050 điều kiện 4):
 - chỉ tạo nháp, ảnh đại diện chỉ cho bài nháp vừa tạo (``_own_draft``), mọi đường trong
   ``ALLOWED_ROUTES``; không bao giờ ``publish``/``future``;
 - lỗi giữa chừng: liệt kê ảnh đã lên thư viện, không xóa gì; kiểm sai thì chưa gửi gì.
+
+T-071 (dọn lỗi Thấp sau Lá Chắn T-054): lỗi ở lệnh tạo nháp báo bài nháp có thể đã có
+(LC-T054-2); alt, chú thích ảnh AI không còn "\\" (LC-T054-3); thẻ chỉ từ ``ImageTags``
+(LC-T054-4); tải ảnh phải ``201``, mã ảnh trùng thì dừng (LC-T054-5); chốt cuối của
+``figure_html`` chỉ đọc thẻ ``<img>`` (LC-T054-6).
 """
 
+import html
 import io
 import json
 import re
 from fractions import Fraction
 from html.parser import HTMLParser
+from types import SimpleNamespace
 from urllib.parse import urlsplit
 
 import pytest
+import requests
 from fake_wordpress import BASE_URL
 from PIL import ExifTags, Image
 from PIL.TiffImagePlugin import IFDRational
 from pillow_heif import options as heif_options
 
 from seo_app.images import html as image_html
+from seo_app.images.alt import AltSuggestion, clean_suggestion
 from seo_app.images.process import WebImage, make_web_image
-from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, sanitize_html
+from seo_app.images.tags import SOURCE_AI, ImageTags, TagError
+from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, escape_shortcodes, sanitize_html
 from seo_app.wordpress import WordPressError, is_allowed_route
 from seo_app.wordpress.client import (
     DraftImage,
@@ -215,7 +225,9 @@ def sent_content(fake_wp):
 
 
 def test_byte_gui_len_dung_webimage_data_va_con_gps(fake_wp, wp_client, site, web):
-    image = DraftImage(web, alt="Cổng inox 2 cánh sau khi sơn lại", category="Cổng inox")
+    image = DraftImage(
+        web, alt="Cổng inox 2 cánh sau khi sơn lại", tags=ImageTags(category="Cổng inox")
+    )
     result = send(wp_client, ["<p>Mở bài</p>", image])
 
     uploads = media_uploads(fake_wp)
@@ -237,7 +249,7 @@ def test_anh_khong_gps_van_gui_nguyen_byte(fake_wp, wp_client, site, web_no_gps)
 
 
 def test_anh_dung_trong_bai_la_file_day_du_va_khong_co_wp_image(fake_wp, wp_client, site, web):
-    send(wp_client, [DraftImage(web, alt="Cổng inox", category="Cổng inox")])
+    send(wp_client, [DraftImage(web, alt="Cổng inox", tags=ImageTags(category="Cổng inox"))])
     content = sent_content(fake_wp)
     # src là file đầy đủ vừa tải (không phải cỡ nhỏ -300x200…); không lớp wp-image-N, không
     # srcset/sizes: WordPress không tự thêm cỡ nhỏ đã mất GPS (quyết định 5A).
@@ -260,13 +272,12 @@ def _file_names(fake_wp):
     return names
 
 
+CT012_TAGS = ImageTags(project_code="CT012", category="Cổng inox", area="Tân Phú")
+
+
 def test_ten_file_theo_the_da_chuan_hoa_va_tranh_trung(fake_wp, wp_client, site, web):
-    first = DraftImage(
-        web, alt="Cổng inox", category="Cổng inox", area="Tân Phú", project_code="CT012"
-    )
-    second = DraftImage(
-        web, alt="Cổng inox gần", category="Cổng inox", area="Tân Phú", project_code="CT012"
-    )
+    first = DraftImage(web, alt="Cổng inox", tags=CT012_TAGS)
+    second = DraftImage(web, alt="Cổng inox gần", tags=CT012_TAGS)
     result = send(wp_client, [first, "<p>giữa</p>", second])
     assert _file_names(fake_wp) == [
         "cong-inox-tan-phu-ct012.webp",
@@ -282,30 +293,28 @@ def test_thieu_the_thi_ten_file_tu_alt_da_duyet_da_go_ky_tu_ngat(fake_wp, wp_cli
     assert _file_names(fake_wp) == ["ban-le-cong-sat-bi-gi-www-example-vn.webp"]
 
 
-def test_ma_cong_trinh_sai_mau_khong_vao_ten_file(fake_wp, wp_client, site, web):
-    image = DraftImage(
-        web, alt="Cổng inox", category="Cổng inox", project_code="Nhà anh Tuấn 12 Lê Lợi"
-    )
-    send(wp_client, [image])
-    assert _file_names(fake_wp) == ["cong-inox.webp"]
+def test_the_nhap_tay_duoc_chuan_hoa_vao_ten_file(fake_wp, wp_client, site, web):
+    tags = ImageTags.from_input(project_code="ct 12", category="cổng INOX", area="q7")
+    send(wp_client, [DraftImage(web, alt="Cổng inox", tags=tags)])
+    assert _file_names(fake_wp) == ["cong-inox-quan-7-ct12.webp"]
 
 
 def test_draft_image_khong_co_cho_cho_ten_file_goc_hay_thu_muc():
-    # Không có trường nào nhận đường dẫn, tên thư mục hay tên file gốc (Lá Chắn T-049 N8).
+    # Không có trường nào nhận đường dẫn, tên thư mục, tên file gốc hay thẻ chữ tự do (Lá Chắn
+    # T-049 N8, LC-T054-4): thẻ chỉ qua ``tags`` (``ImageTags``).
     fields = set(DraftImage.__dataclass_fields__)
-    assert fields == {
-        "image", "alt", "caption", "category", "area", "project_code", "ai_generated", "featured"
-    }  # fmt: skip
+    assert fields == {"image", "alt", "caption", "tags", "featured"}
+    assert DraftImage(b"x", alt="a").tags == ImageTags()  # mặc định: ảnh thật, chưa có thẻ
 
 
 def test_anh_ai_co_tien_to_ten_file_va_tieu_de_khong_ma_cong_trinh(fake_wp, wp_client, site, web):
+    with pytest.raises(TagError):  # ảnh AI không mang được mã công trình (T-052)
+        ImageTags(source=SOURCE_AI, project_code="CT012", category="Cổng inox")
     image = DraftImage(
         web,
         alt="Minh họa cổng inox 2 cánh",
         caption="Ảnh minh họa (AI): cổng inox",
-        category="Cổng inox",
-        project_code="CT012",
-        ai_generated=True,
+        tags=ImageTags.for_ai_image("Cổng inox"),
     )
     send(wp_client, [image])
     assert _file_names(fake_wp) == ["minh-hoa-ai-cong-inox.webp"]
@@ -432,8 +441,10 @@ def test_plain_image_text_go_dung_thu_tu():
 
 
 def test_thu_tu_lenh_va_moi_duong_trong_danh_sach(fake_wp, wp_client, site, web, web_no_gps):
-    first = DraftImage(web, alt="Cổng inox", category="Cổng inox")
-    second = DraftImage(web_no_gps, alt="Cửa cuốn", category="Cửa cuốn", featured=True)
+    first = DraftImage(web, alt="Cổng inox", tags=ImageTags(category="Cổng inox"))
+    second = DraftImage(
+        web_no_gps, alt="Cửa cuốn", tags=ImageTags(category="Cửa cuốn"), featured=True
+    )
     result = send(wp_client, ["<h2>Phần 1</h2>", first, "<p>x</p>", second])
 
     calls = [(r.method, path(r)) for r in fake_wp.requests]
@@ -519,6 +530,27 @@ def _not_web_image():
     return WebImage(data=_jpeg(), width=320, height=240, gps=None)
 
 
+# Thẻ chữ tự do (tên thư mục, tên khách, địa chỉ) mà ``ImageTags`` không bao giờ nhận.
+_FREE_TEXT_TAGS = {
+    "source": "that",
+    "project_code": "Nhà anh Tuấn 12 Lê Lợi",
+    "category": r"C:\Users\An\Ảnh\CT012 - Nhà anh Tuấn",
+    "area": "12 Lê Lợi",
+    "phase": "",
+}
+
+
+class _SubTags(ImageTags):
+    """Lớp con của ``ImageTags``: client chỉ nhận đúng lớp ``ImageTags``."""
+
+
+def _tampered_tags(field="area"):
+    """``ImageTags`` hợp lệ lúc tạo, rồi bị sửa thẳng (bỏ qua bước kiểm của lớp đóng băng)."""
+    tags = ImageTags(category="Cổng inox")
+    object.__setattr__(tags, field, _FREE_TEXT_TAGS[field])
+    return tags
+
+
 def _bad_cases(web):
     return {
         "alt rỗng": [DraftImage(web, alt="")],
@@ -539,9 +571,12 @@ def _bad_cases(web):
         ],
         "phần lạ": ["<p>x</p>", 5],
         "dict": [{"image": web, "alt": "a"}],
-        "thẻ không phải chữ": [DraftImage(web, alt="a", category=5)],
-        "thẻ quá dài": [DraftImage(web, alt="a", area="x" * 201)],
-        "ai_generated lạ": [DraftImage(web, alt="a", ai_generated="yes")],
+        "thẻ là chữ": [DraftImage(web, alt="a", tags="Cổng inox")],
+        "thẻ là dict": [DraftImage(web, alt="a", tags={"category": "Cổng inox"})],
+        "thẻ giả dạng": [DraftImage(web, alt="a", tags=SimpleNamespace(**_FREE_TEXT_TAGS))],
+        "thẻ lớp con": [DraftImage(web, alt="a", tags=_SubTags(category="Cổng inox"))],
+        "thẻ bị sửa sau khi tạo": [DraftImage(web, alt="a", tags=_tampered_tags())],
+        "featured lạ": [DraftImage(web, alt="a", featured="yes")],
     }
 
 
@@ -561,9 +596,12 @@ def _bad_cases(web):
         "hai ảnh đại diện",
         "phần lạ",
         "dict",
-        "thẻ không phải chữ",
-        "thẻ quá dài",
-        "ai_generated lạ",
+        "thẻ là chữ",
+        "thẻ là dict",
+        "thẻ giả dạng",
+        "thẻ lớp con",
+        "thẻ bị sửa sau khi tạo",
+        "featured lạ",
     ],
 )
 def test_kiem_sai_thi_chua_gui_gi(fake_wp, wp_client, site, web, case):
@@ -716,3 +754,314 @@ def test_client_khong_co_ham_xoa():
 
     names = [name.lower() for name in dir(WordPressClient)]
     assert not [name for name in names if "delete" in name or "remove" in name or "xoa" in name]
+
+
+# ----- T-071 yêu cầu 1 (LC-T054-2): lỗi ở lệnh tạo nháp, bài nháp có thể đã có ---------------
+
+MAYBE_DRAFT = "Bài nháp có thể vẫn đã được tạo"
+KHOA_GIA = "abcd efgh ijkl"  # khóa giả của fixture ``wp_client``
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        requests.exceptions.ReadTimeout("hết giờ"),
+        requests.exceptions.ConnectionError("mất mạng"),
+        (500, {"code": "x", "message": "y"}, {}),
+        (502, b"<html>Bad Gateway</html>", {}),
+        (301, {}, {"Location": f"{BASE_URL}/khac"}),
+        (201, {"id": "42", "status": "draft"}, {}),
+        (201, [], {}),
+        (200, b"<html></html>", {}),
+    ],
+)
+def test_t071_loi_khong_ro_o_lenh_tao_nhap_bao_bai_nhap_co_the_da_co(
+    fake_wp, wp_client, site, web, answer
+):
+    fake_wp.on("POST", POST, answer)
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="Cổng")])
+    err = error.value
+    assert err.maybe_draft is True and err.maybe_uploaded is False
+    assert [image.id for image in err.uploaded] == [FIRST_MEDIA_ID]
+    message = str(err)
+    assert MAYBE_DRAFT in message and "Bài viết → Nháp" in message
+    assert "Chưa tạo bài nháp" not in message
+    # Câu "nháp có thể đã có" đứng trước danh sách ảnh đã lên thư viện.
+    assert message.index(MAYBE_DRAFT) < message.index("1 ảnh lên thư viện Media")
+    assert [(r.method, path(r)) for r in fake_wp.requests][-1] == ("POST", POST)
+    for secret in (KHOA_GIA, KHOA_GIA.replace(" ", "")):
+        assert secret not in message
+    _no_delete(fake_wp)
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404, 409, 413, 429])
+def test_t071_lenh_tao_nhap_bi_tu_choi_4xx_thi_bao_chua_tao(fake_wp, wp_client, site, web, code):
+    fake_wp.on("POST", POST, (code, {"code": "loi_gia", "message": "lỗi giả"}, {}))
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="Cổng")])
+    err = error.value
+    assert err.maybe_draft is False and err.status_code == code
+    assert "Chưa tạo bài nháp" in str(err) and MAYBE_DRAFT not in str(err)
+    assert [image.id for image in err.uploaded] == [FIRST_MEDIA_ID]
+
+
+@pytest.mark.parametrize(
+    ("route", "answer"),
+    [
+        (MEDIA, (500, {"code": "x", "message": "y"}, {})),
+        (MEDIA, requests.exceptions.ReadTimeout("hết giờ")),
+        (f"{MEDIA}/{FIRST_MEDIA_ID}", (502, {"code": "x", "message": "y"}, {})),
+        (f"{MEDIA}/{FIRST_MEDIA_ID}", requests.exceptions.ConnectionError("mất mạng")),
+    ],
+)
+def test_t071_loi_truoc_lenh_tao_nhap_khong_bao_nhap_co_the_da_co(
+    fake_wp, wp_client, site, web, route, answer
+):
+    fake_wp.on("POST", route, answer)
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="Cổng")])
+    assert error.value.maybe_draft is False and MAYBE_DRAFT not in str(error.value)
+    assert ("POST", POST) not in [(r.method, path(r)) for r in fake_wp.requests]
+
+
+def test_t071_loi_la_o_lenh_tao_nhap_khong_khang_dinh_chua_tao(
+    fake_wp, wp_client, site, web, monkeypatch
+):
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("bất ngờ")
+
+    monkeypatch.setattr(wp_client, "create_draft", boom)
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="A")])
+    assert error.value.maybe_draft is True
+    assert MAYBE_DRAFT in str(error.value) and "Chưa tạo bài nháp" not in str(error.value)
+
+
+def test_t071_loi_la_truoc_lenh_tao_nhap_van_bao_chua_tao(
+    fake_wp, wp_client, site, web, monkeypatch
+):
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("bất ngờ")
+
+    monkeypatch.setattr(wp_client, "_describe_draft_media", boom)
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="A")])
+    err = error.value
+    assert err.maybe_draft is False and "Chưa tạo bài nháp" in str(err)
+    assert [image.id for image in err.uploaded] == [FIRST_MEDIA_ID]
+    assert ("POST", POST) not in [(r.method, path(r)) for r in fake_wp.requests]
+    assert DraftImagesError("x").maybe_draft is False  # mặc định: không nói "có thể đã có"
+
+
+# ----- T-071 yêu cầu 2 (LC-T054-3): alt, chú thích ảnh AI mở đầu «[…]:» không còn "\" ------
+
+
+def test_t071_plain_image_text_go_dau_gach_cheo_cua_nhan_giua_dong():
+    plain = image_html.plain_image_text
+    assert plain(r"Minh họa [Trước khi sửa]\: cổng") == "Minh họa [Trước khi sửa]: cổng"
+    assert plain(r"chữ [x]\: y [z]\: w") == "chữ [x]: y [z]: w"
+    assert plain(r"[a]\(b) [c]\[d] e [f]\: g") == "[a](b) [c][d] e [f]: g"
+    # "]" đã escape (đứng sau số lẻ dấu "\") không đóng nhãn nào: giữ nguyên.
+    assert plain(r"a \]\: b") == r"a \]\: b"
+    assert plain(r"a \\]\: b") == r"a \\]: b"
+    for text in (r"Minh họa [x]\: y", r"a \]\: b", r"]\:]\:"):
+        assert plain(plain(text)) == plain(text)  # chạy lại không đổi
+
+
+def _img_alt_and_captions(content):
+    """(alt của các ``<img>``, chữ các ``<figcaption>``) như trình duyệt đọc (đã giải mã)."""
+    alts, captions, inside = [], [], []
+
+    class Reader(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == "img":
+                alts.append(dict(attrs)["alt"])
+            if tag == "figcaption":
+                inside.append("")
+
+        def handle_data(self, data):
+            if inside:
+                inside[-1] += data
+
+        def handle_endtag(self, tag):
+            if tag == "figcaption":
+                captions.append(inside.pop())
+
+    Reader(convert_charrefs=True).feed(content)
+    return alts, captions
+
+
+@pytest.mark.parametrize(
+    ("alt", "caption"),
+    [
+        ("[Trước khi sửa]: cổng sắt gỉ sét", "[Lưu ý]: sơn lại cổng"),
+        ("[Cổng]: [Bản lề]: gỉ", "[Ghi chú]: hai lớp sơn"),
+    ],
+)
+def test_t071_anh_ai_chu_mo_dau_ngoac_vuong_khong_con_dau_gach_cheo(
+    fake_wp, wp_client, site, web, alt, caption
+):
+    suggestion = clean_suggestion(AltSuggestion(alt=alt, caption=caption), ai_generated=True)
+    assert "\\" in suggestion.alt and "\\" in suggestion.caption  # tiền đề: còn escape Markdown
+    image = DraftImage(
+        web, alt=suggestion.alt, caption=suggestion.caption, tags=ImageTags(source=SOURCE_AI)
+    )
+    send(wp_client, [image])
+    want_alt, want_caption = f"Minh họa {alt}", f"Ảnh minh họa (AI): {caption}"
+
+    content = sent_content(fake_wp)
+    assert "\\" not in content
+    assert _img_alt_and_captions(content) == ([want_alt], [want_caption])
+    assert "[" not in content and "]" not in content  # T-061: shortcode vẫn bị vô hiệu
+    update = body(next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}"))
+    assert update["alt_text"] == escape_shortcodes(want_alt)
+    assert update["title"] == escape_shortcodes(html.escape(f"[AI] {want_alt}", quote=True))
+    assert update["caption"] == escape_shortcodes(html.escape(want_caption, quote=True))
+    for value in update.values():
+        assert "\\" not in value and "[" not in value and "]" not in value
+
+
+def test_t071_nguoi_dung_go_them_chu_truoc_nhan_khong_con_dau_gach_cheo(
+    fake_wp, wp_client, site, web
+):
+    edited = "Cổng mới, " + clean_ai_text("[Lưu ý]: sơn 2 lớp")
+    assert edited == r"Cổng mới, [Lưu ý]\: sơn 2 lớp"
+    send(wp_client, [DraftImage(web, alt=edited, caption=edited)])
+    content = sent_content(fake_wp)
+    assert "\\" not in content
+    assert _img_alt_and_captions(content) == (
+        ["Cổng mới, [Lưu ý]: sơn 2 lớp"],
+        ["Cổng mới, [Lưu ý]: sơn 2 lớp"],
+    )
+
+
+def test_t071_go_dau_gach_cheo_khong_mo_lai_shortcode(fake_wp, wp_client, site, web):
+    suggestion = clean_suggestion(
+        AltSuggestion(alt="[code_snippet id=1]: cổng sắt", caption="Cổng sắt"), ai_generated=True
+    )
+    assert suggestion.alt == r"Minh họa [code_snippet id=1]\: cổng sắt"
+    send(wp_client, [DraftImage(web, alt=suggestion.alt, tags=ImageTags(source=SOURCE_AI))])
+    content = sent_content(fake_wp)
+    assert "[code_snippet" not in content and "\\" not in content
+    assert 'alt="Minh họa &#91;code_snippet id=1&#93;: cổng sắt"' in content
+    update = body(next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}"))
+    assert update["alt_text"] == "Minh họa &#91;code_snippet id=1&#93;: cổng sắt"
+
+
+# ----- T-071 yêu cầu 3 (LC-T054-5): tải ảnh phải 201, mã ảnh trùng thì dừng -----------------
+
+
+@pytest.mark.parametrize("code", [200, 202, 204])
+def test_t071_tai_anh_khong_phai_201_thi_dung_khong_ghi_alt(fake_wp, wp_client, site, web, code):
+    fake_wp.on("POST", MEDIA, (code, {"id": 7, "source_url": f"{UPLOADS}cu.webp"}, {}))
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="Cổng")])
+    err = error.value
+    assert err.uploaded == () and err.maybe_uploaded is True and err.maybe_draft is False
+    assert "201" in str(err) and "có thể vẫn đã lên" in str(err)
+    # Không ghi alt cho ảnh 7 (có thể là ảnh có sẵn trên website), không tạo nháp.
+    assert [(r.method, path(r)) for r in fake_wp.requests] == [("POST", MEDIA)]
+
+
+def test_t071_anh_thu_hai_khong_phai_201_liet_ke_anh_dau(
+    fake_wp, wp_client, site, web, web_no_gps
+):
+    calls = {"n": 0}
+
+    def answer(request):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            return {"id": 7, "source_url": f"{UPLOADS}cu.webp"}  # 200: có thể là ảnh có sẵn
+        return site.create_media(request)
+
+    fake_wp.on("POST", MEDIA, answer)
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [DraftImage(web, alt="A"), DraftImage(web_no_gps, alt="B")])
+    err = error.value
+    assert [image.id for image in err.uploaded] == [FIRST_MEDIA_ID]
+    assert err.maybe_uploaded is True
+    assert ("POST", f"{MEDIA}/7") not in [(r.method, path(r)) for r in fake_wp.requests]
+    assert ("POST", POST) not in [(r.method, path(r)) for r in fake_wp.requests]
+
+
+def test_t071_website_tra_cung_ma_anh_thi_dung_khong_ghi_de_alt(fake_wp, wp_client, site, web):
+    def same_id(request):
+        site.create_media(request)
+        return (201, {"id": FIRST_MEDIA_ID, "source_url": site.source_url(FIRST_MEDIA_ID)}, {})
+
+    fake_wp.on("POST", MEDIA, same_id)
+    # Hai ảnh khác đối tượng, cùng byte (plugin gộp ảnh trùng byte có thể trả lại mã cũ).
+    first, second = DraftImage(web, alt="Ảnh một"), DraftImage(web, alt="Ảnh hai")
+    with pytest.raises(DraftImagesError) as error:
+        send(wp_client, [first, second])
+    err = error.value
+    assert [image.id for image in err.uploaded] == [FIRST_MEDIA_ID]
+    assert err.maybe_uploaded is True and err.maybe_draft is False
+    assert "cùng một mã ảnh" in str(err) and "chưa tạo bài nháp" in str(err)
+    writes = [r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}"]
+    assert [body(r)["alt_text"] for r in writes] == ["Ảnh một"]  # alt ảnh 101 không bị đè
+    assert ("POST", POST) not in [(r.method, path(r)) for r in fake_wp.requests]
+    _no_delete(fake_wp)
+
+
+# ----- T-071 yêu cầu 4 (LC-T054-6): chốt cuối của figure_html chỉ đọc thẻ <img> ------------
+
+CAPTION_LIKE_IMG = f'chữ src="{SRC}" alt=y'
+
+
+def test_t071_chu_thich_giong_thuoc_tinh_anh_van_dung_binh_thuong():
+    out = image_html.figure_html(
+        src=SRC, alt="Cổng", width=10, height=10, caption=CAPTION_LIKE_IMG
+    )
+    assert out.count("<img ") == 1
+    assert f"<figcaption>{CAPTION_LIKE_IMG}</figcaption>" in out
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        lambda out: re.sub(r'<img src="[^"]*"', "<img", out),  # bộ lọc bỏ src của ảnh
+        lambda out: re.sub(r' alt="[^"]*"( width)', r"\1", out),  # bộ lọc bỏ alt của ảnh
+        lambda out: out.replace("<img ", "<span ", 1),  # bộ lọc bỏ hẳn thẻ ảnh
+        lambda out: out.replace("</figure>", f'<img src="{SRC}" alt="x"></figure>'),  # hai ảnh
+    ],
+)
+def test_t071_bo_loc_lam_hong_the_anh_thi_bao_loi_du_chu_thich_co(monkeypatch, broken):
+    real = image_html.sanitize_html
+    monkeypatch.setattr(image_html, "sanitize_html", lambda text: broken(real(text)))
+    with pytest.raises(image_html.ImageHtmlError):
+        image_html.figure_html(src=SRC, alt="Cổng", width=10, height=10, caption=CAPTION_LIKE_IMG)
+
+
+# ----- T-071 yêu cầu 5 (LC-T054-4): thẻ chỉ từ ImageTags ------------------------------------
+
+
+@pytest.mark.parametrize("field", ["project_code", "category", "area"])
+def test_t071_chu_tu_do_khong_thanh_the_duoc(field):
+    with pytest.raises(TagError):
+        ImageTags(**{field: _FREE_TEXT_TAGS[field]})
+
+
+@pytest.mark.parametrize("field", ["project_code", "category", "area"])
+def test_t071_the_bi_sua_sau_khi_tao_bi_chan_truoc_khi_gui(fake_wp, wp_client, site, web, field):
+    # Thay test cũ "mã công trình sai mẫu không vào tên file": nay chữ tự do không tới được
+    # bước đặt tên file, kể cả khi ``ImageTags`` bị sửa sau khi tạo (chưa gửi gì).
+    with pytest.raises(WordPressError) as error:
+        send(wp_client, [DraftImage(web, alt="Cổng", tags=_tampered_tags(field))])
+    assert str(error.value) == "Thẻ của ảnh thứ 1 không hợp lệ. Chưa gửi gì lên website."
+    assert fake_wp.requests == []
+
+
+def test_t071_anh_ai_lay_tu_the_nguon_anh(fake_wp, wp_client, site, web):
+    send(wp_client, [DraftImage(web, alt="Cổng inox", tags=ImageTags(source=SOURCE_AI))])
+    assert _file_names(fake_wp) == ["minh-hoa-ai-cong-inox.webp"]
+    update = next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}")
+    assert body(update)["title"] == "&#91;AI&#93; Cổng inox"
+
+
+def test_t071_anh_that_khong_co_tien_to_ai(fake_wp, wp_client, site, web):
+    send(wp_client, [DraftImage(web, alt="Cổng inox", tags=CT012_TAGS)])
+    assert _file_names(fake_wp) == ["cong-inox-tan-phu-ct012.webp"]
+    update = next(r for r in json_writes(fake_wp) if path(r) == f"{MEDIA}/{FIRST_MEDIA_ID}")
+    assert body(update)["title"] == "Cổng inox"
