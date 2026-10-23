@@ -7,9 +7,9 @@
   không phải là file ảnh.". Mọi hệ điều hành (Linux thắng đua được thật). Ở đây giả đúng một bước:
   ``lstat`` của ``x/bi-mat.jpg`` trả số liệu của file ngoài gốc, mọi bước khác thấy ổ thật.
 - LC-T079-1 (= SL-T079-1) ở đường xem thư mục: ``_scan_held`` (Windows, có từ T-048) cũng so đường
-  dẫn thật của thư mục đang giữ bằng ``_path_key`` (NFC + ``casefold``), nên thư mục "anh em" của gốc
-  tên trông y hệt (dạng NFD) qua phép so; ép kẻ tấn công thắng thì danh sách có tên, cỡ file ngoài
-  thư mục ảnh. Các ca đọc, ``stat`` của SL-T079-1 nằm ở ``tests/test_soi_loi_t079.py``.
+  dẫn thật của thư mục đang giữ bằng ``_path_key`` (NFC + ``casefold``), nên thư mục "anh em" của
+  gốc tên trông y hệt (dạng NFD) qua phép so; ép kẻ tấn công thắng thì danh sách có tên, cỡ file
+  ngoài thư mục ảnh. Các ca đọc, ``stat`` của SL-T079-1 nằm ở ``tests/test_soi_loi_t079.py``.
 
 Lỗi đánh dấu ``xfail(strict=True)`` kèm mã LC-T079-x (xem ``docs/team/reports/T-079-la-chan.md``).
 Mọi test dùng thư mục tạm, ảnh giả, không gọi mạng.
@@ -50,8 +50,8 @@ def assert_no_abs_path(text: str, *paths: Path) -> None:
 LC_T079_2 = pytest.mark.xfail(
     strict=True,
     reason=(
-        "LC-T079-2: _checked_file báo loại, cỡ theo lstat đi xuyên tầng vừa bị tráo, trước lớp kiểm "
-        "trên mục đã mở, nên câu báo nói về file ngoài thư mục ảnh"
+        "LC-T079-2: _checked_file báo loại, cỡ theo lstat đi xuyên tầng vừa bị tráo, trước lớp "
+        "kiểm trên mục đã mở, nên câu báo nói về file ngoài thư mục ảnh"
     ),
 )
 
