@@ -173,9 +173,14 @@ def listing(at: AppTest):
     return at.session_state["_scans"][(place["root"], place["dir"], place["page"])]
 
 
+def sub_box(at: AppTest):
+    """Ô «Thư mục con» (khóa đổi mỗi lần sang thư mục khác)."""
+    return next(box for box in at.selectbox if box.label.startswith("Thư mục con"))
+
+
 def open_sub(at: AppTest, name: str) -> AppTest:
     target = next(sub.rel_path for sub in listing(at).subfolders if sub.name == name)
-    return run_ok(at.selectbox(key="_browse_sub").select(target).run())
+    return run_ok(sub_box(at).select(target).run())
 
 
 def choose(at: AppTest, name: str) -> AppTest:
@@ -341,6 +346,34 @@ def test_scan_in_own_thread_kept_in_session_rescan_on_request(project_root, root
     assert [args[:2] for _name, args in calls[2:]] == [(0, "")]
 
 
+def test_subfolder_box_is_fresh_after_moving(project_root, root):
+    """Sang thư mục khác thì ô «Thư mục con» là ô mới, trống: trình duyệt không giữ lựa chọn của
+    thư mục trước (lựa chọn đó không có trong danh sách mới; lỗi thấy khi mở app thật)."""
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    first = sub_box(at).key
+    open_sub(at, PROJECT)
+    box = sub_box(at)
+    assert box.key != first and box.value is None
+    assert box.options == ["⁨sau⁩", "⁨truoc⁩"]
+
+
+def test_unpick_clears_image_and_alt(project_root, root, fake_ai):
+    """«Bỏ ảnh»: bỏ ảnh và alt; bản sao ô nhập không đưa alt cũ trở lại; nháp không còn ảnh."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    approve(at, pid)
+    run_ok(by_key(at, f"unpick-{pid}").click().run())
+    run_ok(at.run())
+    assert f"pick-{pid}" not in at.session_state
+    assert at.session_state.get(f"alt-{pid}", "") == ""
+    assert saved_image(at) is None
+    browse(at, pid)
+    choose(at, "IMG_0001.jpg")
+    assert at.session_state[f"alt-{pid}"] == "" and at.session_state[f"altok-{pid}"] is False
+
+
 def test_slow_drive_does_not_hold_the_page(project_root, root, monkeypatch):
     """Ổ chậm (Google Drive): trang không chờ mãi, báo đang quét; lần quét chạy tiếp ở nền."""
     release = threading.Event()
@@ -376,9 +409,7 @@ def test_names_from_disk_escaped_isolated_never_html(project_root, root):
     write(root / WEIRD / WEIRD_FILE, jpeg())
     at, pid = open_article(project_root)
     browse(at, pid)
-    assert "\u2068[bấm](evil.example) _đậm_ \ufffdẩn \u05d0\u05d1\u2069" in (
-        at.selectbox(key="_browse_sub").options
-    )
+    assert "\u2068[bấm](evil.example) _đậm_ \ufffdẩn \u05d0\u05d1\u2069" in (sub_box(at).options)
     open_sub(at, WEIRD)
     choose(at, WEIRD_FILE)
     assert not any("\u200b" in text for text in texts(at))

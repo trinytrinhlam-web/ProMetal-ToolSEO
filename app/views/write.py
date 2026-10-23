@@ -408,10 +408,9 @@ def restore_images(snap: DraftSnapshot) -> None:
     for index, item in checked.items():
         pid = S.part_ids[index]
         S[f"kind-{pid}"] = AI_KIND if item.is_ai or item.is_generated else REAL
-        S[f"prompt-{pid}"] = item.image.prompt
-        set_pick(pid, item)
-        if item.ref is not None and not item.available:
-            S[f"imgmsg-{pid}"] = item.message
+        if item.image.prompt:
+            S[f"prompt-{pid}"] = item.image.prompt
+        set_pick(pid, item)  # ảnh không dùng được: khung ảnh hiện ``item.message``
 
 
 def ask_open(draft_id: str) -> None:
@@ -790,6 +789,7 @@ def unapprove(pid: int) -> None:
 def unpick(pid: int) -> None:
     for prefix in ("pick-", "alt-", "cap-", "altok-", "imgmsg-"):
         S.pop(f"{prefix}{pid}", None)
+        S.get("_kept", {}).pop(f"{prefix}{pid}", None)  # bản sao không đưa alt cũ trở lại
 
 
 def mark_ai(pid: int) -> None:
@@ -928,10 +928,10 @@ def ai_prompt_panel(pid: int) -> None:
     st.caption("Prompt tạo ảnh — bấm biểu tượng ở góc khung để sao chép.")
     st.code(S[f"prompt-{pid}"] or " ", language=None, wrap_lines=True)
     later = "Tạo ảnh ngay trong app đang tạm hoãn (chủ dự án chốt 2026-10-20)."
-    gen, again, edit = st.columns(3)
-    gen.button("🎨 Tạo ảnh", key=f"gen-{pid}", disabled=True, width="stretch", help=later)
-    again.button("🔄 Prompt khác", key=f"rp-{pid}", disabled=True, width="stretch", help=later)
-    with edit.popover("✏️ Sửa", width="stretch"):
+    row = st.container(horizontal=True, gap="small")
+    row.button("🎨 Tạo ảnh", key=f"gen-{pid}", disabled=True, help=later)
+    row.button("🔄 Prompt khác", key=f"rp-{pid}", disabled=True, help=later)
+    with row.popover("✏️ Sửa prompt"):
         st.text_area(
             "Prompt", key=f"prompt-{pid}", height=150, max_chars=draft_storage.MAX_PROMPT_CHARS
         )
@@ -1046,9 +1046,22 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage) -> None:
         caption = S.get(f"cap-{pid}", "")
         if len(caption) > caption_max:
             st.caption(f"Chú thích {len(caption)} ký tự, nên dưới {caption_max}.")
+        if slot_tags(checked).is_ai:
+            st.caption(
+                "Ảnh AI: alt mở đầu «Minh họa», chú thích mở đầu «Ảnh minh họa (AI)». Thiếu thì "
+                "app tự thêm trước khi gửi và nhờ bạn duyệt lại."
+            )
     if not alt.strip():
         S[f"altok-{pid}"] = False
-    ok_col.checkbox("Đã đọc, duyệt alt và chú thích", key=f"altok-{pid}", disabled=not alt.strip())
+    ok_col.checkbox(
+        "✅ Đã duyệt",
+        key=f"altok-{pid}",
+        disabled=not alt.strip(),
+        help=(
+            "Bạn đã đọc alt và chú thích: đúng với ảnh, không có tên, số điện thoại, địa chỉ của "
+            "khách. Sửa chữ thì phải duyệt lại."
+        ),
+    )
     if PHONE_LIKE.search(alt) or PHONE_LIKE.search(caption):
         row.warning(
             "Alt hoặc chú thích có dãy số giống số điện thoại. Đừng để số điện thoại, số nhà, "
@@ -1059,10 +1072,20 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage) -> None:
 # ----- chọn ảnh từ thư mục -------------------------------------------------------------------
 
 
+def moved() -> None:
+    """Đã sang thư mục khác: ô «Thư mục con» lấy khóa mới (``sub_key``), nên trình duyệt vẽ ô
+    trống, không giữ lựa chọn của thư mục trước (lựa chọn đó không có trong danh sách mới)."""
+    S._browse_nav = S.get("_browse_nav", 0) + 1
+
+
+def sub_key() -> str:
+    return f"_browse_sub_{S.get('_browse_nav', 0)}"
+
+
 def open_browser(pid: int) -> None:
     last = S.get("_last_place", {"root": 0, "dir": ""})
     S._browse = {"pid": pid, "root": last["root"], "dir": last["dir"], "page": 1}
-    S.pop("_browse_sub", None)
+    moved()
 
 
 def open_image_folder(pid: int) -> None:
@@ -1078,26 +1101,26 @@ def open_image_folder(pid: int) -> None:
         "page": 1,
         "walk": list(ref.parts[:-1]),
     }
-    S.pop("_browse_sub", None)
+    moved()
 
 
 def close_browser() -> None:
     S.pop("_browse", None)
-    S.pop("_browse_sub", None)
+    moved()
 
 
 def go_to(rel_dir: str) -> None:
     S._browse.update(dir=rel_dir, page=1)
-    S.pop("_browse_sub", None)
+    moved()
 
 
 def go_root() -> None:
     S._browse.update(root=S["_browse_root"], dir="", page=1)
-    S.pop("_browse_sub", None)
+    moved()
 
 
-def go_sub() -> None:
-    target = S.pop("_browse_sub", None)
+def go_sub(key: str) -> None:
+    target = S.get(key)
     if target:
         go_to(target)
 
@@ -1268,8 +1291,9 @@ def folder_browser(library: ImageLibrary, pid: int) -> None:
                 format_func=names.get,
                 index=None,
                 placeholder="Chọn một thư mục con để mở…",
-                key="_browse_sub",
+                key=sub_key(),
                 on_change=go_sub,
+                args=(sub_key(),),
             )
         if not listing.images:
             st.caption("Thư mục này không có ảnh dùng được (ảnh có thể nằm trong thư mục con).")
@@ -1842,8 +1866,8 @@ def send_draft(client: WordPressClient, ready: list[int]) -> None:
     """
     library = image_library()
     try:
-        settings = load_image_settings()
-    except AIError as exc:  # ContentRulesError
+        settings = load_image_settings() if ready else None
+    except AIError as exc:  # ContentRulesError: mục [images] của config/content.toml sai
         S._wp_result = {"ok": False, "message": f"{exc} Chưa gửi gì lên website."}
         return
     problems: list[str] = []
@@ -1858,8 +1882,9 @@ def send_draft(client: WordPressClient, ready: list[int]) -> None:
             elif changed(fresh, image, checked):
                 set_pick(pid, fresh)
                 problems.append(
-                    f"Ảnh ở mục «{part_name(pid)}» vừa thay đổi (tên, thư mục, hay thành ảnh AI). "
-                    "Xem lại ảnh, alt rồi duyệt ở bước Viết & kiểm tra."
+                    f"Ảnh ở mục «{part_name(pid)}» vừa thay đổi (tên, thư mục, hay thành ảnh AI), "
+                    "hoặc alt, chú thích của ảnh AI vừa được thêm «Minh họa». Xem lại ảnh, alt rồi "
+                    "duyệt ở bước Viết & kiểm tra."
                 )
             else:
                 fresh_by_pid[pid] = fresh
