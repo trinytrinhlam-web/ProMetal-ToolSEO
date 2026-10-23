@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3; không chặn T-056) |
 | Phụ thuộc | T-079 đã gộp (trên máy, đang chạy toàn bộ test) |
-| Trạng thái | Soi Lỗi xong, chờ Lá Chắn rút gọn |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -43,3 +43,4 @@ Theo cách sửa trong bảng lỗi của biên bản Lá Chắn T-079. Thử l�
 - 2026-10-23 13:51 (Chỉ Huy B): **Soi Lỗi Linux (cloud) ĐẠT** (`133774c`): gỡ `xfail` 3 ca SL-T079-L-1; 0 lọt qua hơn 3,4 triệu vòng tráo; thêm SL-T080-L-1 (Thấp, câu báo "nằm ngoài thư mục ảnh" thay "vừa bị thay đổi", có từ trước). **Soi Lỗi Windows ĐẠT CÓ ĐIỀU KIỆN** (`51b1ddb`): ép thắng 0/380, tráo thật 0 lọt qua 21.541 lần (bản cũ lọt nội dung 61 lần với thư mục anh em dấu Kelvin); 2 Thấp mới SL-T080-1, -2 (chỉ sai câu báo, có từ trước); SL-T080-L-1 cũng có trên Windows. Đã gộp `team/T-080-linux` vào `team/T-080` (`170f7a3`), xóa nhánh Linux. Chờ Lá Chắn rút gọn (F1). SL-T080-1, -2, -L-1: phiếu dọn sau hoặc ghi nhận, chờ chủ dự án.
 - 2026-10-23 13:53 (Chỉ Huy B): chủ dự án duyệt: giao Lá Chắn rút gọn; SL-T080-1, -2, -L-1 làm ở phiếu **T-082** (sau T-056).
 - 2026-10-23 14:32 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`8869baf`): LC-T079-1, -2, -3 đóng; 0 lỗi mới. Lá Chắn nâng LC-T079-1 trên bản `main` cũ lên **Cao** (Soi Lỗi khai thác được thật 61 lần) → gộp ngay, trước T-056. Điều kiện: T-082 thêm ghi chú/làm chặt `_resolve_inside`, `_checked_file` (bỏ `tests/test_la_chan_t080.py` khỏi lệnh test của T-082: không có file này); Mac chạy test thật trước khi dùng; kiểm lại bằng Fable sau 01/11. Đã gộp vào `main` trên máy (`3eba83a`), đang chạy toàn bộ test.
+- 2026-10-23 14:49 (Chỉ Huy B): **đã gộp vào `main`** (Windows: 11.668 test qua, 0 hỏng); xóa nhánh `team/T-080`, worktree `wt-T-080`.

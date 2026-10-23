@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-23 14:32. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-23 14:49. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -48,7 +48,6 @@ Chỉ Huy B, cập nhật 2026-10-23 14:32. Agent chạy ở phiên con dưới 
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp (`089f685`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | Điều kiện → T-040, T-041, GĐ5 |
 | [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng | đã gộp (`638a895`), nhánh `team/T-079`, `team/T-079-linux` và worktree đã xóa | ✅ Windows 11.265 qua, 3 hỏng oan (chạy riêng lại qua); đã đẩy `main` | 3 Thấp → T-080 (đang làm) |
 | [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) Dấu «\» sót ở alt ảnh AI (trước T-056) | `team/T-081` (`d78725e`) | ✅ Soi Lỗi rút gọn ĐẠT | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-081 kiểm nhanh alt ảnh AI") |
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) Dọn lỗi Thấp đọc ảnh (GĐ3) | đã gộp vào `main` **trên máy** (`3eba83a`), **chưa đẩy**; nhánh `team/T-080` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (gộp ngay, trước T-056) | ⏳ Chạy toàn bộ test Windows; qua thì đẩy `main`, xóa nhánh `team/T-080` và worktree `wt-T-080` |
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp (`5d17f5e`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | LC-T069-1, -2 sửa chữ README sau |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
@@ -57,6 +56,10 @@ Chỉ Huy B, cập nhật 2026-10-23 14:32. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 14:49 · Chỉ Huy B
+
+- Toàn bộ test `main` có T-080: **11.668 qua, 0 hỏng** (18 phút). Đẩy `main`; xóa nhánh `team/T-080`, worktree `wt-T-080`. Đang chạy: Lá Chắn T-081.
 
 ### 2026-10-23 14:32 · Chỉ Huy B
 
