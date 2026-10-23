@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 18:18 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 18:44 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,7 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Họa Sĩ · T-056 màn hình chọn ảnh | `team/T-056` | ⏳ **17:22 Họa Sĩ đang làm** (mọi phiếu chặn đã gộp; trước khi gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2) | |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi (chưa giao) | `team/T-056` | 23/10 Họa Sĩ **xong** (`4303374`: chỗ cần ảnh thật, nút «Gửi nháp» thật; tạo ảnh AI vẫn hoãn). ⏳ **Chờ giao Soi Lỗi** (đầy đủ), rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi rút gọn (chưa giao) | `team/T-040` | 23/10 Ngòi Bút **xong** (`ce72b80`: lời dặn meta, anchor có ví dụ; mục `[meta]` chưa được code đọc → T-041). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Ngòi Bút](reports/T-040-ngoi-but.md) |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Soi Lỗi (chưa giao) | `team/T-060` | 23/10 Thợ Máy **xong** (`af6edfd`: 8/8 việc, gỡ 8 `xfail`, sửa 4 test cũ theo LC-T061-3 có Chỉ Huy duyệt; 2.350 test liên quan qua). ⏳ **Chờ giao Soi Lỗi** (soát R5 4 test cũ) | [Thợ Máy](reports/T-060-tho-may.md) |
 

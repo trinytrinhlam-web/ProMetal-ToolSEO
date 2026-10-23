@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-048 → T-055 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Họa Sĩ xong, chờ Soi Lỗi |
 
 ## Mục tiêu
 
@@ -79,3 +79,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-23 14:32 (Chỉ Huy B): T-080 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp (điều kiện "gộp T-080 trước T-056"). SL-T081-1, SL-T068-1..3, LC-T068-1 làm ở **T-083 sau T-056**.
 - 2026-10-23 15:30 (Chỉ Huy B): **mọi phiếu bắt buộc trước T-056 đã gộp** (T-066, T-071, T-079, T-080, T-081). Sẵn sàng giao Họa Sĩ khi chủ dự án duyệt.
 - 2026-10-23 17:22 (Chỉ Huy B): **chủ dự án duyệt giao Họa Sĩ.** Nhánh `team/T-056` từ `main`, worktree `wt-T-056`. **Mở rộng phạm vi:** (1) được thêm module mới `seo_app/wordpress/shortcodes.py` chứa hàm công khai tìm đoạn dạng shortcode cho cảnh báo LC-T061-4 (dùng đúng quy tắc `_has_shortcode`/`_SHORTCODE_OPEN` của `client.py`, xét trên chữ đã gỡ ký tự vô hình; chỉ thêm, **không sửa `client.py`**), có test; (2) được sửa `tests/**` cho test giao diện và fixture (điều kiện 2f T-052). Cần sửa file `seo_app/**` khác thì hỏi Chỉ Huy. **Nút «Gửi nháp» kèm ảnh:** làm đủ, nhưng trước khi gộp Chỉ Huy phải có xác nhận chủ dự án đã làm `TIEN-DO.md` mục 4b (Code Snippets ≥ 3.9.2). README (Thư Ký) và lượt Lá Chắn toàn GĐ3 làm sau phiếu này.
+- 2026-10-23 18:44 (Chỉ Huy B): **Họa Sĩ xong** (`4303374`, 7 commit): chỗ cần ảnh thật trên Soạn bài (chọn thư mục/ảnh, Ảnh thật/AI kèm lý do, GPS, alt/chú thích trong ô sửa, «AI viết alt» theo bấm, tick «Đã duyệt», cảnh báo số điện thoại; prompt ảnh AI xem/sửa/sao chép, tạo ảnh vẫn hoãn); nút «Gửi nháp» thật kèm cảnh báo GPS công khai và liệt kê đoạn dạng shortcode (`seo_app/wordpress/shortcodes.py`); sửa thêm lỗi sang trang khác mất ô nhập. Test mới `tests/test_app_images.py`, `tests/test_wordpress_shortcodes.py`; sửa `tests/test_content_edge_cases.py::test_publish_now_requires_confirmation` theo nút Gửi nháp thật (Soi Lỗi soát R5). Rủi ro mục 2 (nhánh `walk_to_folder` khi danh sách thư mục cha bị cắt) cần Lá Chắn quyết. Đề xuất: Thư Ký README sau phiếu; phiếu nhỏ Họa Sĩ cho trang Cài đặt → Ảnh còn in đường dẫn tuyệt đối (U2, có từ trước); GĐ5 chuyển Markdown → HTML khi gửi nháp.
