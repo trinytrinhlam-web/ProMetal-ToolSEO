@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-23 09:40. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-23 10:00. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -47,7 +47,7 @@ Chỉ Huy B, cập nhật 2026-10-23 09:40. Agent chạy ở phiên con dưới 
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp (`089f685`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | Điều kiện → T-040, T-041, GĐ5 |
 | [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng | đã gộp (`638a895`), nhánh `team/T-079`, `team/T-079-linux` và worktree đã xóa | ✅ Windows 11.265 qua, 3 hỏng oan (chạy riêng lại qua); đã đẩy `main` | 3 Thấp → T-080 (đang làm) |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`f8e6d21`) | ✅ Soi Lỗi rút gọn ĐẠT (0 lỗi mới) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-066 kiểm nhanh ảnh gửi AI") |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`3a76a3b`) | ✅ Lá Chắn rút gọn ĐẠT (0 lỗi mới) | ⏳ Gộp cùng T-071 khi Lá Chắn T-071 xong (một lượt toàn bộ test); sổ rủi ro phần còn lại LC-T050-2 chờ chủ dự án |
 | [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`26fd39f`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (R5 đạt; SL-T071-1 → T-081) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-071 kiểm nhanh chèn ảnh nháp") |
 | [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) Dọn lỗi Thấp đọc ảnh (GĐ3) | `team/T-080` (`a88c4e8`); cloud đẩy `team/T-080-linux` | ✅ Thợ Máy xong (Windows) | ⏳ Thợ Máy thử ổ USB `F:` (chủ dự án đồng ý, chỉ đọc thuộc tính); phiên cloud Linux 3 ca SL-T079-L-1 (không báo về, xem nhánh `team/T-080-linux`); xong thì Soi Lỗi rút gọn |
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp (`5d17f5e`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | LC-T069-1, -2 sửa chữ README sau |
@@ -58,6 +58,10 @@ Chỉ Huy B, cập nhật 2026-10-23 09:40. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 10:00 · Chỉ Huy B
+
+- **Lá Chắn T-066 ĐẠT** (`3a76a3b`, 0 lỗi mới, gộp được ngay). Đề nghị ghi sổ rủi ro phần còn lại LC-T050-2 (ảnh dựng cố ý giấu dữ liệu trong phần ảnh nén, DQT/DHT, DRI/DNL/SOS; dòng mẫu trong `docs/team/reports/T-066-la-chan.md`): chờ chủ dự án. Chờ Lá Chắn T-071 để gộp chung một lượt test. Thợ Máy T-080 đang thử USB; phiên cloud Linux T-080 đã chạy.
 
 ### 2026-10-23 09:40 · Chỉ Huy B
 
