@@ -1183,6 +1183,32 @@ def test_send_errors_shown_in_full_and_maybe_draft_locks_resend(
         assert not button(at, "📤 Gửi nháp").disabled
 
 
+@pytest.mark.parametrize("saved", [True, False], ids=["luu-the-duoc", "luu-the-hong"])
+def test_marked_ai_image_sent_as_ai(project_root, root, monkeypatch, fake_ai, site, sent, saved):
+    """Ảnh đánh dấu bằng «Đây là ảnh AI» (kể cả khi lưu thẻ hỏng) lên website như ảnh AI: thẻ
+    ``source="ai"``, tên ``minh-hoa-ai-…``, tiêu đề ``[AI] …`` (Lá Chắn T-052 b, T-074 j)."""
+    if not saved:
+
+        def busy(self, ref, tags):
+            raise ImageTagStoreError("File lưu thẻ ảnh đang bận, thử lại sau.")
+
+        monkeypatch.setattr(ImageTagStore, "set", busy)
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    run_ok(by_key(at, f"markai-{pid}").click().run())
+    write_alt(at, pid)
+    approve(at, pid)
+    to_publish(at)
+    send(at)
+    ((_title, parts),) = sent.calls
+    (image,) = [part for part in parts if not isinstance(part, str)]
+    assert image.tags.source == SOURCE_AI and not image.tags.project_code
+    (name,) = site.file_names()
+    assert name.startswith("minh-hoa-ai-") and "ct012" not in name
+    (media,) = site.media_writes()
+    assert html.unescape(media["title"]).startswith("[AI] ")
+
+
 def test_post_not_draft_is_flagged(project_root, root, fake_ai, site):
     """Website trả bài không ở trạng thái nháp (app không xin): báo rõ (Soi Lỗi T-054 G9)."""
     site.post_status = "publish"
