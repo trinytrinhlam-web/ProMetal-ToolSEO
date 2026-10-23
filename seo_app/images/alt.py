@@ -356,7 +356,8 @@ _WRAPPERS = {
 _MAX_WRAP = 3
 # Dấu cách và dấu câu dính sau tiền tố («Minh họa: », «Minh họa! », «Minh họa… », «Minh họa – »).
 _AFTER_PREFIX = " :,.;!?…-–—|/·•"
-# ``escape_link_syntax`` thêm «\» ngay sau «]» khi theo sau là «:», «[» hay «(» («[Minh họa]\: …»).
+# ``escape_link_syntax`` thêm «\» ngay sau «]» khi theo sau là «[», «(» hay «:» (nhãn đầu dòng:
+# «[Minh họa]\: …»).
 # Bỏ «]» của tiền tố thì bỏ luôn dấu «\» đó, như ``plain_image_text`` gỡ nếu «]» còn; để lại thì
 # nó mồ côi lên website («Minh họa \: cổng», Soi Lỗi SL-T071-1).
 _LINK_ESCAPES = ("\\:", "\\[", "\\(")
