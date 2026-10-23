@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-23 |
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3; không chặn T-056) |
-| Phụ thuộc | T-079 đã gộp |
-| Trạng thái | Chờ chủ dự án chọn: sửa hay ghi sổ rủi ro |
+| Phụ thuộc | T-079 đã gộp (trên máy, đang chạy toàn bộ test) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -37,3 +37,4 @@ Theo cách sửa trong bảng lỗi của biên bản Lá Chắn T-079. Thử l�
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 1 của Lá Chắn T-079. Nếu chủ dự án chọn không sửa thì ghi sổ rủi ro theo mẫu trong biên bản (chủ dự án ký).
+- 2026-10-23 08:17 (Chỉ Huy B): **chủ dự án chọn sửa** (không ghi sổ rủi ro cho LC-T079-1..3). Nhánh `team/T-080` tạo từ `main` sau khi gộp T-079.

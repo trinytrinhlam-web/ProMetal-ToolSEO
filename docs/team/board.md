@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 08:03 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 08:17 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,16 +34,15 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) | Đọc ảnh bằng thư mục đã mở từng tầng (SL-T063-2 Cao trên Mac/Linux, Thấp trên Windows; SL-T063-1, -3, -5; LC-T076-3). **Chủ dự án chọn cách A: gộp trước T-056** | Chỉ Huy (chờ cho gộp) | `team/T-079` | 22/10 13:45 Thợ Máy **xong** (`c7b2394`: Mac/Linux đọc và `stat` bằng thư mục đã mở từng tầng; Windows mở file rồi hỏi lại chính file đã mở nằm ở đâu, ép kẻ tấn công thắng cũng không lọt; SL-T063-1, -3, -4, -5, LC-T076-3 sửa; 11 file liên quan 1.452 qua; phần Mac/Linux mới chạy bằng giả lập). Soi Lỗi Windows **ĐẠT CÓ ĐIỀU KIỆN** (`79b55e7`; 1 Thấp SL-T079-1). Soi Lỗi Linux trên cloud **ĐẠT** (hơn 1,3 triệu lượt đọc khi bị tráo: 0 lọt; 1 Thấp SL-T079-L-1). 23/10 07:55 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`f915841`, Opus tạm): SL-T063-2, -3 đóng; 3 Thấp → T-080; **gộp được ngay**. ⏳ **Chờ chủ dự án cho gộp** | [Thợ Máy](reports/T-079-tho-may.md) · [Soi Lỗi Windows](reports/T-079-soi-loi.md) · [Soi Lỗi Linux](reports/T-079-soi-loi-linux.md) · [Lá Chắn](reports/T-079-la-chan.md) |
-| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-071` | 23/10 Thợ Máy **xong** (`6046a8f`: yêu cầu 1–6, cách A, bảng trước/sau 7 chỗ test; 2.180 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-071-tho-may.md) |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-066` | 23/10 Thợ Máy **xong** (`66f58dd`: hồ sơ màu luôn bị từ chối, siết khối theo SL-T050-6, gỡ 15 `xfail`; 1.266 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-066-tho-may.md) |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Soi Lỗi · T-071 kiểm nhanh chèn ảnh nháp | `team/T-071` | 23/10 Thợ Máy **xong** (`6046a8f`: yêu cầu 1–6, cách A, bảng trước/sau 7 chỗ test; 2.180 test liên quan qua). ⏳ **08:17 Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-071-tho-may.md) |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Soi Lỗi · T-066 kiểm nhanh ảnh gửi AI | `team/T-066` | 23/10 Thợ Máy **xong** (`66f58dd`: hồ sơ màu luôn bị từ chối, siết khối theo SL-T050-6, gỡ 15 `xfail`; 1.266 test liên quan qua). ⏳ **08:17 Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-066-tho-may.md) |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Thợ Máy · T-080 dọn đọc ảnh | `team/T-080` | ⏳ **08:17 Thợ Máy đang làm** (chủ dự án chọn sửa) | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Thợ Máy | T-079 gộp; chủ dự án chọn sửa hay ghi sổ rủi ro |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
@@ -70,6 +69,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) | Đọc ảnh an toàn khi bị tráo thư mục: Mac/Linux đọc và `stat` bằng thư mục đã mở từng tầng; Windows mở file rồi hỏi lại vị trí thật của chính file đã mở (vá SL-T063-2, -3; SL-T063-1, -4, -5; LC-T076-3) | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-079-tho-may.md) · [Soi Lỗi Windows](reports/T-079-soi-loi.md): đạt có điều kiện · [Soi Lỗi Linux (cloud)](reports/T-079-soi-loi-linux.md): đạt (0 lọt qua hơn 1,3 triệu lượt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-079-la-chan.md) (Opus tạm): 3 Thấp → T-080; ghi sổ rủi ro ca "thư mục dời vào gốc". Gộp vào `main` `638a895`: Windows đang chạy toàn bộ test (23/10) |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) | GĐ4: liên kết nội bộ (`seo_app/onpage/links.py`): chọn bài đích chỉ từ bài đã đăng; AI chỉ thấy ID + tiêu đề, chỉ gợi ý cụm từ có sẵn; code kiểm từng gợi ý, chèn link bằng `html.parser`, kiểm link nháp/hỏng; chưa nối vào giao diện | Thợ Máy | 2026-10-22 | [Thợ Máy](reports/T-039-tho-may.md) (3 lượt) · [Soi Lỗi](reports/T-039-soi-loi.md) (3 lượt): đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-039-la-chan.md) (Opus tạm): 2 Thấp LC-T039-1, -2; điều kiện → T-040, T-041, Giai đoạn 5. Gộp vào `main` `089f685`: Windows 11.234 qua, 0 hỏng (23/10; lượt 22/10 bị dừng có 1 hỏng là hỏng oan do máy bận); ruff sạch |
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) | README: ảnh gửi hãng AI khi viết alt (nên dùng khóa trả phí), mục "Đặt thư mục ảnh" | Thư Ký | 2026-10-22 | [Thư Ký](reports/T-069-thu-ky.md) · Lá Chắn rút gọn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-069-la-chan.md) (Opus tạm): 2 Thấp LC-T069-1, -2 (chữ README, sửa sau). Gộp vào `main` `5d17f5e`: Windows 11.234 qua, 0 hỏng (23/10; lượt 22/10 bị dừng có 1 hỏng là hỏng oan do máy bận); ruff sạch |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) | Thư mục ảnh trả tên theo tên trên ổ (Windows hỏi từng tầng ở thư mục cha, Mac/Linux xem danh sách bằng fd): ảnh AI không còn thành ảnh thật vì khác hoa/thường, kể cả trên Google Drive for Desktop; đổi tên đúng lúc kiểm thì báo không dùng được; thư mục gốc hơn 5.000 mục vẫn dùng được | Thợ Máy | 2026-10-22 | [Thợ Máy](reports/T-076-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-076-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-076-la-chan.md) (Opus tạm, 2 lượt): LC-T055-1, -2, -3, LC-T076-1, -2 đóng; LC-T076-3 → T-079; điều kiện 2a của T-056 hạ xuống khuyến nghị (giữ test). Gộp vào `main` `4ca5a2d`: Windows 10.739 qua, 0 hỏng (22/10, cùng lượt T-076 + T-063); ruff sạch |
