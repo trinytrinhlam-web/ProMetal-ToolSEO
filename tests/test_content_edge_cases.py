@@ -391,8 +391,12 @@ def test_publish_now_requires_confirmation(project_root, monkeypatch, app_env):
     at = open_write(project_root, monkeypatch, FakeProvider())
     at.session_state["step"] = 4
     at.run()
+    # T-056: «Nháp» là nút thật «📤 Gửi nháp» (test ở tests/test_app_images.py); «Hẹn giờ»,
+    # «Đăng ngay» vẫn là bản demo với nút «📤 Gửi sang WordPress».
+    assert any(b.label == "📤 Gửi nháp" for b in at.button)
     send = "📤 Gửi sang WordPress"
-    assert not button(at, send).disabled  # Nháp: được gửi
+    at.segmented_control[-1].set_value("Hẹn giờ").run()
+    assert not button(at, send).disabled  # hẹn giờ: không cần ô xác nhận đăng ngay
     at.segmented_control[-1].set_value("Đăng ngay").run()
     assert button(at, send).disabled
     at.checkbox[0].check().run()

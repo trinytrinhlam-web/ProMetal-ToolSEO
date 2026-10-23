@@ -26,6 +26,7 @@
 | `tests/test_wordpress_shortcodes.py` (mới) | 26 test cho `find_shortcodes` (đối chiếu `_has_shortcode`, ký tự vô hình, chữ dài) |
 | `tests/test_app_images.py` (mới) | 49 test giao diện (AppTest, AI giả, WordPress giả, ảnh Pillow trong thư mục tạm) |
 | `tests/conftest.py` | Fixture tự động trỏ `DEFAULT_IMAGE_TAGS_FILE` sang thư mục tạm (điều kiện 2f) |
+| `tests/test_content_edge_cases.py` | `test_publish_now_requires_confirmation`: «Nháp» nay là nút thật «📤 Gửi nháp»; vẫn kiểm «Đăng ngay» phải tick xác nhận |
 | `docs/team/reports/T-056-hoa-si.md` | Báo cáo này |
 
 `seo_app/demo.py`: không còn dữ liệu mẫu nào của phần ảnh (đã bỏ từ Giai đoạn 2), nên không sửa.
@@ -88,17 +89,28 @@ Thêm (lỗi tìm ra khi làm): `test_switching_pages_keeps_inputs_and_draft`, `
 ## Bằng chứng
 
 ```
-$ uv run pytest <36 file test liên quan: tests/test_app*.py, test_images_*.py, test_drafts_images.py,
-  test_wordpress_shortcodes.py, test_soi_loi_t052/t054/t055/t061/t062/t070/t071/t074/t077.py,
-  test_la_chan_t071/t074/t076.py, test_shortcode_t061.py, test_ai_images.py, test_sanitize.py,
-  test_ui_escape.py, test_edit_unescape.py, …>
-KẾT_QUẢ_TEST_LIÊN_QUAN
+$ uv run pytest <41 file test liên quan: tests/test_app*.py (6 file), tests/test_images_*.py (5),
+  test_drafts_images, test_wordpress_shortcodes, test_soi_loi_t052/t054/t055/t061/t062/t070/t071/
+  t074/t077, test_la_chan_t071/t074/t076, test_shortcode_t061, test_ai_images, test_sanitize,
+  test_ui_escape, test_edit_unescape, test_config_tolerance, test_content_edge_cases,
+  test_phase2_fixes, test_soi_loi_round3/4/5, test_soi_loi_t003_t009/t016_t020/t031/t051,
+  test_t062_image_config>
+FAILED tests/test_content_edge_cases.py::test_publish_now_requires_confirmation
+1 failed, 4599 passed, 31 skipped, 21 xfailed in 762.10s (0:12:42)
 
-$ uv run pytest tests/test_app_images.py tests/test_wordpress_shortcodes.py
-KẾT_QUẢ_TEST_MỚI
+# Test cũ (Soi Lỗi T-002) giả định «Nháp» dùng nút demo «Gửi sang WordPress». Nay «Nháp» là nút
+# thật «📤 Gửi nháp»; sửa test cho đúng, giữ nguyên phần chính: «Đăng ngay» phải tick xác nhận.
+$ uv run pytest tests/test_content_edge_cases.py tests/test_soi_loi_t019_luot2.py tests/test_soi_loi_t021_t017.py
+167 passed in 55.28s
+
+$ uv run pytest tests/test_app_images.py tests/test_wordpress_shortcodes.py   # code cuối
+75 passed in 183.44s (0:03:03)
 
 $ uv run ruff check .
 All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan <7 file đã đổi>
+"results": {}
 ```
 
 Máy Windows 11, có 2 agent khác chạy song song.
