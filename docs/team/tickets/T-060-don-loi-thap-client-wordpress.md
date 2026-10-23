@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp (phải xong trước khi hết Giai đoạn 4; LC-T042-1 phải xong trước phiếu nào truyền tham số mới vào `_request`) |
 | Phụ thuộc | T-042 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Thợ Máy xong, chờ Soi Lỗi |
 
 ## Mục tiêu
 
@@ -47,3 +47,4 @@ W3, W4, S2.
 - 2026-10-23 11:10 (Chỉ Huy B): thêm **LC-T071-1** (Lá Chắn T-071, Thấp): `upload_media` (`seo_app/wordpress/client.py`, trang Kết nối WordPress) nhận mọi mã 2xx rồi ghi alt, tiêu đề, chú thích vào mã website trả → gọi `self._post_media(data, safe_name, content_type, new_only=True)`; gỡ 2 `xfail` trong `tests/test_la_chan_t071.py`, giữ ca đối chứng. Làm cạnh LC-T061-3. Theo mốc T-060 (trước khi hết GĐ4), không chặn T-056.
 - 2026-10-23 17:22 (Chỉ Huy B): **chủ dự án duyệt giao Thợ Máy.** Nhánh `team/T-060` từ `main`, worktree `wt-T-060`. Chạy song song T-056 (Họa Sĩ): **không đổi hành vi `_has_shortcode`, `_SHORTCODE_OPEN`** (module mới `seo_app/wordpress/shortcodes.py` của T-056 dùng lại), không sửa `app/**`.
 - 2026-10-23 18:01 (Chỉ Huy B): Thợ Máy xong phần 1 (`9f3b7e2`). Hỏi sửa 4 test cũ cho LC-T061-3 (`test_upload_media_with_alt`, `test_upload_media_without_metadata_is_one_request` → `…_still_overwrites_fields`, `test_upload_media_file`, `tests/test_soi_loi_t044.py::test_null_source_url_does_not_crash_page`): **Chỉ Huy đồng ý**, chỉ sửa đúng như mô tả, không nới kiểm tra, có bảng trước/sau cho Soi Lỗi soát R5.
+- 2026-10-23 18:18 (Chỉ Huy B): **Thợ Máy xong** (`af6edfd`): 8/8 việc (LC-T042-1, -4, -5; LC-T061-2, -3, -5; LC-T071-1); gỡ `xfail` SL-T061-1, -2, LC-T071-1; sửa 4 test cũ theo LC-T061-3 (commit riêng `ee17bc9`, bảng trước/sau trong báo cáo); 2.350 test liên quan qua. Câu lỗi WordPress nay ngắn, không còn «(WordPress: …)». Chờ Soi Lỗi (phiếu ghi "Có", soát R5 4 test cũ).
