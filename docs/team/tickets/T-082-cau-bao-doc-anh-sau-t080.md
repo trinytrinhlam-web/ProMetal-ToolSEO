@@ -39,7 +39,7 @@ F1.
 ## Tiêu chí xong
 
 - [ ] Yêu cầu 1–3
-- [ ] Test liên quan (`uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py tests/test_images_folders_t063.py tests/test_soi_loi_t079.py tests/test_la_chan_t079.py tests/test_soi_loi_t080.py tests/test_la_chan_t080.py`) qua và `uv run ruff check .` sạch; toàn bộ test do Chỉ Huy chạy trên Windows khi gộp
+- [ ] Test liên quan (`uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py tests/test_images_folders_t063.py tests/test_soi_loi_t079.py tests/test_la_chan_t079.py tests/test_soi_loi_t080.py`) qua và `uv run ruff check .` sạch; toàn bộ test do Chỉ Huy chạy trên Windows khi gộp
 - [ ] Có test cho phần logic mới
 - [ ] Báo cáo nộp tại `docs/team/reports/T-082-tho-may.md`
 
@@ -50,3 +50,4 @@ F1.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo đề xuất của Soi Lỗi T-080 (Windows và Linux); chủ dự án chọn phiếu dọn sau thay vì chỉ ghi nhận (2026-10-23).
+- 2026-10-23 14:32 (Chỉ Huy B): thêm điều kiện 2 của Lá Chắn T-080: ghi chú/làm chặt `_resolve_inside`, `_checked_file` (Việc 4 (a) bắt buộc, (b) nên làm, xem `docs/team/reports/T-080-la-chan.md`); chỉ đổi câu báo, mọi ca vẫn từ chối (`_ChangedError` là `_LinkError`); Windows giữ `_MSG_ALIAS` cho tên ngắn 8.3 thật; ép thắng (ổ máy và `\localhost\C$`) vẫn 0 lọt.
