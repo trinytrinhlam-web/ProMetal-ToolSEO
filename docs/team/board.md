@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 08:54 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 09:36 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Soi Lỗi · T-071 kiểm nhanh chèn ảnh nháp | `team/T-071` | 23/10 Thợ Máy **xong** (`6046a8f`: yêu cầu 1–6, cách A, bảng trước/sau 7 chỗ test; 2.180 test liên quan qua). ⏳ **08:17 Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-071-tho-may.md) |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Soi Lỗi · T-066 kiểm nhanh ảnh gửi AI | `team/T-066` | 23/10 Thợ Máy **xong** (`66f58dd`: hồ sơ màu luôn bị từ chối, siết khối theo SL-T050-6, gỡ 15 `xfail`; 1.266 test liên quan qua). ⏳ **08:17 Soi Lỗi rút gọn đang kiểm**, rồi Lá Chắn rút gọn | [Thợ Máy](reports/T-066-tho-may.md) |
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Thợ Máy · T-080 dọn đọc ảnh | `team/T-080` | ⏳ **08:17 Thợ Máy đang làm** (chủ dự án chọn sửa) | |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp (LC-T054-2/-3/-5/-6, phần code LC-T054-4). Trước T-056 | Lá Chắn rút gọn (chưa giao) | `team/T-071` | 23/10 Thợ Máy xong (`6046a8f`). Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`26fd39f`): YC1–6 đạt, soát R5 7 chỗ test đạt; 1 Thấp SL-T071-1 (dấu «\» ở alt ảnh AI, `alt.py` ngoài phạm vi) → sửa trước khi gộp T-056. ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-071-tho-may.md) · [Soi Lỗi](reports/T-071-soi-loi.md) |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) | Dọn lỗi Thấp lớp ảnh gửi AI (LC-T050-1/-2/-3, SL-T050-5/-6): từ chối mọi hồ sơ màu, khối dựng cố ý. Trước T-056 | Lá Chắn rút gọn (chưa giao) | `team/T-066` | 23/10 Thợ Máy xong (`66f58dd`). Soi Lỗi rút gọn **ĐẠT** (`f8e6d21`): 0 lỗi mới; 892/892 bản gửi AI từ ảnh thật qua; 2 triệu tệp đột biến 0 lọt. ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-066-tho-may.md) · [Soi Lỗi](reports/T-066-soi-loi.md) |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn lỗi Thấp đọc ảnh sau T-079 (LC-T079-1, -2, -3). Không chặn T-056 | Soi Lỗi rút gọn (chưa giao) | `team/T-080` | 23/10 Thợ Máy **xong** (`a88c4e8`: 3 lỗi sửa, gỡ 15 `xfail`; 1.223 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn** + lượt cloud Linux (3 ca SL-T079-L-1); chủ dự án trả lời: thử ổ USB FAT32? | [Thợ Máy](reports/T-080-tho-may.md) |
 
 ## Chờ
 

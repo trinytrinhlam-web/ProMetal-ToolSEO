@@ -72,3 +72,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-22 13:10 (Chỉ Huy B): **Chủ dự án chọn cách A**: T-079 (vá SL-T063-2) phải gộp trước phiếu này.
 - 2026-10-22 (Chỉ Huy B): **Lá Chắn T-069** LC-T069-2: khi T-056 thêm nút đổi sang ảnh AI (thẻ sửa tay), README phải nói xóa `data/image_tags.sqlite` thì mất cả dấu "ảnh AI" đã gắn tay (Thư Ký sửa cùng phiếu).
 - 2026-10-23 08:17 (Chỉ Huy B): T-079 đã gộp (trên máy, chờ toàn bộ test): điều kiện cách A (T-079 trước T-056) xong khi `main` được đẩy.
+- 2026-10-23 09:36 (Chỉ Huy B): thêm điều kiện từ Soi Lỗi T-071: **SL-T071-1** (dấu «\» ở alt, chú thích ảnh AI khi AI viết «[Minh họa]: …») sửa và gỡ `xfail` trước khi gộp T-056. Khi làm T-056: dựng `DraftImage(…, tags=checked.tags)` (ảnh AI phải truyền thẻ); hiện `exc.maybe_draft`, `exc.uploaded`, `exc.maybe_uploaded`; chỉ gọi `suggest_alt` với byte của `make_ai_image` (Soi Lỗi T-066); LC-T061-4 (hàm tìm đoạn dạng shortcode cho cảnh báo) làm ở phần logic T-056.
