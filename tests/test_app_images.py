@@ -355,7 +355,7 @@ def test_subfolder_box_is_fresh_after_moving(project_root, root):
     open_sub(at, PROJECT)
     box = sub_box(at)
     assert box.key != first and box.value is None
-    assert box.options == ["⁨sau⁩", "⁨truoc⁩"]
+    assert box.options == ["\u2068sau\u2069", "\u2068truoc\u2069"]
 
 
 def test_unpick_clears_image_and_alt(project_root, root, fake_ai):
@@ -830,6 +830,28 @@ def test_open_draft_unusable_image_shows_checked_message(
     to_publish(at)
     assert any("Ảnh ở mục" in w.value for w in at.warning)
     assert button(at, "📤 Gửi nháp").disabled
+
+
+def test_open_draft_in_ai_root_is_ai(project_root, tmp_path, monkeypatch):
+    """Mở nháp: kiểm ảnh kèm ``ai_roots`` (Lá Chắn T-055 d). Nháp ghi ảnh thật, alt đã duyệt,
+    nhưng thư mục gốc là thư mục ảnh AI: ra ảnh AI, alt thêm «Minh họa», phải duyệt lại."""
+    ai_root = tmp_path / "Ảnh AI"
+    write(ai_root / REAL_FILE, jpeg())
+    monkeypatch.setenv("IMAGE_FOLDERS", str(ai_root))
+    chosen = DraftImage(
+        source=SOURCE_REAL,
+        root_index=0,
+        rel_path=REAL_FILE,
+        alt="Cổng inox hai cánh",
+        alt_approved=True,
+    )
+    at, pid = open_article(project_root, article(chosen))
+    checked = at.session_state[f"pick-{pid}"]
+    assert checked.available and checked.tags.is_ai
+    assert (checked.tags.project_code, checked.tags.area) == ("", "")
+    assert at.session_state[f"alt-{pid}"] == f"{AI_ALT_PREFIX} cổng inox hai cánh"
+    assert at.session_state[f"altok-{pid}"] is False
+    assert at.session_state[f"kind-{pid}"] == "Ảnh AI"
 
 
 def test_broken_image_in_draft_dropped_and_reported(project_root, root):

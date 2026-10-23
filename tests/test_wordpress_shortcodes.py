@@ -40,7 +40,7 @@ def test_finds_each_segment(text, expected):
 
 @pytest.mark.parametrize(
     "hidden",
-    ["​", "‍", "⁠", "﻿", "‮", "⁦", "­", "͏", "ㅤ"],
+    ["\u200b", "\u200d", "\u2060", "\ufeff", "\u202e", "\u2066", "\u00ad", "\u034f", "\u3164"],
 )
 def test_invisible_characters_are_removed_first(hidden):
     """Ký tự vô hình chen trong tên bị gỡ trước khi tới WordPress: đoạn vẫn là shortcode, và
