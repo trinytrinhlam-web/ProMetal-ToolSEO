@@ -99,24 +99,13 @@ def before_open_image(monkeypatch, action) -> None:
 
 # ----- SL-T079-1: Windows so đường dẫn thật lỏng hơn ổ (NFC, casefold) --------------------------
 
-SL_T079_1 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T079-1: _win_handle_at so đường dẫn thật bằng _path_key (NFC + casefold); thư mục anh "
-        "em của gốc có tên chỉ khác dạng Unicode, ß/ss, dấu Kelvin hay hoa thường (thư mục phân "
-        "biệt hoa thường) là thư mục khác trên ổ nhưng qua phép so, nên ép thắng thì đọc được file "
-        "ngoài thư mục ảnh"
-    ),
-)
 ROOT_NFC = "Ảnh công trình"
 LOOKALIKES = [
     pytest.param(ROOT_NFC, None, False, id="dich-ngoai-goc-thuong"),
-    pytest.param(
-        ROOT_NFC, unicodedata.normalize("NFD", ROOT_NFC), False, id="anh-em-nfd", marks=SL_T079_1
-    ),
-    pytest.param("Strasse", "Straße", False, id="anh-em-sharp-s", marks=SL_T079_1),
-    pytest.param("Kho", "Kho", False, id="anh-em-dau-kelvin", marks=SL_T079_1),
-    pytest.param("Anh", "ANH", True, id="anh-em-khac-hoa-thuong", marks=SL_T079_1),
+    pytest.param(ROOT_NFC, unicodedata.normalize("NFD", ROOT_NFC), False, id="anh-em-nfd"),
+    pytest.param("Strasse", "Straße", False, id="anh-em-sharp-s"),
+    pytest.param("Kho", "Kho", False, id="anh-em-dau-kelvin"),
+    pytest.param("Anh", "ANH", True, id="anh-em-khac-hoa-thuong"),
 ]
 
 

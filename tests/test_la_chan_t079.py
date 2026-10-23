@@ -47,14 +47,6 @@ def assert_no_abs_path(text: str, *paths: Path) -> None:
 
 # ----- LC-T079-2: câu báo nói về file ngoài thư mục ảnh ---------------------------------------
 
-LC_T079_2 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T079-2: _checked_file báo loại, cỡ theo lstat đi xuyên tầng vừa bị tráo, trước lớp "
-        "kiểm trên mục đã mở, nên câu báo nói về file ngoài thư mục ảnh"
-    ),
-)
-
 
 def _outside_entry(path: Path, kind: str) -> None:
     if kind == "qua-co":
@@ -68,9 +60,9 @@ def _outside_entry(path: Path, kind: str) -> None:
 
 
 OUTSIDE_KINDS = [
-    pytest.param("qua-co", "MB", id="ngoai-qua-co", marks=LC_T079_2),
-    pytest.param("rong", "rỗng", id="ngoai-rong", marks=LC_T079_2),
-    pytest.param("thu-muc", "không phải là file ảnh", id="ngoai-la-thu-muc", marks=LC_T079_2),
+    pytest.param("qua-co", "MB", id="ngoai-qua-co"),
+    pytest.param("rong", "rỗng", id="ngoai-rong"),
+    pytest.param("thu-muc", "không phải là file ảnh", id="ngoai-la-thu-muc"),
     pytest.param("thuong", "MB", id="doi-chung-ngoai-co-thuong"),
 ]
 
@@ -111,14 +103,6 @@ def test_lc_t079_2_message_does_not_describe_outside_file(
 
 # ----- LC-T079-1 ở đường xem thư mục (Windows) ------------------------------------------------
 
-LC_T079_1 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T079-1: _scan_held so đường dẫn thật của thư mục đang giữ bằng _path_key (NFC + "
-        "casefold); thư mục anh em của gốc tên NFD qua phép so, ép thắng thì liệt kê được tên, cỡ "
-        "file ngoài thư mục ảnh"
-    ),
-)
 ROOT_NFC = unicodedata.normalize("NFC", "Ảnh công trình")
 
 
@@ -146,7 +130,7 @@ class _Listed:
     "sibling_name",
     [
         pytest.param(None, id="doi-chung-ngoai-goc-thuong"),
-        pytest.param(unicodedata.normalize("NFD", ROOT_NFC), id="anh-em-nfd", marks=LC_T079_1),
+        pytest.param(unicodedata.normalize("NFD", ROOT_NFC), id="anh-em-nfd"),
     ],
 )
 def test_lc_t079_1_listing_through_lookalike_sibling_gives_no_outside_names(
