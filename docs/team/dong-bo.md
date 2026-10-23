@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-23 07:57. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-23 08:03. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -45,11 +45,11 @@ Chỉ Huy B, cập nhật 2026-10-23 07:57. Agent chạy ở phiên con dưới 
 | [T-075](tickets/T-075-nang-certifi.md) Nâng `certifi` | đã gộp (`0d398c2`), nhánh và worktree đã xóa | ✅ Windows 10.441 qua, 0 hỏng; đã đẩy `main` | 2 máy mở lại app để `uv sync` cài `certifi` mới (máy Windows: `main` đã sync) |
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
-| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp vào `main` **trên máy** (`089f685`), **chưa đẩy**; nhánh `team/T-039` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏸ Toàn bộ test bị dừng ở ~70%, đã có 1 hỏng chưa rõ tên. Phiên sau: chạy lại toàn bộ test trên `main` máy này; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-039` |
+| [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp (`089f685`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | Điều kiện → T-040, T-041, GĐ5 |
 | [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng (GĐ3, trước T-056) | `team/T-079` (`f915841`) | ✅ 23/10 07:55 Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (gộp được ngay; 3 Thấp → T-080) | ⏳ Chờ chủ dự án cho gộp; sổ rủi ro ca "thư mục thật dời vào gốc" chờ chủ dự án |
 | [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`66f58dd`) | ✅ 23/10 Thợ Máy xong | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn |
 | [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`6046a8f`) | ✅ 23/10 Thợ Máy xong (cách A) | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn (soát R5 7 chỗ test) |
-| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp vào `main` **trên máy** (`5d17f5e`), **chưa đẩy**; nhánh `team/T-069` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN | ⏸ Như T-039 (cùng lượt test); xóa nhánh và worktree `wt-T-069` sau khi đẩy |
+| [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp (`5d17f5e`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | LC-T069-1, -2 sửa chữ README sau |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
 | Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-040, T-041 (GĐ4, hết chờ sau T-039); T-060 (dọn client WordPress, trước T-041); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-081** |
@@ -57,6 +57,10 @@ Chỉ Huy B, cập nhật 2026-10-23 07:57. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 08:03 · Chỉ Huy B
+
+- **Toàn bộ test Windows sau gộp T-039 + T-069 (chạy lại):** 11.234 qua, 31 bỏ qua, 97 xfail, **0 hỏng** (32 phút, chạy cùng 3 agent); ruff sạch. Lượt 22/10 bị dừng có 1 hỏng là hỏng oan do máy bận. Đã đẩy `main` (gồm cả bàn giao 22/10), xóa nhánh `team/T-039`, `team/T-069` (máy và GitHub) và worktree.
 
 ### 2026-10-23 07:57 · Chỉ Huy B
 
