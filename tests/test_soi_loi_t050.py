@@ -895,8 +895,10 @@ def test_heic_photo_read_with_pillow_heif_makes_clean_ai_copy(fmt, heif_registry
         small = photo.convert("RGB").resize((160, 120))
         icc, exif = photo.info["icc_profile"], photo.info["exif"]
     mime = f"image/{fmt.lower()}"
+    # Như T-049: dựng ảnh mới từ điểm ảnh, không ``info``. Lưu thẳng ``small`` thành PNG thì Pillow
+    # tự chép hồ sơ màu của ảnh gốc (Lá Chắn T-050, P10) và T-066 từ chối mọi hồ sơ màu.
     clean = io.BytesIO()
-    small.save(clean, fmt)
+    Image.frombytes(small.mode, small.size, small.tobytes()).save(clean, fmt)
     assert accepted(clean.getvalue(), mime)
     for leaked in ({"icc_profile": icc}, {"icc_profile": icc, "exif": exif}):
         leaky = io.BytesIO()

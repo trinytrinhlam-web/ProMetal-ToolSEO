@@ -673,8 +673,8 @@ _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # - PLTE: chỉ ảnh bảng màu (loại màu 3), 3 byte mỗi màu, tối đa 2^(độ sâu bit) màu (SL-T050-6);
 # - tRNS (độ trong suốt) đúng độ dài theo loại màu: ảnh xám 2 byte, ảnh RGB 6 byte, ảnh bảng màu
 #   1 byte mỗi màu, không quá số màu của PLTE; ảnh có kênh alpha không có tRNS;
-# - gAMA (4 byte), sRGB (1 byte), pHYs (9 byte, mật độ điểm ảnh: Pillow tự ghi khi ảnh nguồn có
-#   dpi). Pillow chỉ ghi các chunk này khi được yêu cầu; giữ để không từ chối nhầm.
+# - gAMA (4 byte), sRGB (1 byte), pHYs (9 byte, mật độ điểm ảnh). Pillow chỉ ghi các chunk này
+#   khi được yêu cầu (``dpi``, ``pnginfo``); giữ để không từ chối nhầm.
 # Không nhận: iCCP (hồ sơ màu), cHRM, sBIT, bKGD (Pillow chỉ ghi khi được truyền ``pnginfo``, bản
 # gửi AI không cần), eXIf, tEXt/zTXt/iTXt (chữ tự do, XMP), tIME, chunk ảnh động, chunk riêng.
 _PNG_FIXED_LENGTH = {b"IHDR": 13, b"IEND": 0, b"gAMA": 4, b"sRGB": 1, b"pHYs": 9}
@@ -705,7 +705,6 @@ def _check_png(data: bytes) -> str | None:
     while i + 12 <= n:
         length = int.from_bytes(data[i : i + 4], "big")
         kind = data[i + 4 : i + 8]
-        payload = data[i + 8 : i + 8 + length]
         if not kind.isalpha() or i + 12 + length > n:
             return "format"
         if not seen and kind != b"IHDR":
@@ -719,9 +718,10 @@ def _check_png(data: bytes) -> str | None:
         if kind in _PNG_FIXED_LENGTH and length != _PNG_FIXED_LENGTH[kind]:
             return "format"
         if kind == b"IHDR":
-            if not _png_ihdr_ok(payload):
+            header = data[i + 8 : i + 8 + length]
+            if not _png_ihdr_ok(header):
                 return "format"
-            bit_depth, color_type = payload[8], payload[9]
+            bit_depth, color_type = header[8], header[9]
         elif kind == b"PLTE":
             if color_type != _PNG_PALETTE:
                 return "metadata"  # bảng màu "gợi ý" của ảnh không dùng bảng màu: chỗ nhét chữ
