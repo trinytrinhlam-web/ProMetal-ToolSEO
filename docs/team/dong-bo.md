@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-23 08:17. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-23 08:54. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -46,7 +46,7 @@ Chỉ Huy B, cập nhật 2026-10-23 08:17. Agent chạy ở phiên con dưới 
 | [T-077](tickets/T-077-don-the-anh-ten-cong-cu-ai.md) Dọn thẻ ảnh nhỏ | đã gộp (`c2233ed`), nhánh và worktree đã xóa | ✅ Windows 10.585 qua, 0 hỏng; đã đẩy `main` | |
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp (`089f685`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | Điều kiện → T-040, T-041, GĐ5 |
-| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng | đã gộp vào `main` trên máy (`638a895`) | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; chủ dự án cho gộp; sổ rủi ro đã ghi | ⏳ Chạy toàn bộ test Windows; qua thì đẩy `main`, xóa nhánh `team/T-079`, `team/T-079-linux` và worktree `wt-T-079` |
+| [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng | đã gộp (`638a895`), nhánh `team/T-079`, `team/T-079-linux` và worktree đã xóa | ✅ Windows 11.265 qua, 3 hỏng oan (chạy riêng lại qua); đã đẩy `main` | 3 Thấp → T-080 (đang làm) |
 | [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`66f58dd`) | ✅ 23/10 Thợ Máy xong | ⏳ Soi Lỗi rút gọn (phiên "Soi Lỗi · T-066 kiểm nhanh ảnh gửi AI") |
 | [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`6046a8f`) | ✅ 23/10 Thợ Máy xong (cách A) | ⏳ Soi Lỗi rút gọn, soát R5 7 chỗ test (phiên "Soi Lỗi · T-071 kiểm nhanh chèn ảnh nháp") |
 | [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) Dọn lỗi Thấp đọc ảnh (GĐ3) | `team/T-080` (từ `main` sau gộp T-079) | Chủ dự án chọn sửa | ⏳ Thợ Máy (phiên "Thợ Máy · T-080 dọn đọc ảnh") |
@@ -58,6 +58,10 @@ Chỉ Huy B, cập nhật 2026-10-23 08:17. Agent chạy ở phiên con dưới 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 08:54 · Chỉ Huy B
+
+- **Toàn bộ test Windows sau gộp T-079:** 11.265 qua, 50 bỏ qua, 107 xfail, 3 hỏng: `tests/test_link_escape.py::test_timing_helper_has_absolute_limit`, `tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted`, `tests/test_soi_loi_t045.py::test_more_bad_inputs_linear[emoji-zwj-half-heading]` (đều đo tốc độ/khóa chờ, máy chạy 3 agent); chạy riêng lại 3 lần: 12/12 qua cả 3 lần; không liên quan `folders.py`. Ruff sạch. Đã đẩy `main`, xóa nhánh `team/T-079`, `team/T-079-linux` và worktree. Ghi nhận: T-073 (ổn định test khóa chờ) nên làm sớm.
 
 ### 2026-10-23 08:17 · Chỉ Huy B
 
