@@ -1,7 +1,8 @@
 """T-050: lớp AI đọc ảnh (tham số ``images`` cho 3 hãng) và gợi ý alt (``seo_app/images/alt.py``).
 
 - ``prepare_images``: giới hạn số ảnh, dung lượng, MIME; kiểm cấu trúc file; chặn ảnh còn EXIF,
-  XMP, chú thích (A3); không nhận đường dẫn hay tên file.
+  XMP, chú thích, hồ sơ màu (A3, T-066); khối được nhận đúng khuôn, không lặp; bản gửi AI thật
+  của T-049 (``make_ai_image``) vẫn qua; không nhận đường dẫn hay tên file.
 - 3 hãng chạy **thư viện thật** với mạng giả ``MockTransport`` (conftest vẫn chặn socket): ảnh
   gửi thẳng trong yêu cầu (base64/inline), không Files API, không URL; địa chỉ máy chủ chính thức
   cố định, ``*_CUSTOM_HEADERS`` không có tác dụng (T-026, T-028, T-034); lỗi 400 câu cố định.
@@ -23,10 +24,13 @@ import anthropic
 import httpx
 import httpx2
 import openai
+import pillow_heif
 import pydantic
 import pytest
 from google import genai
 from google.genai import types
+from PIL import Image, PngImagePlugin
+from pillow_heif import options as heif_options
 
 from seo_app.ai import AIError, AIRouter, TaskConfig, load_ai_config
 from seo_app.ai import base as base_module
@@ -48,6 +52,7 @@ from seo_app.ai.openai_provider import OpenAIProvider
 from seo_app.ai.registry import missing_task_message
 from seo_app.content.rules import AltRules
 from seo_app.images import alt as alt_module
+from seo_app.images import process
 from seo_app.images.alt import (
     ALT_MAX_LENGTH,
     CAPTION_MAX_LENGTH,
@@ -149,7 +154,6 @@ def jpeg_image(data=JPEG):
         (JPEG, " IMAGE/JPG ", "image/jpeg"),
         (PNG, "image/png", "image/png"),
         (WEBP, "image/webp", "image/webp"),
-        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + ICC)), "image/jpeg", None),
         (make_jpeg(jpeg_segment(0xEE, b"Adobe\x00\x64\x00\x00\x00\x00\x01")), "image/jpeg", None),
         (make_png(png_chunk(b"sRGB", b"\x00")), "image/png", None),
         (make_webp(first=webp_chunk(b"VP8 ", b"\x00" * 11)), "image/webp", None),
@@ -423,7 +427,7 @@ def test_pillow_jpeg_comment_and_png_text_are_rejected():
 
 
 # ------------------------------------------------- danh sách cho phép: khối được nhận phải đúng
-# khuôn, không còn chỗ nhét chữ (Soi Lỗi SL-T050-2)
+# khuôn, không lặp (Soi Lỗi SL-T050-2, SL-T050-6); hồ sơ màu luôn bị từ chối (T-066)
 
 
 def icc_segments(profile, size):
@@ -439,26 +443,54 @@ ICC_PARTS = icc_segments(ICC, 50)  # 3 khối: 50 + 50 + 32 byte
 PNG_ICC = b"ICC Profile\x00\x00" + zlib.compress(ICC)
 VP8L = webp_chunk(b"VP8L", b"\x2f\x00\x00\x00\x00")
 VP8X = webp_chunk(b"VP8X", b"\x20" + b"\x00" * 9)  # cờ 0x20: có hồ sơ màu
+VP8X_ALPHA = webp_chunk(b"VP8X", b"\x10" + b"\x00" * 9)  # cờ 0x10: có độ trong suốt
+ALPH = webp_chunk(b"ALPH", b"\x00\x01")
 SOF0 = jpeg_segment(0xC0, b"\x08\x00\x10\x00\x10\x01\x01\x11\x00")
+# Khung ảnh 3 thành phần màu (Y, Cb, Cr) và lượt quét cả 3 thành phần.
+SOF_YCC = b"\x08\x00\x10\x00\x10\x03\x01\x22\x00\x02\x11\x01\x03\x11\x01"
+SOS_YCC = b"\x03\x01\x00\x02\x11\x03\x11\x00\x3f\x00"
+ADOBE = jpeg_segment(0xEE, b"Adobe\x00\x64\x00\x00\x00\x00\x01")
 SECRET_TEXT = b"Nha anh Tuan 12 Le Loi"
+
+
+def png_ihdr(color_type, bit_depth=8, *, interlace=0, compression=0):
+    fields = (1, 1, bit_depth, color_type, compression, 0, interlace)
+    return png_chunk(b"IHDR", struct.pack(">IIBBBBB", *fields))
+
+
+def make_png_of(ihdr, *chunks):
+    """PNG có IHDR tùy chọn (``make_png`` luôn là ảnh RGB 8 bit)."""
+    return b"\x89PNG\r\n\x1a\n" + ihdr + b"".join(chunks) + IDAT + IEND
+
+
+PLTE_2 = png_chunk(b"PLTE", b"\xff\x00\x00\x00\xff\x00")  # bảng 2 màu
 
 
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
-        (make_jpeg(*ICC_PARTS), "image/jpeg"),
-        (make_jpeg(*reversed(ICC_PARTS)), "image/jpeg"),  # thứ tự khối không bắt buộc
         (make_jpeg(SOF0), "image/jpeg"),
-        (make_png(png_chunk(b"iCCP", PNG_ICC)), "image/png"),
+        (make_jpeg(jpeg_segment(0xC1, SOF0[4:])), "image/jpeg"),
+        (b"\xff\xd8" + JFIF + jpeg_segment(0xC2, SOF_YCC) + jpeg_segment(0xDA, SOS_YCC) + SCAN
+         + b"\xff\xd9", "image/jpeg"),
+        # APP14 một lần; DRI đúng 2 byte; DHT, DQT được phép lặp.
+        (make_jpeg(ADOBE, jpeg_segment(0xDD, b"\x00\x10"), DHT, DHT,
+                   jpeg_segment(0xDB, b"\x00" + b"\x01" * 64), SOF0), "image/jpeg"),
         (make_png(png_chunk(b"gAMA", b"\x00\x00\xb1\x8f"), png_chunk(b"pHYs", b"\x00" * 9)),
-         "image/png"),  # fmt: skip
-        (make_webp(webp_chunk(b"ICCP", ICC), VP8L, first=VP8X), "image/webp"),
-        (make_webp(webp_chunk(b"ALPH", b"\x00\x01"), webp_chunk(b"VP8 ", b"\x00" * 11),
-                   first=webp_chunk(b"VP8X", b"\x10" + b"\x00" * 9)), "image/webp"),  # fmt: skip
+         "image/png"),
+        (make_png(png_chunk(b"sRGB", b"\x00"), png_chunk(b"tRNS", b"\x00\x01\x00\x02\x00\x03")),
+         "image/png"),
+        (make_png_of(png_ihdr(0), png_chunk(b"tRNS", b"\x00\x07")), "image/png"),
+        (make_png_of(png_ihdr(3), PLTE_2, png_chunk(b"tRNS", b"\x00")), "image/png"),
+        (make_png_of(png_ihdr(3, 1), PLTE_2, png_chunk(b"tRNS", b"\x00\xff")), "image/png"),
+        (make_png_of(png_ihdr(6, 16, interlace=1)), "image/png"),
+        (make_png(IDAT, IDAT), "image/png"),  # dữ liệu ảnh chia nhiều IDAT liền nhau
+        (make_webp(ALPH, webp_chunk(b"VP8 ", b"\x00" * 11), first=VP8X_ALPHA), "image/webp"),
     ],
-    ids=["icc-3-khoi", "icc-3-khoi-dao", "sof", "png-iccp", "png-gama-phys", "webp-iccp",
-         "webp-alph"],  # fmt: skip
-)
+    ids=["sof0", "sof1", "sof2-3-thanh-phan", "app14-dri-dht-dqt", "png-gama-phys",
+         "png-srgb-trns-rgb", "png-xam-trns", "png-bang-mau-trns", "png-1-bit-2-mau",
+         "png-rgba-16-bit-xen-dong", "png-nhieu-idat", "webp-alph"],
+)  # fmt: skip
 def test_allowed_blocks_in_right_shape_pass(data, mime):
     assert prepare_images([ImageInput(data=data, mime=mime)])[0].data == data
 
@@ -466,74 +498,173 @@ def test_allowed_blocks_in_right_shape_pass(data, mime):
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
-        # APP0: JFIF có chữ nối sau, có ảnh nhỏ nhúng, JFXX, chữ lạ.
+        # APP0: JFIF có chữ nối sau, có ảnh nhỏ nhúng, JFXX, chữ lạ, JFIF lặp (SL-T050-6).
         (make_jpeg(jpeg_segment(0xE0, JFIF[4:] + SECRET_TEXT)), "image/jpeg"),
         (make_jpeg(jpeg_segment(0xE0, JFIF[4:16] + b"\x01\x01\xff\x00\x00")), "image/jpeg"),
         (make_jpeg(jpeg_segment(0xE0, b"JFXX\x00\x10\xff\xd8\xff\xd9")), "image/jpeg"),
         (make_jpeg(jpeg_segment(0xE0, SECRET_TEXT)), "image/jpeg"),
-        # APP14: Adobe dài hơn 12 byte.
+        (make_jpeg(JFIF), "image/jpeg"),
+        # APP14: Adobe dài hơn 12 byte, Adobe lặp.
         (make_jpeg(jpeg_segment(0xEE, b"Adobe\x00\x64\x00\x00\x00\x00\x01" + SECRET_TEXT)),
-         "image/jpeg"),  # fmt: skip
+         "image/jpeg"),
+        (make_jpeg(ADOBE, ADOBE), "image/jpeg"),
         # APP2: không phải hồ sơ màu, hồ sơ có chữ nối sau, thiếu khối, lặp khối, sai tổng số,
-        # khối FlashPix.
+        # khối FlashPix (mọi APP2 đều bị từ chối, T-066).
         (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + SECRET_TEXT)), "image/jpeg"),
         (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + ICC + SECRET_TEXT)),
-         "image/jpeg"),  # fmt: skip
+         "image/jpeg"),
         (make_jpeg(*ICC_PARTS[:2]), "image/jpeg"),
         (make_jpeg(*ICC_PARTS, ICC_PARTS[0]), "image/jpeg"),
         (make_jpeg(*icc_segments(ICC, 100)[:1], ICC_PARTS[2]), "image/jpeg"),
         (make_jpeg(jpeg_segment(0xE2, b"FPXR\x00" + SECRET_TEXT)), "image/jpeg"),
+        # Bảng mã số học DAC, khung ảnh Pillow không ghi (không tổn hao, phân cấp, mã số học).
+        (make_jpeg(jpeg_segment(0xCC, b"\x00\x10" + SECRET_TEXT)), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC3, SOF0[4:])), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC5, SOF0[4:])), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC9, SOF0[4:])), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xCF, SOF0[4:])), "image/jpeg"),
         # PNG iCCP: tên hồ sơ tự đặt, không phải hồ sơ màu, có chữ sau dòng nén.
         (make_png(png_chunk(b"iCCP", SECRET_TEXT + b"\x00\x00" + zlib.compress(ICC))),
-         "image/png"),  # fmt: skip
+         "image/png"),
         (make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00" + zlib.compress(SECRET_TEXT))),
-         "image/png"),  # fmt: skip
+         "image/png"),
         (make_png(png_chunk(b"iCCP", PNG_ICC + SECRET_TEXT)), "image/png"),
+        # PNG: bảng màu "gợi ý" của ảnh RGB hay ảnh xám; cHRM, sBIT, bKGD đúng độ dài (T-066).
+        (make_png(PLTE_2), "image/png"),
+        (make_png_of(png_ihdr(0), PLTE_2), "image/png"),
+        (make_png(png_chunk(b"cHRM", b"GPS 16.0544N 108.2022E Le Loi 12")), "image/png"),
+        (make_png(png_chunk(b"sBIT", b"\x08\x08\x08")), "image/png"),
+        (make_png(png_chunk(b"bKGD", b"\x00\xff\x00\xff\x00\xff")), "image/png"),
         # WebP ICCP không phải hồ sơ màu.
         (make_webp(webp_chunk(b"ICCP", SECRET_TEXT), VP8L, first=VP8X), "image/webp"),
     ],
-    ids=["jfif-co-chu", "jfif-anh-nho", "jfxx", "app0-chu", "adobe-dai", "icc-chu",
-         "icc-noi-chu", "icc-thieu-khoi", "icc-lap-khoi", "icc-sai-tong", "flashpix",
-         "iccp-ten-tu-dat", "iccp-chu", "iccp-noi-chu", "webp-iccp-chu"],  # fmt: skip
-)
+    ids=["jfif-co-chu", "jfif-anh-nho", "jfxx", "app0-chu", "jfif-lap", "adobe-dai",
+         "adobe-lap", "icc-chu", "icc-noi-chu", "icc-thieu-khoi", "icc-lap-khoi", "icc-sai-tong",
+         "flashpix", "dac", "sof3", "sof5", "sof9", "sof15", "iccp-ten-tu-dat", "iccp-chu",
+         "iccp-noi-chu", "plte-anh-rgb", "plte-anh-xam", "chrm", "sbit", "bkgd",
+         "webp-iccp-chu"],
+)  # fmt: skip
 def test_allowed_blocks_in_wrong_shape_are_metadata(data, mime):
     with pytest.raises(AIError) as info:
         prepare_images([ImageInput(data=data, mime=mime)])
     assert str(info.value) == IMAGE_METADATA_MESSAGE
 
 
+def sos_image(sos_payload):
+    return b"\xff\xd8" + JFIF + jpeg_segment(0xDA, sos_payload) + SCAN + b"\xff\xd9"
+
+
 @pytest.mark.parametrize(
     ("data", "mime"),
     [
         (make_jpeg(SOF0, SOF0), "image/jpeg"),  # khung ảnh thứ hai
-        (make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00\x78\x9cxyz")), "image/png"),  # hỏng
-        (make_png(png_chunk(b"iCCP", PNG_ICC[:-5])), "image/png"),  # dòng nén cụt
+        # Khung ảnh, lượt quét, DRI, DNL sai độ dài theo số thành phần màu (SL-T050-6).
+        (make_jpeg(jpeg_segment(0xC0, SOF0[4:-1])), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC0, SOF0[4:] + b"\x00")), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC2, SOF_YCC[:6] + SOF_YCC[6:9])), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xC0, b"\x08\x00\x10\x00\x10\x00")), "image/jpeg"),  # 0 thành phần
+        (make_jpeg(jpeg_segment(0xC0, b"\x08\x00\x10\x00\x10\x05" + b"\x01\x11\x00" * 5)),
+         "image/jpeg"),  # 5 thành phần
+        (make_jpeg(jpeg_segment(0xC0, b"\x08\x00\x10")), "image/jpeg"),
+        (sos_image(b"\x01\x01\x00\x00\x3f"), "image/jpeg"),
+        (sos_image(SOS_YCC[:-2]), "image/jpeg"),
+        (sos_image(b"\x00\x00\x3f\x00"), "image/jpeg"),
+        (sos_image(b""), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xDD, b"\x00\x10\x00")), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xDD, b"")), "image/jpeg"),
+        (make_jpeg(jpeg_segment(0xDC, b"\x01")), "image/jpeg"),
+        # PNG: IHDR sai, chunk lặp hoặc dài hơn khuôn, chunk sau dữ liệu ảnh.
         (make_png(IHDR), "image/png"),  # IHDR lặp
         (make_png(png_chunk(b"sRGB", b"\x00"), png_chunk(b"sRGB", b"\x00")), "image/png"),
         (make_png(png_chunk(b"gAMA", b"\x00" * 5)), "image/png"),  # dài hơn khuôn
+        (make_png(png_chunk(b"pHYs", b"\x00" * 8)), "image/png"),
         (
             b"\x89PNG\r\n\x1a\n" + png_chunk(b"IHDR", IHDR[8:20]) + IDAT + IEND,
             "image/png",
         ),  # IHDR thiếu 1 byte
+        (make_png_of(png_ihdr(2, 4)), "image/png"),  # ảnh RGB 4 bit không có
+        (make_png_of(png_ihdr(5)), "image/png"),  # loại màu không có
+        (make_png_of(png_ihdr(2, compression=1)), "image/png"),
+        (make_png_of(png_ihdr(2, interlace=2)), "image/png"),
+        (b"\x89PNG\r\n\x1a\n" + IHDR + IDAT + png_chunk(b"gAMA", b"\x00" * 4) + IEND,
+         "image/png"),  # chunk phụ sau IDAT
+        (b"\x89PNG\r\n\x1a\n" + IHDR + IDAT + png_chunk(b"IEND", b"x"), "image/png"),
+        # PNG bảng màu, tRNS: sai độ dài theo loại màu (SL-T050-6).
+        (make_png_of(png_ihdr(3), png_chunk(b"PLTE", b"\x00" * 4)), "image/png"),
+        (make_png_of(png_ihdr(3), png_chunk(b"PLTE", b"")), "image/png"),
+        (make_png_of(png_ihdr(3, 1), png_chunk(b"PLTE", b"\x00" * 9)), "image/png"),  # 3 > 2 màu
+        (make_png_of(png_ihdr(3), PLTE_2, PLTE_2), "image/png"),
+        (make_png_of(png_ihdr(3)), "image/png"),  # ảnh bảng màu thiếu PLTE
+        (make_png_of(png_ihdr(3), png_chunk(b"tRNS", b"\x00"), PLTE_2), "image/png"),
+        (make_png_of(png_ihdr(3), PLTE_2, png_chunk(b"tRNS", b"\x00" * 3)), "image/png"),
+        (make_png_of(png_ihdr(3), PLTE_2, png_chunk(b"tRNS", b"")), "image/png"),
+        (make_png(png_chunk(b"tRNS", SECRET_TEXT)), "image/png"),
+        (make_png(png_chunk(b"tRNS", b"\x00\x01")), "image/png"),
+        (make_png_of(png_ihdr(0), png_chunk(b"tRNS", b"\x00" * 6)), "image/png"),
+        (make_png_of(png_ihdr(4), png_chunk(b"tRNS", b"\x00\x01")), "image/png"),
+        (make_png_of(png_ihdr(6), png_chunk(b"tRNS", b"\x00" * 6)), "image/png"),
+        # WebP.
         (make_webp(VP8L, first=webp_chunk(b"VP8X", b"\x00" * 12)), "image/webp"),
         (make_webp(VP8L), "image/webp"),  # hai ảnh
-        (make_webp(webp_chunk(b"ICCP", ICC)), "image/webp"),  # dạng đơn giản có thêm chunk
-        (make_webp(webp_chunk(b"ICCP", ICC), first=VP8X), "image/webp"),  # không có ảnh
+        (make_webp(ALPH), "image/webp"),  # dạng đơn giản có thêm chunk
+        (make_webp(ALPH, first=VP8X_ALPHA), "image/webp"),  # không có ảnh
         (make_webp(webp_chunk(b"VP8 ", b"\x00" * 11), VP8L, first=VP8X), "image/webp"),
         (
             make_webp(webp_chunk(b"ANIM", b"\x00" * 6), webp_chunk(b"ANMF", b"\x00" * 16 + VP8L),
                       first=webp_chunk(b"VP8X", b"\x02" + b"\x00" * 9)),
             "image/webp",
-        ),  # ảnh động  # fmt: skip
+        ),  # ảnh động
     ],
-    ids=["jpeg-2-khung", "iccp-hong", "iccp-cut", "ihdr-lap", "srgb-lap", "gama-dai",
-         "ihdr-ngan", "vp8x-dai", "webp-2-anh", "webp-don-gian-them-chunk", "webp-khong-anh",
-         "webp-vp8-va-vp8l", "webp-dong"],  # fmt: skip
-)
+    ids=["jpeg-2-khung", "sof-ngan", "sof-dai", "sof-thieu-thanh-phan", "sof-0-thanh-phan",
+         "sof-5-thanh-phan", "sof-cut", "sos-ngan", "sos-thieu-thanh-phan", "sos-0-thanh-phan",
+         "sos-rong", "dri-dai", "dri-rong", "dnl-ngan", "ihdr-lap", "srgb-lap", "gama-dai",
+         "phys-ngan", "ihdr-ngan", "ihdr-rgb-4-bit", "ihdr-loai-mau-5", "ihdr-nen-1",
+         "ihdr-xen-dong-2", "gama-sau-idat", "iend-co-du-lieu", "plte-le", "plte-rong",
+         "plte-qua-so-mau", "plte-lap", "bang-mau-thieu-plte", "trns-truoc-plte",
+         "trns-qua-so-mau", "trns-rong", "trns-rgb-chu", "trns-rgb-2-byte", "trns-xam-6-byte",
+         "trns-xam-alpha", "trns-rgba", "vp8x-dai", "webp-2-anh", "webp-don-gian-them-chunk",
+         "webp-khong-anh", "webp-vp8-va-vp8l", "webp-dong"],
+)  # fmt: skip
 def test_extra_frames_duplicates_and_animation_are_broken(data, mime):
     with pytest.raises(AIError) as info:
         prepare_images([ImageInput(data=data, mime=mime)])
     assert str(info.value) == IMAGE_BROKEN_MESSAGE
+
+
+# Hồ sơ màu đúng khuôn hoàn toàn vẫn chở được chữ trong thẻ mô tả (LC-T050-1), và bản gửi AI của
+# T-049 không có hồ sơ màu: mọi hồ sơ màu đều bị từ chối, kể cả hồ sơ hỏng (không giải nén gì).
+@pytest.mark.parametrize(
+    ("data", "mime"),
+    [
+        (make_jpeg(jpeg_segment(0xE2, b"ICC_PROFILE\x00\x01\x01" + ICC)), "image/jpeg"),
+        (make_jpeg(*ICC_PARTS), "image/jpeg"),
+        (make_jpeg(*reversed(ICC_PARTS)), "image/jpeg"),
+        (make_png(png_chunk(b"iCCP", PNG_ICC)), "image/png"),
+        (make_png(png_chunk(b"iCCP", b"ICC Profile\x00\x00\x78\x9cxyz")), "image/png"),  # hỏng
+        (make_png(png_chunk(b"iCCP", PNG_ICC[:-5])), "image/png"),  # dòng nén cụt
+        (make_webp(webp_chunk(b"ICCP", ICC), VP8L, first=VP8X), "image/webp"),
+        (make_webp(webp_chunk(b"ICCP", ICC)), "image/webp"),  # dạng đơn giản có thêm hồ sơ màu
+    ],
+    ids=["jpeg-1-khoi", "jpeg-3-khoi", "jpeg-3-khoi-dao", "png-iccp", "png-iccp-hong",
+         "png-iccp-cut", "webp-iccp", "webp-don-gian-iccp"],
+)  # fmt: skip
+def test_icc_profiles_are_always_rejected(data, mime):
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime=mime)])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+def test_png_iccp_is_rejected_without_decompressing(monkeypatch):
+    def no_decompress(*args, **kwargs):
+        raise AssertionError("lớp kiểm ảnh không được giải nén gì")
+
+    data = make_png(png_chunk(b"iCCP", PNG_ICC))
+    monkeypatch.setattr(zlib, "decompressobj", no_decompress)
+    monkeypatch.setattr(zlib, "decompress", no_decompress)
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime="image/png")])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
+    assert not hasattr(base_module, "zlib")
 
 
 def pillow_image_bytes(mode, fmt, **save_args):
@@ -550,28 +681,59 @@ def srgb_profile(pad=0):
     return len(profile).to_bytes(4, "big") + profile[4:]
 
 
-# Mọi kiểu ảnh Pillow có thể ghi cho bản gửi AI (T-049) phải qua: lớp kiểm không chặn nhầm.
+# Mọi kiểu ảnh Pillow có thể ghi mà không kèm hồ sơ màu phải qua: lớp kiểm không chặn nhầm.
 @pytest.mark.parametrize(
     ("mode", "fmt", "args"),
     [
         ("RGB", "JPEG", {}), ("L", "JPEG", {}), ("CMYK", "JPEG", {}),
-        ("RGB", "JPEG", {"icc_profile": 0}), ("RGB", "JPEG", {"icc_profile": 70_000}),
-        ("RGB", "JPEG", {"progressive": True, "icc_profile": 0}),
-        ("RGB", "JPEG", {"dpi": (72, 72)}),
+        ("RGB", "JPEG", {"progressive": True}), ("RGB", "JPEG", {"dpi": (72, 72)}),
         ("RGB", "PNG", {}), ("RGBA", "PNG", {}), ("L", "PNG", {}), ("LA", "PNG", {}),
-        ("P", "PNG", {"transparency": 0}), ("1", "PNG", {}), ("I;16", "PNG", {}),
-        ("RGB", "PNG", {"icc_profile": 0}), ("RGB", "PNG", {"dpi": (72, 72)}),
+        ("P", "PNG", {"transparency": 0}), ("P", "PNG", {"bits": 1}),
+        ("P", "PNG", {"bits": 4, "transparency": b"\x00\x80"}), ("1", "PNG", {}),
+        ("I;16", "PNG", {}), ("I;16", "PNG", {"transparency": 5}),
+        ("L", "PNG", {"transparency": 0}), ("RGB", "PNG", {"transparency": (1, 2, 3)}),
+        ("RGB", "PNG", {"dpi": (72, 72)}),
         ("RGB", "WEBP", {}), ("RGB", "WEBP", {"lossless": True}), ("RGBA", "WEBP", {}),
-        ("RGBA", "WEBP", {"lossless": True}), ("RGB", "WEBP", {"icc_profile": 0}),
-        ("RGBA", "WEBP", {"icc_profile": 0}),
+        ("RGBA", "WEBP", {"lossless": True}),
     ],
 )  # fmt: skip
 def test_pillow_images_of_every_kind_pass(mode, fmt, args):
-    if "icc_profile" in args:
-        args = {**args, "icc_profile": srgb_profile(pad=args["icc_profile"])}
     data = pillow_image_bytes(mode, fmt, **args)
     mime = f"image/{fmt.lower()}"
     assert prepare_images([ImageInput(data=data, mime=mime)])[0].data == data
+
+
+# Cùng các kiểu đó mà kèm hồ sơ màu (kể cả hồ sơ sRGB chuẩn) thì bị từ chối (T-066).
+@pytest.mark.parametrize(
+    ("mode", "fmt", "args"),
+    [
+        ("RGB", "JPEG", {"icc_profile": 0}), ("RGB", "JPEG", {"icc_profile": 70_000}),
+        ("RGB", "JPEG", {"progressive": True, "icc_profile": 0}),
+        ("RGB", "PNG", {"icc_profile": 0}), ("RGBA", "PNG", {"icc_profile": 0}),
+        ("RGB", "WEBP", {"icc_profile": 0}), ("RGBA", "WEBP", {"icc_profile": 0}),
+        ("RGBA", "WEBP", {"lossless": True, "icc_profile": 0}),
+    ],
+)  # fmt: skip
+def test_pillow_images_with_icc_profile_are_rejected(mode, fmt, args):
+    args = {**args, "icc_profile": srgb_profile(pad=args["icc_profile"])}
+    data = pillow_image_bytes(mode, fmt, **args)
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=data, mime=f"image/{fmt.lower()}")])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+
+def test_pillow_resaved_png_copies_icc_profile_and_is_rejected():
+    """Pillow tự chép hồ sơ màu của ảnh gốc khi lưu lại PNG (Lá Chắn T-050, P10): lớp kiểm phải
+    chặn được cả khi người gọi không hề truyền ``icc_profile``."""
+    image_mod = pytest.importorskip("PIL.Image")
+    source = pillow_image_bytes("RGB", "PNG", icc_profile=srgb_profile())
+    with image_mod.open(io.BytesIO(source)) as photo:
+        again = io.BytesIO()
+        photo.save(again, "PNG")
+    assert b"iCCP" in again.getvalue()
+    with pytest.raises(AIError) as info:
+        prepare_images([ImageInput(data=again.getvalue(), mime="image/png")])
+    assert str(info.value) == IMAGE_METADATA_MESSAGE
 
 
 def test_pillow_animated_webp_is_rejected():
@@ -582,6 +744,139 @@ def test_pillow_animated_webp_is_rejected():
     with pytest.raises(AIError) as info:
         prepare_images([ImageInput(data=buffer.getvalue(), mime="image/webp")])
     assert str(info.value) == IMAGE_BROKEN_MESSAGE
+
+
+# ------------------------------------------------- bản gửi AI thật (``make_ai_image`` của T-049)
+# vẫn qua lớp kiểm đã siết (T-066), kể cả khi ảnh gốc có hồ sơ màu chở chữ, EXIF + GPS, XMP, chú
+# thích.
+
+PILLOW_REGISTRIES = ("ID", "OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
+HEIF_OPTIONS = ("THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
+
+
+@pytest.fixture
+def pillow_state_restored():
+    """``make_ai_image`` đăng ký HEIF với Pillow và đặt tùy chọn pillow-heif: trả nguyên sau test
+    (test "chưa đăng ký" của T-047 cần bảng định dạng gốc)."""
+    Image.init()
+    saved = {name: getattr(Image, name).copy() for name in PILLOW_REGISTRIES}
+    options = {name: getattr(heif_options, name) for name in HEIF_OPTIONS}
+    yield
+    for name, value in saved.items():
+        current = getattr(Image, name)
+        current.clear()
+        if isinstance(current, dict):
+            current.update(value)
+        else:
+            current.extend(value)
+    for name, value in options.items():
+        setattr(heif_options, name, value)
+
+
+ICC_SECRET = b"GPS 16.0544N 108.2022E; Nha anh Tuan 12 Le Loi"
+
+
+def icc_with_text(text=ICC_SECRET):
+    """Hồ sơ màu RGB đúng khuôn hoàn toàn (một thẻ ``desc``, mọi byte thuộc thẻ) mà vẫn chở chữ."""
+    desc = b"desc\x00\x00\x00\x00" + (len(text) + 1).to_bytes(4, "big") + text + b"\x00"
+    desc += b"\x00" * (-len(desc) % 4)
+    offset = 128 + 4 + 12
+    header = (
+        (offset + len(desc)).to_bytes(4, "big") + b"lcms" + b"\x02\x10\x00\x00" + b"mntrRGB XYZ "
+        + b"\x00" * 12 + b"acspMSFT" + b"\x00" * 24
+        + b"\x00\x00\xf6\xd6\x00\x01\x00\x00\x00\x00\xd3\x2d" + b"\x00" * 48
+    )  # fmt: skip
+    assert len(header) == 128
+    tags = (1).to_bytes(4, "big") + b"desc" + offset.to_bytes(4, "big")
+    return header + tags + len(desc).to_bytes(4, "big") + desc
+
+
+def textured(mode, size=(600, 400)):
+    """Ảnh có nhiễu và dải màu (dữ liệu nén có đủ loại byte, cả 0xFF)."""
+    bands = [
+        Image.effect_noise(size, 64),
+        Image.linear_gradient("L").resize(size),
+        Image.radial_gradient("L").resize(size),
+    ]
+    return Image.merge("RGB", bands).convert(mode)
+
+
+def full_exif():
+    exif = Image.Exif()
+    exif[0x010F] = "Apple"  # Make
+    exif[0x0110] = "iPhone 15"  # Model
+    exif[0x0112] = 6  # Orientation: xoay 90°
+    exif.get_ifd(0x8825).update({1: "N", 2: (16.0, 3.0, 15.84), 3: "E", 4: (108.0, 12.0, 7.92)})
+    return exif.tobytes()
+
+
+XMP_PACKET = XMP[XMP.index(b"<") :]
+
+
+def ai_source(kind):
+    """Ảnh gốc đủ loại, mang mọi thứ không được tới AI (trả bytes, MIME nếu gửi thẳng được)."""
+    buffer = io.BytesIO()
+    if kind == "jpeg":
+        textured("RGB").save(buffer, "JPEG", exif=full_exif(), icc_profile=icc_with_text(),
+                             comment=SECRET_TEXT, xmp=XMP_PACKET)  # fmt: skip
+    elif kind == "jpeg-cmyk-progressive":
+        textured("CMYK").save(buffer, "JPEG", progressive=True, exif=full_exif(),
+                              icc_profile=icc_with_text())  # fmt: skip
+    elif kind == "png-rgba":
+        info = PngImagePlugin.PngInfo()
+        info.add_text("Comment", SECRET_TEXT.decode())
+        info.add_itxt("XML:com.adobe.xmp", XMP_PACKET.decode())
+        textured("RGBA").save(buffer, "PNG", pnginfo=info, exif=full_exif(),
+                              icc_profile=icc_with_text())  # fmt: skip
+    elif kind == "png-bang-mau":
+        textured("P").save(buffer, "PNG", transparency=0, icc_profile=icc_with_text())
+    elif kind == "png-16-bit":
+        Image.new("I;16", (300, 200), 40000).save(buffer, "PNG", icc_profile=icc_with_text())
+    elif kind == "webp":
+        textured("RGB").save(buffer, "WEBP", exif=full_exif(), xmp=XMP_PACKET,
+                             icc_profile=icc_with_text())  # fmt: skip
+    elif kind == "webp-rgba-lossless":
+        textured("RGBA").save(buffer, "WEBP", lossless=True, exif=full_exif(),
+                              icc_profile=icc_with_text())  # fmt: skip
+    else:
+        assert kind == "heic"
+        pillow_heif.register_heif_opener()  # để lưu ảnh HEIC gốc (fixture trả lại bảng)
+        textured("RGB").save(buffer, "HEIF", quality=80, exif=full_exif(), xmp=XMP_PACKET,
+                             icc_profile=icc_with_text())  # fmt: skip
+    return buffer.getvalue()
+
+
+AI_SOURCES = {
+    "jpeg": "image/jpeg",
+    "jpeg-cmyk-progressive": "image/jpeg",
+    "png-rgba": "image/png",
+    "png-bang-mau": "image/png",
+    "png-16-bit": "image/png",
+    "webp": "image/webp",
+    "webp-rgba-lossless": "image/webp",
+    "heic": None,  # HEIC không gửi thẳng được (MIME bị từ chối)
+}
+
+
+@pytest.mark.parametrize("kind", AI_SOURCES)
+def test_real_ai_copy_from_make_ai_image_passes(kind, pillow_state_restored):
+    data = ai_source(kind)
+    with Image.open(io.BytesIO(data)) as source:  # ảnh gốc mang đúng hồ sơ màu chở chữ
+        assert source.info.get("icc_profile") == icc_with_text()
+    mime = AI_SOURCES[kind]
+    if mime is not None:  # đối chứng: ảnh gốc gửi thẳng thì bị chặn
+        with pytest.raises(AIError) as info:
+            prepare_images([ImageInput(data=data, mime=mime)])
+        assert str(info.value) == IMAGE_METADATA_MESSAGE
+
+    ai = process.make_ai_image(data)
+    (prepared,) = prepare_images([ImageInput(data=ai.data, mime=ai.mime)])
+    assert prepared.data == ai.data and prepared.mime == "image/jpeg"
+    preview = process.make_preview(data)
+    assert prepare_images([ImageInput(data=preview, mime="image/jpeg")])[0].data == preview
+    for copy in (ai.data, preview):  # chuỗi dài: dữ liệu nén không tình cờ chứa được
+        for marker in (b"ICC_PROFILE", b"Exif\x00\x00", b"<x:xmpmeta", ICC_SECRET, SECRET_TEXT):
+            assert marker not in copy, marker
 
 
 # ================================================================== 3 hãng: thư viện thật
