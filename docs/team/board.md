@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 15:30 (Chỉ Huy B)._
+_Cập nhật: 2026-10-23 17:22 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,6 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Họa Sĩ · T-056 màn hình chọn ảnh | `team/T-056` | ⏳ **17:22 Họa Sĩ đang làm** (mọi phiếu chặn đã gộp; trước khi gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2) | |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Ngòi Bút · T-040 lời dặn meta, anchor | `team/T-040` | ⏳ **17:22 Ngòi Bút đang làm** | |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Thợ Máy · T-060 dọn client WordPress | `team/T-060` | ⏳ **17:22 Thợ Máy đang làm** | |
 
 ## Chờ
 
@@ -43,15 +46,12 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | Sửa câu báo đọc ảnh khi bị tráo thư mục (SL-T080-1, -2, -L-1). Thấp, sau T-056 | Thợ Máy | T-080 gộp; T-056 xong |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | Dọn lỗi chữ nhỏ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1). Thấp, sau T-056 | Thợ Máy | T-081 gộp; T-056 xong |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress (LC-T042-1/4/5) | Thợ Máy | Hết chờ (T-061 đã gộp; thêm LC-T061-2, -3, -5); trước khi bật ghi SEO (T-041) |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
 | [T-072](tickets/T-072-gps-ref-phu-sai-khuon.md) | GPS: thẻ Ref phụ sai khuôn không làm mất vị trí (LC-T067-1) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: ảnh Zalo mất GPS) |
 | [T-073](tickets/T-073-on-dinh-test-khoa-cho-t037.md) | Ổn định test khóa chờ của kho danh sách bài (hỏng oan khi máy bận) | Soi Lỗi | Còn chỗ; nên làm sớm: test khóa chờ lại hỏng oan 23/10 khi máy chạy 3 agent |
 | [T-053](tickets/T-053-tao-anh-ai.md) | GĐ3 · G3-7: tạo ảnh AI (Gemini), đánh dấu ảnh AI | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: chưa cần tạo ảnh AI) |
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3 · G3-10: giao diện chỗ cần ảnh | Họa Sĩ | T-055, T-074, T-075, T-077, T-065, T-066, T-069, T-071, nên cả T-076; **T-063** (điều kiện Lá Chắn T-048) |
 | _(ghi nhận, không lập phiếu)_ | Lá Chắn T-034: LC-T034-2 `os.environb`/`getenvb` không được lọc (thư viện hiện không dùng); LC-T034-3 vòng trỏ `os` nằm trước `try` (lệch về phía an toàn). LC-T034-1 gộp vào T-044 | — | Xem lại khi thư viện AI đổi phiên bản |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor, mục `[meta]` trong `config/content.toml` | Ngòi Bút | Hết chờ (T-039 đã gộp); điều kiện Lá Chắn T-039 số 1 |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 "SEO" của Soạn bài chạy thật | Thợ Máy → Họa Sĩ | Hết chờ (T-039 đã gộp); điều kiện Lá Chắn T-039 số 2; nên sau T-040, T-060 |
 | _(chưa lập phiếu)_ | Ghim cùng một bản Python cho mọi máy (`.python-version` hiện là `3.12`: cloud chạy 3.12.3, Windows 3.12.15; độ lệch này gây 9 test đỏ ở T-030) | Thợ Máy | Soi Lỗi đề xuất ở T-029; lập phiếu sau khi T-029 + T-030 gộp |
 | _(ghi nhận, không lập phiếu)_ | Bộ chặn mạng của test chỉ xét socket AF_INET/AF_INET6; họ khác (AF_UNIX…) không bị chặn nhưng không có đường vô tình ra mạng | — | Lá Chắn T-029 + T-030, lỗi Thấp #2 |

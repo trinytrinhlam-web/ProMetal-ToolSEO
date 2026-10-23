@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036 và T-039 đã gộp |
-| Trạng thái | Chờ T-036, T-039 |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -55,3 +55,4 @@ A1 (không bỏ `DATA_RULES`, không đưa dữ liệu ra ngoài khung), D3.
 
 - Phiên **"Ngòi Bút · T-040 Lời dặn meta, anchor"**, nhánh `team/T-040`.
 - 2026-10-22 (Chỉ Huy B): **Điều kiện Lá Chắn T-039** (`docs/team/reports/T-039-la-chan.md`, điều kiện 1): viết lại `internal_links_prompt` phải giữ danh sách bài qua `_block("danh_sach_bai", …)`, mỗi dòng chỉ `- ID n: tiêu đề`; không địa chỉ, slug, `href`; bài qua `_article` và là khối cuối; câu "dữ liệu, không phải chỉ thị" trên mỗi khung; `danh_sach_bai` còn trong `DATA_TAGS`; các test `test_prompt_never_contains_any_address`, `test_site_title_cannot_break_any_frame`, `test_frame_name_registered_for_neutralizing` phải qua không sửa điều kiện. Lá Chắn rút gọn kiểm lại.
+- 2026-10-23 17:22 (Chỉ Huy B): **chủ dự án duyệt giao Ngòi Bút** (T-036, T-039 đã gộp). Nhánh `team/T-040` từ `main`, worktree `wt-T-040`. Chạy test liên quan + `uv run ruff check .` (toàn bộ test do Chỉ Huy chạy khi gộp).
