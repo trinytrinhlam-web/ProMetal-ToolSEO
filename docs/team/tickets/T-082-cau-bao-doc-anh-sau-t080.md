@@ -50,4 +50,4 @@ F1.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo đề xuất của Soi Lỗi T-080 (Windows và Linux); chủ dự án chọn phiếu dọn sau thay vì chỉ ghi nhận (2026-10-23).
-- 2026-10-23 14:32 (Chỉ Huy B): thêm điều kiện 2 của Lá Chắn T-080: ghi chú/làm chặt `_resolve_inside`, `_checked_file` (Việc 4 (a) bắt buộc, (b) nên làm, xem `docs/team/reports/T-080-la-chan.md`); chỉ đổi câu báo, mọi ca vẫn từ chối (`_ChangedError` là `_LinkError`); Windows giữ `_MSG_ALIAS` cho tên ngắn 8.3 thật; ép thắng (ổ máy và `\localhost\C$`) vẫn 0 lọt.
+- 2026-10-23 14:32 (Chỉ Huy B): thêm điều kiện 2 của Lá Chắn T-080: ghi chú/làm chặt `_resolve_inside`, `_checked_file` (Việc 4 (a) bắt buộc, (b) nên làm, xem `docs/team/reports/T-080-la-chan.md`); chỉ đổi câu báo, mọi ca vẫn từ chối (`_ChangedError` là `_LinkError`); Windows giữ `_MSG_ALIAS` cho tên ngắn 8.3 thật; ép thắng (ổ máy và `\\localhost\C$`) vẫn 0 lọt.
