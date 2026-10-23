@@ -544,10 +544,10 @@ class _SubTags(ImageTags):
     """Lớp con của ``ImageTags``: client chỉ nhận đúng lớp ``ImageTags``."""
 
 
-def _tampered_tags():
+def _tampered_tags(field="area"):
     """``ImageTags`` hợp lệ lúc tạo, rồi bị sửa thẳng (bỏ qua bước kiểm của lớp đóng băng)."""
     tags = ImageTags(category="Cổng inox")
-    object.__setattr__(tags, "area", _FREE_TEXT_TAGS["area"])
+    object.__setattr__(tags, field, _FREE_TEXT_TAGS[field])
     return tags
 
 
@@ -1043,9 +1043,12 @@ def test_t071_chu_tu_do_khong_thanh_the_duoc(field):
         ImageTags(**{field: _FREE_TEXT_TAGS[field]})
 
 
-def test_t071_the_bi_sua_sau_khi_tao_bi_chan_truoc_khi_gui(fake_wp, wp_client, site, web):
+@pytest.mark.parametrize("field", ["project_code", "category", "area"])
+def test_t071_the_bi_sua_sau_khi_tao_bi_chan_truoc_khi_gui(fake_wp, wp_client, site, web, field):
+    # Thay test cũ "mã công trình sai mẫu không vào tên file": nay chữ tự do không tới được
+    # bước đặt tên file, kể cả khi ``ImageTags`` bị sửa sau khi tạo (chưa gửi gì).
     with pytest.raises(WordPressError) as error:
-        send(wp_client, [DraftImage(web, alt="Cổng", tags=_tampered_tags())])
+        send(wp_client, [DraftImage(web, alt="Cổng", tags=_tampered_tags(field))])
     assert str(error.value) == "Thẻ của ảnh thứ 1 không hợp lệ. Chưa gửi gì lên website."
     assert fake_wp.requests == []
 
