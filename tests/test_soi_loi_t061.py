@@ -396,10 +396,6 @@ def test_ban_python_sanitize_text_field_cua_wordpress(text):
     assert wp_sanitize_text_field("a<b>c</b> d") == "ac d"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T061-1: chữ SEO «[<>tên …]» qua _seo_text; strip_tags của PHP nối thành shortcode",
-)
 @pytest.mark.parametrize("text", SEO_AFTER_STRIP)
 def test_sl_t061_1_chu_seo_co_cum_the_rong_bi_chan(text):
     with pytest.raises(WordPressError):

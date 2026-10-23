@@ -237,7 +237,9 @@ def test_real_client_multiline_wordpress_error_is_plain(project_root, fake_wp, a
     assert len(at.error) == 1
     assert_page_plain(at)
     seen = shown(at.error[0].value)
-    assert seen.startswith("WordPress báo lỗi (mã 400). (WordPress: Dòng một [x]: https://")
+    # LC-T042-4 (T-060): câu cố định kèm mã HTTP, không chép lời máy chủ.
+    assert seen == "WordPress báo lỗi (mã 400)."
+    assert "evil" not in seen and "Dòng một" not in seen
     assert "\n" not in seen and "\r" not in seen
 
 

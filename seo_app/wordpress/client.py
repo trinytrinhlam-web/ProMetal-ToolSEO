@@ -54,6 +54,7 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _LINK_UNSAFE = frozenset("\"'<>`")  # không được có trần trong link lấy từ site
 _TOTAL_PAGES_PATTERN = re.compile(r"[0-9]+")
 _PAGE_OUT_OF_RANGE = "rest_post_invalid_page_number"  # WordPress: xin trang quá số trang
+_ERROR_CODE = re.compile(r"[A-Za-z0-9_-]{1,100}")  # ``code`` lỗi WordPress (rest_no_route…)
 
 # ---------------------------------------------------------------- đường REST được phép gọi
 # Danh sách CỐ ĐỊNH (T-042, điều kiện Lá Chắn T-037): ``_request`` so khớp toàn chuỗi cặp
@@ -85,6 +86,44 @@ _ALLOWED_ROUTES = tuple((method, re.compile(pattern)) for method, pattern in ALL
 # và các namespace nhạy cảm của site. So trên chữ thường.
 _FORBIDDEN_IN_PATH = ("..", "%", "//", "\\", "code-snippets", "prometal")
 
+# Tham số ``params`` được phép theo từng đường (LC-T042-1), khóa là đúng cặp trong
+# ``ALLOWED_ROUTES``: khóa khác bị từ chối TRƯỚC KHI gửi. WordPress đọc ``?rest_route=`` (đổi
+# đường), ``?_method=`` hay header ``X-HTTP-Method-Override`` (đổi phương thức), ``_envelope``,
+# ``_jsonp`` ở MỌI đường, kể cả ``/wp/v2/posts``. Thêm đường mới phải thêm ở đây (thiếu thì lỗi
+# ngay khi nạp module).
+_LIST_PARAMS = frozenset({"per_page", "page", "orderby", "order", "_fields"})
+ALLOWED_PARAMS: dict[tuple[str, str], frozenset[str]] = {
+    ("GET", r"/"): frozenset(),
+    ("GET", r"/wp/v2/users/me"): frozenset({"context"}),
+    ("GET", r"/wp/v2/categories"): _LIST_PARAMS | {"hide_empty"},
+    ("GET", r"/wp/v2/tags"): _LIST_PARAMS | {"hide_empty"},
+    ("GET", r"/wp/v2/posts"): _LIST_PARAMS | {"status"},
+    ("GET", r"/wp/v2/pages"): _LIST_PARAMS | {"status"},
+    ("GET", rf"/wp/v2/posts/{_ID}"): frozenset({"context", "_fields"}),
+    ("POST", r"/wp/v2/posts"): frozenset({"_fields"}),
+    ("POST", rf"/wp/v2/posts/{_ID}"): frozenset({"_fields"}),
+    ("POST", r"/wp/v2/media"): frozenset({"_fields"}),
+    ("POST", rf"/wp/v2/media/{_ID}"): frozenset({"_fields"}),
+    ("GET", re.escape(SITESEO_ABILITY_PATH)): frozenset(),
+    ("POST", re.escape(SITESEO_ABILITY_RUN_PATH)): frozenset(),
+}
+_ROUTE_PARAMS = tuple(
+    (method, re.compile(pattern), ALLOWED_PARAMS[(method, pattern)])
+    for method, pattern in ALLOWED_ROUTES
+)
+# Chặn thêm (phòng khi ai đó nới danh sách trên): tên tham số chứa các chữ này (so trên chữ
+# thường, mọi ký tự không phải chữ, số thành "_", vì PHP đổi "." và dấu cách trong tên thành "_").
+_FORBIDDEN_PARAMS = ("rest_route", "_method", "_envelope", "_jsonp")
+# ``_request`` chỉ nhận các tùy chọn client tự dùng: không ``files`` (thân ``multipart`` thành
+# ``$_POST``, WordPress đọc ``rest_route`` từ đó), không ``verify``, ``auth``, ``cookies``…
+_REQUEST_OPTIONS = frozenset({"params", "json", "data", "headers"})
+# Header riêng của lệnh chỉ có loại file và tên file khi tải ảnh (``_post_media``).
+_REQUEST_HEADERS = frozenset({"content-type", "content-disposition"})
+_ROUTE_BLOCKED = (
+    "Phần mềm chặn một lệnh gọi WordPress không có trong danh sách được phép. Không có gì được "
+    "gửi lên website."
+)
+
 
 def is_allowed_route(method: object, path: object) -> bool:
     """``(method, path)`` có trong ``ALLOWED_ROUTES`` (so khớp toàn chuỗi, phân biệt hoa thường).
@@ -100,6 +139,53 @@ def is_allowed_route(method: object, path: object) -> bool:
         method == allowed_method and pattern.fullmatch(path)
         for allowed_method, pattern in _ALLOWED_ROUTES
     )
+
+
+def _is_plain_request(method: str, path: str, options: dict[str, Any], session: object) -> bool:
+    """Tham số, header, thân lệnh chỉ là loại client tự viết (LC-T042-1), xét TRƯỚC KHI gửi.
+
+    - tùy chọn chỉ ``params``, ``json`` (``dict``), ``data`` (``bytes``), ``headers``;
+    - khóa ``params`` thuộc ``ALLOWED_PARAMS`` của đúng đường, giá trị là chữ hay số nguyên;
+      không bao giờ có ``rest_route``, ``_method``, ``_envelope``, ``_jsonp``;
+    - header chỉ ``Content-Type`` (loại ảnh trong ``IMAGE_TYPES``) và ``Content-Disposition``;
+      không header nào (kể cả của ``session``) có chữ "method" (``X-HTTP-Method-Override``…);
+    - ``session`` không có ``params`` hay ``Content-Type`` riêng (``requests`` gộp vào mọi lệnh).
+    """
+    if not set(options) <= _REQUEST_OPTIONS:
+        return False
+    allowed = next(
+        (names for m, pattern, names in _ROUTE_PARAMS if m == method and pattern.fullmatch(path)),
+        None,
+    )
+    params, headers = options.get("params"), options.get("headers")
+    data, payload = options.get("data"), options.get("json")
+    if allowed is None or getattr(session, "params", None):
+        return False
+    if not (data is None or type(data) is bytes) or not (payload is None or type(payload) is dict):
+        return False
+    if params is not None:
+        if type(params) is not dict:
+            return False
+        for key, value in params.items():
+            if type(key) is not str or key not in allowed or type(value) not in (str, int):
+                return False
+            folded = re.sub(r"[^a-z0-9]", "_", key.lower())
+            if any(name in folded for name in _FORBIDDEN_PARAMS):
+                return False
+    if headers is not None:
+        if type(headers) is not dict:
+            return False
+        for name, value in headers.items():
+            if type(name) is not str or name.lower() not in _REQUEST_HEADERS:
+                return False
+            if type(value) is not str:
+                return False
+            if name.lower() == "content-type" and value not in IMAGE_TYPES.values():
+                return False
+    session_headers = getattr(session, "headers", None) or {}
+    if any(str(name).lower() == "content-type" for name in session_headers):
+        return False
+    return not any("method" in str(name).lower() for name in [*session_headers, *(headers or {})])
 
 
 # ---------------------------------------------------------------- ghi SEO (T-042)
@@ -135,6 +221,10 @@ _LEGACY_ENTITY = re.compile(
 # ``wp-includes/shortcodes.php``). Chữ SEO không dùng được "&#91;" (mọi mã ký tự HTML bị chặn),
 # nên chặn hẳn; "[ 2026 ]" (dấu cách sau "[") hay "[" không có "]" phía sau thì không phải.
 _SHORTCODE_OPEN = re.compile(r"\[[\[/]?[^<>&/\[\]=\x00-\x20]")
+# "<" mà ký tự ngay sau KHÔNG phải khoảng trắng ASCII (hoặc "<" ở cuối chữ): ``strip_tags`` của
+# PHP mở thẻ ở đó (``isspace`` của C: " \t\n\r\v\f"; không dùng ``str.isspace`` của Python, vốn
+# nhận cả U+00A0, U+3000). LC-T061-2.
+_TAG_LIKE_OPEN = re.compile(r"<(?![ \t\n\r\v\f])")
 
 _SEO_NOT_OWN = (
     "Chỉ được ghi SEO cho bài nháp app vừa tạo trong lần làm việc này, không sửa bài đã có "
@@ -500,8 +590,10 @@ class WordPressClient:
         khi tắt, ``set_seo_meta`` không gửi gì và trả kết quả "chép tay"."""
         base_url = base_url.strip().rstrip("/")
         if not re.match(r"^https?://[^/\s]+", base_url, re.IGNORECASE):
+            # LC-T042-4: không chép lại địa chỉ (có thể là "htps://tên:mật-khẩu@site").
             raise WordPressError(
-                f"Địa chỉ website '{base_url}' không hợp lệ. Ví dụ đúng: https://example.com"
+                "Địa chỉ website trong WORDPRESS_URL không hợp lệ. Sửa trong file .env, ví dụ "
+                "đúng: https://example.com"
             )
         if not base_url.lower().startswith("https://"):
             # Qua http, Application Password đi trên mạng không mã hóa (security.md 2.7).
@@ -513,7 +605,8 @@ class WordPressClient:
             # SL-T042-3: base_url có ?, #, %, .., wp-json… làm đường thật khác đường đã kiểm.
             raise WordPressError(
                 "WORDPRESS_URL chỉ được là địa chỉ website, ví dụ https://example.com (không có "
-                "dấu ?, #, %, @, đoạn /wp-json hay /.. ). Sửa trong file .env."
+                "dấu ?, #, %, @, đoạn /wp-json, /.. hay tên file kiểu .php, .cgi). Sửa trong file "
+                ".env."
             )
         if not username or not app_password:
             raise WordPressError("Thiếu tên đăng nhập hoặc Application Password của WordPress.")
@@ -928,8 +1021,11 @@ class WordPressClient:
     ) -> Media:
         """Tải ảnh lên thư viện Media. Tên file được chuyển thành không dấu.
 
-        Alt, tiêu đề, chú thích không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn
-        alt vào ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
+        - Website phải trả ``201 Created`` (LC-T071-1): mã khác có thể là ảnh **đã có** (plugin
+          trả lại ảnh trùng), ghi alt vào đó là sửa ảnh có sẵn (R3). Khi đó báo lỗi, không ghi gì.
+        - Alt, tiêu đề, chú thích không còn "[" trần (``escape_shortcodes``, T-061): WordPress
+          chèn alt vào ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy
+          shortcode.
         """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
@@ -940,7 +1036,7 @@ class WordPressClient:
             raise WordPressError(f"File '{filename}' rỗng.")
         safe_name = f"{slugify(Path(filename).stem) or 'anh'}{suffix}"
 
-        media_id, media = self._post_media(data, safe_name, content_type)
+        media_id, media = self._post_media(data, safe_name, content_type, new_only=True)
 
         extra = {
             key: escape_shortcodes(value)
@@ -1247,13 +1343,12 @@ class WordPressClient:
         )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
-        if not is_allowed_route(method, path):
-            # Từ chối TRƯỚC KHI gửi: không có request nào đi ra (T-042). Câu cố định, không
-            # chép đường bị từ chối.
-            raise WordPressError(
-                "Phần mềm chặn một lệnh gọi WordPress không có trong danh sách được phép. "
-                "Không có gì được gửi lên website."
-            )
+        if not is_allowed_route(method, path) or not _is_plain_request(
+            method, path, kwargs, self._session
+        ):
+            # Từ chối TRƯỚC KHI gửi: không có request nào đi ra (T-042, LC-T042-1). Câu cố định,
+            # không chép đường, tham số hay header bị từ chối.
+            raise WordPressError(_ROUTE_BLOCKED)
         url = f"{self.base_url}/wp-json{path}"
         try:
             # Không đi theo chuyển hướng: máy chủ không được đưa lệnh gọi sang đường khác ngoài
@@ -1272,7 +1367,8 @@ class WordPressClient:
             ) from exc
         except requests.exceptions.ConnectionError as exc:
             raise WordPressError(
-                f"Không kết nối được tới {self.base_url}. Kiểm tra mạng và WORDPRESS_URL."
+                "Không kết nối được tới website trong WORDPRESS_URL. Kiểm tra mạng và "
+                "WORDPRESS_URL."
             ) from exc
         except requests.exceptions.RequestException as exc:
             # Lỗi mạng khác (địa chỉ sai dạng, chuyển hướng vòng…): chỉ nêu tên lỗi, không chép
@@ -1283,9 +1379,9 @@ class WordPressClient:
             ) from exc
         if 300 <= response.status_code < 400:
             raise WordPressError(
-                "WordPress trả lời bằng một lệnh chuyển hướng sang địa chỉ khác; phần mềm không "
-                "đi theo. Kiểm tra WORDPRESS_URL trong .env có đúng địa chỉ website không (có "
-                "hay không có www, có https).",
+                f"WordPress trả lời bằng một lệnh chuyển hướng sang địa chỉ khác (mã "
+                f"{response.status_code}); phần mềm không đi theo. Kiểm tra WORDPRESS_URL trong "
+                ".env có đúng địa chỉ website không (có hay không có www, có https).",
                 status_code=response.status_code,
             )
         if response.status_code >= 400:
@@ -1302,7 +1398,11 @@ class WordPressClient:
                 "WORDPRESS_URL, hoặc plugin bảo mật / tường lửa đang chặn REST API."
             ) from exc
 
-    def _error_from(self, response: requests.Response) -> WordPressError:
+    @staticmethod
+    def _error_from(response: requests.Response) -> WordPressError:
+        """Câu lỗi CỐ ĐỊNH theo mã HTTP (LC-T042-4): không chép ``message`` của máy chủ (máy chủ
+        hay plugin đặt được câu tùy ý lên màn hình) và không chép ``WORDPRESS_URL``. ``code`` của
+        WordPress chỉ giữ trong ``WordPressError.code`` (dạng ASCII, để code phân biệt lỗi)."""
         status = response.status_code
         try:
             body = response.json()
@@ -1310,13 +1410,12 @@ class WordPressClient:
             body = {}
         if not isinstance(body, dict):
             body = {}
-        code = str(body.get("code", ""))
-        wp_message = _plain(str(body.get("message", "")))
-        detail = f" (WordPress: {wp_message})" if wp_message else ""
+        raw_code = body.get("code")
+        code = raw_code if isinstance(raw_code, str) and _ERROR_CODE.fullmatch(raw_code) else ""
 
         if status == 401:
             message = (
-                "WordPress từ chối đăng nhập. Kiểm tra WORDPRESS_USERNAME và "
+                "WordPress từ chối đăng nhập (mã 401). Kiểm tra WORDPRESS_USERNAME và "
                 "WORDPRESS_APP_PASSWORD trong .env (phải là Application Password, không phải "
                 "mật khẩu đăng nhập thường). Nếu đã đúng, có thể hosting đang chặn header "
                 "Authorization hoặc plugin bảo mật tắt Application Passwords."
@@ -1324,24 +1423,24 @@ class WordPressClient:
         elif status == 403:
             message = (
                 "Tài khoản WordPress không đủ quyền làm việc này, hoặc plugin bảo mật đang "
-                "chặn REST API."
+                "chặn REST API (mã 403)."
             )
         elif status == 404:
             if code == "rest_no_route" or not body:
                 message = (
-                    f"Không tìm thấy REST API tại {self.base_url}/wp-json. Kiểm tra "
-                    "WORDPRESS_URL, và trong WordPress vào Cài đặt → Đường dẫn tĩnh, bấm Lưu "
-                    "một lần."
+                    "Không tìm thấy REST API của WordPress (đường /wp-json) ở địa chỉ trong "
+                    "WORDPRESS_URL (mã 404). Kiểm tra WORDPRESS_URL, và trong WordPress vào Cài "
+                    "đặt → Đường dẫn tĩnh, bấm Lưu một lần."
                 )
             else:
-                message = "Không tìm thấy dữ liệu trên WordPress (có thể đã bị xóa)."
+                message = "Không tìm thấy dữ liệu trên WordPress, có thể đã bị xóa (mã 404)."
         elif status == 413:
-            message = "File quá lớn so với giới hạn tải lên của máy chủ WordPress."
+            message = "File quá lớn so với giới hạn tải lên của máy chủ WordPress (mã 413)."
         elif status >= 500:
             message = f"Máy chủ WordPress đang gặp lỗi (mã {status}). Thử lại sau."
         else:
             message = f"WordPress báo lỗi (mã {status})."
-        return WordPressError(message + detail, status_code=status, code=code)
+        return WordPressError(message, status_code=status, code=code)
 
 
 def _total_pages(value: object) -> int | None:
@@ -1438,6 +1537,7 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
     Chặn (ném ``WordPressError``, câu cố định không chép chữ người dùng): không phải chữ, thẻ
     HTML, mã ký tự HTML (LC-T036-3: ``&#37;``, ``&lt;script&gt;``, cả ``&#37`` thiếu ``;``),
     ``%%`` (biến SiteSEO), dạng shortcode WordPress (T-061: ``[tên]``, ``[[tên]]``, ``[/tên]``),
+    «<» liền ký tự không phải khoảng trắng ASCII (LC-T061-2: ``<>``, ``<1>``, «<» cuối chữ),
     ký tự điều khiển, quá dài. Xét cả chữ gốc, chữ đã chuẩn hóa (đã gỡ ký tự vô hình, đúng chữ
     sẽ gửi) và dạng NFKC (``＜``, ``％％``, ``［`` toàn khổ).
     """
@@ -1466,6 +1566,13 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
         raise WordPressError(
             f"{label} có chữ dạng shortcode WordPress («[» liền chữ, có «]» phía sau), website "
             "có thể chạy như lệnh. Bỏ dấu ngoặc vuông hoặc dùng ngoặc tròn rồi gửi lại."
+        )
+    if any(_TAG_LIKE_OPEN.search(text) for text in (raw, value, folded)):
+        # LC-T061-2: ``strip_tags`` của PHP (``sanitize_text_field``) bỏ cả cụm "<…>" như "<>",
+        # "<1>", "<=>", nên "[<>code_snippet id=1]" thành shortcode liền mạch trên website.
+        raise WordPressError(
+            f"{label} có dấu «<» liền ký tự khác: website có thể coi là thẻ HTML và bỏ đi. Thêm "
+            "dấu cách sau «<» hoặc bỏ dấu «<» rồi gửi lại."
         )
     if _CONTROL_CHARS.search(value):
         raise WordPressError(f"{label} có ký tự điều khiển. Gõ lại chữ thường.")
@@ -1517,13 +1624,18 @@ def _drop_invisible(text: str) -> str:
 
 
 _SITE_HOST = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?")
-_SITE_PATH = re.compile(r"(?:/[A-Za-z0-9_~-][A-Za-z0-9._~-]*)*")
+# Mỗi đoạn thư mục KHÔNG có dấu "." (LC-T042-5): đoạn có đuôi có thể là file chạy được trên máy
+# chủ (``.php``, ``.pht``, ``.phtml``, ``.cgi``, ``.shtml``, ``.asp``, ``.aspx``, ``.jsp``,
+# ``.py``…), lệnh gọi thành ``POST …/x.pht/wp-json/…`` chạy file đó thay vì REST API (PATH_INFO).
+# Thư mục cài WordPress gần như không bao giờ có dấu chấm trong tên.
+_SITE_PATH = re.compile(r"(?:/[A-Za-z0-9_~-]+)*")
 _SITE_PATH_FORBIDDEN = ("wp-json", "code-snippets", "prometal", "wp-admin")
 
 
 def _is_plain_site_url(base_url: str) -> bool:
     """``https://tên-máy[:cổng][/thư-mục]``: không tên/mật khẩu, không ``?``, ``#``, ``%``,
-    không đoạn ``.``/``..``, không ``wp-json``, ``code-snippets``, ``prometal`` (SL-T042-3)."""
+    không dấu ``.`` trong thư mục (``.``/``..``, file ``.php``, ``.cgi``…), không ``wp-json``,
+    ``code-snippets``, ``prometal`` (SL-T042-3, LC-T042-5)."""
     # SL-T042-9: xét chuỗi GỐC trước ``urlsplit`` (hàm này âm thầm bỏ tab, xuống dòng).
     if any(ch.isspace() or _CONTROL_CHARS.match(ch) for ch in base_url):
         return False
@@ -1537,13 +1649,11 @@ def _is_plain_site_url(base_url: str) -> bool:
         return False
     if not _SITE_PATH.fullmatch(parts.path):
         return False
+    # SL-T042-10, LC-T042-5: thư mục con không được là file (``_SITE_PATH`` không nhận dấu ".").
+    # Không chừa cả ``index.php``: website dùng đường dẫn tĩnh (``/wp-json/`` chạy được, T-033),
+    # không cần kiểu ``/index.php/wp-json/``.
     lowered = parts.path.lower()
-    if any(word in lowered for word in _SITE_PATH_FORBIDDEN):
-        return False
-    # SL-T042-10: thư mục con không được là file PHP (``/xmlrpc.php``, ``/run.php``…): lệnh
-    # gọi sẽ chạy file đó thay vì REST API. Không chừa cả ``index.php``: website dùng đường
-    # dẫn tĩnh (``/wp-json/`` chạy được, T-033), không cần kiểu ``/index.php/wp-json/``.
-    return not any(ext in lowered for ext in (".php", ".phtml", ".phar"))
+    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
 
 
 def _check_web_image(image: object, number: int) -> None:

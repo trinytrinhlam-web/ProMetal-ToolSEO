@@ -117,7 +117,8 @@ def test_wrong_application_password(fake_wp, wp_client):
         wp_client.check_connection()
     message = str(err.value)
     assert "WORDPRESS_APP_PASSWORD" in message
-    assert "invalid application password" in message
+    assert "(mã 401)" in message
+    assert "invalid application password" not in message  # LC-T042-4: không chép lời máy chủ
     assert "abcd" not in message
     assert err.value.status_code == 401
     assert err.value.code == "incorrect_password"
@@ -141,7 +142,8 @@ def test_forbidden(fake_wp, wp_client):
     with pytest.raises(WordPressError, match="không đủ quyền") as err:
         wp_client.check_connection()
     assert "<b>" not in str(err.value)
-    assert "Bị chặn" in str(err.value)
+    assert "(mã 403)" in str(err.value)
+    assert "Bị chặn" not in str(err.value)  # LC-T042-4: không chép lời máy chủ
 
 
 def test_server_error(fake_wp, wp_client):

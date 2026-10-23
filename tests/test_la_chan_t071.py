@@ -33,11 +33,6 @@ def _writes(fake_wp, media_id):
     return [r for r in fake_wp.requests if urlsplit(r.url).path == f"{MEDIA}/{media_id}"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T071-1: upload_media nhận mã khác 201 rồi ghi alt, tiêu đề, chú thích vào mã đó "
-    "(có thể là ảnh đã có trên website)",
-)
 @pytest.mark.parametrize("status", [200, 202])
 def test_lc_t071_1_upload_media_khong_ghi_vao_anh_website_khong_xac_nhan_vua_tao(
     fake_wp, wp_client, status

@@ -7,6 +7,7 @@ Chỉ dùng site giả (``FakeWordPress``), không gọi WordPress thật hay m�
 
 import json
 from contextlib import suppress
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
@@ -420,8 +421,10 @@ def test_base_url_cannot_turn_allowed_route_into_another(base_url):
     except WordPressError:
         pass
     for request in fake.requests:
-        # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định; phần đường vẫn phải đúng.
-        assert request.path_url.split("?")[0] == "/wp-json/wp/v2/posts", request.url
+        # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định; LC-T061-5: so cả đường và truy vấn.
+        url = urlsplit(request.url)
+        assert url.path == "/wp-json/wp/v2/posts", request.url
+        assert parse_qs(url.query) == {"_fields": ["id,status,title,link,featured_media"]}, url
 
 
 # ================================================================ chặn chữ SEO

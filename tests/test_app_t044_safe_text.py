@@ -209,12 +209,12 @@ def test_wrong_types_from_wordpress_do_not_crash_page(project_root, monkeypatch)
 
 @pytest.mark.usefixtures("wp_env")
 def test_bad_wordpress_url_message_is_plain(project_root, monkeypatch):
-    # Câu lỗi cấu hình chép lại WORDPRESS_URL: địa chỉ đó cũng không thành link.
+    # Câu lỗi cấu hình không chép lại WORDPRESS_URL (LC-T042-4) và không có link.
     monkeypatch.setenv("WORDPRESS_URL", "www.evil.example")
     at = open_wordpress_page(project_root)
     assert "không hợp lệ" in at.warning[0].value
     assert_no_links(at)
-    assert "'www.evil.example'" in seen(at.warning[0].value)
+    assert "evil" not in seen(at.warning[0].value)
 
 
 @pytest.mark.usefixtures("wp_env")
