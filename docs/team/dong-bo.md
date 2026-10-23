@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-23 09:36. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-23 09:40. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -47,17 +47,22 @@ Chỉ Huy B, cập nhật 2026-10-23 09:36. Agent chạy ở phiên con dưới 
 | [T-076](tickets/T-076-thu-muc-anh-tra-ten-tren-o.md) Thư mục ảnh trả tên trên ổ | đã gộp (`4ca5a2d`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | LC-T076-3 → T-079 |
 | [T-039](tickets/T-039-lien-ket-noi-bo.md) Liên kết nội bộ (GĐ4) | đã gộp (`089f685`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | Điều kiện → T-040, T-041, GĐ5 |
 | [T-079](tickets/T-079-doc-anh-bang-fd-tung-tang.md) Đọc ảnh bằng fd từng tầng | đã gộp (`638a895`), nhánh `team/T-079`, `team/T-079-linux` và worktree đã xóa | ✅ Windows 11.265 qua, 3 hỏng oan (chạy riêng lại qua); đã đẩy `main` | 3 Thấp → T-080 (đang làm) |
-| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`f8e6d21`) | ✅ Soi Lỗi rút gọn ĐẠT (0 lỗi mới) | ⏳ Chờ chủ dự án cho giao Lá Chắn rút gọn |
-| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`26fd39f`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (R5 đạt; SL-T071-1 Thấp, `alt.py`, trước T-056) | ⏳ Chờ chủ dự án cho giao Lá Chắn rút gọn; chọn chỗ sửa SL-T071-1 |
-| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) Dọn lỗi Thấp đọc ảnh (GĐ3) | `team/T-080` (`a88c4e8`) | ✅ Thợ Máy xong (Windows) | ⏳ Chờ chủ dự án cho giao Soi Lỗi rút gọn + lượt cloud Linux; câu hỏi thử ổ USB FAT32 |
+| [T-066](tickets/T-066-don-loi-thap-anh-gui-ai.md) Dọn lớp ảnh gửi AI (trước T-056) | `team/T-066` (`f8e6d21`) | ✅ Soi Lỗi rút gọn ĐẠT (0 lỗi mới) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-066 kiểm nhanh ảnh gửi AI") |
+| [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) Dọn chèn ảnh nháp (trước T-056) | `team/T-071` (`26fd39f`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (R5 đạt; SL-T071-1 → T-081) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-071 kiểm nhanh chèn ảnh nháp") |
+| [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) Dọn lỗi Thấp đọc ảnh (GĐ3) | `team/T-080` (`a88c4e8`); cloud đẩy `team/T-080-linux` | ✅ Thợ Máy xong (Windows) | ⏳ Thợ Máy thử ổ USB `F:` (chủ dự án đồng ý, chỉ đọc thuộc tính); phiên cloud Linux 3 ca SL-T079-L-1 (không báo về, xem nhánh `team/T-080-linux`); xong thì Soi Lỗi rút gọn |
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp (`5d17f5e`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | LC-T069-1, -2 sửa chữ README sau |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
-| Chờ phiếu trước | | **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-040, T-041 (GĐ4, hết chờ sau T-039); T-060 (dọn client WordPress, trước T-041); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-081** |
+| Chờ phiếu trước | | **T-081** (SL-T071-1, chờ T-071 gộp; trước T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-040, T-041 (GĐ4, hết chờ sau T-039); T-060 (dọn client WordPress, trước T-041); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-082** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 09:40 · Chỉ Huy B
+
+- **Chủ dự án duyệt** ("có" cho 4 đề xuất): Lá Chắn rút gọn T-066, T-071; Soi Lỗi rút gọn T-080 + lượt cloud Linux; SL-T071-1 làm ở phiếu riêng **T-081** (lập mới, chờ T-071 gộp, phải gộp trước T-056); Thợ Máy T-080 **được thử ổ USB `F:` FAT32**, chỉ đọc thuộc tính, không in tên.
+- Giao: Lá Chắn T-066, Lá Chắn T-071 (phiên mới), Thợ Máy T-080 thử USB (nhắn phiên cũ), phiên cloud Linux T-080 (nhánh `team/T-080-linux`). Soi Lỗi T-080 giao sau khi Thợ Máy thử USB xong (giữ tối đa 3 phiên con). Số phiếu tiếp theo: **T-082**.
 
 ### 2026-10-23 09:36 · Chỉ Huy B
 
