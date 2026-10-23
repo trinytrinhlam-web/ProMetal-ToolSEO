@@ -834,8 +834,8 @@ class ImageLibrary:
 
     # ----- một ảnh -----------------------------------------------------------------------
 
-    def _checked_file(self, ref: object) -> tuple[Path, os.stat_result]:
-        """Kiểm ``ref`` là file ảnh dùng được; trả (gốc, ``lstat`` của ảnh).
+    def _checked_file(self, ref: object) -> tuple[Path, Path, os.stat_result]:
+        """Kiểm ``ref`` là file ảnh dùng được; trả (gốc, đường dẫn đã ``resolve``, ``lstat``).
 
         ``lstat`` đi theo chuỗi đường dẫn: một tầng giữa vừa bị tráo thành liên kết thì nó tả một
         mục ngoài thư mục ảnh. Nên kiểm hỏng thì câu báo tả mục lấy lại trong thư mục ảnh
@@ -845,10 +845,10 @@ class ImageLibrary:
         if not isinstance(ref, ImageRef):
             raise ImageFolderError(_MSG_BAD_PATH)
         root = self._root(ref.root_index)
-        _path, lst = self._resolve_inside(root, ref.parts)
+        path, lst = self._resolve_inside(root, ref.parts)
         with contextlib.suppress(ImageFolderError):
             self._check_file(lst)
-            return root, lst
+            return root, path, lst
         # Báo ngoài khối bắt lỗi ở trên, để câu báo không mang theo lỗi tả ``lstat``.
         real = self._disk_names(root, ref.parts, lst)
         self._check_file(self._opened_stat(root, real, lst))
@@ -880,7 +880,7 @@ class ImageLibrary:
         Số liệu (cỡ, giờ sửa, ``file_id``) lấy từ chính mục trong thư mục ảnh (``_opened_stat``),
         không từ ``lstat`` theo chuỗi đường dẫn (SL-T063-3).
         """
-        root, lst = self._checked_file(ref)
+        root, _path, lst = self._checked_file(ref)
         real = self._disk_names(root, ref.parts, lst)
         st = self._opened_stat(root, real, lst)
         if not stat.S_ISREG(st.st_mode) or _is_hidden_stat(st):
@@ -948,9 +948,9 @@ class ImageLibrary:
         - Mac/Linux: mở thư mục cha từng tầng từ gốc (``O_NOFOLLOW`` mỗi tầng), rồi mở file trong
           chính thư mục đó, cũng ``O_NOFOLLOW``: không tầng nào đi theo symlink.
         - Windows (``os`` không mở được file trong thư mục đã mở): mở theo ``path``, rồi hỏi đường
-          dẫn thật của chính handle vừa mở; phải trùng từng chữ với ``gốc/parts`` (``parts`` là tên
-          trên ổ, LC-T079-1), không thì một tầng vừa bị tráo thành junction (hay symlink) và file
-          đã mở nằm chỗ khác.
+          dẫn thật của chính handle vừa mở; phải trùng từng chữ với ``gốc/parts`` (``parts`` viết
+          đúng như ổ báo tên, xem ``read_image_bytes``; LC-T079-1), không thì một tầng vừa bị tráo
+          thành junction (hay symlink) và file đã mở nằm chỗ khác.
         """
         flags = os.O_RDONLY
         names = ("O_BINARY", "O_NOINHERIT", "O_CLOEXEC", "O_NOFOLLOW", "O_NONBLOCK", "O_NOCTTY")
@@ -987,9 +987,14 @@ class ImageLibrary:
         File mở qua ``_open_image`` (không đi theo chuỗi đường dẫn, SL-T063-2), phải đúng là file
         vừa kiểm (so định danh trên fd đã mở).
         """
-        root, lst = self._checked_file(ref)
+        root, path, lst = self._checked_file(ref)
+        parts = ref.parts
         # Windows so đường dẫn thật của file đã mở với gốc và tên trên ổ, từng chữ (LC-T079-1).
-        parts = ref.parts if _OPEN_BY_DIR_FD else self._disk_names(root, ref.parts, lst)
+        # ``resolve`` vừa trả đúng ``gốc/parts`` (thường gặp: ``ref`` lấy từ danh sách thư mục,
+        # hay ổ trả lại chữ đã mở) thì ổ báo tên đúng như ``parts``: khỏi hỏi lại tên từng tầng
+        # (Google Drive: khoảng 8 ms mỗi ảnh).
+        if not _OPEN_BY_DIR_FD and str(path) != str(root.joinpath(*parts)):
+            parts = self._disk_names(root, parts, lst)
         fd = self._open_image(root, parts, root.joinpath(*parts))
         with os.fdopen(fd, "rb") as handle:
             opened = os.fstat(handle.fileno())
