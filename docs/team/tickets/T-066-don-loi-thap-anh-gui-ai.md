@@ -53,3 +53,4 @@ A3.
 - 2026-10-23 09:40 (Chỉ Huy B): chủ dự án duyệt: giao Lá Chắn rút gọn (A3).
 - 2026-10-23 10:00 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT** (`3a76a3b`): 0 lỗi mới; LC-T050-1, -3, SL-T050-5, -6 đóng; LC-T050-2 đóng phần sửa được, phần còn lại (ảnh dựng cố ý giấu dữ liệu trong phần ảnh nén, DQT/DHT, DRI/DNL/SOS) đề nghị **ghi sổ rủi ro** (dòng mẫu trong biên bản, chờ chủ dự án duyệt; không chặn gộp). Sửa chữ chú thích `base.py:553–555` khi tiện. **Gộp được ngay**; Chỉ Huy gộp cùng T-071 khi Lá Chắn T-071 xong.
 - 2026-10-23 10:54 (Chỉ Huy B): **chủ dự án đồng ý ghi sổ rủi ro** phần còn lại LC-T050-2 (ảnh dựng cố ý giấu dữ liệu trong phần ảnh nén, DQT/DHT, DRI/DNL/SOS); đã thêm vào `docs/team/security.md` mục 6.
+- 2026-10-23 11:10 (Chỉ Huy B): **đã gộp vào `main` (Windows 23/10: 11.578 test qua, 0 hỏng)**; xóa nhánh `team/T-066`, worktree `wt-T-066`. Việc khi tiện: sửa chữ chú thích `base.py:553–555` theo biên bản Lá Chắn (làm cùng phiếu nào sau này chạm `base.py`).

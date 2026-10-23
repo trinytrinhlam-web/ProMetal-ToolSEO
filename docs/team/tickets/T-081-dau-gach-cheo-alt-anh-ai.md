@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (phải xong trước khi gộp T-056) |
 | Phụ thuộc | T-071 đã gộp vào `main` (test `xfail` của SL-T071-1 nằm trong `tests/test_soi_loi_t071.py`) |
-| Trạng thái | Mới (chờ T-071 gộp) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -51,3 +51,4 @@ W3 (mục 2.3), A3 theo mặc định.
 ## Ghi chú của Chỉ Huy
 
 - Lập từ điều kiện của Soi Lỗi T-071 (SL-T071-1). Chủ dự án chọn phiếu riêng (2026-10-23) để không phải kiểm lại T-071. Nhánh `team/T-081` tạo từ `main` sau khi gộp T-071.
+- 2026-10-23 11:10 (Chỉ Huy B): T-071 đã gộp; nhánh `team/T-081` tạo từ `main` `c124b1a`, worktree `wt-T-081`. Giao Thợ Máy (chủ dự án duyệt "làm khi có agent rảnh").
