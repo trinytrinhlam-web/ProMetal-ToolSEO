@@ -28,7 +28,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 ## Đang giữ quyền điều phối
 
-**Không ai giữ** (Chỉ Huy B trả quyền 2026-10-22 18:34: chủ dự án bảo dừng các việc đang làm).
+**Chỉ Huy B**, từ 2026-10-23 07:31 (chủ dự án bảo "tiếp tục"; không ai làm gì từ lúc B trả quyền 22/10 18:34, `origin/main` không đổi).
 
 ## Đang làm dở
 
@@ -57,6 +57,11 @@ Chỉ Huy B, cập nhật 2026-10-22 18:34 (bàn giao). Agent chạy ở phiên 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-23 07:31 · Chỉ Huy B
+
+- Chủ dự án bảo "tiếp tục": B nhận lại quyền. Đối chiếu: `origin/main` không đổi từ 22/10; `main` trên máy đi trước 20 commit (gộp T-039, T-069 chưa qua toàn bộ test). `wt-T-071` có thêm sửa chưa commit ở `tests/test_shortcode_t061.py`, `tests/test_soi_loi_t054.py` (phiên T-071 kịp chạy lại một lượt ngắn vì tin nhắn xếp hàng trước khi bị dừng lần 2: đúng các sửa cơ học cách A); để nguyên cho Thợ Máy làm tiếp.
+- Việc: chạy lại toàn bộ test trên `main` (in tên test hỏng); nhắn 3 phiên con làm tiếp (Lá Chắn T-079, Thợ Máy T-066, Thợ Máy T-071).
 
 ### 2026-10-22 18:34 · Chỉ Huy B · BÀN GIAO
 
