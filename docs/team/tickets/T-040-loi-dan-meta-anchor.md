@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036 và T-039 đã gộp |
-| Trạng thái | Soi Lỗi xong |
+| Trạng thái | Ngòi Bút lượt 2 |
 
 ## Mục tiêu
 
@@ -59,3 +59,4 @@ A1 (không bỏ `DATA_RULES`, không đưa dữ liệu ra ngoài khung), D3.
 - 2026-10-23 18:01 (Chỉ Huy B): **Ngòi Bút xong** (`ce72b80`): lời dặn meta (title ngắn 40–48 ký tự để gắn đuôi « | Pro-Metal», description có lợi ích + chi tiết từ bài + lời mời nhẹ, không giá, không số) và anchor viết lại có ví dụ; mục `[meta]` trong `config/content.toml` (**phần mềm chưa đọc**, cần Thợ Máy nối, ghi vào T-041); 28 file test liên quan 2.804 qua. Chờ Soi Lỗi rút gọn.
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`6efc71e`): 3 Thấp câu chữ lời dặn (title 49 ký tự bị ghi «hơi ngắn» mà không gắn đuôi; một ví dụ description nói điều bài mẫu không có; từ khóa có chữ «giá» mâu thuẫn với cấm nói giá, có từ T-036) + 3 góp ý; lời dặn dài gấp 2,3–3 lần, cả lần gọi AI dài thêm ~16%/8%. Đề xuất: Ngòi Bút lượt 2 sửa 3 Thấp (mỗi lỗi một dòng), rồi Lá Chắn rút gọn.
+- 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Ngòi Bút lượt 2** sửa 3 Thấp câu chữ; nhắn lại phiên Ngòi Bút cũ.

@@ -50,3 +50,4 @@ W3, W4, S2.
 - 2026-10-23 18:18 (Chỉ Huy B): **Thợ Máy xong** (`af6edfd`): 8/8 việc (LC-T042-1, -4, -5; LC-T061-2, -3, -5; LC-T071-1); gỡ `xfail` SL-T061-1, -2, LC-T071-1; sửa 4 test cũ theo LC-T061-3 (commit riêng `ee17bc9`, bảng trước/sau trong báo cáo); 2.350 test liên quan qua. Câu lỗi WordPress nay ngắn, không còn «(WordPress: …)». Chờ Soi Lỗi (phiếu ghi "Có", soát R5 4 test cũ).
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (`00bc66a`): 8/8 việc đúng; hơn 250 cách lén tham số/header bị chặn trước khi gửi; câu lỗi không chép lời website; không chặn oan; soát R5 4 test cũ đạt; gộp thử với T-056 không xung đột. 1 Thấp SL-T060-1 (trang Kết nối WordPress nhận trả lời ghi mô tả ảnh mang thông tin ảnh khác, hiện địa chỉ sai; không đụng dữ liệu website) → phiếu dọn sau. Chuyển Lá Chắn được ngay.
+- 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt giao **Lá Chắn**.

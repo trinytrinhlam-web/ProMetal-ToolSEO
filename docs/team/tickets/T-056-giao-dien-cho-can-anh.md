@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-048 → T-055 đã gộp |
-| Trạng thái | Soi Lỗi xong, chờ sửa SL-T056-1 |
+| Trạng thái | Họa Sĩ lượt 2 |
 
 ## Mục tiêu
 
@@ -82,3 +82,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-23 18:44 (Chỉ Huy B): **Họa Sĩ xong** (`4303374`, 7 commit): chỗ cần ảnh thật trên Soạn bài (chọn thư mục/ảnh, Ảnh thật/AI kèm lý do, GPS, alt/chú thích trong ô sửa, «AI viết alt» theo bấm, tick «Đã duyệt», cảnh báo số điện thoại; prompt ảnh AI xem/sửa/sao chép, tạo ảnh vẫn hoãn); nút «Gửi nháp» thật kèm cảnh báo GPS công khai và liệt kê đoạn dạng shortcode (`seo_app/wordpress/shortcodes.py`); sửa thêm lỗi sang trang khác mất ô nhập. Test mới `tests/test_app_images.py`, `tests/test_wordpress_shortcodes.py`; sửa `tests/test_content_edge_cases.py::test_publish_now_requires_confirmation` theo nút Gửi nháp thật (Soi Lỗi soát R5). Rủi ro mục 2 (nhánh `walk_to_folder` khi danh sách thư mục cha bị cắt) cần Lá Chắn quyết. Đề xuất: Thư Ký README sau phiếu; phiếu nhỏ Họa Sĩ cho trang Cài đặt → Ảnh còn in đường dẫn tuyệt đối (U2, có từ trước); GĐ5 chuyển Markdown → HTML khi gửi nháp.
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (`7648550`): 1 **Trung bình SL-T056-1** (đang gửi nháp mà bấm đúp/bấm nút khác thì app quên đã gửi, bấm lại thành 2 bài nháp, ảnh có GPS tải 2 lần; phải sửa trước khi gộp) + 6 Thấp SL-T056-2 → -7 (ảnh bị thay cùng tên sau khi duyệt alt vẫn tải lên; shortcode vắt qua 2 mục; số điện thoại 1900/gạch dài/gạch chéo; ảnh đại diện mất khi đổi trang; một ảnh 2 chỗ không đồng bộ «ảnh AI»; ảnh từ nháp quét lại thư mục trong luồng trang). Đề xuất Chỉ Huy: Họa Sĩ lượt 2 sửa SL-T056-1 và nên cả 6 Thấp, rồi Soi Lỗi rút gọn, rồi Lá Chắn.
+- 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Họa Sĩ lượt 2**: SL-T056-1 bắt buộc, SL-T056-2 → -7 nên làm cùng; nhắn lại phiên Họa Sĩ cũ.
