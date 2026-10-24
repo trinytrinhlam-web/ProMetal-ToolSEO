@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-24 07:45. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-24 08:27. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -50,14 +50,18 @@ Chỉ Huy B, cập nhật 2026-10-24 07:45. Agent chạy ở phiên con dưới 
 | [T-069](tickets/T-069-readme-anh-gui-ai.md) README phần ảnh | đã gộp (`5d17f5e`), nhánh và worktree đã xóa | ✅ Windows 11.234 qua, 0 hỏng; đã đẩy `main` | LC-T069-1, -2 sửa chữ README sau |
 | [T-065](tickets/T-065-quy-tac-alt-chu-trong-anh.md) Quy tắc alt | đã gộp (`5b82d70`), nhánh và worktree đã xóa | ✅ Windows 10.602 qua, 0 hỏng; đã đẩy `main` | |
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) Màn hình chỗ cần ảnh (GĐ3) | `team/T-056` (`4303374`) | ✅ Họa Sĩ xong | ⏳ Soi Lỗi (phiên "Soi Lỗi · T-056 kiểm màn hình chọn ảnh") | gộp cần chủ dự án xác nhận `TIEN-DO.md` 4b |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) Lời dặn meta, anchor (GĐ4) | `team/T-040` (`ce72b80`) | ✅ Ngòi Bút xong | ⏳ Soi Lỗi (phiên "Soi Lỗi · T-040 kiểm nhanh lời dặn meta") |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) Dọn client WordPress (GĐ4) | `team/T-060` (`af6edfd`) | ✅ Thợ Máy xong (8/8) | ⏳ Soi Lỗi (phiên "Soi Lỗi · T-060 kiểm client WordPress") |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) Màn hình chỗ cần ảnh (GĐ3) | `team/T-056` (`7648550`) | ✅ Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (SL-T056-1 Trung bình phải sửa trước gộp; 6 Thấp) | ⏳ Chờ chủ dự án cho giao Họa Sĩ lượt 2; gộp cần chủ dự án xác nhận `TIEN-DO.md` 4b |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) Lời dặn meta, anchor (GĐ4) | `team/T-040` (`6efc71e`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (3 Thấp câu chữ) | ⏳ Chờ chủ dự án cho giao Ngòi Bút lượt 2 |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) Dọn client WordPress (GĐ4) | `team/T-060` (`00bc66a`) | ✅ Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (SL-T060-1 Thấp) | ⏳ Chờ chủ dự án cho giao Lá Chắn |
 | Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-041 (GĐ4, sau T-040 và T-056); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-085** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-24 08:27 · Chỉ Huy B
+
+- Soi Lỗi xong cả 3: **T-056 ĐẠT CÓ ĐIỀU KIỆN** (`7648550`; SL-T056-1 Trung bình phải sửa trước gộp, 6 Thấp); **T-040 ĐẠT CÓ ĐIỀU KIỆN** (`6efc71e`; 3 Thấp câu chữ); **T-060 ĐẠT CÓ ĐIỀU KIỆN** (`00bc66a`; SL-T060-1 Thấp). Không còn phiên con nào chạy. Đề xuất chủ dự án: Họa Sĩ T-056 lượt 2, Ngòi Bút T-040 lượt 2, Lá Chắn T-060.
 
 ### 2026-10-24 07:45 · Chỉ Huy B
 
