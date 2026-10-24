@@ -4,7 +4,7 @@
 |---|---|
 | Agent | Ngòi Bút (`ngoi-but`) · model: Claude Opus 5.5 |
 | Phiếu | [T-040](../tickets/T-040-loi-dan-meta-anchor.md) |
-| Ngày nộp | 2026-10-23 |
+| Ngày nộp | 2026-10-23 (lượt 1), 2026-10-24 (lượt 2, mục cuối báo cáo) |
 | Kết quả | Hoàn thành (mục `[meta]` cần Thợ Máy nối code mới có tác dụng, xem Đề xuất 1) |
 
 ## Tóm tắt (cho chủ dự án)
@@ -14,6 +14,7 @@
 - Lời dặn **chọn chữ cho liên kết nội bộ** được viết lại: chữ của link phải cho người đọc đoán được bấm vào sẽ đọc gì (không «tại đây», «xem thêm», không cụm quá chung), không lấy chủ đề chính của bài này làm chữ link sang bài khác, bài nào không hợp thì bỏ.
 - Thêm mục `[meta]` vào `config/content.toml`, có chú thích tiếng Việt: ngưỡng độ dài, đuôi thương hiệu, danh sách cụm nên tránh. **Hiện phần mềm chưa đọc mục này** (cần Thợ Máy nối); trong file đã ghi rõ điều đó để anh/chị không sửa nhầm.
 - Mọi lớp chống "lệnh giấu trong dữ liệu" giữ nguyên. Anh/chị chưa thấy gì khác trên giao diện: bước SEO thật làm ở T-041. Muốn thử ngay bằng khóa AI của mình: mục [Cách tự thử](#cách-chủ-dự-án-tự-thử-trên-máy).
+- Lượt 2 (2026-10-24): sửa 3 lỗi nhỏ và 3 góp ý câu chữ của Soi Lỗi, xem mục [Lượt 2](#lượt-2-2026-10-24-sửa-theo-soi-lỗi) cuối báo cáo. Một số dòng ở các mục lượt 1 bên dưới (độ dài title, ví dụ description) đã được thay ở lượt 2.
 
 ## Đã thay đổi
 
@@ -256,3 +257,100 @@ Test mới (`tests/test_t040_prompts.py`):
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-24): sửa theo Soi Lỗi
+
+Chỉ Huy B giao, chủ dự án đã duyệt. Sửa theo biên bản [Soi Lỗi T-040](T-040-soi-loi.md) (đầu nhánh trước khi sửa `6efc71e`): 3 lỗi Thấp SL-T040-1, -2, -3 và 3 góp ý câu chữ G1, G2, G3. Chỉ sửa chữ của `meta_prompt` và mô tả trường `MetaSuggestions.titles` (`seo_app/content/prompts.py`), test nội dung lời dặn (`tests/test_t040_prompts.py`), và gỡ 2 dấu `xfail` trong `tests/test_soi_loi_t040.py`. Không đổi `config/content.toml`, `internal_links_prompt`, khung dữ liệu hay logic kiểm.
+
+### Tóm tắt lượt 2 (cho chủ dự án)
+
+- **Độ dài title:** lời dặn nay xin title **40–48 ký tự** (phần mềm gắn thêm « | Pro-Metal») **hoặc 50–60 ký tự** (không gắn), đúng với cách phần mềm đếm. Trước đây lời dặn cho cả 49 ký tự: đó là độ dài duy nhất vừa không gắn được đuôi, vừa bị phần mềm ghi «hơi ngắn».
+- **Ví dụ description:** một ví dụ «nên viết» nói bài chỉ cách nhận ra «khung lệch», trong khi bài mẫu của ví dụ không nói gì về khung, tức là ví dụ làm trái chính quy tắc «chỉ nói điều bài thật sự có». Nay ví dụ chỉ nói điều bài mẫu có, và câu tả bài mẫu ghi đủ mọi điều hai ví dụ nhắc tới.
+- **Từ khóa có chữ về giá hay cụm nên tránh:** kế hoạch có bài «giá sửa cửa sắt» và «sửa cửa uy tín HCM». Trước đây lời dặn vừa đòi giữ nguyên từ khóa, vừa cấm mọi chữ về giá và chữ «uy tín», nên AI dễ bỏ từ khóa; khi đó mọi gợi ý bị loại và anh/chị phải bấm viết lại. Nay lời dặn nói rõ: giữ nguyên từ khóa, chỉ không thêm con số, mức giá hay lời khen nào khác ngoài từ khóa. Phần mềm kiểm đã làm đúng như vậy từ trước.
+- **Lời mời liên hệ:** nói rõ chỉ một trong hai description có lời mời, dùng kênh liên hệ trong hồ sơ nhưng không ghi số điện thoại và chữ «miễn phí». Bỏ lệnh cấm chữ «ngay» đứng một mình (câu thường như «kẹt ngay khi kéo lên» vẫn viết được), chỉ cấm «gọi ngay», «làm ngay».
+
+### Trước / sau
+
+Số dòng theo bản mới của `seo_app/content/prompts.py`.
+
+| Mã | Chỗ | Trước | Sau |
+|---|---|---|---|
+| SL-T040-1 | Title, độ dài (`:309-310`) | mỗi cái 40-60 ký tự | mỗi cái **40-48 hoặc 50-60** ký tự |
+| SL-T040-1 | Title, đuôi thương hiệu (`:317-320`) | …phần mềm tự gắn đuôi đó khi title cộng đuôi không quá 60 ký tự, nên ít nhất một cái chỉ dài 40-48 ký tự. | …phần mềm tự gắn đuôi « \| Pro-Metal» (12 ký tự) khi title cộng đuôi không quá 60 ký tự. **Vì vậy title 40-48 ký tự sẽ có đuôi, title 50-60 ký tự thì không; title 49 ký tự không gắn được đuôi mà lại hơi ngắn.** Ít nhất một cái dài 40-48 ký tự. |
+| SL-T040-1 | Mô tả trường `MetaSuggestions.titles` (`:271-274`, cũng gửi cho AI) | mỗi cái 40-60 ký tự | mỗi cái 40-48 hoặc 50-60 ký tự |
+| SL-T040-2 | Câu tả bài giả định (`:347-349`) | bài nói nguyên nhân do bản lề mòn, cách tự kiểm tra, khi nào gọi thợ | bài nói **dấu hiệu cửa cạ nền**, nguyên nhân do bản lề mòn, cách tự kiểm tra **bản lề, lúc nào tự chỉnh được**, khi nào nên gọi thợ **hàn lại** |
+| SL-T040-2 | Ví dụ description «Nên» thứ hai (`:352-354`) | Cửa sắt bị xệ cạ nền: bài chỉ cách nhận ra bản lề mòn **hay khung lệch**. Cần thợ sửa, bạn gửi ảnh cửa qua Zalo để Pro-Metal báo giá. (129 ký tự) | Cửa sắt bị xệ cạ nền: bài chỉ cách **tự kiểm tra bản lề mòn và biết lúc nào nên gọi thợ**. Cần thợ sửa, bạn gửi ảnh cửa qua Zalo để Pro-Metal báo giá. (146 ký tự) |
+| SL-T040-3 | Quy tắc giá (`:381-385`) | …Được mời người đọc liên hệ để được báo giá, nhưng không nói gì về mức giá. | Thêm: **Riêng khi từ khóa chính có sẵn chữ về giá (ví dụ «giá sửa cửa sắt»): vẫn giữ nguyên văn từ khóa, phần mềm hiểu chữ đó thuộc từ khóa; phần chữ còn lại vẫn không có con số, mức giá hay chữ nào về giá.** |
+| Cùng loại SL-T040-3 | Cụm nên tránh (`:390-393`) | …«click ngay», «đừng bỏ lỡ». | …«click ngay», «đừng bỏ lỡ» **(trừ khi cụm đó nằm sẵn trong từ khóa chính)**. |
+| G1 | Lời mời liên hệ (`:340-344`, `:346`) | Bài về sửa chữa…: kết bằng một lời mời liên hệ…; rồi «Hai cái khác nhau rõ, ví dụ một cái có lời mời liên hệ, một cái không» | Bài về sửa chữa…: **một trong hai cái** kết bằng lời mời liên hệ…; **cái còn lại**, và mọi description của bài chỉ để tham khảo, kết bằng điều người đọc sẽ thấy trong bài. «Hai cái khác nhau rõ ở cách mở đầu và chi tiết nêu ra.» Hai ví dụ «Nên» ghi thêm «(không có lời mời)», «(có lời mời)» |
+| G2 | Như trên | theo đúng cách liên hệ trong hồ sơ doanh nghiệp. … không ghi số điện thoại | theo **kênh** liên hệ trong hồ sơ doanh nghiệp, nhưng không ghi số điện thoại **và không viết «miễn phí» dù câu kêu gọi trong hồ sơ có** |
+| G3 | Hối thúc (`:345`) | Không hối thúc («ngay», «gấp», «đừng chần chừ», dấu «!») | Không hối thúc: không «gọi ngay», «làm ngay», «đừng chần chừ», dấu «!» |
+| Gỡ dấu | `tests/test_soi_loi_t040.py` | `@pytest.mark.xfail(strict=True, reason="SL-T040-2: …")` và `"SL-T040-3: …"` | Bỏ 2 decorator (12 dòng); thân test giữ nguyên |
+
+### Vì sao sửa như vậy
+
+- **SL-T040-1.** Làm đúng cách Soi Lỗi đề xuất. Hai khoảng lấy từ ngưỡng thật của code: 48 = 60 (`TITLE_LIMITS.good_max`) trừ 12 (độ dài `BRAND_SUFFIX`), 50-60 là khoảng «nên» của `check_title`. Câu «title 49 ký tự không gắn được đuôi mà lại hơi ngắn» để AI hiểu vì sao phải tránh khoảng giữa, không chỉ nhớ hai cặp số. Test mới `test_title_lengths_in_prompt_match_the_checker` đọc hai khoảng trong lời dặn **và** trong mô tả trường, so với hằng số của code, rồi chạy từng độ dài qua bộ kiểm (đều ra «dài vừa»). Sau này ai đổi ngưỡng hay đuôi trong code mà quên lời dặn thì test này báo.
+- **Vì sao test SL-T040-1 của Soi Lỗi vẫn `xfail`.** `test_sl_t040_1_title_of_49_chars_is_not_short` đưa thẳng một title 49 ký tự vào bộ kiểm (`accept_ai_title`, `check_title`), không đọc lời dặn. Bộ kiểm không đổi (logic kiểm nằm ngoài phạm vi phiếu), nên test vẫn hỏng như trước; `xfail(strict=True)` không XPASS (`--runxfail` ở mục Bằng chứng). Theo lệnh giao việc («chỉ gỡ khi XPASS, không đổi thân test») tôi để nguyên dấu, kể cả câu `reason` đã cũ («lời dặn cho title 40-60»). Phía lời dặn đã hết chỗ hở: lời dặn không còn xin title 49 ký tự. Đề xuất lượt 2, mục 1.
+- **SL-T040-2.** Chọn cách thứ hai Soi Lỗi gợi ý (sửa ví dụ cho khớp bài mẫu) cộng viết đủ câu tả bài mẫu. Chỉ xóa «hay khung lệch» thì ví dụ còn 114 ký tự, dưới mức 120 lời dặn đòi, tức là ví dụ lại trái quy tắc độ dài. Đọc lại bằng mắt, ví dụ «Nên» thứ nhất cũng nói ba điều câu tả cũ chưa có («cạ nền», «chỉnh được», «hàn lại»); test của Soi Lỗi chỉ dò 8 bộ phận cửa nên không bắt được. Nay câu tả bài mẫu ghi đủ cả ba. Giữ đúng dạng «(bài nói …)» để test Soi Lỗi vẫn tìm thấy câu tả.
+- **SL-T040-3.** Câu mới nói cả lý do cho AI («phần mềm hiểu chữ đó thuộc từ khóa»), khớp đúng cách bộ kiểm làm: `mentions_price` bỏ từ khóa ra trước khi dò chữ về giá (`seo_app/onpage/meta.py:493-498`), nên «Giá sửa cửa sắt phụ thuộc vào những điều gì?» được nhận, còn thêm «giá rẻ», «bảng giá» ngoài từ khóa thì vẫn bị bỏ. Ví dụ «giá sửa cửa sắt» lấy từ kế hoạch (bài #48).
+- **Mở rộng cho cụm nên tránh (cùng loại SL-T040-3, Soi Lỗi chưa ghi).** Kế hoạch có từ khóa «sua cua uy tin hcm» (bài #35, `docs/plan/ke_hoach_6_thang_chi_tiet.md:153`): lời dặn đòi giữ nguyên từ khóa nhưng lại dặn tránh «uy tín», hai lệnh trái nhau y như chữ «giá». Hôm nay bộ kiểm nhận «uy tín» (không nằm trong `[voice].banned`, còn `[meta].avoid` chưa được đọc), nên câu ngoại lệ khớp bộ kiểm. **Không** mở rộng cho cụm trong `[voice].banned`: bộ kiểm luôn bỏ meta có các cụm đó, kể cả khi cụm nằm trong từ khóa, nên lời dặn không cứu được (Đề xuất lượt 2, mục 2). Test mới `test_keyword_with_price_or_avoid_word_is_kept_and_accepted` (2 ca) đi trọn bước meta với quy tắc thật của dự án và AI giả: lời dặn có câu ngoại lệ, title và description có nguyên văn hai từ khóa trên đều được nhận. Khi Thợ Máy nối `[meta].avoid` mà quên bỏ từ khóa ra trước khi dò (Đề xuất 2 của Soi Lỗi), ca «uy tín» sẽ hỏng và nhắc.
+- **G1, G2, G3.** Làm cả ba, đúng ý Soi Lỗi. G2 không ghi cứng «Zalo» vào câu quy tắc (vẫn có trong ví dụ), để hồ sơ đổi kênh liên hệ thì quy tắc vẫn đúng. G3 bỏ luôn «gấp» khỏi danh sách hối thúc: «gấp» cũng là tên loại cửa («cửa gấp», «cửa xếp gấp»), cấm chữ này đứng một mình có thể làm AI tránh nói đúng tên cửa.
+- **G4 (ghi nhận, «dưới 60» trong quyết định 16/10 so với «không quá 60» trong code):** không thuộc lời dặn. Lời dặn theo code («không quá 60»), đúng như Soi Lỗi ghi.
+
+### Bằng chứng lượt 2
+
+```
+$ git pull                                         # wt-T-040, đầu lượt 2
+Already up to date.                                # HEAD 6efc71e
+
+$ uv run pytest <31 file: 28 file lượt 1 + test_content_workflow, test_phase2_fixes, test_soi_loi_t040>
+3013 passed, 27 xfailed in 278.36s (0:04:38)
+# 27 xfail: 26 của phiếu khác (có từ trước) + SL-T040-1 (giải thích ở trên)
+
+$ uv run pytest tests/test_soi_loi_t040.py tests/test_t040_prompts.py
+182 passed, 1 xfailed
+
+$ uv run pytest tests/test_soi_loi_t040.py --runxfail -k sl_t040
+FAILED tests/test_soi_loi_t040.py::test_sl_t040_1_title_of_49_chars_is_not_short
+1 failed, 2 passed, 159 deselected          # SL-T040-2, -3 qua; -1 kiểm bộ kiểm, không đổi
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan seo_app/content/prompts.py tests/test_t040_prompts.py tests/test_soi_loi_t040.py docs/team/reports/T-040-ngoi-but.md
+"results": {}
+```
+
+So với bản gốc `cf8d824` bằng script của Soi Lỗi (`T-040-soi-loi-scripts/`, thư mục ghi chú chung):
+
+```
+$ PYTHONUTF8=1 uv run python compare.py
+Đổi: ['MetaSuggestions', 'internal_links_prompt', 'meta_prompt'] · DATA_RULES giống: True · DATA_TAGS giống: True
+system_prompt giống bản cũ: True · MetaSuggestions schema giống (trừ mô tả titles): True
+$ PYTHONUTF8=1 uv run python logic_only.py      # thay mọi chuỗi bằng "S"
+meta_prompt logic giống: True / internal_links_prompt logic giống: True / MetaSuggestions logic giống: True
+$ PYTHONUTF8=1 uv run python mutation.py        # đối chứng test chữ độc vẫn bắt được khi khung bị phá
+Tắt _neutralize: meta hỏng 72/78, links 24/26, hồ sơ 24/26
+```
+
+Độ dài (đo bằng `compare.py`, cùng bài mẫu như Soi Lỗi): lời dặn meta cả hai phần 1.386 → 4.914 ký tự (lượt 1: 4.287), chỉ title 1.315 → 3.482, chỉ description 1.247 → 3.840; lời dặn liên kết nội bộ không đổi so với lượt 1 (2.427). Cả lần gọi meta (lời dặn hệ thống + lời dặn + bài 9.238 ký tự) dài hơn bản trước T-040 khoảng 20% (lượt 1: 16%); liên kết nội bộ vẫn 8%.
+
+Quét ký tự trong `prompts.py`: không có dấu cách không ngắt hay ký tự vô hình; ký tự ngoài chữ cái chỉ còn «», «…», «→», «＜» (hai ký tự sau có sẵn trong chú thích code từ trước T-040, số lần xuất hiện không đổi).
+
+### Đối chiếu lượt 2
+
+- [x] SL-T040-1 (phía lời dặn), SL-T040-2, SL-T040-3 đã sửa; G1, G2, G3 đã làm; G4 không thuộc lời dặn
+- [x] Gỡ `xfail` của SL-T040-2, SL-T040-3 (XPASS), chỉ xóa dấu; SL-T040-1 giữ dấu vì không XPASS (lý do ở trên)
+- [x] `DATA_RULES`, `DATA_TAGS`, `_block`, `_article`, khung dữ liệu không đổi; điều kiện Lá Chắn T-039 số 1 giữ nguyên (`internal_links_prompt` không đổi ở lượt 2; test chữ độc của Soi Lỗi qua)
+- [x] Test liên quan và `uv run ruff check .` sạch (mục Bằng chứng lượt 2)
+
+### Rủi ro lượt 2
+
+- Lời dặn meta dài thêm khoảng 600 ký tự so với lượt 1. Việc `meta` dùng mức suy nghĩ thấp nên chi phí vẫn nhỏ.
+- AI không đếm ký tự chính xác: hai khoảng 40-48 / 50-60 chỉ là hướng dẫn, bộ kiểm vẫn là lớp chặn cuối (title 49 ký tự vẫn được nhận, chỉ kèm ghi chú «hơi ngắn»).
+- Câu ngoại lệ chỉ cho phép chữ nằm **trong** từ khóa. Đã thử với từ khóa «giá sửa cửa sắt»: thêm «bảng giá» hay «giá rẻ» ngoài từ khóa thì bộ kiểm vẫn bỏ; viết sai từ khóa («giá sửa chữa cửa sắt») thì gợi ý bị bỏ vì thiếu từ khóa (hai trường hợp này đúng chiều an toàn); viết hoa cả từ khóa thì vẫn được nhận vì bộ kiểm so không phân biệt hoa thường.
+
+### Đề xuất lượt 2
+
+1. **Soi Lỗi (lượt sau):** đóng SL-T040-1 bằng cách đổi `test_sl_t040_1_title_of_49_chars_is_not_short` sang kiểm lời dặn (ví dụ: không độ dài nào lời dặn cho phép bị ghi «hơi ngắn», như `test_title_lengths_in_prompt_match_the_checker`), hoặc bỏ test đó. Chỉ khi chủ dự án muốn chính title 49 ký tự cũng «dài vừa» mới cần Thợ Máy đổi bộ kiểm; tôi không đề nghị vì title đó vẫn được nhận.
+2. **Thợ Máy (khi sửa `meta.py`, T-041 hoặc phiếu riêng):** ngoài Đề xuất 2 của Soi Lỗi (bỏ từ khóa ra trước khi dò `[meta].avoid`), cân nhắc làm như vậy cả với `[voice].banned` trong `_ai_text`: từ khóa có sẵn một cụm cấm (ví dụ «… uy tín số 1») thì hôm nay mọi gợi ý meta đều bị bỏ, người dùng không biết vì sao. Hoặc báo ngay khi nhập từ khóa: «từ khóa có cụm cấm, meta sẽ không đạt».
