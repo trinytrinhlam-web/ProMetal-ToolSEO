@@ -88,10 +88,6 @@ def gps_of(data: bytes) -> dict:
 # ============================================================== gửi nháp: ngắt giữa chừng, ảnh đổi
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-1: «Gửi nháp» bị ngắt giữa chừng thì mất kết quả, gửi lại tạo nháp thứ hai",
-)
 def test_interrupted_send_locks_resend(project_root, root, fake_ai, site, monkeypatch):
     """Đang gửi (tải ảnh, tạo nháp mất vài chục giây), người dùng bấm nút khác hay bấm đúp «Gửi
     nháp»: Streamlit dừng lần chạy ở lệnh ``st.*`` kế tiếp (ở đây là lúc thoát ``st.spinner``) bằng
@@ -118,10 +114,6 @@ def test_interrupted_send_locks_resend(project_root, root, fake_ai, site, monkey
     assert button(at, SEND).disabled
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-2: file ảnh bị thay (cùng tên) sau khi duyệt alt vẫn được tải lên",
-)
 def test_replaced_file_after_approval_stops_send(project_root, root, fake_ai, site):
     """Chọn ảnh «sau» (không có GPS), duyệt alt; trước khi bấm «Gửi nháp», file bị thay bằng ảnh
     khác cùng tên, **có GPS** (Drive đồng bộ bản mới, chép đè lô ảnh mới cùng tên IMG_…). Kiểm lại
@@ -148,10 +140,6 @@ def test_replaced_file_after_approval_stops_send(project_root, root, fake_ai, si
 # ===================================================================== cảnh báo trước khi gửi
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-3: đoạn dạng shortcode vắt qua hai mục không được liệt kê",
-)
 def test_shortcode_across_sections_listed(project_root, root, fake_ai, site):
     """«[code_snippet id=3» ở cuối mục này, «]» ở mục sau: xét riêng từng mục thì không có đoạn
     nào, nhưng nội dung gửi WordPress là một chuỗi (``<p>…[code_snippet id=3</p><h2>…</h2><p>…]
@@ -185,18 +173,7 @@ PHONE_VARIANTS = [
 ]
 
 
-@pytest.mark.parametrize(
-    "alt",
-    [
-        pytest.param(
-            alt,
-            marks=pytest.mark.xfail(
-                strict=True, reason="SL-T056-4: dãy số điện thoại kiểu khác không được nhắc"
-            ),
-        )
-        for alt in PHONE_VARIANTS
-    ],
-)
+@pytest.mark.parametrize("alt", PHONE_VARIANTS)
 def test_phone_like_variants_warn(project_root, root, fake_ai, alt):
     """Nhắc khi alt có dãy số giống số điện thoại (Lá Chắn T-050 3d): ``PHONE_LIKE`` cần 9 chữ số
     trở lên, ngăn bằng dấu cách, chấm, gạch nối, ngoặc; bỏ sót tổng đài 8 số (1900/1800 …) và số
@@ -210,10 +187,6 @@ def test_phone_like_variants_warn(project_root, root, fake_ai, alt):
 # ============================================================= sang trang khác rồi quay lại
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-5: ảnh đại diện đã chọn mất khi sang trang khác rồi quay lại",
-)
 def test_featured_image_kept_after_switching_pages(project_root, root, fake_ai, site):
     """Chọn ảnh đại diện là ảnh thứ hai, sang trang Bài viết rồi quay lại: ô «Ảnh đại diện» về
     ảnh đầu (khóa ``_featured`` không nằm trong ``KEEP_KEYS`` của ``remember_inputs``), bấm «Gửi
@@ -308,10 +281,6 @@ def test_unexpected_send_error_fixed_message_and_lock(
 # ================================================================ một ảnh ở hai chỗ, ảnh AI
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-6: cùng ảnh ở hai chỗ, đánh dấu ảnh AI ở chỗ này, chỗ kia vẫn hiện «Ảnh thật»",
-)
 def test_mark_ai_shows_in_other_spot_with_same_image(project_root, root, fake_ai):
     """Cùng ảnh ở hai chỗ, bấm «Đây là ảnh AI» ở chỗ 1: chỗ 2 vẫn hiện «📷 Ảnh thật», thẻ mã công
     trình, nút «Đây là ảnh AI» và «Đã duyệt» cho alt viết như ảnh thật, trong khi dòng dưới ô alt
@@ -377,10 +346,6 @@ def test_ai_by_file_name_and_folder_name_with_reason(project_root, root, fake_ai
 # ============================================================ quét thư mục của ảnh trong nháp
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-7: ảnh của nháp: mỗi lần «AI viết alt» quét lại thư mục trong luồng trang",
-)
 def test_draft_image_not_rescanned_in_page_thread(project_root, root, monkeypatch, fake_ai):
     """Ảnh của nháp (chưa có trong lần quét nào của phiên) được kiểm khi mở nháp; sau đó mỗi lần
     «AI viết alt», «Đây là ảnh AI», «Gửi nháp», ``check_chosen_image`` lại xem danh sách từng tầng
