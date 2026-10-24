@@ -208,11 +208,6 @@ def _summary(request: requests.PreparedRequest) -> tuple:
 # ================================================================ LC-T060-3: ghi đè hỏng
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T060-3: ảnh đã lên thư viện Media mà lệnh ghi đè alt, tiêu đề, chú thích hỏng thì "
-    "câu báo không nói ảnh đã ở thư viện Media",
-)
 @pytest.mark.parametrize(
     "answer",
     [

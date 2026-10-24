@@ -371,6 +371,13 @@ _MEDIA_SAME_ID = (
     "WordPress trả cùng một mã ảnh cho hai ảnh khác nhau trong lần gửi này (có thể là một ảnh đã "
     "có trên website). Phần mềm không ghi alt đè lên ảnh đó, chưa tạo bài nháp."
 )
+# ``upload_media``: ảnh đã lên (201) mà không xác nhận được lệnh ghi đè ba ô (LC-T060-3, SL-T060-1).
+_MEDIA_NOT_DESCRIBED = (
+    "Ảnh đã lên thư viện Media của website (mã ảnh {media_id}) nhưng phần mềm không xác nhận được "
+    "đã ghi alt, tiêu đề, chú thích cho ảnh đó{code}, nên ảnh có thể đang mang chữ WordPress tự "
+    "lấy từ file. Vào Media → Thư viện trong trang quản trị WordPress, mở ảnh mã {media_id} để "
+    "kiểm, sửa hoặc xóa trước khi tải lại (tải lại sẽ thêm một ảnh nữa). Chưa tạo bài nháp."
+)
 _DRAFT_IMAGES_LEFT = (
     " Đã có {count} ảnh lên thư viện Media trước khi lỗi (danh sách bên dưới). Phần mềm không xóa "
     "ảnh: ảnh vẫn xem được công khai qua đường dẫn; nếu không dùng, hãy tự xóa trong trang quản "
@@ -1093,6 +1100,9 @@ class WordPressClient:
           không, WordPress lấy ba ô từ chữ nằm trong file người dùng chọn (EXIF, IPTC, XMP).
         - Cả ba không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn alt vào
           ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
+        - Ảnh đã lên mà lệnh ghi đè hỏng, hay câu trả lời không nói đúng mã ảnh vừa tạo: báo câu
+          cố định ``_MEDIA_NOT_DESCRIBED`` (ảnh đang ở thư viện Media, mã ảnh, vào Media → Thư
+          viện kiểm hoặc xóa), không dùng địa chỉ, alt của ảnh khác (LC-T060-3, SL-T060-1).
         """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
@@ -1110,21 +1120,30 @@ class WordPressClient:
                 "Alt, tiêu đề, chú thích của ảnh phải là chữ. Chưa gửi gì lên website."
             )
 
-        media_id, media = self._post_media(data, safe_name, content_type, new_only=True)
+        media_id, _ = self._post_media(data, safe_name, content_type, new_only=True)
 
-        updated = self._json(
-            self._request(
-                "POST",
-                f"/wp/v2/media/{media_id}",
-                json={key: escape_shortcodes(value) for key, value in fields.items()},
-                params={"_fields": _MEDIA_FIELDS},
+        # Từ đây ảnh đã ở thư viện Media: lỗi nào cũng phải nói rõ điều đó (mã ảnh đã kiểm).
+        try:
+            updated = self._json(
+                self._request(
+                    "POST",
+                    f"/wp/v2/media/{media_id}",
+                    json={key: escape_shortcodes(value) for key, value in fields.items()},
+                    params={"_fields": _MEDIA_FIELDS},
+                )
             )
-        )
-        if isinstance(updated, dict):
-            media = updated
+        except WordPressError as exc:
+            code = f" (mã {exc.status_code})" if exc.status_code else ""
+            raise WordPressError(
+                _MEDIA_NOT_DESCRIBED.format(media_id=media_id, code=code),
+                status_code=exc.status_code,
+                code=exc.code,
+            ) from None
+        if not isinstance(updated, dict) or _positive_id(updated.get("id")) != media_id:
+            raise WordPressError(_MEDIA_NOT_DESCRIBED.format(media_id=media_id, code=""))
 
-        source_url = media.get("source_url")
-        saved_alt = media.get("alt_text")
+        source_url = updated.get("source_url")
+        saved_alt = updated.get("alt_text")
         return Media(
             id=media_id,
             source_url=source_url if isinstance(source_url, str) else "",

@@ -617,11 +617,6 @@ def test_upload_media_o_sai_kieu_khong_tai_gi(fake_wp, wp_client, field, value):
     assert fake_wp.requests == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T060-1: upload_media nhận câu trả lời lệnh ghi đè nói về ảnh khác (mã khác hay "
-    "không có mã) và lấy địa chỉ, alt của ảnh đó",
-)
 @pytest.mark.parametrize(
     "answer",
     [

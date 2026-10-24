@@ -6,6 +6,9 @@
 - LC-T060-2: ``_fields`` không rỗng, không hỏi ``content``, ``excerpt``, ``description``,
   ``caption``, ``_embedded``, ``_links`` (WordPress dựng các trường đó bằng ``the_content``, tức
   chạy shortcode ngay trong lệnh của app).
+- LC-T060-3, SL-T060-1: ``upload_media`` ảnh đã lên (201) mà lệnh ghi đè alt, tiêu đề, chú thích
+  hỏng, hay câu trả lời không nói đúng mã ảnh vừa tạo, thì báo câu cố định: ảnh đang ở thư viện
+  Media, mã ảnh, vào Media → Thư viện kiểm hoặc xóa.
 
 Chỉ site giả (``FakeWordPress``), không gọi WordPress thật hay mạng thật.
 """
@@ -14,6 +17,7 @@ import json
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+import requests
 from fake_wordpress import BASE_URL, make_session
 
 import seo_app.wordpress.client as client_module
@@ -289,3 +293,105 @@ def test_gia_tri_fields_van_bi_kiem_khi_danh_sach_tham_so_bi_noi(
         wp_client._request("GET", "/", params={key: "content"})
     wp_client._request("GET", "/", params={key: "name"})  # đối chứng
     assert len(fake_wp.requests) == 1
+
+
+# ================================================================ LC-T060-3, SL-T060-1: ảnh
+
+MEDIA = "/wp-json/wp/v2/media"
+UPLOADS = f"{BASE_URL}/wp-content/uploads/2026/10/"
+JPEG = b"\xff\xd8\xff\xe0anh-gia"
+SERVER_TEXT = "Gọi 0909 123 456 https://evil.example/x <b>quản trị</b>"
+
+
+def uploaded(fake, media_id=9):
+    """Lệnh tải trả ``201`` với mã ảnh ``media_id``: từ đây ảnh đã ở thư viện Media."""
+    fake.on("POST", MEDIA, (201, {"id": media_id, "source_url": f"{UPLOADS}cong.jpg"}, {}))
+
+
+def assert_says_in_media_library(message, media_id=9):
+    assert "thư viện Media" in message
+    assert f"mã ảnh {media_id}" in message
+    assert "Media → Thư viện" in message
+    for piece in ("0909", "evil", "quản trị</b>", "example.com", "anh-khac"):
+        assert piece not in message, piece
+
+
+@pytest.mark.parametrize(
+    ("answer", "status"),
+    [
+        ((400, {"code": "rest_invalid_param", "message": SERVER_TEXT}, {}), 400),
+        ((401, {"code": "rest_not_logged_in", "message": SERVER_TEXT}, {}), 401),
+        ((403, {"code": "rest_cannot_edit", "message": SERVER_TEXT}, {}), 403),
+        ((404, {"code": "rest_post_invalid_id", "message": SERVER_TEXT}, {}), 404),
+        ((413, {"code": "too_big", "message": SERVER_TEXT}, {}), 413),
+        ((429, {"code": "too_many", "message": SERVER_TEXT}, {}), 429),
+        ((500, {"code": "internal_server_error", "message": SERVER_TEXT}, {}), 500),
+        ((502, SERVER_TEXT.encode(), {}), 502),
+        ((302, b"", {"Location": "https://evil.example/"}), 302),
+        ((200, b"<html>trang HTML</html>", {}), None),
+        (requests.exceptions.ConnectionError("down"), None),
+        (requests.exceptions.ReadTimeout("het gio"), None),
+        (requests.exceptions.SSLError("bad cert"), None),
+    ],
+)
+def test_ghi_de_hong_thi_bao_anh_da_o_thu_vien_media(fake_wp, wp_client, answer, status):
+    uploaded(fake_wp)
+    fake_wp.on("POST", f"{MEDIA}/9", answer)  # lỗi mạng: site giả ném lại đúng lỗi đó
+    with pytest.raises(WordPressError) as err:
+        wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
+    assert [urlsplit(r.url).path for r in fake_wp.requests] == [MEDIA, f"{MEDIA}/9"]
+    message = str(err.value)
+    assert_says_in_media_library(message)
+    assert err.value.status_code == status
+    if status:
+        assert f"(mã {status})" in message
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"id": 77, "source_url": f"{UPLOADS}anh-khac.jpg", "alt_text": "Ảnh khác"},
+        {"source_url": f"{UPLOADS}anh-khac.jpg", "alt_text": "Ảnh khác"},
+        {"id": "9", "source_url": f"{UPLOADS}anh-khac.jpg"},
+        {"id": 9.0, "source_url": f"{UPLOADS}anh-khac.jpg"},
+        {"id": True, "source_url": f"{UPLOADS}anh-khac.jpg"},
+        {"id": None},
+        {},
+        [{"id": 9}],
+        "ok",
+        None,
+        9,
+    ],
+)
+def test_tra_loi_ghi_de_khong_dung_anh_vua_tao_thi_bao_loi(fake_wp, wp_client, answer):
+    uploaded(fake_wp)
+    fake_wp.on("POST", f"{MEDIA}/9", answer)
+    with pytest.raises(WordPressError) as err:
+        wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
+    assert len(fake_wp.requests) == 2
+    assert_says_in_media_library(str(err.value))
+
+
+def test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien(fake_wp, wp_client):
+    """Mã ảnh quá 19 chữ số (ngoài mẫu đường): lệnh ghi đè bị chặn trước khi gửi, câu báo vẫn
+    nói ảnh đã ở thư viện Media (Ghi nhận 4 của Soi Lỗi T-060)."""
+    uploaded(fake_wp, media_id=10**20)
+    with pytest.raises(WordPressError) as err:
+        wp_client.upload_media(JPEG, "cong.jpg")
+    assert [urlsplit(r.url).path for r in fake_wp.requests] == [MEDIA]
+    assert_says_in_media_library(str(err.value), media_id=10**20)
+
+
+def test_ghi_de_thanh_cong_lay_dia_chi_alt_cua_dung_anh(fake_wp, wp_client):
+    uploaded(fake_wp)
+    fake_wp.on("POST", f"{MEDIA}/9", lambda r: {"id": 9, "source_url": f"{UPLOADS}cong-1.jpg",
+                                                "alt_text": body(r)["alt_text"]})
+    media = wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
+    assert (media.id, media.source_url, media.alt_text) == (9, f"{UPLOADS}cong-1.jpg", "Cổng")
+
+
+def test_tra_loi_dung_anh_nhung_truong_sai_kieu_khong_vo(fake_wp, wp_client):
+    uploaded(fake_wp)
+    fake_wp.on("POST", f"{MEDIA}/9", {"id": 9, "source_url": 123, "alt_text": ["x"]})
+    media = wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
+    assert (media.id, media.source_url, media.alt_text) == (9, "", "Cổng")
