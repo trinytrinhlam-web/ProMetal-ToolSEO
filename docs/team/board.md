@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 09:33 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 09:34 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,7 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Họa Sĩ · T-056 màn hình chọn ảnh (lượt 2) | `team/T-056` | Họa Sĩ xong (`4303374`). 24/10 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`7648550`): 1 Trung bình SL-T056-1 (bấm đúp khi đang gửi → 2 bài nháp), 6 Thấp. ⏳ **08:36 Họa Sĩ lượt 2 đang sửa** sửa trước khi gộp, rồi Soi Lỗi rút gọn, Lá Chắn | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi kiểm lại (chưa giao) | `team/T-056` | Họa Sĩ xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`7648550`). 24/10 09:34 Họa Sĩ **lượt 2 xong** (`692fb07`: sửa SL-T056-1 → -7, gỡ 10 `xfail`; 4.769 test liên quan qua). ⏳ **Chờ chủ dự án cho giao Soi Lỗi kiểm lại nhanh**, rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi kiểm lại / Lá Chắn (chưa giao) | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **Chờ chủ dự án cho giao vòng kiểm tiếp** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
 
 ## Chờ

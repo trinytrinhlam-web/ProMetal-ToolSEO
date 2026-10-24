@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-048 → T-055 đã gộp |
-| Trạng thái | Họa Sĩ lượt 2 |
+| Trạng thái | Họa Sĩ lượt 2 xong |
 
 ## Mục tiêu
 
@@ -83,3 +83,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (`7648550`): 1 **Trung bình SL-T056-1** (đang gửi nháp mà bấm đúp/bấm nút khác thì app quên đã gửi, bấm lại thành 2 bài nháp, ảnh có GPS tải 2 lần; phải sửa trước khi gộp) + 6 Thấp SL-T056-2 → -7 (ảnh bị thay cùng tên sau khi duyệt alt vẫn tải lên; shortcode vắt qua 2 mục; số điện thoại 1900/gạch dài/gạch chéo; ảnh đại diện mất khi đổi trang; một ảnh 2 chỗ không đồng bộ «ảnh AI»; ảnh từ nháp quét lại thư mục trong luồng trang). Đề xuất Chỉ Huy: Họa Sĩ lượt 2 sửa SL-T056-1 và nên cả 6 Thấp, rồi Soi Lỗi rút gọn, rồi Lá Chắn.
 - 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Họa Sĩ lượt 2**: SL-T056-1 bắt buộc, SL-T056-2 → -7 nên làm cùng; nhắn lại phiên Họa Sĩ cũ.
+- 2026-10-24 09:34 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`692fb07`, code `2d5316e`): sửa SL-T056-1 → -7 trong `app/views/write.py` (dấu "đang gửi" trước khi gửi, khóa nút, bỏ tick xác nhận khi lần chạy bị dừng; file bị thay phải duyệt lại; shortcode vắt mục/chú thích; số 1900/1800, gạch dài, gạch chéo; giữ ảnh đại diện; một ảnh 2 chỗ đồng bộ ảnh AI; ảnh từ nháp không quét lại trong luồng trang); gỡ 10 `xfail` Soi Lỗi, thêm 9 test; 44 file test liên quan 4.769 qua. Rủi ro 2 (`walk_to_folder` khi danh sách thư mục cha bị cắt) để Lá Chắn quyết.
