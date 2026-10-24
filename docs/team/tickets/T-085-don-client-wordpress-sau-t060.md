@@ -53,3 +53,4 @@ W1, W2, W3, S2.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 1–3 của Lá Chắn T-060; chủ dự án duyệt 2026-10-24. Nhánh `team/T-085` từ `main` sau khi gộp T-060.
+- 2026-10-24 10:13 (Chỉ Huy B): Thợ Máy xong phần 1 (`8226ed7`: LC-T060-1, -2, gỡ 9 `xfail`). Hỏi sửa 1 test cũ `tests/test_wordpress_round2_t042.py::test_upload_media_odd_fields_are_safe` (dòng 89-90) cho yêu cầu 3: **Chỉ Huy đồng ý** (đòi `WordPressError` có «thư viện Media», «mã ảnh 5»; phần trường sai kiểu chuyển sang ca mới), commit riêng, bảng trước/sau cho R5.
