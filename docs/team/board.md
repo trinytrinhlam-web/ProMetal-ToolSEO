@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 09:11 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 09:33 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,7 +36,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Họa Sĩ · T-056 màn hình chọn ảnh (lượt 2) | `team/T-056` | Họa Sĩ xong (`4303374`). 24/10 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`7648550`): 1 Trung bình SL-T056-1 (bấm đúp khi đang gửi → 2 bài nháp), 6 Thấp. ⏳ **08:36 Họa Sĩ lượt 2 đang sửa** sửa trước khi gộp, rồi Soi Lỗi rút gọn, Lá Chắn | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
 | [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi kiểm lại / Lá Chắn (chưa giao) | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **Chờ chủ dự án cho giao vòng kiểm tiếp** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Chỉ Huy (đang gộp) | `team/T-060` | Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`00bc66a`). 24/10 09:11 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`b202776`, Opus tạm): 7 lỗi cũ đóng; LC-T060-1..3 Thấp → phiếu dọn sau. ⏳ **Gộp `main` trên máy (`bf43510`), đang chạy toàn bộ test** | [Thợ Máy](reports/T-060-tho-may.md) · [Soi Lỗi](reports/T-060-soi-loi.md) · [Lá Chắn](reports/T-060-la-chan.md) |
 
 ## Chờ
 
@@ -69,6 +68,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress: tham số/header đổi đường bị chặn trước khi gửi, câu lỗi cố định kèm mã HTTP, `WORDPRESS_URL` không trỏ file thực thi, chữ SEO chặn «<» dính chữ, `upload_media` chỉ ghi vào ảnh vừa tạo (201) và ghi đè đủ 3 ô | Thợ Máy | 2026-10-24 | [Thợ Máy](reports/T-060-tho-may.md) · [Soi Lỗi](reports/T-060-soi-loi.md): đạt có điều kiện (R5 4 test cũ đạt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-060-la-chan.md) (Opus tạm): LC-T060-1..3 → phiếu dọn sau. Gộp `main`, Windows 12.667 test qua |
 | [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI khi AI viết «[Minh họa]: …» (SL-T071-1) | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-081-tho-may.md) · [Soi Lỗi](reports/T-081-soi-loi.md): đạt (SL-T081-1 → T-083) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-081-la-chan.md) (Opus tạm). Gộp `main`, Windows 11.839 test qua |
 | [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn 3 lỗi Thấp đọc ảnh sau T-079: so đường dẫn thật từng chữ (vá thư mục "anh em" tên trông y hệt, khai thác được thật trên bản cũ), câu báo khi bị tráo không tả file ngoài, "vừa bị thay đổi" thay "không có quyền" | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-080-tho-may.md) (thử ổ mạng, Google Drive, USB FAT32) · [Soi Lỗi Windows](reports/T-080-soi-loi.md): đạt có điều kiện · [Soi Lỗi Linux](reports/T-080-soi-loi-linux.md): đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-080-la-chan.md) (Opus tạm): SL-T080-1, -2, -L-1 → T-082. Gộp `main`, Windows 11.668 test qua |
 | [T-071](tickets/T-071-don-loi-thap-chen-anh-nhap.md) | Dọn lỗi Thấp chèn ảnh vào nháp: lỗi đúng lúc tạo nháp báo «bài nháp có thể đã có»; chỉ nhận ảnh website xác nhận vừa tạo (201), mã ảnh trùng thì dừng; gỡ «\» ở alt ảnh AI; chốt cuối `figure_html` chỉ xét thẻ `<img>`; `DraftImage` nhận `ImageTags` (cách A) | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-071-tho-may.md) · [Soi Lỗi](reports/T-071-soi-loi.md): đạt có điều kiện (SL-T071-1 → T-081) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-071-la-chan.md) (Opus tạm): LC-T071-1 → T-060; điều kiện vào T-056, T-059. Gộp `main`, Windows 11.578 test qua |
