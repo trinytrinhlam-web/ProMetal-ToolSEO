@@ -6,15 +6,15 @@ _Cập nhật: 2026-10-24 09:11 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 63% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 65% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
 | 0 · Bộ khung | **100%** | App mở bằng `run.bat`, đăng nhập bằng mật khẩu |
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
-| 3 · Ảnh | **khoảng 92%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn. Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
-| 4 · SEO trên trang | **khoảng 55%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. liên kết nội bộ (phần xử lý). Còn: lời dặn AI cho meta và anchor, **màn hình bước SEO**, thử thật trên website |
+| 3 · Ảnh | **khoảng 95%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn. Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
+| 4 · SEO trên trang | **khoảng 60%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. liên kết nội bộ (phần xử lý). Còn: lời dặn AI cho meta và anchor, **màn hình bước SEO**, thử thật trên website |
 | 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
