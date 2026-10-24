@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036 và T-039 đã gộp |
-| Trạng thái | Ngòi Bút lượt 2 |
+| Trạng thái | Ngòi Bút lượt 2 xong |
 
 ## Mục tiêu
 
@@ -60,3 +60,4 @@ A1 (không bỏ `DATA_RULES`, không đưa dữ liệu ra ngoài khung), D3.
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`6efc71e`): 3 Thấp câu chữ lời dặn (title 49 ký tự bị ghi «hơi ngắn» mà không gắn đuôi; một ví dụ description nói điều bài mẫu không có; từ khóa có chữ «giá» mâu thuẫn với cấm nói giá, có từ T-036) + 3 góp ý; lời dặn dài gấp 2,3–3 lần, cả lần gọi AI dài thêm ~16%/8%. Đề xuất: Ngòi Bút lượt 2 sửa 3 Thấp (mỗi lỗi một dòng), rồi Lá Chắn rút gọn.
 - 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Ngòi Bút lượt 2** sửa 3 Thấp câu chữ; nhắn lại phiên Ngòi Bút cũ.
+- 2026-10-24 09:11 (Chỉ Huy B): **Ngòi Bút lượt 2 xong** (`26ff861`): SL-T040-2, -3 đóng (gỡ `xfail`), G1–G3 làm; lời dặn title nay 40–48 hoặc 50–60 ký tự. **SL-T040-1 phần code còn** (bộ kiểm `check_title`/`accept_ai_title` coi title 49 ký tự là «hơi ngắn» và không gắn được đuôi; logic kiểm ngoài phạm vi Ngòi Bút) → chuyển **T-041** (Thợ Máy, phần logic). 31 file test liên quan 3.013 qua.

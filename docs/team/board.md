@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 08:36 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 09:11 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -35,8 +35,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Họa Sĩ · T-056 màn hình chọn ảnh (lượt 2) | `team/T-056` | Họa Sĩ xong (`4303374`). 24/10 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`7648550`): 1 Trung bình SL-T056-1 (bấm đúp khi đang gửi → 2 bài nháp), 6 Thấp. ⏳ **08:36 Họa Sĩ lượt 2 đang sửa** sửa trước khi gộp, rồi Soi Lỗi rút gọn, Lá Chắn | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Ngòi Bút · T-040 lời dặn meta, anchor (lượt 2) | `team/T-040` | Ngòi Bút xong (`ce72b80`). 24/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`6efc71e`): 3 Thấp câu chữ lời dặn. ⏳ **08:36 Ngòi Bút lượt 2 đang sửa** (sửa 3 dòng), rồi Lá Chắn rút gọn | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Lá Chắn · T-060 kiểm client WordPress | `team/T-060` | Thợ Máy xong (`af6edfd`). 24/10 Soi Lỗi **ĐẠT CÓ ĐIỀU KIỆN** (`00bc66a`): 8/8 đúng, R5 đạt; 1 Thấp SL-T060-1. ⏳ **08:36 Lá Chắn đang kiểm** (W3, S2) | [Thợ Máy](reports/T-060-tho-may.md) · [Soi Lỗi](reports/T-060-soi-loi.md) |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi kiểm lại / Lá Chắn (chưa giao) | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **Chờ chủ dự án cho giao vòng kiểm tiếp** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Chỉ Huy (đang gộp) | `team/T-060` | Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`00bc66a`). 24/10 09:11 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`b202776`, Opus tạm): 7 lỗi cũ đóng; LC-T060-1..3 Thấp → phiếu dọn sau. ⏳ **Gộp `main` trên máy (`bf43510`), đang chạy toàn bộ test** | [Thợ Máy](reports/T-060-tho-may.md) · [Soi Lỗi](reports/T-060-soi-loi.md) · [Lá Chắn](reports/T-060-la-chan.md) |
 
 ## Chờ
 

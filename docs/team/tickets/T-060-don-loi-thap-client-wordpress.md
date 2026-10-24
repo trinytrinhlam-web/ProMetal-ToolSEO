@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp (phải xong trước khi hết Giai đoạn 4; LC-T042-1 phải xong trước phiếu nào truyền tham số mới vào `_request`) |
 | Phụ thuộc | T-042 đã gộp |
-| Trạng thái | Soi Lỗi xong, chờ Lá Chắn |
+| Trạng thái | Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp |
 
 ## Mục tiêu
 
@@ -51,3 +51,4 @@ W3, W4, S2.
 - 2026-10-24 07:45 (Chỉ Huy B): chủ dự án duyệt giao Soi Lỗi.
 - 2026-10-24 08:27 (Chỉ Huy B): **Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN** (`00bc66a`): 8/8 việc đúng; hơn 250 cách lén tham số/header bị chặn trước khi gửi; câu lỗi không chép lời website; không chặn oan; soát R5 4 test cũ đạt; gộp thử với T-056 không xung đột. 1 Thấp SL-T060-1 (trang Kết nối WordPress nhận trả lời ghi mô tả ảnh mang thông tin ảnh khác, hiện địa chỉ sai; không đụng dữ liệu website) → phiếu dọn sau. Chuyển Lá Chắn được ngay.
 - 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt giao **Lá Chắn**.
+- 2026-10-24 09:11 (Chỉ Huy B): **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`b202776`): 7 lỗi cũ đóng; 3 Thấp mới LC-T060-1 (thân JSON chưa có danh sách khóa theo đường: `id`, `name`, `status`), LC-T060-2 (`_fields` chưa chặn `content`/`excerpt`/`description`/`caption`), LC-T060-3 (+ SL-T060-1: `upload_media` ghi đè hỏng thì câu báo chưa nói ảnh đã ở thư viện Media) → **phiếu dọn client WordPress sau T-060**, trước khi hết GĐ4 (LC-T060-1, -2 bắt buộc trước phiếu nào đưa dữ liệu ngoài vào khóa JSON/tham số). Gộp `main` trên máy (`bf43510`), đang chạy toàn bộ test. Điều kiện 4: câu chữ `index.php` trong phiếu (Ghi nhận 1 của biên bản) Chỉ Huy sửa khi đóng phiếu.
