@@ -269,7 +269,8 @@ class MetaSuggestions(BaseModel):
     """Khuôn AI trả về khi gợi ý meta (T-036). Code kiểm từng gợi ý trước khi dùng."""
 
     titles: list[str] = Field(
-        description="3 meta title khác nhau, mỗi cái 40-60 ký tự, không gắn tên thương hiệu ở cuối"
+        description="3 meta title khác nhau, mỗi cái 40-48 hoặc 50-60 ký tự, không gắn tên"
+        " thương hiệu ở cuối"
     )
     descriptions: list[str] = Field(description="2 meta description khác nhau, 120-155 ký tự")
 
@@ -305,15 +306,18 @@ def meta_prompt(
     asks = []
     if want_title:
         asks.append(
-            "- titles: 3 meta title khác nhau rõ rệt, mỗi cái 40-60 ký tự (tính cả dấu cách).\n"
+            "- titles: 3 meta title khác nhau rõ rệt, mỗi cái 40-48 hoặc 50-60 ký tự (tính cả dấu\n"
+            "  cách).\n"
             "  + Có nguyên văn từ khóa chính, đặt ở đầu hoặc gần đầu, đọc lên tự nhiên như lời\n"
             "    người thật nói.\n"
             "  + Nói rõ người tìm được gì khi bấm vào: dấu hiệu, nguyên nhân, cách xử lý, khi nào\n"
             "    nên gọi thợ… Ba cái khác nhau ở cách nói (ví dụ một cái nêu nguyên nhân, một cái\n"
             "    nêu cách xử lý, một cái là câu hỏi), không chỉ đổi vài chữ.\n"
             "  + Tách ý bằng «:», «-» hoặc «?», không dùng «|».\n"
-            "  + KHÔNG tự viết tên thương hiệu hay «| Pro-Metal»: phần mềm tự gắn đuôi đó khi\n"
-            "    title cộng đuôi không quá 60 ký tự, nên ít nhất một cái chỉ dài 40-48 ký tự.\n"
+            "  + KHÔNG tự viết tên thương hiệu hay «| Pro-Metal»: phần mềm tự gắn đuôi\n"
+            "    « | Pro-Metal» (12 ký tự) khi title cộng đuôi không quá 60 ký tự. Vì vậy title\n"
+            "    40-48 ký tự sẽ có đuôi, title 50-60 ký tự thì không; title 49 ký tự không gắn\n"
+            "    được đuôi mà lại hơi ngắn. Ít nhất một cái dài 40-48 ký tự.\n"
             "  Ví dụ cho từ khóa «cửa sắt bị xệ» (chỉ để thấy cách viết, không chép):\n"
             "  + Nên: «Cửa sắt bị xệ cạ nền: nguyên nhân và cách chỉnh lại»\n"
             "  + Nên: «Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?» (ngắn, còn chỗ cho đuôi thương"
@@ -333,17 +337,21 @@ def meta_prompt(
             "  + Câu đầu nói lợi ích cho người tìm: đọc bài xong họ biết hay làm được gì (nhận ra\n"
             "    lỗi, hiểu nguyên nhân, tự xử lý bước nào, khi nào nên gọi thợ), kèm một chi tiết\n"
             "    cụ thể lấy từ bài (một dấu hiệu, một nguyên nhân hay một bước làm).\n"
-            "  + Bài về sửa chữa, thi công mà người đọc có thể cần thợ: kết bằng một lời mời liên\n"
-            "    hệ nhẹ nhàng, ngắn, theo đúng cách liên hệ trong hồ sơ doanh nghiệp. Không hối\n"
-            "    thúc («ngay», «gấp», «đừng chần chừ», dấu «!»), không ghi số điện thoại. Bài chỉ\n"
-            "    để tham khảo thì kết bằng điều người đọc sẽ thấy trong bài.\n"
-            "  + Hai cái khác nhau rõ, ví dụ một cái có lời mời liên hệ, một cái không.\n"
-            "  Ví dụ cho một bài giả định về cửa sắt bị xệ (bài nói nguyên nhân do bản lề mòn,\n"
-            "  cách tự kiểm tra, khi nào gọi thợ; chỉ để thấy cách viết, không chép):\n"
+            "  + Bài về sửa chữa, thi công mà người đọc có thể cần thợ: một trong hai cái kết\n"
+            "    bằng lời mời liên hệ nhẹ nhàng, ngắn, theo kênh liên hệ trong hồ sơ doanh\n"
+            "    nghiệp, nhưng không ghi số điện thoại và không viết «miễn phí» dù câu kêu gọi\n"
+            "    trong hồ sơ có. Cái còn lại, và mọi description của bài chỉ để tham khảo, kết\n"
+            "    bằng điều người đọc sẽ thấy trong bài.\n"
+            "  + Không hối thúc: không «gọi ngay», «làm ngay», «đừng chần chừ», dấu «!».\n"
+            "  + Hai cái khác nhau rõ ở cách mở đầu và chi tiết nêu ra.\n"
+            "  Ví dụ cho một bài giả định về cửa sắt bị xệ (bài nói dấu hiệu cửa cạ nền,\n"
+            "  nguyên nhân do bản lề mòn, cách tự kiểm tra bản lề, lúc nào tự chỉnh được, khi\n"
+            "  nào nên gọi thợ hàn lại; chỉ để thấy cách viết, không chép):\n"
             "  + Nên: «Cửa sắt bị xệ, cạ nền khi đóng mở thường do bản lề mòn. Xem cách tự kiểm"
-            " tra bản lề, lúc nào chỉnh được và lúc nào nên gọi thợ hàn lại.»\n"
-            "  + Nên: «Cửa sắt bị xệ cạ nền: bài chỉ cách nhận ra bản lề mòn hay khung lệch. Cần"
-            " thợ sửa, bạn gửi ảnh cửa qua Zalo để Pro-Metal báo giá.»\n"
+            " tra bản lề, lúc nào chỉnh được và lúc nào nên gọi thợ hàn lại.» (không có lời mời)\n"
+            "  + Nên: «Cửa sắt bị xệ cạ nền: bài chỉ cách tự kiểm tra bản lề mòn và biết lúc nào"
+            " nên gọi thợ. Cần thợ sửa, bạn gửi ảnh cửa qua Zalo để Pro-Metal báo giá.» (có lời"
+            " mời)\n"
             "  + Không nên: «Dịch vụ sửa cửa sắt bị xệ uy tín, giá rẻ, thợ có mặt sau 15 phút,"
             " bảo hành trọn đời. Gọi ngay!» (khen suông, nêu giá, bịa số liệu, hối thúc)"
         )
@@ -372,14 +380,17 @@ Quy tắc cho mọi meta:
   lại nhau.
 - Không nói về giá dưới bất kỳ dạng nào: không con số tiền, không «rẻ», «đắt», «giá cả»,
   «chi phí», «khuyến mãi», «ưu đãi», «trọn gói», «miễn phí» (kể cả «báo giá miễn phí»). Được
-  mời người đọc liên hệ để được báo giá, nhưng không nói gì về mức giá.
+  mời người đọc liên hệ để được báo giá, nhưng không nói gì về mức giá. Riêng khi từ khóa
+  chính có sẵn chữ về giá (ví dụ «giá sửa cửa sắt»): vẫn giữ nguyên văn từ khóa, phần mềm
+  hiểu chữ đó thuộc từ khóa; phần chữ còn lại vẫn không có con số, mức giá hay chữ nào về giá.
 - Không bịa số liệu. Con số về thời gian, bảo hành, số thợ… chỉ dùng khi có trong bài hoặc hồ
   sơ doanh nghiệp và phải chép đúng (hồ sơ ghi một khoảng thời gian thì giữ cả khoảng, không
   rút thành số nhỏ nhất); không chắc thì bỏ con số.
 - Không nhồi từ khóa: không lặp từ khóa chính hay biến thể của nó cho dài.
 - Không khen suông, không hối thúc: ngoài các cụm sáo rỗng đã cấm, tránh cả «uy tín»,
   «chuyên nghiệp», «hàng đầu», «số 1», «tốt nhất», «chất lượng cao», «100%», «24/7»,
-  «gọi ngay», «liên hệ ngay», «xem ngay», «click ngay», «đừng bỏ lỡ».
+  «gọi ngay», «liên hệ ngay», «xem ngay», «click ngay», «đừng bỏ lỡ» (trừ khi cụm đó nằm
+  sẵn trong từ khóa chính).
 - Viết tiếng Việt có dấu, như lời thợ nói với «bạn»; chỉ viết hoa chữ đầu câu và tên riêng.
 - Mỗi meta một dòng, không xuống dòng. Không link, không địa chỉ web, không email, không số
   điện thoại, không HTML, không mã ký tự HTML (như «&amp;»), không ký tự «%%».

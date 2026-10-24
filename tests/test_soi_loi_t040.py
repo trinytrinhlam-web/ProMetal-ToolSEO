@@ -254,12 +254,6 @@ def test_sl_t040_1_title_of_49_chars_is_not_short():
 _PARTS_OF_DOOR = ("bản lề", "khung", "ray", "lò xo", "chân cửa", "bánh xe", "ổ khóa", "mô tơ")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T040-2: ví dụ description «Nên» thứ hai nói bài chỉ cách nhận ra «khung lệch», "
-    "trong khi bài giả định của ví dụ chỉ nói bản lề mòn (trái quy tắc «chỉ nói điều bài thật "
-    "sự có»).",
-)
 def test_sl_t040_2_good_description_examples_only_say_what_the_article_has():
     text = _meta(BENIGN, "description")
     summary = re.search(r"\(bài nói (.*?)\)", " ".join(text.split())).group(1)
@@ -271,12 +265,6 @@ def test_sl_t040_2_good_description_examples_only_say_what_the_article_has():
         assert extra == [], (good, extra)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T040-3: từ khóa có chữ về giá («giá sửa cửa sắt», kế hoạch bài #48): lời dặn vừa "
-    "đòi «nguyên văn từ khóa chính», vừa cấm «nói về giá dưới bất kỳ dạng nào» / «chi phí», "
-    "không có câu ngoại lệ cho từ khóa (bộ kiểm thì đã bỏ từ khóa trước khi soát giá).",
-)
 def test_sl_t040_3_price_rule_allows_price_words_of_the_keyword():
     keyword = "giá sửa cửa sắt"
     text = prompts.meta_prompt(keyword, "Bài", [Section(heading="M", body="x")])

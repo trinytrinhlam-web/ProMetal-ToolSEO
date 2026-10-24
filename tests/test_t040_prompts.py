@@ -13,7 +13,10 @@ import unicodedata
 
 import pytest
 
-from seo_app.content import prompts
+from seo_app.ai import AIRouter, TaskConfig
+from seo_app.ai import registry as ai_registry
+from seo_app.config import Settings
+from seo_app.content import ContentWriter, prompts
 from seo_app.content.models import Section
 from seo_app.content.rules import (
     BUSINESS_PROFILE_FILE,
@@ -24,8 +27,11 @@ from seo_app.content.rules import (
 from seo_app.onpage.links import Candidate, Candidates, LinkSuggestions, check_suggestions
 from seo_app.onpage.meta import (
     BRAND_SUFFIX,
+    TITLE_LIMITS,
     accept_ai_description,
     accept_ai_title,
+    check_title,
+    normalize_meta,
     resolve_brand_suffix,
     with_brand,
 )
@@ -83,10 +89,42 @@ def test_good_title_examples_pass_the_real_checker():
     assert len(goods) >= 2
     accepted = [accept_ai_title(t, EXAMPLE_KEYWORD, banned) for t in goods]
     assert None not in accepted, dict(zip(goods, accepted, strict=True))
-    # Lời dặn hứa: title ngắn (40-48 ký tự) còn chỗ cho đuôi thương hiệu.
-    assert all(40 <= len(t) <= 60 for t in goods)
+    # Lời dặn hứa: 40-48 ký tự (có đuôi thương hiệu) hoặc 50-60 (không đuôi).
+    assert all(40 <= len(t) <= 48 or 50 <= len(t) <= 60 for t in goods)
     assert any(len(t) <= 48 for t in goods)
     assert any(a.endswith(BRAND_SUFFIX) for a in accepted)
+
+
+def _title_ranges(text: str) -> list[tuple[int, int]]:
+    match = re.search(r"mỗi cái (\d+)-(\d+) hoặc (\d+)-(\d+) ký tự", " ".join(text.split()))
+    assert match, "không thấy khoảng độ dài title"
+    a, b, c, d = map(int, match.groups())
+    return [(a, b), (c, d)]
+
+
+def _title_of_length(length: int) -> str:
+    base = f"{EXAMPLE_KEYWORD.capitalize()}: nguyên nhân hay gặp và cách tự xử lý tại nhà cho bạn"
+    title = base[:length].rstrip()
+    title += "a" * (length - len(title))  # cắt trúng dấu cách thì bù chữ cho đủ
+    assert len(normalize_meta(title)) == length
+    return title
+
+
+def test_title_lengths_in_prompt_match_the_checker():
+    """SL-T040-1 (Soi Lỗi): khoảng độ dài title trong lời dặn (và trong khuôn trả về) khớp ngưỡng
+    thật của code: khoảng ngắn là chỗ còn gắn được đuôi thương hiệu, khoảng dài là «nên» của
+    ``check_title``; mọi độ dài lời dặn cho phép đều ra «dài vừa», và không cho phép 49."""
+    ranges = _title_ranges(_title_block(_meta()))
+    field = prompts.MetaSuggestions.model_fields["titles"].description
+    assert _title_ranges(field) == ranges
+    short_max = TITLE_LIMITS.good_max - len(BRAND_SUFFIX)
+    assert ranges == [(40, short_max), (TITLE_LIMITS.good_min, TITLE_LIMITS.good_max)]
+    allowed = [n for low, high in ranges for n in range(low, high + 1)]
+    assert 49 not in allowed
+    for length in allowed:
+        accepted = accept_ai_title(_title_of_length(length), EXAMPLE_KEYWORD)
+        assert accepted is not None, length
+        assert check_title(accepted).messages[0].startswith("Meta title dài vừa"), length
 
 
 def test_good_description_examples_pass_the_real_checker():
@@ -138,18 +176,69 @@ def test_examples_only_for_the_part_being_written(which, absent):
 
 
 def test_meta_prompt_states_benefit_soft_contact_no_price_no_made_up_numbers():
-    text = _meta()
+    text = " ".join(_meta().split())
     for phrase in (
         "lợi ích cho người tìm",
-        "lời mời liên",
+        "một trong hai cái kết bằng lời mời liên hệ",  # G1: lời mời chỉ ở một cái
         "hồ sơ doanh nghiệp",
-        "không ghi số điện thoại",
+        "không ghi số điện thoại và không viết «miễn phí»",  # G2
         "Không nói về giá dưới bất kỳ dạng nào",
         "«miễn phí»",
         "Không bịa số liệu",
         "KHÔNG tự viết tên thương hiệu",
     ):
         assert phrase in text, phrase
+
+
+class _FakeMeta:
+    """AI giả cho việc meta: trả đúng title, description cho trước, nhớ lời dặn đã nhận."""
+
+    def __init__(self, title: str, description: str) -> None:
+        self.result = prompts.MetaSuggestions(titles=[title], descriptions=[description])
+        self.prompts: list[str] = []
+
+    def generate(self, task, *, system, prompt, schema):
+        self.prompts.append(prompt)
+        return self.result
+
+
+@pytest.mark.parametrize(
+    ("keyword", "title", "description"),
+    [
+        (
+            "giá sửa cửa sắt",
+            "Giá sửa cửa sắt phụ thuộc vào những điều gì?",
+            "Giá sửa cửa sắt khác nhau theo lỗi hư, vật tư cần thay và việc có phải hàn lại hay"
+            " không. Bài chỉ cách mô tả lỗi để thợ báo đúng ngay lần đầu.",
+        ),
+        (
+            "sửa cửa uy tín hcm",
+            "Sửa cửa uy tín HCM: chọn thợ thế nào cho đúng?",
+            "Sửa cửa uy tín HCM bắt đầu từ việc hỏi đúng: thợ có xem tận nơi không, có báo giá"
+            " trước khi làm không. Bài liệt kê từng câu nên hỏi thợ.",
+        ),
+    ],
+    ids=["tu-khoa-co-gia", "tu-khoa-co-cum-nen-tranh"],
+)
+def test_keyword_with_price_or_avoid_word_is_kept_and_accepted(
+    monkeypatch, keyword, title, description
+):
+    """SL-T040-3 (Soi Lỗi) và cùng loại: từ khóa trong kế hoạch có chữ về giá («giá sửa cửa»,
+    bài #48) hay cụm nên tránh («sửa cửa uy tín HCM», bài #35). Lời dặn cho giữ nguyên văn từ khóa,
+    và meta có từ khóa đó đi qua trọn bước meta (lời dặn → AI giả → bộ kiểm). Khi code bắt đầu đọc
+    ``[meta].avoid``, test này nhắc phải bỏ từ khóa ra trước khi dò, như bộ chặn giá đang làm."""
+    provider = _FakeMeta(title, description)
+    monkeypatch.setattr(ai_registry, "make_provider", lambda name, settings: provider)
+    tasks = {
+        name: TaskConfig(name=name, provider="anthropic", model="claude-opus-5-5")
+        for name in ("research", "outline", "write", "rewrite", "review", "meta")
+    }
+    writer = ContentWriter(AIRouter(tasks, Settings()), load_rules())
+    result = writer.meta(keyword, "Bài", PARTS)
+    assert result.titles == [with_brand(title)] and result.descriptions == [description]
+    sent = " ".join(provider.prompts[0].split())
+    assert "vẫn giữ nguyên văn từ khóa" in sent
+    assert "(trừ khi cụm đó nằm sẵn trong từ khóa chính)" in sent
 
 
 def test_avoid_phrases_from_config_are_named_in_prompt():
