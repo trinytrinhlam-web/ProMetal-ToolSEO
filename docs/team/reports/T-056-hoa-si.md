@@ -23,7 +23,7 @@ Theo `docs/team/reports/T-056-soi-loi.md`. Mọi sửa trong `app/views/write.py
 
 | Mã | Lỗi | Cách sửa | Test |
 |---|---|---|---|
-| **SL-T056-1** (Trung bình) | Đang gửi mà bấm đúp/bấm nút khác: Streamlit dừng lần chạy ở lệnh `st.*` kế tiếp (thoát vòng quay) bằng `BaseException`, kết quả chưa kịp ghi; bấm lại thành 2 bài nháp, ảnh tải 2 lần | (1) Đặt dấu `_wp_sending` ngay trước khi gọi `create_draft_with_images`; ghi kết quả **ngay sau khi gọi**, vẫn trong khối vòng quay, trước mọi lệnh `st.*`. (2) `except BaseException`: ghi «gửi dở» (`mark_send_interrupted`: câu báo, khóa như `maybe_draft`) rồi để Streamlit dừng. (3) `init_state`: thấy dấu còn mà chưa có kết quả thì coi là gửi dở. (4) Bấm đúp: Streamlit vẫn báo nút đã bấm dù lần vẽ mới là khóa, nên xét lại điều kiện ngay lúc bấm (`if clicked and allowed`). Đã gửi: hiện kết quả, khóa tới khi tick «Tạo thêm một bài nháp mới»; gửi dở: nhắc kiểm Bài viết → Nháp, Media, khóa tới khi tick «Tôi đã kiểm tra…»; không tự gửi lại | Soi Lỗi `test_interrupted_send_locks_resend`; mới: `test_double_click_does_not_send_twice`, `test_stop_when_leaving_spinner_keeps_result` (dừng đúng chỗ thật: lúc thoát vòng quay), `test_stop_during_image_upload_locks_resend` (dừng giữa lúc tải ảnh), `test_leftover_sending_mark_locks_send` |
+| **SL-T056-1** (Trung bình) | Đang gửi mà bấm đúp/bấm nút khác: Streamlit dừng lần chạy ở lệnh `st.*` kế tiếp (thoát vòng quay) bằng `BaseException`, kết quả chưa kịp ghi; bấm lại thành 2 bài nháp, ảnh tải 2 lần | (1) Đặt dấu `_wp_sending` ngay trước khi gọi `create_draft_with_images`; ghi kết quả **ngay sau khi gọi**, vẫn trong khối vòng quay, trước mọi lệnh `st.*`. (2) `except BaseException`: ghi «gửi dở» (`mark_send_interrupted`: câu báo, khóa như `maybe_draft`) rồi để Streamlit dừng. (3) `init_state`: thấy dấu còn mà chưa có kết quả thì coi là gửi dở. (4) Bấm đúp: Streamlit vẫn báo nút đã bấm dù lần vẽ mới là khóa, nên xét lại điều kiện ngay lúc bấm (`if clicked and allowed`). (5) Bỏ tick các ô xác nhận **trước** khi gửi (lần chạy bị dừng ngay sau khi gửi vẫn phải xác nhận lại; khe tự tìm ra khi soát lượt 2). Đã gửi: hiện kết quả, khóa tới khi tick «Tạo thêm một bài nháp mới»; gửi dở: nhắc kiểm Bài viết → Nháp, Media, khóa tới khi tick «Tôi đã kiểm tra…»; không tự gửi lại | Soi Lỗi `test_interrupted_send_locks_resend`; mới: `test_double_click_does_not_send_twice`, `test_stop_when_leaving_spinner_keeps_result` (dừng đúng chỗ thật: lúc thoát vòng quay), `test_stop_during_image_upload_locks_resend` (dừng giữa lúc tải ảnh), `test_leftover_sending_mark_locks_send`, `test_confirmation_untick_even_if_run_stops` |
 | SL-T056-2 | File ảnh bị thay (cùng tên) sau khi duyệt alt vẫn được tải lên | `file_changed` so cỡ, giờ sửa, định danh trên ổ (`file_id`) của lần chọn với lần kiểm ngay trước khi tải (trong `changed`): dừng, chưa gửi gì, khung ảnh chuyển sang file mới (xem trước, GPS của file mới), bỏ «Đã duyệt». `mark_ai` cũng bỏ duyệt khi file đổi | Soi Lỗi `test_replaced_file_after_approval_stops_send`; mới `test_replaced_file_needs_new_look_and_approval` (duyệt lại rồi gửi đúng file mới, còn GPS) |
 | SL-T056-3 | Đoạn dạng shortcode vắt qua hai mục không được liệt kê | `shortcode_findings` xét thêm chữ của cả nội dung ghép đúng thứ tự gửi (tiêu đề mục, thân, alt, chú thích của ảnh); đoạn chưa thấy khi xét từng phần ghi «Nội dung, vắt qua nhiều mục» | Soi Lỗi `test_shortcode_across_sections_listed`; mới `test_shortcode_from_body_into_image_caption_listed` |
 | SL-T056-4 | Nhắc số điện thoại bỏ sót 1900/1800 8 số, «–», «/» | `PHONE_LIKE`: tổng đài `1800`/`1900` kèm từ 4 chữ số, hoặc từ 9 chữ số; dấu ngăn thêm «–», «—», «/», «_». Không nhắc ngày tháng (8 chữ số), năm, kích thước | Soi Lỗi `test_phone_like_variants_warn` × 4; mới `test_dates_and_sizes_are_not_phone_numbers` |
@@ -32,7 +32,7 @@ Theo `docs/team/reports/T-056-soi-loi.md`. Mọi sửa trong `app/views/write.py
 | SL-T056-7 | Ảnh mở từ nháp: mỗi lần «AI viết alt», «Đây là ảnh AI», «Gửi nháp» lại xem thư mục từng tầng trong luồng trang | `check_in_pool`: lần kiểm lại (`check_chosen_image`) chạy trong luồng quét, chờ tối đa 15 giây; quá giờ thì báo «Ổ đĩa đang chậm…», không gọi AI, không gửi (lần kiểm vẫn chạy tiếp ở nền). `scanned` vẫn chỉ là ảnh của các lần quét (LC-T055-1). Lần kiểm lúc mở nháp vẫn chạy trong luồng trang (cố ý: quá giờ mà bỏ ảnh thì lần tự lưu sau sẽ xóa ảnh khỏi nháp) | Soi Lỗi `test_draft_image_not_rescanned_in_page_thread`; mới `test_recheck_on_slow_drive_does_not_hold_page` |
 | Ghi nhận 4 | Lần quét xong bỏ cả lần chờ của thư mục khác | `folder_listing` chỉ bỏ `_scan_pending` của chính thư mục vừa quét | Đọc mã |
 
-Thử đột biến (bản sao `git archive`, dùng lại môi trường của worktree): trên `write.py` của lượt 1, 7/8 test mới hỏng (ca còn lại kiểm «không nhắc nhầm ngày tháng», đúng là phải qua cả trên bản cũ); bỏ riêng phần «xét lại điều kiện lúc bấm» thì `test_double_click_does_not_send_twice` hỏng (`(2, 2) == (1, 1)`: gửi 2 lần).
+Thử đột biến (bản sao `git archive`, dùng lại môi trường của worktree): trên `write.py` của lượt 1, 7/8 test mới đầu tiên hỏng (ca còn lại kiểm «không nhắc nhầm ngày tháng», đúng là phải qua cả trên bản cũ); bỏ riêng phần «xét lại điều kiện lúc bấm» thì `test_double_click_does_not_send_twice` hỏng (`(2, 2) == (1, 1)`: gửi 2 lần). Đặt cờ bỏ tick sau khi gửi (như trước khi sửa) thì `test_confirmation_untick_even_if_run_stops` hỏng (`3 == 2`: gửi lần ba).
 
 Không sửa trong lượt này (ngoài phạm vi `write.py`, ghi lại để Chỉ Huy lập phiếu):
 - Phần còn lại của SL-T056-2: nháp mở lại hôm khác không biết file ảnh đã bị thay (nháp không lưu dấu file, cần trường mới trong `seo_app/storage/drafts.py`, Thợ Máy).
@@ -49,7 +49,7 @@ Mở lại app thật (cổng 8502, cấu hình tạm như lượt 1, đã trả
 | `app/assets/style.css` | Khung chỗ cần ảnh (`st-key-imgbox-…`), khung chọn ảnh, ảnh nhỏ trong lưới |
 | `seo_app/wordpress/shortcodes.py` (mới) | `find_shortcodes`: tìm đoạn dạng shortcode, dùng đúng `_SHORTCODE_OPEN`/`_drop_invisible` của `client.py` (không sửa `client.py`) |
 | `tests/test_wordpress_shortcodes.py` (mới) | 26 test cho `find_shortcodes` (đối chiếu `_has_shortcode`, ký tự vô hình, chữ dài) |
-| `tests/test_app_images.py` (mới) | 57 test giao diện (AppTest, AI giả, WordPress giả, ảnh Pillow trong thư mục tạm); lượt 2 thêm 8 |
+| `tests/test_app_images.py` (mới) | 58 test giao diện (AppTest, AI giả, WordPress giả, ảnh Pillow trong thư mục tạm); lượt 2 thêm 9 |
 | `tests/test_soi_loi_t056.py` (của Soi Lỗi) | Lượt 2: chỉ gỡ dấu `xfail` của 10 ca đã sửa xong |
 | `tests/conftest.py` | Fixture tự động trỏ `DEFAULT_IMAGE_TAGS_FILE` sang thư mục tạm (điều kiện 2f) |
 | `tests/test_content_edge_cases.py` | `test_publish_now_requires_confirmation`: «Nháp» nay là nút thật «📤 Gửi nháp»; vẫn kiểm «Đăng ngay» phải tick xác nhận |
@@ -62,7 +62,7 @@ Mở lại app thật (cổng 8502, cấu hình tạm như lượt 1, đã trả
 - **Chọn ảnh:** «📁 Chọn ảnh từ thư mục» mở khung chọn ngay trong chỗ cần ảnh: chọn thư mục gốc (tên cuối, từ `ImageLibrary.roots()`), thư mục con (ô chọn, tên đã cô lập hướng chữ), lưới 12 ảnh/trang. Mỗi lần mở thư mục là một lần `list_folder` chạy trong luồng riêng (`ThreadPoolExecutor`, chờ tối đa 15 giây rồi báo «đang quét ở nền»), kết quả giữ trong phiên (`_scans`). «🔄 Quét lại» mới quét lại.
 - **Khóa ảnh:** `ImageEntry` của lần quét → `DraftImage.from_library(entry, tags)` → `check_chosen_image(…, scanned=<ảnh của trang>, ai_roots=…)` → `CheckedImage` giữ trong `pick-<id>`. Nháp lưu `DraftImage.from_library(checked.ref, thẻ đã kiểm, alt, …)`.
 - **Mở nháp:** `check_draft_images(snap, library, tag_store, ai_roots)` một lần; hiện và dùng `checked.image/tags/ref`; ảnh không dùng được hiện `checked.message`; `dropped_images > 0` thì báo.
-- **Gửi nháp:** chỉ khi bấm; với mỗi ảnh: `check_chosen_image` lại (cùng `ref`), đổi tên/thư mục/thành ảnh AI thì dừng; `make_web_image(read_image_bytes(ref), **[images])`; `DraftImage(web, alt, caption, tags=<thẻ đã kiểm>, featured)`; nội dung: `<h2>` tiêu đề mục + đoạn `<p>` (`paragraphs_to_html`) + ảnh; `create_draft_with_images`.
+- **Gửi nháp:** chỉ khi bấm (xét lại điều kiện khóa ngay lúc bấm); bỏ tick các ô xác nhận; với mỗi ảnh: `check_chosen_image` lại (cùng `ref`) trong luồng quét (`check_in_pool`, chờ ≤ 15 giây), đổi tên/thư mục/file bị thay/thành ảnh AI thì dừng; `make_web_image(read_image_bytes(ref), **[images])`; `DraftImage(web, alt, caption, tags=<thẻ đã kiểm>, featured)`; nội dung: `<h2>` tiêu đề mục + đoạn `<p>` (`paragraphs_to_html`) + ảnh; dấu `_wp_sending` → `create_draft_with_images` → ghi kết quả ngay (lần chạy bị dừng giữa chừng thì ghi «gửi dở», khóa nút).
 
 ## Bảng điều kiện → cách làm → test
 
@@ -71,37 +71,37 @@ Mọi test dưới đây ở `tests/test_app_images.py` trừ khi ghi khác. S�
 | # | Điều kiện (nguồn) | Cách làm | Test |
 |---|---|---|---|
 | 1 | Tên file/thư mục: escape, cô lập hướng chữ (Soi Lỗi T-048, LC-T048-4 b, LC-T052 e) | `shown_name` (ký tự Cc/Cf/Cs/Co/Cn/Zl/Zp → «�», bọc U+2068…U+2069), `name_md` = `escape_markdown(shown_name)`; ô chọn dùng chữ thường | `test_names_from_disk_escaped_isolated_never_html` (thư mục `[bấm](evil.example) _đậm_ <U+200B>ẩn אב`, file `anh<U+200B>_[x](y).jpg`: không link, không ký tự rộng 0, có cô lập, không vào HTML) |
-| 2 | Giữ kết quả quét trong phiên; quét trong luồng riêng (Soi Lỗi T-048, Thợ Máy T-048 điểm 7) | `folder_listing` (:1137) + `_scan_pool` (:529): kết quả theo (gốc, thư mục, trang) trong `_scans`; quá 15 giây trả «đang quét ở nền» | `test_scan_in_own_thread_kept_in_session_rescan_on_request` (luồng `quet-anh…`, chuyển trang rồi quay lại không quét lại), `test_slow_drive_does_not_hold_the_page` |
+| 2 | Giữ kết quả quét trong phiên; quét trong luồng riêng (Soi Lỗi T-048, Thợ Máy T-048 điểm 7) | `folder_listing` (:1200) + `_scan_pool` (:553): kết quả theo (gốc, thư mục, trang) trong `_scans`; quá 15 giây trả «đang quét ở nền» | `test_scan_in_own_thread_kept_in_session_rescan_on_request` (luồng `quet-anh…`, chuyển trang rồi quay lại không quét lại), `test_slow_drive_does_not_hold_the_page` |
 | 3 | Chỉ quét khi mở thư mục hoặc bấm quét lại (LC-T048) | Không quét lúc vẽ trang; chỉ khi bấm «Chọn ảnh từ thư mục», chọn thư mục con, «Quét lại» | `test_spot_is_real_picker_and_nothing_scanned_until_opened`, test số 2 |
 | 4 | Không dùng `ImageLibrary._folders`; không đường dẫn tuyệt đối (LC-T048, yêu cầu 3) | Chỉ `roots()` (tên cuối) + đường dẫn tương đối | `test_no_absolute_path_on_the_page` (quét mọi chữ trên trang; kiểm mã nguồn không có `._folders`) |
-| 5 | Báo gốc đi qua lối tắt (LC-T048, mục Ghi nhận) | `_through_link`/`root_notes` (:546–572): tầng nào của đường dẫn khai báo là symlink/junction thì cảnh báo, không hiện đường dẫn | `test_root_through_link_is_reported_without_path` (junction thật trên Windows) |
-| 6 | `st.image` chỉ nhận byte từ `PreviewCache.get`/`make_preview` (LC-T058-2, Lá Chắn T-049 đk 3) | `preview_bytes` (:731) là chỗ duy nhất lấy byte cho `st.image` | `test_st_image_only_gets_preview_cache_bytes` (theo dõi mọi lần gọi `st.image`: chỉ `bytes` của `PreviewCache.get`, JPEG ≤ 320 px, không phải byte gốc) |
+| 5 | Báo gốc đi qua lối tắt (LC-T048, mục Ghi nhận) | `_through_link`/`root_notes` (:570–596): tầng nào của đường dẫn khai báo là symlink/junction thì cảnh báo, không hiện đường dẫn | `test_root_through_link_is_reported_without_path` (junction thật trên Windows) |
+| 6 | `st.image` chỉ nhận byte từ `PreviewCache.get`/`make_preview` (LC-T058-2, Lá Chắn T-049 đk 3) | `preview_bytes` (:782) là chỗ duy nhất lấy byte cho `st.image` | `test_st_image_only_gets_preview_cache_bytes` (theo dõi mọi lần gọi `st.image`: chỉ `bytes` của `PreviewCache.get`, JPEG ≤ 320 px, không phải byte gốc) |
 | 7 | Bắt `ImageFolderError`, `ImageProcessError` → câu tiếng Việt; lỗi khác → câu cố định, không dấu vết lỗi (Lá Chắn T-049) | `preview_bytes`, `web_info`, `ai_write_alt`, `send_draft` | `test_preview_errors_are_vietnamese_without_trace` (file chữ đổi đuôi `.jpg`; lỗi lạ chứa `C:\Users\bi-mat…` không lộ) |
-| 8 | Hiện `WebImage.notice`; «Ảnh không có vị trí GPS» khi `gps is None` (Lá Chắn T-049, T-067) | `web_info` (:742) nén thử một lần, giữ kết quả trong phiên | `test_gps_text_notice_and_image_settings`, `test_choose_image_write_alt_approve_and_save` («📍 Ảnh có vị trí GPS») |
+| 8 | Hiện `WebImage.notice`; «Ảnh không có vị trí GPS» khi `gps is None` (Lá Chắn T-049, T-067) | `web_info` (:793) nén thử một lần, giữ kết quả trong phiên | `test_gps_text_notice_and_image_settings`, `test_choose_image_write_alt_approve_and_save` («📍 Ảnh có vị trí GPS») |
 | 9 | Không cho đặt thư mục cache (Lá Chắn T-049) | `preview_cache()` luôn dùng `PREVIEW_CACHE_DIR` của app; không có ô nhập nào | Không có ô nhập (đọc mã); test trỏ thư mục tạm bằng `monkeypatch` |
 | 10 | `suggest_alt` chỉ khi bấm, chỉ ảnh đã chọn; không hàng loạt (Lá Chắn T-050 a) | Nút «✨ AI viết alt» trong khung ảnh đã chọn; lưới ảnh không gọi AI | `test_alt_only_on_click_for_chosen_image_with_ai_copy` (duyệt thư mục, chọn ảnh: 0 lần gọi AI; bấm: đúng 1) |
 | 11 | Alt, chú thích trong ô nhập; không `unsafe_allow_html` (Lá Chắn T-050 b) | `st.text_input`; sửa chữ → bỏ «Đã duyệt» | `test_alt_needs_approval_and_phone_numbers_warn`, test số 1 (phần tử Markdown có `allow_html` không chứa chữ từ máy) |
-| 12 | Lỗi AI hiện đúng câu `AIError`, không `st.exception` (Lá Chắn T-050 c, T-062) | `ai_write_alt` (:843) trả `str(exc)`, hiện bằng `st.error` | `test_alt_ai_errors_shown_as_message` (thiếu khóa; hãng AI báo lỗi) |
+| 12 | Lỗi AI hiện đúng câu `AIError`, không `st.exception` (Lá Chắn T-050 c, T-062) | `ai_write_alt` (:904) trả `str(exc)`, hiện bằng `st.error` | `test_alt_ai_errors_shown_as_message` (thiếu khóa; hãng AI báo lỗi) |
 | 13 | Nhắc khi alt có dãy số giống số điện thoại (Lá Chắn T-050 d) | `PHONE_LIKE` (9 chữ số trở lên, có thể ngăn bằng dấu cách, chấm, gạch, ngoặc) | `test_alt_needs_approval_and_phone_numbers_warn` |
 | 14 | `suggest_alt(…, ai_generated=<theo thẻ>, rules=load_alt_rules())`, router `prepare=("alt",)`; ảnh AI ra «Minh họa»; `make_web_image` nhận `load_image_settings()` (Lá Chắn T-062) | `ai_write_alt`, `web_info`, `send_draft` | `test_alt_only_on_click_for_chosen_image_with_ai_copy`, `test_ai_root_folder_makes_every_image_ai`, `test_gps_text_notice_and_image_settings` |
 | 15 | Chỉ gửi AI byte của `make_ai_image` (Soi Lỗi T-066) | `ImageInput(make_ai_image(read_image_bytes(ref)).data, "image/jpeg")` | `test_alt_only_on_click_for_chosen_image_with_ai_copy` (byte AI nhận = byte `make_ai_image`) |
 | 16 | Thẻ bằng `resolve`/`resolve_many`, không `get`/`get_many` (Lá Chắn T-052 a) | `choose_image` dùng `resolve`, lưới dùng `resolve_many` | `test_tags_read_per_page_at_most_200` (kiểm mã nguồn) |
-| 17 | Hiện rõ Ảnh thật/Ảnh AI trước khi viết alt; một bấm đổi sang ảnh AI (`set(source="ai")`); `ai_generated` và tên file theo thẻ sau bước này (Lá Chắn T-052 b) | Huy hiệu + nút «🤖 Đây là ảnh AI» (`mark_ai` :795) | `test_mark_ai_saves_manual_tag_and_rewrites_alt`, `test_marked_ai_image_sent_as_ai[luu-the-duoc]` (lên web: thẻ `source="ai"`, `minh-hoa-ai-…`, `[AI] …`), `test_send_ai_image_named_and_titled_as_ai` |
+| 17 | Hiện rõ Ảnh thật/Ảnh AI trước khi viết alt; một bấm đổi sang ảnh AI (`set(source="ai")`); `ai_generated` và tên file theo thẻ sau bước này (Lá Chắn T-052 b) | Huy hiệu + nút «🤖 Đây là ảnh AI» (`mark_ai` :846) | `test_mark_ai_saves_manual_tag_and_rewrites_alt`, `test_marked_ai_image_sent_as_ai[luu-the-duoc]` (lên web: thẻ `source="ai"`, `minh-hoa-ai-…`, `[AI] …`), `test_send_ai_image_named_and_titled_as_ai` |
 | 18 | Thư mục gốc tên có dấu hiệu AI → mọi ảnh là ảnh AI (Lá Chắn T-052 c) | `ai_root_indexes` → `ai_roots` của mọi lần kiểm | `test_ai_root_folder_makes_every_image_ai`, `test_open_draft_in_ai_root_is_ai` |
-| 19 | `recovered_from` chỉ hiện `.name` (Lá Chắn T-052 d) | `note_tag_store` (:624) | `test_broken_tag_file_reported_by_name_only` |
+| 19 | `recovered_from` chỉ hiện `.name` (Lá Chắn T-052 d) | `note_tag_store` (:648) | `test_broken_tag_file_reported_by_name_only` |
 | 20 | `FolderTags.unmatched` chỉ dạng số (Lá Chắn T-052 e) | «N phần tên thư mục không khớp…»; dòng thẻ chỉ có giá trị của danh sách cố định | `test_unmatched_folder_words_only_counted` |
 | 21 | Fixture trỏ `DEFAULT_IMAGE_TAGS_FILE` sang thư mục tạm (Lá Chắn T-052 f) | `tests/conftest.py::_never_touch_real_image_tags` (tự động) | Mọi test; cache ảnh xem trước trỏ tạm trong `tests/test_app_images.py` (một test T-049 kiểm giá trị mặc định thật của nó) |
-| 22 | `is_ai_name` với `RootInfo.label` **và** tên gốc sau `resolve()` (Lá Chắn T-070 g) | `root_notes` (:555) | `test_ai_root_folder_makes_every_image_ai` (tên), `test_root_link_to_ai_folder_counts_as_ai` (gốc «Anh chung» là junction tới «Ảnh AI tạo») |
-| 23 | Hiện lý do ảnh bị coi là ảnh AI (Lá Chắn T-070 h) | `ai_reason` (:774) | `test_ai_root_folder_makes_every_image_ai`, `test_mark_ai_saves_manual_tag_and_rewrites_alt` |
-| 24 | `DraftImage` chỉ nhận thẻ `ImageTags` đã kiểm của chính ảnh; ảnh AI lên với `minh-hoa-ai-…`, tiêu đề `[AI] …` (Lá Chắn T-054 4a, T-071 3a) | `send_draft` (:1855) | `test_send_draft_with_real_image` (`type(tags) is ImageTags`, bằng thẻ của `pick`), `test_send_ai_image_named_and_titled_as_ai` |
-| 25 | Chỉ gọi `create_draft_with_images` khi bấm «Gửi nháp»; nhắc GPS công khai **ngay trước** nút (Lá Chắn T-046 số 8, T-054 4b, yêu cầu 2) | `draft_panel` (:1999) | `test_send_draft_with_real_image` (trước khi bấm: 0 request; phần tử ngay trước nút là cảnh báo GPS) |
-| 26 | Hiện đủ `str(exc)`, `exc.uploaded`, `exc.maybe_uploaded` bằng chữ thường/`escape_markdown`; `maybe_draft` nhắc kiểm Bài viết → Nháp, không tự gửi lại (Lá Chắn T-054 4c, T-071 3b) | `send_result` (:1955); `maybe_draft` khóa nút tới khi tick «Tôi đã kiểm tra…» | `test_send_errors_shown_in_full_and_maybe_draft_locks_resend[create]`, `[upload]` |
+| 22 | `is_ai_name` với `RootInfo.label` **và** tên gốc sau `resolve()` (Lá Chắn T-070 g) | `root_notes` (:579) | `test_ai_root_folder_makes_every_image_ai` (tên), `test_root_link_to_ai_folder_counts_as_ai` (gốc «Anh chung» là junction tới «Ảnh AI tạo») |
+| 23 | Hiện lý do ảnh bị coi là ảnh AI (Lá Chắn T-070 h) | `ai_reason` (:825) | `test_ai_root_folder_makes_every_image_ai`, `test_mark_ai_saves_manual_tag_and_rewrites_alt` |
+| 24 | `DraftImage` chỉ nhận thẻ `ImageTags` đã kiểm của chính ảnh; ảnh AI lên với `minh-hoa-ai-…`, tiêu đề `[AI] …` (Lá Chắn T-054 4a, T-071 3a) | `send_draft` (:1933) | `test_send_draft_with_real_image` (`type(tags) is ImageTags`, bằng thẻ của `pick`), `test_send_ai_image_named_and_titled_as_ai` |
+| 25 | Chỉ gọi `create_draft_with_images` khi bấm «Gửi nháp»; nhắc GPS công khai **ngay trước** nút (Lá Chắn T-046 số 8, T-054 4b, yêu cầu 2) | `draft_panel` (:2101) | `test_send_draft_with_real_image` (trước khi bấm: 0 request; phần tử ngay trước nút là cảnh báo GPS) |
+| 26 | Hiện đủ `str(exc)`, `exc.uploaded`, `exc.maybe_uploaded` bằng chữ thường/`escape_markdown`; `maybe_draft` nhắc kiểm Bài viết → Nháp, không tự gửi lại (Lá Chắn T-054 4c, T-071 3b) | `send_result` (:2057); `maybe_draft` khóa nút tới khi tick «Tôi đã kiểm tra…» | `test_send_errors_shown_in_full_and_maybe_draft_locks_resend[create]`, `[upload]` |
 | 27 | `post.status` khác `draft` thì báo (Soi Lỗi T-054 G9) | `send_result` | `test_post_not_draft_is_flagged` |
 | 28 | Một ảnh ở hai chỗ dùng lại cùng đối tượng (Soi Lỗi T-054 G10) | Khóa (ref, alt, chú thích) | `test_same_image_in_two_spots_uploaded_once` (1 lần tải, 2 `<figure>`) |
-| 29 | Liệt kê đoạn dạng shortcode trong tiêu đề, nội dung, alt, chú thích; nhắc «WordPress sẽ chạy… nên xóa»; hàm công khai trong `seo_app/` (LC-T061-4) | `seo_app/wordpress/shortcodes.py::find_shortcodes`; `shortcode_findings` (:1826) xét đúng chữ sẽ gửi | `tests/test_wordpress_shortcodes.py` (26), `test_shortcode_like_segments_listed_before_send`, `test_no_shortcode_warning_for_plain_article` |
-| 30 | **2a** (LC-T055-1, giữ bắt buộc test theo Lá Chắn T-076): nháp ghi `…/congai/cong.png`, trên ổ `CongAI` → ảnh AI, alt «Minh họa»; cả ổ giả `typed_resolve` và danh sách thư mục cha bị cắt | Đi từ gốc xuống qua `SubFolder.rel_path` (`walk_to_folder` :1172); xem mục Rủi ro số 2 | `test_2a_lowercase_folder_in_draft_stays_ai` × 8 (ổ thường/`typed_resolve` × xem hết/bị cắt × «Mở thư mục chứa ảnh»/theo đúng chữ trong nháp) |
-| 31 | Hiện, duyệt, chèn bằng `checked.*`; ảnh không dùng được hiện `checked.message`; `dropped_images > 0` thì báo (LC-T055 b) | `restore_images` (:388) | `test_open_draft_uses_checked_image_not_draft_fields`, `test_open_draft_unusable_image_shows_checked_message` × 2, `test_broken_image_in_draft_dropped_and_reported` |
-| 32 | Xem trước và tải lên cùng `checked.ref`; gọi lại `check_chosen_image` ngay trước khi tải (LC-T055-2) | `recheck`/`changed` (:691–713) trong `send_draft` | `test_image_checked_again_right_before_upload` (thẻ đổi sang AI ở «tab khác» → dừng, 0 request), `test_deleted_image_stops_send` |
+| 29 | Liệt kê đoạn dạng shortcode trong tiêu đề, nội dung, alt, chú thích; nhắc «WordPress sẽ chạy… nên xóa»; hàm công khai trong `seo_app/` (LC-T061-4) | `seo_app/wordpress/shortcodes.py::find_shortcodes`; `shortcode_findings` (:1890) xét đúng chữ sẽ gửi | `tests/test_wordpress_shortcodes.py` (26), `test_shortcode_like_segments_listed_before_send`, `test_no_shortcode_warning_for_plain_article` |
+| 30 | **2a** (LC-T055-1, giữ bắt buộc test theo Lá Chắn T-076): nháp ghi `…/congai/cong.png`, trên ổ `CongAI` → ảnh AI, alt «Minh họa»; cả ổ giả `typed_resolve` và danh sách thư mục cha bị cắt | Đi từ gốc xuống qua `SubFolder.rel_path` (`walk_to_folder` :1236); xem mục Rủi ro số 2 | `test_2a_lowercase_folder_in_draft_stays_ai` × 8 (ổ thường/`typed_resolve` × xem hết/bị cắt × «Mở thư mục chứa ảnh»/theo đúng chữ trong nháp) |
+| 31 | Hiện, duyệt, chèn bằng `checked.*`; ảnh không dùng được hiện `checked.message`; `dropped_images > 0` thì báo (LC-T055 b) | `restore_images` (:412) | `test_open_draft_uses_checked_image_not_draft_fields`, `test_open_draft_unusable_image_shows_checked_message` × 2, `test_broken_image_in_draft_dropped_and_reported` |
+| 32 | Xem trước và tải lên cùng `checked.ref`; gọi lại `check_chosen_image` ngay trước khi tải (LC-T055-2) | `recheck`/`changed` (:737–764) trong `send_draft` | `test_image_checked_again_right_before_upload` (thẻ đổi sang AI ở «tab khác» → dừng, 0 request), `test_deleted_image_stops_send` |
 | 33 | Truyền `ai_roots` vào `check_draft_images` (LC-T055 d) | `restore_images` | `test_open_draft_in_ai_root_is_ai` |
 | 34 | `resolve_many` theo trang ≤ 200 ảnh (SL-T074-1, Lá Chắn T-074 i) | Một lần cho 12 ảnh của trang | `test_tags_read_per_page_at_most_200` (15 ảnh: 12 rồi 3) |
 | 35 | Lưu thẻ hỏng → trong phiên vẫn là ảnh AI, hiện lỗi, không viết alt/gửi như ảnh thật (Lá Chắn T-074 j) | `_ai_marked` + `slot_tags` | `test_mark_ai_store_failure_still_ai_in_session`, `test_marked_ai_image_sent_as_ai[luu-the-hong]` |
@@ -139,6 +139,22 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <7 file đã đổi>
 "results": {}
 ```
 
+Lượt 2, code cuối (`2d5316e`):
+
+```
+$ uv run pytest <44 file: 41 file của lượt 1 + test_soi_loi_t056, test_soi_loi_t019_luot2, test_soi_loi_t021_t017>
+4769 passed, 31 skipped, 21 xfailed in 953.73s (0:15:53)
+# 21 xfailed nằm ở các file Soi Lỗi/Lá Chắn cũ (round4, t003_t009, images_folders_soi_loi, t054,
+# t061, t070, t071, la_chan_t071), như lượt 1; tests/test_soi_loi_t056.py không còn xfail: 22 ca qua.
+# Trong đó tests/test_app_images.py 58, tests/test_soi_loi_t056.py 22, tests/test_wordpress_shortcodes.py 26.
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan app/views/write.py tests/test_app_images.py tests/test_soi_loi_t056.py docs/team/reports/T-056-hoa-si.md
+"results": {}
+```
+
 Máy Windows 11, có 2 agent khác chạy song song.
 
 ### Mở app thật (cổng 8502)
@@ -161,7 +177,8 @@ Lỗi thấy khi mở app thật và đã sửa (có test): ô «Thư mục con�
 - [x] Yêu cầu 1–3 của phiếu và mọi điều kiện trong «Ghi chú của Chỉ Huy» có test (bảng trên).
 - [x] Test liên quan qua, `uv run ruff check .` sạch (mục Bằng chứng). Toàn bộ `uv run pytest` do Chỉ Huy chạy khi gộp.
 - [x] Báo cáo tại `docs/team/reports/T-056-hoa-si.md`.
-- [ ] Soi Lỗi, Lá Chắn (chưa tới lượt).
+- [x] Soi Lỗi: ĐẠT CÓ ĐIỀU KIỆN; lượt 2 đã sửa SL-T056-1 (điều kiện gộp) và SL-T056-2 → -7 (mục «Lượt 2»).
+- [ ] Lá Chắn (chưa tới lượt).
 
 ## Rủi ro và điểm cần chú ý
 
