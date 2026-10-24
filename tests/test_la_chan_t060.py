@@ -58,11 +58,6 @@ def _draft(post_id: int, featured: int = 0) -> dict:
 # ================================================================ LC-T060-1: khóa thân JSON
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T060-1: khóa trong thân JSON trùng tham số của đường (id, name) vẫn đi ra, "
-    "WordPress lấy giá trị thân JSON thay cho giá trị trên đường",
-)
 @pytest.mark.parametrize(
     ("path", "payload", "params"),
     [
@@ -96,11 +91,6 @@ def test_lc_t060_1_khoa_than_json_doi_doi_tuong_bi_chan_truoc_khi_gui(
     assert fake_wp.requests == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T060-1: thân JSON có status khác draft vẫn đi ra (W1 chỉ do create_draft viết "
-    "cứng, _request không chặn)",
-)
 @pytest.mark.parametrize(
     ("path", "payload"),
     [
@@ -125,11 +115,6 @@ def test_lc_t060_1_status_khac_nhap_bi_chan_truoc_khi_gui(fake_wp, wp_client, pa
 # ================================================================ LC-T060-2: giá trị _fields
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T060-2: _fields hỏi content/description (WordPress dựng bằng the_content, chạy "
-    "shortcode) vẫn đi ra; giá trị chỉ được kiểm kiểu",
-)
 @pytest.mark.parametrize(
     ("method", "path", "params", "payload"),
     [
