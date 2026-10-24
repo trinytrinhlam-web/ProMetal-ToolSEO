@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-048 → T-055 đã gộp |
-| Trạng thái | Họa Sĩ lượt 2 xong |
+| Trạng thái | Lá Chắn đang kiểm |
 
 ## Mục tiêu
 
@@ -85,3 +85,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Họa Sĩ lượt 2**: SL-T056-1 bắt buộc, SL-T056-2 → -7 nên làm cùng; nhắn lại phiên Họa Sĩ cũ.
 - 2026-10-24 09:34 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`692fb07`, code `2d5316e`): sửa SL-T056-1 → -7 trong `app/views/write.py` (dấu "đang gửi" trước khi gửi, khóa nút, bỏ tick xác nhận khi lần chạy bị dừng; file bị thay phải duyệt lại; shortcode vắt mục/chú thích; số 1900/1800, gạch dài, gạch chéo; giữ ảnh đại diện; một ảnh 2 chỗ đồng bộ ảnh AI; ảnh từ nháp không quét lại trong luồng trang); gỡ 10 `xfail` Soi Lỗi, thêm 9 test; 44 file test liên quan 4.769 qua. Rủi ro 2 (`walk_to_folder` khi danh sách thư mục cha bị cắt) để Lá Chắn quyết.
 - 2026-10-24 09:44 (Chỉ Huy B): chủ dự án duyệt **Soi Lỗi kiểm lại nhanh** lượt 2 (nhắn lại phiên Soi Lỗi T-056), rồi Lá Chắn.
+- 2026-10-24 10:27 (Chỉ Huy B): **Soi Lỗi kiểm lại ĐẠT CÓ ĐIỀU KIỆN** (`df995c1`): SL-T056-1 → -7 đã sửa thật; 4 Thấp mới SL-T056-8 → -11 (đổi nháp mất khóa đã gửi; gián đoạn giữa lúc gửi mất kết quả; file bị thay đúng lúc gửi; F5 giữa lúc gửi rồi gửi lại không cần xác nhận — đề nghị Lá Chắn xem mức). Giao **Lá Chắn** (đầy đủ; chủ dự án đã duyệt "rồi chuyển Lá Chắn"), Lá Chắn quyết cả Rủi ro 2 (`walk_to_folder`).

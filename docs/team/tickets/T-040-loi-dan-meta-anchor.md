@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036 và T-039 đã gộp |
-| Trạng thái | Ngòi Bút lượt 2 xong |
+| Trạng thái | Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp |
 
 ## Mục tiêu
 
@@ -62,3 +62,4 @@ A1 (không bỏ `DATA_RULES`, không đưa dữ liệu ra ngoài khung), D3.
 - 2026-10-24 08:36 (Chỉ Huy B): chủ dự án duyệt **Ngòi Bút lượt 2** sửa 3 Thấp câu chữ; nhắn lại phiên Ngòi Bút cũ.
 - 2026-10-24 09:11 (Chỉ Huy B): **Ngòi Bút lượt 2 xong** (`26ff861`): SL-T040-2, -3 đóng (gỡ `xfail`), G1–G3 làm; lời dặn title nay 40–48 hoặc 50–60 ký tự. **SL-T040-1 phần code còn** (bộ kiểm `check_title`/`accept_ai_title` coi title 49 ký tự là «hơi ngắn» và không gắn được đuôi; logic kiểm ngoài phạm vi Ngòi Bút) → chuyển **T-041** (Thợ Máy, phần logic). 31 file test liên quan 3.013 qua.
 - 2026-10-24 09:44 (Chỉ Huy B): chủ dự án duyệt **Lá Chắn rút gọn** (kiểm luôn lượt 2; lượt 2 chỉ đổi chữ lời dặn, test Soi Lỗi SL-T040-2, -3 đã qua).
+- 2026-10-24 10:27 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`71ccf3b`): chỉ đổi chữ lời dặn, logic không đổi; khung dữ liệu và điều kiện T-039 số 1 giữ. 1 Thấp **LC-T040-1** (có từ T-036: `mentions_price` xóa từ khóa rồi mới dò nên chữ về giá dính mép từ khóa lọt) → **T-041** (Thợ Máy, trước khi bước SEO hiện gợi ý meta), cùng SL-T040-1 phần code. Gộp `main` trên máy (`096793d`), đang chạy toàn bộ test.

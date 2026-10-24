@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 09:44 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 10:27 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,8 +34,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (kiểm lại) | `team/T-056` | Họa Sĩ xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`7648550`). 24/10 09:34 Họa Sĩ **lượt 2 xong** (`692fb07`: sửa SL-T056-1 → -7, gỡ 10 `xfail`; 4.769 test liên quan qua). ⏳ **09:44 Soi Lỗi kiểm lại nhanh**, rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Lá Chắn · T-040 kiểm nhanh lời dặn meta | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **09:44 Lá Chắn rút gọn đang kiểm** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Lá Chắn · T-056 kiểm màn hình chọn ảnh | `team/T-056` | Họa Sĩ 2 lượt (`692fb07`). Soi Lỗi kiểm lại **ĐẠT CÓ ĐIỀU KIỆN** (`df995c1`: 7 lỗi đã sửa; 4 Thấp mới). ⏳ **10:27 Lá Chắn đang kiểm (đầy đủ)**; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Chỉ Huy (đang gộp) | `team/T-040` | Ngòi Bút 2 lượt; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN. 24/10 10:27 Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`71ccf3b`, Opus tạm): LC-T040-1 Thấp → T-041. ⏳ **Gộp `main` trên máy (`096793d`), đang chạy toàn bộ test** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) · [Lá Chắn](reports/T-040-la-chan.md) |
 | [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Thợ Máy · T-085 dọn client WordPress lượt 2 | `team/T-085` | ⏳ **09:44 Thợ Máy đang làm** | |
 
 ## Chờ
