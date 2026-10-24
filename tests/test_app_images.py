@@ -18,7 +18,7 @@ import re
 import sqlite3
 import threading
 import time
-from contextlib import closing
+from contextlib import closing, contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -29,6 +29,7 @@ from fake_ai import ALT, RESEARCH, FakeProvider
 from fake_wordpress import BASE_URL, make_session
 from PIL import ExifTags, Image
 from PIL.TiffImagePlugin import IFDRational
+from streamlit.runtime.scriptrunner_utils.exceptions import StopException
 from streamlit.testing.v1 import AppTest
 
 import seo_app.ai as ai_module
@@ -1306,3 +1307,185 @@ def test_deleted_image_stops_send(project_root, root, fake_ai, site):
     assert site.fake.requests == []
     assert any("Chưa gửi gì lên website" in e.value for e in at.error)
     assert any("Không tìm thấy ảnh" in m.value for m in at.markdown)
+
+
+# ================================== lượt 2: gửi bị ngắt, bấm đúp, file bị thay, ổ chậm (Soi Lỗi)
+
+SEND_LABEL = "📤 Gửi nháp"
+INTERRUPTED = "Lần gửi trước bị ngắt giữa chừng"
+
+
+def counts(site: Site) -> tuple[int, int]:
+    return len(site.posts()), len(site.uploads())
+
+
+def test_double_click_does_not_send_twice(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm đúp «Gửi nháp»: lần bấm thứ hai tới khi lần chạy trước đã gửi xong, Streamlit vẫn báo
+    nút đã bấm dù lúc này nút được vẽ là khóa. Không gửi lần hai (SL-T056-1)."""
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    assert counts(site) == (1, 1)
+    original = st.button
+    pending = [True]  # đúng một lần bấm thứ hai
+
+    def second_click(label, *args, **kwargs):
+        clicked = original(label, *args, **kwargs)
+        if label == SEND_LABEL and pending:
+            pending.pop()
+            return True
+        return clicked
+
+    monkeypatch.setattr(st, "button", second_click)
+    run_ok(at.run())
+    assert counts(site) == (1, 1)
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+    assert button(at, SEND_LABEL).disabled
+
+
+def test_stop_when_leaving_spinner_keeps_result(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm nút khác lúc đang gửi: Streamlit dừng lần chạy ở lệnh ``st.*`` kế tiếp, tức lúc thoát
+    vòng quay «Đang gửi…». Kết quả đã ghi trước đó: lần chạy sau hiện kết quả, khóa nút, không
+    gửi lại (SL-T056-1)."""
+    original = st.spinner
+
+    @contextmanager
+    def spinner(text="", *args, **kwargs):
+        with original(text, *args, **kwargs):
+            yield
+        if text.startswith("Đang gửi bài nháp"):
+            raise StopException()
+
+    monkeypatch.setattr(st, "spinner", spinner)
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    assert counts(site) == (1, 1)
+    run_ok(at.run())
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+    assert button(at, SEND_LABEL).disabled
+    assert "_wp_sending" not in at.session_state
+    run_ok(at.run())
+    assert counts(site) == (1, 1)
+
+
+def test_stop_during_image_upload_locks_resend(project_root, root, fake_ai, site):
+    """Lần chạy dừng ngay trong lúc tải ảnh (lỗi giữa chừng, lệnh tải chưa trả lời): không biết ảnh,
+    bài đã lên chưa. Lần chạy sau nhắc kiểm trang quản trị, khóa nút tới khi người dùng xác nhận;
+    không tự gửi lại (SL-T056-1)."""
+    original = site.create_media
+
+    def stopped(request):
+        original(request)
+        raise StopException()
+
+    site.fake.on("POST", MEDIA, stopped)
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    assert counts(site) == (0, 1)
+    run_ok(at.run())
+    errors = [e.value for e in at.error]
+    assert any(INTERRUPTED in e for e in errors)
+    assert any("bài nháp có thể đã có" in e for e in errors)
+    assert button(at, SEND_LABEL).disabled
+    requests = len(site.fake.requests)
+    run_ok(at.run())
+    assert len(site.fake.requests) == requests
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    assert not button(at, SEND_LABEL).disabled
+
+
+def test_leftover_sending_mark_locks_send(project_root, root, fake_ai, site):
+    """Dấu «đang gửi» còn mà chưa có kết quả (lần chạy trước dừng giữa lúc gửi): coi như gửi dở,
+    nhắc và khóa nút (SL-T056-1)."""
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    at.session_state["_wp_sending"] = True
+    run_ok(at.run())
+    assert any(INTERRUPTED in e.value for e in at.error)
+    assert button(at, SEND_LABEL).disabled
+    assert site.fake.requests == []
+
+
+def test_replaced_file_needs_new_look_and_approval(project_root, root, fake_ai, site):
+    """File bị thay bằng ảnh khác cùng tên sau khi duyệt alt (SL-T056-2): dừng, chưa gửi gì; khung
+    ảnh chuyển sang file mới (xem trước, GPS của file mới), bỏ «Đã duyệt»; duyệt lại rồi mới gửi,
+    và gửi đúng file mới."""
+    at, pid = open_article(project_root)
+    browse(at, pid)
+    open_sub(at, PROJECT)
+    open_sub(at, "sau")
+    choose(at, "IMG_0002.jpg")
+    write_alt(at, pid)
+    approve(at, pid)
+    to_publish(at)
+    before = at.session_state[f"pick-{pid}"].entry
+    write(root / PROJECT / "sau" / "IMG_0002.jpg", jpeg((640, 480), (10, 10, 10), gps=True))
+    send(at)
+    assert site.fake.requests == []
+    assert at.session_state[f"altok-{pid}"] is False
+    assert at.session_state[f"pick-{pid}"].entry.size != before.size
+    assert button(at, SEND_LABEL).disabled
+    at.session_state["step"] = 2
+    run_ok(at.run())
+    assert any(c.value.startswith("📍 Ảnh có vị trí GPS") for c in at.caption)
+    approve(at, pid)
+    to_publish(at)
+    send(at)
+    (upload,) = site.uploads()
+    with Image.open(io.BytesIO(upload.body)) as web:
+        assert web.size == (640, 480) and web.getexif().get_ifd(ExifTags.IFD.GPSInfo)
+
+
+def test_recheck_on_slow_drive_does_not_hold_page(project_root, root, fake_ai, monkeypatch):
+    """Kiểm lại ảnh trước khi AI viết alt chạy trong luồng quét (có thể xem thư mục từng tầng):
+    ổ chậm quá 15 giây thì trang báo, không gọi AI (SL-T056-7)."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    release = threading.Event()
+    original = drafts.check_chosen_image
+
+    def slow(*args, **kwargs):
+        release.wait(90)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(drafts, "check_chosen_image", slow)
+    try:
+        started = time.monotonic()
+        by_key(at, f"altai-{pid}").click().run(timeout=90)
+        assert not at.exception, at.exception
+        assert time.monotonic() - started < 60
+        assert any("Ổ đĩa đang chậm" in e.value for e in at.error)
+        assert fake_ai.image_calls == []
+    finally:
+        release.set()
+
+
+def test_dates_and_sizes_are_not_phone_numbers(project_root, root, fake_ai):
+    """Mẫu số điện thoại rộng hơn (SL-T056-4) nhưng ngày tháng, năm, kích thước không bị nhắc."""
+    at, pid = open_article(project_root)
+    choose_real(at, pid)
+    for alt in ("Cổng sửa ngày 12/10/2026", "Mùa mưa 2024–2025 cổng bị gỉ", "Cổng 1600 x 1200 cm"):
+        run_ok(at.text_input(key=f"alt-{pid}").input(alt).run())
+        assert not any("số điện thoại" in w.value for w in at.warning), alt
+
+
+def test_shortcode_from_body_into_image_caption_listed(project_root, root, fake_ai, site):
+    """«[» mở ở thân mục, «]» ở chú thích ảnh của mục đó: trên website là một chuỗi nội dung, nên
+    vẫn liệt kê (SL-T056-3)."""
+    snap = article(
+        parts=[
+            DraftPart(heading="Mở bài", versions=["Mở bài."]),
+            DraftPart(heading="Bản lề cổng", versions=["Mã nhúng [code_snippet id=3"], image="Ảnh"),
+        ]
+    )
+    at, pid = open_article(project_root, snap)
+    choose_real(at, pid)
+    write_alt(at, pid)
+    run_ok(at.text_input(key=f"cap-{pid}").input("Bản lề gỉ, xem bảng giá]").run())
+    approve(at, pid)
+    to_publish(at)
+    warning = next(w.value for w in at.warning if "đoạn dạng shortcode" in w.value)
+    assert escape_markdown("Nội dung, vắt qua nhiều mục") in warning
+    assert escape_markdown("[code_snippet id=3") in warning
