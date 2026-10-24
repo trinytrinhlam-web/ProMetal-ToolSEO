@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 09:34 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 09:44 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -14,7 +14,7 @@ _Cập nhật: 2026-10-24 09:34 (Chỉ Huy B)._
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
 | 3 · Ảnh | **khoảng 95%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn. Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
-| 4 · SEO trên trang | **khoảng 60%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. liên kết nội bộ (phần xử lý). Còn: lời dặn AI cho meta và anchor, **màn hình bước SEO**, thử thật trên website |
+| 4 · SEO trên trang | **khoảng 62%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. liên kết nội bộ (phần xử lý). Còn: lời dặn AI cho meta và anchor, **màn hình bước SEO**, thử thật trên website |
 | 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
@@ -34,8 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi kiểm lại (chưa giao) | `team/T-056` | Họa Sĩ xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`7648550`). 24/10 09:34 Họa Sĩ **lượt 2 xong** (`692fb07`: sửa SL-T056-1 → -7, gỡ 10 `xfail`; 4.769 test liên quan qua). ⏳ **Chờ chủ dự án cho giao Soi Lỗi kiểm lại nhanh**, rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi kiểm lại / Lá Chắn (chưa giao) | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **Chờ chủ dự án cho giao vòng kiểm tiếp** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (kiểm lại) | `team/T-056` | Họa Sĩ xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`7648550`). 24/10 09:34 Họa Sĩ **lượt 2 xong** (`692fb07`: sửa SL-T056-1 → -7, gỡ 10 `xfail`; 4.769 test liên quan qua). ⏳ **09:44 Soi Lỗi kiểm lại nhanh**, rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Lá Chắn · T-040 kiểm nhanh lời dặn meta | `team/T-040` | Ngòi Bút xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`6efc71e`). 24/10 09:11 Ngòi Bút **lượt 2 xong** (`26ff861`: SL-T040-2, -3 đóng; SL-T040-1 phần code → T-041). ⏳ **09:44 Lá Chắn rút gọn đang kiểm** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) |
+| [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Thợ Máy · T-085 dọn client WordPress lượt 2 | `team/T-085` | ⏳ **09:44 Thợ Máy đang làm** | |
 
 ## Chờ
 
@@ -152,4 +153,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-085
+## Số phiếu tiếp theo: T-086
