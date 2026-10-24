@@ -170,3 +170,47 @@ the = "nguồn: AI"
 tot = "Minh họa cửa cuốn nhà phố đang mở một nửa"
 xau = "Cửa cuốn nhà chị Lan sau khi Pro-Metal sửa xong"
 vi_sao = "Ảnh AI không được gắn tên khách hay «sau khi sửa»"
+
+# LƯU Ý (T-040, 2026-10-23): phần mềm CHƯA đọc mục [meta]. Sửa ở đây hôm nay chưa đổi gì; khi nào
+# nối xong, dòng này sẽ được bỏ. Lời dặn AI viết meta nằm trong code (seo_app/content/prompts.py,
+# hàm meta_prompt) và đã dặn đúng các điều ghi dưới đây.
+[meta]
+# Meta title là dòng tiêu đề hiện trên trang kết quả Google; meta description là đoạn mô tả ngắn
+# bên dưới. AI gợi ý 3 title và 2 description; bạn chọn, sửa rồi mới dùng.
+#
+# Độ dài (đếm cả dấu cách, chữ có dấu tính là một ký tự). Các ngưỡng này cố định trong code
+# (seo_app/onpage/meta.py), không đổi được ở file này:
+#   - Title: nên 50–60 ký tự; dưới 30 hoặc trên 65 thì báo «Cảnh báo» (Google cắt bớt khi dài).
+#   - Description: nên 120–155 ký tự; dưới 70 hoặc trên 160 thì báo «Cảnh báo».
+#   - Gợi ý của AI ngắn hay dài hơn mức «Cảnh báo» bị bỏ luôn, không hiện ra.
+
+# brand_suffix: đuôi thương hiệu gắn sau title, chỉ khi title cộng đuôi không quá 60 ký tự (chủ
+#   dự án chốt 2026-10-16, phương án 3A). AI được dặn không tự viết tên thương hiệu vào title.
+#   Để "" (rỗng) nếu không muốn gắn đuôi. Dài quá 25 ký tự, có thẻ HTML hay «%%» thì phần mềm bỏ
+#   qua và dùng lại " | Pro-Metal".
+brand_suffix = " | Pro-Metal"
+
+# avoid: cụm nên tránh trong meta (không phân biệt hoa thường), dùng thêm cho danh sách «banned»
+#   ở mục [voice]. Đây là lời khen không kiểm chứng được và lời hối thúc: chiếm chỗ trên Google mà
+#   không nói bài giúp được gì. Phần lớn cách nói về giá và chữ «miễn phí» đã bị phần mềm chặn
+#   riêng; «giá cả» thì còn lọt nên ghi ở đây.
+avoid = [
+  # Khen không kiểm chứng được
+  "uy tín",
+  "chuyên nghiệp",
+  "hàng đầu",
+  "số 1",
+  "tốt nhất",
+  "chất lượng cao",
+  "100%",
+  # Hứa điều hồ sơ doanh nghiệp không có (giờ phục vụ là 6h–21h)
+  "24/7",
+  # Hối thúc
+  "gọi ngay",
+  "liên hệ ngay",
+  "xem ngay",
+  "click ngay",
+  "đừng bỏ lỡ",
+  # Nói về giá
+  "giá cả",
+]
