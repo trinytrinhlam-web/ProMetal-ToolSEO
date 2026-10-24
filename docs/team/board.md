@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-23 18:44 (Chỉ Huy B)._
+_Cập nhật: 2026-10-24 07:45 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi (chưa giao) | `team/T-056` | 23/10 Họa Sĩ **xong** (`4303374`: chỗ cần ảnh thật, nút «Gửi nháp» thật; tạo ảnh AI vẫn hoãn). ⏳ **Chờ giao Soi Lỗi** (đầy đủ), rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi rút gọn (chưa giao) | `team/T-040` | 23/10 Ngòi Bút **xong** (`ce72b80`: lời dặn meta, anchor có ví dụ; mục `[meta]` chưa được code đọc → T-041). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Ngòi Bút](reports/T-040-ngoi-but.md) |
-| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Soi Lỗi (chưa giao) | `team/T-060` | 23/10 Thợ Máy **xong** (`af6edfd`: 8/8 việc, gỡ 8 `xfail`, sửa 4 test cũ theo LC-T061-3 có Chỉ Huy duyệt; 2.350 test liên quan qua). ⏳ **Chờ giao Soi Lỗi** (soát R5 4 test cũ) | [Thợ Máy](reports/T-060-tho-may.md) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh | `team/T-056` | 23/10 Họa Sĩ **xong** (`4303374`: chỗ cần ảnh thật, nút «Gửi nháp» thật; tạo ảnh AI vẫn hoãn). ⏳ **24/10 07:45 Soi Lỗi đang kiểm** (đầy đủ), rồi Lá Chắn; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) |
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Soi Lỗi · T-040 kiểm nhanh lời dặn meta | `team/T-040` | 23/10 Ngòi Bút **xong** (`ce72b80`: lời dặn meta, anchor có ví dụ; mục `[meta]` chưa được code đọc → T-041). ⏳ **24/10 07:45 Soi Lỗi đang kiểm** | [Ngòi Bút](reports/T-040-ngoi-but.md) |
+| [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | GĐ4: dọn lỗi Thấp client WordPress (LC-T042-1/4/5, LC-T061-2/3/5, LC-T071-1) | Soi Lỗi · T-060 kiểm client WordPress | `team/T-060` | 23/10 Thợ Máy **xong** (`af6edfd`: 8/8 việc, gỡ 8 `xfail`, sửa 4 test cũ theo LC-T061-3 có Chỉ Huy duyệt; 2.350 test liên quan qua). ⏳ **24/10 07:45 Soi Lỗi đang kiểm** (soát R5 4 test cũ) | [Thợ Máy](reports/T-060-tho-may.md) |
 
 ## Chờ
 
@@ -45,6 +45,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | Sửa câu báo đọc ảnh khi bị tráo thư mục (SL-T080-1, -2, -L-1). Thấp, sau T-056 | Thợ Máy | T-080 gộp; T-056 xong |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | Dọn lỗi chữ nhỏ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1). Thấp, sau T-056 | Thợ Máy | T-081 gộp; T-056 xong |
+| [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | Trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2, có từ trước). Thấp, sau T-056 | Họa Sĩ | T-056 gộp |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
@@ -151,4 +152,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-084
+## Số phiếu tiếp theo: T-085
