@@ -4,9 +4,9 @@
 |---|---|
 | Agent | Họa Sĩ (`hoa-si`) · model: Claude Opus 5.5 |
 | Phiếu | [T-056](../tickets/T-056-giao-dien-cho-can-anh.md) |
-| Ngày nộp | 2026-10-23 |
+| Ngày nộp | 2026-10-23 · lượt 2: 2026-10-24 |
 | Nhánh | `team/T-056` (từ `main` `cf8d824`) |
-| Kết quả | Hoàn thành (chờ Soi Lỗi, Lá Chắn; nút «Gửi nháp» chờ Chỉ Huy xác nhận Code Snippets ≥ 3.9.2 trước khi gộp) |
+| Kết quả | Hoàn thành. Lượt 2 đã sửa SL-T056-1 → -7 của Soi Lỗi (mục «Lượt 2»). Chờ Lá Chắn; nút «Gửi nháp» chờ Chỉ Huy xác nhận Code Snippets ≥ 3.9.2 trước khi gộp |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -15,6 +15,31 @@
 - Ảnh AI: khung prompt xem, sửa, sao chép được. Tạo ảnh ngay trong app vẫn **hoãn** như chủ dự án đã chốt: bạn tạo ảnh ở Gemini, lưu vào thư mục có chữ «AI», rồi chọn ở đây. Ảnh trong thư mục AI tự lên web với tên «minh-hoa-ai-…», alt «Minh họa…».
 - Bước Xuất bản, hình thức «Nháp»: nút **«Gửi nháp»** gửi thật bài nháp kèm ảnh lên website. Ngay trước nút, app nhắc ảnh (có GPS) xem được công khai ngay khi tải lên, và liệt kê các đoạn dạng `[...]` nên xóa. Lỗi giữa chừng thì app liệt kê ảnh đã lên thư viện và không tự gửi lại. «Hẹn giờ», «Đăng ngay» vẫn là bản demo (Giai đoạn 5).
 - Sửa thêm một lỗi có sẵn: sang trang khác ở menu rồi quay lại thì mất từ khóa, chất liệu thật, alt, và nháp bị ghi đè bằng ô trống. Nay quay lại vẫn còn nguyên.
+- **Lượt 2 (2026-10-24):** sửa 7 lỗi Soi Lỗi tìm ra. Quan trọng nhất: đang gửi nháp mà lỡ bấm đúp hay bấm nút khác thì trước đây app quên là đã gửi, bấm lại thành **hai bài nháp, ảnh (có GPS) tải hai lần**; nay app luôn nhớ (đã gửi thì hiện kết quả và khóa nút; gửi dở thì nhắc kiểm trang quản trị, khóa nút tới khi bạn xác nhận). Thêm: file ảnh bị thay bằng ảnh khác cùng tên sau khi duyệt thì dừng, bắt xem lại và duyệt lại; nhắc số tổng đài 1900/1800; giữ ảnh đại diện khi đổi trang; cùng ảnh ở hai chỗ thì đánh dấu ảnh AI một lần là cả hai chỗ; ổ Google Drive chậm không giữ trang khi kiểm lại ảnh.
+
+## Lượt 2 (2026-10-24): sửa lỗi Soi Lỗi
+
+Theo `docs/team/reports/T-056-soi-loi.md`. Mọi sửa trong `app/views/write.py`; gỡ `xfail` của 10 ca trong `tests/test_soi_loi_t056.py` (chỉ xóa dấu, thân test giữ nguyên: 10 ca XPASS, chạy `--runxfail` cả 22 ca qua trước khi gỡ).
+
+| Mã | Lỗi | Cách sửa | Test |
+|---|---|---|---|
+| **SL-T056-1** (Trung bình) | Đang gửi mà bấm đúp/bấm nút khác: Streamlit dừng lần chạy ở lệnh `st.*` kế tiếp (thoát vòng quay) bằng `BaseException`, kết quả chưa kịp ghi; bấm lại thành 2 bài nháp, ảnh tải 2 lần | (1) Đặt dấu `_wp_sending` ngay trước khi gọi `create_draft_with_images`; ghi kết quả **ngay sau khi gọi**, vẫn trong khối vòng quay, trước mọi lệnh `st.*`. (2) `except BaseException`: ghi «gửi dở» (`mark_send_interrupted`: câu báo, khóa như `maybe_draft`) rồi để Streamlit dừng. (3) `init_state`: thấy dấu còn mà chưa có kết quả thì coi là gửi dở. (4) Bấm đúp: Streamlit vẫn báo nút đã bấm dù lần vẽ mới là khóa, nên xét lại điều kiện ngay lúc bấm (`if clicked and allowed`). Đã gửi: hiện kết quả, khóa tới khi tick «Tạo thêm một bài nháp mới»; gửi dở: nhắc kiểm Bài viết → Nháp, Media, khóa tới khi tick «Tôi đã kiểm tra…»; không tự gửi lại | Soi Lỗi `test_interrupted_send_locks_resend`; mới: `test_double_click_does_not_send_twice`, `test_stop_when_leaving_spinner_keeps_result` (dừng đúng chỗ thật: lúc thoát vòng quay), `test_stop_during_image_upload_locks_resend` (dừng giữa lúc tải ảnh), `test_leftover_sending_mark_locks_send` |
+| SL-T056-2 | File ảnh bị thay (cùng tên) sau khi duyệt alt vẫn được tải lên | `file_changed` so cỡ, giờ sửa, định danh trên ổ (`file_id`) của lần chọn với lần kiểm ngay trước khi tải (trong `changed`): dừng, chưa gửi gì, khung ảnh chuyển sang file mới (xem trước, GPS của file mới), bỏ «Đã duyệt». `mark_ai` cũng bỏ duyệt khi file đổi | Soi Lỗi `test_replaced_file_after_approval_stops_send`; mới `test_replaced_file_needs_new_look_and_approval` (duyệt lại rồi gửi đúng file mới, còn GPS) |
+| SL-T056-3 | Đoạn dạng shortcode vắt qua hai mục không được liệt kê | `shortcode_findings` xét thêm chữ của cả nội dung ghép đúng thứ tự gửi (tiêu đề mục, thân, alt, chú thích của ảnh); đoạn chưa thấy khi xét từng phần ghi «Nội dung, vắt qua nhiều mục» | Soi Lỗi `test_shortcode_across_sections_listed`; mới `test_shortcode_from_body_into_image_caption_listed` |
+| SL-T056-4 | Nhắc số điện thoại bỏ sót 1900/1800 8 số, «–», «/» | `PHONE_LIKE`: tổng đài `1800`/`1900` kèm từ 4 chữ số, hoặc từ 9 chữ số; dấu ngăn thêm «–», «—», «/», «_». Không nhắc ngày tháng (8 chữ số), năm, kích thước | Soi Lỗi `test_phone_like_variants_warn` × 4; mới `test_dates_and_sizes_are_not_phone_numbers` |
+| SL-T056-5 | Ảnh đại diện đã chọn mất khi đổi trang | `_featured` vào `KEEP_KEYS` (đã có bước bỏ khi ảnh đó không còn sẵn sàng) | Soi Lỗi `test_featured_image_kept_after_switching_pages`; trình duyệt thật |
+| SL-T056-6 | Cùng ảnh ở hai chỗ: đánh dấu ảnh AI ở chỗ này, chỗ kia vẫn «Ảnh thật» | `mark_ai` đổi **mọi** chỗ dùng cùng ảnh (kiểm lại từng chỗ, alt thêm «Minh họa», duyệt lại); khung ảnh hiện Ảnh thật/AI và thẻ theo `slot_tags` | Soi Lỗi `test_mark_ai_shows_in_other_spot_with_same_image`, `test_two_spots_mark_ai_store_failure_both_sent_as_ai`; trình duyệt thật |
+| SL-T056-7 | Ảnh mở từ nháp: mỗi lần «AI viết alt», «Đây là ảnh AI», «Gửi nháp» lại xem thư mục từng tầng trong luồng trang | `check_in_pool`: lần kiểm lại (`check_chosen_image`) chạy trong luồng quét, chờ tối đa 15 giây; quá giờ thì báo «Ổ đĩa đang chậm…», không gọi AI, không gửi (lần kiểm vẫn chạy tiếp ở nền). `scanned` vẫn chỉ là ảnh của các lần quét (LC-T055-1). Lần kiểm lúc mở nháp vẫn chạy trong luồng trang (cố ý: quá giờ mà bỏ ảnh thì lần tự lưu sau sẽ xóa ảnh khỏi nháp) | Soi Lỗi `test_draft_image_not_rescanned_in_page_thread`; mới `test_recheck_on_slow_drive_does_not_hold_page` |
+| Ghi nhận 4 | Lần quét xong bỏ cả lần chờ của thư mục khác | `folder_listing` chỉ bỏ `_scan_pending` của chính thư mục vừa quét | Đọc mã |
+
+Thử đột biến (bản sao `git archive`, dùng lại môi trường của worktree): trên `write.py` của lượt 1, 7/8 test mới hỏng (ca còn lại kiểm «không nhắc nhầm ngày tháng», đúng là phải qua cả trên bản cũ); bỏ riêng phần «xét lại điều kiện lúc bấm» thì `test_double_click_does_not_send_twice` hỏng (`(2, 2) == (1, 1)`: gửi 2 lần).
+
+Không sửa trong lượt này (ngoài phạm vi `write.py`, ghi lại để Chỉ Huy lập phiếu):
+- Phần còn lại của SL-T056-2: nháp mở lại hôm khác không biết file ảnh đã bị thay (nháp không lưu dấu file, cần trường mới trong `seo_app/storage/drafts.py`, Thợ Máy).
+- Ghi nhận 2 của Soi Lỗi: «đã gửi» chỉ nhớ trong phiên; mở lại nháp hôm khác vẫn gửi được bài nháp mới không cần xác nhận (cần trường mới trong `DraftSnapshot`, Thợ Máy).
+- Ghi nhận 1 (2a, nhánh danh sách bị cắt): giữ như lượt 1, để Lá Chắn quyết (Rủi ro 2).
+
+Mở lại app thật (cổng 8502, cấu hình tạm như lượt 1, đã trả `launch.json` về đúng bản cũ, mã băm `a5607e8c…`; xóa `data/` của worktree): chọn cùng ảnh cho hai chỗ, bấm «Đây là ảnh AI» ở chỗ 1 thì cả hai chỗ hiện «🤖 Ảnh AI» kèm lý do, không còn nút đánh dấu (SL-T056-6); alt «…gọi 1900 6868» có nhắc (SL-T056-4); bước 5 chọn ảnh đại diện «Cổng sau khi sửa», sang «Bài viết» rồi quay lại vẫn giữ (SL-T056-5). SL-T056-1, -2, -7 cần website hay ổ chậm nên chỉ thử bằng test.
 
 ## Đã thay đổi
 
@@ -24,7 +49,8 @@
 | `app/assets/style.css` | Khung chỗ cần ảnh (`st-key-imgbox-…`), khung chọn ảnh, ảnh nhỏ trong lưới |
 | `seo_app/wordpress/shortcodes.py` (mới) | `find_shortcodes`: tìm đoạn dạng shortcode, dùng đúng `_SHORTCODE_OPEN`/`_drop_invisible` của `client.py` (không sửa `client.py`) |
 | `tests/test_wordpress_shortcodes.py` (mới) | 26 test cho `find_shortcodes` (đối chiếu `_has_shortcode`, ký tự vô hình, chữ dài) |
-| `tests/test_app_images.py` (mới) | 49 test giao diện (AppTest, AI giả, WordPress giả, ảnh Pillow trong thư mục tạm) |
+| `tests/test_app_images.py` (mới) | 57 test giao diện (AppTest, AI giả, WordPress giả, ảnh Pillow trong thư mục tạm); lượt 2 thêm 8 |
+| `tests/test_soi_loi_t056.py` (của Soi Lỗi) | Lượt 2: chỉ gỡ dấu `xfail` của 10 ca đã sửa xong |
 | `tests/conftest.py` | Fixture tự động trỏ `DEFAULT_IMAGE_TAGS_FILE` sang thư mục tạm (điều kiện 2f) |
 | `tests/test_content_edge_cases.py` | `test_publish_now_requires_confirmation`: «Nháp» nay là nút thật «📤 Gửi nháp»; vẫn kiểm «Đăng ngay» phải tick xác nhận |
 | `docs/team/reports/T-056-hoa-si.md` | Báo cáo này |

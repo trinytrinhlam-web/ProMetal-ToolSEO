@@ -1319,15 +1319,11 @@ def counts(site: Site) -> tuple[int, int]:
     return len(site.posts()), len(site.uploads())
 
 
-def test_double_click_does_not_send_twice(project_root, root, fake_ai, site, monkeypatch):
-    """Bấm đúp «Gửi nháp»: lần bấm thứ hai tới khi lần chạy trước đã gửi xong, Streamlit vẫn báo
-    nút đã bấm dù lúc này nút được vẽ là khóa. Không gửi lần hai (SL-T056-1)."""
-    at, _pid = ready_image(project_root)
-    to_publish(at)
-    send(at)
-    assert counts(site) == (1, 1)
+def click_send_once_more(monkeypatch) -> None:
+    """Lần chạy kế tiếp nhận thêm một cú bấm «Gửi nháp» (cú thứ hai của bấm đúp): Streamlit vẫn
+    báo nút đã bấm dù lần vẽ mới là khóa (cú bấm gửi từ lần vẽ trước)."""
     original = st.button
-    pending = [True]  # đúng một lần bấm thứ hai
+    pending = [True]  # đúng một lần
 
     def second_click(label, *args, **kwargs):
         clicked = original(label, *args, **kwargs)
@@ -1337,16 +1333,11 @@ def test_double_click_does_not_send_twice(project_root, root, fake_ai, site, mon
         return clicked
 
     monkeypatch.setattr(st, "button", second_click)
-    run_ok(at.run())
-    assert counts(site) == (1, 1)
-    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
-    assert button(at, SEND_LABEL).disabled
 
 
-def test_stop_when_leaving_spinner_keeps_result(project_root, root, fake_ai, site, monkeypatch):
-    """Bấm nút khác lúc đang gửi: Streamlit dừng lần chạy ở lệnh ``st.*`` kế tiếp, tức lúc thoát
-    vòng quay «Đang gửi…». Kết quả đã ghi trước đó: lần chạy sau hiện kết quả, khóa nút, không
-    gửi lại (SL-T056-1)."""
+def stop_when_leaving_send_spinner(monkeypatch) -> None:
+    """Như người dùng bấm nút khác lúc đang gửi: Streamlit dừng lần chạy ở lệnh ``st.*`` kế tiếp,
+    tức lúc thoát vòng quay «Đang gửi bài nháp…»."""
     original = st.spinner
 
     @contextmanager
@@ -1357,16 +1348,56 @@ def test_stop_when_leaving_spinner_keeps_result(project_root, root, fake_ai, sit
             raise StopException()
 
     monkeypatch.setattr(st, "spinner", spinner)
+
+
+def test_double_click_does_not_send_twice(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm đúp «Gửi nháp»: cú bấm thứ hai tới khi lần chạy trước đã gửi xong. Không gửi lần hai
+    (SL-T056-1)."""
     at, _pid = ready_image(project_root)
     to_publish(at)
     send(at)
     assert counts(site) == (1, 1)
+    click_send_once_more(monkeypatch)
     run_ok(at.run())
+    assert counts(site) == (1, 1)
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+    assert button(at, SEND_LABEL).disabled
+
+
+def test_stop_when_leaving_spinner_keeps_result(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm nút khác lúc đang gửi: lần chạy dừng lúc thoát vòng quay. Kết quả đã ghi trước đó: lần
+    chạy sau hiện kết quả, khóa nút; cú bấm thứ hai không gửi lại (SL-T056-1)."""
+    stop_when_leaving_send_spinner(monkeypatch)
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    assert counts(site) == (1, 1)
+    click_send_once_more(monkeypatch)
+    run_ok(at.run())
+    assert counts(site) == (1, 1)
     assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
     assert button(at, SEND_LABEL).disabled
     assert "_wp_sending" not in at.session_state
+
+
+def test_confirmation_untick_even_if_run_stops(project_root, root, fake_ai, site, monkeypatch):
+    """Đã tick «Tôi đã kiểm tra…» sau một lần lỗi, gửi lại, lại lỗi đúng lúc tạo nháp và lần chạy
+    bị dừng lúc thoát vòng quay: lần sau ô xác nhận đã bỏ tick, nút khóa; cú bấm thứ hai không gửi
+    lần ba (SL-T056-1)."""
+    site.fake.on("POST", POSTS, lambda _r: (502, {"code": "x", "message": "Bad gateway"}, {}))
+    at, _pid = ready_image(project_root)
+    to_publish(at)
+    send(at)
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    stop_when_leaving_send_spinner(monkeypatch)
+    send(at)
+    attempts = len(site.posts())
+    assert attempts == 2
+    click_send_once_more(monkeypatch)
     run_ok(at.run())
-    assert counts(site) == (1, 1)
+    assert len(site.posts()) == attempts
+    assert at.checkbox(key="_wp_checked").value is False
+    assert button(at, SEND_LABEL).disabled
 
 
 def test_stop_during_image_upload_locks_resend(project_root, root, fake_ai, site):

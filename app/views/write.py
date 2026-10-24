@@ -2157,8 +2157,10 @@ def draft_panel() -> None:
     # Lần bấm thứ hai của một cú bấm đúp tới khi lần chạy trước đã gửi xong: Streamlit vẫn báo nút
     # đã bấm dù lúc này nút được vẽ là khóa. Nên xét lại điều kiện khóa ngay lúc bấm (SL-T056-1).
     if clicked and allowed:
-        send_draft(client, ready)
+        # Bỏ tick các ô xác nhận trước khi gửi (không phải sau): lần chạy bị dừng giữa chừng thì
+        # lần sau vẫn phải xác nhận lại mới gửi tiếp được.
         S._wp_reset_guards = True
+        send_draft(client, ready)
         st.rerun()
     send_result()
 
