@@ -237,7 +237,9 @@ def test_real_client_multiline_wordpress_error_is_plain(project_root, fake_wp, a
     assert len(at.error) == 1
     assert_page_plain(at)
     seen = shown(at.error[0].value)
-    assert seen.startswith("WordPress báo lỗi (mã 400). (WordPress: Dòng một [x]: https://")
+    # LC-T042-4 (T-060): câu cố định kèm mã HTTP, không chép lời máy chủ.
+    assert seen == "WordPress báo lỗi (mã 400)."
+    assert "evil" not in seen and "Dòng một" not in seen
     assert "\n" not in seen and "\r" not in seen
 
 
@@ -315,6 +317,7 @@ def test_non_string_site_url_does_not_crash_page(project_root, fake_wp, home):
 def test_null_source_url_does_not_crash_page(project_root, fake_wp, monkeypatch):
     media = {"id": 9, "source_url": None}
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, media, {}))
+    fake_wp.on("POST", "/wp-json/wp/v2/media/9", media)  # LC-T061-3 (T-060): luôn ghi đè 3 ô
     post = {"id": 42, "status": "draft", "title": "A"}
     fake_wp.on("POST", "/wp-json/wp/v2/posts", (201, post, {}))
     fake_file_uploader(monkeypatch, FakeUpload("anh.jpg", b"\xff\xd8\xff"))
