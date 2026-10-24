@@ -27,8 +27,11 @@ import fake_ai as fake_ai_module
 import pytest
 import test_app_images as ui
 from PIL import ExifTags, Image
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.runtime.scriptrunner_utils.exceptions import StopException
+from streamlit.runtime.scriptrunner_utils.script_requests import RerunData
 
+import seo_app.storage.drafts as drafts
 import seo_app.storage.image_tags as image_tags
 from seo_app.images.alt import AI_ALT_PREFIX, AltSuggestion
 from seo_app.images.folders import ImageLibrary
@@ -509,3 +512,202 @@ def test_broken_tag_file_note_has_no_folder_path(project_root, root):
     (moved,) = path.parent.glob("image_tags.hong-*")
     assert moved.name in plain
     assert path.parent.name not in plain and path.parent.parent.name not in plain
+
+
+# ================================================================== lượt 2 (kiểm lại sau sửa)
+#
+# Cú bấm trên trình duyệt tới máy chủ là một yêu cầu chạy lại (``ScriptRequests.request_rerun``);
+# Streamlit dừng lần chạy đang chạy ở **điểm dừng kế tiếp**: mọi lệnh ``st.*`` và cả mọi lần đọc/ghi
+# ``st.session_state`` (``SafeSessionState`` gọi ``_yield_callback`` trước mỗi thao tác). Các test
+# dưới đây gửi đúng yêu cầu đó trong lúc lệnh gửi đang chạy, thay vì ném sẵn ``StopException`` ở
+# một chỗ chọn trước.
+
+
+def interrupt_while_sending(monkeypatch, page: str | None = None) -> None:
+    """Lần gửi đầu tiên: trong lúc lệnh gửi đang chạy, người dùng bấm gì đó (``page``: bấm sang
+    trang đó ở menu trên cùng). Lệnh gửi vẫn chạy xong trên website."""
+    original = WordPressClient.create_draft_with_images
+    pending = [True]
+
+    def create(self, title, parts, **kwargs):
+        result = original(self, title, parts, **kwargs)
+        if pending:
+            pending.pop()
+            ctx = get_script_run_ctx()
+            target = ctx.page_script_hash
+            if page is not None:
+                pages = ctx.pages_manager.get_pages()
+                target = next(h for h, info in pages.items() if info["page_name"] == page)
+            ctx.script_requests.request_rerun(RerunData(page_script_hash=target))
+        return result
+
+    monkeypatch.setattr(WordPressClient, "create_draft_with_images", create)
+
+
+def open_draft_by_id(at, draft_id: str):
+    at.session_state["step"] = 0
+    run_ok(at.run())
+    run_ok(button(at, "Mở", key=f"open-{draft_id}").click().run())
+    return ui.to_publish(at)
+
+
+def test_real_interruption_never_sends_twice(project_root, root, fake_ai, site, monkeypatch):
+    """SL-T056-1 kiểm lại bằng đường ngắt thật: bấm gì đó trong lúc gửi → lần chạy sau khóa nút,
+    nhắc kiểm trang quản trị; chạy lại không gửi thêm; tick xác nhận mới gửi được (cố ý)."""
+    interrupt_while_sending(monkeypatch)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    ui.send(at)
+    assert (len(site.posts()), len(site.uploads())) == (1, 1)
+    assert "_wp_sending" not in at.session_state
+    assert any("bài nháp có thể đã có" in e.value for e in at.error)
+    assert button(at, SEND).disabled
+    run_ok(at.run())
+    assert len(site.posts()) == 1 and button(at, SEND).disabled
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    assert not button(at, SEND).disabled
+
+
+def test_switch_page_while_sending_keeps_lock(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm sang trang «Bài viết» trong lúc gửi rồi quay lại: vẫn nhắc «gửi dở», khóa nút (cũng thấy
+    trên trình duyệt thật với WordPress giả trên máy)."""
+    interrupt_while_sending(monkeypatch, page="Bài viết")
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    button(at, SEND).click().run()
+    assert len(site.posts()) == 1
+    run_ok(at.switch_page("views/write.py").run())
+    assert any("bài nháp có thể đã có" in e.value for e in at.error)
+    assert button(at, SEND).disabled
+
+
+def test_slow_drive_when_sending_stops_without_request(
+    project_root, root, fake_ai, site, monkeypatch
+):
+    """SL-T056-7 khi gửi: kiểm lại ảnh quá 15 giây (ổ chậm) thì dừng, chưa gửi request nào."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    release = threading.Event()
+    original = drafts.check_chosen_image
+
+    def slow(*args, **kwargs):
+        release.wait(90)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(drafts, "check_chosen_image", slow)
+    try:
+        button(at, SEND).click().run(timeout=90)
+        assert not at.exception, at.exception
+        assert site.fake.requests == []
+        assert any("Ổ đĩa đang chậm" in m.value for m in at.markdown)
+    finally:
+        release.set()
+
+
+@pytest.mark.parametrize(
+    "alt", ["Gọi 1900.68.68", "Tổng đài 19006868", "+84 (0) 909 123 456", "0909_123_456"]
+)
+def test_more_phone_variants_warn(project_root, root, fake_ai, alt):
+    at, pid = ui.open_article(project_root)
+    ui.choose_real(at, pid)
+    run_ok(at.text_input(key=f"alt-{pid}").input(alt).run())
+    assert any("số điện thoại" in w.value for w in at.warning)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T056-8: mở bài khác rồi mở lại bài vừa gửi thì mất khóa «đã gửi»/«gửi dở»",
+)
+@pytest.mark.parametrize("how", ["gui-xong", "gui-do"])
+def test_switch_draft_and_back_keeps_send_lock(project_root, root, fake_ai, site, monkeypatch, how):
+    """Gửi bài A (xong, hoặc bị ngắt giữa chừng: «bài nháp có thể đã có»), mở bài B ở «Bài đang
+    soạn dở», rồi mở lại A: nút «Gửi nháp» bật lại, không nhắc gì, bấm là bài nháp thứ hai (ảnh
+    tải lần hai). ``_wp_sent``, ``_wp_maybe_draft``, ``_wp_sending`` nằm trong ``COMPOSE_KEYS`` nên
+    mở bài khác là mất, không gắn với bài. Mong đợi: mở lại A vẫn phải tick xác nhận mới gửi được.
+    """
+    if how == "gui-do":
+        interrupt_while_sending(monkeypatch)
+    other = ui.article(keyword="bài khác", article_title="Bài khác")
+    ui.store().save(other)
+    at, _pid = ui.ready_image(project_root)
+    first = at.session_state["draft_id"]
+    ui.to_publish(at)
+    ui.send(at)
+    assert len(site.posts()) == 1 and button(at, SEND).disabled
+    open_draft_by_id(at, other.id)
+    open_draft_by_id(at, first)
+    assert button(at, SEND).disabled
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T056-9: bấm gì đó trong lúc gửi thì mất kết quả, báo «gửi dở» dù đã gửi xong",
+)
+def test_real_interruption_keeps_result(project_root, root, fake_ai, site, monkeypatch):
+    """Bấm gì đó trong lúc lệnh gửi đang chạy: lệnh gửi chạy xong (bài nháp, ảnh đã lên) nhưng điểm
+    dừng kế tiếp là chính lệnh ghi kết quả ``S._wp_result = …`` (ghi ``st.session_state`` cũng là
+    điểm dừng), nên kết quả không được ghi, lần sau báo «Lần gửi trước bị ngắt giữa chừng…, app
+    không biết kết quả» thay vì «Đã tạo bài nháp (mã …)», mất link sửa và danh sách ảnh đã lên
+    (công khai). Test của Họa Sĩ ``test_stop_when_leaving_spinner_keeps_result`` dừng ở lúc thoát
+    vòng quay, chỗ chỉ tới được khi yêu cầu đến sau lệnh ghi cuối. An toàn (khóa, không gửi trùng).
+    Thấy cả trên trình duyệt thật. Mong đợi: vẫn hiện kết quả của lần gửi đã xong."""
+    interrupt_while_sending(monkeypatch)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    ui.send(at)
+    assert len(site.posts()) == 1
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T056-10: file ảnh bị thay đúng lúc đang gửi (sau bước kiểm lại) vẫn được tải lên",
+)
+def test_file_replaced_while_sending_stops(project_root, root, fake_ai, site, monkeypatch):
+    """Kiểm lại (``recheck``) xong mới đọc file để nén (``read_image_bytes``): file bị thay bằng ảnh
+    khác cùng tên, có GPS, trong khe đó (nhiều ảnh lớn: vài giây) vẫn lên website với alt duyệt cho
+    ảnh cũ. Mong đợi: byte đọc được khác file đã kiểm (cỡ, hay hỏi lại sau khi đọc) thì dừng như
+    SL-T056-2."""
+    at, pid = ui.open_article(project_root)
+    ui.browse(at, pid)
+    ui.open_sub(at, PROJECT)
+    ui.open_sub(at, "sau")
+    ui.choose(at, "IMG_0002.jpg")
+    ui.write_alt(at, pid)
+    ui.approve(at, pid)
+    ui.to_publish(at)
+    original = ImageLibrary.read_image_bytes
+    pending = [True]
+
+    def read(self, ref):
+        if pending:
+            pending.pop()
+            ui.write(root / PROJECT / "sau" / "IMG_0002.jpg", ui.jpeg((640, 480), gps=True))
+        return original(self, ref)
+
+    monkeypatch.setattr(ImageLibrary, "read_image_bytes", read)
+    ui.send(at)
+    uploaded = [gps_of(upload.body) for upload in site.uploads()]
+    assert uploaded == [], f"đã tải lên ảnh khác, GPS: {uploaded}"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T056-11: tải lại trang giữa lúc gửi, mở lại nháp: gửi lại không cần xác nhận",
+)
+def test_new_session_after_send_needs_confirmation(project_root, root, fake_ai, site):
+    """Đang gửi thì tải lại trang (F5, đóng tab): phiên mới, mọi dấu trong ``st.session_state`` mất;
+    lần gửi của phiên cũ vẫn chạy xong trên máy chủ. Mở lại đúng nháp đó: nút «Gửi nháp» bật,
+    không nhắc gì, bấm là bài nháp thứ hai (thấy trên trình duyệt thật với WordPress giả: bài 504
+    của phiên cũ, bài 505 của phiên mới). Nháp không nhớ "đã gửi / đang gửi" (cần trường mới trong
+    ``DraftSnapshot``, ngoài ``write.py``; Ghi nhận 2 lượt 1). Mong đợi: phiên mới mở lại nháp vẫn
+    phải tick xác nhận mới gửi được."""
+    at, _pid = ui.ready_image(project_root)
+    draft_id = at.session_state["draft_id"]
+    ui.to_publish(at)
+    ui.send(at)
+    assert len(site.posts()) == 1
+    fresh = ui.pages.open_page(project_root, "write.py")  # phiên mới, cùng kho nháp
+    run_ok(button(fresh, "Mở", key=f"open-{draft_id}").click().run())
+    ui.to_publish(fresh)
+    assert button(fresh, SEND).disabled
