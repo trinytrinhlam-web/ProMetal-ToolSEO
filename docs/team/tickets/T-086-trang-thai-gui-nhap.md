@@ -57,3 +57,4 @@ W1, W2, U1, F2.
 - Lập theo điều kiện 2 của Lá Chắn T-056; chủ dự án duyệt 2026-10-26. Nhánh `team/T-086` từ `main` sau khi gộp T-056.
 - Nếu chủ dự án chọn không sửa thì phải ghi sổ rủi ro (`security.md` mục 6).
 - 2026-10-26 09:55 (Chỉ Huy B): **Họa Sĩ xong** (`e2e345f`, code `1eb96f9`): yêu cầu 1–6; gỡ 7 `xfail` (5 Soi Lỗi, 2 Lá Chắn) đều XPASS trước khi gỡ; thử gỡ chỗ sửa 10/10 đột biến bị bắt; 48 file test liên quan 4.866 qua, 6 file gửi nháp trên code cuối 147 qua. Chờ Soi Lỗi rút gọn.
+- 2026-10-26 09:59 (Chỉ Huy B): chủ dự án duyệt; giao **Soi Lỗi rút gọn** (nhắn phiên Soi Lỗi T-056).

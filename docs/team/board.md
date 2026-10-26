@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 09:55 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 09:59 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Lá Chắn rút gọn (chưa giao) | `team/T-085` | Thợ Máy xong (`8d0eb56`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`c63eb09`): 3 Thấp SL-T085-1..3. ⏳ **Chờ giao Lá Chắn rút gọn** | [Thợ Máy](reports/T-085-tho-may.md) · [Soi Lỗi](reports/T-085-soi-loi.md) |
-| [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Soi Lỗi rút gọn (chưa giao) | `team/T-086` | 26/10 Họa Sĩ **xong** (`e2e345f`: yêu cầu 1–6, gỡ 7 `xfail`; 4.866 test liên quan qua). ⏳ **Chờ giao Soi Lỗi rút gọn** | [Họa Sĩ](reports/T-086-hoa-si.md) |
-| [T-087](tickets/T-087-readme-chon-anh.md) | GĐ3: README chọn ảnh, ảnh AI, ảnh công khai khi gửi nháp (LC-T069-2) | Lá Chắn rút gọn (chưa giao) | `team/T-087` | 26/10 Thư Ký **xong** (`4fbd6f6`: README mục 9 «Chọn ảnh cho bài», gửi nháp). ⏳ **Chờ giao Lá Chắn rút gọn** | [Thư Ký](reports/T-087-thu-ky.md) |
+| [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Lá Chắn · T-060 kiểm client WordPress (T-085) | `team/T-085` | Thợ Máy xong (`8d0eb56`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`c63eb09`): 3 Thấp SL-T085-1..3. ⏳ **09:59 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-085-tho-may.md) · [Soi Lỗi](reports/T-085-soi-loi.md) |
+| [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-086) | `team/T-086` | 26/10 Họa Sĩ **xong** (`e2e345f`: yêu cầu 1–6, gỡ 7 `xfail`; 4.866 test liên quan qua). ⏳ **09:59 Soi Lỗi rút gọn đang kiểm** | [Họa Sĩ](reports/T-086-hoa-si.md) |
+| [T-087](tickets/T-087-readme-chon-anh.md) | GĐ3: README chọn ảnh, ảnh AI, ảnh công khai khi gửi nháp (LC-T069-2) | Lá Chắn · T-056 kiểm màn hình chọn ảnh (T-087) | `team/T-087` | 26/10 Thư Ký **xong** (`4fbd6f6`: README mục 9 «Chọn ảnh cho bài», gửi nháp). ⏳ **09:59 Lá Chắn rút gọn đang kiểm** | [Thư Ký](reports/T-087-thu-ky.md) |
 
 ## Chờ
 
