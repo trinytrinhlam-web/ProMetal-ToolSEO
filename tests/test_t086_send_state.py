@@ -12,6 +12,8 @@ from __future__ import annotations
 import io
 import os
 import sqlite3
+import threading
+import time
 from contextlib import closing
 from pathlib import Path
 
@@ -21,7 +23,10 @@ import test_la_chan_t056 as lc
 import test_soi_loi_t056 as sl
 from fake_ai import FakeProvider
 from PIL import ExifTags, Image
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.runtime.scriptrunner_utils.exceptions import StopException
+from streamlit.runtime.scriptrunner_utils.script_requests import RerunData
+from streamlit.runtime.state.safe_session_state import SafeSessionState
 
 import seo_app.storage.drafts as drafts
 from seo_app.ai import AIError
@@ -193,6 +198,103 @@ def test_second_stop_while_locking_without_result_keeps_lock(
     assert fired == ["_wp_result"]  # đã ngắt đúng chỗ
     assert "_wp_sending" not in at.session_state
     assert any(UNSURE in e.value for e in at.error)
+    assert button(at, SEND).disabled
+
+
+def interrupt_at_first_write(monkeypatch, key: str) -> list[str]:
+    """Yêu cầu chạy lại tới đúng lúc ghi ``key`` vào ``st.session_state`` lần đầu (cú bấm tiếp theo
+    của người dùng bấm liên tục): lần chạy dừng ngay trước khi ghi."""
+    original = SafeSessionState.__setitem__
+    fired: list[str] = []
+
+    def setitem(self, name, value):
+        if not fired and name == key:
+            fired.append(name)
+            ctx = get_script_run_ctx()
+            ctx.script_requests.request_rerun(RerunData(page_script_hash=ctx.page_script_hash))
+        return original(self, name, value)
+
+    monkeypatch.setattr(SafeSessionState, "__setitem__", setitem)
+    return fired
+
+
+def test_second_stop_at_first_lock_write_keeps_result(
+    project_root, root, fake_ai, site, monkeypatch
+):
+    """LC-T056-1 (a): lần chạy sau lần gửi bị ngắt lại bị dừng ngay ở dòng đầu tiên dựng khóa. Dấu
+    «đang gửi» chỉ bỏ sau cùng nên lần sau làm lại từ đầu: vẫn hiện kết quả (SL-T056-9), vẫn khóa.
+    Bỏ dấu trước (như trước khi sửa) thì kết quả mất ở bước này."""
+    sl.interrupt_while_sending(monkeypatch)
+    fired = interrupt_at_first_write(monkeypatch, "_wp_maybe_draft")
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    ui.send(at)
+    assert fired == ["_wp_maybe_draft"]  # đã ngắt đúng chỗ
+    assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
+    assert "_wp_sending" not in at.session_state
+    assert button(at, SEND).disabled
+
+
+def running_send(draft: str) -> dict:
+    """Đối tượng giữ kết quả của một lần gửi **đang chạy** ở luồng khác (như ``send_draft`` đặt)."""
+    return {"draft": draft, "result": None, "state": None, "done": threading.Event()}
+
+
+def test_new_run_waits_for_send_still_running(project_root, root, fake_ai, site):
+    """Streamlit chạy lần mới **ngay**, song song với lần đang gửi (``runner.fastReruns``, mặc định;
+    thấy trên trình duyệt thật). Lần mới thấy dấu «đang gửi» khi chưa có kết quả: đợi lần gửi xong
+    rồi hiện kết quả (không báo nhầm «không biết kết quả»), vẫn khóa «gửi dở»."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    holder = running_send(draft_id(at))
+    at.session_state["_wp_sending"] = holder
+
+    def finish() -> None:
+        time.sleep(1)
+        holder["result"] = {
+            "ok": True,
+            "post_id": 777,
+            "status": "draft",
+            "edit_link": f"{ui.BASE_URL}/wp-admin/post.php?post=777&action=edit",
+            "uploaded": [],
+            "message": "",
+        }
+        holder["state"] = (False, 777)
+        holder["saved"] = True
+        holder["done"].set()
+
+    threading.Thread(target=finish, daemon=True).start()
+    run_ok(at.run())
+    assert any("mã 777" in s.value for s in at.success)
+    assert "_wp_sending" not in at.session_state
+    assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled
+
+
+class NeverDone(threading.Event):
+    """Lần gửi vẫn chạy quá thời gian đợi (website rất chậm): đợi bao lâu cũng chưa xong."""
+
+    def wait(self, timeout=None):
+        return False
+
+
+def test_send_still_running_after_wait_keeps_mark(project_root, root, fake_ai, site):
+    """Đợi hết giờ mà lần gửi song song vẫn chạy: giữ dấu «đang gửi» (lần chạy sau đợi tiếp), báo
+    vẫn đang chạy, khóa nút; lần gửi xong thì lần chạy kế tiếp hiện kết quả."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    holder = running_send(draft_id(at))
+    holder["done"] = NeverDone()
+    at.session_state["_wp_sending"] = holder
+    run_ok(at.run())
+    assert at.session_state["_wp_sending"] is holder
+    assert any("vẫn đang chạy" in e.value for e in at.error)
+    assert button(at, SEND).disabled and site.fake.requests == []
+    holder["result"] = {"ok": False, "message": "Website báo lỗi 502."}
+    holder["state"] = (True, None)
+    holder["done"].set()
+    run_ok(at.run())
+    assert "_wp_sending" not in at.session_state
+    assert any("Website báo lỗi 502" in e.value for e in at.error)
     assert button(at, SEND).disabled
 
 

@@ -34,13 +34,15 @@ Gửi nháp (T-086): trạng thái gửi ghi vào kho nháp (``SendState``) trư
 quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. Trong phiên: ``_wp_sending`` (đối
 tượng giữ kết quả, sửa tại chỗ), ``_wp_result``, ``_wp_sent``, ``_wp_maybe_draft``. Mọi lần
 đọc/ghi ``st.session_state`` và mọi lệnh ``st.*`` là chỗ Streamlit có thể dừng lần chạy (người dùng
-bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1).
+bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1). Lần chạy mới bắt đầu ngay, song song với lần
+đang gửi (``runner.fastReruns``): ``finish_send`` đợi lần gửi xong rồi mới đọc kết quả.
 """
 
 import dataclasses
 import hashlib
 import html
 import re
+import threading
 import tomllib
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -159,6 +161,12 @@ MSG_SLOW_CHECK = (
     "Ổ đĩa đang chậm (Google Drive?) nên chưa kiểm lại được ảnh. Đợi vài giây rồi bấm lại."
 )
 MSG_CHECK_FAILED = "Chưa kiểm lại được ảnh này. Bấm lại, hoặc chọn lại ảnh từ thư mục."
+SEND_WAIT_SECONDS = 60  # lần chạy mới đợi lần gửi đang chạy song song lâu nhất (``finish_send``)
+MSG_WAIT_SEND = "Lần gửi nháp vừa bấm vẫn đang chạy, đợi gửi xong rồi mới hiện kết quả…"
+MSG_STILL_SENDING = (
+    "Lần gửi nháp trước vẫn đang chạy (website chậm?). Đợi thêm rồi bấm lại hoặc tải lại trang; "
+    "trước khi gửi lại, mở trang quản trị WordPress kiểm tra Bài viết → Nháp và Media → Thư viện."
+)
 MSG_FILE_REPLACED = (
     "nội dung file khác bản bạn đã xem và duyệt (file vừa bị thay bằng ảnh khác cùng tên). Xem "
     "lại ảnh, alt rồi duyệt lại ở bước Viết & kiểm tra"
@@ -2067,11 +2075,15 @@ def send_draft(client: WordPressClient, ready: list[int], previous_post: int | N
     # nằm trong ``holder`` không có lần đọc/ghi ``st.session_state`` hay lệnh ``st.*`` nào (chỗ
     # Streamlit dừng lần chạy khi người dùng bấm gì đó; SL-T056-9).
     title, parts = sent_title(), article_parts(uploads)
-    holder = {"draft": S.setdefault("draft_id", new_draft_id()), "result": None, "state": None}
+    draft = S.setdefault("draft_id", new_draft_id())
+    holder = {"draft": draft, "result": None, "state": None, "done": threading.Event()}
     store = draft_store()
     with st.spinner("Đang gửi bài nháp và ảnh lên WordPress…", show_time=True):
         S._wp_sending = holder  # chỗ dừng cuối cùng trước khi gửi: dừng ở đây thì chưa gửi gì
-        send_and_record(client, store, holder, title, parts, previous_post)
+        try:
+            send_and_record(client, store, holder, title, parts, previous_post)
+        finally:
+            holder["done"].set()  # cả khi lần chạy bị dừng ngay trong lúc gửi (``finish_send``)
     apply_send(holder, interrupted=False)
 
 
@@ -2193,7 +2205,12 @@ def finish_send() -> None:
     trước khi kết quả lên trang: dấu ``_wp_sending`` còn. Gọi đầu ``init_state``.
 
     Thứ tự đơn điệu (LC-T056-1 a): dựng khóa «gửi dở» trước (đúng với mọi kết quả), rồi mới hiện
-    kết quả có trong đối tượng giữ kết quả (SL-T056-9) và bỏ dấu sau cùng (``apply_send``)."""
+    kết quả có trong đối tượng giữ kết quả (SL-T056-9) và bỏ dấu sau cùng (``apply_send``).
+
+    Streamlit mặc định chạy lần mới **ngay**, song song với lần đang gửi (``runner.fastReruns``:
+    lần cũ chỉ dừng ở chỗ dừng kế tiếp, tức sau khi lệnh gửi xong). Nên lần gửi có thể vẫn đang
+    chạy: đợi nó xong (``done``, tối đa ``SEND_WAIT_SECONDS``) rồi mới đọc kết quả; quá giờ thì giữ
+    dấu, lần chạy sau đợi tiếp."""
     holder = S.get("_wp_sending")
     if holder is None:
         return
@@ -2202,6 +2219,13 @@ def finish_send() -> None:
     if not isinstance(holder, dict):  # dấu không kèm đối tượng giữ kết quả
         S.pop("_wp_sending", None)
         return
+    done = holder.get("done")
+    if done is not None and not done.is_set():
+        with st.spinner(MSG_WAIT_SEND, show_time=True):
+            done.wait(SEND_WAIT_SECONDS)
+        if not done.is_set():
+            S._wp_result = {"ok": False, "message": MSG_STILL_SENDING}
+            return
     if holder.get("result") is not None and not holder.get("saved"):
         record_outcome(draft_store(), holder)  # lần trước chưa ghi được kết quả vào nháp: thử lại
     apply_send(holder, interrupted=True)
