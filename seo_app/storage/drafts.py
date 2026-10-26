@@ -30,6 +30,10 @@ Trạng thái «Gửi nháp» (T-086, SL-T056-8, -11): ``SendState`` lưu ở b�
 (không nằm trong JSON của nháp), nên lần tự lưu nháp không ghi đè, giờ lưu nháp không đổi, và nháp
 cũ (không có dòng nào) vẫn mở như trước. Giao diện ghi «đang gửi» **trước** khi gửi, ghi kết quả
 ngay khi có, đọc lại khi vẽ nút gửi (kể cả sau khi mở lại nháp, tải lại trang).
+
+T-089: «đang gửi» ghi kiểu so rồi đặt (``save_send_state`` có ``expected``, một giao dịch giữ khóa
+ghi) để hai tab cùng bài không cùng gửi (SL-T086-1). Lần duyệt alt nhớ băm nội dung file ảnh lúc
+duyệt (``DraftImage.approved_sha256``) để nháp mở lại vẫn so được ảnh với bản đã duyệt.
 """
 
 from __future__ import annotations
@@ -93,6 +97,7 @@ STEP_COUNT = 5  # Chuẩn bị · Dàn ý · Viết & kiểm tra · SEO · Xuấ
 SCHEMA_VERSION = 2
 _OLD_SCHEMA_VERSIONS = frozenset({1})  # vẫn mở được, nâng lên SCHEMA_VERSION khi mở
 _ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")  # băm SHA-256 dạng hex thường (``hexdigest``)
 _SQLITE_TIMEOUT = 5  # giây chờ khi file đang bị một lần lưu khác giữ
 
 # Ảnh đã chọn (T-055). Số thứ tự thư mục gốc lớn hơn mức này không thể do app ghi: bỏ ảnh đó.
@@ -215,6 +220,11 @@ class DraftImage(_Strict):
     thành ``"ai"``. Hạng mục chỉ nhận giá trị ``ImageTags`` chấp nhận (sai thì bỏ trống, không giữ
     chữ lạ). Alt, chú thích: một dòng, đã lọc, tối đa ``MAX_ALT_CHARS``/``MAX_CAPTION_CHARS``; alt
     rỗng thì không thể "đã duyệt". Prompt: nhiều dòng, tối đa ``MAX_PROMPT_CHARS``.
+
+    ``approved_sha256`` (T-089, Ghi nhận 1 của Lá Chắn T-086): băm SHA-256 nội dung file ảnh lúc
+    người dùng duyệt alt, để nháp mở lại vẫn so được ảnh trên máy với bản đã duyệt. Chỉ đi cùng lần
+    duyệt của ảnh trong thư mục ảnh; sai dạng thì bỏ (giao diện bắt duyệt lại, không bỏ ảnh). Trống
+    thì không ghi vào JSON: nháp không có băm giữ đúng khuôn cũ.
     """
 
     source: str = SOURCE_AI
@@ -225,6 +235,7 @@ class DraftImage(_Strict):
     alt_approved: bool = Field(default=False, strict=True)
     caption: str = ""
     prompt: str = ""
+    approved_sha256: str = Field(default="", exclude_if=lambda value: not value)
 
     @field_validator("source", mode="before")
     @classmethod
@@ -257,6 +268,13 @@ class DraftImage(_Strict):
     def _clean_prompt_text(cls, value: object) -> object:
         return _clean_prompt(value)
 
+    @field_validator("approved_sha256", mode="before")
+    @classmethod
+    def _sha256_or_empty(cls, value: object) -> str:
+        if isinstance(value, str) and _SHA256_PATTERN.fullmatch(value):
+            return value
+        return ""
+
     @model_validator(mode="after")
     def _check_place(self) -> DraftImage:
         if self.root_index is None:
@@ -270,6 +288,8 @@ class DraftImage(_Strict):
                 raise ValueError("đường dẫn ảnh không hợp lệ") from None
         if not self.alt:
             self.alt_approved = False
+        if not self.alt_approved or self.root_index is None:
+            self.approved_sha256 = ""  # băm chỉ đi cùng lần duyệt của ảnh trong thư mục ảnh
         return self
 
     @classmethod
@@ -282,6 +302,7 @@ class DraftImage(_Strict):
         alt_approved: bool = False,
         caption: str = "",
         prompt: str = "",
+        approved_sha256: str = "",
     ) -> DraftImage:
         """Ảnh chọn từ thư mục ảnh. ``image``: ``ImageEntry``/``ImageRef`` **của kết quả quét**
         (khóa lựa chọn, điều kiện Lá Chắn T-048); ``tags``: thẻ đang dùng cho ảnh (``resolve``)."""
@@ -297,6 +318,7 @@ class DraftImage(_Strict):
             alt_approved=alt_approved,
             caption=caption,
             prompt=prompt,
+            approved_sha256=approved_sha256,
         )
 
     @property

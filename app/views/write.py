@@ -29,7 +29,8 @@ Bài đang soạn nằm trong session_state:
   là ảnh AI (``_ai_marked``).
 - AI chỉ viết alt khi người dùng bấm, cho đúng ảnh đã chọn, với byte của ``make_ai_image``.
 - Ảnh chỉ lên WordPress khi bấm «Gửi nháp»; ngay trước đó kiểm lại ảnh (``check_chosen_image``)
-  và so băm SHA-256 byte sắp tải với bản đã xem và duyệt (``altsha-<id>``, T-086).
+  và so băm SHA-256 byte sắp tải với bản đã xem và duyệt (``altsha-<id>``, T-086). Băm lưu cả
+  trong nháp (``DraftImage.approved_sha256``, T-089) nên mở lại nháp vẫn so được.
 
 Gửi nháp (T-086): trạng thái gửi ghi vào kho nháp (``SendState``) trước khi gửi và ngay khi có kết
 quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. «Đang gửi» chỉ được ghi khi trạng
@@ -173,6 +174,15 @@ MSG_STILL_SENDING = (
     "trước khi gửi lại, mở trang quản trị WordPress kiểm tra Bài viết → Nháp và Media → Thư viện."
 )
 MSG_POST_ID_OUT_OF_RANGE = "website trả mã bài nháp lớn bất thường, app không ghi được vào nháp"
+MSG_APPROVED_OTHER_VERSION = (
+    "Ảnh này khác bản bạn đã duyệt trước đó (file đã bị thay bằng ảnh khác cùng tên) nên app đã bỏ "
+    "«Đã duyệt»: xem lại ảnh, alt, chú thích rồi duyệt lại."
+)
+MSG_OLD_APPROVAL = (
+    "{count} ảnh có alt đã duyệt nhưng nháp chưa lưu «dấu vân tay» của ảnh lúc duyệt (nháp lưu "
+    "trước bản cập nhật này) nên app đã bỏ «Đã duyệt»: xem lại ảnh rồi duyệt lại ở bước Viết & "
+    "kiểm tra."
+)
 MSG_SENT_ELSEWHERE = (
     "Chưa gửi gì lên website: bài này vừa được gửi (hoặc đang gửi) ở một tab khác của app. Xem lời "
     "nhắc phía trên nút «Gửi nháp» rồi mới quyết định gửi thêm."
@@ -448,25 +458,38 @@ def restore_images(snap: DraftSnapshot) -> None:
     (``check_draft_images``, kèm ``ai_roots``), rồi chỉ dùng kết quả kiểm (``checked.image``,
     ``checked.tags``, ``checked.ref``), không dùng trường trong nháp vừa mở. Không truyền
     ``scanned``: lúc mở nháp chưa có lần quét nào từ thư mục gốc (LC-T055-1).
+
+    Lần duyệt alt của ảnh trong thư mục ảnh đi cùng băm nội dung file lúc duyệt
+    (``approved_sha256``, T-089): khung ảnh và lần gửi so lại với băm này. Nháp chưa có băm (lưu
+    trước T-089) thì không so được ảnh với bản đã duyệt: bỏ «Đã duyệt», báo một lần, người dùng xem
+    lại ảnh rồi duyệt lại (Ghi nhận 1 của Lá Chắn T-086).
     """
+    notices = []
     if snap.dropped_images:
-        S._images_notice = (
+        notices.append(
             f"{snap.dropped_images} ảnh đã chọn trong nháp bị hỏng nên đã bỏ; phần chữ của bài "
             "vẫn giữ. Hãy chọn lại ảnh cho các chỗ đó."
         )
-    if not any(part.chosen_image is not None for part in snap.parts):
-        return
-    library = image_library()
-    with st.spinner("Đang kiểm lại ảnh đã chọn trong nháp…"):
-        checked = check_draft_images(
-            snap, library, tag_store=tag_store(), ai_roots=ai_root_indexes(library)
-        )
-    for index, item in checked.items():
-        pid = S.part_ids[index]
-        S[f"kind-{pid}"] = AI_KIND if item.is_ai or item.is_generated else REAL
-        if item.image.prompt:
-            S[f"prompt-{pid}"] = item.image.prompt
-        set_pick(pid, item)  # ảnh không dùng được: khung ảnh hiện ``item.message``
+    if any(part.chosen_image is not None for part in snap.parts):
+        library = image_library()
+        with st.spinner("Đang kiểm lại ảnh đã chọn trong nháp…"):
+            checked = check_draft_images(
+                snap, library, tag_store=tag_store(), ai_roots=ai_root_indexes(library)
+            )
+        unbound = 0
+        for index, item in checked.items():
+            pid = S.part_ids[index]
+            S[f"kind-{pid}"] = AI_KIND if item.is_ai or item.is_generated else REAL
+            if item.image.prompt:
+                S[f"prompt-{pid}"] = item.image.prompt
+            set_pick(pid, item)  # ảnh không dùng được: khung ảnh hiện ``item.message``
+            if item.ref is not None and item.image.alt_approved and not item.image.approved_sha256:
+                S[f"altok-{pid}"] = False
+                unbound += 1
+        if unbound:
+            notices.append(MSG_OLD_APPROVAL.format(count=unbound))
+    if notices:
+        S._images_notice = " ".join(notices)
 
 
 def ask_open(draft_id: str) -> None:
@@ -700,8 +723,14 @@ def set_pick(pid: int, checked: CheckedImage) -> None:
     S[f"alt-{pid}"] = checked.image.alt
     S[f"cap-{pid}"] = checked.image.caption
     S[f"altok-{pid}"] = checked.image.alt_approved
-    # Băm của bản đã duyệt gắn lại ở lần vẽ khung ảnh tới (``alt_editor``), theo ảnh mới này.
-    S.pop(f"altsha-{pid}", None)
+    # Băm của bản đã duyệt đi cùng lần duyệt (T-089): nháp mở lại mang băm lúc duyệt, lần kiểm lại
+    # mang băm đang có trong phiên. Chưa có (lần duyệt mới) thì gắn ở lần vẽ khung ảnh tới
+    # (``alt_editor``), theo bản ảnh đang hiện. Ghi sau cùng: dừng giữa chừng thì băm cũ còn, lần
+    # so sau thấy khác và bắt duyệt lại (hướng an toàn).
+    if checked.image.approved_sha256:
+        S[f"altsha-{pid}"] = checked.image.approved_sha256
+    else:
+        S.pop(f"altsha-{pid}", None)
 
 
 def ai_tags(tags: ImageTags) -> ImageTags:
@@ -723,6 +752,7 @@ def slot_texts(pid: int) -> dict[str, object]:
         "alt_approved": bool(S.get(f"altok-{pid}", False)),
         "caption": S.get(f"cap-{pid}", ""),
         "prompt": S.get(f"prompt-{pid}", ""),
+        "approved_sha256": S.get(f"altsha-{pid}", ""),  # lưu vào nháp cùng lần duyệt (T-089)
     }
 
 
@@ -1140,7 +1170,8 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage, digest: s
     nằm dưới ô nhưng chạy trước khi vẽ ô (gán giá trị mới cho ô chỉ được trước khi ô được vẽ).
 
     Lần duyệt gắn với băm nội dung của bản ảnh đang hiện (``digest`` của ``web_info``):
-    ``altsha-<id>``. Lúc gửi, byte sắp tải phải cùng băm (T-086, SL-T056-10)."""
+    ``altsha-<id>``. Lúc gửi, byte sắp tải phải cùng băm (T-086, SL-T056-10). Băm của lần duyệt
+    trước (mở lại nháp, T-089) khác bản đang hiện thì bỏ «Đã duyệt», báo, bắt duyệt lại."""
     inputs = st.container()
     row = st.container()
     write_col, ok_col = row.columns([1, 1.4], vertical_alignment="center")
@@ -1182,6 +1213,13 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage, digest: s
             )
     if not alt.strip():
         S[f"altok-{pid}"] = False
+    approved = S.get(f"altsha-{pid}")
+    other_version = bool(S.get(f"altok-{pid}") and approved and digest and digest != approved)
+    if other_version:
+        # Ảnh đang hiện khác bản đã duyệt (nháp mở lại sau khi file bị thay bằng ảnh khác cùng
+        # tên): bỏ duyệt rồi bỏ băm cũ, trước khi vẽ ô; người dùng xem lại rồi duyệt lại (T-089).
+        S[f"altok-{pid}"] = False
+        S.pop(f"altsha-{pid}", None)
     ok_col.checkbox(
         "✅ Đã duyệt",
         key=f"altok-{pid}",
@@ -1191,6 +1229,8 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage, digest: s
             "khách. Sửa chữ thì phải duyệt lại."
         ),
     )
+    if other_version:
+        row.warning(MSG_APPROVED_OTHER_VERSION)
     if not S.get(f"altok-{pid}"):
         S.pop(f"altsha-{pid}", None)
     elif digest and f"altsha-{pid}" not in S:

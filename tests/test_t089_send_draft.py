@@ -6,6 +6,8 @@
   ``expected``): tab thứ hai cùng bài bị khóa, có câu nhắc; xác nhận đã tick sẵn không dùng được cho
   trạng thái mới do tab khác ghi.
 - SL-T086-2: khung ảnh đã chọn hiện ảnh xem trước dựng từ đúng byte đã băm.
+- Yêu cầu 4: băm nội dung file lúc duyệt alt lưu trong ``DraftImage`` (``approved_sha256``); mở lại
+  nháp mà ảnh khác băm thì bắt duyệt lại; nháp cũ (không có băm) vẫn mở được, phải duyệt lại.
 
 Dùng lại ảnh giả, WordPress giả, AI giả của ``tests/test_app_images.py``; không gọi mạng thật.
 """
@@ -13,6 +15,7 @@ Dùng lại ảnh giả, WordPress giả, AI giả của ``tests/test_app_images
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 import threading
 import time
@@ -27,8 +30,9 @@ import test_t086_send_state as t86
 import seo_app.storage.drafts as drafts
 from seo_app.images import process as image_process
 from seo_app.images.folders import ImageLibrary
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL
 from seo_app.storage import DraftSnapshot, DraftStore
-from seo_app.storage.drafts import SendState
+from seo_app.storage.drafts import DraftImage, SendState
 
 # Fixture dùng chung (mật khẩu thử, cache ảnh xem trước tạm, AI giả, thư mục ảnh, WordPress giả).
 env = ui.env
@@ -284,3 +288,164 @@ def test_chosen_preview_built_from_hashed_bytes(project_root, root, fake_ai, mon
     approved = at.session_state[f"altsha-{pid}"]
     assert (approved, preview) in made
     assert approved == hashlib.sha256((root / ui.REAL_FILE).read_bytes()).hexdigest()
+
+
+# ============================================== băm ảnh đã duyệt lưu trong nháp (yêu cầu 4)
+
+
+DIGEST = "a" * 64
+CHANGED = "Ảnh này khác bản bạn đã duyệt trước đó"
+OLD_APPROVAL = "ảnh có alt đã duyệt nhưng nháp chưa lưu «dấu vân tay»"
+
+
+def real_image(**changes) -> DraftImage:
+    data = dict(
+        source=SOURCE_REAL,
+        root_index=0,
+        rel_path=ui.REAL_FILE,
+        alt="Bản lề cổng inox bị gỉ",
+        alt_approved=True,
+        approved_sha256=DIGEST,
+    )
+    data.update(changes)
+    return DraftImage(**data)
+
+
+def raw_image(store: DraftStore, draft: str) -> dict:
+    with closing(sqlite3.connect(store.path)) as conn:
+        (raw,) = conn.execute("SELECT data FROM drafts WHERE id = ?", (draft,)).fetchone()
+    return json.loads(raw)["parts"][1]["chosen_image"]
+
+
+def test_hash_kept_with_approval(store):
+    """Băm đi cùng lần duyệt: lưu, mở lại giữ nguyên; JSON chỉ có khóa băm khi có băm (nháp không
+    có băm vẫn đúng khuôn cũ)."""
+    snap = store.save(ui.article(real_image()))
+    assert store.load(snap.id).parts[1].chosen_image.approved_sha256 == DIGEST
+    assert raw_image(store, snap.id)["approved_sha256"] == DIGEST
+    plain = store.save(ui.article(real_image(alt_approved=False)))
+    assert "approved_sha256" not in raw_image(store, plain.id)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"alt_approved": False},  # chưa duyệt: không có băm
+        {"alt": ""},  # alt trống thì không thể «đã duyệt»
+        {"root_index": None, "rel_path": "", "source": SOURCE_AI},  # ảnh AI chưa có file
+        {"approved_sha256": "A" * 64},  # chữ hoa: không phải dạng app ghi
+        {"approved_sha256": "a" * 63},
+        {"approved_sha256": "a" * 65},
+        {"approved_sha256": " " + "a" * 64},
+        {"approved_sha256": "g" * 64},
+        {"approved_sha256": 12345},
+        {"approved_sha256": None},
+        {"approved_sha256": ["a" * 64]},
+    ],
+)
+def test_hash_only_valid_with_approval(changes):
+    """Nháp là dữ liệu chưa tin cậy: băm chỉ nhận đúng 64 chữ số hex thường, chỉ đi cùng lần duyệt
+    của ảnh trong thư mục ảnh; sai dạng thì bỏ băm (ảnh vẫn giữ, giao diện bắt duyệt lại)."""
+    assert real_image(**changes).approved_sha256 == ""
+
+
+def test_hand_edited_hash_drops_hash_not_image(store):
+    """Băm trong file nháp bị sửa tay sai dạng: ảnh vẫn mở được (không bị bỏ như ảnh hỏng), chỉ mất
+    băm (giao diện bắt duyệt lại)."""
+    snap = store.save(ui.article(real_image()))
+    with closing(sqlite3.connect(store.path)) as conn, conn:
+        (raw,) = conn.execute("SELECT data FROM drafts WHERE id = ?", (snap.id,)).fetchone()
+        conn.execute(
+            "UPDATE drafts SET data = ? WHERE id = ?", (raw.replace(DIGEST, "<b>x</b>"), snap.id)
+        )
+    loaded = store.load(snap.id)
+    image = loaded.parts[1].chosen_image
+    assert loaded.dropped_images == 0
+    assert (image.rel_path, image.alt_approved, image.approved_sha256) == (ui.REAL_FILE, True, "")
+
+
+def test_old_draft_without_hash_opens(store):
+    """Nháp lưu trước T-089 (ảnh đã duyệt, không có trường băm) vẫn mở được, ảnh giữ nguyên."""
+    snap = store.save(ui.article(real_image(approved_sha256="")))
+    image = store.load(snap.id).parts[1].chosen_image
+    assert (image.alt_approved, image.approved_sha256) == (True, "")
+
+
+def file_hash(path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_approval_hash_saved_and_restored(project_root, root, fake_ai, site):
+    """Duyệt alt: nháp lưu băm của đúng file đã xem. Phiên mới mở lại (file không đổi), gửi thẳng ở
+    bước Xuất bản (không xem lại khung ảnh): vẫn «đã duyệt», so được với băm trong nháp, gửi."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    assert ui.saved_image(at).approved_sha256 == file_hash(root / ui.REAL_FILE)
+    fresh = t86.reopen(project_root, draft_id(at))
+    pid = fresh.session_state["part_ids"][1]
+    assert fresh.session_state[f"altok-{pid}"] is True
+    assert fresh.session_state[f"altsha-{pid}"] == file_hash(root / ui.REAL_FILE)
+    ui.send(fresh)
+    assert ui.counts(site) == (1, 1)
+
+
+def test_reopened_draft_file_replaced_stops_send(project_root, root, fake_ai, site):
+    """Duyệt xong, đóng app; file bị thay tại chỗ (cùng cỡ, giờ sửa). Phiên mới mở lại nháp rồi gửi
+    thẳng ở bước Xuất bản: byte sắp tải khác băm lưu trong nháp nên dừng, chưa gửi gì, bắt duyệt
+    lại (phần còn lại của SL-T056-2)."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    t86.replace_in_place(root / ui.REAL_FILE)
+    fresh = t86.reopen(project_root, draft_id(at))
+    pid = fresh.session_state["part_ids"][1]
+    assert not button(fresh, SEND).disabled  # cỡ, giờ sửa, định danh như cũ: chỉ băm mới bắt được
+    ui.send(fresh)
+    assert site.fake.requests == []
+    problems = [m.value.replace("\\", "") for m in fresh.markdown]
+    assert any("nội dung file khác bản bạn đã xem và duyệt" in p for p in problems)
+    assert fresh.session_state[f"altok-{pid}"] is False
+    assert button(fresh, SEND).disabled
+
+
+def reopen_at_write_step(project_root, draft: str):
+    """Phiên mới mở lại nháp lưu ở bước Viết & kiểm tra: khung ảnh hiện ngay."""
+    fresh = ui.pages.open_page(project_root, "write.py")
+    run_ok(button(fresh, "Mở", key=f"open-{draft}").click().run())
+    assert fresh.session_state["step"] == 2
+    return fresh, fresh.session_state["part_ids"][1]
+
+
+def test_reopened_draft_file_replaced_unapproved_on_view(project_root, root, fake_ai):
+    """Như trên nhưng người dùng xem khung ảnh: ảnh đang hiện (file mới) khác bản đã duyệt nên bỏ
+    «Đã duyệt», báo rõ; duyệt lại thì nháp lưu băm của file mới."""
+    at, _pid = ui.ready_image(project_root)
+    t86.replace_in_place(root / ui.REAL_FILE)
+    fresh, pid = reopen_at_write_step(project_root, draft_id(at))
+    assert fresh.session_state[f"altok-{pid}"] is False
+    assert any(CHANGED in w.value for w in fresh.warning)
+    ui.approve(fresh, pid)
+    assert not any(CHANGED in w.value for w in fresh.warning)
+    assert ui.saved_image(fresh).approved_sha256 == file_hash(root / ui.REAL_FILE)
+
+
+def test_reopened_draft_same_file_stays_approved(project_root, root, fake_ai):
+    """Đối chứng: file không đổi thì mở lại nháp, xem khung ảnh vẫn «Đã duyệt», không nhắc gì."""
+    at, _pid = ui.ready_image(project_root)
+    fresh, pid = reopen_at_write_step(project_root, draft_id(at))
+    assert fresh.session_state[f"altok-{pid}"] is True
+    assert not any(CHANGED in w.value or OLD_APPROVAL in w.value for w in fresh.warning)
+
+
+def test_old_draft_without_hash_needs_new_approval(project_root, root, fake_ai):
+    """Nháp cũ (alt đã duyệt, chưa có băm): mở được, chữ giữ nguyên, nhưng không so được ảnh với lúc
+    duyệt nên bỏ «Đã duyệt», báo một lần; duyệt lại thì lưu băm."""
+    chosen = real_image(approved_sha256="")
+    at, pid = ui.open_article(project_root, ui.article(chosen))
+    assert at.session_state[f"altok-{pid}"] is False
+    assert f"altsha-{pid}" not in at.session_state
+    assert any(OLD_APPROVAL in w.value for w in at.warning)
+    assert at.session_state[f"alt-{pid}"] == chosen.alt
+    ui.approve(at, pid)
+    assert at.session_state[f"altok-{pid}"] is True
+    assert not any(OLD_APPROVAL in w.value for w in at.warning)
+    assert ui.saved_image(at).approved_sha256 == file_hash(root / ui.REAL_FILE)
