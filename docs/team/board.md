@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-24 10:27 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 07:39 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -35,7 +35,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Lá Chắn · T-056 kiểm màn hình chọn ảnh | `team/T-056` | Họa Sĩ 2 lượt (`692fb07`). Soi Lỗi kiểm lại **ĐẠT CÓ ĐIỀU KIỆN** (`df995c1`: 7 lỗi đã sửa; 4 Thấp mới). ⏳ **10:27 Lá Chắn đang kiểm (đầy đủ)**; gộp cần chủ dự án xác nhận Code Snippets ≥ 3.9.2 | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
-| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | GĐ4: lời dặn AI cho meta và anchor; mục `[meta]` trong `config/content.toml` | Chỉ Huy (đang gộp) | `team/T-040` | Ngòi Bút 2 lượt; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN. 24/10 10:27 Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`71ccf3b`, Opus tạm): LC-T040-1 Thấp → T-041. ⏳ **Gộp `main` trên máy (`096793d`), đang chạy toàn bộ test** | [Ngòi Bút](reports/T-040-ngoi-but.md) · [Soi Lỗi](reports/T-040-soi-loi.md) · [Lá Chắn](reports/T-040-la-chan.md) |
 | [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Thợ Máy · T-085 dọn client WordPress lượt 2 | `team/T-085` | ⏳ **09:44 Thợ Máy đang làm** | |
 
 ## Chờ
@@ -69,6 +68,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-040](tickets/T-040-loi-dan-meta-anchor.md) | Lời dặn AI cho meta và anchor liên kết nội bộ viết lại có ví dụ (title 40–48 hoặc 50–60 ký tự, description có lợi ích + lời mời nhẹ, không giá, không số); mục `[meta]` trong `config/content.toml` (code chưa đọc, nối ở T-041) | Ngòi Bút | 2026-10-26 | [Ngòi Bút](reports/T-040-ngoi-but.md) (2 lượt) · [Soi Lỗi](reports/T-040-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-040-la-chan.md) (Opus tạm): LC-T040-1, SL-T040-1 phần code → T-041. Gộp `main`, Windows 12.859 test qua |
 | [T-060](tickets/T-060-don-loi-thap-client-wordpress.md) | Dọn lỗi Thấp client WordPress: tham số/header đổi đường bị chặn trước khi gửi, câu lỗi cố định kèm mã HTTP, `WORDPRESS_URL` không trỏ file thực thi, chữ SEO chặn «<» dính chữ, `upload_media` chỉ ghi vào ảnh vừa tạo (201) và ghi đè đủ 3 ô | Thợ Máy | 2026-10-24 | [Thợ Máy](reports/T-060-tho-may.md) · [Soi Lỗi](reports/T-060-soi-loi.md): đạt có điều kiện (R5 4 test cũ đạt) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-060-la-chan.md) (Opus tạm): LC-T060-1..3 → phiếu dọn sau. Gộp `main`, Windows 12.667 test qua |
 | [T-081](tickets/T-081-dau-gach-cheo-alt-anh-ai.md) | Bỏ dấu «\» sót ở alt, chú thích ảnh AI khi AI viết «[Minh họa]: …» (SL-T071-1) | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-081-tho-may.md) · [Soi Lỗi](reports/T-081-soi-loi.md): đạt (SL-T081-1 → T-083) · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-081-la-chan.md) (Opus tạm). Gộp `main`, Windows 11.839 test qua |
 | [T-080](tickets/T-080-don-loi-thap-doc-anh-sau-t079.md) | Dọn 3 lỗi Thấp đọc ảnh sau T-079: so đường dẫn thật từng chữ (vá thư mục "anh em" tên trông y hệt, khai thác được thật trên bản cũ), câu báo khi bị tráo không tả file ngoài, "vừa bị thay đổi" thay "không có quyền" | Thợ Máy | 2026-10-23 | [Thợ Máy](reports/T-080-tho-may.md) (thử ổ mạng, Google Drive, USB FAT32) · [Soi Lỗi Windows](reports/T-080-soi-loi.md): đạt có điều kiện · [Soi Lỗi Linux](reports/T-080-soi-loi-linux.md): đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-080-la-chan.md) (Opus tạm): SL-T080-1, -2, -L-1 → T-082. Gộp `main`, Windows 11.668 test qua |
