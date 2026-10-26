@@ -8,7 +8,8 @@ Bổ sung cho ``tests/test_t040_prompts.py`` (Ngòi Bút), không lặp lại:
   website, hồ sơ doanh nghiệp) không đổi được một chữ nào của phần chỉ thị: phần ngoài khung dữ
   liệu giống hệt khi nhập chữ thường (điều kiện Lá Chắn T-039 số 1, security.md 2.4, A1);
 - mục ``[meta]`` không làm hỏng bộ đọc cấu hình nào đang có, kể cả khi bị sửa sai dạng; ghi chú
-  «chưa đọc mục này» đúng với code; các ngưỡng ghi trong chú thích khớp hằng số trong code;
+  trên mục đúng với code (T-040: «chưa đọc mục này»; từ T-041 phần mềm đọc mục này); các ngưỡng
+  ghi trong chú thích khớp hằng số trong code;
 - lời dặn khớp với bộ kiểm thật và với chính các quy tắc nó dạy.
 
 Lỗi tìm thấy được đánh dấu ``xfail(strict=True)`` kèm mã ``SL-T040-n``: sửa xong thì test tự báo
@@ -310,8 +311,9 @@ def test_every_config_reader_gives_same_result_with_or_without_meta(tmp_path):
     ],
 )
 def test_broken_meta_section_does_not_lock_any_reader(tmp_path, broken):
-    """Người dùng sửa [meta] sai dạng: mọi bộ đọc hiện có vẫn chạy (đúng với ghi chú «phần mềm
-    chưa đọc mục này»), trang Soạn bài và Cài đặt không bị khóa."""
+    """Người dùng sửa [meta] sai dạng: các bộ đọc mục khác vẫn chạy, trang Soạn bài và Cài đặt
+    không bị khóa. (Từ T-041 chỉ ``load_meta_rules`` báo lỗi, tức chỉ khóa việc AI gợi ý meta:
+    xem ``tests/test_t041_meta.py``.)"""
     path = tmp_path / "content.toml"
     base = _without_meta(tmp_path).read_text(encoding="utf-8")
     path.write_text(base + "\n[meta]\n" + broken + "\n", encoding="utf-8")

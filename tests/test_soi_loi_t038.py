@@ -229,12 +229,10 @@ def test_lone_surrogate_blocked():
 
 
 def test_lone_surrogate_output_is_at_least_valid_json():
-    """Trạng thái hiện tại của SL-T038-1: JSON đọc lại được nhưng không mã hóa được UTF-8."""
+    """SL-T038-1 đã sửa ở T-041: surrogate lẻ bị Chặn nên không còn JSON-LD nào phải ghi ra UTF-8
+    (trước đó JSON đọc lại được nhưng không mã hóa được UTF-8)."""
     result = _build(a="Trả lời \ud800 lỗi.")
-    if result.json_ld is not None:
-        json.loads(result.json_ld)
-        with pytest.raises(UnicodeEncodeError):
-            result.json_ld.encode("utf-8")
+    assert result.json_ld is None
 
 
 def test_output_always_utf8_encodable_for_normal_vietnamese():
