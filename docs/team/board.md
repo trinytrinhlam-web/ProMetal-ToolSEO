@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 15:08 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 15:19 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Thợ Máy · T-041 Lưu SEO vào nháp (lượt 2) | `team/T-041` | Thợ Máy xong phần logic (`c059b41`). 26/10 Soi Lỗi phần logic **ĐẠT CÓ ĐIỀU KIỆN** (`85b06b6`: 7 Thấp). ⏳ **13:53 Thợ Máy lượt 2** (bắt buộc SL-T041-1, -2, -4); rồi Họa Sĩ nối giao diện | [Thợ Máy](reports/T-041-tho-may.md) · [Soi Lỗi (logic)](reports/T-041-soi-loi.md) |
-| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-085 (SL-T085-1..3, LC-T085-1): NUL trong `_fields`, trả lời lồng quá sâu, câu báo khi tải ảnh lỗi giữa chừng | Soi Lỗi · T-060 kiểm client WordPress (T-088) | `team/T-088` | 26/10 Thợ Máy **xong** (`1e87ce8`; 6.987 test liên quan qua). ⏳ **13:53 Soi Lỗi rút gọn đang kiểm** | [Thợ Máy](reports/T-088-tho-may.md) |
-| [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) | GĐ3: dọn lỗi Thấp gửi nháp sau T-086 (hai tab, mã bài lạ, ảnh xem trước theo byte đã băm, băm ảnh đã duyệt trong nháp) | Họa Sĩ · T-089 dọn gửi nháp | `team/T-089` | ⏳ **13:55 Họa Sĩ đang làm** | |
+| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Họa Sĩ · T-056 màn hình chọn ảnh (T-041 giao diện) | `team/T-041` | Thợ Máy 2 lượt phần logic (`eac0431`); Soi Lỗi phần logic đạt có điều kiện, lỗi đã sửa. Đã gộp `main` vào nhánh (`13a554c`). ⏳ **15:19 Họa Sĩ nối giao diện bước SEO** | [Thợ Máy](reports/T-041-tho-may.md) · [Soi Lỗi (logic)](reports/T-041-soi-loi.md) |
+| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-085 (SL-T085-1..3, LC-T085-1): NUL trong `_fields`, trả lời lồng quá sâu, câu báo khi tải ảnh lỗi giữa chừng | Lá Chắn · T-060 kiểm client WordPress (T-088) | `team/T-088` | Thợ Máy xong (`1e87ce8`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`b008dc8`: 1 Thấp). ⏳ **15:19 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-088-tho-may.md) · [Soi Lỗi](reports/T-088-soi-loi.md) |
+| [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) | GĐ3: dọn lỗi Thấp gửi nháp sau T-086 (hai tab, mã bài lạ, ảnh xem trước theo byte đã băm, băm ảnh đã duyệt trong nháp) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-089) | `team/T-089` | 26/10 Họa Sĩ **xong** (`87ad51c`; 3.908 test liên quan qua). ⏳ **15:19 Soi Lỗi rút gọn đang kiểm** | [Họa Sĩ](reports/T-089-hoa-si.md) |
 | [T-087](tickets/T-087-readme-chon-anh.md) (lượt 3) | README: viết lại «Lời dặn tạm thời» sau T-086 (điều kiện 3) | Thư Ký · T-069 README ảnh | `team/T-087-l3` | ⏳ **15:08 Thư Ký đang làm** | |
 
 ## Chờ

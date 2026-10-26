@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Họa Sĩ xong, Soi Lỗi đang kiểm |
 
 ## Mục tiêu
 
@@ -54,3 +54,4 @@ W1, W2, U1, F2.
 
 - Lập theo điều kiện 2, 3 của Lá Chắn T-086; chủ dự án duyệt 2026-10-26. Chạy song song với T-041 phần giao diện (cùng `write.py`, `drafts.py` nhưng khác chỗ: bước 5 gửi nháp và `DraftImage` so với bước 4 SEO và khối SEO); Chỉ Huy gộp lần lượt và xử lý xung đột nếu có.
 - Phần không bắt buộc của Lá Chắn T-086 (giới hạn trên cho `_positive_id` trong client) để sau T-088 (cùng `client.py`).
+- 2026-10-26 15:19 (Chỉ Huy B): **Họa Sĩ xong** (`87ad51c`, 5/5; gỡ 3 `xfail`; 39 file test liên quan 3.908 qua). Giao **Soi Lỗi rút gọn** (phiên Soi Lỗi T-056).
