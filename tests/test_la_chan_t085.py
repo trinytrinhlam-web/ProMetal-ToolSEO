@@ -27,11 +27,6 @@ JPEG = b"\xff\xd8\xff\xe0anh-gia"
 DEEP_JSON = b"[" * 100_000 + b"]" * 100_000
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T085-1: câu trả lời lỗi (4xx/5xx) có thân JSON lồng quá sâu làm _error_from để lọt "
-    "RecursionError thay vì WordPressError câu cố định",
-)
 @pytest.mark.parametrize("status", [400, 404, 500])
 def test_lc_t085_1_tra_loi_loi_long_qua_sau_thanh_cau_co_dinh(fake_wp, wp_client, status):
     fake_wp.on("GET", "/wp-json/", (status, DEEP_JSON, {}))
@@ -40,11 +35,6 @@ def test_lc_t085_1_tra_loi_loi_long_qua_sau_thanh_cau_co_dinh(fake_wp, wp_client
     assert f"mã {status}" in str(err.value)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T085-1: lệnh ghi đè ba ô của upload_media trả lỗi có thân JSON lồng quá sâu: "
-    "RecursionError lọt ra, không có câu «thư viện Media» dù ảnh đã lên",
-)
 def test_lc_t085_1_ghi_de_loi_long_qua_sau_van_bao_anh_da_o_thu_vien(fake_wp, wp_client):
     fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL}, {}))
     fake_wp.on("POST", f"{MEDIA}/9", (500, DEEP_JSON, {}))

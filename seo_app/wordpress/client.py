@@ -120,12 +120,16 @@ _FORBIDDEN_PARAMS = ("rest_route", "_method", "_envelope", "_jsonp")
 _RENDERED_FIELDS = frozenset(
     {"content", "excerpt", "description", "caption", "_embedded", "_links"}
 )
+# Ký tự ``trim()`` của PHP cắt ở hai đầu (mặc định " \t\n\r\0\x0B", có NUL): WordPress cắt từng
+# tên trường của ``_fields`` như vậy trước khi so (SL-T085-1).
+_PHP_TRIM = " \t\n\r\0\x0b"
 
 # Khóa thân JSON cấp trên cùng được phép theo từng đường (LC-T060-1), cùng kiểu
 # ``ALLOWED_PARAMS`` (thiếu đường thì lỗi ngay khi nạp module). WordPress đọc tham số theo thứ
 # tự JSON → form → truy vấn → đường (``WP_REST_Request::get_parameter_order``): ``id`` (bài,
 # ảnh) hay ``name`` (Abilities ``/run``) trong thân JSON thắng giá trị trên đường, nên lệnh đi
-# đúng đường đã duyệt mà sửa bài, ảnh khác hay chạy ability khác.
+# đúng đường đã duyệt mà sửa bài, ảnh khác hay chạy ability khác. Cũng vì thứ tự đó, đừng thêm
+# ``_fields``, ``context`` vào đây: giá trị trong thân JSON sẽ vòng qua bước kiểm ở ``params``.
 ALLOWED_JSON_KEYS: dict[tuple[str, str], frozenset[str]] = {
     ("GET", r"/"): frozenset(),
     ("GET", r"/wp/v2/users/me"): frozenset(),
@@ -245,11 +249,17 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
 def _asks_rendered_fields(value: str | int) -> bool:
     """Giá trị ``_fields`` rỗng hay hỏi trường trong ``_RENDERED_FIELDS`` (LC-T060-2).
 
-    Tách như ``wp_parse_list`` của WordPress (dấu phẩy, khoảng trắng); tên trường là phần trước
-    dấu chấm (``content.rendered`` là ``content``), so trên chữ thường. ``_fields`` rỗng (``""``,
-    ``","``) thì WordPress trả MỌI trường, kể cả ``content``, nên cũng bị chặn.
+    Tách như ``wp_parse_list`` của WordPress (dấu phẩy, khoảng trắng), rồi cắt hai đầu mỗi phần
+    như ``trim()`` của PHP mà ``get_fields_for_response`` chạy sau đó (``_PHP_TRIM``, có cả NUL:
+    "\\x00content" vẫn là ``content``, SL-T085-1); tên trường là phần trước dấu chấm
+    (``content.rendered`` là ``content``, cũng cắt hai đầu), so trên chữ thường. ``_fields`` rỗng
+    (``""``, ``","``, chỉ NUL) thì WordPress trả MỌI trường, kể cả ``content``, nên cũng bị chặn.
     """
-    names = [part.split(".", 1)[0].lower() for part in re.split(r"[\s,]+", str(value)) if part]
+    names = []
+    for part in re.split(r"[\s,]+", str(value)):
+        part = part.strip(_PHP_TRIM)
+        if part:
+            names.append(part.split(".", 1)[0].strip(_PHP_TRIM).lower())
     return not names or any(name in _RENDERED_FIELDS for name in names)
 
 
@@ -371,6 +381,13 @@ _MEDIA_SAME_ID = (
     "WordPress trả cùng một mã ảnh cho hai ảnh khác nhau trong lần gửi này (có thể là một ảnh đã "
     "có trên website). Phần mềm không ghi alt đè lên ảnh đó, chưa tạo bài nháp."
 )
+# ``upload_media``: lệnh tải lỗi mà không phải lời từ chối 4xx rõ ràng (5xx, hết giờ, mất kết nối,
+# ``201`` hỏng thân…): ảnh có thể đã lên (SL-T085-3).
+_MEDIA_MAYBE_UPLOADED = (
+    " Ảnh có thể đã lên thư viện Media của website: kiểm Media → Thư viện trong trang quản trị "
+    "WordPress trước khi tải lại (tải lại sẽ thêm một ảnh nữa)."
+)
+_MEDIA_UPLOAD_UNEXPECTED = "Tải ảnh lên WordPress gặp lỗi không mong đợi ({kind})."
 # ``upload_media``: ảnh đã lên (201) mà không xác nhận được lệnh ghi đè ba ô (LC-T060-3, SL-T060-1).
 _MEDIA_NOT_DESCRIBED = (
     "Ảnh đã lên thư viện Media của website (mã ảnh {media_id}) nhưng phần mềm không xác nhận được "
@@ -1100,9 +1117,13 @@ class WordPressClient:
           không, WordPress lấy ba ô từ chữ nằm trong file người dùng chọn (EXIF, IPTC, XMP).
         - Cả ba không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn alt vào
           ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
-        - Ảnh đã lên mà lệnh ghi đè hỏng, hay câu trả lời không nói đúng mã ảnh vừa tạo: báo câu
-          cố định ``_MEDIA_NOT_DESCRIBED`` (ảnh đang ở thư viện Media, mã ảnh, vào Media → Thư
-          viện kiểm hoặc xóa), không dùng địa chỉ, alt của ảnh khác (LC-T060-3, SL-T060-1).
+        - Lệnh tải lỗi mà không phải lời từ chối 4xx rõ ràng (hết giờ, mất kết nối, 3xx, 5xx, câu
+          trả lời hỏng kể cả ``201``, lỗi lạ): câu báo thêm ``_MEDIA_MAYBE_UPLOADED`` (ảnh có thể
+          đã lên thư viện Media, kiểm Media → Thư viện trước khi tải lại; SL-T085-3).
+        - Ảnh đã lên mà lệnh ghi đè hỏng (kể cả lỗi lạ, LC-T085-1), hay câu trả lời không nói
+          đúng mã ảnh vừa tạo: báo câu cố định ``_MEDIA_NOT_DESCRIBED`` (ảnh đang ở thư viện
+          Media, mã ảnh, vào Media → Thư viện kiểm hoặc xóa), không dùng địa chỉ, alt của ảnh
+          khác (LC-T060-3, SL-T060-1).
         """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
@@ -1120,9 +1141,24 @@ class WordPressClient:
                 "Alt, tiêu đề, chú thích của ảnh phải là chữ. Chưa gửi gì lên website."
             )
 
-        media_id, _ = self._post_media(data, safe_name, content_type, new_only=True)
+        try:
+            media_id, _ = self._post_media(data, safe_name, content_type, new_only=True)
+        except WordPressError as exc:
+            status = exc.status_code
+            if status is not None and 400 <= status < 500:
+                raise  # lời từ chối 4xx rõ ràng: ảnh chưa lên
+            # Hết giờ, mất kết nối, 3xx, 5xx, câu trả lời hỏng (kể cả 201): lệnh có thể đã chạy
+            # xong trên website (SL-T085-3, như ``maybe_uploaded`` của gửi nháp kèm ảnh).
+            raise WordPressError(
+                str(exc).rstrip() + _MEDIA_MAYBE_UPLOADED, status_code=status, code=exc.code
+            ) from None
+        except Exception as exc:
+            raise WordPressError(
+                _MEDIA_UPLOAD_UNEXPECTED.format(kind=type(exc).__name__) + _MEDIA_MAYBE_UPLOADED
+            ) from exc
 
-        # Từ đây ảnh đã ở thư viện Media: lỗi nào cũng phải nói rõ điều đó (mã ảnh đã kiểm).
+        # Từ đây ảnh đã ở thư viện Media: lỗi nào cũng phải nói rõ điều đó (mã ảnh đã kiểm),
+        # kể cả lỗi lạ (LC-T085-1).
         try:
             updated = self._json(
                 self._request(
@@ -1139,6 +1175,8 @@ class WordPressClient:
                 status_code=exc.status_code,
                 code=exc.code,
             ) from None
+        except Exception as exc:
+            raise WordPressError(_MEDIA_NOT_DESCRIBED.format(media_id=media_id, code="")) from exc
         if not isinstance(updated, dict) or _positive_id(updated.get("id")) != media_id:
             raise WordPressError(_MEDIA_NOT_DESCRIBED.format(media_id=media_id, code=""))
 
@@ -1477,12 +1515,15 @@ class WordPressClient:
 
     @staticmethod
     def _json(response: requests.Response) -> Any:
+        """Đọc JSON của câu trả lời. Mọi lỗi lúc giải mã (không phải JSON, chữ hỏng, JSON lồng
+        quá sâu làm ``RecursionError``…, SL-T085-2) thành câu cố định kèm mã HTTP."""
         try:
             return response.json()
-        except ValueError as exc:
+        except Exception as exc:  # chỉ bọc bước giải mã: lỗi nào cũng là "không đọc được"
             raise WordPressError(
-                "WordPress không trả về dữ liệu JSON (có thể là trang HTML). Thường do sai "
-                "WORDPRESS_URL, hoặc plugin bảo mật / tường lửa đang chặn REST API."
+                f"WordPress không trả về dữ liệu JSON đọc được (mã {response.status_code}; có "
+                "thể là trang HTML hay dữ liệu hỏng). Thường do sai WORDPRESS_URL, hoặc plugin "
+                "bảo mật / tường lửa đang chặn REST API."
             ) from exc
 
     @staticmethod
@@ -1493,7 +1534,7 @@ class WordPressClient:
         status = response.status_code
         try:
             body = response.json()
-        except ValueError:
+        except Exception:  # thân lỗi không đọc được (kể cả lồng quá sâu, LC-T085-1): bỏ qua
             body = {}
         if not isinstance(body, dict):
             body = {}

@@ -303,11 +303,6 @@ def test_hang_fields_cua_app_van_di_ra(fake_wp, wp_client, method, route, extra,
     assert not wp_renders(fields)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T085-1: _fields có NUL sát tên trường («\\x00content», «content\\x00») qua bộ kiểm; "
-    "get_fields_for_response của WordPress trim() bỏ NUL nên vẫn dựng content (chạy shortcode)",
-)
 @pytest.mark.parametrize(
     ("method", "route", "extra"),
     [("GET", "/wp/v2/posts/42", {"context": "edit"}), ("POST", "/wp/v2/media/9", {}),
@@ -400,11 +395,6 @@ def test_tai_anh_bi_tu_choi_ro_rang_khong_bao_anh_da_len(fake_wp, wp_client, sta
     assert len(fake_wp.requests) == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T085-2: câu trả lời JSON lồng quá sâu làm _json để lọt RecursionError (chỉ bắt "
-    "ValueError): lỗi Python thay vì WordPressError, ghi đè hỏng không có câu «thư viện Media»",
-)
 @pytest.mark.parametrize("where", ["check_connection", "upload_media_ghi_de"])
 def test_sl_t085_2_json_long_qua_sau_thanh_cau_loi_co_dinh(fake_wp, wp_client, where):
     if where == "check_connection":
@@ -436,11 +426,6 @@ def page_site(monkeypatch):
     return fake
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T085-2: trên trang Kết nối WordPress, câu trả lời JSON lồng quá sâu làm vỡ trang "
-    "(lỗi Python RecursionError, chi tiết lỗi kèm đường dẫn máy) thay vì một câu báo lỗi",
-)
 def test_sl_t085_2_trang_ket_noi_khong_vo_vi_json_long_sau(project_root, page_site):
     page_site.on("GET", "/wp-json/", (200, DEEP_JSON, {}))
     at = AppTest.from_file(str(project_root / "app" / "main.py"), default_timeout=60)
@@ -454,11 +439,6 @@ def test_sl_t085_2_trang_ket_noi_khong_vo_vi_json_long_sau(project_root, page_si
     assert len(at.error) == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T085-3: lệnh tải ảnh lỗi mà ảnh đã (201 nhưng câu trả lời hỏng) hay có thể đã (5xx, "
-    "hết giờ) lên thư viện Media thì câu báo chỉ «thử lại sau», không dặn kiểm Media → Thư viện",
-)
 @pytest.mark.parametrize(
     "answer",
     [
