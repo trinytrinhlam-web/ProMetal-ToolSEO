@@ -1988,6 +1988,7 @@ def suggest_meta(writer: ContentWriter, which: str) -> None:
         add_meta_versions("title", [onpage_meta.strip_brand(t, suffix) for t in result.titles])
     if result.descriptions:
         add_meta_versions("description", list(result.descriptions))
+    st.rerun()  # nút ↶ ↷, số bản đã vẽ theo trạng thái cũ
 
 
 def check_lines(*checks: onpage_meta.FieldCheck, length: int | None = None) -> None:
