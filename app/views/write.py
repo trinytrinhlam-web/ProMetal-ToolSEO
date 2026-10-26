@@ -2221,8 +2221,12 @@ def finish_send() -> None:
         return
     done = holder.get("done")
     if done is not None and not done.is_set():
-        with st.spinner(MSG_WAIT_SEND, show_time=True):
-            done.wait(SEND_WAIT_SECONDS)
+        # Ô thông báo thường (hiện ngay), không dùng st.spinner: vòng quay của Streamlit 1.65 là
+        # phần tử tạm, trên trang chưa có phần tử nào thì không thấy (thử trên trình duyệt thật).
+        waiting = st.empty()
+        waiting.info(MSG_WAIT_SEND, icon="⏳")
+        done.wait(SEND_WAIT_SECONDS)
+        waiting.empty()
         if not done.is_set():
             S._wp_result = {"ok": False, "message": MSG_STILL_SENDING}
             return
