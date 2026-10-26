@@ -167,6 +167,7 @@ MSG_STILL_SENDING = (
     "Lần gửi nháp trước vẫn đang chạy (website chậm?). Đợi thêm rồi bấm lại hoặc tải lại trang; "
     "trước khi gửi lại, mở trang quản trị WordPress kiểm tra Bài viết → Nháp và Media → Thư viện."
 )
+MSG_POST_ID_OUT_OF_RANGE = "website trả mã bài nháp lớn bất thường, app không ghi được vào nháp"
 MSG_FILE_REPLACED = (
     "nội dung file khác bản bạn đã xem và duyệt (file vừa bị thay bằng ảnh khác cùng tên). Xem "
     "lại ảnh, alt rồi duyệt lại ở bước Viết & kiểm tra"
@@ -2165,13 +2166,21 @@ def send_and_record(
 def record_outcome(store: DraftStore, holder: dict) -> None:
     """Kết quả gửi (``holder["state"]``: còn chưa rõ không, mã bài nháp gần nhất) → nháp. Không
     đọc/ghi ``st.session_state``. Ghi hỏng thì nháp vẫn giữ «đang gửi» (mở lại thì khóa, hướng an
-    toàn) và trang báo cho người dùng (``note``)."""
+    toàn) và trang báo cho người dùng (``note``).
+
+    ``SendState`` dựng trong khối bắt lỗi (LC-T086-1): website trả mã bài ngoài khoảng nháp ghi
+    được (từ 2⁶³) thì báo câu cố định, không để lỗi thoát lên trang ở lần chạy này và các lần
+    ``finish_send`` thử ghi lại."""
     pending, post_id = holder["state"]
-    state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
     try:
+        state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
         store.save_send_state(holder["draft"], state)
-    except Exception as exc:
-        holder["note"] = str(exc) if isinstance(exc, DraftError) else "lỗi không mong đợi"
+    except DraftError as exc:
+        holder["note"] = str(exc)
+    except ValueError:  # ValidationError là một dạng ValueError: mã bài lạ từ website
+        holder["note"] = MSG_POST_ID_OUT_OF_RANGE
+    except Exception:
+        holder["note"] = "lỗi không mong đợi"
     else:
         holder["saved"] = True
         holder.pop("note", None)
