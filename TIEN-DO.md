@@ -91,7 +91,7 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
    - bỏ đoạn mô tả thừa ở trang chủ ghi "3 chi nhánh Gò Vấp, Hóc Môn, Thủ Đức";
    - cân nhắc bỏ mức giá "$$".
 4. **Nhờ người làm web kiểm tra:** website có các đường `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1`. Nhờ họ xác nhận các đường này **bắt buộc đăng nhập quản trị**. Phần mềm không bao giờ gọi các đường này.
-4b. **Cập nhật plugin Code Snippets (quan trọng, Lá Chắn T-054 nêu 20/10):** vào WordPress → Plugins, xem Code Snippets đã ở bản **3.9.2 trở lên** chưa, chưa thì cập nhật. Trong cài đặt Code Snippets, **tắt «Enable file-based execution»** nếu không dùng. Bản cũ có lỗ hổng (CVE-2025-13035) cho mọi tài khoản từ Cộng tác viên trở lên chạy mã trên máy chủ website, không riêng phần mềm. Làm trước khi phần mềm được bật nút Gửi nháp kèm ảnh.
+4b. **Cập nhật plugin Code Snippets (quan trọng, Lá Chắn T-054 nêu 20/10):** vào WordPress → Plugins, xem Code Snippets đã ở bản **3.9.2 trở lên** chưa, chưa thì cập nhật. Trong cài đặt Code Snippets, **tắt «Enable file-based execution»** nếu không dùng. Bản cũ có lỗ hổng (CVE-2025-13035) cho mọi tài khoản từ Cộng tác viên trở lên chạy mã trên máy chủ website, không riêng phần mềm. Làm trước khi phần mềm được bật nút Gửi nháp kèm ảnh. **Đã làm 26/10: chủ dự án báo đã cập nhật Code Snippets lên bản 4.0.0** (mục «tắt Enable file-based execution» chưa xác nhận).
 5. Phần "câu chuyện khách hàng thật" trong hồ sơ doanh nghiệp: anh bổ sung khi rảnh (mục 7 của `config/business_profile.md` có hướng dẫn).
 6. **Chạy kiểm tra trên Windows:** khi mở máy Windows với Chỉ Huy A, nhờ A chạy `uv run pytest` một lượt.
 
