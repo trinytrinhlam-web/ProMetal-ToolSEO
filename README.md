@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện) và viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9) và gửi bài nháp kèm ảnh lên website (mục 10). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -13,7 +13,7 @@ App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa
 Nên dùng **GitHub Desktop** (https://desktop.github.com) để sau này cập nhật chỉ cần bấm một nút:
 
 1. Cài GitHub Desktop và đăng nhập tài khoản GitHub.
-2. Chọn **File → Clone repository**, chọn `ProMetal-ToolSEO`, chọn thư mục lưu → **Clone**.
+2. Chọn **File → Clone repository**, chọn `ProMetal-ToolSEO`, chọn thư mục lưu (không nằm trong Google Drive hay OneDrive, xem mục 8) → **Clone**.
 
 Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**, rồi giải nén.
 
@@ -43,7 +43,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
 - Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
 - **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào), **Cài đặt**, **Kết nối WordPress**.
-- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng. Ba bước đầu của **Soạn bài** đã dùng AI thật (xem mục 7).
+- Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng. Ba bước đầu của **Soạn bài** đã dùng AI thật (xem mục 7); chọn ảnh và gửi bài nháp cũng đã chạy thật (mục 9, 10).
 
 ## 5. File cấu hình `.env`
 
@@ -94,7 +94,7 @@ App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn t�
 
 ## 7. Viết bài bằng AI
 
-Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Bước **SEO** và **Xuất bản** vẫn là bản demo.
+Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Ở bước **Viết & kiểm tra** bạn chọn ảnh cho bài (mục 9); bước **Xuất bản** gửi được bài nháp kèm ảnh lên website (mục 10). Bước **SEO** và hai cách **Hẹn giờ**, **Đăng ngay** vẫn là bản demo.
 
 App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và **Gemini** (Google). **Không có hãng mặc định**: bạn có khóa của hãng nào thì dùng hãng đó, và đổi hãng cho từng việc khi cần (xem "Đổi hãng hoặc mô hình" bên dưới). Việc nào trong `config/ai.toml` đang ghi hãng nào thì hãng đó phải có khóa.
 
@@ -136,7 +136,7 @@ max_tokens = 32000
 - `effort` là mức "suy nghĩ" của AI (`low`, `medium`, `high`, `xhigh`, `max`): càng cao càng kỹ nhưng chậm và tốn tiền hơn. Claude và ChatGPT dùng đúng mức bạn ghi. Gemini chỉ có 3 mức (`low`, `medium`, `high`): `xhigh` và `max` được tính là `high`. Mô hình không có chế độ suy nghĩ thì app tự bỏ qua `effort`.
 - Việc đang dùng hãng nào thì hãng đó phải có khóa. Thiếu khóa thì ngay khi mở **Soạn bài**, app báo màu vàng và khóa tạm các bước dùng AI.
 
-**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (đang ghi Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. Giao diện chưa có nút viết alt; đọc trước để chọn khóa cho đúng:
+**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (đang ghi Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. App chỉ gửi ảnh cho hãng AI khi bạn bấm **✨ AI viết alt** (hay **🔄 AI viết lại alt**) ở một ảnh đã chọn (mục 9), mỗi lần một ảnh. Vì vậy:
 
 - Nên dùng Claude (đang ghi sẵn) hoặc khóa **trả phí** của OpenAI / Gemini.
 - Khóa Gemini **miễn phí**: Google được dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Muốn dùng khóa miễn phí cho việc viết alt thì báo Chỉ Huy để ghi vào sổ rủi ro trước.
@@ -158,6 +158,8 @@ Thử mù **không đọc và không ghi** `config/ai.toml` (không có mục `b
 1. Vào **Soạn bài**, nhập từ khóa, bấm **Phân tích từ khóa**. Điền phần **Chất liệu thật** (kinh nghiệm, số liệu, câu hỏi khách hay hỏi): AI không tự bịa phần này.
 2. Bấm **Tiếp: tạo dàn ý**, sửa / xóa / sắp xếp lại các mục, rồi bấm **Duyệt dàn ý**. AI viết toàn bài, tự rà soát theo checklist và sửa một lượt trước khi đưa bạn xem.
 3. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
+4. Cũng ở bước này, mục nào có khung **📷 Chỗ cần ảnh** thì chọn ảnh, viết alt rồi duyệt (mục 9).
+5. Bước **SEO** còn là bản demo. Ở bước **Xuất bản**, hình thức **Nháp**, bấm **📤 Gửi nháp** để gửi bài nháp kèm ảnh lên website (mục 10).
 
 Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn được **tự lưu** sau mỗi thay đổi (vào `data/drafts.sqlite` trên máy, không lên GitHub). Tải lại trang hay tắt app vẫn không mất bài: vào **Soạn bài**, khung **Bài đang soạn dở** ở bước 1 có nút Mở và Xóa.
 
@@ -197,7 +199,7 @@ Dấu `…` là chỗ app điền tên cụ thể (tên hãng, tên mô hình, c
 
 ## 8. Đặt thư mục ảnh
 
-App lấy ảnh công trình từ các thư mục bạn khai báo (USB, thư mục Google Drive for Desktop…) và đọc **thẻ** của mỗi ảnh từ **tên thư mục**: mã công trình, hạng mục, khu vực, trước/sau, ảnh thật hay ảnh AI. Màn hình chọn ảnh trong bài chưa có; đặt thư mục theo cách dưới đây ngay từ bây giờ để app đọc đúng thẻ.
+App lấy ảnh công trình từ các thư mục bạn khai báo (USB, thư mục Google Drive for Desktop…) và đọc **thẻ** của mỗi ảnh từ **tên thư mục**: mã công trình, hạng mục, khu vực, trước/sau, ảnh thật hay ảnh AI. Đặt thư mục theo cách dưới đây để app đọc đúng thẻ; cách chọn ảnh cho bài ở mục 9.
 
 **Khai báo thư mục**
 
@@ -208,9 +210,9 @@ App lấy ảnh công trình từ các thư mục bạn khai báo (USB, thư m�
    Trên Mac, ví dụ: `/Volumes/USB/anh-cong-trinh`.
 2. Tắt app rồi mở lại. Vào **Cài đặt → 🖼️ Ảnh**: mỗi thư mục hiện "✅ tìm thấy" hoặc "⚠️ không thấy trên máy này".
 
-- Khai báo thư mục **chứa** các thư mục công trình, đừng khai báo từng công trình: app không đọc tên của chính thư mục đã khai báo, chỉ đọc tên các thư mục bên dưới nó.
-- Thêm thư mục mới thì ghi vào **cuối** dòng, đừng đổi thứ tự các thư mục đã có: app nhớ ảnh theo số thứ tự thư mục trong dòng này, đổi thứ tự thì thẻ sửa tay không còn khớp đúng ảnh.
-- Đừng để thư mục phần mềm (thư mục có `run.bat`, trong đó có thư mục `data/`) nằm trong Google Drive hay trong thư mục ảnh: app ghi file riêng vào `data/`, nên các file đó sẽ lên Drive hoặc lẫn vào thư mục ảnh.
+- Khai báo thư mục **chứa** các thư mục công trình, đừng khai báo từng công trình: app không lấy mã công trình, hạng mục, khu vực, trước/sau từ tên của chính thư mục đã khai báo, chỉ từ tên các thư mục bên dưới nó.
+- Thêm thư mục mới thì ghi vào **cuối** dòng, đừng đổi thứ tự các thư mục đã có: app nhớ ảnh theo số thứ tự thư mục trong dòng này (ảnh đã chọn trong bài đang soạn dở, dấu «ảnh AI» gắn tay ở mục 9), đổi thứ tự thì những thứ này không còn khớp đúng ảnh.
+- Đừng để thư mục phần mềm (thư mục có `run.bat`) nằm trong Google Drive, OneDrive (hay thư mục nào tự đồng bộ lên mạng) hoặc trong thư mục ảnh. Trong đó có file `.env` (khóa AI, mật khẩu WordPress) và thư mục `data/` (bài đang soạn, dấu «ảnh AI» gắn tay): để vậy thì các file này lên mạng hoặc lẫn vào thư mục ảnh.
 
 **Đặt tên thư mục công trình**
 
@@ -237,8 +239,8 @@ Anh SEO/                            ← thư mục đã khai báo
 **Ảnh AI**
 
 - Để ảnh tạo bằng AI trong một thư mục con có chữ **AI**, ví dụ `Ảnh AI`, nằm **bên dưới** thư mục đã khai báo (trong thư mục công trình, hoặc ngay dưới thư mục đã khai báo như hình trên). Ảnh AI không bao giờ mang mã công trình, khu vực, trước/sau (chỉ giữ hạng mục), để bài viết không giới thiệu ảnh AI như công trình thật.
-- Đừng khai báo riêng một thư mục ảnh AI (ví dụ `G:/My Drive/Ảnh AI`) thành một mục của `IMAGE_FOLDERS`: app không đọc tên chính thư mục đã khai báo, nên hiện giờ ảnh trong đó bị coi là ảnh thật.
-- Các chữ làm ảnh thành ảnh AI. App tìm ở tên **mọi** thư mục bên dưới thư mục đã khai báo và ở **tên file ảnh**, không phân biệt hoa thường:
+- Cũng có thể khai báo riêng thư mục ảnh AI làm một mục của `IMAGE_FOLDERS` (ví dụ `G:/My Drive/Ảnh AI`): tên thư mục đó có chữ AI hay tên công cụ tạo ảnh thì **mọi** ảnh trong đó là ảnh AI, khung chọn ảnh ghi «🤖 Mọi ảnh trong thư mục gốc này là ảnh AI».
+- Các chữ làm ảnh thành ảnh AI. App tìm ở tên thư mục đã khai báo, tên **mọi** thư mục bên dưới nó và ở **tên file ảnh**, không phân biệt hoa thường:
   - chữ `AI` đứng riêng (`Ảnh AI`, `Hình AI`, `ai`, `IMG_AI_01.jpg`), và `GenAI`, `AI images`;
   - `minh họa`, `trí tuệ nhân tạo`, `phối cảnh`, `mô phỏng`, `render`, `do máy tạo`, `tạo tự động`;
   - tên công cụ tạo ảnh: Gemini, Imagen, Nano Banana, ChatGPT, GPT, DALL-E, Midjourney, Stable Diffusion, SDXL, Firefly, Copilot, Designer, Bing, Image Creator, Leonardo, Ideogram, Flux, Grok, Kling, Dreamina, Jimeng, Seedream, ComfyUI, Runway, Krea, Canva, Recraft, NightCafe, SeaArt, Hailuo, Sora. Tên file mặc định khi tải ảnh từ các công cụ này (ví dụ `Gemini_Generated_Image_….png`, `Designer (3).png`) cũng được nhận ra.
@@ -246,29 +248,97 @@ Anh SEO/                            ← thư mục đã khai báo
 
 **Thư mục ảnh thật: tránh các chữ trên**
 
-- Tên thư mục ảnh thật đừng có chữ `AI` đứng riêng hay tên công cụ đứng riêng (`Sora`, `Flux`, `Designer`, `Canva`, `Bing`…), ví dụ `Thuốc hàn Flux`, `Công ty Designer Home`: cả thư mục bị coi là ảnh AI và **mất thẻ** công trình.
+- Tên thư mục ảnh thật (kể cả thư mục khai báo trong `IMAGE_FOLDERS`) đừng có chữ `AI` đứng riêng hay tên công cụ đứng riêng (`Sora`, `Flux`, `Designer`, `Canva`, `Bing`…), ví dụ `Thuốc hàn Flux`, `Công ty Designer Home`: cả thư mục bị coi là ảnh AI và **mất thẻ** công trình.
 - Gõ tên thư mục ảnh thật **có dấu**: `Nhà chị Ái`, `Nhà anh Minh Hòa` là ảnh thật; gõ không dấu `Nha chi Ai`, `Nha anh Minh Hoa` thì app đọc ra chữ `AI`, `minh họa` và coi là ảnh AI.
 - Không để ảnh lấy từ mạng, ảnh tham khảo, ảnh của nơi khác trong thư mục ảnh: app không phân biệt được và coi chúng là ảnh công trình thật.
 
 **App không ghi gì vào thư mục ảnh**
 
 - App chỉ đọc ảnh: không đổi tên, không di chuyển, không ghi file nào vào thư mục ảnh hay Drive.
-- Thẻ bạn sửa tay trong app (khi có màn hình chọn ảnh) chỉ nhớ trên **máy đang dùng**, trong file `data/image_tags.sqlite`; máy kia không thấy. Muốn hai máy cùng thấy thì đổi tên thư mục trên Drive.
-- Ảnh trong thư mục ảnh AI (hoặc tên file có dấu hiệu AI) luôn là ảnh AI, sửa tay không đổi được thành ảnh thật. Muốn đổi thì đổi tên hoặc chuyển ảnh sang thư mục khác.
+- Dấu «ảnh AI» bạn gắn bằng nút **🤖 Đây là ảnh AI** (mục 9) chỉ nhớ trên **máy đang dùng**, trong file `data/image_tags.sqlite`; máy kia không thấy. Muốn hai máy cùng thấy thì để ảnh AI vào thư mục có chữ AI trên Drive.
+- Ảnh trong thư mục ảnh AI (hoặc tên file có dấu hiệu AI) luôn là ảnh AI, trong app không đổi được thành ảnh thật. Muốn đổi thì đổi tên hoặc chuyển ảnh sang thư mục khác.
 
 **Lỗi thường gặp**
 
 | App báo | Cách xử lý |
 |---|---|
-| "Không mở được file lưu thẻ ảnh (có thể chương trình khác đang giữ file, hoặc không có quyền ghi). Ảnh vẫn dùng thẻ đọc từ tên thư mục." (báo mãi, thử lại vẫn vậy) | Đóng chương trình khác đang mở file `data/image_tags.sqlite` (phần mềm xem file SQLite, phần mềm sao lưu…) rồi thử lại. Vẫn báo thì tắt app, xóa file `data/image_tags.sqlite`, mở lại app: chỉ mất các thẻ sửa tay, ảnh dùng lại thẻ đọc từ tên thư mục. |
+| "Không mở được file lưu thẻ ảnh (có thể chương trình khác đang giữ file, hoặc không có quyền ghi). Ảnh vẫn dùng thẻ đọc từ tên thư mục." (báo mãi, thử lại vẫn vậy) | Đóng chương trình khác đang mở file `data/image_tags.sqlite` (phần mềm xem file SQLite, phần mềm sao lưu…) rồi thử lại. Vẫn báo thì tắt app, xóa file `data/image_tags.sqlite`, mở lại app: chỉ mất các dấu «ảnh AI» gắn tay. Ảnh đã gắn dấu mà không nằm trong thư mục có chữ AI thì chọn lại sẽ là **Ảnh thật**: kiểm lại các ảnh đó. |
+| "File lưu thẻ ảnh sửa tay bị hỏng nên đã được cất sang một bên (tên «…», cùng thư mục). Các dấu «ảnh AI» đã gắn tay trước đó không còn…" | App đã tự tạo file mới. Xem lại các ảnh AI không nằm trong thư mục có chữ AI, bấm lại **🤖 Đây là ảnh AI** nếu cần. |
+| "Chưa lưu được dấu «ảnh AI» trên máy này: … Trong lần làm việc này app vẫn coi ảnh là ảnh AI." | Dấu chưa được lưu: lần sau chọn lại ảnh này, app coi là ảnh thật. Xử lý như dòng "Không mở được file lưu thẻ ảnh…" rồi bấm lại, hoặc chuyển ảnh vào thư mục có chữ AI. |
 
-## 9. Cập nhật phiên bản mới
+## 9. Chọn ảnh cho bài
+
+Ở bước **Viết & kiểm tra** của **Soạn bài**, mục nào AI đề xuất cần ảnh (ở bước **Dàn ý** có nhãn **📷 cần ảnh**) thì có khung **📷 Chỗ cần ảnh**, kèm mô tả ảnh nên dùng. Cần khai báo thư mục ảnh trước (mục 8).
+
+**Chọn ảnh thật**
+
+1. Bấm **📁 Chọn ảnh từ thư mục**. Khung chọn ảnh mở ngay dưới chỗ đó: ô **Thư mục ảnh** (thư mục đã khai báo, chỉ hiện tên), ô **Thư mục con** để mở thư mục bên trong, nút **⬆ Lên một cấp**, **🔄 Quét lại**. Mỗi trang 12 ảnh nhỏ.
+   - App chỉ xem thư mục khi bạn mở nó. Ổ Google Drive chậm thì app báo đang quét ở nền: đợi vài giây rồi bấm **🔄 Xem kết quả**.
+   - App nhận ảnh JPG, PNG, WebP, HEIC (iPhone), AVIF, mỗi ảnh tối đa 40 MB. Lối tắt, mục ẩn, file khác bị bỏ qua (khung ghi số mục bỏ qua).
+2. Bấm **Chọn** dưới ảnh muốn dùng. Khung hiện ảnh xem trước, tên file, thư mục, và:
+   - **📷 Ảnh thật** hoặc **🤖 Ảnh AI**. Ảnh AI có dòng «Vì sao là ảnh AI: …» (tên thư mục, tên file có chữ AI hay tên công cụ tạo ảnh, hoặc ảnh đã được đánh dấu).
+   - **Thẻ** đọc từ tên thư mục, ví dụ «Mã CT012 · Cổng inox · Tân Phú · Trước khi làm». Tên thư mục chưa theo quy ước (mục 8) thì ghi «Chưa có thẻ (tên thư mục chưa theo quy ước).»
+   - **Vị trí GPS**: «📍 Ảnh có vị trí GPS: vị trí này lên website cùng ảnh.» hoặc «Ảnh không có vị trí GPS.» (ảnh gửi qua Zalo thường đã mất GPS).
+3. Viết alt (dòng chữ mô tả ảnh cho Google và người khiếm thị): tự gõ vào ô **Alt**, hoặc bấm **✨ AI viết alt**. AI chỉ xem đúng ảnh này, và là bản sao đã bỏ GPS, thông tin máy chụp (hãng AI nào, xem mục 7.2). Chưa ưng thì bấm **🔄 AI viết lại alt** hoặc sửa tay. Ô **Chú thích dưới ảnh** không bắt buộc. Alt dài tối đa 125 ký tự (dưới ô có đếm), chú thích tối đa 200; dài hơn thì app nhắc.
+4. Đọc lại alt và chú thích: đúng với ảnh, không có tên, số điện thoại, địa chỉ khách. Rồi tick **✅ Đã duyệt**. Sửa chữ thì phải tick lại. Alt có dãy số giống số điện thoại thì app nhắc.
+
+Còn ảnh nào chưa có alt hay chưa tick **Đã duyệt** thì chưa gửi bài được (mục 10). Nút khác: **📂 Mở thư mục chứa ảnh**, **🔁 Chọn ảnh khác**, **✖ Bỏ ảnh**. Ảnh đã chọn, alt, chú thích được lưu cùng bài đang soạn dở trên máy này; mở lại bài, app kiểm lại ảnh trên máy và báo nếu ảnh đã bị xóa hay đổi tên.
+
+**Ảnh AI**
+
+Tạo ảnh ngay trong app đang tạm hoãn (hai nút **🎨 Tạo ảnh**, **🔄 Prompt khác** bị khóa). Cách làm:
+
+1. Ở đầu khung chỗ cần ảnh, chọn **Ảnh AI**: app hiện **prompt** (lời mô tả để tạo ảnh). Bấm biểu tượng ở góc khung để sao chép, hoặc **✏️ Sửa prompt**.
+2. Dán prompt vào Gemini (hoặc công cụ tạo ảnh khác), tải ảnh về máy.
+3. Lưu ảnh vào thư mục có chữ **AI** hay **minh họa** trong tên (ví dụ `Ảnh AI`, `Ảnh minh họa`), bên dưới thư mục đã khai báo (mục 8).
+4. Bấm **📁 Chọn ảnh từ thư mục**, mở thư mục đó, chọn ảnh: khung hiện **🤖 Ảnh AI**. Ảnh AI lên website với alt mở đầu «Minh họa», chú thích (nếu có) mở đầu «Ảnh minh họa (AI)», tên file `minh-hoa-ai-…`, không mang mã công trình, khu vực, trước/sau.
+
+Chọn **Ảnh AI** ở đầu khung chỉ để hiện prompt. Ảnh có phải ảnh AI hay không là do tên thư mục, tên file, hoặc nút dưới đây.
+
+**Nút 🤖 Đây là ảnh AI**: ảnh hiện **📷 Ảnh thật** mà thật ra do AI tạo (ví dụ lỡ để lẫn trong thư mục công trình) thì bấm nút này. Alt được thêm «Minh họa» ở đầu, chú thích (nếu có) thêm «Ảnh minh họa (AI)», và phải duyệt lại; mọi chỗ trong bài dùng cùng ảnh cũng đổi theo.
+
+- **Trong app không đổi lại thành ảnh thật được.** Lỡ bấm nhầm thì đổi tên file ảnh (hoặc chuyển sang thư mục khác), bấm **🔄 Quét lại** rồi chọn lại.
+- Dấu này chỉ nhớ trên **máy đang dùng**, trong file `data/image_tags.sqlite`. Xóa file đó, đổi thứ tự thư mục trong `IMAGE_FOLDERS`, hay dùng máy kia thì khi chọn lại, ảnh đó là **Ảnh thật**. Vì vậy cách chắc nhất vẫn là để ảnh AI trong thư mục có chữ AI.
+
+## 10. Gửi bài nháp lên WordPress
+
+Cần kết nối WordPress trước (mục 6). Ở bước **Xuất bản** của **Soạn bài**, hình thức **Nháp**:
+
+1. Xem khung **Kiểm tra trước khi gửi**, trong đó có dòng «Chỗ cần ảnh đã có ảnh, alt đã duyệt: …». Ảnh nào chưa có alt hay chưa duyệt thì app báo tên mục và khóa nút gửi. Chỗ cần ảnh để trống thì bài gửi đi không có ảnh ở chỗ đó.
+2. Bài có từ 2 ảnh: chọn ảnh ở ô **Ảnh đại diện** (mặc định là ảnh đầu tiên). Bài một ảnh thì ảnh đó là ảnh đại diện.
+3. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh).
+4. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem lời dặn ở cuối mục này).
+
+Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có nút **Mở bài nháp trong WordPress** và danh sách ảnh đã lên thư viện Media (tên file, địa chỉ ảnh). Nút gửi khóa lại; muốn tạo thêm một bài nháp nữa từ bài này thì tick **Tạo thêm một bài nháp mới** (ảnh sẽ tải lên lần nữa).
+
+**Cần biết khi gửi**
+
+- **Chỉ tạo bài nháp.** Khách chưa thấy bài cho tới khi bạn tự bấm Đăng trong WordPress. App không sửa bài có sẵn.
+- **Ảnh xem được công khai ngay khi tải lên, kể cả khi bài còn là nháp**: ai có đường dẫn ảnh đều mở được, kèm vị trí GPS còn trong ảnh. App **không tự xóa** ảnh đã tải lên, kể cả khi bạn xóa bài nháp; muốn gỡ ảnh thì xóa trong **Media → Thư viện** của trang quản trị.
+- Ảnh được nén WebP, cạnh dài tối đa 1600 px (cỡ và chất lượng đổi được ở mục `[images]` trong `config/content.toml`), giữ vị trí GPS. Tên file do app đặt từ thẻ (thiếu thẻ thì từ alt), không dấu, ví dụ `cong-inox-tan-phu-ct012.webp`; không lấy tên file, tên thư mục trên máy (có thể có tên khách).
+- Bài nháp gồm tiêu đề, các mục (tiêu đề mục, đoạn văn), ảnh kèm alt, chú thích, ảnh đại diện. Chữ đậm, gạch đầu dòng viết bằng dấu `**`, `-` còn hiện nguyên dấu; meta SEO, chuyên mục chưa gửi (bước SEO còn là bản demo). Sửa trong WordPress trước khi đăng.
+
+**Khi có lỗi**
+
+- Lỗi lúc kiểm lại, nén ảnh (ảnh vừa đổi hay bị thay, ổ đĩa chậm, ảnh hỏng…): app ghi «Chưa gửi gì lên website.» kèm lý do. Sửa rồi bấm lại.
+- Lỗi giữa chừng: bài nháp và ảnh có thể **đã lên website**. App liệt kê ảnh đã lên thư viện Media và **không tự gửi lại**. Trước khi gửi lại, mở trang quản trị WordPress, kiểm tra **Bài viết → Nháp** và **Media → Thư viện**, xóa bài nháp, ảnh thừa nếu có. Khi app không chắc bài nháp đã có hay chưa, nút gửi khóa tới khi bạn tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**.
+
+**Lời dặn tạm thời** (tới khi app nhớ được việc gửi cả khi tải lại trang)
+
+- Bấm **📤 Gửi nháp** rồi **đợi app báo kết quả**; bài nhiều ảnh có thể lâu. Trong lúc đó **không tải lại trang (F5), không đóng tab, không bấm nút khác**, không bấm đúp. Nếu không, app có thể quên là đã gửi, và lần bấm sau tạo thêm **một bài nháp thứ hai**, tải ảnh lên lần nữa.
+- Bài đã gửi rồi thì đừng bấm **📤 Gửi nháp** lần nữa sau khi mở lại bài (hôm sau, sau khi tải lại trang, hay sau khi mở bài khác): app chưa nhớ việc đã gửi qua những lần đó, bấm là thêm một bài nháp.
+- **Lần gửi thật đầu tiên**: thử **một bài, một ảnh**, chọn ảnh app báo «📍 Ảnh có vị trí GPS». Gửi xong, tải ảnh đó từ website về máy để kiểm GPS:
+  1. Trong danh sách ảnh đã lên thư viện Media, chép địa chỉ ảnh (dòng bắt đầu bằng `https://`), dán vào trình duyệt, chuột phải vào ảnh → **Save image as** để lưu về máy.
+  2. Trên Windows: chuột phải file vừa lưu → **Properties** → thẻ **Details**, kéo xuống phần **GPS**. Có **Latitude**, **Longitude** là ảnh còn GPS; không có phần đó thì báo Chỉ Huy. Trên Mac chưa thử cách kiểm này.
+  3. Xong thì xóa bài nháp và ảnh thử trong trang quản trị nếu không dùng.
+
+## 11. Cập nhật phiên bản mới
 
 - Với GitHub Desktop: mở dự án, bấm **Fetch origin**, rồi bấm **Pull origin** nếu có.
 - Sau đó chạy `run.bat` / `run.command` như bình thường. Thư viện mới (nếu có) sẽ được cài tự động.
 - File `.env` của bạn không bị ghi đè.
 
-## 10. Xử lý sự cố
+## 12. Xử lý sự cố
 
 | Hiện tượng | Cách xử lý |
 |---|---|
