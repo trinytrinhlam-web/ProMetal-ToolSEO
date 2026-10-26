@@ -66,6 +66,19 @@ Lỗi có test `xfail(strict=True)` trong `tests/test_soi_loi_t089.py` (`--runxf
 | `team/T-089` + `origin/team/T-041` (lúc giao `13a554c`, lúc nộp `d2667f7`, cùng sửa `write.py`, `drafts.py`) | Không xung đột |
 | Gộp lần lượt `team/T-089` → `main` → `team/T-041` (như Chỉ Huy sẽ làm) | Không xung đột. Chạy test trên cây đã gộp (bản xuất `git archive`, 8 file: test gửi nháp T-086, T-089, `test_soi_loi_t089.py`, và `test_t041_seo_ui.py`, `test_t041_drafts_seo.py` của T-041): **188 qua, 2 xfail** (SL-T089-1), không lỗi do gộp |
 
+## Thử gỡ chỗ sửa (bản sao `git archive` `c0593be`, code như `87ad51c`; chỉ chạy test của Soi Lỗi)
+
+| Đột biến | Kết quả |
+|---|---|
+| U1 ghi «đang gửi» không so (bỏ `expected`) | bắt được |
+| U2 so với lần đọc lúc bấm thay vì lần vẽ trước (`_wp_seen`) | bắt được |
+| U3 dựng `SendState` ngoài khối bắt lỗi (LC-T086-1 cũ) | bắt được |
+| U4 nháp không có băm vẫn giữ «Đã duyệt» | bắt được |
+| U5 khung ảnh không so băm của lần duyệt với ảnh đang hiện | bắt được |
+| U6 không lưu băm vào nháp | bắt được |
+| U7 nhận băm sai dạng | bắt được |
+| U8 băm đi cùng ảnh chưa duyệt | test của Soi Lỗi không bắt: khung ảnh bỏ băm của ảnh chưa duyệt ngay lần vẽ, giao diện không khác. Test mô hình của Họa Sĩ `test_hash_only_valid_with_approval`, `test_hash_kept_with_approval` bắt (3 ca hỏng). Không cần thêm test |
+
 ## Soát R5
 
 - `git diff 3d7f4b7..87ad51c -- tests/`: `tests/test_soi_loi_t086.py` chỉ xóa 2 dấu `@pytest.mark.xfail(...)` (SL-T086-1, -2), thân test không đổi; `tests/test_la_chan_t086.py` xóa 1 dấu `xfail` (LC-T086-1) và dòng `import pytest` không còn dùng.
