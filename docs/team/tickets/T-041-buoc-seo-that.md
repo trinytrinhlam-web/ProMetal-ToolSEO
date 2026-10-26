@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036, T-037, T-038, T-039 đã gộp (T-040 nên gộp trước) |
-| Trạng thái | Họa Sĩ làm giao diện |
+| Trạng thái | Họa Sĩ xong giao diện, Thợ Máy lượt 3 sửa lỗi lùi |
 
 ## Mục tiêu
 
@@ -95,3 +95,4 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
 - 2026-10-26 11:07 (Chỉ Huy B): **Thợ Máy xong phần logic** (`c059b41`): mọi điều kiện logic trong ghi chú (LC-T038 đk 1–2, LC-T036-1, SL-T036-10, -12, LC-T040-1, SL-T040-1, `[meta]` + `find_avoided`, SL-T037-5, LC-T039 đk 2a, 2b); trường SEO trong nháp (nháp cũ mở được); danh sách hàm cho Họa Sĩ trong báo cáo; 37 file test liên quan 2.969 qua. **Chỉ Huy duyệt** 3 chỗ sửa test cũ (mục «Test cũ đã đổi») và phần thêm `ContentWriter.internal_links` (`39f2178`). Giao **Soi Lỗi rút gọn phần logic** ngay (song song); Họa Sĩ nối giao diện sau khi T-086 gộp. LC-T039-2 để phiếu bộ dựng HTML GĐ5 (không sửa `links.py`).
 - 2026-10-26 13:53 (Chỉ Huy B): **Soi Lỗi phần logic ĐẠT CÓ ĐIỀU KIỆN** (`85b06b6`): 7 Thấp; SL-T041-1, -2, -4 phải sửa trước khi Họa Sĩ nối giao diện. Giao **Thợ Máy lượt 2**: bắt buộc -1, -2, -4; nên làm cùng -3, -5, -6, -7 nếu gọn (khỏi mở phiếu mới). Sau đó gộp `main` (có T-086) vào nhánh rồi giao Họa Sĩ.
 - 2026-10-26 15:19 (Chỉ Huy B): **Thợ Máy lượt 2 xong** (`eac0431`): sửa đủ SL-T041-1 → -7, 4/6 góp ý; Chỉ Huy duyệt 4 test ngưỡng cũ thêm `suffix=""` và `TASK_EXAMPLES` (`registry.py`). Gộp `main` (có T-056, T-085, T-086, T-087) vào nhánh (`13a554c`, không xung đột; 434 test liên quan qua). Giao **Họa Sĩ** (phiên Họa Sĩ T-056) nối giao diện bước SEO.
+- 2026-10-26 19:22 (Chỉ Huy B): **Họa Sĩ xong giao diện bước SEO** (`a88c6e5`, 23 test giao diện). Họa Sĩ phát hiện **lỗi lùi** do `94ba458` (lượt 1 Thợ Máy): `normalize_meta` bỏ ký tự Cc nên `_seo_text` (`client.py`) kiểm ký tự điều khiển trên chữ đã chuẩn hóa, chữ SEO có ký tự điều khiển bị lặng lẽ sửa thay vì bị chặn (15 test T-042 hỏng). Giao **Thợ Máy lượt 3**; **Chỉ Huy duyệt mở phạm vi** đúng chỗ kiểm trong `_seo_text` của `seo_app/wordpress/client.py` (tối thiểu); rà các chỗ khác dùng `normalize_meta` trước khi kiểm. Dòng `info.siteseo_status` trên trang Kết nối WordPress để sau lượt 3 (cùng phiếu). Sau đó Soi Lỗi cả phiếu, rồi Lá Chắn.
