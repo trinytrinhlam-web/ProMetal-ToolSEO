@@ -265,8 +265,11 @@ class SiteIndexStore:
         )
 
     @contextmanager
-    def _connect(self, timeout: float = _SQLITE_TIMEOUT) -> Iterator[sqlite3.Connection]:
+    def _connect(self, timeout: float | None = None) -> Iterator[sqlite3.Connection]:
+        """``timeout``: giây chờ khi file bị khóa; ``None`` là ``_SQLITE_TIMEOUT`` (đọc lúc gọi)."""
         self._prepare()
+        if timeout is None:
+            timeout = _SQLITE_TIMEOUT
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
             with closing(sqlite3.connect(self.path, timeout=timeout)) as conn, conn:
