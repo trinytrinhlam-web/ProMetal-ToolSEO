@@ -5,23 +5,27 @@
 - SL-T086-1: «đang gửi» ghi kiểu so rồi đặt trong một giao dịch SQLite (``save_send_state`` có
   ``expected``): tab thứ hai cùng bài bị khóa, có câu nhắc; xác nhận đã tick sẵn không dùng được cho
   trạng thái mới do tab khác ghi.
+- SL-T086-2: khung ảnh đã chọn hiện ảnh xem trước dựng từ đúng byte đã băm.
 
 Dùng lại ảnh giả, WordPress giả, AI giả của ``tests/test_app_images.py``; không gọi mạng thật.
 """
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 import threading
 import time
 from contextlib import closing
 
 import pytest
+import streamlit as st
 import test_app_images as ui
 import test_soi_loi_t056 as sl
 import test_t086_send_state as t86
 
 import seo_app.storage.drafts as drafts
+from seo_app.images import process as image_process
 from seo_app.images.folders import ImageLibrary
 from seo_app.storage import DraftSnapshot, DraftStore
 from seo_app.storage.drafts import SendState
@@ -248,3 +252,35 @@ def test_two_sessions_create_more_only_once(project_root, root, fake_ai, site):
     assert len(site.posts()) == 2
     assert any(ELSEWHERE in e.value.replace("\\", "") for e in other.error)
     assert button(other, SEND).disabled
+
+
+# ========================================= SL-T086-2: ảnh xem trước dựng từ đúng byte đã băm
+
+
+def test_chosen_preview_built_from_hashed_bytes(project_root, root, fake_ai, monkeypatch):
+    """Khung ảnh đã chọn hiện ảnh xem trước dựng từ **đúng** byte đã băm để gắn với lần duyệt (cùng
+    lần đọc file với dòng GPS), không lấy từ cache theo cỡ, giờ sửa (SL-T086-2)."""
+    made: list[tuple[str, bytes]] = []
+    original_make = image_process.make_preview
+
+    def make(data, **kwargs):
+        preview = original_make(data, **kwargs)
+        made.append((hashlib.sha256(data).hexdigest(), preview))
+        return preview
+
+    monkeypatch.setattr(image_process, "make_preview", make)
+    shown: list[object] = []
+    original_image = st.image
+
+    def image(data, *args, **kwargs):
+        shown.append(data)
+        return original_image(data, *args, **kwargs)
+
+    monkeypatch.setattr(st, "image", image)
+    at, pid = ui.ready_image(project_root)
+    shown.clear()
+    run_ok(at.run())
+    (preview,) = [data for data in shown if isinstance(data, bytes)]
+    approved = at.session_state[f"altsha-{pid}"]
+    assert (approved, preview) in made
+    assert approved == hashlib.sha256((root / ui.REAL_FILE).read_bytes()).hexdigest()

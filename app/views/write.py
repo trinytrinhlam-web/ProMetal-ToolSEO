@@ -20,8 +20,9 @@ Bài đang soạn nằm trong session_state:
 - Chỉ quét thư mục khi người dùng mở thư mục hay bấm quét lại; quét trong luồng riêng; kết quả giữ
   trong phiên (``_scans``). Đi từ thư mục gốc xuống qua ``SubFolder.rel_path`` của chính các lần
   quét (LC-T055-1).
-- ``st.image`` chỉ nhận byte của ``PreviewCache.get`` (ảnh xem trước JPEG do app tạo; LC-T058-2,
-  Lá Chắn T-049).
+- ``st.image`` chỉ nhận ảnh xem trước JPEG do app tạo (LC-T058-2, Lá Chắn T-049): lưới chọn ảnh
+  lấy từ ``PreviewCache.get``; khung ảnh đã chọn dựng bằng ``make_preview`` từ đúng byte đã băm
+  (``web_info``, SL-T086-2).
 - Thẻ lấy bằng ``ImageTagStore.resolve``/``resolve_many`` (theo trang, ≤ 200 ảnh); nguồn ảnh theo
   hướng an toàn: thư mục gốc có dấu hiệu AI, tên thư mục/tên file có dấu hiệu AI, thẻ sửa tay hay
   nháp nói AI thì là ảnh AI. Nút «Đây là ảnh AI» lưu thẻ sửa tay; lưu hỏng thì trong phiên vẫn coi
@@ -137,6 +138,7 @@ BROWSE_PAGE_SIZE = 12  # ảnh mỗi trang khi chọn ảnh: mỗi ảnh một �
 BROWSE_COLUMNS = 4
 SCAN_WAIT_SECONDS = 15  # chờ một lần quét lâu nhất (ImageLibrary tự dừng quét sau 10 giây)
 MAX_SCANS_KEPT = 40  # số trang thư mục đã quét giữ trong phiên
+MAX_WEB_INFO_KEPT = 40  # số phiên bản ảnh đã chọn giữ kết quả kiểm, ảnh xem trước trong phiên
 MAX_SHOWN_SHORTCODE = 80  # ký tự tối đa của một đoạn dạng shortcode khi liệt kê
 # Giống số điện thoại (điều kiện Lá Chắn T-050 3d; SL-T056-4): tổng đài 1800/1900 kèm từ 4 chữ số,
 # hoặc dãy từ 9 chữ số trở lên; chữ số có thể ngăn bằng dấu cách, chấm, ngoặc, gạch nối, gạch ngang
@@ -816,8 +818,8 @@ def slot_problem(pid: int) -> str | None:
 
 
 def preview_bytes(library: ImageLibrary, ref) -> tuple[bytes | None, str]:
-    """Ảnh xem trước (JPEG do app tạo) cho ``st.image``. Không bao giờ trả byte gốc, ảnh Pillow
-    hay đường dẫn (LC-T058-2; Lá Chắn T-049 điều kiện 3).
+    """Ảnh xem trước (JPEG do app tạo) cho ``st.image`` ở lưới chọn ảnh (ảnh đã chọn: ``web_info``).
+    Không bao giờ trả byte gốc, ảnh Pillow hay đường dẫn (LC-T058-2; Lá Chắn T-049 điều kiện 3).
 
     Ảnh bị thay tại chỗ (cùng cỡ, cùng giờ sửa: ``PreviewCache`` vẫn giữ ảnh xem trước của bản cũ;
     Ghi nhận 1 của Lá Chắn T-056) thì dựng ảnh xem trước từ file hiện tại bằng ``make_preview``."""
@@ -837,30 +839,36 @@ def content_hash(data: bytes) -> str:
 
 def web_info(
     library: ImageLibrary, checked: CheckedImage
-) -> tuple[bool | None, str, str, str | None]:
-    """(có vị trí GPS, câu báo của ``WebImage.notice``, lỗi, băm SHA-256 nội dung file) của bản
-    đăng web. Nén thử một lần cho mỗi phiên bản file; giữ trong phiên (chỉ giữ kết quả, không giữ
-    ảnh). Băm là của đúng byte đã đọc để ra dòng GPS đang hiện: lúc duyệt alt, lần duyệt gắn với
-    băm này (``alt_editor``), lúc gửi so lại (T-086, SL-T056-10)."""
+) -> tuple[bool | None, str, str, str | None, bytes | None]:
+    """(có vị trí GPS, câu báo của ``WebImage.notice``, lỗi, băm SHA-256 nội dung file, ảnh xem
+    trước) của bản đăng web. Nén thử một lần cho mỗi phiên bản file; giữ trong phiên (kết quả và
+    ảnh xem trước JPEG nhỏ, không giữ ảnh gốc). Băm là của đúng byte đã đọc để ra dòng GPS đang
+    hiện: lúc duyệt alt, lần duyệt gắn với băm này (``alt_editor``), lúc gửi so lại (T-086,
+    SL-T056-10). Ảnh xem trước của khung ảnh dựng từ chính các byte đó (``make_preview``), không
+    lấy từ cache theo cỡ, giờ sửa: file bị thay tại chỗ thì khung vẫn hiện đúng bản được băm, được
+    duyệt (SL-T086-2)."""
     entry = checked.entry
     key = (checked.ref, entry.size, entry.modified)
     cache = S.setdefault("_web_info", {})
     if key not in cache:
-        digest = None
+        digest = preview = None
         try:
-            settings = load_image_settings()
             with st.spinner("Đang kiểm ảnh (nén thử WebP, đọc vị trí GPS)…"):
                 data = library.read_image_bytes(checked.ref)
                 digest = content_hash(data)
+                preview = image_process.make_preview(data)
+                settings = load_image_settings()
                 web = make_web_image(
                     data, max_edge_px=settings.max_edge_px, webp_quality=settings.webp_quality
                 )
         except (ImageFolderError, ImageProcessError, AIError) as exc:  # ContentRulesError: AIError
-            cache[key] = (None, "", str(exc), digest)
+            cache[key] = (None, "", str(exc), digest, preview)
         except Exception:
-            cache[key] = (None, "", MSG_IMAGE_FAILED, digest)
+            cache[key] = (None, "", MSG_IMAGE_FAILED, digest, preview)
         else:
-            cache[key] = (web.has_gps, web.notice, "", digest)
+            cache[key] = (web.has_gps, web.notice, "", digest, preview)
+        while len(cache) > MAX_WEB_INFO_KEPT:  # giữ ảnh xem trước trong phiên có chừng mực
+            cache.pop(next(iter(cache)))
     return cache[key]
 
 
@@ -1023,7 +1031,8 @@ def image_slot(pid: int) -> None:
 
 def slot_preview(library: ImageLibrary, pid: int, checked: CheckedImage | None) -> None:
     if checked is not None and checked.available:
-        data, error = preview_bytes(library, checked.ref)
+        # Cùng một lần đọc file với dòng GPS và băm gắn với lần duyệt (SL-T086-2).
+        _gps, _notice, error, _digest, data = web_info(library, checked)
         if data is not None:
             st.image(data, alt="Ảnh xem trước của ảnh đã chọn", width="stretch")
             return
@@ -1108,7 +1117,7 @@ def chosen_panel(library: ImageLibrary, pid: int, checked: CheckedImage) -> None
     if not checked.available:
         st.warning(escape_markdown(checked.message or "Ảnh không còn dùng được trên máy này."))
     else:
-        gps, notice, error, digest = web_info(library, checked)
+        gps, notice, error, digest, _preview = web_info(library, checked)
         if error:
             st.warning(escape_markdown(error))
         elif gps:
