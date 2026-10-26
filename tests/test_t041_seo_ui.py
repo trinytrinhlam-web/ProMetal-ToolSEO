@@ -458,11 +458,13 @@ def send_with_seo(project_root, seo_ai, toggle: bool):
 
 
 def test_seo_write_is_off_by_default(project_root, seo_ai, wordpress):
-    """Lá Chắn T-042: công tắc mặc định tắt: gửi nháp không gọi gì tới SiteSEO."""
+    """Lá Chắn T-042: công tắc mặc định tắt: gửi nháp không gọi gì tới SiteSEO, không có câu báo
+    nào về ghi SEO (cả lớp chặn thứ hai: client tạo với ``write_seo=False``)."""
     at = send_with_seo(project_root, seo_ai, toggle=False)
     paths = [ui.path_of(r) for r in wordpress.fake.requests]
     assert POSTS in paths and ABILITY not in paths and RUN not in paths
     assert any("Đã tạo bài nháp" in s.value for s in at.success)
+    assert not any("SEO" in i.value for i in at.info)
 
 
 def test_seo_written_after_draft_with_brand_and_rechecked(project_root, seo_ai, wordpress):
