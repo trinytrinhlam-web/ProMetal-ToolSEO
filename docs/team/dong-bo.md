@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-26 13:53. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-26 13:55. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -53,11 +53,16 @@ Chỉ Huy B, cập nhật 2026-10-26 13:53. Agent chạy ở phiên con dưới 
 | [T-086](tickets/T-086-trang-thai-gui-nhap.md) Trạng thái gửi nháp (GĐ3) | đã gộp vào `main` **trên máy** (`f80181b`), **chưa đẩy**; nhánh `team/T-086` còn | ✅ Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (3 Thấp → phiếu sau, chờ duyệt) | ⏳ Chạy toàn bộ test Windows; qua thì đẩy `main`, xóa nhánh và worktree `wt-T-086`; rồi Thư Ký viết lại lời dặn tạm README (đk 3 T-087) |
 | [T-041](tickets/T-041-buoc-seo-that.md) Bước SEO thật (GĐ4) | `team/T-041` (`85b06b6`) | ✅ Soi Lỗi phần logic ĐẠT CÓ ĐIỀU KIỆN (7 Thấp) | ⏳ Thợ Máy lượt 2 (SL-T041-1, -2, -4 bắt buộc); rồi gộp `main` (có T-086) vào nhánh, giao Họa Sĩ |
 | [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) Dọn client WordPress sau T-085 (GĐ4) | `team/T-088` (`1e87ce8`) | ✅ Thợ Máy xong | ⏳ Soi Lỗi rút gọn (phiên "Soi Lỗi · T-060 kiểm client WordPress") |
-| Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-089** |
+| [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) Dọn gửi nháp sau T-086 (GĐ3) | `team/T-089` (từ `main` trên máy có T-086, chưa đẩy) | Giao 13:55 | ⏳ Họa Sĩ (phiên mới "Họa Sĩ · T-089 dọn gửi nháp"; phiên Họa Sĩ T-056 để dành cho giao diện T-041) |
+| Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-090** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-26 13:55 · Chỉ Huy B
+
+- **Chủ dự án duyệt** ("có") lập **T-089** (3 Thấp T-086 + băm ảnh đã duyệt trong `DraftImage`). Giao Họa Sĩ phiên mới; nhánh từ `main` trên máy (có T-086, đang chạy toàn bộ test). Số phiếu tiếp theo: **T-090**.
 
 ### 2026-10-26 13:53 · Chỉ Huy B
 
