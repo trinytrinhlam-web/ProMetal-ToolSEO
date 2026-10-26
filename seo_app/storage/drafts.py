@@ -25,6 +25,11 @@ hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
   thường có giới hạn độ dài, chỉ được lọc và hiện, không chạy gì.
 - Nháp khuôn 1 (chưa có ảnh) vẫn mở được. Dữ liệu ảnh hỏng (sửa tay, sai khuôn) chỉ làm mất ảnh
   đó (``DraftSnapshot.dropped_images`` đếm), phần chữ của bài giữ nguyên.
+
+Trạng thái «Gửi nháp» (T-086, SL-T056-8, -11): ``SendState`` lưu ở bảng riêng ``send_states``
+(không nằm trong JSON của nháp), nên lần tự lưu nháp không ghi đè, giờ lưu nháp không đổi, và nháp
+cũ (không có dòng nào) vẫn mở như trước. Giao diện ghi «đang gửi» **trước** khi gửi, ghi kết quả
+ngay khi có, đọc lại khi vẽ nút gửi (kể cả sau khi mở lại nháp, tải lại trang).
 """
 
 from __future__ import annotations
@@ -110,6 +115,9 @@ _MSG_FOLDER_NAME = (
     "Chưa kiểm được tên thư mục chứa ảnh này (thư mục vừa đổi tên hoặc ảnh vừa thay đổi trong lúc "
     "kiểm). Hãy mở lại từ thư mục ảnh gốc rồi chọn lại ảnh."
 )
+# Trạng thái gửi (T-086): một dòng JSON vài chục byte; lớn hơn mức này là bị sửa tay, hỏng.
+MAX_SEND_STATE_BYTES = 4096
+_MSG_SEND_STATE_BROKEN = "Trạng thái gửi ghi trong nháp bị hỏng nên không đọc được."
 # Prompt: bỏ ký tự điều khiển (trừ xuống dòng, tab), ký tự vô hình/định dạng (kể cả ký tự đảo
 # hướng chữ), surrogate lẻ (không ghi được ra UTF-8).
 _PROMPT_DROP = frozenset({"Cc", "Cf", "Cs"})
@@ -462,6 +470,28 @@ class DraftList:
     skipped: int = 0  # số dòng hỏng đã bỏ qua
 
 
+class SendState(_Strict):
+    """Trạng thái «Gửi nháp» của một nháp (T-086). Ghi trước khi gửi và ngay khi có kết quả.
+
+    - ``pending``: đang gửi, hoặc lần gửi gần nhất không rõ kết quả (bị ngắt giữa chừng, lỗi đúng
+      lúc tạo nháp): bài nháp, ảnh có thể đã có trên website.
+    - ``post_id``: mã bài nháp gần nhất app đã tạo trên website cho nháp này.
+
+    Đọc từ file là dữ liệu chưa tin cậy: khuôn chặt (đúng kiểu, không đổi ``"1"``/``true`` thành
+    số), giờ phải có múi giờ, không có trường chữ nào để hiện ra giao diện.
+    """
+
+    pending: bool = Field(default=False, strict=True)
+    post_id: int | None = Field(default=None, ge=1, lt=2**63, strict=True)
+    updated_at: AwareDatetime
+
+    @classmethod
+    def now(
+        cls, *, pending: bool, post_id: int | None, timezone: str = DEFAULT_TIMEZONE
+    ) -> SendState:
+        return cls(pending=pending, post_id=post_id, updated_at=datetime.now(ZoneInfo(timezone)))
+
+
 @dataclass
 class DraftStore:
     """Kho nháp trong một file SQLite. Mỗi thao tác mở và đóng kết nối riêng (an toàn khi
@@ -518,6 +548,14 @@ class DraftStore:
             )
             # Giữ nháp vừa lưu cộng (max - 1) nháp mới nhất khác. Không dựa vào giờ máy để giữ
             # nháp vừa lưu: đồng hồ bị chỉnh lùi thì nó lại là nháp "cũ nhất" (Soi Lỗi R8-6).
+            # Trạng thái gửi của đúng các nháp bị bỏ đi cũng bỏ theo (T-086).
+            conn.execute(
+                "DELETE FROM send_states WHERE id IN "
+                "(SELECT id FROM drafts WHERE id != ? AND id NOT IN "
+                "(SELECT id FROM drafts WHERE id != ? "
+                "ORDER BY saved_ts DESC, rowid DESC LIMIT ?))",
+                (saved.id, saved.id, max(0, self.max_drafts - 1)),
+            )
             conn.execute(
                 "DELETE FROM drafts WHERE id != ? AND id NOT IN "
                 "(SELECT id FROM drafts WHERE id != ? "
@@ -578,11 +616,52 @@ class DraftStore:
         return DraftList(drafts=drafts, skipped=skipped)
 
     def delete(self, draft_id: str) -> bool:
-        """Xóa một nháp. Trả về ``False`` nếu không có nháp đó."""
+        """Xóa một nháp (kèm trạng thái gửi của nó). Trả về ``False`` nếu không có nháp đó."""
         _check_id(draft_id)
         with self._connect() as conn:
+            conn.execute("DELETE FROM send_states WHERE id = ?", (draft_id,))
             cursor = conn.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
             return cursor.rowcount > 0
+
+    def load_send_state(self, draft_id: str) -> SendState | None:
+        """Trạng thái gửi của nháp (T-086); ``None``: chưa gửi lần nào, kể cả nháp cũ.
+
+        Dòng quá lớn, sai khuôn (sửa tay, hỏng): ``DraftError``. Giao diện coi như chưa rõ kết quả
+        lần gửi trước (khóa nút gửi, nhắc kiểm trang quản trị), không đoán.
+        """
+        _check_id(draft_id)
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT length(CAST(data AS BLOB)) FROM send_states WHERE id = ?", (draft_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            if row[0] is None or row[0] > MAX_SEND_STATE_BYTES:
+                raise DraftError(_MSG_SEND_STATE_BROKEN)
+            (data,) = conn.execute(
+                "SELECT data FROM send_states WHERE id = ?", (draft_id,)
+            ).fetchone()
+        try:
+            if isinstance(data, bytes):
+                data = data.decode("utf-8")
+            if not isinstance(data, str):
+                raise TypeError("dữ liệu không phải chữ")
+            return SendState.model_validate_json(data)
+        except (ValidationError, UnicodeDecodeError, TypeError):
+            raise DraftError(_MSG_SEND_STATE_BROKEN) from None
+
+    def save_send_state(self, draft_id: str, state: SendState | None) -> None:
+        """Ghi trạng thái gửi của nháp; ``None`` thì xóa (T-086). Không đụng nội dung, giờ lưu của
+        nháp; lần tự lưu nháp (``save``) cũng không đụng trạng thái này."""
+        _check_id(draft_id)
+        with self._connect() as conn:
+            if state is None:
+                conn.execute("DELETE FROM send_states WHERE id = ?", (draft_id,))
+            else:
+                conn.execute(
+                    "INSERT OR REPLACE INTO send_states (id, data) VALUES (?, ?)",
+                    (draft_id, state.model_dump_json()),
+                )
 
     # ------------------------------------------------------------ nội bộ
 
@@ -614,6 +693,11 @@ class DraftStore:
                     "CREATE TABLE IF NOT EXISTS drafts ("
                     "id TEXT PRIMARY KEY, title TEXT NOT NULL, keyword TEXT NOT NULL, "
                     "saved_at TEXT NOT NULL, saved_ts REAL NOT NULL, data TEXT NOT NULL)"
+                )
+                # File nháp tạo trước T-086 chưa có bảng này: tạo thêm, nháp cũ giữ nguyên.
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS send_states ("
+                    "id TEXT PRIMARY KEY, data TEXT NOT NULL)"
                 )
         except sqlite3.DatabaseError as exc:
             raise DraftError(_db_message(exc)) from None
@@ -990,16 +1074,19 @@ def _check_images(
 
 
 def _is_healthy(path: Path) -> bool:
-    """File là SQLite đọc được, và nếu có bảng ``drafts`` thì bảng có đủ cột cần dùng."""
+    """File là SQLite đọc được, và bảng ``drafts``, ``send_states`` (nếu có) có đủ cột cần dùng."""
     try:
         with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT)) as conn:
             if conn.execute("PRAGMA quick_check").fetchone() != ("ok",):
                 return False
             columns = {row[1] for row in conn.execute("PRAGMA table_info(drafts)")}
+            send_columns = {row[1] for row in conn.execute("PRAGMA table_info(send_states)")}
     except sqlite3.DatabaseError:
         return False
     needed = {"id", "title", "keyword", "saved_at", "saved_ts", "data"}
-    return not columns or needed <= columns
+    return (not columns or needed <= columns) and (
+        not send_columns or {"id", "data"} <= send_columns
+    )
 
 
 def _db_message(exc: sqlite3.DatabaseError) -> str:
@@ -1040,6 +1127,7 @@ __all__ = [
     "MAX_DRAFT_BYTES",
     "MAX_PROMPT_CHARS",
     "MAX_ROOT_INDEX",
+    "MAX_SEND_STATE_BYTES",
     "SCHEMA_VERSION",
     "CheckedImage",
     "DraftError",
@@ -1049,6 +1137,7 @@ __all__ = [
     "DraftSnapshot",
     "DraftStore",
     "DraftSummary",
+    "SendState",
     "check_chosen_image",
     "check_draft_images",
     "clean_loaded",
