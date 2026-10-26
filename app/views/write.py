@@ -1886,6 +1886,10 @@ LEVEL_BADGES = {
 # phiếu giao bài nên chủ dự án không làm gì được với câu này: không hiện (góp ý G4 Soi Lỗi T-041).
 NO_ORDER_NOTICE = "Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài)."
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
+MSG_SEO_UNEXPECTED = (
+    "Ghi SEO lên website gặp lỗi không mong đợi. Mở bài nháp trong WordPress kiểm hộp SiteSEO, "
+    "hoặc chép tay tiêu đề, mô tả ở bước SEO."
+)
 
 
 @st.cache_resource(show_spinner=False)
@@ -2272,17 +2276,18 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
     post_id = result["post_id"]
     try:
         seo = client.set_seo_meta(post_id, **request)
+        message = seo.message
+        if seo.written and seo.route == "abilities":
+            try:
+                # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai;
+                # phiếu sửa client sau nên mở hàm này ra).
+                client._own_draft(post_id)
+            except WordPressError as exc:
+                message = f"{message} {MSG_SEO_RECHECK} {exc}"
     except WordPressError as exc:
-        result["seo"] = str(exc)
-        return
-    message = seo.message
-    if seo.written and seo.route == "abilities":
-        try:
-            # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai; phiếu
-            # sửa client sau nên mở hàm này ra).
-            client._own_draft(post_id)
-        except WordPressError as exc:
-            message = f"{message} {MSG_SEO_RECHECK} {exc}"
+        message = str(exc)
+    except Exception:  # lỗi lạ: bài nháp đã tạo và đã ghi vào nháp, chỉ báo phần SEO
+        message = MSG_SEO_UNEXPECTED
     result["seo"] = message
 
 

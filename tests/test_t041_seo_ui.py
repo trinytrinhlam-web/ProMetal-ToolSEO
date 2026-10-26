@@ -25,6 +25,7 @@ from seo_app.onpage import meta as onpage_meta
 from seo_app.onpage.links import LinkSuggestion, LinkSuggestions
 from seo_app.onpage.schema import MSG_NO_FAQ
 from seo_app.storage import DraftPart
+from seo_app.storage.drafts import SendState
 from seo_app.text import escape_markdown
 from seo_app.wordpress.client import PublishedItem, PublishedList, WordPressClient
 
@@ -462,3 +463,40 @@ def test_seo_write_needs_client_that_created_the_draft(project_root, seo_ai, wor
     client = WordPressClient.from_settings(None, write_seo=True)
     with pytest.raises(Exception, match="Chỉ được ghi SEO cho bài nháp app vừa tạo"):
         client.set_seo_meta(POST_ID, title="x")
+
+
+def test_reopened_sent_draft_never_writes_seo_to_stored_post(project_root, seo_ai, wordpress):
+    """T-086 Ghi nhận 2: nháp đã gửi (mã bài 777 lưu trong nháp), phiên mới mở lại, bật công tắc:
+    không có lệnh nào tới bài 777; tạo thêm bài nháp mới thì chỉ ghi SEO cho bài vừa tạo (501)."""
+    at = to_seo(project_root)
+    run_ok(button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    draft = at.session_state["draft_id"]
+    ui.store().save_send_state(draft, SendState.now(pending=False, post_id=777))
+    fresh = ui.pages.open_page(project_root, "write.py")
+    run_ok(button(fresh, "Mở", key=f"open-{draft}").click().run())
+    ui.to_publish(fresh)
+    run_ok(fresh.toggle(key="seo_write").set_value(True).run())
+    assert button(fresh, ui.SEND_LABEL).disabled  # khóa «đã gửi» của T-086
+    assert wordpress.fake.requests == []
+    run_ok(fresh.checkbox(key="_wp_again").check().run())
+    ui.send(fresh)
+    (run,) = [r for r in wordpress.fake.requests if ui.path_of(r) == RUN]
+    assert json.loads(run.body)["input"]["postId"] == POST_ID
+    assert not any("777" in r.url for r in wordpress.fake.requests)
+    assert not any("777" in json.dumps(ui.body_of(r)) for r in wordpress.fake.requests)
+
+
+def test_unexpected_seo_error_keeps_draft_result(project_root, seo_ai, wordpress, monkeypatch):
+    """Lỗi lạ lúc ghi SEO (không phải ``WordPressError``): bài nháp vẫn báo đã tạo, nháp ghi «đã
+    gửi (mã 501)»; phần SEO chỉ hiện câu cố định, không hiện lỗi thô, trang không vỡ."""
+
+    def broken(self, post_id, **kwargs):
+        raise RuntimeError("chi tiết nội bộ <b>")
+
+    monkeypatch.setattr(WordPressClient, "set_seo_meta", broken)
+    at = send_with_seo(project_root, seo_ai, toggle=True)
+    assert any("Đã tạo bài nháp" in s.value for s in at.success)
+    (info,) = [i.value for i in at.info if "Ghi SEO lên website" in i.value]
+    assert info.startswith(escape_markdown("Ghi SEO lên website gặp lỗi không mong đợi."))
+    assert not any("chi tiết nội bộ" in text for text in ui.texts(at))
+    assert ui.store().load_send_state(at.session_state["draft_id"]).post_id == POST_ID
