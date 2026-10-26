@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 4; LC-T060-1, -2 bắt buộc trước phiếu nào đưa khóa JSON hay giá trị tham số lấy từ dữ liệu ngoài vào `_request`) |
 | Phụ thuộc | T-060 đã gộp |
-| Trạng thái | Soi Lỗi xong, chờ Lá Chắn rút gọn |
+| Trạng thái | Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp |
 
 ## Mục tiêu
 
@@ -57,3 +57,4 @@ W1, W2, W3, S2.
 - 2026-10-26 08:18 (Chỉ Huy B): **Thợ Máy xong** (`8d0eb56`, 5/5; sửa 1 test cũ đã duyệt). Chủ dự án duyệt giao **Soi Lỗi rút gọn** (nhắn phiên Soi Lỗi T-060).
 - 2026-10-26 09:18 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`c63eb09`): 5/5 yêu cầu đạt; R5 đạt; gộp thử với `main` và T-056 không xung đột. 3 Thấp: SL-T085-1 (`_fields` vòng qua bằng ký tự NUL sát tên trường), SL-T085-2 (trả lời lồng quá sâu → lỗi đỏ Python ở trang Kết nối WordPress), SL-T085-3 (lỗi ngay lúc nhận ảnh: ảnh có thể đã lên mà câu báo chỉ «thử lại sau»). Chờ Lá Chắn rút gọn.
 - 2026-10-26 09:59 (Chỉ Huy B): chủ dự án duyệt; giao **Lá Chắn rút gọn** (nhắn phiên Lá Chắn T-060).
+- 2026-10-26 10:33 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`0d453d9`): LC-T060-1, -3, SL-T060-1 đóng; 4 Thấp (SL-T085-1 NUL sát tên trường `_fields`; SL-T085-2 + LC-T085-1 `response.json()` để lọt `RecursionError`/lỗi giải mã lạ; SL-T085-3 lỗi ở lệnh tải ảnh của `upload_media` chưa dặn ảnh có thể đã lên) → **phiếu dọn lỗi Thấp client WordPress sau T-085** (chờ chủ dự án duyệt lập; hạn trước khi hết GĐ4). Gộp `main` trên máy (`86a391c`), đang chạy toàn bộ test.
