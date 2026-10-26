@@ -11,6 +11,7 @@
 | Ngày | 2026-10-26 (09:59 → 10:13 +07, giờ máy) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 2 Thấp (LC-T087-1, LC-T087-2). D1 đạt (không bí mật, không đường dẫn máy thật). Mọi điều kiện chép vào phiếu đều có trong README và nói đúng điều app làm. **Gộp `main` được ngay** (không xung đột với `origin/main` `2e04066`, `team/T-085`, `team/T-086`); nên sửa LC-T087-2 trước lần gửi thật đầu tiên (T-059) |
 | **Kết luận lượt 2** (2026-10-26) | **ĐẠT** · LC-T087-1, LC-T087-2 đã sửa đúng ý, 0 lỗi còn mở. **Gộp `main` được ngay** (đầu nhánh `6ecbe95`). Xem mục [Kiểm lại lượt 2](#kiểm-lại-lượt-2-2026-10-26) |
+| **Kết luận lượt 3** (2026-10-26) | **ĐẠT** · khối «Lời dặn tạm thời» viết lại đúng app sau T-086, vẫn dặn một tab tới khi T-089 xong; 0 lỗi. **Gộp `main` được ngay** (nhánh `team/T-087-l3`, đầu nhánh `4e4d301`). Xem mục [Kiểm lại lượt 3](#kiểm-lại-lượt-3-2026-10-26) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -125,3 +126,18 @@ Thư Ký sửa ở `6ecbe95` (báo cáo `T-087-thu-ky.md` mục «Lượt 2»). 
 | Thử gộp | **Không xung đột** | `git merge-tree --write-tree`: `origin/main` `9a1308d`, `origin/team/T-085`, `origin/team/T-086`; `main` không sửa `README.md` từ gốc nhánh. `uv run ruff check .`: All checks passed! |
 
 **Kết luận lượt 2: ĐẠT.** 0 lỗi còn mở; **gộp `main` được ngay**. Việc theo sau, không chặn: điều kiện 3 (Thư Ký viết lại «Lời dặn tạm thời» khi T-086 gộp), điều kiện 4 (kiểm lại bằng Claude Fable sau 01/11); 3 khuyến nghị và đề xuất gắn ảnh vào bài nháp (Thợ Máy, cần chủ dự án duyệt) để Chỉ Huy quyết.
+
+## Kiểm lại lượt 3 (2026-10-26)
+
+Thư Ký viết lại khối «Lời dặn tạm thời» sau khi T-086 gộp (điều kiện 3 biên bản này; điều kiện 5, 6 biên bản Lá Chắn T-086), nhánh `team/T-087-l3` (`4e4d301`, từ `main` `8eac87c`). Đọc `git diff 8eac87c..4e4d301 -- README.md` (chỉ mục 10) và mục «Lượt 3» báo cáo Thư Ký, đối chiếu `app/views/write.py` của `main` sau T-086. 18:09 → 18:12 +07, giờ máy.
+
+| Điểm kiểm | Kết quả | Bằng chứng |
+|---|---|---|
+| Khối mới «App nhớ việc đã gửi» đúng app hiện tại | **Đạt** | Ghi «đang gửi» vào nháp trước khi gửi, «đã gửi» kèm mã bài khi website trả lời (`send_and_record`, `record_outcome`), đọc lại mỗi lần vẽ nút gửi (`draft_panel`), như biên bản Lá Chắn T-086 mục «Đối chiếu điều kiện 2». 11 câu, nhãn README trích đều có nguyên văn trong `write.py` (`grep -cF` mỗi chuỗi = 1): «Bài này đã gửi lên WordPress (bài nháp mã …», «Gửi lại sẽ tạo thêm một bài nháp mới…», «… bài nháp có thể đã có trên website», ô «Tôi đã kiểm tra trang quản trị, vẫn muốn gửi», «Tạo thêm một bài nháp mới», ô «⏳ Lần gửi nháp vừa bấm vẫn đang chạy…», «Lần gửi này bị ngắt giữa chừng», «Lần gửi nháp trước vẫn đang chạy (website chậm?)», 60 giây (`SEND_WAIT_SECONDS`), «Chưa gửi gì lên website: chưa ghi được trạng thái gửi vào nháp». Danh sách nguyên nhân «chưa có kết quả» (tải lại trang, đóng tab, mất mạng đúng lúc đang gửi, gửi ở cửa sổ khác) chép đúng ý câu của app (`unsure_message`); tải lại trang lúc đang gửi rồi mở lại sau khi lần gửi đã xong thì app hiện «đã gửi», cũng khóa: hướng an toàn |
+| Không hứa điều app chưa làm | **Đạt** | Không nói app chặn được hai tab; không nói app nhận ra ảnh bị thay giữa hai lần mở nháp (băm ảnh hiện chỉ nhớ trong phiên, T-089); «Chưa gửi gì lên website» bỏ dấu chấm vì câu của app có hai dạng |
+| Vẫn dặn một tab tới khi T-089 xong | **Đạt** | «**Lời dặn tạm thời** (tới khi app chặn được việc gửi cùng một bài từ hai tab)»: đừng mở cùng một bài ở hai tab rồi bấm gửi ở cả hai, mỗi lần gửi một tab (SL-T086-1, sửa ở T-089 yêu cầu 2) |
+| Lần gửi thật đầu tiên | **Đạt** | «một bài, một ảnh, **một tab**», ảnh có GPS chụp ở nơi đã công khai (xưởng, cửa hàng), không dùng ảnh nhà khách; tải ảnh về kiểm GPS; kiểm xong xóa ngay (giữ nguyên câu đã sửa ở lượt 2, LC-T087-2) |
+| D1 | **Đạt** | `PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-087-thu-ky.md`: `{}`; dòng thêm của diff không có khóa, mật khẩu, đường dẫn máy, email |
+| Thử gộp | **Không xung đột** | `git merge-tree --write-tree` với `origin/main` `0735c5d`, `origin/team/T-041`, `origin/team/T-088`, `origin/team/T-089`; không nhánh nào trong đó sửa `README.md`. `uv run ruff check .`: All checks passed! |
+
+**Kết luận lượt 3: ĐẠT.** 0 lỗi; **gộp `main` được ngay**. Việc theo sau, không chặn: khi T-089 gộp (chặn được hai tab), Thư Ký bỏ hay viết lại khối «Lời dặn tạm thời» (giữ lời dặn lần gửi thật đầu tiên tới khi T-059 xong); Lá Chắn kiểm lại biên bản này bằng Claude Fable sau 01/11.

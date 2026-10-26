@@ -4,7 +4,7 @@
 |---|---|
 | Agent | Thư Ký (`thu-ky`) · model: Claude Opus 5.5 |
 | Phiếu | [T-087](../tickets/T-087-readme-chon-anh.md) |
-| Ngày nộp | 2026-10-26 · lượt 2: 2026-10-26 (sửa LC-T087-1, -2 của Lá Chắn, mục «Lượt 2» cuối báo cáo) |
+| Ngày nộp | 2026-10-26 · lượt 2: 2026-10-26 (sửa LC-T087-1, -2 của Lá Chắn, mục «Lượt 2») · lượt 3: 2026-10-26 (viết lại «Lời dặn tạm thời» sau khi T-086 gộp, mục «Lượt 3» cuối báo cáo; nhánh `team/T-087-l3`) |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -197,3 +197,44 @@ All checks passed!
 Không chạy lại pytest: lượt này chỉ đổi chữ trong `README.md` và báo cáo.
 
 **Chưa làm (không thuộc lời giao lượt 2):** 3 khuyến nghị không bắt buộc của Lá Chắn: GitHub Desktop mặc định lưu vào Documents (có thể đồng bộ OneDrive); đọc prompt trước khi dán sang công cụ khác; chỉ đổi tên file để gỡ dấu «ảnh AI» khi chắc là ảnh chụp thật. Chỉ Huy quyết có làm không.
+
+## Lượt 3 (2026-10-26): viết lại «Lời dặn tạm thời» sau khi T-086 gộp
+
+Theo điều kiện 3 của biên bản [Lá Chắn T-087](T-087-la-chan.md) và điều kiện 5, 6 của [Lá Chắn T-086](T-086-la-chan.md). Nhánh `team/T-087-l3`, tạo từ `main` `8eac87c` (đã có T-086). Chỉ sửa `README.md`, mục 10.
+
+| Chỗ | Câu cũ | Câu mới |
+|---|---|---|
+| `README.md:326-332` (khối mới **App nhớ việc đã gửi**) | Khối «**Lời dặn tạm thời** (tới khi app nhớ được việc gửi cả khi tải lại trang)», hai ý: «Bấm Gửi nháp rồi đợi… không tải lại trang (F5), không đóng tab, không bấm nút khác, không bấm đúp. Nếu không, app có thể quên là đã gửi…» và «Bài đã gửi rồi thì đừng bấm Gửi nháp lần nữa sau khi mở lại bài… app chưa nhớ việc đã gửi…» | «App ghi «đang gửi» vào bài nháp trên máy ngay trước khi gửi, và ghi «đã gửi» kèm mã bài nháp khi website trả lời. Vì vậy tải lại trang (F5), đóng tab, mở bài khác rồi mở lại, hay hôm sau mở lại bài, app vẫn nhớ…». Ba ý: **Bài đã gửi** (câu «Bài này đã gửi lên WordPress (bài nháp mã …, lúc …)…», nút Mở bài nháp, khóa tới khi tick «Tạo thêm một bài nháp mới»); **Lần gửi trước chưa có kết quả** (khóa tới khi tick «Tôi đã kiểm tra trang quản trị, vẫn muốn gửi», kiểm Bài viết → Nháp, Media trước); **Lỡ bấm nút khác, bấm đúp, sang trang khác lúc đang gửi** (app không gửi thêm, ô «⏳ …», dòng «Lần gửi này bị ngắt giữa chừng…», quá 60 giây thì «Lần gửi nháp trước vẫn đang chạy (website chậm?)…») |
+| `README.md:334-336` (khối **Lời dặn tạm thời**) | (lời dặn cũ ở trên) | «**Lời dặn tạm thời** (tới khi app chặn được việc gửi cùng một bài từ hai tab)»: «**Đừng mở cùng một bài ở hai tab (hay hai cửa sổ) rồi bấm 📤 Gửi nháp ở cả hai.** Bấm cách nhau vài giây thì vẫn có thể ra **hai bài nháp**, ảnh tải lên hai lần. Mỗi lần gửi chỉ dùng một tab.» |
+| `README.md:337` | «**Lần gửi thật đầu tiên**: thử **một bài, một ảnh**, …» | «**Lần gửi thật đầu tiên**: thử **một bài, một ảnh, một tab**, …» (phần kiểm GPS giữ nguyên) |
+| `README.md:323` | «Lỗi lúc kiểm lại, nén ảnh (ảnh vừa đổi hay bị thay, ổ đĩa chậm, ảnh hỏng…): app ghi «Chưa gửi gì lên website.» kèm lý do.» | «Lỗi trước khi gửi (ảnh vừa đổi hay bị thay bằng ảnh khác cùng tên, ổ đĩa chậm, ảnh hỏng, chưa ghi được trạng thái gửi vào nháp…): app ghi «Chưa gửi gì lên website» kèm lý do.» |
+| `README.md:310` | «(xem lời dặn ở cuối mục này)» | «(xem «App nhớ việc đã gửi» và lời dặn ở cuối mục này)» |
+
+**Đối chiếu với code** (`app/views/write.py` của `main` `8eac87c`):
+
+| Câu README | Code |
+|---|---|
+| Ghi «đang gửi» trước khi gửi; chưa ghi được thì không gửi («Chưa gửi gì lên website: chưa ghi được trạng thái gửi vào nháp…») | `send_and_record` `:2105-2134`; bảng `send_states` (`seo_app/storage/drafts.py`, T-086) |
+| Ghi «đã gửi» kèm mã bài khi website trả lời | `send_and_record` `:2151-2162`, `record_outcome` `:2165-2177` |
+| Đọc lại mỗi lần vẽ: tải lại trang, đóng tab, mở bài khác, hôm sau vẫn khóa | `draft_panel` `:2342` (`saved_send_state` `:2238-2246`); `:2375-2384` |
+| Câu «Bài này đã gửi lên WordPress (bài nháp mã …, lúc …). Gửi lại sẽ tạo thêm một bài nháp mới và tải ảnh lên lần nữa.», nút **Mở bài nháp trong WordPress**, ô **Tạo thêm một bài nháp mới** | `sent_message` `:2267-2278`; `:2380-2384` |
+| «… **bài nháp có thể đã có trên website**», ô **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**; nguyên nhân «tải lại trang, đóng tab, mất mạng», «đang gửi ở cửa sổ khác» | `unsure_message` `:2249-2264`; `:2375-2378` |
+| Bấm nút khác, bấm đúp, sang trang khác lúc đang gửi: không gửi thêm, ô «⏳ …», kết quả kèm «Lần gửi này bị ngắt giữa chừng…», vẫn khóa | `finish_send` `:2203-2235` (`MSG_WAIT_SEND` `:165`); `apply_send` `:2180-2200`; `send_result` `:2310-2314`; xét lại khóa ngay lúc bấm `:2391`, bỏ tick ô xác nhận trước khi gửi `:2394`. Không ghi tên ô cụ thể cho trường hợp này, vì lần gửi bị ngắt khóa «gửi dở» (ô «Tôi đã kiểm tra…»), còn bấm đúp được xử lý trọn trong một lần chạy thì khóa «đã gửi» (ô «Tạo thêm…», trình duyệt thật của Họa Sĩ T-086). README chỉ ghi «phải tick xác nhận» |
+| Quá 60 giây: «Lần gửi nháp trước vẫn đang chạy (website chậm?)…», đợi thêm rồi bấm lại hoặc tải lại trang | `SEND_WAIT_SECONDS` `:164`, `MSG_STILL_SENDING` `:166-169`, `:2230-2232` |
+| Hai tab cùng một bài, bấm cách nhau vài giây vẫn ra hai bài nháp | SL-T086-1 (`docs/team/reports/T-086-soi-loi.md`, trình duyệt thật: 501, 502), Lá Chắn T-086 điều kiện 5, 6; sửa ở T-089 (yêu cầu 2) |
+| Lần gửi thật đầu tiên: một bài, một ảnh, một tab | Lá Chắn T-086 điều kiện 5 |
+
+**Kiểm tra lượt 3:**
+
+```
+$ PYTHONUTF8=1 uv run pytest tests/test_t086_send_state.py tests/test_app_pages.py -q
+35 passed in 107.68s (0:01:47)
+
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-087-thu-ky.md
+results: {}   (0 mục)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Không đổi phần khác của README. Mục «Cần biết khi gửi», «Khi có lỗi» (trừ dòng 323), cách kiểm GPS giữ như lượt 2.
