@@ -64,7 +64,7 @@ Lỗi có test `xfail(strict=True)` trong `tests/test_soi_loi_t089.py` (`--runxf
 |---|---|
 | `team/T-089` + `origin/main` (lúc giao `13e986f`, lúc nộp `0735c5d`) | Không xung đột (`git merge-tree`) |
 | `team/T-089` + `origin/team/T-041` (lúc giao `13a554c`, lúc nộp `d2667f7`, cùng sửa `write.py`, `drafts.py`) | Không xung đột |
-| Gộp lần lượt `team/T-089` → `main` → `team/T-041` (như Chỉ Huy sẽ làm) | Không xung đột. Chạy test trên cây đã gộp (bản xuất `git archive`): (đang chạy, cập nhật ở commit sau) |
+| Gộp lần lượt `team/T-089` → `main` → `team/T-041` (như Chỉ Huy sẽ làm) | Không xung đột. Chạy test trên cây đã gộp (bản xuất `git archive`, 8 file: test gửi nháp T-086, T-089, `test_soi_loi_t089.py`, và `test_t041_seo_ui.py`, `test_t041_drafts_seo.py` của T-041): **188 qua, 2 xfail** (SL-T089-1), không lỗi do gộp |
 
 ## Soát R5
 
@@ -97,7 +97,22 @@ Lỗi có test `xfail(strict=True)` trong `tests/test_soi_loi_t089.py` (`--runxf
 ## Bằng chứng
 
 ```
-# Test liên quan: đang chạy, cập nhật ở commit sau
+$ PYTHONUTF8=1 uv run pytest tests/test_app_images.py tests/test_soi_loi_t056.py \
+    tests/test_la_chan_t056.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_drafts.py tests/test_drafts_images.py tests/test_app_pages.py \
+    tests/test_t086_send_state.py tests/test_storage_send_state.py \
+    tests/test_t089_send_draft.py tests/test_soi_loi_t089.py
+474 passed, 1 skipped, 2 xfailed in 1670.74s (0:27:50)   # code 87ad51c; 2 xfail = SL-T089-1
+
+# Trước khi thêm file của Soi Lỗi (8 file của tiêu chí xong + 3 file test T-086, T-089):
+443 passed, 1 skipped
+
+# Cây gộp lần lượt team/T-089 (63c4820) → main 0735c5d → team/T-041 d2667f7 (git merge-tree,
+# xuất bằng git archive, chạy bằng venv của wt-T-089; T-041 không đổi pyproject.toml, uv.lock):
+$ pytest tests/test_t089_send_draft.py tests/test_soi_loi_t089.py tests/test_t086_send_state.py \
+    tests/test_soi_loi_t086.py tests/test_la_chan_t086.py tests/test_storage_send_state.py \
+    tests/test_t041_seo_ui.py tests/test_t041_drafts_seo.py
+188 passed, 2 xfailed in 865.28s (0:14:25)
 
 $ PYTHONUTF8=1 uv run pytest tests/test_soi_loi_t089.py -k keeps_other_tab --runxfail
 2 failed   # hỏng đúng câu kiểm: assert state is not None (dòng trạng thái gửi đã bị xóa)
