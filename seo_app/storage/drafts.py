@@ -82,7 +82,6 @@ from seo_app.images.folders import (
     SubFolder,
 )
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError, tags_for_image
-from seo_app.onpage.meta import normalize_meta
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags, unescape_link_syntax
 
 if TYPE_CHECKING:
@@ -392,13 +391,18 @@ def _from_file(info: ValidationInfo) -> bool:
 
 
 def _seo_text(value: object) -> object:
-    """Meta title, description, slug: chuẩn hóa như chữ meta (``normalize_meta``: một dòng, NFC,
-    bỏ ký tự vô hình, ký tự điều khiển, ký tự lạ), tối đa ``MAX_SEO_TEXT_CHARS``. Không bỏ thẻ HTML
-    hay ``%%``: chữ chỉ được hiện trong ô sửa, bộ kiểm meta báo Chặn để người dùng thấy mà sửa.
-    Không phải chữ thì trả nguyên để pydantic báo sai khuôn."""
+    """Meta title, description, slug: chuẩn hóa nhẹ (NFC, một dòng: mọi khoảng trắng gộp thành một
+    dấu cách; bỏ surrogate lẻ, thứ không lưu, không hiện được), tối đa ``MAX_SEO_TEXT_CHARS``.
+
+    **Không** bỏ thẻ HTML, ``%%``, ký tự điều khiển hay ký tự lạ khác: chữ chỉ được hiện trong ô
+    sửa, bộ kiểm meta (``check_title``, ``check_description``, ``check_slug``) xét chữ này và báo
+    Chặn kèm câu báo để người dùng thấy mà sửa, không lặng lẽ bỏ ký tự rồi chép hay ghi lên website
+    (T-041 lượt 3: trước đó chuẩn hóa ở đây bỏ hết nên bộ kiểm không còn thấy). Không phải chữ thì
+    trả nguyên để pydantic báo sai khuôn."""
     if not isinstance(value, str):
         return value
-    text = normalize_meta(value[: MAX_SEO_TEXT_CHARS * _RAW_TEXT_FACTOR])
+    text = _drop_surrogates(value[: MAX_SEO_TEXT_CHARS * _RAW_TEXT_FACTOR])
+    text = " ".join(unicodedata.normalize("NFC", text).split())
     return text[:MAX_SEO_TEXT_CHARS].rstrip()
 
 

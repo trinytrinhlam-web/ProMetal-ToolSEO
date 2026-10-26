@@ -21,6 +21,7 @@ import pytest
 from pydantic import ValidationError
 
 from seo_app.onpage.links import InternalLink
+from seo_app.onpage.meta import Level, check_slug, check_title
 from seo_app.storage import DraftPart, DraftSnapshot, DraftStore
 from seo_app.storage.drafts import (
     MAX_DRAFT_LINKS,
@@ -194,15 +195,33 @@ def test_seo_of_wrong_type_is_dropped(store, seo):
     assert loaded.seo == DraftSeo()
 
 
-def test_odd_chars_in_saved_meta_are_cleaned(store):
+def test_odd_chars_in_saved_meta_are_kept_for_the_checker(store):
+    """Lượt 3: nháp chỉ chuẩn hóa nhẹ (NFC, gộp khoảng trắng); ký tự điều khiển, ký tự lạ, ký tự
+    vô hình được giữ để bộ kiểm meta Chặn kèm câu báo, không lặng lẽ bỏ rồi chép hay ghi."""
+
     def odd(obj):
         obj["seo"]["title"]["versions"] = ["Cửa\x00 sắt​  bị xệ\n<b>x</b>", "%%x%%"]
         obj["seo"]["slug"] = " cua-sat\x1b "
 
     loaded = store.load(saved_with(store, odd))
-    assert loaded.seo.title.versions == ["Cửa sắt bị xệ <b>x</b>", "%%x%%"]
+    first, second = loaded.seo.title.versions
+    assert first == "Cửa\x00 sắt​ bị xệ <b>x</b>" and second == "%%x%%"
     assert loaded.seo.title.current == 1  # bản đang dùng vẫn là bản cuối
-    assert loaded.seo.slug == "cua-sat"
+    assert loaded.seo.slug == "cua-sat\x1b"
+    assert check_title(first).level is Level.BLOCK
+    assert "ký tự điều khiển hoặc ký tự lạ" in " ".join(check_title(first).messages)
+    assert check_slug(loaded.seo.slug).level is Level.BLOCK
+    assert store.save(loaded).seo == loaded.seo  # lưu lại được
+
+
+def test_lone_surrogate_in_meta_is_dropped(store):
+    """Surrogate lẻ không ghi được ra UTF-8, không hiện được: nháp bỏ ký tự đó, lưu được. (File
+    nháp có surrogate lẻ thì cả nháp báo hỏng như mọi trường khác, từ trước T-041.)"""
+    seo = DraftSeo(
+        description=DraftMetaVersions(versions=["Cửa sắt\ud800 bị xệ"]), slug="cua\udfff-sat"
+    )
+    assert seo.description.text == "Cửa sắt bị xệ" and seo.slug == "cua-sat"
+    assert store.load(store.save(snapshot(seo)).id).seo == seo
 
 
 def test_long_meta_text_is_capped(store):

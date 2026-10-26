@@ -45,6 +45,7 @@ from seo_app.onpage.meta import (
     filter_ai_titles,
     find_avoided,
     has_link,
+    has_odd_chars,
     mentions_price,
     normalize_meta,
     resolve_brand_suffix,
@@ -69,39 +70,50 @@ ODD = ["\x00", "\x1b", "\x7f", "\x9b", "\ud800", "\udfff", "", "\U000f0000", 
 
 
 @pytest.mark.parametrize("odd", ODD)
-def test_user_text_drops_odd_chars(odd):
+def test_user_text_with_odd_chars_is_blocked(odd):
+    """Lượt 3: chữ người dùng có ký tự điều khiển / ký tự lạ bị Chặn kèm câu báo (không lặng lẽ
+    bỏ ký tự rồi chép, ghi); ``value`` vẫn là chữ đã chuẩn hóa, không còn ký tự đó."""
     raw = TITLE.replace("bị", f"b{odd}ị")
-    assert normalize_meta(raw) == TITLE
-    check = check_title(raw, "")
-    assert check.value == TITLE and odd not in check.value
-    assert check_title(raw).value == TITLE + BRAND_SUFFIX  # title gửi đi (có đuôi)
-    assert check.value.encode("utf-8")  # không còn surrogate: mã hóa được
-    assert odd not in check_description(DESC + odd).value
+    assert normalize_meta(raw) == TITLE and has_odd_chars(raw)
+    for check in (check_title(raw), check_title(raw, ""), check_description(DESC + odd)):
+        assert check.level is Level.BLOCK
+        assert "ký tự điều khiển hoặc ký tự lạ" in " ".join(check.messages)
+        assert odd not in check.value and check.value.encode("utf-8")
+        assert odd not in " ".join(check.messages)
+    copy = siteseo_copy(raw, DESC + odd, "cua-sat-bi-xe")
+    assert copy.title is None and copy.description is None and copy.slug == "cua-sat-bi-xe"
 
 
 @pytest.mark.parametrize("odd", ["\x00", "\x1b"])
-def test_ai_json_with_control_chars_is_cleaned(odd):
-    """Đường AI thật: JSON có ``\\u0000``/``\\u001b`` qua được khuôn ``MetaSuggestions``."""
+def test_ai_json_with_control_chars_is_rejected(odd):
+    """Đường AI thật: JSON có ``\\u0000``/``\\u001b`` qua được khuôn ``MetaSuggestions``; gợi ý đó
+    bị bỏ (lượt 3), bản không có ký tự lạ thì được nhận."""
     escaped = json.dumps(odd)[1:-1]
     raw = MetaSuggestions.model_validate_json(
         f'{{"titles": ["Cửa sắt bị xệ:{escaped} dấu hiệu sớm và cách xử lý gọn"],'
         f' "descriptions": ["{DESC[:20]}{escaped}{DESC[20:]}"]}}'
     )
     assert odd in raw.titles[0]
-    title = accept_ai_title(raw.titles[0], KEYWORD)
-    assert title == TITLE + BRAND_SUFFIX
-    assert accept_ai_description(raw.descriptions[0], KEYWORD) == DESC
+    assert accept_ai_title(raw.titles[0], KEYWORD) is None
+    assert accept_ai_description(raw.descriptions[0], KEYWORD) is None
+    assert accept_ai_title(TITLE, KEYWORD) == TITLE + BRAND_SUFFIX
+    assert accept_ai_description(DESC, KEYWORD) == DESC
 
 
 @pytest.mark.parametrize("odd", ODD)
-def test_brand_suffix_drops_odd_chars(odd):
-    assert resolve_brand_suffix(f" | Pro{odd}-Metal") == " | Pro-Metal"
-    assert with_brand(TITLE, f" | Pro{odd}-Metal") == TITLE + " | Pro-Metal"
+def test_brand_suffix_with_odd_chars_falls_back_to_default(odd):
+    """Đuôi trong cấu hình có ký tự lạ là cấu hình sai: dùng đuôi mặc định, như khi có thẻ HTML."""
+    assert resolve_brand_suffix(f" | Pro{odd}-Metal") == BRAND_SUFFIX
+    assert resolve_brand_suffix(f" | Cơ khí{odd} PM") == BRAND_SUFFIX
+    assert with_brand(TITLE, f" | Cơ khí{odd} PM") == TITLE + BRAND_SUFFIX
 
 
 def test_whitespace_control_chars_still_become_spaces():
-    assert normalize_meta("Cửa\tsắt\nbị\x0bxệ\x1c\x85gọn") == "Cửa sắt bị xệ gọn"
-    assert normalize_meta("a\x00b") == "ab"
+    text = "Cửa\tsắt\nbị\x0bxệ\x1c\x85gọn"
+    assert normalize_meta(text) == "Cửa sắt bị xệ gọn"
+    assert not has_odd_chars(text)  # tab, xuống dòng… là khoảng trắng, không phải ký tự lạ
+    assert check_title(text + " dấu hiệu sớm và cách xử lý tại nhà").level is Level.GOOD
+    assert normalize_meta("a\x00b") == "ab" and has_odd_chars("a\x00b")
 
 
 # ============================================================ SL-T036-12: chữ dài
@@ -510,6 +522,23 @@ def test_siteseo_copy_refuses_blocked_fields(title, description, slug, blocked):
     assert all(getattr(copy, name) is not None for name in others)
     check = next(c for c in copy.checks if c.field == blocked)
     assert check.level is Level.BLOCK and check.messages
+
+
+def test_control_chars_blocked_on_every_path_but_whitespace_is_not():
+    """Lượt 3 (lỗi lùi do ``normalize_meta`` bỏ ký tự điều khiển): ô sửa → các bản trong nháp →
+    bộ kiểm → chép SiteSEO → client WordPress đều Chặn chữ có ký tự điều khiển, kèm câu báo; tab,
+    xuống dòng thì vẫn chỉ được gộp thành dấu cách."""
+    from seo_app.storage.drafts import DraftMetaVersions
+
+    raw = "Cửa sắt bị xệ\x1b: dấu hiệu sớm và cách xử lý"
+    kept = DraftMetaVersions(versions=[raw]).text  # như giao diện lưu bản người dùng sửa
+    assert "\x1b" in kept
+    assert check_title(kept).level is Level.BLOCK
+    assert siteseo_copy(kept, DESC, "cua-sat-bi-xe").title is None
+    assert "điều khiển" in seo_write_problem("Tiêu đề SEO", raw)
+    spaced = "Cửa sắt bị xệ:\tdấu hiệu sớm\nvà cách xử lý"
+    assert seo_write_problem("Tiêu đề SEO", spaced) == ""
+    assert check_title(DraftMetaVersions(versions=[spaced]).text).level is Level.GOOD
 
 
 def test_seo_write_problem_uses_client_rules():

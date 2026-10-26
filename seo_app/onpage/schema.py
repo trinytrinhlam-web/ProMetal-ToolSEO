@@ -503,6 +503,11 @@ _NOT_WORD = re.compile(r"[\W_]+")
 # Câu hỏi là cả dòng in đậm kết thúc bằng dấu hỏi (có thể có gạch đầu dòng trước, chữ trả lời sau).
 _BOLD_QUESTION = re.compile(r"(?:[-*+]|\d{1,9}[.)])?[ \t]*(\*\*|__)(.+?[?？])\1[ \t]*(.*)")
 MSG_NO_FAQ = "Bài chưa có mục Hỏi đáp (tiêu đề mục có «Hỏi đáp» hay «Câu hỏi thường gặp»)."
+# Có mục Hỏi đáp nhưng chưa nhận ra cặp hỏi-đáp nào (góp ý 4 của Họa Sĩ T-041).
+MSG_NO_FAQ_QUESTION = (
+    "Mục Hỏi đáp chưa có câu hỏi đúng dạng: mỗi câu hỏi là tiêu đề con (###) hay dòng in đậm, kết "
+    "thúc bằng dấu hỏi, câu trả lời nằm ngay bên dưới."
+)
 
 
 def _is_faq_heading(heading: str) -> bool:
@@ -594,7 +599,9 @@ def build_article_faq(
         return SchemaResult(None, None, (Issue(Level.BLOCK, MSG_ARTICLE_TOO_LONG),))
     pairs = find_faq(parts)
     if not pairs:
-        return SchemaResult(None, None, (Issue(Level.BLOCK, MSG_NO_FAQ),))
+        has_section = any(_is_faq_heading(part.heading) for part in list(parts)[1:])
+        message = MSG_NO_FAQ_QUESTION if has_section else MSG_NO_FAQ
+        return SchemaResult(None, None, (Issue(Level.BLOCK, message),))
     return build_faq_page(pairs, article_text=article, site_url=site_url, page_url=page_url)
 
 

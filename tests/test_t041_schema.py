@@ -20,6 +20,7 @@ from seo_app.content.models import Section
 from seo_app.onpage.schema import (
     MAX_QUESTIONS,
     MSG_NO_FAQ,
+    MSG_NO_FAQ_QUESTION,
     Level,
     article_markdown,
     build_article_faq,
@@ -294,6 +295,22 @@ def test_build_article_faq_without_faq_section():
     result = build_article_faq(_parts(FAQ_BODY, "Cách xử lý"))
     assert result.blocked and result.json_ld is None
     assert [issue.message for issue in result.issues] == [MSG_NO_FAQ]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Khách hay hỏi về bảo hành và thời gian làm.",  # không có câu hỏi nào
+        "### Lưu ý\n\nNgắt điện trước khi làm.",  # tiêu đề con không phải câu hỏi
+        "### Có bảo hành không?",  # có câu hỏi nhưng chưa có trả lời
+    ],
+)
+def test_faq_section_without_proper_questions_says_so(body):
+    """Góp ý 4 của Họa Sĩ (lượt 3): có mục «Câu hỏi thường gặp» mà chưa có cặp hỏi-đáp đúng dạng
+    thì câu báo nói đúng chuyện đó, không nói «chưa có mục Hỏi đáp»."""
+    result = build_article_faq(_parts(body))
+    assert result.blocked and result.json_ld is None
+    assert [issue.message for issue in result.issues] == [MSG_NO_FAQ_QUESTION]
 
 
 def test_build_article_faq_too_many_questions():

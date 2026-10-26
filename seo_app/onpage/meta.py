@@ -108,6 +108,18 @@ def meta_length(text: str) -> int:
     return len(normalize_meta(text))
 
 
+# Ký tự điều khiển (trừ khoảng trắng như tab, xuống dòng), surrogate lẻ, ký tự riêng, chưa gán.
+_ODD_CATEGORIES = frozenset({"Cc", "Cs", "Co", "Cn"})
+
+
+def has_odd_chars(text: str) -> bool:
+    """Chữ gốc có ký tự điều khiển hay ký tự lạ (``_ODD_CATEGORIES``; khoảng trắng như tab, xuống
+    dòng thì không tính). ``normalize_meta`` bỏ hẳn các ký tự này, nên bộ kiểm phải xét trên chữ
+    gốc: chữ người dùng có chúng thì Chặn kèm câu báo, gợi ý AI có chúng thì bỏ, không lặng lẽ bỏ
+    ký tự rồi dùng (LC-T036-1, sửa lỗi lùi ở T-041 lượt 3; như ``client._seo_text``)."""
+    return any(not ch.isspace() and unicodedata.category(ch) in _ODD_CATEGORIES for ch in text)
+
+
 def has_html(text: str) -> bool:
     """Có thẻ HTML (hay "<" ngay trước chữ cái, có thể thành thẻ)."""
     return strip_tags(text) != text
@@ -132,6 +144,11 @@ def _check_text(field: str, raw: str, limits: Limits) -> FieldCheck:
     # SAU khi bỏ ký tự vô hình, mà chữ gửi đi là ``value`` (SL-T036-1).
     if has_html(raw) or has_html(value):
         blocks.append(f"{name} có thẻ HTML (dấu < ngay trước chữ). Bỏ thẻ đi.")
+    if has_odd_chars(raw):  # chữ gốc: ``value`` đã bị bỏ các ký tự này
+        blocks.append(
+            f"{name} có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi "
+            "khác). Xóa ô rồi gõ lại chữ thường."
+        )
     if "%%" in value:
         blocks.append(f"{name} có «%%»: plugin SiteSEO hiểu đó là biến. Bỏ «%%» đi.")
     if blocks:
@@ -217,11 +234,12 @@ _MAX_BRAND_STRIPS = 5
 
 
 def resolve_brand_suffix(value: object = None) -> str:
-    """Hậu tố dùng thật. Không có cấu hình (``None``) hoặc cấu hình sai (không phải chữ, có thẻ,
-    có ``%%``, dài quá ``BRAND_SUFFIX_MAX_LENGTH``) thì dùng ``BRAND_SUFFIX``, không báo lỗi.
+    """Hậu tố dùng thật. Không có cấu hình (``None``) hoặc cấu hình sai (không phải chữ, có ký tự
+    điều khiển hay ký tự lạ, có thẻ, có ``%%``, dài quá ``BRAND_SUFFIX_MAX_LENGTH``) thì dùng
+    ``BRAND_SUFFIX``, không báo lỗi.
     Chữ rỗng (kể cả chỉ có khoảng trắng hay ký tự vô hình, SL-T036-4) là chủ ý "không gắn
     thương hiệu"."""
-    if not isinstance(value, str):
+    if not isinstance(value, str) or has_odd_chars(value):  # ký tự điều khiển, lạ: cấu hình sai
         return BRAND_SUFFIX
     if not normalize_meta(value):
         return ""
@@ -659,8 +677,10 @@ def _ai_text(raw: object, keyword: str, banned, max_length: int, avoid=()) -> st
     """
     if not isinstance(raw, str) or has_html(raw):
         return None
+    # Độ dài trước (tuyến tính), rồi ký tự điều khiển, ký tự lạ trên chữ gốc: gợi ý có chúng bị bỏ,
+    # không lặng lẽ bỏ ký tự rồi dùng (LC-T036-1, T-041 lượt 3).
     value = normalize_meta(raw)
-    if not value or len(value) > max_length:
+    if not value or len(value) > max_length or has_odd_chars(raw):
         return None
     folded = unicodedata.normalize("NFKC", value)  # "％％" toàn khổ cũng là "%%" (SL-T036-7)
     if "%%" in folded or _ENTITY.search(folded) or has_link(value):
