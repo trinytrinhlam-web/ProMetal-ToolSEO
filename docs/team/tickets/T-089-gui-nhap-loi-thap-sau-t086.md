@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Soi Lỗi đạt có điều kiện, Lá Chắn đang kiểm |
+| Trạng thái | Lá Chắn đạt có điều kiện, Họa Sĩ lượt 2 sửa SL-T089-1 |
 
 ## Mục tiêu
 
@@ -56,3 +56,4 @@ W1, W2, U1, F2.
 - Phần không bắt buộc của Lá Chắn T-086 (giới hạn trên cho `_positive_id` trong client) để sau T-088 (cùng `client.py`).
 - 2026-10-26 15:19 (Chỉ Huy B): **Họa Sĩ xong** (`87ad51c`, 5/5; gỡ 3 `xfail`; 39 file test liên quan 3.908 qua). Giao **Soi Lỗi rút gọn** (phiên Soi Lỗi T-056).
 - 2026-10-26 19:22 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`66131e5`): 1 Thấp SL-T089-1 (2 `xfail`). Giao **Lá Chắn rút gọn** (phiên Lá Chắn T-056).
+- 2026-10-26 19:55 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`d5d0e69`): LC-T086-1, SL-T086-1, -2 đóng; băm ảnh đã duyệt trong nháp đạt; không lỗi mới; thử gộp với `main`, T-088, T-041 không xung đột. Theo cách làm mới, sửa luôn **SL-T089-1** trong phiếu (Họa Sĩ lượt 2, gồm ghi kết quả kiểu so rồi đặt, Ghi nhận 1 Lá Chắn) rồi Soi Lỗi, Lá Chắn xem lại nhanh và gộp cùng lượt toàn bộ test. Sau khi gộp: Thư Ký thêm vào README «nháp lưu từ bản cũ phải tick Đã duyệt ảnh lại một lần» (điều kiện Lá Chắn).
