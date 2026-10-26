@@ -631,37 +631,43 @@ class DraftStore:
         """
         _check_id(draft_id)
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT length(CAST(data AS BLOB)) FROM send_states WHERE id = ?", (draft_id,)
-            ).fetchone()
-            if row is None:
-                return None
-            if row[0] is None or row[0] > MAX_SEND_STATE_BYTES:
-                raise DraftError(_MSG_SEND_STATE_BROKEN)
-            (data,) = conn.execute(
-                "SELECT data FROM send_states WHERE id = ?", (draft_id,)
-            ).fetchone()
-        try:
-            if isinstance(data, bytes):
-                data = data.decode("utf-8")
-            if not isinstance(data, str):
-                raise TypeError("dữ liệu không phải chữ")
-            return SendState.model_validate_json(data)
-        except (ValidationError, UnicodeDecodeError, TypeError):
-            raise DraftError(_MSG_SEND_STATE_BROKEN) from None
+            return _read_send_state(conn, draft_id)
 
-    def save_send_state(self, draft_id: str, state: SendState | None) -> None:
+    def save_send_state(
+        self,
+        draft_id: str,
+        state: SendState | None,
+        *,
+        expected: tuple[SendState | None, bool] | None = None,
+    ) -> bool:
         """Ghi trạng thái gửi của nháp; ``None`` thì xóa (T-086). Không đụng nội dung, giờ lưu của
-        nháp; lần tự lưu nháp (``save``) cũng không đụng trạng thái này."""
+        nháp; lần tự lưu nháp (``save``) cũng không đụng trạng thái này. Trả ``True`` khi đã ghi.
+
+        ``expected`` (so rồi đặt, T-089, SL-T086-1): ``(trạng thái, hỏng)`` người dùng thấy lúc bấm
+        gửi, như ``load_send_state`` trả (``hỏng``: dòng không đọc được). Đọc và ghi trong **một**
+        giao dịch giữ khóa ghi từ đầu (``BEGIN IMMEDIATE``): trạng thái trong nháp đã khác (tab khác
+        vừa ghi «đang gửi», «đã gửi») thì không ghi gì, trả ``False``. Mọi tab trên một máy đi qua
+        cùng file nên hai tab không cùng qua được bước này."""
         _check_id(draft_id)
+        data = None if state is None else state.model_dump_json()
         with self._connect() as conn:
-            if state is None:
+            if expected is not None:
+                conn.execute("BEGIN IMMEDIATE")  # lần ghi khác phải đợi tới khi giao dịch này xong
+                try:
+                    current, broken = _read_send_state(conn, draft_id), False
+                except DraftError:
+                    current, broken = None, True
+                seen, seen_broken = expected
+                if broken != seen_broken or (not broken and current != seen):
+                    return False
+            if data is None:
                 conn.execute("DELETE FROM send_states WHERE id = ?", (draft_id,))
             else:
                 conn.execute(
                     "INSERT OR REPLACE INTO send_states (id, data) VALUES (?, ?)",
-                    (draft_id, state.model_dump_json()),
+                    (draft_id, data),
                 )
+        return True
 
     # ------------------------------------------------------------ nội bộ
 
@@ -714,6 +720,27 @@ class DraftStore:
             target = self.path.with_name(f"{self.path.stem}.hong-{stamp}-{n}{self.path.suffix}")
         self.path.replace(target)
         return target
+
+
+def _read_send_state(conn: sqlite3.Connection, draft_id: str) -> SendState | None:
+    """Trạng thái gửi của nháp, đọc trên kết nối đang mở (``load_send_state``, và lần so rồi đặt
+    của ``save_send_state``). Dòng quá lớn, sai khuôn: ``DraftError`` câu cố định."""
+    row = conn.execute(
+        "SELECT length(CAST(data AS BLOB)) FROM send_states WHERE id = ?", (draft_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    if row[0] is None or row[0] > MAX_SEND_STATE_BYTES:
+        raise DraftError(_MSG_SEND_STATE_BROKEN)
+    (data,) = conn.execute("SELECT data FROM send_states WHERE id = ?", (draft_id,)).fetchone()
+    try:
+        if isinstance(data, bytes):
+            data = data.decode("utf-8")
+        if not isinstance(data, str):
+            raise TypeError("dữ liệu không phải chữ")
+        return SendState.model_validate_json(data)
+    except (ValidationError, UnicodeDecodeError, TypeError):
+        raise DraftError(_MSG_SEND_STATE_BROKEN) from None
 
 
 def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:

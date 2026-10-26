@@ -31,11 +31,13 @@ Bài đang soạn nằm trong session_state:
   và so băm SHA-256 byte sắp tải với bản đã xem và duyệt (``altsha-<id>``, T-086).
 
 Gửi nháp (T-086): trạng thái gửi ghi vào kho nháp (``SendState``) trước khi gửi và ngay khi có kết
-quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. Trong phiên: ``_wp_sending`` (đối
-tượng giữ kết quả, sửa tại chỗ), ``_wp_result``, ``_wp_sent``, ``_wp_maybe_draft``. Mọi lần
-đọc/ghi ``st.session_state`` và mọi lệnh ``st.*`` là chỗ Streamlit có thể dừng lần chạy (người dùng
-bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1). Lần chạy mới bắt đầu ngay, song song với lần
-đang gửi (``runner.fastReruns``): ``finish_send`` đợi lần gửi xong rồi mới đọc kết quả.
+quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. «Đang gửi» chỉ được ghi khi trạng
+thái trong nháp vẫn như lúc người dùng bấm (so rồi đặt trong một giao dịch, T-089: tab khác cùng
+bài vừa gửi thì dừng). Trong phiên: ``_wp_sending`` (đối tượng giữ kết quả, sửa tại chỗ),
+``_wp_seen`` (trạng thái gửi ở lần vẽ trước), ``_wp_result``, ``_wp_sent``, ``_wp_maybe_draft``.
+Mọi lần đọc/ghi ``st.session_state`` và mọi lệnh ``st.*`` là chỗ Streamlit có thể dừng lần chạy
+(người dùng bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1). Lần chạy mới bắt đầu ngay, song
+song với lần đang gửi (``runner.fastReruns``): ``finish_send`` đợi lần gửi xong rồi mới đọc kết quả.
 """
 
 import dataclasses
@@ -117,6 +119,7 @@ COMPOSE_KEYS = (
     "_wp_sent",
     "_wp_maybe_draft",
     "_wp_sending",
+    "_wp_seen",
     "_kept",
 )
 # Ô nhập chỉ hiện ở một bước. Streamlit tự xóa giá trị của ô không được vẽ, nên mỗi lần chạy
@@ -168,6 +171,10 @@ MSG_STILL_SENDING = (
     "trước khi gửi lại, mở trang quản trị WordPress kiểm tra Bài viết → Nháp và Media → Thư viện."
 )
 MSG_POST_ID_OUT_OF_RANGE = "website trả mã bài nháp lớn bất thường, app không ghi được vào nháp"
+MSG_SENT_ELSEWHERE = (
+    "Chưa gửi gì lên website: bài này vừa được gửi (hoặc đang gửi) ở một tab khác của app. Xem lời "
+    "nhắc phía trên nút «Gửi nháp» rồi mới quyết định gửi thêm."
+)
 MSG_FILE_REPLACED = (
     "nội dung file khác bản bạn đã xem và duyệt (file vừa bị thay bằng ảnh khác cùng tên). Xem "
     "lại ảnh, alt rồi duyệt lại ở bước Viết & kiểm tra"
@@ -1984,7 +1991,12 @@ def wordpress_client() -> tuple[WordPressClient | None, str]:
         return None, str(exc)
 
 
-def send_draft(client: WordPressClient, ready: list[int], previous_post: int | None) -> None:
+def send_draft(
+    client: WordPressClient,
+    ready: list[int],
+    previous_post: int | None,
+    seen: tuple[SendState | None, bool],
+) -> None:
     """Gửi bài nháp kèm ảnh. **Chỉ chạy khi người dùng bấm «Gửi nháp»** (Lá Chắn T-054 4b).
 
     - Ngay trước khi tải, kiểm lại từng ảnh (``check_chosen_image``, LC-T055-2) và dùng đúng ảnh đã
@@ -1996,8 +2008,9 @@ def send_draft(client: WordPressClient, ready: list[int], previous_post: int | N
     - ``DraftImage(web, alt, caption, tags=<thẻ đã kiểm của chính ảnh đó>, featured)`` (Lá Chắn
       T-071 điều kiện 3a): ảnh AI mang ``ImageTags(source="ai")``.
     - Một ảnh đặt ở hai chỗ, cùng alt và chú thích: dùng lại cùng một đối tượng (chỉ tải một lần).
-    - Gửi bằng ``send_and_record`` (ghi «đang gửi» vào nháp, gửi, ghi kết quả vào đối tượng giữ kết
-      quả và vào nháp, không có chỗ dừng nào ở giữa), rồi ``apply_send``. Lỗi hiện đủ
+    - Gửi bằng ``send_and_record`` (ghi «đang gửi» vào nháp nếu trạng thái gửi trong nháp vẫn là
+      ``seen``, gửi, ghi kết quả vào đối tượng giữ kết quả và vào nháp, không có chỗ dừng nào ở
+      giữa), rồi ``apply_send``. Lỗi hiện đủ
       (``send_result``); không rõ kết quả thì khóa nút tới khi người dùng xác nhận đã kiểm trang
       quản trị. Không bao giờ tự gửi lại.
     """
@@ -2082,7 +2095,7 @@ def send_draft(client: WordPressClient, ready: list[int], previous_post: int | N
     with st.spinner("Đang gửi bài nháp và ảnh lên WordPress…", show_time=True):
         S._wp_sending = holder  # chỗ dừng cuối cùng trước khi gửi: dừng ở đây thì chưa gửi gì
         try:
-            send_and_record(client, store, holder, title, parts, previous_post)
+            send_and_record(client, store, holder, title, parts, previous_post, seen)
         finally:
             holder["done"].set()  # cả khi lần chạy bị dừng ngay trong lúc gửi (``finish_send``)
     apply_send(holder, interrupted=False)
@@ -2110,6 +2123,7 @@ def send_and_record(
     title: str,
     parts: list[str | WordPressImage],
     previous_post: int | None,
+    seen: tuple[SendState | None, bool],
 ) -> None:
     """Ghi «đang gửi» vào nháp, gửi, rồi ghi kết quả vào ``holder`` (đối tượng giữ kết quả, sửa
     tại chỗ) và vào nháp (T-086: SL-T056-9, -11).
@@ -2119,9 +2133,15 @@ def send_and_record(
     và trong nháp, lần chạy không thể dừng giữa chừng; dừng ở đâu sau đó thì lần chạy sau vẫn có
     kết quả (``finish_send``). Chưa ghi được «đang gửi» thì không gửi: thiếu dấu đó, tải lại trang
     lúc đang gửi là mất khóa chống gửi trùng.
+
+    «Đang gửi» ghi kiểu so rồi đặt (T-089, SL-T086-1): chỉ ghi khi trạng thái gửi trong nháp vẫn
+    là ``seen`` (``(trạng thái, hỏng)`` người dùng thấy lúc bấm). Tab khác cùng bài vừa ghi «đang
+    gửi» hay «đã gửi» (lúc tab này còn kiểm lại, nén ảnh) thì không gửi gì, báo rõ.
     """
     try:
-        store.save_send_state(holder["draft"], SendState.now(pending=True, post_id=previous_post))
+        written = store.save_send_state(
+            holder["draft"], SendState.now(pending=True, post_id=previous_post), expected=seen
+        )
     except Exception as exc:
         reason = str(exc) if isinstance(exc, DraftError) else "lỗi không mong đợi"
         holder["result"] = {
@@ -2131,6 +2151,10 @@ def send_and_record(
                 "Thử lại sau giây lát."
             ),
         }
+        holder["state"] = (False, previous_post)
+        return
+    if not written:  # tab khác vừa gửi bài này: khóa theo trạng thái trong nháp ở lần vẽ sau
+        holder["result"] = {"ok": False, "message": MSG_SENT_ELSEWHERE}
         holder["state"] = (False, previous_post)
         return
     pending, post_id = True, previous_post
@@ -2349,6 +2373,10 @@ def draft_panel() -> None:
         S.pop("_wp_reset_guards", None)
     client, problem = wordpress_client()
     saved, saved_error = saved_send_state()  # đọc mỗi lần vẽ: mở lại nháp, phiên mới vẫn khóa
+    # Trạng thái gửi ở lần vẽ người dùng đã thấy khi bấm: lần gửi chỉ ghi «đang gửi» khi nháp vẫn
+    # như vậy (so rồi đặt, SL-T086-1), kể cả khi tab khác gửi trong lúc ô xác nhận đã tick sẵn.
+    seen = S.get("_wp_seen", (saved, bool(saved_error)))
+    S._wp_seen = (saved, bool(saved_error))
     spots = image_spots()
     states = {pid: slot_problem(pid) for pid in spots}
     ready = [pid for pid, state in states.items() if state == ""]
@@ -2401,7 +2429,7 @@ def draft_panel() -> None:
         # Bỏ tick các ô xác nhận trước khi gửi (không phải sau): lần chạy bị dừng giữa chừng thì
         # lần sau vẫn phải xác nhận lại mới gửi tiếp được.
         S._wp_reset_guards = True
-        send_draft(client, ready, post_id)
+        send_draft(client, ready, post_id, seen)
         st.rerun()
     send_result()
 
