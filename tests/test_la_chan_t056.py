@@ -3,13 +3,15 @@
 Bổ sung cho ``tests/test_app_images.py`` (Họa Sĩ) và ``tests/test_soi_loi_t056.py`` (Soi Lỗi), dùng
 lại ảnh giả, WordPress giả, AI giả của hai file đó. Không gọi mạng thật, không dùng ảnh thật.
 
-- **LC-T056-1** (Thấp): khóa «gửi dở» mất khi lần chạy bị dừng **lần nữa** đúng lúc đang ghi khóa.
-  Trong Streamlit 1.65 mọi lần đọc/ghi ``st.session_state`` là điểm dừng (Soi Lỗi T-056, mục «Phát
-  hiện chính»). ``mark_send_interrupted`` bỏ dấu ``_wp_sending`` **trước**, rồi mới ghi
-  ``_wp_result`` và ``_wp_maybe_draft``: một yêu cầu chạy lại (cú bấm thứ ba) tới đúng khe đó thì
-  lần chạy dừng khi dấu đã mất mà khóa chưa có; lần sau nút «Gửi nháp» bật, không nhắc gì, bấm là
-  bài nháp thứ hai, ảnh (có GPS) tải lần hai. Đánh dấu ``xfail(strict=True)``: sửa xong (ghi khóa
-  trước, bỏ dấu sau) thì test tự báo XPASS để gỡ dấu.
+- **LC-T056-1** (Thấp): khóa chống gửi trùng mất khi lần chạy bị dừng **lần nữa** đúng lúc đang
+  làm việc bảo vệ. Trong Streamlit 1.65 mọi lần đọc/ghi ``st.session_state`` là điểm dừng (Soi Lỗi
+  T-056, mục «Phát hiện chính»). Hai chỗ bỏ dấu trước, làm việc bảo vệ sau: (a)
+  ``mark_send_interrupted`` bỏ dấu ``_wp_sending`` rồi mới ghi ``_wp_result``, ``_wp_maybe_draft``;
+  (b) ``draft_panel`` bỏ cờ ``_wp_reset_guards`` rồi mới bỏ tick các ô xác nhận. Một yêu cầu chạy
+  lại (cú bấm tiếp theo) tới đúng khe đó thì lần chạy dừng khi dấu đã mất mà việc bảo vệ chưa
+  làm: (a) nút «Gửi nháp» bật, không nhắc gì, bấm là bài nháp thứ hai, ảnh (có GPS) tải lần hai;
+  (b) ô «Tôi đã kiểm tra…» của lần gửi trước vẫn tick, nút bật. Đánh dấu ``xfail(strict=True)``:
+  sửa xong (làm việc bảo vệ trước, bỏ dấu sau) thì test tự báo XPASS để gỡ dấu.
 - Rủi ro 2 của Họa Sĩ (``walk_to_folder``, nhánh danh sách thư mục cha bị cắt mở thẳng
   ``list_folder`` theo tên lấy từ ``checked.ref``, có thể là chữ trong nháp): Lá Chắn **chấp nhận**.
   Test đối chứng (đang qua) giữ tính chất an toàn của nhánh đó: nháp trỏ vào thư mục là lối tắt
@@ -81,6 +83,51 @@ def test_lc_t056_1_second_stop_while_marking_keeps_lock(
     assert len(site.posts()) == 1  # bài nháp đã lên website
     assert "_wp_sending" not in at.session_state
     assert button(at, SEND).disabled, "nút «Gửi nháp» bật lại: bấm là bài nháp thứ hai"
+
+
+def interrupt_after_dropping_reset_flag(monkeypatch) -> list[str]:
+    """Yêu cầu chạy lại tới ngay sau khi ``draft_panel`` bỏ cờ ``_wp_reset_guards`` (trước khi bỏ
+    tick các ô xác nhận): cú bấm tiếp theo của người dùng bấm liên tục. Trả danh sách ghi lại lúc
+    yêu cầu được gửi."""
+    original = SafeSessionState.__delitem__
+    fired: list[str] = []
+
+    def delitem(self, key):
+        original(self, key)
+        if not fired and key == "_wp_reset_guards":
+            fired.append(key)
+            ctx = get_script_run_ctx()
+            ctx.script_requests.request_rerun(RerunData(page_script_hash=ctx.page_script_hash))
+
+    monkeypatch.setattr(SafeSessionState, "__delitem__", delitem)
+    return fired
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="LC-T056-1: lần chạy bị dừng ngay sau khi bỏ cờ bỏ tick thì ô xác nhận cũ còn tick",
+)
+def test_lc_t056_1_second_stop_while_resetting_guards_unticks(
+    project_root, root, fake_ai, site, monkeypatch
+):
+    """Cùng loại khe, chỗ thứ hai: lần gửi trước lỗi đúng lúc tạo nháp (khóa «bài nháp có thể đã
+    có»), người dùng tick «Tôi đã kiểm tra…», gửi lại; trong lúc gửi bấm gì đó (lần chạy dừng), và
+    lần chạy sau bị dừng tiếp ngay sau khi bỏ cờ ``_wp_reset_guards``. Mong đợi: ô xác nhận đã bỏ
+    tick, nút khóa (xác nhận cũ chỉ cho một lần gửi). Thực tế: cờ mất trước khi bỏ tick, ô vẫn
+    tick, nút bật: cú bấm tiếp theo gửi thêm một lần mà không xác nhận lại."""
+    site.fake.on("POST", ui.POSTS, lambda _r: (502, {"code": "x", "message": "Bad gateway"}, {}))
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    ui.send(at)  # lỗi đúng lúc tạo nháp: khóa
+    assert button(at, SEND).disabled
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    site.fake.on("POST", ui.POSTS, site.create_post)
+    sl.interrupt_while_sending(monkeypatch)
+    fired = interrupt_after_dropping_reset_flag(monkeypatch)
+    ui.send(at)
+    assert fired == ["_wp_reset_guards"]  # đã ngắt đúng chỗ
+    assert at.checkbox(key="_wp_checked").value is False, "ô xác nhận cũ vẫn tick"
+    assert button(at, SEND).disabled
 
 
 def test_cut_listing_walk_never_opens_link_out_of_root(project_root, tmp_path, monkeypatch):
