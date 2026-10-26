@@ -278,6 +278,63 @@ class MetaSuggestions(BaseModel):
 META_PARTS = ("both", "title", "description")
 
 
+_TITLE_EXAMPLE_SHORT = "Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?"  # 44 ký tự
+
+
+def _title_asks(brand_suffix: object) -> str:
+    """Phần lời dặn cho title, theo đuôi thương hiệu đang dùng (SL-T041-7): ``brand_suffix`` như
+    ``[meta].brand_suffix`` (``None`` hay cấu hình sai là « | Pro-Metal», ``""`` là không gắn).
+
+    Khoảng «được gắn đuôi» là 8 ký tự ngắn nhất tới dài nhất còn gắn được đuôi (« | Pro-Metal» 12 ký
+    tự: 40-48), như lời dặn T-040; đuôi ngắn tới mức mọi title 50-60 ký tự đều gắn được, hay không
+    có đuôi, thì chỉ còn khoảng 50-60. Ví dụ «ngắn, còn chỗ cho đuôi» chỉ có khi nó gắn được đuôi.
+    """
+    # Nhập muộn: onpage.meta nhập content.rules, mà gói content nhập module này (vòng nhập).
+    from seo_app.onpage.meta import TITLE_LIMITS, resolve_brand_suffix
+
+    suffix = resolve_brand_suffix(brand_suffix)
+    low, high = TITLE_LIMITS.good_min, TITLE_LIMITS.good_max
+    room = high - len(suffix)  # title dài nhất còn gắn được đuôi
+    short = (room - 8, room) if suffix and room < low else None
+    lengths = f"{short[0]}-{short[1]} hoặc {low}-{high}" if short else f"{low}-{high}"
+    lines = [
+        f"- titles: 3 meta title khác nhau rõ rệt, mỗi cái {lengths} ký tự (tính cả dấu",
+        "  cách).",
+        "  + Có nguyên văn từ khóa chính, đặt ở đầu hoặc gần đầu, đọc lên tự nhiên như lời",
+        "    người thật nói.",
+        "  + Nói rõ người tìm được gì khi bấm vào: dấu hiệu, nguyên nhân, cách xử lý, khi nào",
+        "    nên gọi thợ… Ba cái khác nhau ở cách nói (ví dụ một cái nêu nguyên nhân, một cái",
+        "    nêu cách xử lý, một cái là câu hỏi), không chỉ đổi vài chữ.",
+        "  + Tách ý bằng «:», «-» hoặc «?», không dùng «|».",
+    ]
+    if suffix:
+        lines += [
+            f"  + KHÔNG tự viết tên thương hiệu hay «{suffix.strip()}»: phần mềm tự gắn đuôi",
+            f"    «{suffix}» ({len(suffix)} ký tự) khi title cộng đuôi không quá {high} ký tự.",
+        ]
+        if short:
+            lines += [
+                f"    Vì vậy title {short[0]}-{short[1]} ký tự sẽ có đuôi, title {low}-{high} ký tự"
+                " thì không.",
+                f"    Ít nhất một cái dài {short[0]}-{short[1]} ký tự.",
+            ]
+    else:
+        lines.append("  + KHÔNG tự viết tên thương hiệu vào title.")
+    lines += [
+        "  Ví dụ cho từ khóa «cửa sắt bị xệ» (chỉ để thấy cách viết, không chép):",
+        "  + Nên: «Cửa sắt bị xệ cạ nền: nguyên nhân và cách chỉnh lại»",
+    ]
+    if suffix and len(_TITLE_EXAMPLE_SHORT) <= room:
+        lines.append(f"  + Nên: «{_TITLE_EXAMPLE_SHORT}» (ngắn, còn chỗ cho đuôi thương hiệu)")
+    lines += [
+        "  + Không nên: «Sửa cửa sắt bị xệ, cửa sắt bị xệ giá rẻ uy tín» (lặp từ khóa, nêu giá,"
+        " khen suông)",
+        "  + Không nên: «CỬA SẮT BỊ XỆ? XEM NGAY CÁCH SỬA 100% HIỆU QUẢ» (viết hoa cả câu, hối"
+        " thúc, hứa điều không kiểm chứng được)",
+    ]
+    return "\n".join(lines)
+
+
 def meta_prompt(
     keyword: str,
     title: str,
@@ -285,12 +342,14 @@ def meta_prompt(
     which: str = "both",
     current_title: str = "",
     current_description: str = "",
+    brand_suffix: object = None,
 ) -> str:
     """Lời dặn gợi ý meta title / meta description (T-036).
 
     ``which``: "both" (cả hai), "title" hoặc "description" (viết lại riêng một phần, phần kia
     để danh sách rỗng). Từ khóa và meta đang có (người dùng gõ, có thể dán từ trang khác) nằm
-    trong khung <de_bai>; bài nằm trong khung <bai_viet> (security.md 2.4, A1).
+    trong khung <de_bai>; bài nằm trong khung <bai_viet> (security.md 2.4, A1). ``brand_suffix``:
+    đuôi thương hiệu đang dùng (``[meta].brand_suffix``), lời dặn về độ dài title theo đuôi này.
     """
     if which not in META_PARTS:
         raise ValueError(f"which phải là một trong {META_PARTS}")
@@ -305,28 +364,7 @@ def meta_prompt(
     # như meta thật. Ví dụ «Nên» phải qua được bộ kiểm của ``seo_app/onpage/meta.py`` (có test).
     asks = []
     if want_title:
-        asks.append(
-            "- titles: 3 meta title khác nhau rõ rệt, mỗi cái 40-48 hoặc 50-60 ký tự (tính cả dấu\n"
-            "  cách).\n"
-            "  + Có nguyên văn từ khóa chính, đặt ở đầu hoặc gần đầu, đọc lên tự nhiên như lời\n"
-            "    người thật nói.\n"
-            "  + Nói rõ người tìm được gì khi bấm vào: dấu hiệu, nguyên nhân, cách xử lý, khi nào\n"
-            "    nên gọi thợ… Ba cái khác nhau ở cách nói (ví dụ một cái nêu nguyên nhân, một cái\n"
-            "    nêu cách xử lý, một cái là câu hỏi), không chỉ đổi vài chữ.\n"
-            "  + Tách ý bằng «:», «-» hoặc «?», không dùng «|».\n"
-            "  + KHÔNG tự viết tên thương hiệu hay «| Pro-Metal»: phần mềm tự gắn đuôi\n"
-            "    « | Pro-Metal» (12 ký tự) khi title cộng đuôi không quá 60 ký tự. Vì vậy title\n"
-            "    40-48 ký tự sẽ có đuôi, title 50-60 ký tự thì không; title 49 ký tự không gắn\n"
-            "    được đuôi mà lại hơi ngắn. Ít nhất một cái dài 40-48 ký tự.\n"
-            "  Ví dụ cho từ khóa «cửa sắt bị xệ» (chỉ để thấy cách viết, không chép):\n"
-            "  + Nên: «Cửa sắt bị xệ cạ nền: nguyên nhân và cách chỉnh lại»\n"
-            "  + Nên: «Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?» (ngắn, còn chỗ cho đuôi thương"
-            " hiệu)\n"
-            "  + Không nên: «Sửa cửa sắt bị xệ, cửa sắt bị xệ giá rẻ uy tín» (lặp từ khóa, nêu"
-            " giá, khen suông)\n"
-            "  + Không nên: «CỬA SẮT BỊ XỆ? XEM NGAY CÁCH SỬA 100% HIỆU QUẢ» (viết hoa cả câu,"
-            " hối thúc, hứa điều không kiểm chứng được)"
-        )
+        asks.append(_title_asks(brand_suffix))
     else:
         asks.append("- titles: để danh sách rỗng (chỉ viết lại meta description).")
     if want_desc:

@@ -296,7 +296,7 @@ class ContentWriter:
         if brand_suffix is None:
             brand_suffix = meta_rules.brand_suffix
         prompt = prompts.meta_prompt(
-            keyword, title, parts, which, current_title, current_description
+            keyword, title, parts, which, current_title, current_description, brand_suffix
         )
         raw = self._run("meta", prompt, prompts.MetaSuggestions)
         titles: list[str] = []

@@ -21,8 +21,9 @@ from timing import assert_scales_linearly
 
 from seo_app.ai import AIRouter, TaskConfig
 from seo_app.ai import registry as ai_registry
+from seo_app.ai.registry import missing_task_message
 from seo_app.config import Settings
-from seo_app.content import ContentWriter, Section
+from seo_app.content import ContentWriter, Section, prompts
 from seo_app.content.prompts import MetaSuggestions
 from seo_app.content.rules import (
     CONTENT_CONFIG_FILE,
@@ -401,6 +402,55 @@ def test_writer_meta_reports_bad_meta_section(monkeypatch, tmp_path):
     writer = _writer(monkeypatch, [TITLE], [DESC])
     with pytest.raises(ContentRulesError, match=r"mục \[meta\]"):
         writer.meta(KEYWORD, "Bài", ARTICLE)
+
+
+@pytest.mark.parametrize(
+    ("suffix", "ranges", "short_example"),
+    [
+        (None, "40-48 hoặc 50-60", True),  # mặc định « | Pro-Metal» (12 ký tự): như T-040
+        (" | Pro-Metal", "40-48 hoặc 50-60", True),
+        ("", "50-60", False),  # không gắn đuôi
+        (" | Cơ khí Pro-Metal HCM", "29-37 hoặc 50-60", False),  # 23 ký tự
+        (" | PM", "50-60", True),  # đuôi ngắn: title 50-60 nào cũng gắn được
+    ],
+)
+def test_meta_prompt_follows_brand_suffix(suffix, ranges, short_example):
+    """SL-T041-7: lời dặn nói đúng đuôi đang dùng; G1: bỏ câu «49 ký tự … hơi ngắn» đã cũ."""
+    text = prompts.meta_prompt(KEYWORD, "Bài", ARTICLE, brand_suffix=suffix)
+    block = " ".join(text[text.index("- titles:") : text.index("- descriptions:")].split())
+    assert f"mỗi cái {ranges} ký tự" in block
+    assert "49 ký tự" not in block
+    assert "KHÔNG tự viết tên thương hiệu" in block
+    assert ("(ngắn, còn chỗ cho đuôi thương hiệu)" in block) is short_example
+    resolved = resolve_brand_suffix(suffix)
+    if resolved:
+        assert f"«{resolved}» ({len(resolved)} ký tự)" in block
+    else:
+        assert "tự gắn đuôi" not in block
+
+
+def test_writer_meta_prompt_uses_config_suffix(monkeypatch):
+    seen = []
+
+    class Recorder(_FakeMeta):
+        def generate(self, task, *, system, prompt, schema):
+            seen.append(prompt)
+            return self.result
+
+    provider = Recorder([TITLE], [DESC])
+    monkeypatch.setattr(ai_registry, "make_provider", lambda name, settings: provider)
+    rules = MetaRules(brand_suffix=" | Cơ khí Pro-Metal HCM")
+    writer = ContentWriter(AIRouter(TASKS, Settings()), RULES, rules)
+    writer.meta(KEYWORD, "Bài", ARTICLE)
+    assert "mỗi cái 29-37 hoặc 50-60 ký tự" in " ".join(seen[-1].split())
+
+
+def test_missing_meta_and_links_tasks_have_examples():
+    """Góp ý G5: thiếu [tasks.meta], [tasks.links] thì câu báo có mẫu để chép (như việc alt)."""
+    for name in ("meta", "links"):
+        message = missing_task_message(name)
+        assert f"[tasks.{name}]" in message and 'provider = "anthropic"' in message
+        assert "web_search" not in message
 
 
 # ============================================================ hàm cho giao diện

@@ -38,6 +38,15 @@ TASK_EXAMPLES = {
         "viết alt cho ảnh",
         'provider = "anthropic", model = "claude-sonnet-5-5", effort = "low", max_tokens = 2000',
     ),
+    # Bước SEO (T-036, T-041). Việc «links» không được có web_search (điều kiện Lá Chắn T-039).
+    "meta": (
+        "gợi ý meta title, meta description",
+        'provider = "anthropic", model = "claude-opus-5-5", effort = "low", max_tokens = 2000',
+    ),
+    "links": (
+        "gợi ý liên kết nội bộ",
+        'provider = "anthropic", model = "claude-opus-5-5", effort = "low", max_tokens = 2000',
+    ),
 }
 
 

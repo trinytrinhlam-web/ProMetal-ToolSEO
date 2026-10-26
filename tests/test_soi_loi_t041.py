@@ -534,11 +534,6 @@ def test_sl_t041_6_code_span_never_carries_link_address(answer):
     assert result.blocked or "javascript" not in result.json_ld
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-7: [meta].brand_suffix nay có tác dụng nhưng lời dặn AI vẫn cố định «phần mềm "
-    "tự gắn « | Pro-Metal»… ít nhất một cái 40-48 ký tự», kể cả khi đuôi rỗng hay dài hơn.",
-)
 @pytest.mark.parametrize("suffix", ["", " | Cơ khí Pro-Metal HCM"])
 def test_sl_t041_7_meta_prompt_follows_configured_suffix(monkeypatch, suffix):
     titles = ["Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?"]
