@@ -59,6 +59,10 @@ Chỉ Huy B, cập nhật 2026-10-26 09:59. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-26 10:00 · Chỉ Huy B
+
+- **Chủ dự án chốt cách làm mới (A):** phiếu đã duyệt thì Chỉ Huy **tự chạy trọn chuỗi** làm → Soi Lỗi → Lá Chắn → sửa lượt 2 → kiểm lại → gộp `main` (sau khi toàn bộ test qua) → đẩy, không hỏi từng bước. Vẫn hỏi trước khi: mở phiếu mới (kể cả phiếu dọn lỗi Thấp), giao việc ngoài phiếu đã duyệt, quyết định của chủ dự án (sổ rủi ro, đổi phạm vi lớn, thêm thư viện), việc trên website. Chủ dự án KHÔNG chọn: gom lỗi Thấp, kiểm nhẹ phiếu chữ, dồn sức tính năng mới (vẫn hỏi như cũ). Áp dụng cho cả Chỉ Huy A.
+
 ### 2026-10-26 09:59 · Chỉ Huy B
 
 - **Chủ dự án duyệt** ("có"): Soi Lỗi rút gọn T-086, Lá Chắn rút gọn T-085, T-087 (nhắn 3 phiên cũ có bối cảnh). Chủ dự án hỏi vì sao tiến độ chậm (giữ ~60% lâu): Chỉ Huy trình bày nguyên nhân và đề xuất cách tăng tốc.
