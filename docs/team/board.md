@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 08:01 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 08:18 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -35,7 +35,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
 | [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Chỉ Huy (đang gộp) | `team/T-056` | Họa Sĩ 2 lượt; Soi Lỗi 2 lượt ĐẠT CÓ ĐIỀU KIỆN. 26/10 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`5ad73eb`, Opus tạm): 5 Thấp → phiếu "trạng thái gửi nháp". Code Snippets 4.0.0 đã xác nhận. ⏳ **Gộp `main` trên máy (`6b4d05a`), đang chạy toàn bộ test** | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) · [Lá Chắn](reports/T-056-la-chan.md) |
-| [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Thợ Máy · T-085 dọn client WordPress lượt 2 | `team/T-085` | ⏳ **09:44 Thợ Máy đang làm** | |
+| [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Soi Lỗi · T-060 kiểm client WordPress (T-085) | `team/T-085` | Thợ Máy **xong** (`8d0eb56`, 5/5). ⏳ **08:18 Soi Lỗi rút gọn đang kiểm** | [Thợ Máy](reports/T-085-tho-may.md) |
+| [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Họa Sĩ · T-056 màn hình chọn ảnh (T-086) | `team/T-086` | ⏳ **08:18 Họa Sĩ đang làm** | |
+| [T-087](tickets/T-087-readme-chon-anh.md) | GĐ3: README chọn ảnh, ảnh AI, ảnh công khai khi gửi nháp (LC-T069-2) | Thư Ký · T-069 README ảnh (T-087) | `team/T-087` | ⏳ **08:18 Thư Ký đang làm** | |
 
 ## Chờ
 
@@ -153,4 +155,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-086
+## Số phiếu tiếp theo: T-088
