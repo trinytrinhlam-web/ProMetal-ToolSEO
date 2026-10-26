@@ -133,7 +133,7 @@ $ uv run pytest <32 file mở trang Soạn bài hay kho nháp: tests/test_app*.p
     test_soi_loi_t086.py, test_la_chan_t086.py, test_content_edge_cases.py, test_config_tolerance.py,
     test_edit_unescape.py, test_phase2_fixes.py, test_soi_loi_round3/4/5.py, test_ui_escape.py, …>
     # write.py bản cuối (1de271b); sau đó chỉ đổi test, chạy lại riêng ở dòng trên
-(đang chạy lúc nộp bản này; số điền ở commit sau)
+2505 passed, 7 skipped, 6 xfailed in 888.23s (0:14:48)
 
 $ uv run pytest <38 file liên quan: tests/test_app*.py, các file test_t041_*, test_onpage_*, test_soi_loi_t036…t042,
     test_la_chan_t039/t040/t056, test_storage_drafts.py, test_drafts_images.py, test_site_index*.py,
