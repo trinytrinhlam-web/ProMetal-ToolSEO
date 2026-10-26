@@ -494,6 +494,36 @@ def load_alt_rules(path: Path = CONTENT_CONFIG_FILE) -> AltRules:
     )
 
 
+@dataclass(frozen=True)
+class MetaRules:
+    """Mục ``[meta]`` (T-040 ghi, T-041 đọc).
+
+    ``brand_suffix``: chữ ghi trong file, hoặc ``None`` khi thiếu hay không phải chữ. Giá trị dùng
+    thật do ``seo_app.onpage.meta.resolve_brand_suffix`` quyết (``None``, dài quá, có thẻ hay
+    ``%%`` thì dùng « | Pro-Metal»; chữ rỗng là không gắn). ``avoid``: cụm nên tránh trong meta
+    (bộ kiểm gợi ý AI bỏ qua chỗ nằm trọn trong từ khóa chính).
+    """
+
+    brand_suffix: str | None = None
+    avoid: tuple[str, ...] = ()
+
+
+def load_meta_rules(path: Path = CONTENT_CONFIG_FILE) -> MetaRules:
+    """Mục ``[meta]`` đã kiểm. Thiếu mục hay thiếu khóa thì dùng mặc định (đuôi « | Pro-Metal»,
+    không có cụm nên tránh).
+
+    ``avoid`` sai dạng thì báo ``ContentRulesError`` (tiếng Việt, nêu file và tên mục), không
+    đoán; ``brand_suffix`` sai dạng thì dùng đuôi mặc định, đúng như chú thích trong file. Đọc riêng
+    với ``load_rules``: mục ``[meta]`` sai chỉ khóa việc AI gợi ý meta, không khóa trang Soạn bài.
+    """
+    table = _table(_load_toml(path), "meta", path)
+    suffix = table.get("brand_suffix")
+    return MetaRules(
+        brand_suffix=suffix if isinstance(suffix, str) else None,
+        avoid=tuple(_one_line(p) for p in _text_list(table, "avoid", path, "meta")),
+    )
+
+
 def load_rules(
     path: Path = CONTENT_CONFIG_FILE, profile_path: Path = BUSINESS_PROFILE_FILE
 ) -> ContentRules:

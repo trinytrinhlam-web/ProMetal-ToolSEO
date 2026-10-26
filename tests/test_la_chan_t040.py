@@ -41,10 +41,6 @@ KEYWORD_ONLY = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T040-1: mentions_price bỏ từ khóa ra trước khi dò, chỗ nói giá vắt qua mép mất theo",
-)
 @pytest.mark.parametrize(("keyword", "title"), EDGE_PRICE)
 def test_lc1_price_across_keyword_edge_is_dropped(keyword, title):
     assert mentions_price(title, keyword)

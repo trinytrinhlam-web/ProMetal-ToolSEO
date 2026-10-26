@@ -6,19 +6,28 @@ tuyến tính theo độ dài chữ (và theo số bài khi kiểm trùng).
 - Chữ Việt có thể đến ở dạng tổ hợp (NFD, hay gặp khi dán trên Mac): "ữ" thành 3 ký tự. Luôn
   chuẩn hóa NFC trước khi đếm và trước khi gửi đi (``normalize_meta``).
 - SiteSEO hiểu ``%%tên%%`` là biến, nên chữ của phần mềm không được chứa ``%%``.
+- Từ khóa chính có thể chứa chữ về giá hay cụm nên tránh («giá sửa cửa sắt», «sửa cửa uy tín»):
+  bộ dò giá và cụm nên tránh bỏ qua chỗ khớp nằm trọn trong từ khóa, chỗ vắt qua mép từ khóa vẫn
+  tính (LC-T040-1).
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
+from bisect import bisect_right
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 from urllib.parse import unquote
 
 from seo_app.content.rules import IGNORABLE_NOT_CF, find_banned
 from seo_app.sanitize import clean_ai_text, strip_tags
 from seo_app.text import remove_accents, slugify
+
+if TYPE_CHECKING:  # chỉ để ghi kiểu: storage → drafts → content.workflow → meta (vòng nhập)
+    from seo_app.storage.site_index import SiteIndex
 
 
 class Level(StrEnum):
@@ -70,17 +79,25 @@ _FIELD_NAMES = {"title": "Meta title", "description": "Meta description", "slug"
 
 # ------------------------------------------------------------------ chuẩn hóa, đếm
 
+# Ký tự bị bỏ khỏi chữ meta (LC-T036-1): Cf (vô hình: U+200B, BOM, gạch nối mềm…), Cc (điều khiển:
+# NUL, ESC, DEL…), Cs (surrogate lẻ, không ghi được ra UTF-8), Co (ký tự riêng), Cn (ký tự chưa
+# gán). Khoảng trắng loại Cc (tab, xuống dòng, U+001C–U+001F, U+0085) thì giữ để gộp thành dấu cách.
+_DROPPED_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn"})
+
 
 def normalize_meta(text: str) -> str:
-    """Chữ meta để đếm và gửi đi: NFC, bỏ ký tự vô hình, mọi khoảng trắng (kể cả xuống dòng,
-    dấu cách không ngắt) gộp thành một dấu cách, bỏ khoảng trắng đầu cuối.
+    """Chữ meta để đếm và gửi đi: NFC, bỏ ký tự vô hình và ký tự lạ, mọi khoảng trắng (kể cả
+    xuống dòng, dấu cách không ngắt) gộp thành một dấu cách, bỏ khoảng trắng đầu cuối.
 
-    Ký tự vô hình: Unicode loại Cf (U+200B, BOM, gạch nối mềm…) và các ký tự "mặc định bỏ qua"
-    khác (``IGNORABLE_NOT_CF``). NFC chạy cả trước (để bỏ ký tự vô hình không tách chữ) lẫn sau
-    (ghép lại chữ với dấu bị ký tự vô hình chen giữa).
+    Bỏ: Unicode loại Cf, Cc (trừ khoảng trắng), Cs, Co, Cn (``_DROPPED_CATEGORIES``) và các ký tự
+    "mặc định bỏ qua" khác (``IGNORABLE_NOT_CF``), ở cả chữ AI lẫn chữ người dùng gõ (LC-T036-1).
+    NFC chạy cả trước (để bỏ ký tự vô hình không tách chữ) lẫn sau (ghép lại chữ với dấu bị ký tự
+    vô hình chen giữa).
     """
     text = unicodedata.normalize("NFC", text)
-    text = "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
+    text = "".join(
+        ch for ch in text if ch.isspace() or unicodedata.category(ch) not in _DROPPED_CATEGORIES
+    )
     text = IGNORABLE_NOT_CF.sub("", text)
     return " ".join(unicodedata.normalize("NFC", text).split())
 
@@ -140,8 +157,26 @@ def _check_text(field: str, raw: str, limits: Limits) -> FieldCheck:
     return FieldCheck(field, value, length, Level.GOOD, (note,))
 
 
-def check_title(title: str) -> FieldCheck:
-    return _check_text("title", title, TITLE_LIMITS)
+def check_title(title: str, suffix: object = None) -> FieldCheck:
+    """Kiểm meta title. ``suffix``: hậu tố thương hiệu đang dùng (như ``with_brand``).
+
+    Title không có hậu tố vì không đủ chỗ (cộng hậu tố thì quá ``TITLE_LIMITS.good_max``, ví dụ 49
+    ký tự với « | Pro-Metal») được ghi «dài vừa» thay vì «hơi ngắn» (SL-T040-1): lời dặn AI chia
+    title thành 40-48 ký tự (được gắn hậu tố) và 50-60 (không gắn), title rơi vào giữa không bị
+    nhắc là ngắn. Ngưỡng Cảnh báo giữ nguyên.
+    """
+    check = _check_text("title", title, TITLE_LIMITS)
+    brand = resolve_brand_suffix(suffix)
+    if (
+        check.level is Level.GOOD
+        and brand
+        and check.length < TITLE_LIMITS.good_min
+        and check.length + len(brand) > TITLE_LIMITS.good_max
+        and strip_brand(check.value, suffix) == check.value
+    ):
+        note = f"Meta title dài vừa: {check.length} ký tự (không còn chỗ gắn đuôi thương hiệu)."
+        return FieldCheck("title", check.value, check.length, Level.GOOD, (note,))
+    return check
 
 
 def check_description(description: str) -> FieldCheck:
@@ -445,8 +480,8 @@ _LINK = re.compile(
 # "tỉ lệ") để không bỏ oan gợi ý (SL-T036-5).
 _MONEY_UNIT = (
     r"(?:đồng(?!\s+(?:hồ|bộ|thời|loạt|đều|màu|nghiệp|ý|nát|tâm))|vnđ|vnd|đô(?:\s+la)?(?!\s+thị)"
-    r"|đ|k|nghìn|ngàn|triệu|tr|tỷ(?!\s+lệ)|tỉ(?!\s+lệ)|usd|xu)"
-)
+    r"|đ|k|nghìn|ngàn|triệu|tr|tỷ(?!\s+lệ)|tỉ(?!\s+lệ)|usd|xu(?!\s+hướng))"
+)  # «7 xu hướng» không phải giá: chỉ loại trừ đúng «xu hướng» (SL-T036-10)
 _NUMBER_WORD = (
     r"(?:một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|bẩy|tám|chín|mười|mươi|trăm|chục|vài|mấy|rưỡi|nửa)"
 )
@@ -485,20 +520,104 @@ _BARE_DOMAIN = re.compile(
 _ENTITY = re.compile(r"&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);", re.IGNORECASE)
 
 
+# Chữ dài hơn mức này (sau chuẩn hóa) thì ``has_link``, ``mentions_price`` không dò mà coi như CÓ
+# (SL-T036-12): các biểu thức dò quay lui nên chạy bậc hai với chuỗi rất dài, còn meta và anchor
+# không bao giờ dài thế (title tối đa 90, description 160, anchor 100 ký tự). Coi như có là hướng
+# an toàn: gợi ý bị bỏ, giao diện gọi với chữ người dùng dán dài bao nhiêu cũng không bị treo.
+MAX_SCAN_CHARS = 1000
+
+
+def _scan_text(text: str) -> str | None:
+    """Chữ để dò (NFKC của chữ đã chuẩn hóa: "ｗｗｗ．" là "www."), hoặc ``None`` nếu dài quá
+    ``MAX_SCAN_CHARS`` (NFKC có thể làm chữ dài ra, nên đo cả sau NFKC). Chạy tuyến tính."""
+    value = normalize_meta(text)
+    if len(value) > MAX_SCAN_CHARS:
+        return None
+    folded = unicodedata.normalize("NFKC", value)
+    return folded if len(folded) <= MAX_SCAN_CHARS else None
+
+
 def has_link(text: str) -> bool:
-    visible = unicodedata.normalize("NFKC", normalize_meta(text))
+    visible = _scan_text(text)
+    if visible is None:
+        return True
     return _LINK.search(visible) is not None or _BARE_DOMAIN.search(visible) is not None
 
 
+class _KeywordSpans:
+    """Các lần xuất hiện của từ khóa chính trong chữ đang dò (cùng cách chuẩn hóa)."""
+
+    def __init__(self, text: str, keyword: str) -> None:
+        self._length = len(keyword)
+        self._starts: list[int] = []
+        start = text.find(keyword) if keyword else -1
+        while start != -1:
+            self._starts.append(start)
+            start = text.find(keyword, start + 1)
+
+    def covers(self, start: int, end: int) -> bool:
+        """Đoạn [``start``, ``end``) nằm trọn trong một lần xuất hiện của từ khóa. Các lần xuất
+        hiện dài bằng nhau nên chỉ cần xét lần bắt đầu muộn nhất mà không sau ``start``."""
+        k = bisect_right(self._starts, start) - 1
+        return k >= 0 and end <= self._starts[k] + self._length
+
+
 def mentions_price(text: str, keyword: str = "") -> bool:
-    lowered = unicodedata.normalize("NFKC", normalize_meta(text)).lower()
-    kw = unicodedata.normalize("NFKC", normalize_meta(keyword)).lower()
-    if kw:
-        lowered = lowered.replace(kw, " ")
-    return _PRICE.search(lowered) is not None
+    """Có nói về giá (``_PRICE``), không tính chỗ nằm trọn trong từ khóa chính.
+
+    Không xóa từ khóa khỏi câu rồi mới dò (LC-T040-1): như vậy chỗ nói giá vắt qua mép từ khóa
+    («làm cổng sắt báo giá» + «… báo giá tốt») mất theo. Dò ở **mọi vị trí** của câu, chỉ bỏ qua
+    chỗ khớp nằm trọn trong một lần xuất hiện của từ khóa. Chữ dài quá ``MAX_SCAN_CHARS``: coi
+    như có (SL-T036-12).
+    """
+    folded = _scan_text(text)
+    if folded is None:
+        return True
+    lowered = folded.lower()
+    keyword_scan = _scan_text(keyword) if isinstance(keyword, str) else None
+    spans = _KeywordSpans(lowered, (keyword_scan or "").lower())
+    for pos in range(len(lowered)):
+        found = _PRICE.match(lowered, pos)
+        if found is not None and not spans.covers(*found.span()):
+            return True
+    return False
 
 
-def _ai_text(raw: object, keyword: str, banned, max_length: int) -> str | None:
+def _avoid_pattern(phrase: str) -> re.Pattern[str] | None:
+    """Cụm nên tránh đứng trọn từ (như ``find_banned``): chỉ đòi ranh giới ở đầu (cuối) khi cụm
+    bắt đầu (kết thúc) bằng chữ cái/chữ số, nên «100%», «24/7» vẫn khớp."""
+    folded = _scan_text(phrase) if isinstance(phrase, str) else None
+    if not folded:
+        return None
+    words = folded.lower()
+    before = r"(?<!\w)" if re.match(r"\w", words) else ""
+    after = r"(?!\w)" if re.search(r"\w$", words) else ""
+    return re.compile(before + re.escape(words) + after)
+
+
+def find_avoided(text: str, phrases: Iterable[str], keyword: str = "") -> list[str]:
+    """Các cụm nên tránh (``[meta].avoid`` của ``config/content.toml``) có trong ``text``.
+
+    So trên chữ đã chuẩn hóa, NFKC, chữ thường. Như ``mentions_price``: chỗ khớp nằm trọn trong
+    từ khóa chính thì bỏ qua (từ khóa «sửa cửa uy tín hcm» không làm mọi gợi ý bị bỏ), chỗ vắt
+    qua mép từ khóa vẫn tính (LC-T040-1, đề xuất 2 Soi Lỗi T-040). Chữ dài quá
+    ``MAX_SCAN_CHARS``: coi như có hết.
+    """
+    patterns = [(p, pattern) for p in phrases if (pattern := _avoid_pattern(p)) is not None]
+    folded = _scan_text(text)
+    if folded is None:
+        return [p for p, _ in patterns]
+    lowered = folded.lower()
+    keyword_scan = _scan_text(keyword) if isinstance(keyword, str) else None
+    spans = _KeywordSpans(lowered, (keyword_scan or "").lower())
+    return [
+        phrase
+        for phrase, pattern in patterns
+        if any(not spans.covers(*m.span()) for m in pattern.finditer(lowered))
+    ]
+
+
+def _ai_text(raw: object, keyword: str, banned, max_length: int, avoid=()) -> str | None:
     """Kiểm chung cho một gợi ý: trả chữ đã chuẩn hóa, hoặc None nếu phải bỏ.
 
     Gợi ý dài quá ``max_length`` bị bỏ NGAY sau khi chuẩn hóa (bước tuyến tính), trước mọi
@@ -513,7 +632,9 @@ def _ai_text(raw: object, keyword: str, banned, max_length: int) -> str | None:
     folded = unicodedata.normalize("NFKC", value)  # "％％" toàn khổ cũng là "%%" (SL-T036-7)
     if "%%" in folded or _ENTITY.search(folded) or has_link(value):
         return None
-    if find_banned(value, tuple(banned)) or mentions_price(value, keyword):
+    if find_banned(value, tuple(banned)) or find_avoided(value, avoid, keyword):
+        return None
+    if mentions_price(value, keyword):
         return None
     return value
 
@@ -538,29 +659,82 @@ def _dedupe(values, limit: int) -> list[str]:
     return out[:limit]
 
 
-def accept_ai_title(raw: object, keyword: str, banned=(), suffix: object = None) -> str | None:
-    """Một meta title AI gợi ý, đã kiểm và gắn hậu tố thương hiệu; None nếu phải bỏ."""
+def accept_ai_title(
+    raw: object, keyword: str, banned=(), suffix: object = None, avoid=()
+) -> str | None:
+    """Một meta title AI gợi ý, đã kiểm và gắn hậu tố thương hiệu; None nếu phải bỏ.
+
+    ``banned``: cụm cấm (``[voice].banned``); ``avoid``: cụm nên tránh trong meta
+    (``[meta].avoid``, không tính chỗ nằm trọn trong từ khóa chính)."""
     # AI có thể tự gắn hậu tố cũ (bỏ đi rồi gắn lại), nên cho thêm chỗ cho hậu tố.
-    value = _ai_text(raw, keyword, banned, TITLE_LIMITS.warn_max + BRAND_SUFFIX_MAX_LENGTH)
+    value = _ai_text(raw, keyword, banned, TITLE_LIMITS.warn_max + BRAND_SUFFIX_MAX_LENGTH, avoid)
     if value is None or not has_keyword(strip_brand(value), keyword):
         return None
     titled = with_brand(value, suffix)
-    return _final(titled, check_title(titled), TITLE_LIMITS)
+    return _final(titled, check_title(titled, suffix), TITLE_LIMITS)
 
 
-def accept_ai_description(raw: object, keyword: str, banned=()) -> str | None:
-    """Một meta description AI gợi ý, đã kiểm; None nếu phải bỏ."""
-    value = _ai_text(raw, keyword, banned, DESCRIPTION_LIMITS.warn_max)
+def accept_ai_description(raw: object, keyword: str, banned=(), avoid=()) -> str | None:
+    """Một meta description AI gợi ý, đã kiểm; None nếu phải bỏ (``avoid`` như title)."""
+    value = _ai_text(raw, keyword, banned, DESCRIPTION_LIMITS.warn_max, avoid)
     if value is None or not has_keyword(value, keyword):
         return None
     return _final(value, check_description(value), DESCRIPTION_LIMITS)
 
 
-def filter_ai_titles(raws, keyword: str, banned=(), suffix: object = None) -> list[str]:
-    accepted = (accept_ai_title(r, keyword, banned, suffix) for r in raws)
+def filter_ai_titles(raws, keyword: str, banned=(), suffix: object = None, avoid=()) -> list[str]:
+    accepted = (accept_ai_title(r, keyword, banned, suffix, avoid) for r in raws)
     return _dedupe((a for a in accepted if a), MAX_TITLE_SUGGESTIONS)
 
 
-def filter_ai_descriptions(raws, keyword: str, banned=()) -> list[str]:
-    accepted = (accept_ai_description(r, keyword, banned) for r in raws)
+def filter_ai_descriptions(raws, keyword: str, banned=(), avoid=()) -> list[str]:
+    accepted = (accept_ai_description(r, keyword, banned, avoid) for r in raws)
     return _dedupe((a for a in accepted if a), MAX_DESCRIPTION_SUGGESTIONS)
+
+
+# ------------------------------------------------------------------ dùng ở bước SEO (T-041)
+
+
+def site_posts(index: SiteIndex | None) -> list[SitePost]:
+    """Bài/trang đã đăng (``SiteIndex`` của ``seo_app.storage.site_index``) → ``SitePost`` để kiểm
+    trùng title, description, slug. Chưa có danh sách (chưa kết nối WordPress): danh sách rỗng,
+    các hàm kiểm trùng trả Nên. Chữ lấy từ site là dữ liệu chưa tin cậy (U1)."""
+    if index is None:
+        return []
+    return [
+        SitePost(
+            id=item.id,
+            title=item.title,
+            meta_title=item.meta_title,
+            meta_description=item.meta_desc,
+            slug=item.slug,
+        )
+        for item in index.items
+    ]
+
+
+@dataclass(frozen=True)
+class SiteSeoCopy:
+    """Chữ để chép, dán tay vào hộp SiteSEO của bài nháp (khi chưa bật ghi SEO lên site).
+
+    ``title`` đã gắn hậu tố thương hiệu (``with_brand``), ``description`` và ``slug`` đã chuẩn
+    hóa. Trường bị Chặn (trống, có thẻ HTML, có ``%%``, slug sai ký tự) là ``None``: giao diện không
+    cho chép, hiện ``checks`` (câu báo chữ thuần) để người dùng sửa.
+    """
+
+    title: str | None
+    description: str | None
+    slug: str | None
+    checks: tuple[FieldCheck, ...]
+
+
+def siteseo_copy(title: str, description: str, slug: str, *, suffix: object = None) -> SiteSeoCopy:
+    """Title (kèm hậu tố), description, slug cuối cùng để chép sang SiteSEO."""
+    title_check = check_title(with_brand(title, suffix), suffix)
+    description_check = check_description(description)
+    slug_check = check_slug(slug)
+    checks = (title_check, description_check, slug_check)
+    title_value, description_value, slug_value = (
+        None if check.level is Level.BLOCK else check.value for check in checks
+    )
+    return SiteSeoCopy(title_value, description_value, slug_value, checks)

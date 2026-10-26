@@ -22,7 +22,7 @@ from seo_app.content.models import (
     Section,
     SectionText,
 )
-from seo_app.content.rules import ContentRules, find_banned
+from seo_app.content.rules import ContentRules, MetaRules, find_banned, load_meta_rules
 from seo_app.onpage import meta as onpage_meta
 from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
 
@@ -189,9 +189,14 @@ def clamp_scores(scores: Scores) -> Scores:
 
 
 class ContentWriter:
-    def __init__(self, ai: AIRouter, rules: ContentRules) -> None:
+    def __init__(
+        self, ai: AIRouter, rules: ContentRules, meta_rules: MetaRules | None = None
+    ) -> None:
+        """``meta_rules``: mục ``[meta]`` của ``config/content.toml``; ``None`` thì đọc file mỗi
+        lần gợi ý meta (sửa file rồi bấm lại là có hiệu lực, như các mục khác)."""
         self.ai = ai
         self.rules = rules
+        self.meta_rules = meta_rules
         self.system = prompts.system_prompt(rules)
 
     def _run(self, task: str, prompt: str, schema):
@@ -273,14 +278,19 @@ class ContentWriter:
 
         ``which`` = "title" hoặc "description": viết lại riêng phần đó, danh sách của phần kia
         trả về rỗng (người dùng giữ nguyên phần kia). Phần được yêu cầu mà mọi gợi ý đều hỏng
-        thì báo ``AIError`` để người dùng bấm viết lại. ``brand_suffix``: hậu tố thương hiệu
-        (``None`` hoặc cấu hình sai thì dùng mặc định ``onpage_meta.BRAND_SUFFIX``).
+        thì báo ``AIError`` để người dùng bấm viết lại. ``brand_suffix``: hậu tố thương hiệu;
+        ``None`` thì lấy ``brand_suffix`` trong mục ``[meta]`` (cấu hình sai thì dùng mặc định
+        ``onpage_meta.BRAND_SUFFIX``). Gợi ý có cụm trong ``[meta].avoid`` (ngoài từ khóa chính)
+        bị bỏ. Mục ``[meta]`` sai dạng: ``ContentRulesError`` (một loại ``AIError``).
         """
         if which not in prompts.META_PARTS:
             raise ValueError(f"which phải là một trong {prompts.META_PARTS}")
         keyword = onpage_meta.normalize_meta(keyword)
         if not keyword:
             raise AIError("Chưa có từ khóa chính nên chưa gợi ý meta được. Nhập từ khóa trước.")
+        meta_rules = self.meta_rules if self.meta_rules is not None else load_meta_rules()
+        if brand_suffix is None:
+            brand_suffix = meta_rules.brand_suffix
         prompt = prompts.meta_prompt(
             keyword, title, parts, which, current_title, current_description
         )
@@ -289,7 +299,7 @@ class ContentWriter:
         descriptions: list[str] = []
         if which in ("both", "title"):
             titles = onpage_meta.filter_ai_titles(
-                raw.titles, keyword, self.rules.banned, brand_suffix
+                raw.titles, keyword, self.rules.banned, brand_suffix, meta_rules.avoid
             )
             if not titles:
                 raise AIError(
@@ -298,7 +308,7 @@ class ContentWriter:
                 )
         if which in ("both", "description"):
             descriptions = onpage_meta.filter_ai_descriptions(
-                raw.descriptions, keyword, self.rules.banned
+                raw.descriptions, keyword, self.rules.banned, meta_rules.avoid
             )
             if not descriptions:
                 raise AIError(

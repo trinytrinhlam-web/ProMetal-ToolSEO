@@ -32,6 +32,7 @@ from seo_app.content.rules import (
     find_banned,
     load_alt_rules,
     load_image_settings,
+    load_meta_rules,
     load_rules,
 )
 from seo_app.onpage.meta import (
@@ -240,11 +241,6 @@ def _title_of_length(length: int) -> str:
     return title
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T040-1: lời dặn cho title 40-60 ký tự; title đúng 49 ký tự không được gắn đuôi "
-    "(49 + 12 > 60) mà cũng dưới 50 nên bộ kiểm ghi «hơi ngắn».",
-)
 def test_sl_t040_1_title_of_49_chars_is_not_short():
     accepted = accept_ai_title(_title_of_length(49), KEYWORD)
     assert accepted is not None
@@ -325,17 +321,20 @@ def test_broken_meta_section_does_not_lock_any_reader(tmp_path, broken):
     assert load_image_settings(path) == load_image_settings(CONTENT_CONFIG_FILE)
 
 
-def test_not_read_yet_note_is_above_meta_and_true():
-    """Ghi chú «CHƯA đọc mục [meta]» nằm ngay trên mục; và đúng thật: cụm chỉ có trong
-    ``avoid`` (không có trong [voice].banned) hôm nay vẫn lọt bộ kiểm meta."""
+def test_read_note_is_above_meta_and_true():
+    """Ghi chú «phần mềm đọc mục [meta]» nằm ngay trên mục; và đúng thật: cụm chỉ có trong
+    ``avoid`` (không có trong [voice].banned) bị bộ kiểm meta bỏ khi dùng ``[meta]`` đọc từ file.
+    (Đến T-040 ghi chú là «CHƯA đọc mục [meta]» và cụm này còn lọt; T-041 nối mục [meta].)"""
     comments = _meta_comments()
-    assert "CHƯA đọc mục [meta]" in comments.splitlines()[0]
+    assert "phần mềm đọc mục [meta]" in comments.splitlines()[0]
+    assert "CHƯA đọc" not in comments
     banned = load_rules().banned
     avoid = _meta_config()["avoid"]
     only_avoid = [p for p in avoid if not find_banned(f"Thợ {p} tận nhà.", banned)]
     assert "xem ngay" in only_avoid
     title = "Cửa sắt bị xệ: xem ngay cách tự chỉnh bản lề"
-    assert filter_ai_titles([title], KEYWORD, banned) != []
+    assert filter_ai_titles([title], KEYWORD, banned) != []  # không truyền avoid: lọt
+    assert filter_ai_titles([title], KEYWORD, banned, avoid=load_meta_rules().avoid) == []
 
 
 def test_thresholds_in_comment_match_code():
