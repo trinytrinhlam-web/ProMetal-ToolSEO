@@ -5,7 +5,7 @@
 | Agent | Thợ Máy (`tho-may`) · model: Opus 5.5 |
 | Phiếu | [T-041](../tickets/T-041-buoc-seo-that.md) |
 | Ngày nộp | 2026-10-26 |
-| Kết quả | Hoàn thành phần logic. Giao diện (`app/views/write.py`) là việc của Họa Sĩ, làm sau khi T-086 gộp |
+| Kết quả | Hoàn thành phần logic. Giao diện (`app/views/write.py`) là việc của Họa Sĩ, làm sau khi T-086 gộp. **Lượt 2** (sau Soi Lỗi): sửa đủ 7 lỗi SL-T041-1 → -7 và góp ý G1, G2, G3, G5 (mục «Lượt 2» cuối báo cáo) |
 | Nhánh | `team/T-041` (worktree `wt-T-041`), gốc `main` `2e04066` |
 
 ## Tóm tắt (cho chủ dự án)
@@ -66,27 +66,28 @@ Mọi câu báo dưới đây là chữ thuần, có thể chứa **tiêu đề 
 
 **Meta** (`seo_app.onpage.meta`, `seo_app.content`)
 - Gợi ý: `build_writer().meta(keyword, title, parts, which="both"|"title"|"description", current_title="", current_description="") -> MetaSuggestions(titles: list[str] ≤ 3, descriptions: list[str] ≤ 2)`. Viết lại riêng một ô: `which="title"` (truyền `current_description`) hoặc `which="description"` (truyền `current_title`); danh sách của ô kia rỗng. Title đã gắn đuôi « | Pro-Metal» khi còn chỗ. Lỗi: `AIError` (gọi qua `ai_call`), câu: «Chưa có từ khóa chính nên chưa gợi ý meta được…», «Các meta title AI gợi ý đều không đạt (…). Bấm viết lại.», «Các meta description AI gợi ý đều không đạt (…)», hoặc `ContentRulesError` «File config/content.toml, mục [meta]: «avoid» phải là danh sách chữ…».
-- Kiểm ô người dùng sửa: `check_title(title, suffix) -> FieldCheck`, `check_description(text) -> FieldCheck`. `FieldCheck(field, value, length, level: Level.GOOD|WARN|BLOCK, messages: tuple[str, ...])`: `length` đã đếm NFC (thay `len()` thô ở bản demo), màu theo `level` (Nên / Cảnh báo / Chặn), `messages` là chữ thuần. Gộp nhiều mức: `worst(levels)`.
+- Kiểm ô người dùng sửa: `check_title(title, suffix) -> FieldCheck`, `check_description(text) -> FieldCheck`. `FieldCheck(field, value, length, level: Level.GOOD|WARN|BLOCK, messages: tuple[str, ...])`: `length` đã đếm NFC (thay `len()` thô ở bản demo), màu theo `level` (Nên / Cảnh báo / Chặn), `messages` là chữ thuần. Gộp nhiều mức: `worst(levels)`. **Lượt 2 (SL-T041-2):** `check_title` chấm **title sẽ gửi đi** (`with_brand(title, suffix)`): ô sửa hiện title chưa có đuôi, cứ truyền chữ trong ô; `check.value` là title cuối (có đuôi khi còn chỗ, dùng luôn cho xem trước Google), `check.length` là độ dài đó, câu báo ghi «… (tính cả đuôi thương hiệu).». Bộ đếm cạnh ô nên hiện `check.length` (độ dài trên Google) chứ không đếm chữ trong ô.
 - Kiểm trùng: `posts = site_posts(listing.index)` (rỗng khi chưa kết nối); `check_title_duplicates(title, posts)`, `check_description_duplicates(desc, posts)`, `check_slug_duplicates(slug, posts)` → `FieldCheck` (câu báo có tên bài trên site: chữ thuần).
 - Đuôi thương hiệu: `suffix = load_meta_rules().brand_suffix` (bọc `try … except AIError` như `alt_limits()`, lỗi thì `None` = đuôi mặc định); `with_brand(title, suffix) -> str`; `strip_brand(title, suffix)` để hiện ô sửa không đuôi.
-- Xem trước Google: `ui.serp_preview(with_brand(title, suffix), url, description)` (đã escape).
-- Chép sang SiteSEO: `siteseo_copy(title, description, slug, suffix=suffix) -> SiteSeoCopy(title|None, description|None, slug|None, checks)`: chữ cuối cùng (title đã gắn đuôi); trường bị Chặn là `None`, không cho chép, hiện `checks[i].messages`. Hiện bằng `st.code(...)` (có nút chép sẵn). Cùng chữ này dùng cho `set_seo_meta` của T-042 khi bật công tắc.
+- Xem trước Google: `ui.serp_preview(check_title(title, suffix).value, url, description)` (đã escape; `value` đã gắn đuôi như `with_brand`).
+- Chép sang SiteSEO: `siteseo_copy(title, description, slug, suffix=suffix) -> SiteSeoCopy(title|None, description|None, slug|None, checks)`: chữ cuối cùng (title đã gắn đuôi); trường bị Chặn là `None`, không cho chép, hiện `checks[i].messages`. Hiện bằng `st.code(...)` (có nút chép sẵn). Cùng chữ này dùng cho `set_seo_meta` của T-042 khi bật công tắc. **Lượt 2 (SL-T041-1):** chữ mà client WordPress từ chối ghi (dạng shortcode `[gallery]`, «<» liền ký tự như `<1>`, mã ký tự HTML kể cả thiếu «;») cũng là `None`, câu báo là câu cố định của client (không chép chữ). Hàm kiểm riêng: `seo_write_problem(label, text) -> str` (chuỗi rỗng là ghi được).
 
 **Slug**
 - Gợi ý: `make_slug(keyword_or_title, given=None) -> str` (không dấu, tối đa 60, bỏ từ nối cuối; `given` = slug người dùng gõ, chỉ đổi về dạng không dấu). Kiểm: `check_slug(slug) -> FieldCheck`, trùng: `check_slug_duplicates(slug, posts)`.
 
 **Liên kết nội bộ** (`seo_app.onpage.links`, `seo_app.content`)
-- Chọn bài đích: `candidates = select_candidates(listing.index, kind="huong_dan", title=article_title, keyword=keyword)` → `Candidates(items, notices)`; `notices[i].message` chữ thuần. App chưa nhập phiếu giao bài nên `required=()`, `kind` mặc định «hướng dẫn» (đổi được: `ArticleKind`).
+- Chọn bài đích: `candidates = select_candidates(listing.index, kind="huong_dan", title=article_title, keyword=keyword)` → `Candidates(items, notices)`; `notices[i].message` chữ thuần. App chưa nhập phiếu giao bài nên `required=()`, `kind` mặc định «hướng dẫn» (đổi được: `ArticleKind`). Góp ý G4 của Soi Lỗi (phần Họa Sĩ): với `kind="huong_dan"` và `required=()`, `notices` **luôn** có câu «Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài).»; app chưa có phiếu giao bài nên không hiện câu này, hoặc viết lại cho chủ dự án hiểu.
 - Gợi ý: `build_writer().internal_links(article_title, parts, candidates) -> LinkReview(links: tuple[InternalLink, ...], rejected: tuple[str, ...], missing_required)`. Không có bài đích: trả rỗng, không gọi AI. Lỗi: `AIError` (thiếu khóa, mạng…, hay «Việc gợi ý liên kết nội bộ không được bật web_search…»).
 - Bảng «Dùng / Cụm từ trong bài / Trỏ tới bài»: mỗi `InternalLink` một dòng; «Trỏ tới bài» = tiêu đề của `post_id` trong `listing.index.items` (chữ thuần; không có thì «bài #id»). `rejected` là câu cố định, không chép chữ AI.
 - Không gắn `<a>` ở đâu trong giao diện: link chỉ chèn qua `apply_links`/`place_links` khi dựng HTML (Giai đoạn 5).
 
 **Schema FAQ** (`seo_app.onpage.schema`)
-- `build_article_faq(parts) -> SchemaResult(page, json_ld: str | None, issues: tuple[Issue, ...])`; `result.blocked`. Bài chưa có mục Hỏi đáp: `issues == (Issue(BLOCK, MSG_NO_FAQ),)`. Hiện `json_ld` **chỉ** bằng `st.code(json_ld, language="json")` (LC-T038 đk 3); `issues[i].message` chữ thuần (không chép chữ của bài). `parts` là `current_parts()` (dạng chữ như trong session). Mục Hỏi đáp nhận ra: phần (không phải mở bài) có tiêu đề chứa «Hỏi đáp», «Câu hỏi», «Thắc mắc», «FAQ»; câu hỏi là `### …`, dòng `**…?**`, hoặc đoạn một dòng kết thúc «?».
+- `build_article_faq(parts) -> SchemaResult(page, json_ld: str | None, issues: tuple[Issue, ...])`; `result.blocked`. Bài chưa có mục Hỏi đáp: `issues == (Issue(BLOCK, MSG_NO_FAQ),)`. Hiện `json_ld` **chỉ** bằng `st.code(json_ld, language="json")` (LC-T038 đk 3); `issues[i].message` chữ thuần (không chép chữ của bài). `parts` là `current_parts()` (dạng chữ như trong session). Mục Hỏi đáp nhận ra: phần (không phải mở bài) có tiêu đề chứa «Hỏi đáp», «Câu hỏi», «Thắc mắc», «FAQ»; câu hỏi là `### …?` (lượt 2: tiêu đề con phải kết thúc «?», SL-T041-5), dòng `**…?**`, hoặc đoạn một dòng kết thúc «?». Lượt 2: `issues` có thể có Cảnh báo «Trả lời N: còn chỗ «[cần bổ sung: …]» chưa điền.» (vẫn có `json_ld`, G3); bài dài quá 500.000 ký tự thì Chặn ngay (`MSG_ARTICLE_TOO_LONG`, G2).
 
 **Nháp** (`seo_app.storage.drafts`)
 - Ghi trong `snapshot()`: `seo=DraftSeo(title=DraftMetaVersions(versions=[…], current=i), description=…, slug=…, links=[DraftLink.from_link(link, use=bool) …], use_faq=bool)`.
 - Đọc trong `open_draft()`: `snap.seo.title.versions/current/text`, `snap.seo.slug`, `[(d.to_link(), d.use) for d in snap.seo.links]`, `snap.seo.use_faq`. Phần SEO hỏng (sửa tay) thì đã thành trống, phần còn lại của bài vẫn mở.
+- Lưu chữ trong ô (chưa gắn đuôi) vào `versions`; gắn đuôi lúc dùng (`check_title(...).value`, `siteseo_copy`). Quá 20 bản thì bỏ bản cũ nhất nhưng **không bao giờ** bỏ bản đang dùng (lượt 2, SL-T041-4): «thêm bản mới» có chuyển `current` sang bản mới hay không đều không làm mất bản người dùng đang chọn.
 
 ## Test cũ đã đổi (xin Chỉ Huy duyệt)
 
@@ -159,6 +160,90 @@ Thử gộp (chỉ đọc, `git merge-tree --write-tree`): với `origin/main` `
 - **Họa Sĩ (T-041):** nối theo mục «Hàm cho Họa Sĩ»; giữ `SiteIndexStore`, `ContentWriter` qua các lần chạy như `draft_store()`; hiện mọi chữ từ site/AI bằng chữ thuần (U1).
 - **Ngòi Bút (phiếu sau, tùy chọn):** dặn AI viết mục Hỏi đáp theo một dạng cố định (`### Câu hỏi?` rồi đoạn trả lời) để `find_faq` luôn nhận ra.
 - **Soi Lỗi:** dọn các docstring cũ ở mục «Test cũ đã đổi»; SL-T036-11, LC-T036-2, lỗi 4 của LC-T038 (`_host` bỏ mọi dấu chấm cuối) vẫn để ngỏ (không bắt buộc).
+
+## Lượt 2 (sau Soi Lỗi, 2026-10-26)
+
+Soi Lỗi phần logic: ĐẠT CÓ ĐIỀU KIỆN, 7 lỗi Thấp, 6 góp ý (`docs/team/reports/T-041-soi-loi.md`, test `tests/test_soi_loi_t041.py`). Lượt này làm trên đầu nhánh `85b06b6`.
+
+### Tóm tắt (cho chủ dự án)
+
+- Nút «chép sang SiteSEO» và gợi ý meta của AI nay chặn đúng loại chữ mà phần ghi lên website đã chặn (chữ dạng lệnh WordPress như `[gallery]`): hai đường giống hệt nhau.
+- Ô sửa tiêu đề (chưa có đuôi « | Pro-Metal») nay được chấm như tiêu đề thật lên Google (có đuôi), nên không còn bị chê «hơi ngắn» oan.
+- Từ khóa gõ không dấu («sua cua uy tin hcm», như cột từ khóa trong file kế hoạch) không còn làm mọi gợi ý AI bị loại.
+- Nháp không bao giờ bỏ mất bản tiêu đề/mô tả anh/chị đang chọn, dù đã có nhiều bản gợi ý mới.
+- Mục Hỏi đáp: tiêu đề con không phải câu hỏi không bị coi là câu hỏi; link nằm trong đoạn mã không còn mang địa chỉ vào dữ liệu Hỏi đáp; câu trả lời còn «[cần bổ sung]» được nhắc.
+- Đổi đuôi thương hiệu trong `config/content.toml` thì lời dặn AI cũng đổi theo.
+
+### Lỗi → cách sửa → test
+
+| Mã | Cách sửa | Test |
+|---|---|---|
+| **SL-T041-1** (bắt buộc) | `seo_write_problem(label, text)` (`meta.py`) gọi **chính** bộ kiểm chữ SEO của client WordPress (`client._seo_text`, nhập muộn; tôi không được sửa `seo_app/wordpress/**` nên không tách hàm ra, dùng lại nguyên hàm để hai đường luôn giống nhau). `siteseo_copy`: trường client từ chối là `None` kèm câu cố định của client. `_final` (bộ kiểm gợi ý AI, cả title lẫn description): bỏ gợi ý đó | gỡ xfail `test_sl_t041_1_…` (5 ca); `test_seo_write_problem_uses_client_rules`, `test_siteseo_copy_and_ai_description_refuse_shortcode` |
+| **SL-T041-2** (bắt buộc) | `check_title(title, suffix)` chấm `with_brand(title, suffix)` (cách sửa Soi Lỗi đề xuất): ô sửa chưa có đuôi mà còn chỗ thì `value`, `length`, mức, câu báo là của title có đuôi, câu báo thêm «(tính cả đuôi thương hiệu)»; title đã có đuôi (gợi ý AI, `siteseo_copy`) như cũ; Chặn (thẻ, `%%`, trống) xét trên chữ đưa vào; `suffix=""` là chấm đúng chữ đưa vào. Ngoại lệ 49 ký tự (SL-T040-1) giữ | gỡ xfail `test_sl_t041_2_…` (3 ca); `test_edit_box_title_is_judged_as_sent`, `test_title_suffix_band_depends_on_suffix` (7 ca, đổi theo) |
+| **SL-T041-4** (bắt buộc) | `DraftMetaVersions._keep_recent`: cắt còn 20 bản thì bỏ các bản cũ nhất **trừ** bản đang dùng (`drafts.py`, chỉ trong khối SEO) | gỡ xfail `test_sl_t041_4_…`; `test_meta_versions_never_drop_the_version_in_use` (5 vị trí) |
+| SL-T041-3 | `_KeywordSpans` so **không dấu** (bỏ dấu từng ký tự, giữ nguyên độ dài nên vị trí khớp trên chữ có dấu không đổi), như `has_keyword` | gỡ xfail `test_sl_t041_3_…` (3 ca); `test_keyword_without_accents_still_covers_its_words` (4), `test_keyword_without_accents_does_not_hide_other_words` |
+| SL-T041-5 | Tiêu đề con chỉ là câu hỏi khi chữ thuần kết thúc «?»/«？»; tiêu đề con không phải câu hỏi kết thúc câu trả lời đang có (chữ mục khác không lẫn vào trả lời) | gỡ xfail `test_sl_t041_5_…`; `test_subheading_without_question_mark_ends_the_answer` |
+| SL-T041-6 | `plain_text` bỏ link thêm một lượt sau khi bỏ dấu mã: link trong đoạn mã, hay viết bằng ngoặc đã escape (`\[x\](…)`), chỉ giữ chữ | gỡ xfail `test_sl_t041_6_…` (2 ca); `test_link_inside_code_or_escaped_keeps_only_text` (3) |
+| SL-T041-7 | `meta_prompt(…, brand_suffix)`: phần title của lời dặn dựng theo đuôi đang dùng (`_title_asks`): khoảng độ dài, câu «phần mềm tự gắn đuôi …», ví dụ «còn chỗ cho đuôi» chỉ khi gắn được; đuôi rỗng thì chỉ «KHÔNG tự viết tên thương hiệu vào title», khoảng 50-60. `ContentWriter.meta` truyền đuôi lấy từ `[meta]`. Đuôi mặc định ra đúng khoảng «40-48 hoặc 50-60» như T-040 (test T-040 giữ nguyên) | gỡ xfail `test_sl_t041_7_…` (2 ca); `test_meta_prompt_follows_brand_suffix` (5), `test_writer_meta_prompt_uses_config_suffix` |
+
+### Góp ý của Soi Lỗi
+
+| Góp ý | Làm? | Ghi chú |
+|---|---|---|
+| G1 (câu «title 49 ký tự … hơi ngắn» đã cũ) | **Làm** cùng SL-T041-7 | Câu bị bỏ; test kiểm «49 ký tự» không còn trong lời dặn |
+| G2 (kiểm độ dài bài trước `find_faq`) | **Làm** | `build_article_faq` Chặn bài quá 500.000 ký tự trước khi tìm mục Hỏi đáp (`MSG_ARTICLE_TOO_LONG`); test chắc chắn `find_faq` không chạy |
+| G3 (cảnh báo «[cần bổ sung]» trong FAQ) | **Làm** (Cảnh báo, không Chặn) | Vẫn dựng JSON-LD để xem trước; `test_missing_material_in_answer_is_a_warning` |
+| G4 (câu «Bài hướng dẫn chưa có trang dịch vụ đích» luôn hiện) | Không (phần Họa Sĩ) | Ghi vào «Hàm cho Họa Sĩ», mục Liên kết nội bộ |
+| G5 (mẫu `[tasks.links]`, `[tasks.meta]` trong câu báo thiếu mục) | **Làm** | `TASK_EXAMPLES` (`seo_app/ai/registry.py`) thêm `meta`, `links` (không `web_search`). File này ngoài danh sách file lượt 1; thêm vì gọn, cùng việc `[tasks.links]` Chỉ Huy đã duyệt; commit `0b8e051` bỏ được riêng |
+| G6 (docstring file test Lá Chắn T-040) | Không | File của Lá Chắn; tôi chỉ được xóa dấu `xfail` |
+
+### Test cũ đã đổi ở lượt 2 (xin Chỉ Huy duyệt)
+
+SL-T041-2 đổi nghĩa `check_title`: mặc định chấm title gửi đi (có đuôi khi còn chỗ). Bốn test ngưỡng cũ của T-036 chấm **chữ trần** (ví dụ `"a" * 30` phải ra đúng 30 ký tự), nên tôi chỉ thêm đối số `suffix=""` (không gắn đuôi) để giữ đúng ý test, không đổi khẳng định nào:
+
+| File · test | Đổi gì |
+|---|---|
+| `tests/test_onpage_meta.py::test_title_thresholds` | `check_title("a" * length)` → `check_title("a" * length, "")` |
+| `tests/test_onpage_meta.py::test_gray_zone_has_hint` | `check_title("a" * 40)` → `check_title("a" * 40, "")` (40 + đuôi = 52 là «dài vừa», đúng ý SL-T041-2) |
+| `tests/test_soi_loi_t036.py::test_nfd_mixed_with_newlines_and_tabs` | `check_title(raw).length == 45` → `check_title(raw, "").length == 45` |
+| `tests/test_soi_loi_t036.py::test_title_thresholds_with_accented_letters` | `check_title(nfd(…))` → `check_title(nfd(…), "")` |
+
+Gỡ dấu `xfail` (chỉ xóa dấu, lý do cũ đúng): `tests/test_soi_loi_t041.py` SL-T041-1 (5 ca), -2 (3), -3 (3), -4 (1), -5 (1), -6 (2), -7 (2). Test của tôi (`test_t041_*`) đổi theo cách chấm mới và thêm ca mới (bảng trên).
+
+### Bằng chứng lượt 2
+
+Windows 11, Git Bash, worktree `wt-T-041`, code tại `0b8e051` (máy rất bận: các phiên khác cùng chạy toàn bộ test).
+
+```
+$ uv run pytest <39 file: 37 file của lượt 1 + tests/test_soi_loi_t041.py + tests/test_ai_images.py>
+FAILED tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted
+1 failed, 3424 passed, 8 skipped, 8 xfailed in 1500.67s (0:25:00)
+
+$ uv run pytest "tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted" \
+    "tests/test_soi_loi_t037.py::test_r2_lock_taken_between_health_check_and_read"   # chạy riêng, 3 lần
+2 passed in 26.14s
+2 passed in 13.13s
+2 passed in 14.82s
+
+$ uv run pytest tests/test_soi_loi_t037.py tests/test_site_index.py tests/test_site_index_t042.py \
+    tests/test_t041_site_index.py tests/test_soi_loi_t042_paging_cache.py   # sau commit 55d0897
+300 passed, 1 skipped in 82.57s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Ca hỏng là **hỏng oan do máy bận**, có từ trước T-041: test giữ khóa ở luồng khác tối đa 10 giây, mà các bước kiểm của test mất khoảng 8,9 giây ngay cả khi chạy riêng. Tôi đo cùng kịch bản (script `lock_timing.py` trong thư mục nháp của phiên, chép ra thư mục ghi chú chung) trên `site_index.py` bản `main` gốc `2e04066` và bản hiện tại: **8,81 / 8,97 / 8,95 giây** so với **8,86 / 8,94 / 8,89 giây**, tức không chậm hơn. Lượt chạy này mất 25 phút (lượt 1 mất 9 phút) nên vượt 10 giây. Đề xuất Soi Lỗi nới cửa sổ khóa của test (ví dụ 30 giây).
+
+Trong lúc xem ca này, tôi sửa thêm một chỗ nhỏ của lượt 1 (commit `55d0897`): `_connect(timeout=_SQLITE_TIMEOUT)` gắn giá trị lúc định nghĩa hàm, nên test đổi `site_index._SQLITE_TIMEOUT` (như test trên đặt 0,1 giây) không còn tác dụng ở bước đọc. Nay `_connect` đọc giá trị lúc gọi như trước T-041. Ca đo ở trên không đi qua bước này (bị chặn ở bước kiểm file 1 giây), nên không phải nguyên nhân.
+
+8 `xfail` còn lại: SL-T036-11 (4), «2 đô vật» (1), LC-T039-2 (3), như lượt 1. Không còn `xfail` nào của SL-T041.
+
+### Rủi ro còn lại (lượt 2)
+
+- `seo_write_problem` dùng hàm riêng `_seo_text` của client WordPress (không tách được vì `seo_app/wordpress/**` ngoài phạm vi). Client đổi tên hàm thì `test_seo_write_problem_uses_client_rules` và test SL-T041-1 báo ngay. Phiếu sau có sửa client thì nên đổi thành hàm công khai.
+- `check_title` đổi nghĩa (chấm title có đuôi): ai gọi để chấm chữ trần thì phải truyền `suffix=""`. Trong code chỉ `accept_ai_title` và `siteseo_copy` gọi, cả hai đã truyền title cuối nên kết quả không đổi.
+- Khuôn trả về `MetaSuggestions` vẫn ghi «40-48 hoặc 50-60» (test T-040 khóa khuôn này khớp lời dặn với đuôi mặc định). Chủ dự án đổi đuôi thì lời dặn (cụ thể hơn) nói khoảng mới, khuôn vẫn nói khoảng cũ; gợi ý lệch khoảng vẫn được bộ kiểm chấm đúng.
 
 ## Câu hỏi cho chủ dự án
 
