@@ -160,40 +160,52 @@ _LIST_MARK = re.compile(r"^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+")
 _ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
 
 
-def _strip_inline(line: str) -> str:
-    """Bỏ dấu nhấn trong một dòng: ``**``, ``__``, ``*``, ``_``, ``~~`` (giữ chữ bên trong), dấu
-    huyền ngược của đoạn ``mã``; ``\\X`` (ký tự đã escape) thành ``X``. Một dãy ``*``/``_`` có
-    khoảng trắng ở cả hai bên («5 * 3») là chữ, giữ nguyên; ``_`` giữa hai chữ cái/chữ số
-    («ten_file») cũng giữ, như Markdown. Một lượt, tuyến tính."""
-    out: list[str] = []
-    i, n = 0, len(line)
+def _strip_inline(block: str) -> str:
+    """Bỏ dấu nhấn trong một đoạn: cặp ``**``, ``__``, ``*``, ``_``, ``~~`` (giữ chữ bên trong),
+    mọi dấu huyền ngược (đoạn ``mã``); ``\\X`` (ký tự đã escape) thành ``X``.
+
+    Gần như Markdown: dãy dấu mở được khi chữ ngay sau không phải khoảng trắng, đóng được khi
+    chữ ngay trước không phải khoảng trắng (``_`` không mở/đóng giữa hai chữ cái, chữ số:
+    «ten_file»); chỉ bỏ dãy đóng có dãy mở cùng loại đứng trước. Dãy lẻ («2*3m», «5 * 3») là chữ,
+    giữ nguyên. Một lượt, tuyến tính (mỗi loại dấu một ngăn xếp)."""
+    chars: list[str] = []
+    marks: list[bool] = []  # ký tự có thể là dấu nhấn (*, _, ~ không escape)
+    i, n = 0, len(block)
     while i < n:
-        ch = line[i]
-        if ch == "\\" and i + 1 < n and line[i + 1] in _ESCAPABLE:
-            out.append(line[i + 1])
+        ch = block[i]
+        if ch == "\\" and i + 1 < n and block[i + 1] in _ESCAPABLE:
+            chars.append(block[i + 1])
+            marks.append(False)
             i += 2
             continue
-        if ch == "`":
-            i += 1
-            continue
-        if ch in "*_~":
-            end = i
-            while end < n and line[end] == ch:
-                end += 1
-            before = line[i - 1] if i else " "
-            after = line[end] if end < n else " "
-            literal = (
-                (before.isspace() and after.isspace())
-                or (ch == "_" and before.isalnum() and after.isalnum())
-                or (ch == "~" and end - i < 2)
-            )
-            if literal:
-                out.append(line[i:end])
-            i = end
-            continue
-        out.append(ch)
+        if ch != "`":
+            chars.append(ch)
+            marks.append(ch in "*_~")
         i += 1
-    return "".join(out)
+    drop = [False] * len(chars)
+    openers: dict[str, list[tuple[int, int]]] = {"*": [], "_": [], "~": []}
+    j = 0
+    while j < len(chars):
+        if not marks[j]:
+            j += 1
+            continue
+        ch, end = chars[j], j
+        while end < len(chars) and marks[end] and chars[end] == ch:
+            end += 1
+        before = chars[j - 1] if j else " "
+        after = chars[end] if end < len(chars) else " "
+        can_open = not after.isspace() and (ch != "_" or not before.isalnum())
+        can_close = not before.isspace() and (ch != "_" or not after.isalnum())
+        if ch == "~" and end - j < 2:
+            can_open = can_close = False
+        if can_close and openers[ch]:
+            start, stop = openers[ch].pop()
+            for k in (*range(start, stop), *range(j, end)):
+                drop[k] = True
+        elif can_open:
+            openers[ch].append((j, end))
+        j = end
+    return "".join(ch for ch, dropped in zip(chars, drop, strict=True) if not dropped)
 
 
 def plain_text(markdown: str) -> str:
@@ -202,22 +214,26 @@ def plain_text(markdown: str) -> str:
     1. Bỏ dấu ``\\`` do app thêm để vô hiệu link và ký tự ngắt địa chỉ (``unescape_link_syntax``).
     2. Link ``[chữ](địa chỉ)`` chỉ giữ chữ, ảnh ``![alt](địa chỉ)`` chỉ giữ alt, dòng khai báo link
        bị bỏ (``strip_markdown_links``): địa chỉ (kể cả ``javascript:``) không bao giờ vào JSON-LD.
-    3. Từng dòng: bỏ dấu tiêu đề ``#``, trích dẫn ``>``, gạch đầu dòng; bỏ dấu nhấn
-       (``_strip_inline``).
-    4. ``normalize_text``.
+    3. Từng dòng: bỏ dấu tiêu đề ``#``, trích dẫn ``>``, gạch đầu dòng.
+    4. Từng đoạn (các dòng liền nhau): bỏ dấu nhấn (``_strip_inline``).
+    5. ``normalize_text``.
 
     Không bao giờ đổi sang HTML: chữ ra vẫn phải qua ``_has_html`` và ``to_json_ld``. Chạy tuyến
     tính theo độ dài chữ.
     """
     text = strip_markdown_links(unescape_link_syntax(markdown))
-    lines = []
+    blocks: list[list[str]] = [[]]
     for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         line = _QUOTE_MARK.sub("", line)
         if _HEADING_MARK.match(line):
-            line = _HEADING_TAIL.sub("", _HEADING_MARK.sub("", line))
-        line = _LIST_MARK.sub("", line)
-        lines.append(_strip_inline(line))
-    return normalize_text("\n".join(lines))
+            blocks.append([_HEADING_TAIL.sub("", _HEADING_MARK.sub("", line))])
+            blocks.append([])  # tiêu đề là một đoạn riêng
+            continue
+        if line.strip():
+            blocks[-1].append(_LIST_MARK.sub("", line))
+        elif blocks[-1]:
+            blocks.append([])
+    return normalize_text("\n\n".join(_strip_inline("\n".join(b)) for b in blocks if b))
 
 
 def _has_html(text: str) -> bool:

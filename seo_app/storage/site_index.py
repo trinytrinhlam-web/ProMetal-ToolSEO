@@ -342,11 +342,12 @@ def site_listing(
     refresh: bool = False,
     now: datetime | None = None,
 ) -> SiteListing:
-    """Danh sách bài đã đăng cho bước SEO, không bao giờ ném lỗi ra giao diện.
+    """Danh sách bài đã đăng cho bước SEO; lỗi WordPress và lỗi file cache thành câu báo.
 
     ``source`` là ``None`` (chưa khai báo WordPress, tạo client lỗi): báo nhẹ «chưa kết nối».
     ``refresh``: nút «Tải lại danh sách bài» (``store.refresh``); không thì ``store.get`` (cache còn
-    mới thì không gọi mạng). Lỗi mạng/WordPress: ``index`` là ``None`` kèm câu báo.
+    mới thì không gọi mạng). Lỗi mạng/WordPress (``WordPressError``): ``index`` là ``None`` kèm
+    câu báo.
     """
     if source is None:
         return SiteListing(None, MSG_NOT_CONNECTED)

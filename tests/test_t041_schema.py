@@ -95,6 +95,9 @@ def test_validate_blocks_odd_chars_in_data():
         ("### Câu hỏi? ###", "Câu hỏi?"),
         ("- **Có.** Được\n1. Bước một\n> Trích", "Có. Được Bước một Trích"),
         ("5 * 3 = 15, ten_file, a ~ b", "5 * 3 = 15, ten_file, a ~ b"),
+        ("Cửa 2*3m, khung 1_5", "Cửa 2*3m, khung 1_5"),  # dấu lẻ, không có cặp: là chữ
+        ("**Đậm vắt\nqua dòng**", "Đậm vắt qua dòng"),
+        ("**Mở ở đoạn này\n\nđóng ở đoạn kia**", "**Mở ở đoạn này đóng ở đoạn kia**"),
         ("Dấu \\*sao\\* thật", "Dấu *sao* thật"),
         ("[cần bổ sung: giá]", "[cần bổ sung: giá]"),
         ("Đoạn một.\n\nĐoạn   hai.", "Đoạn một. Đoạn hai."),
@@ -166,7 +169,7 @@ def test_markdown_never_becomes_html():
     assert "href" not in result.json_ld and "<a" not in result.json_ld
 
 
-@pytest.mark.parametrize("answer", ["` `", "**``**", "[](https://e.vil)"])
+@pytest.mark.parametrize("answer", ["` `", "`` ` ``", "[](https://e.vil)"])
 def test_only_marks_answer_is_empty(answer):
     result = build_faq_page([(Q, answer)], article_text=_article(a=answer), site_url=SITE)
     assert result.blocked
