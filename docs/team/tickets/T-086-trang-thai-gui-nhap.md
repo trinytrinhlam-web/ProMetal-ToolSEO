@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (nên xong trước khi dùng nút «Gửi nháp» thường xuyên; trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-056 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Họa Sĩ xong, chờ Soi Lỗi rút gọn |
 
 ## Mục tiêu
 
@@ -56,3 +56,4 @@ W1, W2, U1, F2.
 
 - Lập theo điều kiện 2 của Lá Chắn T-056; chủ dự án duyệt 2026-10-26. Nhánh `team/T-086` từ `main` sau khi gộp T-056.
 - Nếu chủ dự án chọn không sửa thì phải ghi sổ rủi ro (`security.md` mục 6).
+- 2026-10-26 09:55 (Chỉ Huy B): **Họa Sĩ xong** (`e2e345f`, code `1eb96f9`): yêu cầu 1–6; gỡ 7 `xfail` (5 Soi Lỗi, 2 Lá Chắn) đều XPASS trước khi gỡ; thử gỡ chỗ sửa 10/10 đột biến bị bắt; 48 file test liên quan 4.866 qua, 6 file gửi nháp trên code cuối 147 qua. Chờ Soi Lỗi rút gọn.
