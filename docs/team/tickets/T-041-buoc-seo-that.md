@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036, T-037, T-038, T-039 đã gộp (T-040 nên gộp trước) |
-| Trạng thái | Chờ |
+| Trạng thái | Đang làm (phần Thợ Máy) |
 
 ## Mục tiêu
 
@@ -91,3 +91,4 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
 - 2026-10-23 18:01 (Chỉ Huy B): T-040 thêm mục `[meta]` vào `config/content.toml` (ngưỡng độ dài, đuôi thương hiệu, cụm nên tránh) nhưng **phần mềm chưa đọc mục này**: Thợ Máy nối ở phần logic của T-041 (hoặc phiếu riêng trước T-041).
 - 2026-10-24 09:11 (Chỉ Huy B): thêm **SL-T040-1 phần code** (Soi Lỗi T-040): title AI dài đúng 49 ký tự vừa không gắn được đuôi « | Pro-Metal» vừa bị bộ kiểm ghi «hơi ngắn» (`seo_app/onpage/meta.py`, `check_title`/`accept_ai_title`); lời dặn T-040 đã tránh khoảng này. Thợ Máy quyết cách sửa (ví dụ khoảng «vừa» tính cả đuôi), gỡ `xfail` `tests/test_soi_loi_t040.py::test_sl_t040_1_title_of_49_chars_is_not_short` (sửa `reason` cũ nếu cần, Chỉ Huy duyệt). Cùng lúc nối `[meta]` của `config/content.toml` (ghi chú trước); khi nối `[meta].avoid` phải bỏ từ khóa ra trước khi dò (Đề xuất 2 Soi Lỗi T-040).
 - 2026-10-24 10:27 (Chỉ Huy B): thêm **LC-T040-1** (Lá Chắn T-040, Thấp): `mentions_price` (`seo_app/onpage/meta.py:493-498`) không xóa từ khóa; tìm `_PRICE` ở mọi vị trí, chỉ bỏ qua chỗ khớp nằm trọn trong từ khóa; giữ cắt độ dài trước (SL-T036-12); gỡ 4 `xfail` `tests/test_la_chan_t040.py`; nếu nối `[meta].avoid` thì dò cụm nên tránh cùng cách. Hạn: trước khi bước SEO trên giao diện hiện gợi ý meta.
+- 2026-10-26 10:02 (Chỉ Huy B): **chủ dự án duyệt giao** (T-036 → T-040 đã gộp). Nhánh `team/T-041` từ `main`, worktree `wt-T-041`. **Phần Thợ Máy trước** (phiên "Thợ Máy · T-041 Lưu SEO vào nháp"): `seo_app/storage/drafts.py` (trường SEO), `seo_app/onpage/schema.py` (LC-T038 đk 1–2, SL-T038-1, -2), `seo_app/onpage/meta.py` (LC-T036-1, SL-T036-10, -12, LC-T040-1, SL-T040-1, nối `[meta]`), `seo_app/storage/site_index.py` (SL-T037-5 vì giao diện sẽ gọi `get()`), `links.py` chỉ nếu cần (LC-T039-2). Phần Họa Sĩ (`write.py`) làm **sau khi T-086 gộp** (cùng sửa `write.py`, `drafts.py`). Chạy tới 4 phiên con cùng lúc (T-086 Soi Lỗi, T-085, T-087 Lá Chắn).
