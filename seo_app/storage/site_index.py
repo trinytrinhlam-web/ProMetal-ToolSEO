@@ -30,6 +30,7 @@ from seo_app.wordpress.client import (
     MAX_TITLE_CHARS,
     PER_PAGE,
     PublishedItem,
+    WordPressError,
     is_site_link,
 )
 
@@ -44,6 +45,10 @@ _CLOCK_SKEW = timedelta(minutes=5)  # thời điểm tải "ở tương lai" qu�
 _SQLITE_TIMEOUT = 5
 # Kiểm file trước khi dùng: chờ ngắn thôi; file bận lâu hơn thì báo "đang bận" (SL-T037-5).
 _HEALTH_TIMEOUT = 1
+# Ghi cache cũng chờ ngắn (SL-T037-5, T-041): chương trình khác đang ghi dở (giữ khóa ghi nhưng
+# vẫn cho đọc) thì bước kiểm file qua được, chỉ bước ghi phải chờ. Ghi không được thì danh sách vừa
+# tải vẫn dùng được (``cache_error``), nên không chờ đủ ``_SQLITE_TIMEOUT``.
+_WRITE_TIMEOUT = 1
 # Mã lỗi SQLite chắc chắn là file hỏng (SL-T037-4). Lỗi khác (không mở được, lỗi đọc/ghi,
 # bận, khóa, chỉ đọc…) thì KHÔNG xóa file: có thể chương trình khác đang giữ file.
 _SQLITE_CORRUPT = 11
@@ -139,7 +144,7 @@ class SiteIndexStore:
             raise SiteIndexError("Danh sách bài quá dài nên không lưu tạm được.")
         rows = [tuple(getattr(item, name) for name in _COLUMNS) for item in index.items]
         try:
-            with self._connect() as conn:
+            with self._connect(timeout=_WRITE_TIMEOUT) as conn:
                 conn.execute("DELETE FROM pages")
                 conn.executemany(
                     "INSERT OR REPLACE INTO pages "
@@ -260,11 +265,11 @@ class SiteIndexStore:
         )
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
+    def _connect(self, timeout: float = _SQLITE_TIMEOUT) -> Iterator[sqlite3.Connection]:
         self._prepare()
         try:
             # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
-            with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
+            with closing(sqlite3.connect(self.path, timeout=timeout)) as conn, conn:
                 conn.text_factory = _decode_text
                 yield conn
         except sqlite3.DatabaseError as exc:
@@ -306,6 +311,53 @@ class SiteIndexStore:
     def _reset_quietly(self) -> None:
         with suppress(OSError):  # không xóa được: lần ghi sau sẽ báo lỗi rõ ràng
             self._reset()
+
+
+# ------------------------------------------------------------ dùng ở bước SEO (T-041)
+
+MSG_NOT_CONNECTED = (
+    "Chưa kết nối WordPress nên chưa có danh sách bài đã đăng: chưa kiểm trùng với bài khác và "
+    "chưa gợi ý liên kết nội bộ được. Các phần khác vẫn dùng bình thường."
+)
+MSG_TRUNCATED = (
+    "Website có nhiều bài hơn mức phần mềm đọc một lần: danh sách chưa đủ, kiểm trùng có thể sót."
+)
+
+
+@dataclass(frozen=True)
+class SiteListing:
+    """Danh sách bài cho bước SEO. ``index`` là ``None`` khi chưa kết nối WordPress hay tải lỗi
+    (các phần không cần danh sách vẫn dùng được). ``notice``: câu báo nhẹ tiếng Việt (chữ cố định,
+    hoặc câu của ``WordPressError``/``SiteIndexError`` vốn không chép bí mật hay lời máy chủ), rỗng
+    khi bình thường; giao diện hiện bằng chữ thường."""
+
+    index: SiteIndex | None
+    notice: str = ""
+
+
+def site_listing(
+    store: SiteIndexStore,
+    source: PublishedSource | None,
+    *,
+    refresh: bool = False,
+    now: datetime | None = None,
+) -> SiteListing:
+    """Danh sách bài đã đăng cho bước SEO, không bao giờ ném lỗi ra giao diện.
+
+    ``source`` là ``None`` (chưa khai báo WordPress, tạo client lỗi): báo nhẹ «chưa kết nối».
+    ``refresh``: nút «Tải lại danh sách bài» (``store.refresh``); không thì ``store.get`` (cache còn
+    mới thì không gọi mạng). Lỗi mạng/WordPress: ``index`` là ``None`` kèm câu báo.
+    """
+    if source is None:
+        return SiteListing(None, MSG_NOT_CONNECTED)
+    try:
+        index = store.refresh(source) if refresh else store.get(source, now=now)
+    except (WordPressError, SiteIndexError) as exc:
+        return SiteListing(None, f"Chưa tải được danh sách bài đã đăng. {exc}")
+    notes = [MSG_TRUNCATED] if index.truncated else []
+    if index.cache_error:
+        notes.append(index.cache_error)
+    return SiteListing(index, " ".join(notes))
 
 
 class _Corrupt(Exception):
@@ -390,8 +442,11 @@ __all__ = [
     "DEFAULT_MAX_AGE_HOURS",
     "DEFAULT_SITE_INDEX_FILE",
     "MAX_ITEMS",
+    "MSG_NOT_CONNECTED",
     "PublishedSource",
     "SiteIndex",
     "SiteIndexError",
     "SiteIndexStore",
+    "SiteListing",
+    "site_listing",
 ]
