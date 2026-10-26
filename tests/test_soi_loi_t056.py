@@ -614,10 +614,6 @@ def test_more_phone_variants_warn(project_root, root, fake_ai, alt):
     assert any("số điện thoại" in w.value for w in at.warning)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-8: mở bài khác rồi mở lại bài vừa gửi thì mất khóa «đã gửi»/«gửi dở»",
-)
 @pytest.mark.parametrize("how", ["gui-xong", "gui-do"])
 def test_switch_draft_and_back_keeps_send_lock(project_root, root, fake_ai, site, monkeypatch, how):
     """Gửi bài A (xong, hoặc bị ngắt giữa chừng: «bài nháp có thể đã có»), mở bài B ở «Bài đang
@@ -639,10 +635,6 @@ def test_switch_draft_and_back_keeps_send_lock(project_root, root, fake_ai, site
     assert button(at, SEND).disabled
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-9: bấm gì đó trong lúc gửi thì mất kết quả, báo «gửi dở» dù đã gửi xong",
-)
 def test_real_interruption_keeps_result(project_root, root, fake_ai, site, monkeypatch):
     """Bấm gì đó trong lúc lệnh gửi đang chạy: lệnh gửi chạy xong (bài nháp, ảnh đã lên) nhưng điểm
     dừng kế tiếp là chính lệnh ghi kết quả ``S._wp_result = …`` (ghi ``st.session_state`` cũng là
@@ -659,10 +651,6 @@ def test_real_interruption_keeps_result(project_root, root, fake_ai, site, monke
     assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-10: file ảnh bị thay đúng lúc đang gửi (sau bước kiểm lại) vẫn được tải lên",
-)
 def test_file_replaced_while_sending_stops(project_root, root, fake_ai, site, monkeypatch):
     """Kiểm lại (``recheck``) xong mới đọc file để nén (``read_image_bytes``): file bị thay bằng ảnh
     khác cùng tên, có GPS, trong khe đó (nhiều ảnh lớn: vài giây) vẫn lên website với alt duyệt cho
@@ -691,10 +679,6 @@ def test_file_replaced_while_sending_stops(project_root, root, fake_ai, site, mo
     assert uploaded == [], f"đã tải lên ảnh khác, GPS: {uploaded}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T056-11: tải lại trang giữa lúc gửi, mở lại nháp: gửi lại không cần xác nhận",
-)
 def test_new_session_after_send_needs_confirmation(project_root, root, fake_ai, site):
     """Đang gửi thì tải lại trang (F5, đóng tab): phiên mới, mọi dấu trong ``st.session_state`` mất;
     lần gửi của phiên cũ vẫn chạy xong trên máy chủ. Mở lại đúng nháp đó: nút «Gửi nháp» bật,

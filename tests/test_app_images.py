@@ -611,7 +611,7 @@ def test_alt_ai_errors_shown_as_message(project_root, root, monkeypatch):
     at, pid = open_article(project_root)
     choose_real(at, pid)
     write_alt(at, pid)
-    assert any("ANTHROPIC_API_KEY" in e.value for e in at.error)
+    assert any(escape_markdown("ANTHROPIC_API_KEY") in e.value for e in at.error)
     assert not at.exception
 
     class Failing(FakeProvider):
@@ -620,7 +620,10 @@ def test_alt_ai_errors_shown_as_message(project_root, root, monkeypatch):
 
     monkeypatch.setattr(ai_registry, "make_provider", lambda name, settings: Failing())
     write_alt(at, pid)
-    assert "Hãng AI đang quá tải. Thử lại sau ít phút." in [e.value for e in at.error]
+    # Hiện qua escape_markdown như mọi câu lỗi khác (T-086, Ghi nhận 3 của Lá Chắn T-056).
+    assert escape_markdown("Hãng AI đang quá tải. Thử lại sau ít phút.") in [
+        e.value for e in at.error
+    ]
     assert at.session_state[f"alt-{pid}"] == ""
 
 
