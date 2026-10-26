@@ -114,6 +114,42 @@ _ROUTE_PARAMS = tuple(
 # Chặn thêm (phòng khi ai đó nới danh sách trên): tên tham số chứa các chữ này (so trên chữ
 # thường, mọi ký tự không phải chữ, số thành "_", vì PHP đổi "." và dấu cách trong tên thành "_").
 _FORBIDDEN_PARAMS = ("rest_route", "_method", "_envelope", "_jsonp")
+# ``_fields`` (LC-T060-2) không được hỏi trường WordPress dựng bằng ``the_content``/``the_excerpt``
+# (``content``, ``excerpt`` của bài; ``description``, ``caption`` của ảnh: chạy shortcode ngay
+# trong lệnh của app, Lá Chắn T-054, T-061) hay phần nhúng thêm (``_embedded``, ``_links``).
+_RENDERED_FIELDS = frozenset(
+    {"content", "excerpt", "description", "caption", "_embedded", "_links"}
+)
+
+# Khóa thân JSON cấp trên cùng được phép theo từng đường (LC-T060-1), cùng kiểu
+# ``ALLOWED_PARAMS`` (thiếu đường thì lỗi ngay khi nạp module). WordPress đọc tham số theo thứ
+# tự JSON → form → truy vấn → đường (``WP_REST_Request::get_parameter_order``): ``id`` (bài,
+# ảnh) hay ``name`` (Abilities ``/run``) trong thân JSON thắng giá trị trên đường, nên lệnh đi
+# đúng đường đã duyệt mà sửa bài, ảnh khác hay chạy ability khác.
+ALLOWED_JSON_KEYS: dict[tuple[str, str], frozenset[str]] = {
+    ("GET", r"/"): frozenset(),
+    ("GET", r"/wp/v2/users/me"): frozenset(),
+    ("GET", r"/wp/v2/categories"): frozenset(),
+    ("GET", r"/wp/v2/tags"): frozenset(),
+    ("GET", r"/wp/v2/posts"): frozenset(),
+    ("GET", r"/wp/v2/pages"): frozenset(),
+    ("GET", rf"/wp/v2/posts/{_ID}"): frozenset(),
+    ("POST", r"/wp/v2/posts"): frozenset(  # create_draft
+        {"status", "title", "content", "excerpt", "slug", "categories", "tags", "featured_media"}
+    ),
+    ("POST", rf"/wp/v2/posts/{_ID}"): frozenset({"featured_media", "meta"}),
+    ("POST", r"/wp/v2/media"): frozenset(),  # thân là byte ảnh (``data``)
+    ("POST", rf"/wp/v2/media/{_ID}"): frozenset({"alt_text", "title", "caption"}),
+    ("GET", re.escape(SITESEO_ABILITY_PATH)): frozenset(),
+    ("POST", re.escape(SITESEO_ABILITY_RUN_PATH)): frozenset({"input"}),
+}
+_ROUTE_JSON_KEYS = tuple(
+    (method, re.compile(pattern), ALLOWED_JSON_KEYS[(method, pattern)])
+    for method, pattern in ALLOWED_ROUTES
+)
+# Không bao giờ nhận (phòng khi ai đó nới danh sách trên), so trên chữ thường. ``status`` có mặt
+# thì chỉ được là ``"draft"`` (phiếu mở đường đăng có xác nhận phải sửa chỗ này, qua Lá Chắn).
+_FORBIDDEN_JSON_KEYS = frozenset({"id", "name"})
 # ``_request`` chỉ nhận các tùy chọn client tự dùng: không ``files`` (thân ``multipart`` thành
 # ``$_POST``, WordPress đọc ``rest_route`` từ đó), không ``verify``, ``auth``, ``cookies``…
 _REQUEST_OPTIONS = frozenset({"params", "json", "data", "headers"})
@@ -146,7 +182,10 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
 
     - tùy chọn chỉ ``params``, ``json`` (``dict``), ``data`` (``bytes``), ``headers``;
     - khóa ``params`` thuộc ``ALLOWED_PARAMS`` của đúng đường, giá trị là chữ hay số nguyên;
-      không bao giờ có ``rest_route``, ``_method``, ``_envelope``, ``_jsonp``;
+      không bao giờ có ``rest_route``, ``_method``, ``_envelope``, ``_jsonp``; ``_fields`` không
+      rỗng, không hỏi trường trong ``_RENDERED_FIELDS`` (LC-T060-2);
+    - khóa thân JSON cấp trên cùng thuộc ``ALLOWED_JSON_KEYS`` của đúng đường, không bao giờ có
+      ``id``, ``name``; có ``status`` thì chỉ ``"draft"`` (LC-T060-1);
     - header chỉ ``Content-Type`` (loại ảnh trong ``IMAGE_TYPES``) và ``Content-Disposition``;
       không header nào (kể cả của ``session``) có chữ "method" (``X-HTTP-Method-Override``…);
     - ``session`` không có ``params`` hay ``Content-Type`` riêng (``requests`` gộp vào mọi lệnh).
@@ -157,12 +196,25 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
         (names for m, pattern, names in _ROUTE_PARAMS if m == method and pattern.fullmatch(path)),
         None,
     )
+    json_keys = next(
+        (keys for m, pattern, keys in _ROUTE_JSON_KEYS if m == method and pattern.fullmatch(path)),
+        None,
+    )
     params, headers = options.get("params"), options.get("headers")
     data, payload = options.get("data"), options.get("json")
-    if allowed is None or getattr(session, "params", None):
+    if allowed is None or json_keys is None or getattr(session, "params", None):
         return False
     if not (data is None or type(data) is bytes) or not (payload is None or type(payload) is dict):
         return False
+    if payload is not None:
+        for key in payload:
+            if type(key) is not str or key not in json_keys:
+                return False
+            if key.lower() in _FORBIDDEN_JSON_KEYS:
+                return False
+        status = payload.get("status", "draft")
+        if type(status) is not str or status != "draft":
+            return False
     if params is not None:
         if type(params) is not dict:
             return False
@@ -171,6 +223,8 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
                 return False
             folded = re.sub(r"[^a-z0-9]", "_", key.lower())
             if any(name in folded for name in _FORBIDDEN_PARAMS):
+                return False
+            if "fields" in folded and _asks_rendered_fields(value):
                 return False
     if headers is not None:
         if type(headers) is not dict:
@@ -186,6 +240,17 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
     if any(str(name).lower() == "content-type" for name in session_headers):
         return False
     return not any("method" in str(name).lower() for name in [*session_headers, *(headers or {})])
+
+
+def _asks_rendered_fields(value: str | int) -> bool:
+    """Giá trị ``_fields`` rỗng hay hỏi trường trong ``_RENDERED_FIELDS`` (LC-T060-2).
+
+    Tách như ``wp_parse_list`` của WordPress (dấu phẩy, khoảng trắng); tên trường là phần trước
+    dấu chấm (``content.rendered`` là ``content``), so trên chữ thường. ``_fields`` rỗng (``""``,
+    ``","``) thì WordPress trả MỌI trường, kể cả ``content``, nên cũng bị chặn.
+    """
+    names = [part.split(".", 1)[0].lower() for part in re.split(r"[\s,]+", str(value)) if part]
+    return not names or any(name in _RENDERED_FIELDS for name in names)
 
 
 # ---------------------------------------------------------------- ghi SEO (T-042)
@@ -305,6 +370,13 @@ _MEDIA_NOT_CREATED = (
 _MEDIA_SAME_ID = (
     "WordPress trả cùng một mã ảnh cho hai ảnh khác nhau trong lần gửi này (có thể là một ảnh đã "
     "có trên website). Phần mềm không ghi alt đè lên ảnh đó, chưa tạo bài nháp."
+)
+# ``upload_media``: ảnh đã lên (201) mà không xác nhận được lệnh ghi đè ba ô (LC-T060-3, SL-T060-1).
+_MEDIA_NOT_DESCRIBED = (
+    "Ảnh đã lên thư viện Media của website (mã ảnh {media_id}) nhưng phần mềm không xác nhận được "
+    "đã ghi alt, tiêu đề, chú thích cho ảnh đó{code}, nên ảnh có thể đang mang chữ WordPress tự "
+    "lấy từ file. Vào Media → Thư viện trong trang quản trị WordPress, mở ảnh mã {media_id} để "
+    "kiểm, sửa hoặc xóa trước khi tải lại (tải lại sẽ thêm một ảnh nữa). Chưa tạo bài nháp."
 )
 _DRAFT_IMAGES_LEFT = (
     " Đã có {count} ảnh lên thư viện Media trước khi lỗi (danh sách bên dưới). Phần mềm không xóa "
@@ -1028,6 +1100,9 @@ class WordPressClient:
           không, WordPress lấy ba ô từ chữ nằm trong file người dùng chọn (EXIF, IPTC, XMP).
         - Cả ba không còn "[" trần (``escape_shortcodes``, T-061): WordPress chèn alt vào
           ``<img>`` khi dựng nội dung trang ảnh (``prepend_attachment``) rồi chạy shortcode.
+        - Ảnh đã lên mà lệnh ghi đè hỏng, hay câu trả lời không nói đúng mã ảnh vừa tạo: báo câu
+          cố định ``_MEDIA_NOT_DESCRIBED`` (ảnh đang ở thư viện Media, mã ảnh, vào Media → Thư
+          viện kiểm hoặc xóa), không dùng địa chỉ, alt của ảnh khác (LC-T060-3, SL-T060-1).
         """
         suffix = Path(filename).suffix.lower()
         content_type = IMAGE_TYPES.get(suffix)
@@ -1045,21 +1120,30 @@ class WordPressClient:
                 "Alt, tiêu đề, chú thích của ảnh phải là chữ. Chưa gửi gì lên website."
             )
 
-        media_id, media = self._post_media(data, safe_name, content_type, new_only=True)
+        media_id, _ = self._post_media(data, safe_name, content_type, new_only=True)
 
-        updated = self._json(
-            self._request(
-                "POST",
-                f"/wp/v2/media/{media_id}",
-                json={key: escape_shortcodes(value) for key, value in fields.items()},
-                params={"_fields": _MEDIA_FIELDS},
+        # Từ đây ảnh đã ở thư viện Media: lỗi nào cũng phải nói rõ điều đó (mã ảnh đã kiểm).
+        try:
+            updated = self._json(
+                self._request(
+                    "POST",
+                    f"/wp/v2/media/{media_id}",
+                    json={key: escape_shortcodes(value) for key, value in fields.items()},
+                    params={"_fields": _MEDIA_FIELDS},
+                )
             )
-        )
-        if isinstance(updated, dict):
-            media = updated
+        except WordPressError as exc:
+            code = f" (mã {exc.status_code})" if exc.status_code else ""
+            raise WordPressError(
+                _MEDIA_NOT_DESCRIBED.format(media_id=media_id, code=code),
+                status_code=exc.status_code,
+                code=exc.code,
+            ) from None
+        if not isinstance(updated, dict) or _positive_id(updated.get("id")) != media_id:
+            raise WordPressError(_MEDIA_NOT_DESCRIBED.format(media_id=media_id, code=""))
 
-        source_url = media.get("source_url")
-        saved_alt = media.get("alt_text")
+        source_url = updated.get("source_url")
+        saved_alt = updated.get("alt_text")
         return Media(
             id=media_id,
             source_url=source_url if isinstance(source_url, str) else "",

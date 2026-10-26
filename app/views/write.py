@@ -27,12 +27,22 @@ Bài đang soạn nằm trong session_state:
   nháp nói AI thì là ảnh AI. Nút «Đây là ảnh AI» lưu thẻ sửa tay; lưu hỏng thì trong phiên vẫn coi
   là ảnh AI (``_ai_marked``).
 - AI chỉ viết alt khi người dùng bấm, cho đúng ảnh đã chọn, với byte của ``make_ai_image``.
-- Ảnh chỉ lên WordPress khi bấm «Gửi nháp»; ngay trước đó kiểm lại ảnh (``check_chosen_image``).
+- Ảnh chỉ lên WordPress khi bấm «Gửi nháp»; ngay trước đó kiểm lại ảnh (``check_chosen_image``)
+  và so băm SHA-256 byte sắp tải với bản đã xem và duyệt (``altsha-<id>``, T-086).
+
+Gửi nháp (T-086): trạng thái gửi ghi vào kho nháp (``SendState``) trước khi gửi và ngay khi có kết
+quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. Trong phiên: ``_wp_sending`` (đối
+tượng giữ kết quả, sửa tại chỗ), ``_wp_result``, ``_wp_sent``, ``_wp_maybe_draft``. Mọi lần
+đọc/ghi ``st.session_state`` và mọi lệnh ``st.*`` là chỗ Streamlit có thể dừng lần chạy (người dùng
+bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1). Lần chạy mới bắt đầu ngay, song song với lần
+đang gửi (``runner.fastReruns``): ``finish_send`` đợi lần gửi xong rồi mới đọc kết quả.
 """
 
 import dataclasses
+import hashlib
 import html
 import re
+import threading
 import tomllib
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
@@ -69,6 +79,7 @@ from seo_app.storage import image_tags as tag_storage
 from seo_app.storage.drafts import (
     CheckedImage,
     DraftImage,
+    SendState,
     check_chosen_image,
     check_draft_images,
 )
@@ -85,7 +96,7 @@ MATERIAL = {
     "Số liệu của bạn": "ví dụ: chênh lệch giá thật từ báo giá của xưởng",
     "Câu hỏi khách hay hỏi": "ví dụ: Inox 304 có bị gỉ không? Làm sao biết thợ dùng đúng 304?",
 }
-IMAGE_PREFIXES = ("kind-", "pick-", "prompt-", "alt-", "cap-", "altok-", "imgmsg-")
+IMAGE_PREFIXES = ("kind-", "pick-", "prompt-", "alt-", "cap-", "altok-", "altsha-", "imgmsg-")
 COMPOSE_PREFIXES = (
     "h-",
     "pts-",
@@ -149,6 +160,17 @@ MSG_SEND_INTERRUPTED = (
 MSG_SLOW_CHECK = (
     "Ổ đĩa đang chậm (Google Drive?) nên chưa kiểm lại được ảnh. Đợi vài giây rồi bấm lại."
 )
+MSG_CHECK_FAILED = "Chưa kiểm lại được ảnh này. Bấm lại, hoặc chọn lại ảnh từ thư mục."
+SEND_WAIT_SECONDS = 60  # lần chạy mới đợi lần gửi đang chạy song song lâu nhất (``finish_send``)
+MSG_WAIT_SEND = "Lần gửi nháp vừa bấm vẫn đang chạy, đợi gửi xong rồi mới hiện kết quả…"
+MSG_STILL_SENDING = (
+    "Lần gửi nháp trước vẫn đang chạy (website chậm?). Đợi thêm rồi bấm lại hoặc tải lại trang; "
+    "trước khi gửi lại, mở trang quản trị WordPress kiểm tra Bài viết → Nháp và Media → Thư viện."
+)
+MSG_FILE_REPLACED = (
+    "nội dung file khác bản bạn đã xem và duyệt (file vừa bị thay bằng ảnh khác cùng tên). Xem "
+    "lại ảnh, alt rồi duyệt lại ở bước Viết & kiểm tra"
+)
 GPS_PUBLIC_WARNING = (
     "📍 Ảnh (kể cả vị trí GPS còn trong ảnh) **xem được công khai** qua đường dẫn ngay khi tải "
     "lên, kể cả khi bài vẫn là nháp. Phần mềm không tự xóa ảnh đã tải lên."
@@ -159,6 +181,8 @@ GPS_PUBLIC_WARNING = (
 
 
 def init_state() -> None:
+    # Trước mọi việc khác (kể cả mở nháp khác): lần chạy trước dừng khi đang gửi bài đang mở.
+    finish_send()
     if "_start_keyword" in S:  # bấm «Viết bài mới» ở trang Bài viết
         clear_compose()  # bài mới: xóa cả chất liệu thật của bài cũ (bài cũ vẫn còn trong nháp)
         forget_draft()  # lần tự lưu sau tạo nháp mới, không ghi đè nháp đang mở
@@ -187,8 +211,6 @@ def init_state() -> None:
     S.setdefault("meta_desc", demo.META_DESCRIPTIONS[0])
     if "_goto" in S:  # đổi bước sau khi AI chạy xong (phải đặt trước khi vẽ thanh bước)
         S.step = S.pop("_goto")
-    if S.get("_wp_sending"):  # lần chạy trước dừng lúc đang gửi mà chưa ghi được kết quả
-        mark_send_interrupted()
 
 
 def is_kept(key: object) -> bool:
@@ -668,6 +690,8 @@ def set_pick(pid: int, checked: CheckedImage) -> None:
     S[f"alt-{pid}"] = checked.image.alt
     S[f"cap-{pid}"] = checked.image.caption
     S[f"altok-{pid}"] = checked.image.alt_approved
+    # Băm của bản đã duyệt gắn lại ở lần vẽ khung ảnh tới (``alt_editor``), theo ảnh mới này.
+    S.pop(f"altsha-{pid}", None)
 
 
 def ai_tags(tags: ImageTags) -> ImageTags:
@@ -712,9 +736,11 @@ def scanned_entries() -> list[ImageEntry]:
     ]
 
 
-def check_in_pool(image: DraftImage, library: ImageLibrary) -> CheckedImage | None:
-    """``check_chosen_image`` chạy trong luồng quét, chờ tối đa ``SCAN_WAIT_SECONDS``; quá giờ thì
-    ``None`` (lần kiểm vẫn chạy tiếp ở nền).
+def check_in_pool(image: DraftImage, library: ImageLibrary) -> CheckedImage | str:
+    """``check_chosen_image`` chạy trong luồng quét, chờ tối đa ``SCAN_WAIT_SECONDS``. Chưa kiểm
+    xong thì trả câu báo thay cho kết quả: quá giờ (``MSG_SLOW_CHECK``, lần kiểm vẫn chạy tiếp ở
+    nền), lỗi lạ (``MSG_CHECK_FAILED``: câu cố định, không để Streamlit in dấu vết lỗi có đường dẫn
+    máy; Ghi nhận 2 của Lá Chắn T-056).
 
     Ảnh chưa có trong lần quét nào của phiên (ảnh mở từ nháp) được đối chiếu tên thư mục bằng cách
     xem danh sách thư mục từng tầng (lớp phòng thứ hai của T-055): không làm việc đó trong luồng của
@@ -731,15 +757,17 @@ def check_in_pool(image: DraftImage, library: ImageLibrary) -> CheckedImage | No
     try:
         return future.result(timeout=SCAN_WAIT_SECONDS)
     except TimeoutError:
-        return None
+        return MSG_SLOW_CHECK
+    except Exception:
+        return MSG_CHECK_FAILED
 
 
 def recheck(
     library: ImageLibrary, pid: int, checked: CheckedImage
-) -> tuple[CheckedImage | None, DraftImage]:
+) -> tuple[CheckedImage | str, DraftImage]:
     """Kiểm lại ảnh đã chọn ngay trước khi dùng (LC-T055-2): cùng ``checked.ref``, thẻ hiện tại,
-    chữ đang có trong ô. Trả (kết quả kiểm, ảnh đã đưa vào kiểm); kết quả ``None``: ổ chậm, chưa
-    kiểm xong (``check_in_pool``)."""
+    chữ đang có trong ô. Trả (kết quả kiểm, ảnh đã đưa vào kiểm); kết quả là chữ: chưa kiểm xong,
+    đó là câu báo (``check_in_pool``)."""
     image = DraftImage.from_library(checked.ref, slot_tags(checked), **slot_texts(pid))
     return check_in_pool(image, library), image
 
@@ -781,8 +809,13 @@ def slot_problem(pid: int) -> str | None:
 
 def preview_bytes(library: ImageLibrary, ref) -> tuple[bytes | None, str]:
     """Ảnh xem trước (JPEG do app tạo) cho ``st.image``. Không bao giờ trả byte gốc, ảnh Pillow
-    hay đường dẫn (LC-T058-2; Lá Chắn T-049 điều kiện 3)."""
+    hay đường dẫn (LC-T058-2; Lá Chắn T-049 điều kiện 3).
+
+    Ảnh bị thay tại chỗ (cùng cỡ, cùng giờ sửa: ``PreviewCache`` vẫn giữ ảnh xem trước của bản cũ;
+    Ghi nhận 1 của Lá Chắn T-056) thì dựng ảnh xem trước từ file hiện tại bằng ``make_preview``."""
     try:
+        if ref in S.get("_replaced", ()):
+            return image_process.make_preview(library.read_image_bytes(ref)), ""
         return preview_cache().get(library, ref), ""
     except (ImageFolderError, ImageProcessError) as exc:
         return None, str(exc)
@@ -790,27 +823,36 @@ def preview_bytes(library: ImageLibrary, ref) -> tuple[bytes | None, str]:
         return None, MSG_IMAGE_FAILED
 
 
-def web_info(library: ImageLibrary, checked: CheckedImage) -> tuple[bool | None, str, str]:
-    """(có vị trí GPS, câu báo của ``WebImage.notice``, lỗi) của bản đăng web. Nén thử một lần cho
-    mỗi phiên bản file; giữ trong phiên (chỉ giữ kết quả, không giữ ảnh)."""
+def content_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def web_info(
+    library: ImageLibrary, checked: CheckedImage
+) -> tuple[bool | None, str, str, str | None]:
+    """(có vị trí GPS, câu báo của ``WebImage.notice``, lỗi, băm SHA-256 nội dung file) của bản
+    đăng web. Nén thử một lần cho mỗi phiên bản file; giữ trong phiên (chỉ giữ kết quả, không giữ
+    ảnh). Băm là của đúng byte đã đọc để ra dòng GPS đang hiện: lúc duyệt alt, lần duyệt gắn với
+    băm này (``alt_editor``), lúc gửi so lại (T-086, SL-T056-10)."""
     entry = checked.entry
     key = (checked.ref, entry.size, entry.modified)
     cache = S.setdefault("_web_info", {})
     if key not in cache:
+        digest = None
         try:
             settings = load_image_settings()
             with st.spinner("Đang kiểm ảnh (nén thử WebP, đọc vị trí GPS)…"):
+                data = library.read_image_bytes(checked.ref)
+                digest = content_hash(data)
                 web = make_web_image(
-                    library.read_image_bytes(checked.ref),
-                    max_edge_px=settings.max_edge_px,
-                    webp_quality=settings.webp_quality,
+                    data, max_edge_px=settings.max_edge_px, webp_quality=settings.webp_quality
                 )
         except (ImageFolderError, ImageProcessError, AIError) as exc:  # ContentRulesError: AIError
-            cache[key] = (None, "", str(exc))
+            cache[key] = (None, "", str(exc), digest)
         except Exception:
-            cache[key] = (None, "", MSG_IMAGE_FAILED)
+            cache[key] = (None, "", MSG_IMAGE_FAILED, digest)
         else:
-            cache[key] = (web.has_gps, web.notice, "")
+            cache[key] = (web.has_gps, web.notice, "", digest)
     return cache[key]
 
 
@@ -838,7 +880,7 @@ def unapprove(pid: int) -> None:
 
 
 def unpick(pid: int) -> None:
-    for prefix in ("pick-", "alt-", "cap-", "altok-", "imgmsg-"):
+    for prefix in ("pick-", "alt-", "cap-", "altok-", "altsha-", "imgmsg-"):
         S.pop(f"{prefix}{pid}", None)
         S.get("_kept", {}).pop(f"{prefix}{pid}", None)  # bản sao không đưa alt cũ trở lại
 
@@ -870,10 +912,10 @@ def mark_ai(pid: int) -> None:
             continue
         S.pop(f"imgmsg-{spot}", None)
         fresh, _image = recheck(library, spot, current)
-        if fresh is None:  # ổ chậm: vẫn là ảnh AI trong phiên, alt kiểm và thêm tiền tố sau
+        if isinstance(fresh, str):  # chưa kiểm xong: vẫn là ảnh AI trong phiên, alt kiểm sau
             S[f"pick-{spot}"] = dataclasses.replace(current, tags=ai_tags(current.tags))
             S[f"altok-{spot}"] = False
-            S[f"imgmsg-{spot}"] = MSG_SLOW_CHECK
+            S[f"imgmsg-{spot}"] = fresh
         else:
             set_pick(spot, fresh)  # alt, chú thích thêm tiền tố «Minh họa», phải duyệt lại
             if file_changed(fresh, current):
@@ -887,13 +929,17 @@ def choose_image(pid: int, entry: ImageEntry, scanned: tuple[ImageEntry, ...]) -
     """Chọn một ảnh của lần quét (``ImageEntry`` từ ``list_folder``, khóa theo tên trên ổ): thẻ lấy
     bằng ``resolve``, rồi kiểm như ảnh của nháp (``check_chosen_image`` kèm ``ai_roots``)."""
     library, store = image_library(), tag_store()
-    tags = store.resolve(entry.ref).tags
-    if entry.ref in S.get("_ai_marked", ()):
-        tags = ai_tags(tags)
-    image = DraftImage.from_library(entry, tags, prompt=S.get(f"prompt-{pid}", ""))
-    checked = check_chosen_image(
-        image, library, tag_store=store, scanned=scanned, ai_roots=ai_root_indexes(library)
-    )
+    try:
+        tags = store.resolve(entry.ref).tags
+        if entry.ref in S.get("_ai_marked", ()):
+            tags = ai_tags(tags)
+        image = DraftImage.from_library(entry, tags, prompt=S.get(f"prompt-{pid}", ""))
+        checked = check_chosen_image(
+            image, library, tag_store=store, scanned=scanned, ai_roots=ai_root_indexes(library)
+        )
+    except Exception:  # lỗi lạ: câu cố định, không dấu vết lỗi (Ghi nhận 2 của Lá Chắn T-056)
+        S[f"imgmsg-{pid}"] = MSG_CHECK_FAILED
+        return
     set_pick(pid, checked)  # ảnh mới: alt, chú thích để trống, chưa duyệt
     S[f"kind-{pid}"] = AI_KIND if checked.is_ai else REAL
     S.pop(f"imgmsg-{pid}", None)
@@ -907,8 +953,8 @@ def ai_write_alt(library: ImageLibrary, pid: int, checked: CheckedImage) -> str:
     (sau bước «Đây là ảnh AI»), không theo AI. Gọi trước khi vẽ ô alt. Trả câu lỗi, rỗng nếu xong.
     """
     fresh, _image = recheck(library, pid, checked)
-    if fresh is None:
-        return MSG_SLOW_CHECK
+    if isinstance(fresh, str):  # ổ chậm, lỗi lạ: câu báo
+        return fresh
     if not fresh.available:
         set_pick(pid, fresh)
         return fresh.message
@@ -1054,7 +1100,7 @@ def chosen_panel(library: ImageLibrary, pid: int, checked: CheckedImage) -> None
     if not checked.available:
         st.warning(escape_markdown(checked.message or "Ảnh không còn dùng được trên máy này."))
     else:
-        gps, notice, error = web_info(library, checked)
+        gps, notice, error, digest = web_info(library, checked)
         if error:
             st.warning(escape_markdown(error))
         elif gps:
@@ -1063,7 +1109,7 @@ def chosen_panel(library: ImageLibrary, pid: int, checked: CheckedImage) -> None
             st.caption("Ảnh không có vị trí GPS.")
         if notice:
             st.caption(f"⚠️ {escape_markdown(notice)}")
-        alt_editor(library, pid, checked)
+        alt_editor(library, pid, checked, digest)
     actions = st.container(horizontal=True, gap="small")
     actions.button(
         "📂 Mở thư mục chứa ảnh", key=f"openfolder-{pid}", on_click=open_image_folder, args=(pid,)
@@ -1072,9 +1118,12 @@ def chosen_panel(library: ImageLibrary, pid: int, checked: CheckedImage) -> None
     actions.button("✖ Bỏ ảnh", key=f"unpick-{pid}", on_click=unpick, args=(pid,))
 
 
-def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage) -> None:
+def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage, digest: str | None) -> None:
     """Alt, chú thích trong ô nhập để người dùng sửa và duyệt (điều kiện Lá Chắn T-050 b). Nút AI
-    nằm dưới ô nhưng chạy trước khi vẽ ô (gán giá trị mới cho ô chỉ được trước khi ô được vẽ)."""
+    nằm dưới ô nhưng chạy trước khi vẽ ô (gán giá trị mới cho ô chỉ được trước khi ô được vẽ).
+
+    Lần duyệt gắn với băm nội dung của bản ảnh đang hiện (``digest`` của ``web_info``):
+    ``altsha-<id>``. Lúc gửi, byte sắp tải phải cùng băm (T-086, SL-T056-10)."""
     inputs = st.container()
     row = st.container()
     write_col, ok_col = row.columns([1, 1.4], vertical_alignment="center")
@@ -1086,7 +1135,7 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage) -> None:
     ):
         error = ai_write_alt(library, pid, checked)
         if error:
-            row.error(error)
+            row.error(escape_markdown(error))
     alt_max, caption_max = alt_limits()
     with inputs:
         st.text_input(
@@ -1125,6 +1174,10 @@ def alt_editor(library: ImageLibrary, pid: int, checked: CheckedImage) -> None:
             "khách. Sửa chữ thì phải duyệt lại."
         ),
     )
+    if not S.get(f"altok-{pid}"):
+        S.pop(f"altsha-{pid}", None)
+    elif digest and f"altsha-{pid}" not in S:
+        S[f"altsha-{pid}"] = digest  # bản ảnh đang hiện (xem trước, dòng GPS) là bản được duyệt
     if PHONE_LIKE.search(alt) or PHONE_LIKE.search(caption):
         row.warning(
             "Alt hoặc chú thích có dãy số giống số điện thoại. Đừng để số điện thoại, số nhà, "
@@ -1344,7 +1397,7 @@ def folder_browser(library: ImageLibrary, pid: int) -> None:
         S._last_place = {"root": root.index, "dir": listing.rel_dir}
         st.caption(f"Đang xem: {place_md(root.label, listing.rel_dir)}")
         if listing.notice:
-            st.warning(listing.notice)
+            st.warning(escape_markdown(listing.notice))
         if skipped_text(listing):
             st.caption(skipped_text(listing))
         if listing.subfolders:
@@ -1930,17 +1983,22 @@ def wordpress_client() -> tuple[WordPressClient | None, str]:
         return None, str(exc)
 
 
-def send_draft(client: WordPressClient, ready: list[int]) -> None:
+def send_draft(client: WordPressClient, ready: list[int], previous_post: int | None) -> None:
     """Gửi bài nháp kèm ảnh. **Chỉ chạy khi người dùng bấm «Gửi nháp»** (Lá Chắn T-054 4b).
 
     - Ngay trước khi tải, kiểm lại từng ảnh (``check_chosen_image``, LC-T055-2) và dùng đúng ảnh đã
       xem trước (cùng ``ref``). Ảnh không còn dùng được, đổi tên/thư mục, hay vừa thành ảnh AI
       (alt phải thêm «Minh họa», duyệt lại) thì dừng: chưa gửi gì.
+    - Byte đọc để tải phải cùng băm SHA-256 với bản đã xem và duyệt (``altsha-<id>``); khác (file
+      bị thay cùng tên, kể cả cùng cỡ và giờ sửa, kể cả sau lần kiểm lại ở trên) thì cũng dừng, bắt
+      xem và duyệt lại (T-086, SL-T056-10, Ghi nhận 1 của Lá Chắn T-056).
     - ``DraftImage(web, alt, caption, tags=<thẻ đã kiểm của chính ảnh đó>, featured)`` (Lá Chắn
       T-071 điều kiện 3a): ảnh AI mang ``ImageTags(source="ai")``.
     - Một ảnh đặt ở hai chỗ, cùng alt và chú thích: dùng lại cùng một đối tượng (chỉ tải một lần).
-    - Lỗi: ghi vào ``_wp_result`` để hiện đủ (``send_result``); ``maybe_draft`` thì khóa nút cho tới
-      khi người dùng xác nhận đã kiểm trang quản trị. Không bao giờ tự gửi lại.
+    - Gửi bằng ``send_and_record`` (ghi «đang gửi» vào nháp, gửi, ghi kết quả vào đối tượng giữ kết
+      quả và vào nháp, không có chỗ dừng nào ở giữa), rồi ``apply_send``. Lỗi hiện đủ
+      (``send_result``); không rõ kết quả thì khóa nút tới khi người dùng xác nhận đã kiểm trang
+      quản trị. Không bao giờ tự gửi lại.
     """
     library = image_library()
     try:
@@ -1954,8 +2012,8 @@ def send_draft(client: WordPressClient, ready: list[int]) -> None:
         for pid in ready:
             checked: CheckedImage = S[f"pick-{pid}"]
             fresh, image = recheck(library, pid, checked)
-            if fresh is None:
-                problems.append(f"Ảnh ở mục «{part_name(pid)}»: {MSG_SLOW_CHECK}")
+            if isinstance(fresh, str):  # ổ chậm, lỗi lạ: câu báo
+                problems.append(f"Ảnh ở mục «{part_name(pid)}»: {fresh}")
             elif not fresh.available:
                 set_pick(pid, fresh)
                 problems.append(f"Ảnh ở mục «{part_name(pid)}»: {fresh.message}")
@@ -1974,84 +2032,250 @@ def send_draft(client: WordPressClient, ready: list[int]) -> None:
     featured = S.get("_featured")
     featured_ref = fresh_by_pid[featured].ref if featured in fresh_by_pid else None
     built: dict[tuple, WordPressImage] = {}
+    digests: dict[tuple, str] = {}  # băm byte đã đọc để tải, theo ảnh của ``built``
     uploads: dict[int, WordPressImage] = {}
     with st.spinner("Đang nén ảnh WebP (giữ vị trí GPS)…"):
         for pid, fresh in fresh_by_pid.items():
             key = (fresh.ref, fresh.image.alt, fresh.image.caption)
-            if key not in built:
-                try:
+            try:
+                data = None
+                if key not in built:
+                    data = library.read_image_bytes(fresh.ref)
+                    digests[key] = content_hash(data)
+                approved = S.get(f"altsha-{pid}")
+                if approved is not None and digests[key] != approved:
+                    replaced_after_approval(library, pid, fresh)
+                    problems.append(f"Ảnh ở mục «{part_name(pid)}»: {MSG_FILE_REPLACED}.")
+                    continue
+                if data is not None:
                     web = make_web_image(
-                        library.read_image_bytes(fresh.ref),
-                        max_edge_px=settings.max_edge_px,
-                        webp_quality=settings.webp_quality,
+                        data, max_edge_px=settings.max_edge_px, webp_quality=settings.webp_quality
                     )
-                except (ImageFolderError, ImageProcessError) as exc:
-                    problems.append(f"Ảnh ở mục «{part_name(pid)}»: {exc}")
-                    continue
-                except Exception:
-                    problems.append(f"Ảnh ở mục «{part_name(pid)}»: {MSG_IMAGE_FAILED}")
-                    continue
-                is_featured = fresh.ref == featured_ref and not any(
-                    item.featured for item in built.values()
-                )
-                built[key] = WordPressImage(
-                    web,
-                    alt=fresh.image.alt,
-                    caption=fresh.image.caption,
-                    tags=fresh.tags,
-                    featured=is_featured,
-                )
+                    is_featured = fresh.ref == featured_ref and not any(
+                        item.featured for item in built.values()
+                    )
+                    built[key] = WordPressImage(
+                        web,
+                        alt=fresh.image.alt,
+                        caption=fresh.image.caption,
+                        tags=fresh.tags,
+                        featured=is_featured,
+                    )
+            except (ImageFolderError, ImageProcessError) as exc:
+                problems.append(f"Ảnh ở mục «{part_name(pid)}»: {exc}")
+                continue
+            except Exception:
+                problems.append(f"Ảnh ở mục «{part_name(pid)}»: {MSG_IMAGE_FAILED}")
+                continue
             uploads[pid] = built[key]
     if problems:
         S._wp_result = {"ok": False, "message": "Chưa gửi gì lên website.", "problems": problems}
         return
-    # Từ lệnh dưới đây, bài nháp và ảnh có thể đã lên website. Người dùng bấm nút khác hay bấm đúp
-    # trong lúc đang gửi thì Streamlit dừng lần chạy ở lệnh ``st.*`` kế tiếp (ở đây: lúc thoát vòng
-    # quay) bằng ``RerunException``/``StopException``, là ``BaseException`` nên không qua
-    # ``except Exception`` (SL-T056-1). Nên: đặt dấu «đang gửi» ngay trước khi gọi, và ghi kết quả
-    # ngay sau khi gọi xong, trước mọi lệnh ``st.*``; lần chạy nào thấy dấu còn mà không có kết quả
-    # thì coi là gửi dở (``init_state``).
+    # Mọi thứ cần lấy từ trang lấy **trước** khi đặt dấu «đang gửi»: từ lúc đặt dấu tới lúc kết quả
+    # nằm trong ``holder`` không có lần đọc/ghi ``st.session_state`` hay lệnh ``st.*`` nào (chỗ
+    # Streamlit dừng lần chạy khi người dùng bấm gì đó; SL-T056-9).
+    title, parts = sent_title(), article_parts(uploads)
+    draft = S.setdefault("draft_id", new_draft_id())
+    holder = {"draft": draft, "result": None, "state": None, "done": threading.Event()}
+    store = draft_store()
     with st.spinner("Đang gửi bài nháp và ảnh lên WordPress…", show_time=True):
-        S._wp_sending = True
+        S._wp_sending = holder  # chỗ dừng cuối cùng trước khi gửi: dừng ở đây thì chưa gửi gì
         try:
-            result = client.create_draft_with_images(sent_title(), article_parts(uploads))
-        except DraftImagesError as exc:
-            S._wp_result = {
-                "ok": False,
-                "message": str(exc),
-                "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in exc.uploaded],
-                "maybe_uploaded": exc.maybe_uploaded,
-            }
-            if exc.maybe_draft:
-                S._wp_maybe_draft = True
-        except WordPressError as exc:  # kiểm sai trước khi gửi: chưa có request nào
-            S._wp_result = {"ok": False, "message": str(exc)}
-        except Exception:
-            S._wp_result = {"ok": False, "message": MSG_SEND_UNEXPECTED}
-            S._wp_maybe_draft = True
-        except BaseException:  # lần chạy bị dừng ngay trong lúc gửi: không biết kết quả
-            mark_send_interrupted()
-            raise
-        else:
-            S._wp_result = {
-                "ok": True,
-                "post_id": result.post.id,
-                "status": result.post.status,
-                "edit_link": result.post.edit_link,
-                "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in result.images],
-                "message": result.message,
-            }
-            S._wp_sent = True
-            S.pop("_wp_maybe_draft", None)
-        S.pop("_wp_sending", None)
+            send_and_record(client, store, holder, title, parts, previous_post)
+        finally:
+            holder["done"].set()  # cả khi lần chạy bị dừng ngay trong lúc gửi (``finish_send``)
+    apply_send(holder, interrupted=False)
 
 
-def mark_send_interrupted() -> None:
-    """Lần gửi dừng giữa chừng, không biết kết quả: coi như bài nháp, ảnh có thể đã lên website;
-    khóa nút «Gửi nháp» tới khi người dùng xác nhận đã kiểm trang quản trị (SL-T056-1)."""
+def replaced_after_approval(library: ImageLibrary, pid: int, fresh: CheckedImage) -> None:
+    """Byte sắp tải khác bản đã xem và duyệt (file bị thay bằng ảnh khác cùng tên, có thể cùng cỡ,
+    cùng giờ sửa, hay đúng lúc đang gửi). Như SL-T056-2: khung ảnh chuyển sang file mới (kiểm lại,
+    tính lại dòng GPS, ảnh xem trước dựng từ chính file), bỏ «Đã duyệt»."""
+    cache = S.get("_web_info", {})
+    for key in [key for key in cache if key[0] == fresh.ref]:
+        del cache[key]
+    S.setdefault("_replaced", set()).add(fresh.ref)
+    again, _image = recheck(library, pid, fresh)
+    if isinstance(again, CheckedImage):
+        set_pick(pid, again)
+    S[f"altok-{pid}"] = False
+    S.pop(f"altsha-{pid}", None)
+
+
+def send_and_record(
+    client: WordPressClient,
+    store: DraftStore,
+    holder: dict,
+    title: str,
+    parts: list[str | WordPressImage],
+    previous_post: int | None,
+) -> None:
+    """Ghi «đang gửi» vào nháp, gửi, rồi ghi kết quả vào ``holder`` (đối tượng giữ kết quả, sửa
+    tại chỗ) và vào nháp (T-086: SL-T056-9, -11).
+
+    **Không đọc/ghi ``st.session_state``, không gọi ``st.*``**: đó là các chỗ Streamlit dừng lần
+    chạy khi người dùng bấm gì đó. Nên từ lúc ghi «đang gửi» tới lúc kết quả nằm trong ``holder``
+    và trong nháp, lần chạy không thể dừng giữa chừng; dừng ở đâu sau đó thì lần chạy sau vẫn có
+    kết quả (``finish_send``). Chưa ghi được «đang gửi» thì không gửi: thiếu dấu đó, tải lại trang
+    lúc đang gửi là mất khóa chống gửi trùng.
+    """
+    try:
+        store.save_send_state(holder["draft"], SendState.now(pending=True, post_id=previous_post))
+    except Exception as exc:
+        reason = str(exc) if isinstance(exc, DraftError) else "lỗi không mong đợi"
+        holder["result"] = {
+            "ok": False,
+            "message": (
+                f"Chưa gửi gì lên website: chưa ghi được trạng thái gửi vào nháp ({reason}). "
+                "Thử lại sau giây lát."
+            ),
+        }
+        holder["state"] = (False, previous_post)
+        return
+    pending, post_id = True, previous_post
+    try:
+        result = client.create_draft_with_images(title, parts)
+    except DraftImagesError as exc:
+        holder["result"] = {
+            "ok": False,
+            "message": str(exc),
+            "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in exc.uploaded],
+            "maybe_uploaded": exc.maybe_uploaded,
+        }
+        pending = exc.maybe_draft
+    except WordPressError as exc:  # kiểm sai trước khi gửi: chưa có request nào
+        holder["result"] = {"ok": False, "message": str(exc)}
+        pending = False
+    except Exception:  # lỗi lạ: không biết bài nháp đã lên chưa (vẫn «đang gửi»)
+        holder["result"] = {"ok": False, "message": MSG_SEND_UNEXPECTED}
+    else:
+        holder["result"] = {
+            "ok": True,
+            "post_id": result.post.id,
+            "status": result.post.status,
+            "edit_link": result.post.edit_link,
+            "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in result.images],
+            "message": result.message,
+        }
+        pending, post_id = False, result.post.id
+    holder["state"] = (pending, post_id)
+    record_outcome(store, holder)
+
+
+def record_outcome(store: DraftStore, holder: dict) -> None:
+    """Kết quả gửi (``holder["state"]``: còn chưa rõ không, mã bài nháp gần nhất) → nháp. Không
+    đọc/ghi ``st.session_state``. Ghi hỏng thì nháp vẫn giữ «đang gửi» (mở lại thì khóa, hướng an
+    toàn) và trang báo cho người dùng (``note``)."""
+    pending, post_id = holder["state"]
+    state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
+    try:
+        store.save_send_state(holder["draft"], state)
+    except Exception as exc:
+        holder["note"] = str(exc) if isinstance(exc, DraftError) else "lỗi không mong đợi"
+    else:
+        holder["saved"] = True
+        holder.pop("note", None)
+
+
+def apply_send(holder: dict, *, interrupted: bool) -> None:
+    """Kết quả trong ``holder`` → trang. Thứ tự đơn điệu (LC-T056-1): khóa trước, kết quả sau, bỏ
+    dấu ``_wp_sending`` sau cùng; dừng ở dòng nào thì dấu còn, lần chạy sau làm lại
+    (``finish_send``).
+
+    Lần gửi bị ngắt (``interrupted``): vẫn hiện kết quả đã có (SL-T056-9) nhưng giữ khóa «gửi dở»:
+    gửi tiếp phải xác nhận đã kiểm trang quản trị (như SL-T056-1)."""
+    result, state = holder.get("result"), holder.get("state")
+    unsure = interrupted or state is None or state[0]
+    sent = (result is not None and result["ok"]) or (state is not None and state[1] is not None)
+    if unsure:
+        S._wp_maybe_draft = True
+    if sent:
+        S._wp_sent = True
+    if result is None:  # dừng ngay trong lúc gửi: không có kết quả nào
+        S._wp_result = {"ok": False, "message": MSG_SEND_INTERRUPTED}
+    else:
+        S._wp_result = {**result, "interrupted": interrupted, "note": holder.get("note", "")}
+    if not unsure:
+        S.pop("_wp_maybe_draft", None)
     S.pop("_wp_sending", None)
-    S._wp_result = {"ok": False, "message": MSG_SEND_INTERRUPTED}
+
+
+def finish_send() -> None:
+    """Lần chạy gửi nháp trước bị dừng (người dùng bấm nút khác, bấm đúp, đổi trang lúc đang gửi)
+    trước khi kết quả lên trang: dấu ``_wp_sending`` còn. Gọi đầu ``init_state``.
+
+    Thứ tự đơn điệu (LC-T056-1 a): dựng khóa «gửi dở» trước (đúng với mọi kết quả), rồi mới hiện
+    kết quả có trong đối tượng giữ kết quả (SL-T056-9) và bỏ dấu sau cùng (``apply_send``).
+
+    Streamlit mặc định chạy lần mới **ngay**, song song với lần đang gửi (``runner.fastReruns``:
+    lần cũ chỉ dừng ở chỗ dừng kế tiếp, tức sau khi lệnh gửi xong). Nên lần gửi có thể vẫn đang
+    chạy: đợi nó xong (``done``, tối đa ``SEND_WAIT_SECONDS``) rồi mới đọc kết quả; quá giờ thì giữ
+    dấu, lần chạy sau đợi tiếp."""
+    holder = S.get("_wp_sending")
+    if holder is None:
+        return
     S._wp_maybe_draft = True
+    S._wp_result = {"ok": False, "message": MSG_SEND_INTERRUPTED}
+    if not isinstance(holder, dict):  # dấu không kèm đối tượng giữ kết quả
+        S.pop("_wp_sending", None)
+        return
+    done = holder.get("done")
+    if done is not None and not done.is_set():
+        # Ô thông báo thường (hiện ngay), không dùng st.spinner: vòng quay của Streamlit 1.65 là
+        # phần tử tạm, trên trang chưa có phần tử nào thì không thấy (thử trên trình duyệt thật).
+        waiting = st.empty()
+        waiting.info(MSG_WAIT_SEND, icon="⏳")
+        done.wait(SEND_WAIT_SECONDS)
+        waiting.empty()
+        if not done.is_set():
+            S._wp_result = {"ok": False, "message": MSG_STILL_SENDING}
+            return
+    if holder.get("result") is not None and not holder.get("saved"):
+        record_outcome(draft_store(), holder)  # lần trước chưa ghi được kết quả vào nháp: thử lại
+    apply_send(holder, interrupted=True)
+
+
+def saved_send_state() -> tuple[SendState | None, str]:
+    """Trạng thái gửi ghi trong nháp đang mở (T-086): (trạng thái, câu lỗi khi không đọc được)."""
+    draft_id = S.get("draft_id")
+    if not draft_id:
+        return None, ""
+    try:
+        return draft_store().load_send_state(draft_id), ""
+    except DraftError as exc:
+        return None, str(exc)
+
+
+def unsure_message(saved: SendState | None, saved_error: str) -> str:
+    """Khóa «gửi dở»: lần gửi trước có thể đã tạo bài nháp mà app không chắc."""
+    if S.get("_wp_maybe_draft"):
+        why = "Lần gửi trước bị lỗi hoặc bị ngắt đúng lúc gửi"
+    elif saved_error:
+        why = f"Không đọc được trạng thái gửi ghi trong nháp ({saved_error})"
+    else:
+        why = (
+            f"Lần gửi trước (bắt đầu lúc {format_saved(saved.updated_at)}) chưa có kết quả: có thể "
+            "vẫn đang gửi ở cửa sổ khác, hoặc đã bị ngắt (tải lại trang, đóng tab, mất mạng)"
+        )
+    return (
+        f"{escape_markdown(why)}: **bài nháp có thể đã có trên website**. Mở trang quản trị "
+        "WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện trước khi gửi lại. App không tự "
+        "gửi lại."
+    )
+
+
+def sent_message(saved: SendState | None) -> str:
+    """Khóa «đã gửi»: gửi lại là thêm một bài nháp nữa."""
+    if saved is not None and saved.post_id is not None:
+        what = (
+            f"Bài này đã gửi lên WordPress (bài nháp mã {saved.post_id}, lúc "
+            f"{format_saved(saved.updated_at)})."
+        )
+    else:
+        what = "Bài này đã gửi thành công."
+    return (
+        f"{escape_markdown(what)} Gửi lại sẽ tạo **thêm một bài nháp mới** và tải ảnh lên lần nữa."
+    )
 
 
 def send_result() -> None:
@@ -2083,6 +2307,16 @@ def send_result() -> None:
                 "Ảnh đang tải lúc lỗi có thể vẫn đã lên thư viện Media: kiểm tra Media → Thư viện "
                 "trong trang quản trị WordPress."
             )
+    if result.get("interrupted"):
+        st.caption(
+            "Lần gửi này bị ngắt giữa chừng (bấm nút khác hoặc bấm đúp lúc đang gửi); trên đây là "
+            "kết quả app đã nhận được từ website."
+        )
+    if result.get("note"):
+        st.warning(
+            f"Chưa ghi được kết quả gửi vào nháp ({escape_markdown(result['note'])}): mở lại nháp "
+            "này sau sẽ thấy nhắc «chưa có kết quả», hãy kiểm trang quản trị trước khi gửi lại."
+        )
     if result.get("uploaded"):
         title = (
             "Ảnh đã lên thư viện Media"
@@ -2100,10 +2334,12 @@ def send_result() -> None:
 
 def draft_panel() -> None:
     """«Nháp»: gửi bài nháp kèm ảnh lên WordPress (bài luôn là nháp)."""
-    if S.pop("_wp_reset_guards", False):
+    if S.get("_wp_reset_guards"):  # bỏ tick trước, bỏ cờ sau (LC-T056-1 b)
         S.pop("_wp_checked", None)
         S.pop("_wp_again", None)
+        S.pop("_wp_reset_guards", None)
     client, problem = wordpress_client()
+    saved, saved_error = saved_send_state()  # đọc mỗi lần vẽ: mở lại nháp, phiên mới vẫn khóa
     spots = image_spots()
     states = {pid: slot_problem(pid) for pid in spots}
     ready = [pid for pid, state in states.items() if state == ""]
@@ -2135,19 +2371,15 @@ def draft_panel() -> None:
             f"trong trang quản trị; nên xóa**:\n\n{lines}"
         )
     allowed = client is not None and not blocked and bool(S.part_ids)
-    if S.get("_wp_maybe_draft"):
-        st.error(
-            "Lần gửi trước bị lỗi hoặc bị ngắt đúng lúc gửi: **bài nháp có thể đã có trên "
-            "website**. Mở trang quản trị WordPress, kiểm tra Bài viết → Nháp (và Media → Thư "
-            "viện) trước khi gửi lại. App không tự gửi lại."
-        )
+    post_id = saved.post_id if saved is not None else None
+    if S.get("_wp_maybe_draft") or saved_error or (saved is not None and saved.pending):
+        st.error(unsure_message(saved, saved_error))
         checked = st.checkbox("Tôi đã kiểm tra trang quản trị, vẫn muốn gửi", key="_wp_checked")
         allowed = allowed and checked
-    elif S.get("_wp_sent"):
-        st.info(
-            "Bài này đã gửi thành công. Gửi lại sẽ tạo **thêm một bài nháp mới** và tải ảnh lên "
-            "lần nữa."
-        )
+    elif S.get("_wp_sent") or post_id is not None:
+        st.info(sent_message(saved))
+        if post_id is not None and client is not None and not S.get("_wp_result"):
+            st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox("Tạo thêm một bài nháp mới", key="_wp_again")
         allowed = allowed and again
     if ready:
@@ -2160,7 +2392,7 @@ def draft_panel() -> None:
         # Bỏ tick các ô xác nhận trước khi gửi (không phải sau): lần chạy bị dừng giữa chừng thì
         # lần sau vẫn phải xác nhận lại mới gửi tiếp được.
         S._wp_reset_guards = True
-        send_draft(client, ready)
+        send_draft(client, ready, post_id)
         st.rerun()
     send_result()
 
