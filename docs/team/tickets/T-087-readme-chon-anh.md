@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-056 đã gộp |
-| Trạng thái | Thư Ký xong, chờ Lá Chắn rút gọn |
+| Trạng thái | Thư Ký lượt 2 |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ D1 (không lộ bí mật trong tài liệu).
 - Lập theo điều kiện 4 Lá Chắn T-056 và LC-T069-2; chủ dự án duyệt 2026-10-26.
 - 2026-10-26 09:18 (Chỉ Huy B): **Thư Ký xong** (`4fbd6f6`): README mục 9 mới «Chọn ảnh cho bài» và phần gửi bài nháp lên WordPress; quét bí mật 0. Chờ Lá Chắn rút gọn (đọc README).
 - 2026-10-26 09:59 (Chỉ Huy B): chủ dự án duyệt; giao **Lá Chắn rút gọn** (nhắn phiên Lá Chắn T-056).
+- 2026-10-26 10:13 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`b426bd9`): 41 tên nút, câu nhắc khớp `write.py`; 2 Thấp LC-T087-2 (ảnh tải lên được WordPress liệt kê công khai, không chỉ "qua đường dẫn"), LC-T087-1 (đoạn `[...]` ở tiêu đề bài/mục). Theo cách làm mới (tự chạy trọn phiếu), giao **Thư Ký lượt 2** sửa 2 câu; điều kiện 3 (viết lại lời dặn tạm khi T-086 gộp) để sau.

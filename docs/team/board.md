@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 10:02 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 10:13 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,7 +36,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Lá Chắn · T-060 kiểm client WordPress (T-085) | `team/T-085` | Thợ Máy xong (`8d0eb56`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`c63eb09`): 3 Thấp SL-T085-1..3. ⏳ **09:59 Lá Chắn rút gọn đang kiểm** | [Thợ Máy](reports/T-085-tho-may.md) · [Soi Lỗi](reports/T-085-soi-loi.md) |
 | [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-086) | `team/T-086` | 26/10 Họa Sĩ **xong** (`e2e345f`: yêu cầu 1–6, gỡ 7 `xfail`; 4.866 test liên quan qua). ⏳ **09:59 Soi Lỗi rút gọn đang kiểm** | [Họa Sĩ](reports/T-086-hoa-si.md) |
-| [T-087](tickets/T-087-readme-chon-anh.md) | GĐ3: README chọn ảnh, ảnh AI, ảnh công khai khi gửi nháp (LC-T069-2) | Lá Chắn · T-056 kiểm màn hình chọn ảnh (T-087) | `team/T-087` | 26/10 Thư Ký **xong** (`4fbd6f6`: README mục 9 «Chọn ảnh cho bài», gửi nháp). ⏳ **09:59 Lá Chắn rút gọn đang kiểm** | [Thư Ký](reports/T-087-thu-ky.md) |
+| [T-087](tickets/T-087-readme-chon-anh.md) | GĐ3: README chọn ảnh, ảnh AI, ảnh công khai khi gửi nháp (LC-T069-2) | Thư Ký · T-069 README ảnh (T-087 lượt 2) | `team/T-087` | Thư Ký xong (`4fbd6f6`). 26/10 Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`b426bd9`): 2 Thấp câu chữ. ⏳ **10:13 Thư Ký lượt 2 sửa 2 câu** | [Thư Ký](reports/T-087-thu-ky.md) · [Lá Chắn](reports/T-087-la-chan.md) |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Thợ Máy · T-041 Lưu SEO vào nháp (rồi Họa Sĩ) | `team/T-041` | ⏳ **10:02 Thợ Máy đang làm phần logic**; phần giao diện sau khi T-086 gộp | |
 
 ## Chờ
