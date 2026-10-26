@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-048 → T-055 đã gộp |
-| Trạng thái | Lá Chắn đang kiểm |
+| Trạng thái | Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp |
 
 ## Mục tiêu
 
@@ -87,3 +87,4 @@ U1, U2; góp ý Lá Chắn T-046 số 8.
 - 2026-10-24 09:44 (Chỉ Huy B): chủ dự án duyệt **Soi Lỗi kiểm lại nhanh** lượt 2 (nhắn lại phiên Soi Lỗi T-056), rồi Lá Chắn.
 - 2026-10-24 10:27 (Chỉ Huy B): **Soi Lỗi kiểm lại ĐẠT CÓ ĐIỀU KIỆN** (`df995c1`): SL-T056-1 → -7 đã sửa thật; 4 Thấp mới SL-T056-8 → -11 (đổi nháp mất khóa đã gửi; gián đoạn giữa lúc gửi mất kết quả; file bị thay đúng lúc gửi; F5 giữa lúc gửi rồi gửi lại không cần xác nhận — đề nghị Lá Chắn xem mức). Giao **Lá Chắn** (đầy đủ; chủ dự án đã duyệt "rồi chuyển Lá Chắn"), Lá Chắn quyết cả Rủi ro 2 (`walk_to_folder`).
 - 2026-10-26 07:43 (Chỉ Huy B): **chủ dự án xác nhận đã cập nhật Code Snippets lên 4.0.0** (≥ 3.9.2, `TIEN-DO.md` mục 4b): điều kiện "Chỉ Huy xác nhận 4b trước khi bật nút Gửi nháp" (Lá Chắn T-061) đã đủ.
+- 2026-10-26 08:01 (Chỉ Huy B): **Lá Chắn ĐẠT CÓ ĐIỀU KIỆN** (`5ad73eb`): 0 Nghiêm trọng/Cao/Trung bình; 5 Thấp (LC-T056-1 mới: khóa chống gửi trùng có khe khi bỏ dấu trước làm việc bảo vệ sau; SL-T056-8 → -11 giữ Thấp), cùng gốc "trạng thái gửi chỉ nằm trong phiên" → **phiếu mới "trạng thái gửi nháp"** (Họa Sĩ `write.py` + Thợ Máy `drafts.py`, trước khi dùng nút Gửi nháp thường xuyên, chờ chủ dự án duyệt lập). Rủi ro 2 (`walk_to_folder`) **chấp nhận**. Điều kiện 4: Thư Ký README phần ảnh; điều kiện 6: Lá Chắn lượt toàn GĐ3. Code Snippets 4.0.0 đã xác nhận → gộp `main` trên máy (`6b4d05a`), đang chạy toàn bộ test. Dặn chủ dự án: tới khi phiếu mới xong, bấm «Gửi nháp» rồi đợi kết quả, không tải lại trang/bấm nút khác; lần gửi thật đầu tiên theo T-059 (một bài, một ảnh, tải ảnh về kiểm GPS).

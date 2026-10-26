@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 07:43 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 08:01 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,7 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Lá Chắn · T-056 kiểm màn hình chọn ảnh | `team/T-056` | Họa Sĩ 2 lượt (`692fb07`). Soi Lỗi kiểm lại **ĐẠT CÓ ĐIỀU KIỆN** (`df995c1`: 7 lỗi đã sửa; 4 Thấp mới). ⏳ **10:27 Lá Chắn đang kiểm (đầy đủ)**; Code Snippets đã lên 4.0.0 (26/10) | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) |
+| [T-056](tickets/T-056-giao-dien-cho-can-anh.md) | GĐ3: màn hình chỗ cần ảnh trên Soạn bài (chọn ảnh thật, alt, ảnh AI, gửi nháp kèm ảnh) | Chỉ Huy (đang gộp) | `team/T-056` | Họa Sĩ 2 lượt; Soi Lỗi 2 lượt ĐẠT CÓ ĐIỀU KIỆN. 26/10 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`5ad73eb`, Opus tạm): 5 Thấp → phiếu "trạng thái gửi nháp". Code Snippets 4.0.0 đã xác nhận. ⏳ **Gộp `main` trên máy (`6b4d05a`), đang chạy toàn bộ test** | [Họa Sĩ](reports/T-056-hoa-si.md) · [Soi Lỗi](reports/T-056-soi-loi.md) · [Lá Chắn](reports/T-056-la-chan.md) |
 | [T-085](tickets/T-085-don-client-wordpress-sau-t060.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-060 (LC-T060-1..3, SL-T060-1): khóa thân JSON, `_fields`, câu báo ảnh đã lên | Thợ Máy · T-085 dọn client WordPress lượt 2 | `team/T-085` | ⏳ **09:44 Thợ Máy đang làm** | |
 
 ## Chờ
