@@ -6,10 +6,14 @@ Thiết kế: ``docs/team/reports/T-033-tho-may.md`` mục 3.
   phần mềm **từ chối dựng** các loại đó (``SITE_OWNED_TYPES``). ``HowTo`` luôn bị chặn.
 - **AI không viết JSON.** Code dựng JSON-LD từ danh sách cặp (câu hỏi, trả lời) đã có trong bài.
 - Câu hỏi và trả lời phải có **nguyên văn** trong bài (sau chuẩn hóa NFC và khoảng trắng):
-  Google yêu cầu nội dung schema hiện trên trang.
+  Google yêu cầu nội dung schema hiện trên trang. So trên chữ người đọc thấy (``plain_text``): bỏ
+  dấu Markdown ở **cả** bài lẫn câu hỏi, trả lời; link chỉ giữ chữ, không giữ địa chỉ; không bao
+  giờ đổi sang HTML. JSON-LD chỉ mang chữ đã bỏ dấu Markdown (SL-T038-2, Lá Chắn T-038).
 - Chuỗi JSON xuất ra đổi ``<``, ``>``, ``&`` thành ``\\u003c``, ``\\u003e``, ``\\u0026`` nên không
   bao giờ đóng được thẻ ``</script>``.
 - Giai đoạn 4 **chưa** đưa schema lên site (cách "d" mục 3.3); kết quả chỉ để xem trước và kiểm.
+  Giao diện hiện ``json_ld`` bằng ``st.code(..., language="json")``, không ``unsafe_allow_html``.
+- ``build_article_faq``: tìm mục Hỏi đáp trong bài (``find_faq``) rồi dựng như ``build_faq_page``.
 
 Mọi hàm ở đây là hàm thuần: không đọc ``.env``, không gọi mạng. Địa chỉ site (``WORDPRESS_URL``)
 truyền vào dạng tham số.
@@ -21,7 +25,7 @@ import html
 import json
 import re
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Literal
@@ -29,8 +33,10 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from seo_app.content.models import Section
 from seo_app.content.rules import IGNORABLE_NOT_CF
-from seo_app.sanitize import strip_tags
+from seo_app.sanitize import strip_markdown_links, strip_tags, unescape_link_syntax
+from seo_app.text import remove_accents
 
 SCHEMA_CONTEXT = "https://schema.org"
 
@@ -134,9 +140,84 @@ def normalize_text(text: str) -> str:
     return unicodedata.normalize("NFC", text)
 
 
+# Ký tự không được có trong câu hỏi, trả lời (Lá Chắn T-038 điều kiện 1, SL-T038-1): điều khiển
+# (Cc: NUL, ESC, DEL, C1…), surrogate lẻ (Cs: JSON-LD không mã hóa được UTF-8), ký tự riêng (Co),
+# ký tự chưa gán (Cn).
+_ODD_CATEGORIES = frozenset({"Cc", "Cs", "Co", "Cn"})
+
+
 def _has_control(text: str) -> bool:
-    """Còn ký tự điều khiển (loại Cc) sau chuẩn hóa: NUL, ESC, DEL, C1…"""
-    return any(unicodedata.category(ch) == "Cc" for ch in text)
+    """Còn ký tự điều khiển hay ký tự lạ (``_ODD_CATEGORIES``) sau chuẩn hóa."""
+    return any(unicodedata.category(ch) in _ODD_CATEGORIES for ch in text)
+
+
+# ------------------------------------------------------------------ bỏ dấu Markdown
+
+_HEADING_MARK = re.compile(r"^[ \t]{0,3}#{1,6}(?:[ \t]+|$)")
+_HEADING_TAIL = re.compile(r"[ \t]+#+[ \t]*$")
+_QUOTE_MARK = re.compile(r"^[ \t]*(?:>[ \t]?)+")
+_LIST_MARK = re.compile(r"^[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+")
+_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+
+
+def _strip_inline(line: str) -> str:
+    """Bỏ dấu nhấn trong một dòng: ``**``, ``__``, ``*``, ``_``, ``~~`` (giữ chữ bên trong), dấu
+    huyền ngược của đoạn ``mã``; ``\\X`` (ký tự đã escape) thành ``X``. Một dãy ``*``/``_`` có
+    khoảng trắng ở cả hai bên («5 * 3») là chữ, giữ nguyên; ``_`` giữa hai chữ cái/chữ số
+    («ten_file») cũng giữ, như Markdown. Một lượt, tuyến tính."""
+    out: list[str] = []
+    i, n = 0, len(line)
+    while i < n:
+        ch = line[i]
+        if ch == "\\" and i + 1 < n and line[i + 1] in _ESCAPABLE:
+            out.append(line[i + 1])
+            i += 2
+            continue
+        if ch == "`":
+            i += 1
+            continue
+        if ch in "*_~":
+            end = i
+            while end < n and line[end] == ch:
+                end += 1
+            before = line[i - 1] if i else " "
+            after = line[end] if end < n else " "
+            literal = (
+                (before.isspace() and after.isspace())
+                or (ch == "_" and before.isalnum() and after.isalnum())
+                or (ch == "~" and end - i < 2)
+            )
+            if literal:
+                out.append(line[i:end])
+            i = end
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def plain_text(markdown: str) -> str:
+    """Chữ người đọc thấy trên trang từ Markdown của bài (SL-T038-2, Lá Chắn T-038 điều kiện 2).
+
+    1. Bỏ dấu ``\\`` do app thêm để vô hiệu link và ký tự ngắt địa chỉ (``unescape_link_syntax``).
+    2. Link ``[chữ](địa chỉ)`` chỉ giữ chữ, ảnh ``![alt](địa chỉ)`` chỉ giữ alt, dòng khai báo link
+       bị bỏ (``strip_markdown_links``): địa chỉ (kể cả ``javascript:``) không bao giờ vào JSON-LD.
+    3. Từng dòng: bỏ dấu tiêu đề ``#``, trích dẫn ``>``, gạch đầu dòng; bỏ dấu nhấn
+       (``_strip_inline``).
+    4. ``normalize_text``.
+
+    Không bao giờ đổi sang HTML: chữ ra vẫn phải qua ``_has_html`` và ``to_json_ld``. Chạy tuyến
+    tính theo độ dài chữ.
+    """
+    text = strip_markdown_links(unescape_link_syntax(markdown))
+    lines = []
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = _QUOTE_MARK.sub("", line)
+        if _HEADING_MARK.match(line):
+            line = _HEADING_TAIL.sub("", _HEADING_MARK.sub("", line))
+        line = _LIST_MARK.sub("", line)
+        lines.append(_strip_inline(line))
+    return normalize_text("\n".join(lines))
 
 
 def _has_html(text: str) -> bool:
@@ -237,7 +318,7 @@ def _check_text(
     if not text:
         return [Issue(Level.BLOCK, f"{label}: đang để trống.")], None
     if _has_control(text):
-        issues.append(Issue(Level.BLOCK, f"{label}: có ký tự điều khiển."))
+        issues.append(Issue(Level.BLOCK, f"{label}: có ký tự điều khiển hoặc ký tự lạ."))
     if _has_html(text):
         issues.append(Issue(Level.BLOCK, f"{label}: có thẻ HTML."))
     if len(text) > max_length:
@@ -248,11 +329,12 @@ def _check_text(
 
 
 def _prepare_article(article_text: object) -> tuple[str | None, list[Issue]]:
+    """Bài để đối chiếu: chữ người đọc thấy (``plain_text``, đã bỏ dấu Markdown)."""
     if not isinstance(article_text, str) or not article_text.strip():
         return None, [Issue(Level.BLOCK, "Chưa có nội dung bài để đối chiếu hỏi đáp.")]
     if len(article_text) > MAX_ARTICLE_LENGTH:
         return None, [Issue(Level.BLOCK, "Bài quá dài, không đối chiếu được hỏi đáp.")]
-    return normalize_text(article_text), []
+    return plain_text(article_text), []
 
 
 # ------------------------------------------------------------------ kiểm JSON-LD
@@ -265,7 +347,9 @@ def validate_faq_page(
 
     Kiểm: ``@context``, ``@type`` (chặn HowTo và loại site đã xuất), khóa lạ, ``mainEntity``
     ≥ 1 câu, mỗi câu có ``name`` và ``acceptedAnswer.text`` không rỗng, không thẻ HTML, không
-    ký tự điều khiển, độ dài, URL cùng tên miền, nội dung có nguyên văn trong bài.
+    ký tự điều khiển hay ký tự lạ, độ dài, URL cùng tên miền, nội dung có nguyên văn trong bài.
+    ``article_text`` là Markdown của bài: so với chữ người đọc thấy (``plain_text``), nên chữ trong
+    ``data`` còn dấu Markdown (``**``, link) thì không khớp và bị Chặn.
     """
     if not isinstance(data, dict):
         return [Issue(Level.BLOCK, "Schema phải là một đối tượng JSON.")]
@@ -351,8 +435,10 @@ def build_faq_page(
 ) -> SchemaResult:
     """Dựng FAQPage từ các cặp (câu hỏi, trả lời) đã có trong bài.
 
-    Chữ được chuẩn hóa (NFC, khoảng trắng) trước khi dựng. Có vấn đề mức Chặn thì không dựng
-    (``page`` và ``json_ld`` là ``None``); chỉ có Cảnh báo thì vẫn dựng.
+    Câu hỏi, trả lời (Markdown như trong bài) được đổi thành chữ người đọc thấy (``plain_text``:
+    bỏ dấu Markdown, link chỉ giữ chữ, chuẩn hóa NFC và khoảng trắng) trước khi dựng và đối chiếu
+    với ``article_text``. Có vấn đề mức Chặn thì không dựng (``page`` và ``json_ld`` là ``None``);
+    chỉ có Cảnh báo thì vẫn dựng.
     """
     entities: list[dict[str, Any]] = []
     for pair in pairs:
@@ -365,10 +451,10 @@ def build_faq_page(
         entities.append(
             {
                 "@type": "Question",
-                "name": normalize_text(question) if isinstance(question, str) else question,
+                "name": plain_text(question) if isinstance(question, str) else question,
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": normalize_text(answer) if isinstance(answer, str) else answer,
+                    "text": plain_text(answer) if isinstance(answer, str) else answer,
                 },
             }
         )
@@ -384,6 +470,99 @@ def build_faq_page(
         return SchemaResult(None, None, tuple(issues))
     page = FAQPage.model_validate(data)
     return SchemaResult(page, to_json_ld(page), tuple(issues))
+
+
+# ------------------------------------------------------------------ mục Hỏi đáp trong bài (T-041)
+
+# Tiêu đề mục Hỏi đáp, so trên chữ không dấu, chữ thường, dấu câu thành dấu cách: «Hỏi đáp»,
+# «Hỏi - đáp», «Hỏi và đáp», «Câu hỏi thường gặp», «Thắc mắc thường gặp», «FAQ».
+_FAQ_HEADING = re.compile(r"\b(?:hoi (?:va )?dap|cau hoi|thac mac|faq)\b")
+_NOT_WORD = re.compile(r"[\W_]+")
+# Câu hỏi là cả dòng in đậm kết thúc bằng dấu hỏi (có thể có gạch đầu dòng trước, chữ trả lời sau).
+_BOLD_QUESTION = re.compile(r"(?:[-*+]|\d{1,9}[.)])?[ \t]*(\*\*|__)(.+?[?？])\1[ \t]*(.*)")
+MSG_NO_FAQ = "Bài chưa có mục Hỏi đáp (tiêu đề mục có «Hỏi đáp» hay «Câu hỏi thường gặp»)."
+
+
+def _is_faq_heading(heading: str) -> bool:
+    words = _NOT_WORD.sub(" ", remove_accents(normalize_text(heading)).lower())
+    return _FAQ_HEADING.search(" ".join(words.split())) is not None
+
+
+def _question_of(block: list[str]) -> tuple[str, str] | None:
+    """(câu hỏi, chữ trả lời cùng dòng) nếu đoạn ``block`` mở đầu bằng một câu hỏi."""
+    first = block[0].strip()
+    if _HEADING_MARK.match(first):
+        return _HEADING_TAIL.sub("", _HEADING_MARK.sub("", first)), "\n".join(block[1:])
+    bold = _BOLD_QUESTION.fullmatch(first)
+    if bold is not None:
+        return bold.group(2), "\n".join([bold.group(3), *block[1:]])
+    # Đoạn một dòng là câu hỏi; gạch đầu dòng thì không (danh sách câu nên hỏi thợ trong trả lời).
+    if len(block) == 1 and not _LIST_MARK.match(first) and plain_text(first).endswith(("?", "？")):
+        return first, ""
+    return None
+
+
+def find_faq(parts: Sequence[Section]) -> list[tuple[str, str]]:
+    """Các cặp (câu hỏi, trả lời) trong mục Hỏi đáp của bài, ở dạng Markdown như trong bài.
+
+    Mục Hỏi đáp: phần không phải mở bài (phần 0) có tiêu đề như ``_FAQ_HEADING``. Trong thân mục,
+    câu hỏi là dòng tiêu đề con (``### …?``), dòng in đậm cả câu kết thúc bằng «?» (``**…?**``,
+    trả lời có thể nằm tiếp ngay sau trên cùng dòng), hoặc đoạn chỉ một dòng kết thúc bằng «?».
+    Trả lời là các dòng sau đó tới câu hỏi kế tiếp. Câu hỏi không có trả lời bị bỏ. Lấy tối đa
+    ``MAX_QUESTIONS + 1`` cặp: dựng thì ``build_faq_page`` báo quá nhiều.
+    """
+    pairs: list[tuple[str, str]] = []
+    for part in list(parts)[1:]:
+        if not _is_faq_heading(part.heading):
+            continue
+        question: str | None = None
+        answer: list[str] = []
+        # Đoạn: các dòng liền nhau; dòng trống ngăn đoạn, dòng tiêu đề con luôn mở đoạn mới.
+        blocks: list[list[str]] = [[]]
+        for line in part.body.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+            if _HEADING_MARK.match(line) and blocks[-1]:
+                blocks.append([])
+            if line.strip():
+                blocks[-1].append(line)
+            elif blocks[-1]:
+                blocks.append([])
+        for block in (b for b in blocks if b):
+            found = _question_of(block)
+            if found is None:
+                if question is not None:
+                    answer.append("\n".join(block))
+                continue
+            if question is not None and plain_text("\n\n".join(answer)):
+                pairs.append((question, "\n\n".join(answer)))
+            question, rest = found
+            answer = [rest] if rest.strip() else []
+            if len(pairs) > MAX_QUESTIONS:
+                return pairs
+        if question is not None and plain_text("\n\n".join(answer)):
+            pairs.append((question, "\n\n".join(answer)))
+    return pairs[: MAX_QUESTIONS + 1]
+
+
+def article_markdown(parts: Sequence[Section]) -> str:
+    """Cả bài (tiêu đề từng phần và thân phần) dạng Markdown, để đối chiếu hỏi đáp."""
+    return "\n\n".join(f"{part.heading}\n\n{part.body}" for part in parts)
+
+
+def build_article_faq(
+    parts: Sequence[Section], *, site_url: str | None = None, page_url: str | None = None
+) -> SchemaResult:
+    """FAQPage của bài: tìm mục Hỏi đáp (``find_faq``) rồi dựng và kiểm (``build_faq_page``).
+
+    Bài chưa có mục Hỏi đáp: kết quả Chặn với câu ``MSG_NO_FAQ``. Giao diện hiện ``json_ld``
+    bằng ``st.code(..., language="json")`` và ``issues`` bằng chữ thuần (câu báo không chép chữ
+    của bài).
+    """
+    pairs = find_faq(parts)
+    if not pairs:
+        return SchemaResult(None, None, (Issue(Level.BLOCK, MSG_NO_FAQ),))
+    return build_faq_page(
+        pairs, article_text=article_markdown(parts), site_url=site_url, page_url=page_url
+    )
 
 
 # ------------------------------------------------------------------ xuất JSON an toàn
