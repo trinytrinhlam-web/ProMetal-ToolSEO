@@ -285,6 +285,12 @@ def test_duplicates_from_site_are_plain_text(project_root, seo_ai, wordpress):
     assert any(b.startswith(":red-badge[Chặn") for b in badges(at))
     assert not any("onerror" in block for block in html_blocks(at))
     assert not any(EVIL in c for c in captions)  # chữ thô không vào Markdown
+    # «Chặn» vì trùng hệt như «Chặn» vì sai dạng: không cho chép (title, slug), mô tả vẫn chép được.
+    codes = [c.value for c in at.code]
+    assert onpage_meta.with_brand(TITLES[0]) not in codes and "sua-cong-inox" not in codes
+    assert DESCRIPTION in codes
+    assert any(c.startswith("Tiêu đề SEO: chưa chép được.") and "trùng hệt" in c for c in captions)
+    assert any(c.startswith("Đường dẫn (slug): chưa chép được.") for c in captions)
 
 
 def test_internal_links_from_ai_table_and_saved(project_root, seo_ai, wordpress):
@@ -408,6 +414,24 @@ def test_switching_pages_keeps_seo_choices(project_root, seo_ai):
 # ============================================================ bước 5: ghi SEO lên website
 
 
+def test_publish_checklist_shows_real_seo_state(project_root, seo_ai):
+    """Yêu cầu 6: dòng SEO ở «Kiểm tra trước khi gửi» (bước Xuất bản) không còn «bản demo»: chưa có
+    meta thì báo chưa dùng được; AI gợi ý xong thì sẵn sàng. Chỉ xem bước Xuất bản: không gọi
+    website."""
+    at = to_seo(project_root)
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    lines = [m.value for m in at.markdown]
+    assert "⚠️ SEO: Tiêu đề SEO, Mô tả SEO chưa dùng được (xem bước SEO)" in lines
+    assert not any("bản demo" in line for line in lines)
+    at.session_state["step"] = 3
+    run_ok(at.run())
+    run_ok(button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    assert "✅ SEO: tiêu đề, mô tả, đường dẫn đã sẵn sàng" in [m.value for m in at.markdown]
+
+
 def send_with_seo(project_root, seo_ai, toggle: bool):
     at = to_seo(project_root)
     run_ok(button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
@@ -443,6 +467,28 @@ def test_seo_written_after_draft_with_brand_and_rechecked(project_root, seo_ai, 
     assert any(
         i.value == escape_markdown("Đã ghi SEO vào hộp SiteSEO của bài nháp.") for i in at.info
     )
+
+
+def test_blocked_duplicate_title_is_not_written(project_root, seo_ai, wordpress):
+    """Tiêu đề trùng hệt bài đã đăng (mức «Chặn»): bật công tắc thì báo trước «Sẽ không ghi Tiêu đề
+    SEO»; gửi nháp thì không gửi tiêu đề lên SiteSEO (chỉ mô tả, từ khóa chính) và câu kết quả nói
+    rõ phần không ghi."""
+    wordpress.items = [*PUBLISHED, published(13, EVIL, "bai-cu", meta_title=TITLES[0])]
+    at = to_seo(project_root)
+    run_ok(button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    run_ok(at.toggle(key="seo_write").set_value(True).run())
+    assert escape_markdown("Sẽ không ghi Tiêu đề SEO: ở bước SEO đang báo «Chặn»") in "\n".join(
+        c.value for c in at.caption
+    )
+    ui.send(at)
+    (run,) = [r for r in wordpress.fake.requests if ui.path_of(r) == RUN]
+    payload = json.loads(run.body)["input"]
+    assert "title" not in payload
+    assert payload["description"] == DESCRIPTION and payload["focus_keyphrase"] == KEYWORD
+    (info,) = [i.value for i in at.info if "Đã ghi SEO" in i.value]
+    assert escape_markdown("Không ghi Tiêu đề SEO: ở bước SEO đang báo «Chặn».") in info
 
 
 def test_post_published_during_seo_write_is_reported(project_root, seo_ai, wordpress):

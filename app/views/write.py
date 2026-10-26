@@ -1885,7 +1885,12 @@ LEVEL_BADGES = {
 # ``select_candidates`` luôn báo câu này khi bài hướng dẫn chưa có phiếu giao bài; app chưa nhập
 # phiếu giao bài nên chủ dự án không làm gì được với câu này: không hiện (góp ý G4 Soi Lỗi T-041).
 NO_ORDER_NOTICE = "Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài)."
+COPY_LABELS = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
+MSG_SEO_WILL_SKIP = "Sẽ không ghi {fields}: ở bước SEO đang báo «Chặn» (xem lý do ở đó)."
+MSG_SEO_SKIPPED = (
+    "Không ghi {fields}: ở bước SEO đang báo «Chặn». Sửa ở bước SEO rồi chép tay vào hộp SiteSEO."
+)
 MSG_SEO_UNEXPECTED = (
     "Ghi SEO lên website gặp lỗi không mong đợi. Mở bài nháp trong WordPress kiểm hộp SiteSEO, "
     "hoặc chép tay tiêu đề, mô tả ở bước SEO."
@@ -2089,22 +2094,45 @@ def site_host() -> str:
     return urlsplit(load_settings().wordpress_url).netloc or "website-cua-ban.vn"
 
 
-def siteseo_panel(slug: str, suffix: str | None) -> None:
-    """Chữ cuối cùng để chép, dán tay vào hộp SiteSEO (khi chưa bật «Ghi SEO lên website»).
-    Trường bị Chặn không cho chép, hiện câu báo."""
+def final_seo(posts: list, suffix: str | None) -> list[tuple[str, str | None, str]]:
+    """Chữ SEO cuối cùng từng trường (tiêu đề đã gắn đuôi, mô tả, slug), chung cho «Chép sang
+    SiteSEO» và «Ghi SEO lên website»: (tên, chữ, lý do). Chữ là ``None`` khi trường bị Chặn: sai
+    dạng (``siteseo_copy``) hay trùng hệt bài đã đăng (kiểm trùng cũng ra mức «Chặn»)."""
+    slug = S.get("seo_slug", "")
     copy = onpage_meta.siteseo_copy(
         meta_text("title"), meta_text("description"), slug, suffix=suffix
     )
+    title, description, _slug = copy.checks
+    duplicates = (
+        onpage_meta.check_title_duplicates(title.value, posts),
+        onpage_meta.check_description_duplicates(description.value, posts),
+        onpage_meta.check_slug_duplicates(slug, posts),
+    )
+    values = (copy.title, copy.description, copy.slug)
+    fields: list[tuple[str, str | None, str]] = []
+    for label, value, check, duplicate in zip(
+        COPY_LABELS, values, copy.checks, duplicates, strict=True
+    ):
+        if value is None:
+            fields.append((label, None, " ".join(check.messages)))
+        elif duplicate.level is onpage_meta.Level.BLOCK:
+            fields.append((label, None, " ".join(duplicate.messages)))
+        else:
+            fields.append((label, value, ""))
+    return fields
+
+
+def siteseo_panel(posts: list, suffix: str | None) -> None:
+    """Chữ cuối cùng để chép, dán tay vào hộp SiteSEO (khi chưa bật «Ghi SEO lên website»).
+    Trường bị Chặn không cho chép, hiện câu báo (có thể có tên bài trên website: chữ thuần)."""
     st.markdown("**Chép sang SiteSEO**")
     st.caption(
         "Bấm biểu tượng ở góc từng khung để chép, rồi dán vào hộp SiteSEO của bài nháp. Muốn phần "
         "mềm tự ghi: bật «Ghi SEO lên website» ở bước Xuất bản."
     )
-    labels = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
-    values = (copy.title, copy.description, copy.slug)
-    for label, value, check in zip(labels, values, copy.checks, strict=True):
+    for label, value, reason in final_seo(posts, suffix):
         if value is None:
-            st.caption(f"{label}: chưa chép được. {escape_markdown(' '.join(check.messages))}")
+            st.caption(f"{label}: chưa chép được. {escape_markdown(reason)}")
         else:
             st.caption(label)
             st.code(value, language=None, wrap_lines=True)
@@ -2212,7 +2240,7 @@ def step_seo(writer: ContentWriter | None) -> None:
             ui.serp_preview(title.value, f"{site_host()} › {slug}", meta_text("description")),
             unsafe_allow_html=True,
         )
-        siteseo_panel(slug, suffix)
+        siteseo_panel(posts, suffix)
     links_panel(writer, listing)
     faq_panel()
     st.divider()
@@ -2248,20 +2276,52 @@ def restore_seo(seo: DraftSeo) -> None:
     S.seo_use_faq = seo.use_faq
 
 
-def seo_request() -> dict[str, str] | None:
+def seo_request() -> dict | None:
     """Chữ SEO sẽ ghi vào hộp SiteSEO sau khi tạo nháp (công tắc «Ghi SEO lên website» bật): đúng
-    chữ của «Chép sang SiteSEO» (title đã gắn đuôi bằng ``with_brand``, trường bị Chặn để trống),
-    kèm từ khóa chính. Lấy trước khi gửi (đọc ``st.session_state``)."""
+    chữ của «Chép sang SiteSEO» (``final_seo``: title đã gắn đuôi bằng ``with_brand``; trường bị
+    Chặn, kể cả vì trùng bài đã đăng, thì không ghi và ghi tên vào ``skipped``), kèm từ khóa chính.
+    Lấy trước khi gửi (đọc ``st.session_state``)."""
     if not S.get("seo_write"):
         return None
-    copy = onpage_meta.siteseo_copy(
-        meta_text("title"), meta_text("description"), S.get("seo_slug", ""), suffix=brand_suffix()
-    )
+    listing = published_listing()
+    title, description, _slug = final_seo(onpage_meta.site_posts(listing.index), brand_suffix())
     return {
-        "title": copy.title or "",
-        "description": copy.description or "",
-        "focus_keyword": keyword(),
+        "fields": {
+            "title": title[1] or "",
+            "description": description[1] or "",
+            "focus_keyword": keyword(),
+        },
+        "skipped": [label for label, value, _reason in (title, description) if value is None],
     }
+
+
+def seo_check() -> tuple[bool, str]:
+    """Dòng SEO trong «Kiểm tra trước khi gửi» ở bước Xuất bản (thay dòng demo). Không tải danh
+    sách bài ở đây (chỉ xem bước Xuất bản thì không gọi website): kiểm trùng theo danh sách đã tải
+    ở bước SEO trong phiên, nếu có."""
+    listing = S.get("_site_listing")
+    posts = onpage_meta.site_posts(listing.index) if listing is not None else []
+    fields = final_seo(posts, brand_suffix())
+    missing = [label for label, value, _reason in fields if value is None]
+    if missing:
+        return False, f"SEO: {', '.join(missing)} chưa dùng được (xem bước SEO)"
+    return True, "SEO: tiêu đề, mô tả, đường dẫn đã sẵn sàng"
+
+
+def seo_toggle() -> None:
+    """Công tắc «Ghi SEO lên website» ở bước Xuất bản, mặc định tắt (Lá Chắn T-042). Bật thì báo
+    trước trường nào sẽ không ghi (đang bị Chặn ở bước SEO)."""
+    st.toggle(
+        "Ghi SEO lên website",
+        key="seo_write",
+        help=(
+            "Bật: ngay sau khi tạo bài nháp, phần mềm ghi tiêu đề SEO, mô tả SEO, từ khóa chính "
+            "(như ở bước SEO) vào hộp SiteSEO của chính bài nháp đó. Tắt: chép tay ở bước SEO."
+        ),
+    )
+    request = seo_request()
+    if request and request["skipped"]:
+        st.caption(escape_markdown(MSG_SEO_WILL_SKIP.format(fields=", ".join(request["skipped"]))))
 
 
 def write_seo(client: WordPressClient, holder: dict) -> None:
@@ -2275,7 +2335,7 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
         return
     post_id = result["post_id"]
     try:
-        seo = client.set_seo_meta(post_id, **request)
+        seo = client.set_seo_meta(post_id, **request["fields"])
         message = seo.message
         if seo.written and seo.route == "abilities":
             try:
@@ -2288,6 +2348,8 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
         message = str(exc)
     except Exception:  # lỗi lạ: bài nháp đã tạo và đã ghi vào nháp, chỉ báo phần SEO
         message = MSG_SEO_UNEXPECTED
+    if request["skipped"]:
+        message = f"{message} {MSG_SEO_SKIPPED.format(fields=', '.join(request['skipped']))}"
     result["seo"] = message
 
 
@@ -2779,14 +2841,7 @@ def draft_panel() -> None:
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox("Tạo thêm một bài nháp mới", key="_wp_again")
         allowed = allowed and again
-    st.toggle(  # T-041 (Lá Chắn T-042): mặc định tắt
-        "Ghi SEO lên website",
-        key="seo_write",
-        help=(
-            "Bật: ngay sau khi tạo bài nháp, phần mềm ghi tiêu đề SEO, mô tả SEO, từ khóa chính "
-            "(như ở bước SEO) vào hộp SiteSEO của chính bài nháp đó. Tắt: chép tay ở bước SEO."
-        ),
-    )
+    seo_toggle()  # T-041: «Ghi SEO lên website», mặc định tắt (Lá Chắn T-042)
     if ready:
         # Nhắc ngay trước nút (Lá Chắn T-046 số 8, T-054 4b).
         st.warning(GPS_PUBLIC_WARNING)
@@ -2827,7 +2882,7 @@ def step_publish() -> None:
                 ready == len(spots),
                 f"Chỗ cần ảnh đã có ảnh, alt đã duyệt: {ready}/{len(spots)}",
             ),
-            (True, "Meta title, description, slug (bản demo, chưa gửi)"),
+            seo_check(),  # T-041
         ]
         for ok, text in checks:
             st.markdown(f"{'✅' if ok else '⚠️'} {text}")
