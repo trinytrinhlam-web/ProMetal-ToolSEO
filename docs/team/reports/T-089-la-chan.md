@@ -8,8 +8,8 @@
 | Phiếu được kiểm | [T-089](../tickets/T-089-gui-nhap-loi-thap-sau-t086.md) · kiểm **rút gọn** (W1, W2, U1, F2) |
 | Phạm vi | Diff `3d7f4b7..66131e5` (Họa Sĩ 7 commit, Soi Lỗi 4): `app/views/write.py`, `seo_app/storage/drafts.py` (phần trạng thái gửi và `DraftImage`), test mới `tests/test_t089_send_draft.py`, `tests/test_soi_loi_t089.py`; gỡ `xfail` ở `tests/test_la_chan_t086.py` (1 ca), `tests/test_soi_loi_t086.py` (2 ca); `tests/test_t086_send_state.py`, `tests/test_app_images.py` (sửa nhỏ, mục «Soát R5»); 2 báo cáo. Không đổi `seo_app/wordpress/**`, `seo_app/onpage/**`, `config/**`, khối SEO của `drafts.py`, `uv.lock`. Python 3.12.15, SQLite 3.53.1. Thử gộp với `origin/main` `e295f0e`, `origin/team/T-088` `7e1fdae`, `origin/team/T-041` `a88c6e5`. Số dòng theo `66131e5` |
 | Báo cáo đã đọc | [Họa Sĩ](T-089-hoa-si.md) (Quyết định 1–9, Rủi ro 1–5), [Soi Lỗi](T-089-soi-loi.md) (SL-T089-1); điều kiện 2, 3 của [Lá Chắn T-086](T-086-la-chan.md) |
-| Ngày | 2026-10-26 (19:22 → <giờ xong> +07, giờ máy) |
-| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T089-1 của Soi Lỗi, giữ Thấp); Lá Chắn không có lỗi mới. LC-T086-1, SL-T086-1, SL-T086-2 **đã đóng** đúng điều kiện 2 biên bản Lá Chắn T-086; băm ảnh đã duyệt trong nháp đạt điều kiện 3 (phần băm). Ghi nhận 2 (mã bài trong nháp không dùng để ghi lên website) vẫn giữ. W1, W2, U1, F2 đạt. **Gộp `main` được ngay**: <kết quả thử gộp> |
+| Ngày | 2026-10-26 (19:22 → 19:38 +07, giờ máy) |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T089-1 của Soi Lỗi, giữ Thấp); Lá Chắn không có lỗi mới. LC-T086-1, SL-T086-1, SL-T086-2 **đã đóng** đúng điều kiện 2 biên bản Lá Chắn T-086; băm ảnh đã duyệt trong nháp đạt điều kiện 3 (phần băm). Ghi nhận 2 (mã bài trong nháp không dùng để ghi lên website) vẫn giữ. W1, W2, U1, F2 đạt. **Gộp `main` được ngay**: thử gộp với `origin/main` `e295f0e`, `team/T-088`, `team/T-041` không xung đột; 15 file test liên quan trên cây gộp 1.210 qua, 0 hỏng; ruff sạch |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -72,14 +72,19 @@ Không phát hiện lỗi mới (Lá Chắn). Lỗi của Soi Lỗi: mục «M�
 | detect-secrets | `{}` (10 file đổi, biên bản này), `PYTHONUTF8=1` | — |
 | bandit | `uvx bandit -r app/views/write.py seo_app/storage/drafts.py`: 1 Low B101 `assert` ở `drafts.py:557` | Có từ trước (biên bản T-086 đã loại), không thuộc phiếu |
 | pip-audit | Không chạy lại: `uv.lock` không đổi (`git diff 3d7f4b7..66131e5 -- uv.lock` rỗng) | — |
-| ruff | <điền sau> | — |
-| pytest (nhánh) | <điền sau> | — |
-| pytest (cây gộp) | <điền sau> | — |
+| ruff | `uv run ruff check .`: All checks passed! (nhánh và cây gộp) | — |
+| pytest (nhánh, `66131e5`) | 12 file (8 file tiêu chí xong của phiếu + `tests/test_t086_send_state.py`, `tests/test_storage_send_state.py`, `tests/test_t089_send_draft.py`, `tests/test_soi_loi_t089.py`), `PYTHONUTF8=1`: **474 passed, 1 skipped, 2 xfailed, 0 failed** (773,1 s); 2 xfail = SL-T089-1. Khớp số của Soi Lỗi | — |
+| pytest (cây gộp) | Mục «Thử gộp»: 1.210 passed, 0 failed | — |
 | Soát R5 | `tests/test_la_chan_t086.py`: chỉ xóa dấu `xfail` LC-T086-1 và `import pytest` thừa; `tests/test_soi_loi_t086.py`: chỉ xóa 2 dấu `xfail`; `tests/test_t086_send_state.py`: 2 hàm giả nhận và chuyển tiếp `**kwargs` (cho `expected=`), câu kiểm giữ nguyên; `tests/test_app_images.py::test_open_draft_uses_checked_image_not_draft_fields`: nháp mẫu thêm băm đúng của file, câu kiểm giữ nguyên (nháp không băm có test riêng). Không `skip`, không xóa test | Đạt (khớp soát R5 của Soi Lỗi) |
 
 ## Thử gộp
 
-<điền sau>
+Làm trên worktree tạm (detached, thư mục nháp của Lá Chắn), không đụng repo chính; xong đã gỡ (`git worktree remove`).
+
+| Việc | Kết quả |
+|---|---|
+| `git merge-tree --write-tree` của `team/T-089` với `origin/main` `e295f0e` (từ gốc nhánh chỉ đổi tài liệu), `origin/team/T-088` `7e1fdae` (sửa `client.py`), `origin/team/T-041` `a88c6e5` (cùng sửa `write.py`, `drafts.py` ở chỗ khác) | Không xung đột |
+| Gộp lần lượt `66131e5` → `main` → `T-088` → `T-041` (Git tự gộp `write.py`, `drafts.py`); 15 file test: gửi nháp T-086, T-089 (`test_t089_send_draft`, `test_soi_loi_t089`, `test_t086_send_state`, `test_soi_loi_t086`, `test_la_chan_t086`, `test_storage_send_state`), kho nháp (`test_storage_drafts`, `test_drafts_images`), `test_app_pages`, T-041 (`test_t041_seo_ui`, `test_t041_drafts_seo`, `test_soi_loi_t041`), client sau T-088 (`test_wordpress_t088`, `test_soi_loi_t088`, `test_la_chan_t085`) | **1.210 passed, 1 skipped, 10 xfailed, 0 failed** (630,3 s, `PYTHONUTF8=1`). 10 xfail đều có sẵn: 2 SL-T089-1, 8 SL-T088-1. `ruff`: All checks passed! |
 
 ## Báo nhầm đã loại
 
