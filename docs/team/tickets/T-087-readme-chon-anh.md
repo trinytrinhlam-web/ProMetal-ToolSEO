@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-056 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Thư Ký xong, chờ Lá Chắn rút gọn |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ D1 (không lộ bí mật trong tài liệu).
 ## Ghi chú của Chỉ Huy
 
 - Lập theo điều kiện 4 Lá Chắn T-056 và LC-T069-2; chủ dự án duyệt 2026-10-26.
+- 2026-10-26 09:18 (Chỉ Huy B): **Thư Ký xong** (`4fbd6f6`): README mục 9 mới «Chọn ảnh cho bài» và phần gửi bài nháp lên WordPress; quét bí mật 0. Chờ Lá Chắn rút gọn (đọc README).

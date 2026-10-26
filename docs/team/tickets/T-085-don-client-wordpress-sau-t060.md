@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 4; LC-T060-1, -2 bắt buộc trước phiếu nào đưa khóa JSON hay giá trị tham số lấy từ dữ liệu ngoài vào `_request`) |
 | Phụ thuộc | T-060 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Soi Lỗi xong, chờ Lá Chắn rút gọn |
 
 ## Mục tiêu
 
@@ -55,3 +55,4 @@ W1, W2, W3, S2.
 - Lập theo điều kiện 1–3 của Lá Chắn T-060; chủ dự án duyệt 2026-10-24. Nhánh `team/T-085` từ `main` sau khi gộp T-060.
 - 2026-10-24 10:13 (Chỉ Huy B): Thợ Máy xong phần 1 (`8226ed7`: LC-T060-1, -2, gỡ 9 `xfail`). Hỏi sửa 1 test cũ `tests/test_wordpress_round2_t042.py::test_upload_media_odd_fields_are_safe` (dòng 89-90) cho yêu cầu 3: **Chỉ Huy đồng ý** (đòi `WordPressError` có «thư viện Media», «mã ảnh 5»; phần trường sai kiểu chuyển sang ca mới), commit riêng, bảng trước/sau cho R5.
 - 2026-10-26 08:18 (Chỉ Huy B): **Thợ Máy xong** (`8d0eb56`, 5/5; sửa 1 test cũ đã duyệt). Chủ dự án duyệt giao **Soi Lỗi rút gọn** (nhắn phiên Soi Lỗi T-060).
+- 2026-10-26 09:18 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`c63eb09`): 5/5 yêu cầu đạt; R5 đạt; gộp thử với `main` và T-056 không xung đột. 3 Thấp: SL-T085-1 (`_fields` vòng qua bằng ký tự NUL sát tên trường), SL-T085-2 (trả lời lồng quá sâu → lỗi đỏ Python ở trang Kết nối WordPress), SL-T085-3 (lỗi ngay lúc nhận ảnh: ảnh có thể đã lên mà câu báo chỉ «thử lại sau»). Chờ Lá Chắn rút gọn.
