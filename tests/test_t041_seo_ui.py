@@ -126,6 +126,7 @@ def wordpress(monkeypatch, fake_wp):
 
     class Site:
         items = list(PUBLISHED)
+        truncated = False  # site có nhiều trang kết quả hơn mức đọc một lần
         fake = fake_wp
         statuses = ["draft"]  # trạng thái bài 501 lần lượt trả cho các lệnh hỏi lại
 
@@ -133,7 +134,9 @@ def wordpress(monkeypatch, fake_wp):
         return cls(BASE_URL, "lam", "abcd efgh ijkl", session=make_session(fake_wp), **kwargs)
 
     def list_published(self):
-        return PublishedList(Site.items)
+        result = PublishedList(Site.items)
+        result.truncated = Site.truncated
+        return result
 
     def post_501(_request):
         status = Site.statuses.pop(0) if len(Site.statuses) > 1 else Site.statuses[0]
@@ -317,6 +320,17 @@ def test_internal_links_from_ai_table_and_saved(project_root, seo_ai, wordpress)
         (12, "Bản lề gỉ", True),
     ]
     assert "http" not in saved.model_dump_json()
+
+
+def test_truncated_listing_is_only_a_notice(project_root, seo_ai, wordpress):
+    """LC-T037: danh sách bài chưa đủ (site nhiều trang hơn mức đọc một lần): chỉ báo nhẹ «danh
+    sách chưa đủ, kiểm trùng có thể sót», không kết luận link nào hỏng; các phần khác vẫn chạy."""
+    wordpress.truncated = True
+    at = to_seo(project_root)
+    assert any(escape_markdown(site_index.MSG_TRUNCATED) in c.value for c in at.caption)
+    run_ok(button(at, "✨ AI gợi ý liên kết").click().run())
+    assert len(at.dataframe) == 1
+    assert not any("hỏng" in text for text in ui.texts(at))
 
 
 def test_use_column_untick_is_kept(project_root, seo_ai, wordpress, monkeypatch):
