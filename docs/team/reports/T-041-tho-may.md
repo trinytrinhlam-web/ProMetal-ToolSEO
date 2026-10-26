@@ -5,7 +5,7 @@
 | Agent | Thợ Máy (`tho-may`) · model: Opus 5.5 |
 | Phiếu | [T-041](../tickets/T-041-buoc-seo-that.md) |
 | Ngày nộp | 2026-10-26 |
-| Kết quả | Hoàn thành phần logic. Giao diện (`app/views/write.py`) là việc của Họa Sĩ, làm sau khi T-086 gộp. **Lượt 2** (sau Soi Lỗi): sửa đủ 7 lỗi SL-T041-1 → -7 và góp ý G1, G2, G3, G5 (mục «Lượt 2» cuối báo cáo) |
+| Kết quả | Hoàn thành phần logic. Giao diện (`app/views/write.py`) là việc của Họa Sĩ, làm sau khi T-086 gộp. **Lượt 2** (sau Soi Lỗi): sửa đủ 7 lỗi SL-T041-1 → -7 và góp ý G1, G2, G3, G5 (mục «Lượt 2» cuối báo cáo). **Lượt 3**: sửa lỗi lùi (ký tự điều khiển trong chữ SEO không còn bị chặn) do lượt 1 gây ra, Họa Sĩ phát hiện (mục «Lượt 3») |
 | Nhánh | `team/T-041` (worktree `wt-T-041`), gốc `main` `2e04066` |
 
 ## Tóm tắt (cho chủ dự án)
@@ -66,7 +66,7 @@ Mọi câu báo dưới đây là chữ thuần, có thể chứa **tiêu đề 
 
 **Meta** (`seo_app.onpage.meta`, `seo_app.content`)
 - Gợi ý: `build_writer().meta(keyword, title, parts, which="both"|"title"|"description", current_title="", current_description="") -> MetaSuggestions(titles: list[str] ≤ 3, descriptions: list[str] ≤ 2)`. Viết lại riêng một ô: `which="title"` (truyền `current_description`) hoặc `which="description"` (truyền `current_title`); danh sách của ô kia rỗng. Title đã gắn đuôi « | Pro-Metal» khi còn chỗ. Lỗi: `AIError` (gọi qua `ai_call`), câu: «Chưa có từ khóa chính nên chưa gợi ý meta được…», «Các meta title AI gợi ý đều không đạt (…). Bấm viết lại.», «Các meta description AI gợi ý đều không đạt (…)», hoặc `ContentRulesError` «File config/content.toml, mục [meta]: «avoid» phải là danh sách chữ…».
-- Kiểm ô người dùng sửa: `check_title(title, suffix) -> FieldCheck`, `check_description(text) -> FieldCheck`. `FieldCheck(field, value, length, level: Level.GOOD|WARN|BLOCK, messages: tuple[str, ...])`: `length` đã đếm NFC (thay `len()` thô ở bản demo), màu theo `level` (Nên / Cảnh báo / Chặn), `messages` là chữ thuần. Gộp nhiều mức: `worst(levels)`. **Lượt 2 (SL-T041-2):** `check_title` chấm **title sẽ gửi đi** (`with_brand(title, suffix)`): ô sửa hiện title chưa có đuôi, cứ truyền chữ trong ô; `check.value` là title cuối (có đuôi khi còn chỗ, dùng luôn cho xem trước Google), `check.length` là độ dài đó, câu báo ghi «… (tính cả đuôi thương hiệu).». Bộ đếm cạnh ô nên hiện `check.length` (độ dài trên Google) chứ không đếm chữ trong ô.
+- Kiểm ô người dùng sửa: `check_title(title, suffix) -> FieldCheck`, `check_description(text) -> FieldCheck`. `FieldCheck(field, value, length, level: Level.GOOD|WARN|BLOCK, messages: tuple[str, ...])`: `length` đã đếm NFC (thay `len()` thô ở bản demo), màu theo `level` (Nên / Cảnh báo / Chặn), `messages` là chữ thuần. Gộp nhiều mức: `worst(levels)`. **Lượt 2 (SL-T041-2):** `check_title` chấm **title sẽ gửi đi** (`with_brand(title, suffix)`): ô sửa hiện title chưa có đuôi, cứ truyền chữ trong ô; `check.value` là title cuối (có đuôi khi còn chỗ, dùng luôn cho xem trước Google), `check.length` là độ dài đó, câu báo ghi «… (tính cả đuôi thương hiệu).». Bộ đếm cạnh ô nên hiện `check.length` (độ dài trên Google) chứ không đếm chữ trong ô. **Lượt 3:** chữ có ký tự điều khiển hay ký tự lạ (không nhìn thấy, thường do dán) là **Chặn**, câu báo «… có ký tự điều khiển hoặc ký tự lạ … Xóa ô rồi gõ lại chữ thường.» (`has_odd_chars(text)` để tự kiểm); `DraftMetaVersions` không còn tự bỏ các ký tự này, nên giao diện không cần làm gì thêm.
 - Kiểm trùng: `posts = site_posts(listing.index)` (rỗng khi chưa kết nối); `check_title_duplicates(title, posts)`, `check_description_duplicates(desc, posts)`, `check_slug_duplicates(slug, posts)` → `FieldCheck` (câu báo có tên bài trên site: chữ thuần).
 - Đuôi thương hiệu: `suffix = load_meta_rules().brand_suffix` (bọc `try … except AIError` như `alt_limits()`, lỗi thì `None` = đuôi mặc định); `with_brand(title, suffix) -> str`; `strip_brand(title, suffix)` để hiện ô sửa không đuôi.
 - Xem trước Google: `ui.serp_preview(check_title(title, suffix).value, url, description)` (đã escape; `value` đã gắn đuôi như `with_brand`).
@@ -82,7 +82,7 @@ Mọi câu báo dưới đây là chữ thuần, có thể chứa **tiêu đề 
 - Không gắn `<a>` ở đâu trong giao diện: link chỉ chèn qua `apply_links`/`place_links` khi dựng HTML (Giai đoạn 5).
 
 **Schema FAQ** (`seo_app.onpage.schema`)
-- `build_article_faq(parts) -> SchemaResult(page, json_ld: str | None, issues: tuple[Issue, ...])`; `result.blocked`. Bài chưa có mục Hỏi đáp: `issues == (Issue(BLOCK, MSG_NO_FAQ),)`. Hiện `json_ld` **chỉ** bằng `st.code(json_ld, language="json")` (LC-T038 đk 3); `issues[i].message` chữ thuần (không chép chữ của bài). `parts` là `current_parts()` (dạng chữ như trong session). Mục Hỏi đáp nhận ra: phần (không phải mở bài) có tiêu đề chứa «Hỏi đáp», «Câu hỏi», «Thắc mắc», «FAQ»; câu hỏi là `### …?` (lượt 2: tiêu đề con phải kết thúc «?», SL-T041-5), dòng `**…?**`, hoặc đoạn một dòng kết thúc «?». Lượt 2: `issues` có thể có Cảnh báo «Trả lời N: còn chỗ «[cần bổ sung: …]» chưa điền.» (vẫn có `json_ld`, G3); bài dài quá 500.000 ký tự thì Chặn ngay (`MSG_ARTICLE_TOO_LONG`, G2).
+- `build_article_faq(parts) -> SchemaResult(page, json_ld: str | None, issues: tuple[Issue, ...])`; `result.blocked`. Bài chưa có mục Hỏi đáp: `issues == (Issue(BLOCK, MSG_NO_FAQ),)`. Hiện `json_ld` **chỉ** bằng `st.code(json_ld, language="json")` (LC-T038 đk 3); `issues[i].message` chữ thuần (không chép chữ của bài). `parts` là `current_parts()` (dạng chữ như trong session). Mục Hỏi đáp nhận ra: phần (không phải mở bài) có tiêu đề chứa «Hỏi đáp», «Câu hỏi», «Thắc mắc», «FAQ»; câu hỏi là `### …?` (lượt 2: tiêu đề con phải kết thúc «?», SL-T041-5), dòng `**…?**`, hoặc đoạn một dòng kết thúc «?». Lượt 2: `issues` có thể có Cảnh báo «Trả lời N: còn chỗ «[cần bổ sung: …]» chưa điền.» (vẫn có `json_ld`, G3); bài dài quá 500.000 ký tự thì Chặn ngay (`MSG_ARTICLE_TOO_LONG`, G2). Lượt 3: có mục Hỏi đáp mà chưa nhận ra cặp hỏi-đáp nào thì `issues == (Issue(BLOCK, MSG_NO_FAQ_QUESTION),)` thay vì `MSG_NO_FAQ`.
 
 **Nháp** (`seo_app.storage.drafts`)
 - Ghi trong `snapshot()`: `seo=DraftSeo(title=DraftMetaVersions(versions=[…], current=i), description=…, slug=…, links=[DraftLink.from_link(link, use=bool) …], use_faq=bool)`.
@@ -244,6 +244,54 @@ Trong lúc xem ca này, tôi sửa thêm một chỗ nhỏ của lượt 1 (comm
 - `seo_write_problem` dùng hàm riêng `_seo_text` của client WordPress (không tách được vì `seo_app/wordpress/**` ngoài phạm vi). Client đổi tên hàm thì `test_seo_write_problem_uses_client_rules` và test SL-T041-1 báo ngay. Phiếu sau có sửa client thì nên đổi thành hàm công khai.
 - `check_title` đổi nghĩa (chấm title có đuôi): ai gọi để chấm chữ trần thì phải truyền `suffix=""`. Trong code chỉ `accept_ai_title` và `siteseo_copy` gọi, cả hai đã truyền title cuối nên kết quả không đổi.
 - Khuôn trả về `MetaSuggestions` vẫn ghi «40-48 hoặc 50-60» (test T-040 khóa khuôn này khớp lời dặn với đuôi mặc định). Chủ dự án đổi đuôi thì lời dặn (cụ thể hơn) nói khoảng mới, khuôn vẫn nói khoảng cũ; gợi ý lệch khoảng vẫn được bộ kiểm chấm đúng.
+
+## Lượt 3: sửa lỗi lùi (2026-10-26)
+
+Họa Sĩ phát hiện (`docs/team/reports/T-041-hoa-si.md`, mục «Phát hiện» số 1): 15 test client WordPress hỏng trên nhánh, do commit `94ba458` của tôi (lượt 1).
+
+### Tóm tắt (cho chủ dự án)
+
+- Lỗi: từ lượt 1, phần mềm tự xóa các ký tự điều khiển vô hình (thường lẫn vào khi dán chữ từ nơi khác) khỏi tiêu đề, mô tả SEO **trước khi** kiểm, nên bộ kiểm khi ghi lên website không còn thấy chúng để chặn: chữ bị lặng lẽ sửa rồi ghi, thay vì bị chặn kèm lời nhắc như thiết kế T-042.
+- Đã sửa: chữ SEO có ký tự điều khiển hay ký tự lạ nay bị **Chặn kèm câu báo** ở mọi đường (ô sửa trên bước SEO, khung chép sang SiteSEO, ghi lên website), gợi ý AI có các ký tự đó bị bỏ. Tab, xuống dòng vẫn chỉ được gộp thành dấu cách như trước.
+- Kèm theo: bài có mục «Câu hỏi thường gặp» mà chưa có câu hỏi đúng dạng thì phần Schema nói rõ điều đó (trước đó báo nhầm «chưa có mục Hỏi đáp»).
+
+### Nguyên nhân và cách sửa
+
+| Chỗ | Trước | Sửa | Test |
+|---|---|---|---|
+| `client._seo_text` (`seo_app/wordpress/client.py`, Chỉ Huy duyệt mở phạm vi, chỉ trong hàm này) | Kiểm `_CONTROL_CHARS` trên chữ **đã** chuẩn hóa; từ `94ba458` `normalize_meta` bỏ ký tự Cc nên kiểm không bao giờ thấy | Xét trên **chữ gốc** ký tự điều khiển không phải khoảng trắng (`_CONTROL_CHARS.match(ch) and not ch.isspace()`); tab, xuống dòng vẫn gộp (`test_text_is_normalized_before_sending` của T-042 vẫn qua). Không đổi `_has_shortcode`, `_SHORTCODE_OPEN`, `_drop_invisible`. Commit `1637957` | 15 ca hỏng qua lại: `test_bad_text_is_blocked_before_any_request` (6), `test_more_bad_text_is_blocked_before_any_request` (9) |
+| Bộ kiểm meta `check_title`, `check_description` (`meta.py`) | Chữ người dùng có ký tự điều khiển, ký tự lạ: `normalize_meta` lặng lẽ bỏ, kết quả Nên | `has_odd_chars(raw)` (Cc trừ khoảng trắng, Cs, Co, Cn, xét trên chữ gốc) → **Chặn** kèm câu «… có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác). Xóa ô rồi gõ lại chữ thường.»; `value` vẫn là chữ đã chuẩn hóa. `siteseo_copy` theo đó trả `None` | `test_user_text_with_odd_chars_is_blocked` (9 ký tự), `test_whitespace_control_chars_still_become_spaces` |
+| Ô sửa trên giao diện → `DraftMetaVersions` (`drafts.py`, trong khối SEO) | Giao diện lưu bản người dùng sửa qua `DraftMetaVersions`, mà `_seo_text` gọi `normalize_meta`: ký tự lạ bị bỏ **trước** khi bộ kiểm nhìn, nên ô sửa không bao giờ bị Chặn | `_seo_text` chỉ chuẩn hóa nhẹ: NFC, gộp khoảng trắng, bỏ surrogate lẻ (không lưu, không hiện được); giữ ký tự lạ để bộ kiểm Chặn | `test_control_chars_blocked_on_every_path_but_whitespace_is_not` (chuỗi ô sửa → nháp → kiểm → chép → client), `test_odd_chars_in_saved_meta_are_kept_for_the_checker`, `test_lone_surrogate_in_meta_is_dropped` |
+| Gợi ý AI (`_ai_text`) | Ký tự lạ bị bỏ rồi gợi ý được nhận | Gợi ý có ký tự lạ trên chữ gốc bị **bỏ** | `test_ai_json_with_control_chars_is_rejected` |
+| Đuôi thương hiệu (`resolve_brand_suffix`) | Ký tự lạ bị bỏ khỏi đuôi trong cấu hình | Coi là cấu hình sai: dùng « | Pro-Metal» (như khi có thẻ HTML, `%%`) | `test_brand_suffix_with_odd_chars_falls_back_to_default` |
+| `seo_write_problem` | Gọi client với chữ đã chuẩn hóa | Không đổi: client nay xét chữ gốc; `siteseo_copy` đưa vào chữ đã qua bộ kiểm meta (chữ có ký tự lạ đã Chặn ở bước trước) | như trên |
+| Câu FAQ (`schema.py`, góp ý 4 của Họa Sĩ) | Có mục «Câu hỏi thường gặp» mà chưa có câu hỏi đúng dạng: «Bài chưa có mục Hỏi đáp…» | `MSG_NO_FAQ_QUESTION`: «Mục Hỏi đáp chưa có câu hỏi đúng dạng: mỗi câu hỏi là tiêu đề con (###) hay dòng in đậm, kết thúc bằng dấu hỏi, câu trả lời nằm ngay bên dưới.» | `test_faq_section_without_proper_questions_says_so` (3) |
+
+Rà các chỗ khác dùng `normalize_meta`: `seo_app/images/alt.py`, `seo_app/images/html.py` (alt, chú thích ảnh) đổi ký tự điều khiển thành dấu cách **trước** khi gọi `normalize_meta`, nên không yếu đi (từ lượt 1 chỉ bỏ thêm Cs, Co, Cn); `workflow.meta` chỉ chuẩn hóa từ khóa; `check_slug` không dùng `normalize_meta` (chỉ nhận `a-z0-9-`, ký tự điều khiển là Chặn). Các file test ảnh, alt chạy lại ở mục Bằng chứng.
+
+Test của tôi đổi theo (trước đó ghi hành vi «lặng lẽ bỏ ký tự»): `test_user_text_drops_odd_chars` → `test_user_text_with_odd_chars_is_blocked`, `test_ai_json_with_control_chars_is_cleaned` → `…_is_rejected`, `test_brand_suffix_drops_odd_chars` → `…_falls_back_to_default`, `test_odd_chars_in_saved_meta_are_cleaned` → `…_are_kept_for_the_checker`. Không đổi test của người khác; mọi test Soi Lỗi T-041 (kể cả `test_lc_t036_1_meta_text_never_keeps_odd_chars`) và T-042 qua.
+
+### Vì sao lượt 1 không thấy
+
+Lượt 1 đổi `normalize_meta` (hàm dùng chung) mà tôi không tìm hết nơi gọi: `seo_app/wordpress/client.py` gọi nó (nhập muộn trong `_seo_text`), nhưng các file test client WordPress không có trong danh sách test tôi chạy. Lượt này tôi chạy thêm mọi file test có `WordPressClient`, `set_seo_meta`, `_seo_text` (theo yêu cầu Chỉ Huy) và các file test ảnh/alt (vì `images/alt.py`, `images/html.py` cũng gọi `normalize_meta`).
+
+### Bằng chứng lượt 3
+
+```
+$ uv run pytest tests/test_wordpress_seo_meta_t042.py tests/test_soi_loi_t042.py   # sau 1637957
+388 passed in 19.14s
+
+$ uv run pytest <61 file, tại ee1de90: 30 file có WordPressClient / set_seo_meta / _seo_text (kể cả
+    test_t041_seo_ui.py), meta/schema/T-036 → T-041, nháp (cả test_storage_send_state.py,
+    test_t086_send_state.py của T-086), ảnh/alt (test_ai_images, test_soi_loi_t050, t052, t062,
+    t065, t068, t071, t081, test_t062_alt_prompt, test_t081_alt_gach_cheo), test_app_pages.py>
+8078 passed, 9 skipped, 69 xfailed in 1195.72s (0:19:55)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Ghi chú quy trình: trong lúc sửa test, một lần ghi file bằng script bị lỗi mã hóa làm `tests/test_t041_drafts_seo.py` thành rỗng; tôi lấy lại đúng bản đã commit bằng `git show HEAD:… > …` (không dùng `checkout --`), rồi sửa lại bằng công cụ sửa file. Không mất gì.
 
 ## Câu hỏi cho chủ dự án
 
