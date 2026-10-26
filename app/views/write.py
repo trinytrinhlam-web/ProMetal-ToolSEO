@@ -47,6 +47,7 @@ import tomllib
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import streamlit as st
 
@@ -56,7 +57,12 @@ from seo_app.ai.base import ImageInput
 from seo_app.config import load_settings
 from seo_app.content import ContentWriter, Outline, OutlineItem, Research, Section, load_rules
 from seo_app.content.models import SCORE_LABELS
-from seo_app.content.rules import find_missing, load_alt_rules, load_image_settings
+from seo_app.content.rules import (
+    find_missing,
+    load_alt_rules,
+    load_image_settings,
+    load_meta_rules,
+)
 from seo_app.content.workflow import apply_flag
 from seo_app.images import process as image_process
 from seo_app.images.alt import suggest_alt
@@ -72,19 +78,26 @@ from seo_app.images.tags import (
     is_ai_name,
     tags_for_image,
 )
+from seo_app.onpage import links as onpage_links
+from seo_app.onpage import meta as onpage_meta
+from seo_app.onpage.schema import build_article_faq
 from seo_app.sanitize import escape_link_syntax, unbreak_autolinks, unescape_link_syntax
 from seo_app.storage import DraftError, DraftPart, DraftSnapshot, DraftStore, new_draft_id
 from seo_app.storage import drafts as draft_storage
 from seo_app.storage import image_tags as tag_storage
+from seo_app.storage import site_index as site_storage
 from seo_app.storage.drafts import (
     CheckedImage,
     DraftImage,
+    DraftLink,
+    DraftMetaVersions,
+    DraftSeo,
     SendState,
     check_chosen_image,
     check_draft_images,
 )
 from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
-from seo_app.text import escape_markdown, markdown_link, paragraphs_to_html, slugify
+from seo_app.text import escape_markdown, markdown_link, paragraphs_to_html
 from seo_app.wordpress.client import DraftImage as WordPressImage
 from seo_app.wordpress.client import DraftImagesError, WordPressClient, WordPressError
 from seo_app.wordpress.shortcodes import find_shortcodes
@@ -106,6 +119,7 @@ COMPOSE_PREFIXES = (
     "ver-",
     "editing-",
     "manual-",
+    "seo_",  # bước SEO (T-041): các bản meta, slug, liên kết nội bộ, schema, công tắc ghi SEO
     *IMAGE_PREFIXES,
 )
 # Khóa của cả bài (không theo phần) bị xóa cùng bài: cửa sổ chọn ảnh, kết quả gửi nháp, bản sao
@@ -124,7 +138,7 @@ COMPOSE_KEYS = (
 # nháp không lưu thiếu). Sang trang khác rồi quay lại thì trang này không chạy nên không gán lại
 # được: lấy lại từ bản sao ``_kept`` (``remember_inputs``).
 KEEP_PREFIXES = ("real-", "h-", "kind-", "prompt-", "alt-", "cap-", "altok-")
-KEEP_KEYS = ("keyword", "outline_title", "step", "_featured")
+KEEP_KEYS = ("keyword", "outline_title", "step", "_featured", "seo_slug", "seo_use_faq")
 DRAFT_FLAGS = ("draft_id", "_draft_saved_json", "_draft_saved_at", "_draft_baseline")
 
 # Chỗ cần ảnh (T-056). Nhãn của segmented_control cố định giữa các lần chạy.
@@ -205,10 +219,6 @@ def init_state() -> None:
     S.setdefault("review", None)
     S.setdefault("auto_fixed", 0)
     S.setdefault("ignored_flags", set())
-    S.setdefault("title_v", 0)
-    S.setdefault("desc_v", 0)
-    S.setdefault("meta_title", demo.META_TITLES[0])
-    S.setdefault("meta_desc", demo.META_DESCRIPTIONS[0])
     if "_goto" in S:  # đổi bước sau khi AI chạy xong (phải đặt trước khi vẽ thanh bước)
         S.step = S.pop("_goto")
 
@@ -384,6 +394,7 @@ def snapshot() -> DraftSnapshot:
         review=S.review,
         auto_fixed=S.auto_fixed,
         ignored_flags=S.ignored_flags,
+        seo=seo_snapshot(),
     )
 
 
@@ -422,6 +433,7 @@ def open_draft(draft_id: str) -> None:
         S[f"img-{pid}"] = part.image
         S.part_ids.append(pid)
     restore_images(snap)
+    restore_seo(snap.seo)
     S.review = snap.review
     S.auto_fixed = snap.auto_fixed
     S.ignored_flags = set(snap.ignored_flags)
@@ -1549,12 +1561,6 @@ def move_item(uid: int, delta: int) -> None:
         S.outline_ids = ids
 
 
-def next_meta(kind: str) -> None:
-    options = demo.META_TITLES if kind == "title" else demo.META_DESCRIPTIONS
-    S[f"{kind}_v"] = (S[f"{kind}_v"] + 1) % len(options)
-    S["meta_title" if kind == "title" else "meta_desc"] = options[S[f"{kind}_v"]]
-
-
 def demo_toast(message: str) -> None:
     st.toast(f"Bản demo: {message}", icon="🧪")
 
@@ -1863,41 +1869,420 @@ def step_write(writer: ContentWriter | None) -> None:
     right.button("Tiếp: SEO →", type="primary", on_click=go, args=(3,))
 
 
-def count_badge(n: int, low: int, high: int) -> str:
-    color = "green" if low <= n <= high else "orange"
-    return f":{color}-badge[{n} ký tự · nên {low}–{high}]"
+# ----- bước SEO (T-041) -----------------------------------------------------------------------
+#
+# Logic ở ``seo_app/onpage`` (Thợ Máy); ở đây chỉ nối giao diện. Chữ lấy từ website (tiêu đề bài
+# đã đăng trong câu báo kiểm trùng, cột «Trỏ tới bài») và chữ AI chỉ hiện bằng chữ thuần
+# (``escape_markdown``, ô bảng, ``st.code``), không bao giờ qua ``unsafe_allow_html`` (U1; điều kiện
+# Lá Chắn T-036 số 5, T-037, T-039 2c). Schema FAQ chỉ hiện bằng ``st.code`` (Lá Chắn T-038 đk 3).
+
+SEO_LABELS = {"title": "Meta title", "description": "Meta description"}
+LEVEL_BADGES = {
+    onpage_meta.Level.GOOD: ("green", "Nên"),
+    onpage_meta.Level.WARN: ("orange", "Cảnh báo"),
+    onpage_meta.Level.BLOCK: ("red", "Chặn"),
+}
+# ``select_candidates`` luôn báo câu này khi bài hướng dẫn chưa có phiếu giao bài; app chưa nhập
+# phiếu giao bài nên chủ dự án không làm gì được với câu này: không hiện (góp ý G4 Soi Lỗi T-041).
+NO_ORDER_NOTICE = "Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài)."
+MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
 
 
-def step_seo() -> None:
-    demo_note("meta, schema và liên kết nội bộ thật sẽ làm ở Giai đoạn 4.")
-    slug = slugify(keyword()) or demo.SLUG
+@st.cache_resource(show_spinner=False)
+def _site_store_at(path: str) -> site_storage.SiteIndexStore:
+    return site_storage.SiteIndexStore(Path(path))
+
+
+def site_store() -> site_storage.SiteIndexStore:
+    # Đọc đường dẫn lúc chạy (không lúc import) để test trỏ được file cache sang thư mục tạm.
+    return _site_store_at(str(site_storage.DEFAULT_SITE_INDEX_FILE))
+
+
+def ask_reload_listing() -> None:
+    S._reload_listing = True
+
+
+def published_listing() -> site_storage.SiteListing:
+    """Danh sách bài đã đăng (kiểm trùng, liên kết nội bộ), giữ trong phiên. Lần đầu và khi bấm
+    «Tải lại danh sách bài» thì hỏi kho cache / website. Chưa kết nối WordPress hay tải lỗi: câu báo
+    nhẹ, các phần khác của bước SEO vẫn dùng được."""
+    refresh = bool(S.pop("_reload_listing", False))
+    if refresh or "_site_listing" not in S:
+        client, _problem = wordpress_client()
+        with st.spinner("Đang tải danh sách bài đã đăng trên website…"):
+            S._site_listing = site_storage.site_listing(site_store(), client, refresh=refresh)
+    return S._site_listing
+
+
+def brand_suffix() -> str | None:
+    """Đuôi thương hiệu trong mục ``[meta]`` của config/content.toml; mục sai thì đuôi mặc định
+    (lỗi hiện ở nút AI gợi ý meta, như ``alt_limits``)."""
+    try:
+        return load_meta_rules().brand_suffix
+    except AIError:  # ContentRulesError
+        return None
+
+
+def meta_versions(field: str) -> list[str]:
+    return S.get(f"seo_{field}_versions", [])
+
+
+def meta_index(field: str) -> int:
+    return S.get(f"seo_{field}_ver", 0)
+
+
+def meta_text(field: str) -> str:
+    """Bản đang dùng của ô meta (title chưa gắn đuôi thương hiệu)."""
+    versions = meta_versions(field)
+    index = meta_index(field)
+    return versions[index] if 0 <= index < len(versions) else ""
+
+
+def set_meta_versions(field: str, versions: list[str], current: int) -> None:
+    """Các bản của một ô meta, qua ``DraftMetaVersions`` như lúc lưu nháp (chuẩn hóa chữ, tối đa
+    20 bản, không bao giờ bỏ bản đang dùng), rồi đưa bản đang dùng vào ô sửa. Gọi trước khi vẽ ô."""
+    kept = DraftMetaVersions(versions=versions, current=current)
+    S[f"seo_{field}_versions"] = kept.versions
+    S[f"seo_{field}_ver"] = kept.current
+    S[f"seo_{field}"] = kept.text
+
+
+def add_meta_versions(field: str, texts: list[str]) -> None:
+    """Thêm bản mới (gợi ý AI, chữ người dùng sửa), dùng bản mới đầu tiên; bản cũ để quay lại."""
+    versions = meta_versions(field)
+    set_meta_versions(field, [*versions, *texts], len(versions))
+
+
+def meta_edited(field: str) -> None:
+    """Người dùng sửa ô meta: chữ sửa thành một bản mới (vẫn quay lại được bản trước)."""
+    text = S.get(f"seo_{field}", "")
+    if text != meta_text(field):
+        add_meta_versions(field, [text])
+
+
+def meta_step(field: str, delta: int) -> None:
+    """↶ / ↷: về bản trước, tới bản sau."""
+    versions = meta_versions(field)
+    if versions:
+        index = min(max(meta_index(field) + delta, 0), len(versions) - 1)
+        set_meta_versions(field, versions, index)
+
+
+def suggest_meta(writer: ContentWriter, which: str) -> None:
+    """AI gợi ý meta (``which``: "title", "description" hay "both"; viết lại riêng một ô thì ô kia
+    giữ nguyên). Gợi ý đã qua bộ kiểm của ``ContentWriter.meta``; gợi ý đạt thành các bản mới."""
+    suffix = brand_suffix()
+    result = ai_call(
+        "AI đang gợi ý meta…",
+        writer.meta,
+        keyword(),
+        S.article_title,
+        current_parts(),
+        which,
+        current_title=meta_text("title"),
+        current_description=meta_text("description"),
+    )
+    if result is None:
+        return
+    if result.titles:  # đã gắn đuôi khi còn chỗ: ô sửa giữ title chưa gắn đuôi
+        add_meta_versions("title", [onpage_meta.strip_brand(t, suffix) for t in result.titles])
+    if result.descriptions:
+        add_meta_versions("description", list(result.descriptions))
+
+
+def check_lines(*checks: onpage_meta.FieldCheck, length: int | None = None) -> None:
+    """Huy hiệu mức chung (Nên / Cảnh báo / Chặn, kèm số ký tự nếu có) và từng câu báo. Câu báo
+    kiểm trùng có tên bài lấy từ website: chữ thuần qua ``escape_markdown`` (LC-T036 số 5)."""
+    color, name = LEVEL_BADGES[onpage_meta.worst(check.level for check in checks)]
+    count = "" if length is None else f" · {length} ký tự"
+    st.markdown(f":{color}-badge[{name}{count}]")
+    for check in checks:
+        for message in check.messages:
+            st.caption(escape_markdown(message))
+
+
+def meta_field(
+    writer: ContentWriter | None, field: str, posts: list, suffix: str | None
+) -> onpage_meta.FieldCheck:
+    """Một ô meta: ô sửa, 🔄 AI viết lại riêng ô này, ↶ ↷ bản trước/sau, đếm ký tự theo chữ sẽ lên
+    Google (title tính cả đuôi thương hiệu), kiểm trùng với bài đã đăng. Trả kết quả kiểm."""
+    label = SEO_LABELS[field]
+    count = len(meta_versions(field))
+    box, tools = st.columns([5, 2], vertical_alignment="bottom")
+    with tools, st.container(horizontal=True, gap="small"):  # nút vẽ trước ô (đổi được chữ ô)
+        rewrite = st.button(
+            "🔄", key=f"seo-ai-{field}", disabled=writer is None, help=f"AI viết lại {label}"
+        )
+        st.button(
+            "↶",
+            key=f"seo-undo-{field}",
+            on_click=meta_step,
+            args=(field, -1),
+            help="Về bản trước",
+            disabled=meta_index(field) == 0,
+        )
+        st.button(
+            "↷",
+            key=f"seo-redo-{field}",
+            on_click=meta_step,
+            args=(field, 1),
+            help="Tới bản sau",
+            disabled=meta_index(field) >= count - 1,
+        )
+    if rewrite and writer is not None:
+        suggest_meta(writer, field)
+    S.setdefault(f"seo_{field}", meta_text(field))
+    widget = box.text_input if field == "title" else box.text_area
+    options = {} if field == "title" else {"height": 90}
+    widget(
+        label,
+        key=f"seo_{field}",
+        on_change=meta_edited,
+        args=(field,),
+        max_chars=draft_storage.MAX_SEO_TEXT_CHARS,
+        **options,
+    )
+    if len(meta_versions(field)) > 1:
+        st.caption(f"Bản {meta_index(field) + 1}/{len(meta_versions(field))}")
+    if field == "title":
+        check = onpage_meta.check_title(meta_text(field), suffix)
+        duplicate = onpage_meta.check_title_duplicates(check.value, posts)
+    else:
+        check = onpage_meta.check_description(meta_text(field))
+        duplicate = onpage_meta.check_description_duplicates(check.value, posts)
+    check_lines(check, duplicate, length=check.length)
+    return check
+
+
+def slug_edited() -> None:
+    """Slug người dùng gõ: chỉ đổi về dạng không dấu (``make_slug(given=…)``), không cắt từ."""
+    raw = S.get("seo_slug", "")
+    S.seo_slug = onpage_meta.make_slug("", given=raw) if raw.strip() else ""
+
+
+def suggest_slug() -> None:
+    S.seo_slug = onpage_meta.make_slug(keyword() or sent_title())
+
+
+def slug_field(posts: list) -> str:
+    box, tools = st.columns([5, 2], vertical_alignment="bottom")
+    tools.button("🔄", key="seo-slug-suggest", on_click=suggest_slug, help="Gợi ý lại từ từ khóa")
+    S.setdefault("seo_slug", onpage_meta.make_slug(keyword() or sent_title()))
+    box.text_input(
+        "Đường dẫn (slug)",
+        key="seo_slug",
+        on_change=slug_edited,
+        max_chars=draft_storage.MAX_SEO_TEXT_CHARS,
+    )
+    slug = S.seo_slug
+    check_lines(onpage_meta.check_slug(slug), onpage_meta.check_slug_duplicates(slug, posts))
+    return slug
+
+
+def site_host() -> str:
+    """Tên miền để xem trước kiểu Google (chỉ để hiện; chưa khai báo WordPress thì chữ mẫu)."""
+    return urlsplit(load_settings().wordpress_url).netloc or "website-cua-ban.vn"
+
+
+def siteseo_panel(slug: str, suffix: str | None) -> None:
+    """Chữ cuối cùng để chép, dán tay vào hộp SiteSEO (khi chưa bật «Ghi SEO lên website»).
+    Trường bị Chặn không cho chép, hiện câu báo."""
+    copy = onpage_meta.siteseo_copy(
+        meta_text("title"), meta_text("description"), slug, suffix=suffix
+    )
+    st.markdown("**Chép sang SiteSEO**")
+    st.caption(
+        "Bấm biểu tượng ở góc từng khung để chép, rồi dán vào hộp SiteSEO của bài nháp. Muốn phần "
+        "mềm tự ghi: bật «Ghi SEO lên website» ở bước Xuất bản."
+    )
+    labels = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
+    values = (copy.title, copy.description, copy.slug)
+    for label, value, check in zip(labels, values, copy.checks, strict=True):
+        if value is None:
+            st.caption(f"{label}: chưa chép được. {escape_markdown(' '.join(check.messages))}")
+        else:
+            st.caption(label)
+            st.code(value, language=None, wrap_lines=True)
+
+
+def links_panel(writer: ContentWriter | None, listing: site_storage.SiteListing) -> None:
+    """Liên kết nội bộ: AI gợi ý chỗ đặt link tới bài đã đăng (bài đích do code chọn), bảng «Dùng /
+    Cụm từ trong bài / Trỏ tới bài». Không gắn link nào ở đây: link chỉ chèn lúc dựng bài gửi đi
+    (``apply_links``, Giai đoạn 5). Không hiện địa chỉ bài."""
+    st.markdown("**Liên kết nội bộ** — gợi ý từ các bài đã có trên website")
+    candidates = None
+    if listing.index is not None:
+        candidates = onpage_links.select_candidates(
+            listing.index,
+            kind=onpage_links.ArticleKind.GUIDE,
+            title=sent_title(),
+            keyword=keyword(),
+        )
+        for notice in candidates.notices:
+            if notice.message != NO_ORDER_NOTICE:
+                st.caption(f"⚠️ {escape_markdown(notice.message)}")
+    row = st.container(horizontal=True, gap="small")
+    if row.button(
+        "✨ AI gợi ý liên kết",
+        key="seo-links-ai",
+        disabled=writer is None or candidates is None or not candidates.items,
+    ):
+        review = ai_call(
+            "AI đang tìm chỗ đặt liên kết…",
+            writer.internal_links,
+            S.article_title,
+            current_parts(),
+            candidates,
+        )
+        if review is not None:
+            S.seo_links = [DraftLink.from_link(link, use=True) for link in review.links]
+            S.seo_link_notes = list(review.rejected)
+            S.seo_links_nav = S.get("seo_links_nav", 0) + 1  # bảng mới: bỏ lựa chọn cũ
+    row.button("🔄 Tải lại danh sách bài", key="seo-reload", on_click=ask_reload_listing)
+    if candidates is not None and not candidates.items:
+        st.caption("Chưa có bài đã đăng nào cùng chủ đề để đặt liên kết.")
+    for note in S.get("seo_link_notes", []):  # câu cố định, không chép chữ AI
+        st.caption(escape_markdown(note))
+    links: list[DraftLink] = S.get("seo_links", [])
+    if not links:
+        st.caption("Chưa có liên kết nội bộ nào: bấm «AI gợi ý liên kết».")
+        return
+    titles = {item.id: item.title for item in listing.index.items} if listing.index else {}
+    rows = [
+        {
+            "Dùng": link.use,
+            "Cụm từ trong bài": link.anchor,
+            "Trỏ tới bài": titles.get(link.post_id) or f"bài #{link.post_id}",
+        }
+        for link in links
+    ]
+    edited = st.data_editor(
+        rows,
+        hide_index=True,
+        disabled=["Cụm từ trong bài", "Trỏ tới bài"],
+        key=f"seo_links_table_{S.get('seo_links_nav', 0)}",
+    )
+    if hasattr(edited, "to_dict"):
+        edited = edited.to_dict("records")
+    S.seo_links = [
+        link if link.use == bool(row["Dùng"]) else link.model_copy(update={"use": not link.use})
+        for link, row in zip(links, edited, strict=True)
+    ]
+
+
+def faq_panel() -> None:
+    """Schema FAQ dựng từ mục Hỏi đáp của bài: chỉ hiện bằng ``st.code`` (Lá Chắn T-038 đk 3); câu
+    báo là chữ cố định (không chép chữ của bài)."""
+    with st.expander("Schema (dữ liệu có cấu trúc cho Google)"):
+        result = build_article_faq(current_parts())
+        for issue in result.issues:
+            st.caption(f"⚠️ {escape_markdown(issue.message)}")
+        if result.json_ld:
+            st.checkbox("Dùng schema Hỏi đáp (FAQ) này cho bài", key="seo_use_faq")
+            st.code(result.json_ld, language="json")
+
+
+def step_seo(writer: ContentWriter | None) -> None:
+    listing = published_listing()
+    posts = onpage_meta.site_posts(listing.index)
+    suffix = brand_suffix()
+    if listing.notice:
+        st.caption(f"ℹ️ {escape_markdown(listing.notice)}")
     left, right = st.columns([3, 2], gap="large")
     with left:
-        a, b = st.columns([6, 1], vertical_alignment="bottom")
-        a.text_input("Meta title", key="meta_title")
-        b.button("🔄", key="re-title", on_click=next_meta, args=("title",), help="Gợi ý khác")
-        st.markdown(count_badge(len(S.meta_title), 50, 60))
-        a, b = st.columns([6, 1], vertical_alignment="bottom")
-        a.text_area("Meta description", key="meta_desc", height=90)
-        b.button("🔄", key="re-desc", on_click=next_meta, args=("desc",), help="Gợi ý khác")
-        st.markdown(count_badge(len(S.meta_desc), 120, 155))
-        st.text_input("Đường dẫn (slug)", slug)
+        empty = not meta_versions("title") and not meta_versions("description")
+        if empty and st.button(
+            "✨ AI gợi ý tiêu đề và mô tả SEO",
+            key="seo-ai-both",
+            type="primary",
+            disabled=writer is None,
+        ):
+            suggest_meta(writer, "both")
+        title = meta_field(writer, "title", posts, suffix)
+        meta_field(writer, "description", posts, suffix)
+        slug = slug_field(posts)
     with right:
         st.markdown("**Xem trước trên Google**")
-        st.markdown(
-            ui.serp_preview(S.meta_title, f"suachuacuasat.com › {slug}", S.meta_desc),
+        st.markdown(  # ``serp_preview`` escape mọi chữ (U1)
+            ui.serp_preview(title.value, f"{site_host()} › {slug}", meta_text("description")),
             unsafe_allow_html=True,
         )
-    st.markdown("**Liên kết nội bộ** — gợi ý từ các bài đã có trên website")
-    st.data_editor(
-        demo.INTERNAL_LINKS, hide_index=True, disabled=["Cụm từ trong bài", "Trỏ tới bài"]
-    )
-    with st.expander("Schema (dữ liệu có cấu trúc cho Google)"):
-        st.code(demo.SCHEMA, language="json")
+        siteseo_panel(slug, suffix)
+    links_panel(writer, listing)
+    faq_panel()
     st.divider()
     a, b = st.columns([1, 4])
     a.button("← Viết & kiểm tra", on_click=go, args=(2,))
     b.button("Tiếp: xuất bản →", type="primary", on_click=go, args=(4,))
+
+
+def seo_snapshot() -> DraftSeo:
+    """Lựa chọn ở bước SEO → nháp (tự lưu như bước 1–3)."""
+    return DraftSeo(
+        title=DraftMetaVersions(versions=meta_versions("title"), current=meta_index("title")),
+        description=DraftMetaVersions(
+            versions=meta_versions("description"), current=meta_index("description")
+        ),
+        slug=S.get("seo_slug", ""),
+        links=list(S.get("seo_links", [])),
+        use_faq=bool(S.get("seo_use_faq", False)),
+    )
+
+
+def restore_seo(seo: DraftSeo) -> None:
+    """Nháp → bước SEO. Phần SEO hỏng trong file đã thành trống (``DraftSeo``); chữ vẫn được kiểm
+    lại bằng ``seo_app.onpage`` mỗi lần hiện."""
+    for field, versions in (("title", seo.title), ("description", seo.description)):
+        if versions.versions:
+            S[f"seo_{field}_versions"] = list(versions.versions)
+            S[f"seo_{field}_ver"] = versions.current
+    if seo.slug:
+        S.seo_slug = seo.slug
+    if seo.links:
+        S.seo_links = list(seo.links)
+    S.seo_use_faq = seo.use_faq
+
+
+def seo_request() -> dict[str, str] | None:
+    """Chữ SEO sẽ ghi vào hộp SiteSEO sau khi tạo nháp (công tắc «Ghi SEO lên website» bật): đúng
+    chữ của «Chép sang SiteSEO» (title đã gắn đuôi bằng ``with_brand``, trường bị Chặn để trống),
+    kèm từ khóa chính. Lấy trước khi gửi (đọc ``st.session_state``)."""
+    if not S.get("seo_write"):
+        return None
+    copy = onpage_meta.siteseo_copy(
+        meta_text("title"), meta_text("description"), S.get("seo_slug", ""), suffix=brand_suffix()
+    )
+    return {
+        "title": copy.title or "",
+        "description": copy.description or "",
+        "focus_keyword": keyword(),
+    }
+
+
+def write_seo(client: WordPressClient, holder: dict) -> None:
+    """Ghi SEO vào hộp SiteSEO của bài nháp **vừa tạo bằng chính client này** (điều kiện Lá Chắn
+    T-042: chỉ khi bật công tắc; không nạp mã bài nào vào client, không dùng mã bài ghi trong nháp
+    (T-086 Ghi nhận 2); client không giữ trong ``st.cache_resource``). Chạy trong
+    ``send_and_record``: không đọc/ghi ``st.session_state``. Ghi qua Abilities xong thì hỏi lại bài
+    còn là nháp không (LC-T042-2). Kết quả là câu tiếng Việt cố định của client, hiện chữ thường."""
+    request, result = holder.get("seo"), holder.get("result")
+    if not request or not result or not result.get("ok"):
+        return
+    post_id = result["post_id"]
+    try:
+        seo = client.set_seo_meta(post_id, **request)
+    except WordPressError as exc:
+        result["seo"] = str(exc)
+        return
+    message = seo.message
+    if seo.written and seo.route == "abilities":
+        try:
+            # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai; phiếu
+            # sửa client sau nên mở hàm này ra).
+            client._own_draft(post_id)
+        except WordPressError as exc:
+            message = f"{message} {MSG_SEO_RECHECK} {exc}"
+    result["seo"] = message
 
 
 def sent_text(text: str) -> str:
@@ -1976,9 +2361,11 @@ def shortcode_findings(ready: list[int]) -> list[tuple[str, str]]:
     return found
 
 
-def wordpress_client() -> tuple[WordPressClient | None, str]:
+def wordpress_client(write_seo: bool = False) -> tuple[WordPressClient | None, str]:
+    """Client mới mỗi lần gọi (không ``st.cache_resource``: điều kiện Lá Chắn T-042). ``write_seo``:
+    công tắc «Ghi SEO lên website» (mặc định tắt)."""
     try:
-        return WordPressClient.from_settings(load_settings()), ""
+        return WordPressClient.from_settings(load_settings(), write_seo=write_seo), ""
     except WordPressError as exc:
         return None, str(exc)
 
@@ -2077,6 +2464,7 @@ def send_draft(client: WordPressClient, ready: list[int], previous_post: int | N
     title, parts = sent_title(), article_parts(uploads)
     draft = S.setdefault("draft_id", new_draft_id())
     holder = {"draft": draft, "result": None, "state": None, "done": threading.Event()}
+    holder["seo"] = seo_request()  # T-041: chữ ghi SiteSEO sau khi tạo nháp (công tắc bật)
     store = draft_store()
     with st.spinner("Đang gửi bài nháp và ảnh lên WordPress…", show_time=True):
         S._wp_sending = holder  # chỗ dừng cuối cùng trước khi gửi: dừng ở đây thì chưa gửi gì
@@ -2160,6 +2548,7 @@ def send_and_record(
         pending, post_id = False, result.post.id
     holder["state"] = (pending, post_id)
     record_outcome(store, holder)
+    write_seo(client, holder)  # T-041: sau khi đã ghi «đã gửi» vào nháp
 
 
 def record_outcome(store: DraftStore, holder: dict) -> None:
@@ -2317,6 +2706,8 @@ def send_result() -> None:
             f"Chưa ghi được kết quả gửi vào nháp ({escape_markdown(result['note'])}): mở lại nháp "
             "này sau sẽ thấy nhắc «chưa có kết quả», hãy kiểm trang quản trị trước khi gửi lại."
         )
+    if result.get("seo"):  # T-041: kết quả ghi SEO, câu cố định của client
+        st.info(escape_markdown(result["seo"]))
     if result.get("uploaded"):
         title = (
             "Ảnh đã lên thư viện Media"
@@ -2338,7 +2729,7 @@ def draft_panel() -> None:
         S.pop("_wp_checked", None)
         S.pop("_wp_again", None)
         S.pop("_wp_reset_guards", None)
-    client, problem = wordpress_client()
+    client, problem = wordpress_client(write_seo=bool(S.get("seo_write")))
     saved, saved_error = saved_send_state()  # đọc mỗi lần vẽ: mở lại nháp, phiên mới vẫn khóa
     spots = image_spots()
     states = {pid: slot_problem(pid) for pid in spots}
@@ -2382,6 +2773,14 @@ def draft_panel() -> None:
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox("Tạo thêm một bài nháp mới", key="_wp_again")
         allowed = allowed and again
+    st.toggle(  # T-041 (Lá Chắn T-042): mặc định tắt
+        "Ghi SEO lên website",
+        key="seo_write",
+        help=(
+            "Bật: ngay sau khi tạo bài nháp, phần mềm ghi tiêu đề SEO, mô tả SEO, từ khóa chính "
+            "(như ở bước SEO) vào hộp SiteSEO của chính bài nháp đó. Tắt: chép tay ở bước SEO."
+        ),
+    )
     if ready:
         # Nhắc ngay trước nút (Lá Chắn T-046 số 8, T-054 4b).
         st.warning(GPS_PUBLIC_WARNING)
@@ -2504,7 +2903,7 @@ elif S.step == 1:
 elif S.step == 2:
     step_write(writer)
 elif S.step == 3:
-    step_seo()
+    step_seo(writer)
 else:
     step_publish()
 

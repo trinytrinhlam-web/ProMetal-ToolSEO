@@ -109,37 +109,7 @@ BUSINESS_BRIEF = {
     "Điểm khác biệt": "Khảo sát tận nơi, ảnh công trình thật, bảo hành mối hàn",
 }
 
-# ----------------------------------------------------------------- bước 4: SEO
-
-META_TITLES = [
-    "So sánh inox 201 và 304: nên chọn loại nào cho cổng, lan can?",
-    "Inox 201 hay 304? Cách chọn đúng cho từng vị trí trong nhà",
-    "Inox 201 và 304 khác gì? Bảng chọn nhanh + ảnh thật sau 3 năm",
-]
-
-META_DESCRIPTIONS = [
-    "Inox 304 bền hơn 201 nhưng không phải chỗ nào cũng cần. Bảng chọn theo vị trí lắp, ảnh "
-    "thật sau 3 năm và cách kiểm tra khi nhận hàng.",
-    "Nhà gần biển, cổng ngoài trời hay lan can trong nhà? Xem nên dùng inox 201 hay 304, chênh "
-    "giá bao nhiêu và cách tránh bị tráo hàng.",
-]
-
-SLUG = "so-sanh-inox-201-va-304"
-
-INTERNAL_LINKS = [
-    {"Dùng": True, "Cụm từ trong bài": "cổng inox 304", "Trỏ tới bài": "Giá cổng inox 304"},
-    {"Dùng": True, "Cụm từ trong bài": "lan can cầu thang", "Trỏ tới bài": "Lan can cầu thang sắt"},
-    {"Dùng": False, "Cụm từ trong bài": "chống gỉ", "Trỏ tới bài": "Cách chống gỉ cửa sắt"},
-]
-
-SCHEMA = """{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "So sánh inox 201 và 304: nên chọn loại nào cho cổng, lan can?",
-  "image": "https://…/cong-inox-304-sau-3-nam.webp",
-  "author": {"@type": "Organization", "name": "ProMetal"}
-}
-+ FAQPage: 2 câu hỏi trong mục Hỏi đáp"""
+# ----------------------------------------------------------------- bước 5: Xuất bản
 
 CATEGORIES = ["Inox", "Cổng inox", "Lan can", "Bảo dưỡng"]
 
