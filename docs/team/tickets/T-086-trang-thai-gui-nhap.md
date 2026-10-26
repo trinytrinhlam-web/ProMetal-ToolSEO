@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (nên xong trước khi dùng nút «Gửi nháp» thường xuyên; trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-056 đã gộp |
-| Trạng thái | Lá Chắn ĐẠT CÓ ĐIỀU KIỆN, đang gộp |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -61,3 +61,4 @@ W1, W2, U1, F2.
 - 2026-10-26 10:53 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`801fbdf`): SL-T056-8 → -11, LC-T056-1 đã sửa thật; 2 Thấp mới SL-T086-1, -2. Giao **Lá Chắn rút gọn** (phiên Lá Chắn T-056) theo cách làm mới.
 - 2026-10-26 13:53 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`0782e9b`): LC-T056-1, SL-T056-8 → -11 đóng; 3 Thấp (LC-T086-1 mã bài từ 2⁶³ làm trang lỗi lặp lại; SL-T086-1 ghi «đang gửi» chưa «so rồi đặt» trong một giao dịch; SL-T086-2 ảnh xem trước chưa dựng từ đúng byte đã băm) → phiếu sửa sau (chờ chủ dự án duyệt lập); Thợ Máy: lưu băm ảnh đã duyệt trong `DraftImage` (phiếu nhỏ, chờ duyệt). Lần gửi thật đầu tiên: một bài, một ảnh, một tab. Thư Ký viết lại «Lời dặn tạm thời» README sau khi gộp (điều kiện 3 T-087). Gộp `main` trên máy (`f80181b`), đang chạy toàn bộ test.
 - 2026-10-26 13:55 (Chỉ Huy B): chủ dự án duyệt lập **T-089** (LC-T086-1, SL-T086-1, -2 + băm ảnh đã duyệt trong `DraftImage`).
+- 2026-10-26 15:08 (Chỉ Huy B): **đã gộp vào `main`** (Windows 14.032 test qua, 0 hỏng, 1 giờ 14 phút vì máy chạy song song 3 agent); xóa nhánh `team/T-086`, worktree `wt-T-086`.
