@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-26 18:09. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -53,12 +53,15 @@ Chỉ Huy B, cập nhật 2026-10-26 18:09. Agent chạy ở phiên con dưới 
 | [T-041](tickets/T-041-buoc-seo-that.md) Bước SEO thật (GĐ4) | `team/T-041` (`13a554c`, đã gộp `main` có T-086) | ✅ Thợ Máy 2 lượt phần logic | ⏳ Họa Sĩ nối giao diện (phiên "Họa Sĩ · T-056 màn hình chọn ảnh"); rồi Soi Lỗi, Lá Chắn toàn phiếu |
 | [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) Dọn client WordPress sau T-085 (GĐ4) | `team/T-088` (`b008dc8`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (1 Thấp) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-060 kiểm client WordPress") |
 | [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) Dọn gửi nháp sau T-086 (GĐ3) | `team/T-089` (`87ad51c`) | ✅ Họa Sĩ xong | ⏳ Soi Lỗi rút gọn (phiên "Soi Lỗi · T-056 kiểm màn hình chọn ảnh") |
-| [T-087](tickets/T-087-readme-chon-anh.md) lượt 3 README lời dặn tạm | `team/T-087-l3` (`4e4d301`) | ✅ Thư Ký lượt 3 xong | ⏳ Lá Chắn xem lại nhanh (phiên "Lá Chắn · T-056 kiểm màn hình chọn ảnh"), rồi gộp |
 | Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-090** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-26 18:55 · Chỉ Huy B
+
+- **Lá Chắn T-087 lượt 3 ĐẠT** (`c6b0eda`): gộp và đẩy `main` (`0fc0c68`, chỉ README). Đang chạy: Họa Sĩ T-041 giao diện, Lá Chắn T-088 (chờ test gộp thử), Soi Lỗi T-089.
 
 ### 2026-10-26 18:09 · Chỉ Huy B
 
