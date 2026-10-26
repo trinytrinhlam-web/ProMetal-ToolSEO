@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING
 
 from seo_app.ai import AIError, AIRouter
 from seo_app.content import prompts
@@ -25,6 +26,9 @@ from seo_app.content.models import (
 from seo_app.content.rules import ContentRules, MetaRules, find_banned, load_meta_rules
 from seo_app.onpage import meta as onpage_meta
 from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
+
+if TYPE_CHECKING:  # chỉ để ghi kiểu: onpage.links → storage → drafts → workflow (vòng nhập)
+    from seo_app.onpage.links import Candidates, LinkReview
 
 INTRO_HEADING = "Mở bài"
 
@@ -316,3 +320,30 @@ class ContentWriter:
                     " có link, giá hoặc cụm sáo rỗng). Bấm viết lại."
                 )
         return prompts.MetaSuggestions(titles=titles, descriptions=descriptions)
+
+    # 6. Gợi ý liên kết nội bộ (T-039 kiểm, T-041 gọi AI)
+    def internal_links(
+        self, title: str, parts: Sequence[Section], candidates: Candidates
+    ) -> LinkReview:
+        """AI gợi ý chỗ đặt link tới các bài đích do code chọn (``links.select_candidates``).
+
+        Điều kiện Lá Chắn T-039 số 2a: AI chỉ nhận ID và tiêu đề bài đích (không địa chỉ) trong
+        khung dữ liệu, chỉ trả ``LinkSuggestions``; code kiểm từng gợi ý (``check_suggestions``),
+        không dùng trường nào khác của câu trả lời. Việc ``links`` trong ``config/ai.toml`` bật
+        ``web_search`` thì từ chối (lời dặn có tiêu đề lấy từ website). Không có bài đích nào thì
+        không gọi AI. Gợi ý đạt là ``InternalLink`` (``LinkReview.links``); link chỉ được chèn
+        qua ``apply_links``/``place_links``.
+        """
+        from seo_app.onpage import links  # nhập muộn: links → storage → drafts → workflow
+
+        if not candidates.items:
+            return links.LinkReview((), (), ())
+        _, task = self.ai.get("links")
+        if task.web_search:
+            raise AIError(
+                "Việc gợi ý liên kết nội bộ không được bật web_search: xóa dòng web_search ở mục "
+                "[tasks.links] trong file config/ai.toml."
+            )
+        prompt = prompts.internal_links_prompt(title, parts, candidates.for_prompt())
+        raw = self._run("links", prompt, links.LinkSuggestions)
+        return links.check_suggestions(raw, parts, candidates)
