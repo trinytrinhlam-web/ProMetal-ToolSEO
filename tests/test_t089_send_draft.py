@@ -47,7 +47,7 @@ SEND = ui.SEND_LABEL
 UNSURE = "bài nháp có thể đã có trên website"
 HUGE_ID = 2**63
 NOTE = "website trả mã bài nháp lớn bất thường, app không ghi được vào nháp"
-ELSEWHERE = "Chưa gửi gì lên website: bài này vừa được gửi (hoặc đang gửi) ở một tab khác của app"
+ELSEWHERE = "Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi"
 
 
 def draft_id(at) -> str:
@@ -295,7 +295,7 @@ def test_chosen_preview_built_from_hashed_bytes(project_root, root, fake_ai, mon
 
 DIGEST = "a" * 64
 CHANGED = "Ảnh này khác bản bạn đã duyệt trước đó"
-OLD_APPROVAL = "ảnh có alt đã duyệt nhưng nháp chưa lưu «dấu vân tay»"
+OLD_APPROVAL = "ảnh có alt đã duyệt nhưng nháp không có «dấu vân tay»"
 
 
 def real_image(**changes) -> DraftImage:

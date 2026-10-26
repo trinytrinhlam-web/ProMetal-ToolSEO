@@ -179,13 +179,14 @@ MSG_APPROVED_OTHER_VERSION = (
     "«Đã duyệt»: xem lại ảnh, alt, chú thích rồi duyệt lại."
 )
 MSG_OLD_APPROVAL = (
-    "{count} ảnh có alt đã duyệt nhưng nháp chưa lưu «dấu vân tay» của ảnh lúc duyệt (nháp lưu "
-    "trước bản cập nhật này) nên app đã bỏ «Đã duyệt»: xem lại ảnh rồi duyệt lại ở bước Viết & "
+    "{count} ảnh có alt đã duyệt nhưng nháp không có «dấu vân tay» của ảnh lúc duyệt (ví dụ nháp "
+    "lưu trước bản cập nhật này) nên app đã bỏ «Đã duyệt»: xem lại ảnh rồi duyệt lại ở bước Viết & "
     "kiểm tra."
 )
 MSG_SENT_ELSEWHERE = (
-    "Chưa gửi gì lên website: bài này vừa được gửi (hoặc đang gửi) ở một tab khác của app. Xem lời "
-    "nhắc phía trên nút «Gửi nháp» rồi mới quyết định gửi thêm."
+    "Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi (thường do bài vừa được gửi, "
+    "hoặc đang gửi, ở một tab khác của app). Xem lời nhắc phía trên nút «Gửi nháp» rồi mới quyết "
+    "định gửi thêm."
 )
 MSG_FILE_REPLACED = (
     "nội dung file khác bản bạn đã xem và duyệt (file vừa bị thay bằng ảnh khác cùng tên). Xem "
@@ -2059,9 +2060,8 @@ def send_draft(
     - Một ảnh đặt ở hai chỗ, cùng alt và chú thích: dùng lại cùng một đối tượng (chỉ tải một lần).
     - Gửi bằng ``send_and_record`` (ghi «đang gửi» vào nháp nếu trạng thái gửi trong nháp vẫn là
       ``seen``, gửi, ghi kết quả vào đối tượng giữ kết quả và vào nháp, không có chỗ dừng nào ở
-      giữa), rồi ``apply_send``. Lỗi hiện đủ
-      (``send_result``); không rõ kết quả thì khóa nút tới khi người dùng xác nhận đã kiểm trang
-      quản trị. Không bao giờ tự gửi lại.
+      giữa), rồi ``apply_send``. Lỗi hiện đủ (``send_result``); không rõ kết quả thì khóa nút tới
+      khi người dùng xác nhận đã kiểm trang quản trị. Không bao giờ tự gửi lại.
     """
     library = image_library()
     try:
