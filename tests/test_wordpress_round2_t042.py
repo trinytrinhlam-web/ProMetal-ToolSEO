@@ -86,8 +86,10 @@ def test_upload_media_with_odd_answer_raises(fake_wp, client, answer):
 def test_upload_media_odd_fields_are_safe(fake_wp, client):
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 5, "source_url": 123}, {}))
     fake_wp.on("POST", "/wp-json/wp/v2/media/5", ["không phải dict"])
-    media = client.upload_media(b"x", "a.png", alt_text="ảnh")
-    assert (media.id, media.source_url, media.alt_text) == (5, "", "ảnh")
+    # T-085 (SL-T060-1): câu trả lời ghi đè không nói đúng ảnh 5 thì báo câu cố định, không vỡ.
+    with pytest.raises(WordPressError, match="thư viện Media") as err:
+        client.upload_media(b"x", "a.png", alt_text="ảnh")
+    assert "mã ảnh 5" in str(err.value)
 
 
 # ------------------------------------------------------------ SL-T042-5
