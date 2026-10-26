@@ -214,6 +214,20 @@ def _never_touch_real_drafts(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(drafts, "DEFAULT_DRAFTS_FILE", folder / "drafts.sqlite")
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_real_image_tags(monkeypatch, tmp_path_factory):
+    """Test không bao giờ đọc/ghi file thẻ ảnh sửa tay thật ``data/image_tags.sqlite`` (điều kiện
+    Lá Chắn T-052 f): trang Soạn bài đọc ``seo_app.storage.image_tags.DEFAULT_IMAGE_TAGS_FILE``
+    lúc chạy, nên trỏ nó sang thư mục tạm riêng cho từng test. Cache ảnh xem trước
+    (``seo_app.images.process.PREVIEW_CACHE_DIR``) do test giao diện ảnh tự trỏ sang thư mục tạm
+    (``tests/test_app_images.py``): một test của T-049 kiểm giá trị mặc định thật của nó.
+    """
+    import seo_app.storage.image_tags as image_tags
+
+    folder = tmp_path_factory.mktemp("the-anh")
+    monkeypatch.setattr(image_tags, "DEFAULT_IMAGE_TAGS_FILE", folder / "image_tags.sqlite")
+
+
 @pytest.fixture
 def project_root() -> Path:
     return PROJECT_ROOT

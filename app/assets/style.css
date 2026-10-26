@@ -33,9 +33,14 @@ mark.missing {
 }
 
 /* ---------- chỗ cần ảnh ---------- */
-[class*="st-key-img-"] {
+[class*="st-key-imgbox-"] {
   border-style: dashed !important;
   background: rgba(15, 123, 108, .04);
+}
+/* khung chọn ảnh từ thư mục (mở ngay trong chỗ cần ảnh) */
+.st-key-imgbrowser { background: rgba(127, 140, 135, .06); }
+.st-key-imgbrowser [data-testid="stImage"] img {
+  aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px;
 }
 .img-ph {
   aspect-ratio: 16 / 9; border-radius: 8px; display: grid; place-items: center;
