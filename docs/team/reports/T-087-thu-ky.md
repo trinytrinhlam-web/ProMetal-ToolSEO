@@ -4,7 +4,7 @@
 |---|---|
 | Agent | Thư Ký (`thu-ky`) · model: Claude Opus 5.5 |
 | Phiếu | [T-087](../tickets/T-087-readme-chon-anh.md) |
-| Ngày nộp | 2026-10-26 |
+| Ngày nộp | 2026-10-26 · lượt 2: 2026-10-26 (sửa LC-T087-1, -2 của Lá Chắn, mục «Lượt 2» cuối báo cáo) |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -163,3 +163,37 @@ Số dòng `app/views/write.py` theo `504ab15`.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-26): sửa LC-T087-1, LC-T087-2
+
+Theo biên bản [Lá Chắn T-087](T-087-la-chan.md) (ĐẠT CÓ ĐIỀU KIỆN, điều kiện 1, 2). Chỉ sửa `README.md`. Không làm điều kiện 3 (viết lại «Lời dặn tạm thời» khi T-086 gộp), như Chỉ Huy dặn.
+
+| Mã | Chỗ | Câu cũ | Câu mới |
+|---|---|---|---|
+| LC-T087-2 | `README.md:317` | «ai có đường dẫn ảnh đều mở được, kèm vị trí GPS còn trong ảnh. App **không tự xóa** … xóa trong **Media → Thư viện** của trang quản trị.» | «ảnh vào thư viện Media của website, mà WordPress cho **bất kỳ ai, không cần đăng nhập**, xem danh sách Media (kèm địa chỉ ảnh, alt, chú thích). Người lạ tìm được ảnh mà không cần ai gửi đường dẫn, mở ảnh là đọc được vị trí GPS còn trong ảnh. App **không tự xóa** … xóa trong **Media → Thư viện** của trang quản trị. Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao.» |
+| LC-T087-2 | `README.md:330` | «chọn ảnh app báo «📍 Ảnh có vị trí GPS». Gửi xong, …» | «chọn ảnh app báo «📍 Ảnh có vị trí GPS» **chụp ở nơi đã công khai** (xưởng, cửa hàng); đừng dùng ảnh nhà khách cho lần thử. Gửi xong, …» |
+| LC-T087-2 | `README.md:333` | «Xong thì xóa bài nháp và ảnh thử trong trang quản trị nếu không dùng.» | «Kiểm xong thì xóa ngay bài nháp và ảnh thử trong trang quản trị (**Bài viết → Nháp**, **Media → Thư viện**).» |
+| LC-T087-1 | `README.md:309` (thêm cuối mục 3) | (chưa có) | «Đoạn nằm ở **tiêu đề bài** hay **tiêu đề mục** thì chưa sửa được ở bước này: gửi nháp xong, mở bài trong WordPress và xóa đoạn đó **trước khi** bấm Lưu hay Đăng. (Cách khác: sửa tiêu đề ở bước **Dàn ý** rồi duyệt lại để AI viết lại toàn bài; cách này mất phần đã sửa tay và phải chọn lại ảnh.)» |
+
+**Chỗ khác câu đề xuất của Lá Chắn (đã kiểm code):**
+
+- `:317`: câu đề xuất có «Xóa rồi thì đường dẫn không mở được nữa». README viết «Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao». Lý do: chưa biết website có lớp lưu tạm (CDN, plugin nén ảnh) giữ ảnh thêm một thời gian hay không; phiếu thử thật T-059 mới kiểm được. Nên không hứa «không mở được nữa».
+- `:309`: câu đề xuất có «(hoặc quay lại bước **Dàn ý** sửa tiêu đề rồi để AI viết lại bài)». README thêm hậu quả của cách này, vì code cho thấy:
+  - viết lại bài tạo các mục mới (`set_article`, `app/views/write.py:286-296`, mỗi mục một mã mới);
+  - ảnh đã chọn, alt đã duyệt, phần sửa tay gắn với mã mục cũ nên không còn hiện; app cũng tự nhắc «Duyệt lại dàn ý sẽ viết lại toàn bài, thay bài hiện tại» (`:1623-1624`);
+  - tiêu đề bài là do AI viết (`seo_app/content/workflow.py:220`), không chắc giữ đúng tiêu đề dàn ý. Nếu còn đoạn `[...]`, khung cảnh báo sẽ liệt kê lại trước khi gửi.
+
+**Đối chiếu với code** cho LC-T087-2: client tải ảnh không gắn vào bài. Lệnh `POST /wp/v2/media` chỉ được nhận tham số `_fields` (`seo_app/wordpress/client.py:105`). Lệnh ghi alt chỉ gửi `alt_text`, `title`, `caption`, docstring ghi «Không gửi `status`, `post`» (`:1290-1306`). Phần WordPress liệt kê công khai lấy theo biên bản Lá Chắn (đọc mã nguồn WordPress); tôi không gọi website.
+
+**Kiểm tra lượt 2:**
+
+```
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-087-thu-ky.md
+results: {}   (0 mục)
+$ uv run ruff check .
+All checks passed!
+```
+
+Không chạy lại pytest: lượt này chỉ đổi chữ trong `README.md` và báo cáo.
+
+**Chưa làm (không thuộc lời giao lượt 2):** 3 khuyến nghị không bắt buộc của Lá Chắn: GitHub Desktop mặc định lưu vào Documents (có thể đồng bộ OneDrive); đọc prompt trước khi dán sang công cụ khác; chỉ đổi tên file để gỡ dấu «ảnh AI» khi chắc là ảnh chụp thật. Chỉ Huy quyết có làm không.

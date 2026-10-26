@@ -306,7 +306,7 @@ Cần kết nối WordPress trước (mục 6). Ở bước **Xuất bản** c�
 
 1. Xem khung **Kiểm tra trước khi gửi**, trong đó có dòng «Chỗ cần ảnh đã có ảnh, alt đã duyệt: …». Ảnh nào chưa có alt hay chưa duyệt thì app báo tên mục và khóa nút gửi. Chỗ cần ảnh để trống thì bài gửi đi không có ảnh ở chỗ đó.
 2. Bài có từ 2 ảnh: chọn ảnh ở ô **Ảnh đại diện** (mặc định là ảnh đầu tiên). Bài một ảnh thì ảnh đó là ảnh đại diện.
-3. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh).
+3. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh). Đoạn nằm ở **tiêu đề bài** hay **tiêu đề mục** thì chưa sửa được ở bước này: gửi nháp xong, mở bài trong WordPress và xóa đoạn đó **trước khi** bấm Lưu hay Đăng. (Cách khác: sửa tiêu đề ở bước **Dàn ý** rồi duyệt lại để AI viết lại toàn bài; cách này mất phần đã sửa tay và phải chọn lại ảnh.)
 4. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem lời dặn ở cuối mục này).
 
 Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có nút **Mở bài nháp trong WordPress** và danh sách ảnh đã lên thư viện Media (tên file, địa chỉ ảnh). Nút gửi khóa lại; muốn tạo thêm một bài nháp nữa từ bài này thì tick **Tạo thêm một bài nháp mới** (ảnh sẽ tải lên lần nữa).
@@ -314,7 +314,7 @@ Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có n�
 **Cần biết khi gửi**
 
 - **Chỉ tạo bài nháp.** Khách chưa thấy bài cho tới khi bạn tự bấm Đăng trong WordPress. App không sửa bài có sẵn.
-- **Ảnh xem được công khai ngay khi tải lên, kể cả khi bài còn là nháp**: ai có đường dẫn ảnh đều mở được, kèm vị trí GPS còn trong ảnh. App **không tự xóa** ảnh đã tải lên, kể cả khi bạn xóa bài nháp; muốn gỡ ảnh thì xóa trong **Media → Thư viện** của trang quản trị.
+- **Ảnh xem được công khai ngay khi tải lên, kể cả khi bài còn là nháp**: ảnh vào thư viện Media của website, mà WordPress cho **bất kỳ ai, không cần đăng nhập**, xem danh sách Media (kèm địa chỉ ảnh, alt, chú thích). Người lạ tìm được ảnh mà không cần ai gửi đường dẫn, mở ảnh là đọc được vị trí GPS còn trong ảnh. App **không tự xóa** ảnh đã tải lên, kể cả khi bạn xóa bài nháp; muốn gỡ ảnh thì xóa trong **Media → Thư viện** của trang quản trị. Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao.
 - Ảnh được nén WebP, cạnh dài tối đa 1600 px (cỡ và chất lượng đổi được ở mục `[images]` trong `config/content.toml`), giữ vị trí GPS. Tên file do app đặt từ thẻ (thiếu thẻ thì từ alt), không dấu, ví dụ `cong-inox-tan-phu-ct012.webp`; không lấy tên file, tên thư mục trên máy (có thể có tên khách).
 - Bài nháp gồm tiêu đề, các mục (tiêu đề mục, đoạn văn), ảnh kèm alt, chú thích, ảnh đại diện. Chữ đậm, gạch đầu dòng viết bằng dấu `**`, `-` còn hiện nguyên dấu; meta SEO, chuyên mục chưa gửi (bước SEO còn là bản demo). Sửa trong WordPress trước khi đăng.
 
@@ -327,10 +327,10 @@ Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có n�
 
 - Bấm **📤 Gửi nháp** rồi **đợi app báo kết quả**; bài nhiều ảnh có thể lâu. Trong lúc đó **không tải lại trang (F5), không đóng tab, không bấm nút khác**, không bấm đúp. Nếu không, app có thể quên là đã gửi, và lần bấm sau tạo thêm **một bài nháp thứ hai**, tải ảnh lên lần nữa.
 - Bài đã gửi rồi thì đừng bấm **📤 Gửi nháp** lần nữa sau khi mở lại bài (hôm sau, sau khi tải lại trang, hay sau khi mở bài khác): app chưa nhớ việc đã gửi qua những lần đó, bấm là thêm một bài nháp.
-- **Lần gửi thật đầu tiên**: thử **một bài, một ảnh**, chọn ảnh app báo «📍 Ảnh có vị trí GPS». Gửi xong, tải ảnh đó từ website về máy để kiểm GPS:
+- **Lần gửi thật đầu tiên**: thử **một bài, một ảnh**, chọn ảnh app báo «📍 Ảnh có vị trí GPS» **chụp ở nơi đã công khai** (xưởng, cửa hàng); đừng dùng ảnh nhà khách cho lần thử. Gửi xong, tải ảnh đó từ website về máy để kiểm GPS:
   1. Trong danh sách ảnh đã lên thư viện Media, chép địa chỉ ảnh (dòng bắt đầu bằng `https://`), dán vào trình duyệt, chuột phải vào ảnh → **Save image as** để lưu về máy.
   2. Trên Windows: chuột phải file vừa lưu → **Properties** → thẻ **Details**, kéo xuống phần **GPS**. Có **Latitude**, **Longitude** là ảnh còn GPS; không có phần đó thì báo Chỉ Huy. Trên Mac chưa thử cách kiểm này.
-  3. Xong thì xóa bài nháp và ảnh thử trong trang quản trị nếu không dùng.
+  3. Kiểm xong thì xóa ngay bài nháp và ảnh thử trong trang quản trị (**Bài viết → Nháp**, **Media → Thư viện**).
 
 ## 11. Cập nhật phiên bản mới
 
