@@ -398,8 +398,9 @@ class DraftMetaVersions(_Strict):
     """Các bản của một ô meta (title hoặc description) và bản đang dùng, như ``DraftPart``: AI gợi
     ý, viết lại hay người dùng sửa thì giao diện thêm bản mới; quay lại là lùi ``current``.
 
-    Giữ tối đa ``MAX_META_VERSIONS`` bản mới nhất; ``current`` ngoài khoảng thì về bản cuối (không
-    báo lỗi, để lần tự lưu không hỏng vì một chỉ số)."""
+    Giữ tối đa ``MAX_META_VERSIONS`` bản: bỏ các bản cũ nhất, nhưng **không bao giờ** bỏ bản đang
+    dùng (SL-T041-4); ``current`` ngoài khoảng thì về bản cuối (không báo lỗi, để lần tự lưu không
+    hỏng vì một chỉ số)."""
 
     versions: list[str] = Field(default_factory=list)
     current: int = Field(default=0, ge=0)
@@ -411,11 +412,15 @@ class DraftMetaVersions(_Strict):
 
     @model_validator(mode="after")
     def _keep_recent(self) -> DraftMetaVersions:
+        current = min(self.current, max(len(self.versions) - 1, 0))
         extra = len(self.versions) - MAX_META_VERSIONS
         if extra > 0:
-            self.versions = self.versions[extra:]
-            self.current = max(0, self.current - extra)
-        self.current = min(self.current, max(len(self.versions) - 1, 0))
+            dropped = set(range(extra + 1)) - {current}  # các bản cũ nhất, trừ bản đang dùng
+            if len(dropped) > extra:
+                dropped.discard(extra)
+            self.versions = [text for i, text in enumerate(self.versions) if i not in dropped]
+            current -= sum(1 for i in dropped if i < current)
+        self.current = current
         return self
 
     @property

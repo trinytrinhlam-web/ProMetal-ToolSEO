@@ -158,21 +158,35 @@ def _check_text(field: str, raw: str, limits: Limits) -> FieldCheck:
 
 
 def check_title(title: str, suffix: object = None) -> FieldCheck:
-    """Kiểm meta title. ``suffix``: hậu tố thương hiệu đang dùng (như ``with_brand``).
+    """Kiểm meta title **sẽ dùng**: ``with_brand(title, suffix)``. ``suffix``: hậu tố thương hiệu
+    đang dùng (như ``with_brand``; ``None`` là mặc định « | Pro-Metal», ``""`` là không gắn).
 
-    Title không có hậu tố vì không đủ chỗ (cộng hậu tố thì quá ``TITLE_LIMITS.good_max``, ví dụ 49
-    ký tự với « | Pro-Metal») được ghi «dài vừa» thay vì «hơi ngắn» (SL-T040-1): lời dặn AI chia
-    title thành 40-48 ký tự (được gắn hậu tố) và 50-60 (không gắn), title rơi vào giữa không bị
-    nhắc là ngắn. Ngưỡng Cảnh báo giữ nguyên.
+    - Ô sửa title (chưa gắn hậu tố) được chấm như title gửi đi: còn chỗ thì tính cả hậu tố
+      (SL-T041-2), câu báo ghi «tính cả đuôi thương hiệu». ``value``, ``length`` là của title đó.
+      Muốn chấm đúng chữ đưa vào (không gắn gì): ``suffix=""``.
+    - Title không có hậu tố vì không đủ chỗ (cộng hậu tố thì quá ``TITLE_LIMITS.good_max``, ví dụ
+      49 ký tự với « | Pro-Metal») được ghi «dài vừa» thay vì «hơi ngắn» (SL-T040-1).
+    - Chữ có thẻ HTML, ``%%``, trống: Chặn, xét trên chữ đưa vào.
     """
-    check = _check_text("title", title, TITLE_LIMITS)
+    given = _check_text("title", title, TITLE_LIMITS)
+    if given.level is Level.BLOCK:
+        return given
     brand = resolve_brand_suffix(suffix)
+    final = with_brand(given.value, suffix)
+    check = given if final == given.value else _check_text("title", final, TITLE_LIMITS)
+    if check.level is Level.BLOCK:
+        return check
+    if brand and strip_brand(final, suffix) != final:  # title dùng có hậu tố
+        if final == given.value:
+            return check
+        # Hậu tố do phần mềm gắn (ô sửa chưa có): câu báo nói rõ độ dài đã tính cả hậu tố.
+        notes = tuple(f"{message[:-1]} (tính cả đuôi thương hiệu)." for message in check.messages)
+        return FieldCheck("title", check.value, check.length, check.level, notes)
     if (
         check.level is Level.GOOD
         and brand
         and check.length < TITLE_LIMITS.good_min
         and check.length + len(brand) > TITLE_LIMITS.good_max
-        and strip_brand(check.value, suffix) == check.value
     ):
         note = f"Meta title dài vừa: {check.length} ký tự (không còn chỗ gắn đuôi thương hiệu)."
         return FieldCheck("title", check.value, check.length, Level.GOOD, (note,))
@@ -640,12 +654,15 @@ def _ai_text(raw: object, keyword: str, banned, max_length: int, avoid=()) -> st
 
 
 def _final(value: str, check: FieldCheck, limits: Limits) -> str | None:
-    """Gợi ý cuối: không bị Chặn, độ dài trong ngưỡng Cảnh báo, và lọc ``clean_ai_text`` (U1)
-    không đổi chữ (chữ được đếm chính là chữ được gửi đi)."""
+    """Gợi ý cuối: không bị Chặn, độ dài trong ngưỡng Cảnh báo, lọc ``clean_ai_text`` (U1)
+    không đổi chữ (chữ được đếm chính là chữ được gửi đi), và client WordPress ghi được lên
+    SiteSEO (``seo_write_problem``: shortcode, «<» liền ký tự… bị bỏ, SL-T041-1)."""
     if check.level is Level.BLOCK or not limits.warn_min <= check.length <= limits.warn_max:
         return None
     cleaned = " ".join(clean_ai_text(value).split())
-    return cleaned if cleaned == value else None
+    if cleaned != value or seo_write_problem("Gợi ý", value):
+        return None
+    return value
 
 
 def _dedupe(values, limit: int) -> list[str]:
@@ -713,13 +730,30 @@ def site_posts(index: SiteIndex | None) -> list[SitePost]:
     ]
 
 
+def seo_write_problem(label: str, text: str) -> str:
+    """Câu lý do client WordPress (``set_seo_meta``) sẽ **từ chối** ghi ``text`` vào SiteSEO; chuỗi
+    rỗng nếu ghi được. Dùng chính bộ kiểm của client (``client._seo_text``: thẻ HTML, mã ký tự HTML
+    kể cả thiếu «;», ``%%``, dạng shortcode WordPress, «<» liền ký tự khác, ký tự điều khiển) để
+    đường chép tay, gợi ý AI và đường ghi qua phần mềm luôn giống nhau (SL-T041-1). Câu lý do là chữ
+    cố định của client, không chép ``text``. Không xét độ dài (bộ kiểm meta lo)."""
+    # Nhập muộn: client nhập muộn module này trong ``_seo_text`` (tránh vòng nhập lúc khởi động).
+    from seo_app.wordpress.client import WordPressError, _seo_text
+
+    try:
+        _seo_text(label, text, _NO_LIMIT)
+    except WordPressError as exc:
+        return str(exc)
+    return ""
+
+
 @dataclass(frozen=True)
 class SiteSeoCopy:
     """Chữ để chép, dán tay vào hộp SiteSEO của bài nháp (khi chưa bật ghi SEO lên site).
 
     ``title`` đã gắn hậu tố thương hiệu (``with_brand``), ``description`` và ``slug`` đã chuẩn
-    hóa. Trường bị Chặn (trống, có thẻ HTML, có ``%%``, slug sai ký tự) là ``None``: giao diện không
-    cho chép, hiện ``checks`` (câu báo chữ thuần) để người dùng sửa.
+    hóa. Trường bị Chặn (trống, có thẻ HTML, có ``%%``, slug sai ký tự, hoặc chữ mà client WordPress
+    từ chối ghi: shortcode, «<» liền ký tự, mã ký tự HTML) là ``None``: giao diện không cho chép,
+    hiện ``checks`` (câu báo chữ thuần) để người dùng sửa.
     """
 
     title: str | None
@@ -728,10 +762,20 @@ class SiteSeoCopy:
     checks: tuple[FieldCheck, ...]
 
 
+def _writable(check: FieldCheck, label: str) -> FieldCheck:
+    """``check`` nâng lên Chặn nếu client WordPress từ chối ghi chữ đó (SL-T041-1)."""
+    if check.level is Level.BLOCK:
+        return check
+    problem = seo_write_problem(label, check.value)
+    if not problem:
+        return check
+    return FieldCheck(check.field, check.value, check.length, Level.BLOCK, (problem,))
+
+
 def siteseo_copy(title: str, description: str, slug: str, *, suffix: object = None) -> SiteSeoCopy:
     """Title (kèm hậu tố), description, slug cuối cùng để chép sang SiteSEO."""
-    title_check = check_title(with_brand(title, suffix), suffix)
-    description_check = check_description(description)
+    title_check = _writable(check_title(title, suffix), "Meta title")
+    description_check = _writable(check_description(description), "Meta description")
     slug_check = check_slug(slug)
     checks = (title_check, description_check, slug_check)
     title_value, description_value, slug_value = (

@@ -474,22 +474,12 @@ def test_client_refuses_these_seo_titles(title):
         wp_client._seo_text("Tiêu đề SEO", with_brand(title), 300)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-1: chữ SEO dạng shortcode («[gallery]», «[<>code_snippet id=1]»), «<1>», "
-    "«&#37» mà set_seo_meta từ chối vẫn được siteseo_copy cho chép và bộ kiểm gợi ý AI nhận.",
-)
 @pytest.mark.parametrize("title", SEO_TEXT_CLIENT_REFUSES)
 def test_sl_t041_1_copy_and_ai_filter_refuse_what_client_refuses(title):
     assert siteseo_copy(title, DESC, "cua-sat-bi-xe").title is None
     assert accept_ai_title(title, KEYWORD) is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-2: check_title(title, suffix) với title chưa gắn đuôi (ô sửa) 38-48 ký tự ghi "
-    "«hơi ngắn», dù title cuối (with_brand) là 50-60 «dài vừa»; 49 thì lại «dài vừa».",
-)
 @pytest.mark.parametrize("length", [38, 43, 48])
 def test_sl_t041_2_check_title_judges_the_title_that_will_be_sent(length):
     title = _title_of_length(length)  # như ô sửa: strip_brand, chưa gắn đuôi
@@ -525,11 +515,6 @@ def test_sl_t041_3_keyword_without_accents_protects_its_words(keyword, title):
     assert accept_ai_title(title, plain, (), None, AVOID) is not None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-4: DraftMetaVersions giữ 20 bản mới nhất mà không giữ bản đang dùng: bản người "
-    "dùng chọn (cũ hơn 20 bản) bị bỏ, current nhảy sang bản khác, nháp lặng lẽ đổi meta.",
-)
 def test_sl_t041_4_version_in_use_is_never_trimmed():
     versions = ["Bản tôi tự viết"] + [f"Gợi ý AI {i}" for i in range(MAX_META_VERSIONS)]
     kept = DraftMetaVersions(versions=versions, current=0)

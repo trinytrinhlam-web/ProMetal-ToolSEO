@@ -257,6 +257,18 @@ def test_meta_versions_keep_recent_and_clamp_current():
         DraftMetaVersions(versions=["a"], current=-1)
 
 
+@pytest.mark.parametrize(
+    ("current", "kept_text", "kept_index"),
+    [(0, "Bản 0", 0), (3, "Bản 3", 0), (5, "Bản 5", 0), (6, "Bản 6", 1), (24, "Bản 24", 19)],
+)
+def test_meta_versions_never_drop_the_version_in_use(current, kept_text, kept_index):
+    """SL-T041-4: cắt còn 20 bản thì bỏ các bản cũ nhất, trừ bản đang dùng."""
+    versions = DraftMetaVersions(versions=[f"Bản {i}" for i in range(25)], current=current)
+    assert len(versions.versions) == MAX_META_VERSIONS
+    assert versions.text == kept_text and versions.current == kept_index
+    assert versions.versions[-1] == "Bản 24"  # bản mới nhất luôn còn
+
+
 def test_meta_versions_are_normalized_like_meta():
     versions = DraftMetaVersions(versions=["  Cửa\tsắt\n bị xệ ", "Của"])  # NFD
     assert versions.versions == ["Cửa sắt bị xệ", "Của"]

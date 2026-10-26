@@ -47,6 +47,7 @@ from seo_app.onpage.meta import (
     mentions_price,
     normalize_meta,
     resolve_brand_suffix,
+    seo_write_problem,
     site_posts,
     siteseo_copy,
     with_brand,
@@ -70,8 +71,9 @@ ODD = ["\x00", "\x1b", "\x7f", "\x9b", "\ud800", "\udfff", "", "\U000f0000", 
 def test_user_text_drops_odd_chars(odd):
     raw = TITLE.replace("bị", f"b{odd}ị")
     assert normalize_meta(raw) == TITLE
-    check = check_title(raw)
+    check = check_title(raw, "")
     assert check.value == TITLE and odd not in check.value
+    assert check_title(raw).value == TITLE + BRAND_SUFFIX  # title gửi đi (có đuôi)
     assert check.value.encode("utf-8")  # không còn surrogate: mã hóa được
     assert odd not in check_description(DESC + odd).value
 
@@ -217,27 +219,47 @@ def test_title_too_long_for_suffix_is_not_short(length):
 
 
 @pytest.mark.parametrize(
-    ("length", "suffix", "short"),
+    ("length", "suffix", "final", "short"),
     [
-        (48, None, True),  # gắn được đuôi (48 + 12 = 60): vẫn nhắc ngắn
-        (49, "", True),  # không dùng đuôi: ngưỡng thường
-        (49, " | Pro", True),  # đuôi ngắn gắn được: ngưỡng thường
-        (45, " | Cơ khí Pro-Metal HCM", False),  # đuôi 23 ký tự không gắn được
-        (37, " | Cơ khí Pro-Metal HCM", True),  # 37 + 23 = 60: gắn được
+        (48, None, 60, False),  # ô sửa: gắn được đuôi (48 + 12 = 60), chấm title gửi đi
+        (38, None, 50, False),
+        (37, None, 49, True),  # 37 + 12 = 49: có đuôi mà vẫn ngắn
+        (49, "", 49, True),  # không dùng đuôi: ngưỡng thường
+        (49, " | Pro", 55, False),  # đuôi ngắn gắn được
+        (45, " | Cơ khí Pro-Metal HCM", 45, False),  # đuôi 23 ký tự không gắn được
+        (37, " | Cơ khí Pro-Metal HCM", 60, False),  # 37 + 23 = 60: gắn được
     ],
 )
-def test_title_suffix_band_depends_on_suffix(length, suffix, short):
+def test_title_suffix_band_depends_on_suffix(length, suffix, final, short):
     check = check_title(_title(length), suffix)
     assert check.level is Level.GOOD
+    assert check.length == final and len(check.value) == final
     assert ("hơi ngắn" in check.messages[0]) is short
 
 
 def test_title_with_suffix_or_too_short_keeps_old_rules():
     with_suffix = _title(37) + BRAND_SUFFIX  # 49 ký tự đã có đuôi: ngưỡng thường
     assert check_title(with_suffix).length == 49
-    assert "hơi ngắn" in check_title(with_suffix).messages[0]
-    assert check_title(_title(20)).level is Level.WARN  # dưới 30 vẫn Cảnh báo
+    assert check_title(with_suffix).messages == ("Meta title hơi ngắn: 49 ký tự, nên 50–60 ký tự.",)
+    assert check_title(_title(17)).level is Level.WARN  # 17 + 12 = 29: dưới 30 vẫn Cảnh báo
+    assert check_title(_title(20), "").level is Level.WARN
     assert check_title("").level is Level.BLOCK
+
+
+def test_edit_box_title_is_judged_as_sent():
+    """SL-T041-2: ô sửa hiện title chưa có đuôi; ``check_title`` chấm title gửi đi
+    (``with_brand``): ``value``, ``length`` là của title đó, câu báo nói đã tính cả đuôi."""
+    check = check_title(TITLE)  # 45 ký tự, chưa có đuôi
+    assert check.value == with_brand(TITLE) == TITLE + BRAND_SUFFIX
+    assert check.length == 57 and check.level is Level.GOOD
+    assert check.messages == ("Meta title dài vừa: 57 ký tự (tính cả đuôi thương hiệu).",)
+    # Đã có đuôi (gợi ý AI, title cuối): như cũ, không thêm ghi chú.
+    assert check_title(TITLE + BRAND_SUFFIX).messages == ("Meta title dài vừa: 57 ký tự.",)
+    # Đuôi dạng cũ: chấm dạng thống nhất sẽ gửi.
+    assert check_title(TITLE + " | Pro Metal").value == TITLE + BRAND_SUFFIX
+    # Chặn xét trên chữ đưa vào, không gắn đuôi.
+    blocked = check_title("Cửa sắt <b>bị xệ</b> nên làm gì")
+    assert blocked.level is Level.BLOCK and BRAND_SUFFIX not in blocked.value
 
 
 def test_ai_title_of_49_chars_is_accepted_without_suffix():
@@ -417,6 +439,24 @@ def test_siteseo_copy_refuses_blocked_fields(title, description, slug, blocked):
     assert all(getattr(copy, name) is not None for name in others)
     check = next(c for c in copy.checks if c.field == blocked)
     assert check.level is Level.BLOCK and check.messages
+
+
+def test_seo_write_problem_uses_client_rules():
+    """SL-T041-1: cùng bộ kiểm với client WordPress (``set_seo_meta``); câu lý do không chép chữ."""
+    assert seo_write_problem("Meta title", TITLE) == ""
+    for bad in ("Cửa [gallery] xệ", "Cửa <1> xệ", "Giảm &#37 hôm nay", "Cửa [<>x id=1] xệ"):
+        problem = seo_write_problem("Meta title", bad)
+        assert problem.startswith("Meta title ") and "gallery" not in problem
+
+
+def test_siteseo_copy_and_ai_description_refuse_shortcode():
+    desc = DESC.replace("Xem 5", "Xem [gallery] 5")
+    copy = siteseo_copy(TITLE, desc, "cua-sat-bi-xe")
+    assert copy.description is None and copy.title == TITLE + BRAND_SUFFIX
+    check = copy.checks[1]
+    assert check.level is Level.BLOCK and "shortcode" in check.messages[0]
+    assert accept_ai_description(desc, KEYWORD) is None
+    assert accept_ai_description(DESC, KEYWORD) == DESC
 
 
 def test_filter_titles_passes_avoid_through():

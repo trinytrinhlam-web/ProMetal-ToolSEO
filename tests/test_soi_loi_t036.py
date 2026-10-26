@@ -70,7 +70,7 @@ def test_invisible_chars_not_counted(invisible):
 def test_nfd_mixed_with_newlines_and_tabs():
     raw = "  " + nfd("Cửa sắt bị xệ:\r\n dấu hiệu\tsớm") + "\n\n và cách xử lý gọn "
     assert normalize_meta(raw) == BASE_TITLE
-    assert check_title(raw).length == 45
+    assert check_title(raw, "").length == 45  # suffix="": không tính đuôi (T-041)
 
 
 def test_nfd_description_same_level_as_nfc():
@@ -87,7 +87,7 @@ def test_nfd_description_same_level_as_nfc():
 )
 def test_title_thresholds_with_accented_letters(length, level):
     """Ngưỡng tính trên chữ NFC, kể cả khi đưa vào ở dạng NFD (mỗi "ữ" thành 3 ký tự)."""
-    result = check_title(nfd("ữ" * length))
+    result = check_title(nfd("ữ" * length), "")  # suffix="": không tính đuôi (T-041)
     assert (result.length, result.level) == (length, level)
 
 
