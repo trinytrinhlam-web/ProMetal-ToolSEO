@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-056 đã gộp |
-| Trạng thái | Lá Chắn ĐẠT, đang gộp |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ D1 (không lộ bí mật trong tài liệu).
 - 2026-10-26 09:59 (Chỉ Huy B): chủ dự án duyệt; giao **Lá Chắn rút gọn** (nhắn phiên Lá Chắn T-056).
 - 2026-10-26 10:13 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`b426bd9`): 41 tên nút, câu nhắc khớp `write.py`; 2 Thấp LC-T087-2 (ảnh tải lên được WordPress liệt kê công khai, không chỉ "qua đường dẫn"), LC-T087-1 (đoạn `[...]` ở tiêu đề bài/mục). Theo cách làm mới (tự chạy trọn phiếu), giao **Thư Ký lượt 2** sửa 2 câu; điều kiện 3 (viết lại lời dặn tạm khi T-086 gộp) để sau.
 - 2026-10-26 10:53 (Chỉ Huy B): Thư Ký lượt 2 (`6ecbe95`); **Lá Chắn xem lại ĐẠT** (`e3c4444`), không còn lỗi mở. Gộp `main` trên máy (`5a3309d`, chỉ README và báo cáo), đẩy cùng lượt toàn bộ test của T-085. Còn điều kiện 3 (viết lại lời dặn tạm khi T-086 gộp).
+- 2026-10-26 13:07 (Chỉ Huy B): **đã đẩy `main`** cùng T-085; xóa nhánh `team/T-087`, worktree `wt-T-087`. Còn điều kiện 3: viết lại «Lời dặn tạm thời» khi T-086 gộp.
