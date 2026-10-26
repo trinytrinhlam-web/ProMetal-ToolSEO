@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036, T-037, T-038, T-039 đã gộp (T-040 nên gộp trước) |
-| Trạng thái | Thợ Máy xong phần logic; Soi Lỗi kiểm phần logic |
+| Trạng thái | Thợ Máy lượt 2 phần logic |
 
 ## Mục tiêu
 
@@ -93,3 +93,4 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
 - 2026-10-24 10:27 (Chỉ Huy B): thêm **LC-T040-1** (Lá Chắn T-040, Thấp): `mentions_price` (`seo_app/onpage/meta.py:493-498`) không xóa từ khóa; tìm `_PRICE` ở mọi vị trí, chỉ bỏ qua chỗ khớp nằm trọn trong từ khóa; giữ cắt độ dài trước (SL-T036-12); gỡ 4 `xfail` `tests/test_la_chan_t040.py`; nếu nối `[meta].avoid` thì dò cụm nên tránh cùng cách. Hạn: trước khi bước SEO trên giao diện hiện gợi ý meta.
 - 2026-10-26 10:02 (Chỉ Huy B): **chủ dự án duyệt giao** (T-036 → T-040 đã gộp). Nhánh `team/T-041` từ `main`, worktree `wt-T-041`. **Phần Thợ Máy trước** (phiên "Thợ Máy · T-041 Lưu SEO vào nháp"): `seo_app/storage/drafts.py` (trường SEO), `seo_app/onpage/schema.py` (LC-T038 đk 1–2, SL-T038-1, -2), `seo_app/onpage/meta.py` (LC-T036-1, SL-T036-10, -12, LC-T040-1, SL-T040-1, nối `[meta]`), `seo_app/storage/site_index.py` (SL-T037-5 vì giao diện sẽ gọi `get()`), `links.py` chỉ nếu cần (LC-T039-2). Phần Họa Sĩ (`write.py`) làm **sau khi T-086 gộp** (cùng sửa `write.py`, `drafts.py`). Chạy tới 4 phiên con cùng lúc (T-086 Soi Lỗi, T-085, T-087 Lá Chắn).
 - 2026-10-26 11:07 (Chỉ Huy B): **Thợ Máy xong phần logic** (`c059b41`): mọi điều kiện logic trong ghi chú (LC-T038 đk 1–2, LC-T036-1, SL-T036-10, -12, LC-T040-1, SL-T040-1, `[meta]` + `find_avoided`, SL-T037-5, LC-T039 đk 2a, 2b); trường SEO trong nháp (nháp cũ mở được); danh sách hàm cho Họa Sĩ trong báo cáo; 37 file test liên quan 2.969 qua. **Chỉ Huy duyệt** 3 chỗ sửa test cũ (mục «Test cũ đã đổi») và phần thêm `ContentWriter.internal_links` (`39f2178`). Giao **Soi Lỗi rút gọn phần logic** ngay (song song); Họa Sĩ nối giao diện sau khi T-086 gộp. LC-T039-2 để phiếu bộ dựng HTML GĐ5 (không sửa `links.py`).
+- 2026-10-26 13:53 (Chỉ Huy B): **Soi Lỗi phần logic ĐẠT CÓ ĐIỀU KIỆN** (`85b06b6`): 7 Thấp; SL-T041-1, -2, -4 phải sửa trước khi Họa Sĩ nối giao diện. Giao **Thợ Máy lượt 2**: bắt buộc -1, -2, -4; nên làm cùng -3, -5, -6, -7 nếu gọn (khỏi mở phiếu mới). Sau đó gộp `main` (có T-086) vào nhánh rồi giao Họa Sĩ.

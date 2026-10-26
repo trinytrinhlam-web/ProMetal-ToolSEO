@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 13:20 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 13:53 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -34,9 +34,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Lá Chắn · T-056 kiểm màn hình chọn ảnh (T-086) | `team/T-086` | Họa Sĩ xong (`e2e345f`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`801fbdf`: 5 lỗi đã sửa thật; 2 Thấp mới). ⏳ **10:53 Lá Chắn rút gọn đang kiểm** | [Họa Sĩ](reports/T-086-hoa-si.md) · [Soi Lỗi](reports/T-086-soi-loi.md) |
-| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Soi Lỗi · T-040 kiểm nhanh lời dặn meta (T-041 logic) | `team/T-041` | 26/10 Thợ Máy **xong phần logic** (`c059b41`; 2.969 test liên quan qua). ⏳ **11:07 Soi Lỗi kiểm phần logic**; giao diện (Họa Sĩ) sau khi T-086 gộp | [Thợ Máy](reports/T-041-tho-may.md) |
-| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-085 (SL-T085-1..3, LC-T085-1): NUL trong `_fields`, trả lời lồng quá sâu, câu báo khi tải ảnh lỗi giữa chừng | Thợ Máy · T-060 dọn client WordPress (T-088) | `team/T-088` | ⏳ **13:20 Thợ Máy đang làm** | |
+| [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Chỉ Huy (đang gộp) | `team/T-086` | Họa Sĩ xong; Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN. 26/10 Lá Chắn **ĐẠT CÓ ĐIỀU KIỆN** (`0782e9b`, Opus tạm): 3 Thấp → phiếu sau (chờ duyệt). ⏳ **Gộp `main` trên máy (`f80181b`), đang chạy toàn bộ test** | [Họa Sĩ](reports/T-086-hoa-si.md) · [Soi Lỗi](reports/T-086-soi-loi.md) · [Lá Chắn](reports/T-086-la-chan.md) |
+| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Thợ Máy · T-041 Lưu SEO vào nháp (lượt 2) | `team/T-041` | Thợ Máy xong phần logic (`c059b41`). 26/10 Soi Lỗi phần logic **ĐẠT CÓ ĐIỀU KIỆN** (`85b06b6`: 7 Thấp). ⏳ **13:53 Thợ Máy lượt 2** (bắt buộc SL-T041-1, -2, -4); rồi Họa Sĩ nối giao diện | [Thợ Máy](reports/T-041-tho-may.md) · [Soi Lỗi (logic)](reports/T-041-soi-loi.md) |
+| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-085 (SL-T085-1..3, LC-T085-1): NUL trong `_fields`, trả lời lồng quá sâu, câu báo khi tải ảnh lỗi giữa chừng | Soi Lỗi · T-060 kiểm client WordPress (T-088) | `team/T-088` | 26/10 Thợ Máy **xong** (`1e87ce8`; 6.987 test liên quan qua). ⏳ **13:53 Soi Lỗi rút gọn đang kiểm** | [Thợ Máy](reports/T-088-tho-may.md) |
 
 ## Chờ
 
