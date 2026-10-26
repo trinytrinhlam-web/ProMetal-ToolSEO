@@ -6,10 +6,10 @@
 |---|---|
 | Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 (tạm, xem dòng trên) |
 | Phiếu được kiểm | [T-086](../tickets/T-086-trang-thai-gui-nhap.md) · kiểm **rút gọn** (W1, W2, U1, F2) |
-| Phạm vi | Diff `504ab15..801fbdf` (Họa Sĩ 6 commit, Soi Lỗi 2): `app/views/write.py`, `seo_app/storage/drafts.py` (chỉ phần trạng thái gửi), test mới `tests/test_t086_send_state.py`, `tests/test_storage_send_state.py`, `tests/test_soi_loi_t086.py`; gỡ `xfail` ở `tests/test_soi_loi_t056.py` (5 ca), `tests/test_la_chan_t056.py` (2 ca); `tests/test_app_images.py` (1 test so chữ đã escape); 2 báo cáo. Không đổi `seo_app/wordpress/**`, `seo_app/images/**`, `config/**`, `uv.lock`. Đọc thêm: `seo_app/wordpress/client.py` (`_positive_id` `:1718-1720`, `edit_link`), Streamlit 1.65.0 (`runtime/app_session.py:566-586`: `runner.fastReruns` mặc định bật, dừng lần chạy cũ và chạy lần mới ngay). Lá Chắn thêm `tests/test_la_chan_t086.py` (`7bed4a4`). Thử gộp với `origin/main` `9a1308d`, `origin/team/T-085`, `origin/team/T-041`, `origin/team/T-087`. Số dòng theo `7bed4a4` (code ứng dụng như `801fbdf`) |
+| Phạm vi | Diff `504ab15..801fbdf` (Họa Sĩ 6 commit, Soi Lỗi 2): `app/views/write.py`, `seo_app/storage/drafts.py` (chỉ phần trạng thái gửi), test mới `tests/test_t086_send_state.py`, `tests/test_storage_send_state.py`, `tests/test_soi_loi_t086.py`; gỡ `xfail` ở `tests/test_soi_loi_t056.py` (5 ca), `tests/test_la_chan_t056.py` (2 ca); `tests/test_app_images.py` (1 test so chữ đã escape); 2 báo cáo. Không đổi `seo_app/wordpress/**`, `seo_app/images/**`, `config/**`, `uv.lock`. Đọc thêm: `seo_app/wordpress/client.py` (`_positive_id` `:1718-1720`, `edit_link`), Streamlit 1.65.0 (`runtime/app_session.py:566-586`: `runner.fastReruns` mặc định bật, dừng lần chạy cũ và chạy lần mới ngay). Lá Chắn thêm `tests/test_la_chan_t086.py` (`7bed4a4`). Thử gộp với `origin/main` `9a1308d` rồi `1d37a07` (mới nhất, đã có T-085, T-087), `origin/team/T-085`, `origin/team/T-041`, `origin/team/T-087`. Số dòng theo `7bed4a4` (code ứng dụng như `801fbdf`) |
 | Báo cáo đã đọc | [Họa Sĩ](T-086-hoa-si.md) (gồm Quyết định 1–7, fastReruns), [Soi Lỗi](T-086-soi-loi.md) (SL-T086-1, -2); điều kiện 2, LC-T056-1, Ghi nhận 1–3 của [Lá Chắn T-056](T-056-la-chan.md) |
-| Ngày | 2026-10-26 (10:53 → <giờ xong> +07, giờ máy) |
-| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp** (1 mới: LC-T086-1; 2 của Soi Lỗi giữ Thấp: SL-T086-1, -2). LC-T056-1 và SL-T056-8, -9, -10, -11 **đã đóng** đúng điều kiện 2 (a)–(d) của biên bản Lá Chắn T-056. W1, W2, U1, F2 đạt. **Gộp `main` được ngay**: <kết quả thử gộp> |
+| Ngày | 2026-10-26 (bắt đầu 10:53; làm tiếp 13:07 → 13:28 +07, giờ máy; phiên bị ngắt giữa chừng vì hết lượt dùng) |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp** (1 mới: LC-T086-1; 2 của Soi Lỗi giữ Thấp: SL-T086-1, -2). LC-T056-1 và SL-T056-8, -9, -10, -11 **đã đóng** đúng điều kiện 2 (a)–(d) của biên bản Lá Chắn T-056. W1, W2, U1, F2 đạt. **Gộp `main` được ngay**: thử gộp với `origin/main` mới nhất `1d37a07` (đã có T-085, T-087) và `origin/team/T-041` không xung đột; 16 file test liên quan trên cây gộp 1.718 qua, 0 hỏng; ruff sạch |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -96,9 +96,9 @@ Không phát hiện lỗi Nghiêm trọng, Cao hay Trung bình.
 
 | Công cụ | Kết quả | Đã xác minh |
 |---|---|---|
-| detect-secrets | `{}` (11 file đổi + `tests/test_la_chan_t086.py`), `PYTHONUTF8=1` | — |
+| detect-secrets | `{}` (11 file đổi, `tests/test_la_chan_t086.py`, biên bản này), `PYTHONUTF8=1` | — |
 | bandit | `uvx bandit -r app/views/write.py seo_app/storage/drafts.py`: 1 Low B101 (`assert`) ở `drafts.py:535` | Có từ trước (`504ab15` dòng 505), không thuộc phiếu |
-| pip-audit | Không chạy lại: `uv.lock` không đổi (lần quét gần nhất 2026-10-26 sáng, 0 lỗ hổng, biên bản T-056) | — |
+| pip-audit | Không chạy lại: `uv.lock` không đổi, cả trên `main` mới nhất `1d37a07` (lần quét gần nhất 2026-10-26 sáng, 0 lỗ hổng, biên bản T-056) | `git diff 504ab15 origin/main -- uv.lock`: rỗng |
 | ruff | `uv run ruff check .`: All checks passed! | — |
 | pytest (nhánh, `7bed4a4`) | 11 file (7 file tiêu chí xong của phiếu + `tests/test_t086_send_state.py`, `tests/test_storage_send_state.py`, `tests/test_soi_loi_t086.py`, `tests/test_la_chan_t086.py`), `PYTHONUTF8=1`: **542 passed, 1 skipped, 3 xfailed, 0 failed** (646,6 s). 3 xfail: SL-T086-1, SL-T086-2, LC-T086-1. `tests/test_la_chan_t086.py` riêng: 1 passed, 1 xfailed; `--runxfail -k lc_t086_1`: hỏng đúng câu kiểm «trang in dấu vết lỗi» | Test nháp (không commit, đã xóa): sau lỗi đầu, 3 lần chạy sau đều lỗi, `_wp_sending` còn, WordPress giả nhận 1 bài |
 | pytest (cây gộp) | Mục «Thử gộp» | — |
@@ -111,7 +111,7 @@ Làm trên worktree tạm (detached, thư mục nháp của Lá Chắn), không 
 |---|---|
 | `git merge-tree --write-tree` của `team/T-086` với `origin/main` (`9a1308d`), `origin/team/T-041`, `origin/team/T-087`, `origin/team/T-085` | Không xung đột chữ. T-041 sửa `drafts.py` ở phần SEO (`DraftSeo`, `DraftLink`…), không đụng bảng `send_states`, `save`, `delete`, `_is_healthy`: Git tự gộp |
 | Lần 1: `7bed4a4` + `origin/main` `9a1308d` + `origin/team/T-085` (`0d453d9`) + `origin/team/T-041` (`5cf42bc`); 15 file test (11 file ở trên, `test_t041_drafts_seo`, `test_wordpress_t085`, `test_wordpress_client`, `test_wordpress_images`) | **1.013 passed, 1 skipped, 3 xfailed, 0 failed** (672,5 s); 3 xfail như trên nhánh. `ruff`: All checks passed! |
-| Lần 2: `7bed4a4` + `origin/main` mới nhất `1d37a07` (đã gộp T-085, T-087) + `origin/team/T-041` (`c059b41`) | <kết quả lần 2> |
+| Lần 2: `7bed4a4` + `origin/main` mới nhất `1d37a07` (đã gộp T-085, T-087) + `origin/team/T-041` (`c059b41`); 16 file test (như lần 1, thêm `test_soi_loi_t085`) | **1.718 passed, 1 skipped, 39 xfailed, 0 failed** (1.123,3 s). 39 xfail đều có sẵn: 3 của T-086 (SL-T086-1, -2, LC-T086-1), 36 của T-085 (SL-T085-1 × 30, SL-T085-2 × 3, SL-T085-3 × 6). `ruff`: All checks passed! Không xung đột |
 
 `_positive_id` của client trên `main` mới nhất vẫn không có giới hạn trên (`client.py:1802-1804`), nên LC-T086-1 vẫn còn sau khi gộp T-085.
 
