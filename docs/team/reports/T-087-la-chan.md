@@ -10,6 +10,7 @@
 | Báo cáo đã đọc | [Thư Ký](T-087-thu-ky.md); điều kiện 3, 4 của [Lá Chắn T-056](T-056-la-chan.md); LC-T069-1, LC-T069-2 của [Lá Chắn T-069](T-069-la-chan.md) |
 | Ngày | 2026-10-26 (09:59 → 10:13 +07, giờ máy) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 2 Thấp (LC-T087-1, LC-T087-2). D1 đạt (không bí mật, không đường dẫn máy thật). Mọi điều kiện chép vào phiếu đều có trong README và nói đúng điều app làm. **Gộp `main` được ngay** (không xung đột với `origin/main` `2e04066`, `team/T-085`, `team/T-086`); nên sửa LC-T087-2 trước lần gửi thật đầu tiên (T-059) |
+| **Kết luận lượt 2** (2026-10-26) | **ĐẠT** · LC-T087-1, LC-T087-2 đã sửa đúng ý, 0 lỗi còn mở. **Gộp `main` được ngay** (đầu nhánh `6ecbe95`). Xem mục [Kiểm lại lượt 2](#kiểm-lại-lượt-2-2026-10-26) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -110,3 +111,17 @@ Không có.
 2. **LC-T087-1 (Thấp) → Thư Ký, thêm câu sau `README.md:309`.** Cùng lượt với điều kiện 1, hoặc cùng lần sửa README khi T-086 gộp.
 3. **Khi T-086 gộp → Thư Ký** viết lại khối «Lời dặn tạm thời» (`:326-329`) cho đúng app mới (Thư Ký đã tự đề xuất trong báo cáo). Lá Chắn kiểm rút gọn.
 4. **Lá Chắn:** kiểm lại biên bản này bằng Claude Fable sau 01/11.
+
+## Kiểm lại lượt 2 (2026-10-26)
+
+Thư Ký sửa ở `6ecbe95` (báo cáo `T-087-thu-ky.md` mục «Lượt 2»). Đọc `git diff b426bd9..6ecbe95 -- README.md` (4 chỗ, chỉ chữ trong `README.md`), đối chiếu với code và mã nguồn WordPress đã đọc ở lượt 1. 10:32 → 10:35 +07, giờ máy.
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| LC-T087-2 | **Đóng** | `README.md:317` nay nói ảnh vào thư viện Media, WordPress cho bất kỳ ai không cần đăng nhập xem danh sách (kèm địa chỉ ảnh, alt, chú thích), người lạ tìm được ảnh không cần đường dẫn: đúng mã nguồn WordPress (`GET /wp/v2/media` ngữ cảnh `view`, mục `inherit` không có bài cha coi như đã đăng; `source_url`, `alt_text`, `caption` ở ngữ cảnh `view`) và đúng client (ảnh không gắn bài: `POST /wp/v2/media` chỉ nhận tham số `_fields`, `client.py:105`; lệnh ghi alt không gửi `post`, `:1297`). Câu «Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao» thận trọng hơn câu tôi đề xuất (không hứa «đường dẫn không mở được nữa» khi chưa biết site có lớp lưu tạm): đồng ý. `:330` dặn ảnh thử chụp ở nơi đã công khai (xưởng, cửa hàng), không dùng ảnh nhà khách; `:333` xóa ngay bài nháp và ảnh thử, chỉ đúng chỗ (**Bài viết → Nháp**, **Media → Thư viện**) |
+| LC-T087-1 | **Đóng** | `README.md:309` thêm: đoạn ở tiêu đề bài, tiêu đề mục chưa sửa được ở bước Viết & kiểm tra (đúng: tiêu đề mục chỉ hiện `write.py:1654-1658`, ✏️ Sửa chỉ sửa thân đoạn `:1708-1716`), gửi xong xóa trong WordPress **trước khi** bấm Lưu hay Đăng. «Cách khác» (sửa ở Dàn ý, để AI viết lại) có nêu đúng hậu quả: viết lại tạo mục mới (`set_article` `:286-296`, mã mục mới), nên mất phần sửa tay, phải chọn lại ảnh, duyệt lại alt. Ghi chú: tiêu đề bài do AI viết lại (`seo_app/content/workflow.py:220`), nên cách này không chắc bỏ được đoạn ở tiêu đề bài; vẫn an toàn vì khung cảnh báo ở bước Xuất bản liệt kê lại nếu đoạn còn (Thư Ký đã ghi trong báo cáo). Không bắt buộc sửa thêm |
+| D1 | **Đạt** | `PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-087-thu-ky.md`: `{}`; dòng thêm của diff không có khóa, mật khẩu, đường dẫn máy, email |
+| Không sai sự thật | **Đạt** | Không câu mới nào hứa điều app chưa làm; không đụng khối «Lời dặn tạm thời» (`:326-329`, điều kiện 3 giữ cho lúc T-086 gộp) |
+| Thử gộp | **Không xung đột** | `git merge-tree --write-tree`: `origin/main` `9a1308d`, `origin/team/T-085`, `origin/team/T-086`; `main` không sửa `README.md` từ gốc nhánh. `uv run ruff check .`: All checks passed! |
+
+**Kết luận lượt 2: ĐẠT.** 0 lỗi còn mở; **gộp `main` được ngay**. Việc theo sau, không chặn: điều kiện 3 (Thư Ký viết lại «Lời dặn tạm thời» khi T-086 gộp), điều kiện 4 (kiểm lại bằng Claude Fable sau 01/11); 3 khuyến nghị và đề xuất gắn ảnh vào bài nháp (Thợ Máy, cần chủ dự án duyệt) để Chỉ Huy quyết.
