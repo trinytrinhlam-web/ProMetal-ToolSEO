@@ -21,7 +21,6 @@ lại ảnh giả, WordPress giả, AI giả của hai file đó. Không gọi m
 
 from __future__ import annotations
 
-import pytest
 import test_app_images as ui
 import test_soi_loi_t056 as sl
 from streamlit.runtime.scriptrunner import get_script_run_ctx
@@ -63,10 +62,6 @@ def interrupt_while_marking(monkeypatch) -> list[str]:
     return fired
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T056-1: lần chạy bị dừng lần nữa lúc đang ghi khóa «gửi dở» thì mất khóa",
-)
 def test_lc_t056_1_second_stop_while_marking_keeps_lock(
     project_root, root, fake_ai, site, monkeypatch
 ):
@@ -103,10 +98,6 @@ def interrupt_after_dropping_reset_flag(monkeypatch) -> list[str]:
     return fired
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T056-1: lần chạy bị dừng ngay sau khi bỏ cờ bỏ tick thì ô xác nhận cũ còn tick",
-)
 def test_lc_t056_1_second_stop_while_resetting_guards_unticks(
     project_root, root, fake_ai, site, monkeypatch
 ):
