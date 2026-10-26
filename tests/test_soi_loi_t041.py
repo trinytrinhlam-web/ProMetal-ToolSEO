@@ -501,11 +501,6 @@ def test_keyword_with_accents_protects_its_words(keyword, title):
     assert accept_ai_title(title, keyword, (), None, AVOID) is not None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-3: từ khóa gõ không dấu («sua cua uy tin hcm», «cua cuon gia re»): has_keyword "
-    "nhận, nhưng chỗ «uy tín», «giá rẻ» nằm trong từ khóa vẫn bị tính là cụm nên tránh / nói giá.",
-)
 @pytest.mark.parametrize(("keyword", "title"), KEYWORD_WORDS)
 def test_sl_t041_3_keyword_without_accents_protects_its_words(keyword, title):
     plain = unicodedata.normalize("NFC", keyword)
@@ -522,11 +517,6 @@ def test_sl_t041_4_version_in_use_is_never_trimmed():
     assert kept.text == "Bản tôi tự viết"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-5: find_faq coi mọi tiêu đề con trong mục Hỏi đáp là câu hỏi, kể cả «### Lưu "
-    "ý…» không có dấu hỏi (docstring nói «### …?»); JSON-LD có Question không phải câu hỏi.",
-)
 def test_sl_t041_5_subheading_without_question_mark_is_not_a_question():
     body = (
         "### Lưu ý trước khi đọc\n\nCác câu dưới đây là tình huống hay gặp.\n\n"
@@ -536,11 +526,6 @@ def test_sl_t041_5_subheading_without_question_mark_is_not_a_question():
     assert [question for question, _ in find_faq(parts)] == ["Cửa cuốn kêu to có sao không?"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-6: đoạn mã (`…`) chứa cú pháp link: plain_text bỏ dấu huyền ngược nhưng giữ "
-    "nguyên «[x](javascript:alert(1))», JSON-LD mang cả địa chỉ (LC-T038 đk 2).",
-)
 @pytest.mark.parametrize(
     "answer", ["Gõ `[x](javascript:alert(1))` vào ô.", "Gõ ``[x](javascript:alert(1))`` vào ô."]
 )

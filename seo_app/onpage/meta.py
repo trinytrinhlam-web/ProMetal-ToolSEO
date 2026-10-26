@@ -13,6 +13,7 @@ tuyến tính theo độ dài chữ (và theo số bài khi kiểm trùng).
 
 from __future__ import annotations
 
+import functools
 import re
 import unicodedata
 from bisect import bisect_right
@@ -558,10 +559,28 @@ def has_link(text: str) -> bool:
     return _LINK.search(visible) is not None or _BARE_DOMAIN.search(visible) is not None
 
 
+@functools.lru_cache(maxsize=4096)
+def _fold_char(ch: str) -> str:
+    """Một ký tự bỏ dấu («ử» → «u», «đ» → «d»), luôn đúng **một** ký tự để vị trí không đổi."""
+    if ch in "đĐ":
+        return "d" if ch == "đ" else "D"
+    base = "".join(c for c in unicodedata.normalize("NFD", ch) if not unicodedata.combining(c))
+    return base if len(base) == 1 else ch
+
+
+def _fold(text: str) -> str:
+    return "".join(_fold_char(ch) for ch in text)
+
+
 class _KeywordSpans:
-    """Các lần xuất hiện của từ khóa chính trong chữ đang dò (cùng cách chuẩn hóa)."""
+    """Các lần xuất hiện của từ khóa chính trong chữ đang dò (cùng cách chuẩn hóa).
+
+    So **không dấu** (như ``has_keyword``): từ khóa gõ không dấu («sua cua uy tin hcm», như cột
+    từ khóa trong file kế hoạch) vẫn che được «Sửa cửa uy tín HCM» trong câu (SL-T041-3). Bỏ dấu
+    từng ký tự giữ nguyên độ dài nên vị trí khớp trên chữ có dấu không đổi."""
 
     def __init__(self, text: str, keyword: str) -> None:
+        text, keyword = _fold(text), _fold(keyword)
         self._length = len(keyword)
         self._starts: list[int] = []
         start = text.find(keyword) if keyword else -1

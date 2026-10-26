@@ -34,7 +34,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from seo_app.content.models import Section
-from seo_app.content.rules import IGNORABLE_NOT_CF
+from seo_app.content.rules import IGNORABLE_NOT_CF, MISSING_PATTERN
 from seo_app.sanitize import strip_markdown_links, strip_tags, unescape_link_syntax
 from seo_app.text import remove_accents
 
@@ -64,6 +64,7 @@ MAX_ANSWER_LENGTH = 2000
 MAX_URL_LENGTH = 2000
 # Bài dài hơn mức này không đem so (chặn dữ liệu bất thường làm chậm app).
 MAX_ARTICLE_LENGTH = 500_000
+MSG_ARTICLE_TOO_LONG = "Bài quá dài, không đối chiếu được hỏi đáp."
 
 
 class Level(StrEnum):
@@ -216,7 +217,9 @@ def plain_text(markdown: str) -> str:
        bị bỏ (``strip_markdown_links``): địa chỉ (kể cả ``javascript:``) không bao giờ vào JSON-LD.
     3. Từng dòng: bỏ dấu tiêu đề ``#``, trích dẫn ``>``, gạch đầu dòng.
     4. Từng đoạn (các dòng liền nhau): bỏ dấu nhấn (``_strip_inline``).
-    5. ``normalize_text``.
+    5. Bỏ link lần nữa: link nằm trong đoạn ``mã`` (bước 2 cố ý bỏ qua đoạn mã) hay viết bằng dấu
+       ngoặc đã escape giờ là chữ thường, cũng chỉ giữ chữ (SL-T041-6).
+    6. ``normalize_text``.
 
     Không bao giờ đổi sang HTML: chữ ra vẫn phải qua ``_has_html`` và ``to_json_ld``. Chạy tuyến
     tính theo độ dài chữ.
@@ -233,7 +236,8 @@ def plain_text(markdown: str) -> str:
             blocks[-1].append(_LIST_MARK.sub("", line))
         elif blocks[-1]:
             blocks.append([])
-    return normalize_text("\n\n".join(_strip_inline("\n".join(b)) for b in blocks if b))
+    text = "\n\n".join(_strip_inline("\n".join(b)) for b in blocks if b)
+    return normalize_text(strip_markdown_links(text))
 
 
 def _has_html(text: str) -> bool:
@@ -341,6 +345,8 @@ def _check_text(
         issues.append(Issue(Level.BLOCK, f"{label}: dài quá {max_length} ký tự."))
     if not issues and article is not None and text not in article:
         issues.append(Issue(Level.BLOCK, f"{label}: không có nguyên văn trong bài."))
+    if not issues and MISSING_PATTERN.search(text):  # góp ý G3 Soi Lỗi T-041
+        return [Issue(Level.WARN, f"{label}: còn chỗ «[cần bổ sung: …]» chưa điền.")], text
     return issues, (None if issues else text)
 
 
@@ -349,7 +355,7 @@ def _prepare_article(article_text: object) -> tuple[str | None, list[Issue]]:
     if not isinstance(article_text, str) or not article_text.strip():
         return None, [Issue(Level.BLOCK, "Chưa có nội dung bài để đối chiếu hỏi đáp.")]
     if len(article_text) > MAX_ARTICLE_LENGTH:
-        return None, [Issue(Level.BLOCK, "Bài quá dài, không đối chiếu được hỏi đáp.")]
+        return None, [Issue(Level.BLOCK, MSG_ARTICLE_TOO_LONG)]
     return plain_text(article_text), []
 
 
@@ -504,16 +510,22 @@ def _is_faq_heading(heading: str) -> bool:
     return _FAQ_HEADING.search(" ".join(words.split())) is not None
 
 
+def _is_question(markdown: str) -> bool:
+    return plain_text(markdown).endswith(("?", "？"))
+
+
 def _question_of(block: list[str]) -> tuple[str, str] | None:
     """(câu hỏi, chữ trả lời cùng dòng) nếu đoạn ``block`` mở đầu bằng một câu hỏi."""
     first = block[0].strip()
     if _HEADING_MARK.match(first):
-        return _HEADING_TAIL.sub("", _HEADING_MARK.sub("", first)), "\n".join(block[1:])
+        heading = _HEADING_TAIL.sub("", _HEADING_MARK.sub("", first))
+        # Tiêu đề con chỉ là câu hỏi khi kết thúc bằng dấu hỏi (SL-T041-5).
+        return (heading, "\n".join(block[1:])) if _is_question(heading) else None
     bold = _BOLD_QUESTION.fullmatch(first)
     if bold is not None:
         return bold.group(2), "\n".join([bold.group(3), *block[1:]])
     # Đoạn một dòng là câu hỏi; gạch đầu dòng thì không (danh sách câu nên hỏi thợ trong trả lời).
-    if len(block) == 1 and not _LIST_MARK.match(first) and plain_text(first).endswith(("?", "？")):
+    if len(block) == 1 and not _LIST_MARK.match(first) and _is_question(first):
         return first, ""
     return None
 
@@ -522,10 +534,11 @@ def find_faq(parts: Sequence[Section]) -> list[tuple[str, str]]:
     """Các cặp (câu hỏi, trả lời) trong mục Hỏi đáp của bài, ở dạng Markdown như trong bài.
 
     Mục Hỏi đáp: phần không phải mở bài (phần 0) có tiêu đề như ``_FAQ_HEADING``. Trong thân mục,
-    câu hỏi là dòng tiêu đề con (``### …?``), dòng in đậm cả câu kết thúc bằng «?» (``**…?**``,
-    trả lời có thể nằm tiếp ngay sau trên cùng dòng), hoặc đoạn chỉ một dòng kết thúc bằng «?».
-    Trả lời là các dòng sau đó tới câu hỏi kế tiếp. Câu hỏi không có trả lời bị bỏ. Lấy tối đa
-    ``MAX_QUESTIONS + 1`` cặp: dựng thì ``build_faq_page`` báo quá nhiều.
+    câu hỏi là dòng tiêu đề con kết thúc bằng «?» (``### …?``), dòng in đậm cả câu kết thúc bằng
+    «?» (``**…?**``, trả lời có thể nằm tiếp ngay sau trên cùng dòng), hoặc đoạn chỉ một dòng kết
+    thúc bằng «?». Trả lời là các dòng sau đó tới câu hỏi kế tiếp; tiêu đề con không phải câu hỏi
+    («### Lưu ý») kết thúc câu trả lời đang có (SL-T041-5). Câu hỏi không có trả lời bị bỏ. Lấy tối
+    đa ``MAX_QUESTIONS + 1`` cặp: dựng thì ``build_faq_page`` báo quá nhiều.
     """
     pairs: list[tuple[str, str]] = []
     for part in list(parts)[1:]:
@@ -544,14 +557,16 @@ def find_faq(parts: Sequence[Section]) -> list[tuple[str, str]]:
                 blocks.append([])
         for block in (b for b in blocks if b):
             found = _question_of(block)
-            if found is None:
+            if found is None and not _HEADING_MARK.match(block[0].strip()):
                 if question is not None:
                     answer.append("\n".join(block))
                 continue
             if question is not None and plain_text("\n\n".join(answer)):
                 pairs.append((question, "\n\n".join(answer)))
-            question, rest = found
-            answer = [rest] if rest.strip() else []
+            question, answer = None, []
+            if found is not None:
+                question, rest = found
+                answer = [rest] if rest.strip() else []
             if len(pairs) > MAX_QUESTIONS:
                 return pairs
         if question is not None and plain_text("\n\n".join(answer)):
@@ -569,16 +584,18 @@ def build_article_faq(
 ) -> SchemaResult:
     """FAQPage của bài: tìm mục Hỏi đáp (``find_faq``) rồi dựng và kiểm (``build_faq_page``).
 
-    Bài chưa có mục Hỏi đáp: kết quả Chặn với câu ``MSG_NO_FAQ``. Giao diện hiện ``json_ld``
-    bằng ``st.code(..., language="json")`` và ``issues`` bằng chữ thuần (câu báo không chép chữ
-    của bài).
+    Bài chưa có mục Hỏi đáp: kết quả Chặn với câu ``MSG_NO_FAQ``. Bài dài quá
+    ``MAX_ARTICLE_LENGTH`` thì Chặn ngay, trước khi tìm mục Hỏi đáp (góp ý G2 Soi Lỗi T-041: bài dán
+    nhầm vài triệu ký tự không làm trang chậm). Giao diện hiện ``json_ld`` bằng
+    ``st.code(..., language="json")`` và ``issues`` bằng chữ thuần (câu báo không chép chữ của bài).
     """
+    article = article_markdown(parts)
+    if len(article) > MAX_ARTICLE_LENGTH:
+        return SchemaResult(None, None, (Issue(Level.BLOCK, MSG_ARTICLE_TOO_LONG),))
     pairs = find_faq(parts)
     if not pairs:
         return SchemaResult(None, None, (Issue(Level.BLOCK, MSG_NO_FAQ),))
-    return build_faq_page(
-        pairs, article_text=article_markdown(parts), site_url=site_url, page_url=page_url
-    )
+    return build_faq_page(pairs, article_text=article, site_url=site_url, page_url=page_url)
 
 
 # ------------------------------------------------------------------ xuất JSON an toàn

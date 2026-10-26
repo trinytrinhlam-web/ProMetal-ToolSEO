@@ -304,6 +304,63 @@ def test_build_article_faq_too_many_questions():
     assert any(f"Tối đa {MAX_QUESTIONS}" in issue.message for issue in result.issues)
 
 
+def test_subheading_without_question_mark_ends_the_answer():
+    """SL-T041-5: tiêu đề con không phải câu hỏi không thành câu hỏi, và kết thúc câu trả lời
+    trước đó (chữ của mục khác không lẫn vào trả lời)."""
+    body = (
+        "### Cửa cuốn kêu to có sao không?\n\nThường do ray khô dầu.\n\n"
+        "### Lưu ý khi tự tra dầu\n\nNgắt điện trước khi làm.\n\n"
+        "**Bao lâu tra dầu một lần?** Ba tháng một lần."
+    )
+    assert find_faq(_parts(body)) == [
+        ("Cửa cuốn kêu to có sao không?", "Thường do ray khô dầu."),
+        ("Bao lâu tra dầu một lần?", "Ba tháng một lần."),
+    ]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "Gõ `[x](javascript:alert(1))` vào ô.",
+        "Gõ \\[x\\](javascript:alert(1)) vào ô.",  # ngoặc đã escape: Markdown hiện thành chữ
+        "Gõ `![ảnh](https://e.vil/a.png)` vào ô.",
+    ],
+)
+def test_link_inside_code_or_escaped_keeps_only_text(answer):
+    """SL-T041-6: link nằm trong đoạn mã hay viết bằng ngoặc đã escape cũng chỉ giữ chữ."""
+    parts = [
+        Section(heading="Mở bài", body="x"),
+        Section(heading="Hỏi đáp", body=f"### {Q}\n\n{answer}"),
+    ]
+    result = build_article_faq(parts, site_url=SITE)
+    assert not result.blocked, result.issues
+    for address in ("javascript", "e.vil", "](", "https://"):
+        assert address not in _texts(result)[1]
+
+
+def test_too_long_article_is_blocked_before_searching(monkeypatch):
+    """Góp ý G2: bài dài quá ``MAX_ARTICLE_LENGTH`` bị Chặn trước khi tìm mục Hỏi đáp."""
+    import seo_app.onpage.schema as schema
+
+    def no_search(parts):
+        raise AssertionError("không được tìm mục Hỏi đáp trong bài quá dài")
+
+    monkeypatch.setattr(schema, "find_faq", no_search)
+    parts = _parts("### Câu?\n\nTrả lời." + " chữ" * schema.MAX_ARTICLE_LENGTH)
+    result = build_article_faq(parts)
+    assert result.blocked and [i.message for i in result.issues] == [schema.MSG_ARTICLE_TOO_LONG]
+
+
+def test_missing_material_in_answer_is_a_warning():
+    """Góp ý G3: trả lời còn «[cần bổ sung: …]» vẫn dựng (xem trước) nhưng có Cảnh báo."""
+    body = "### Giá thay ray bao nhiêu?\n\nTùy loại ray, [cần bổ sung: giá thay ray]."
+    result = build_article_faq(_parts(body), site_url=SITE)
+    assert not result.blocked and result.json_ld is not None
+    assert [(i.level, i.message) for i in result.issues] == [
+        (Level.WARN, "Trả lời 1: còn chỗ «[cần bổ sung: …]» chưa điền.")
+    ]
+
+
 def test_article_markdown_has_every_part():
     text = article_markdown(_parts(FAQ_BODY))
     assert "Mở bài" in text and "Câu hỏi thường gặp" in text and "Có bảo hành không?" in text

@@ -186,6 +186,27 @@ def test_find_avoided(text, keyword, found):
     assert find_avoided(text, AVOID, keyword) == found
 
 
+@pytest.mark.parametrize(
+    ("keyword", "text"),
+    [
+        ("sua cua uy tin hcm", "Sửa cửa uy tín HCM: chọn thợ thế nào cho đúng"),
+        ("cua cuon gia re", "Cửa cuốn giá rẻ: nên chọn loại nào"),
+        ("CUA CUON GIA RE", "cửa cuốn giá rẻ: nên chọn loại nào"),
+        ("cửa cuốn giá rẻ", "Cua cuon gia re: nen chon loai nao"),  # câu không dấu, từ khóa có dấu
+    ],
+)
+def test_keyword_without_accents_still_covers_its_words(keyword, text):
+    """SL-T041-3: chỗ nằm trong từ khóa được so không dấu, như ``has_keyword``."""
+    assert find_avoided(text, AVOID, keyword) == []
+    assert not mentions_price(text, keyword)
+
+
+def test_keyword_without_accents_does_not_hide_other_words():
+    assert find_avoided("Sửa cửa uy tín HCM: thợ uy tín", AVOID, "sua cua uy tin hcm") == ["uy tín"]
+    assert mentions_price("Cửa cuốn giá rẻ, giá tốt cho nhà phố", "cua cuon gia re")
+    assert mentions_price("Cửa cuốn giá rẻ hơn", "cua cuon")  # «giá rẻ» ngoài từ khóa
+
+
 def test_avoid_phrases_ignore_blank_and_odd_items():
     assert find_avoided("Thợ uy tín", ["", "   ", "uy tín"]) == ["uy tín"]
 
