@@ -34,7 +34,7 @@ Giờ ghi theo giờ Việt Nam (`Asia/Ho_Chi_Minh`), dạng `2026-10-15 11:00`.
 
 _Bên đang giữ quyền cập nhật mục này sau mỗi bước._
 
-Chỉ Huy B, cập nhật 2026-10-26 13:07. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
+Chỉ Huy B, cập nhật 2026-10-26 13:20. Agent chạy ở phiên con dưới phiên B, mỗi phiếu một worktree `D:\ProMetal-ToolSEO\wt-T-xxx`, đẩy lên nhánh `team/T-xxx`. Tối đa 3 phiên con cùng lúc. Các phiếu đã gộp ngày 20/10 (T-048, T-050, T-058, T-051, T-049, T-062, T-052, T-067, T-054, T-068) xem ở `board.md` mục Xong.
 
 | Phiếu | Nhánh | Đang ở bước | Việc tiếp theo |
 |---|---|---|---|
@@ -52,11 +52,16 @@ Chỉ Huy B, cập nhật 2026-10-26 13:07. Agent chạy ở phiên con dưới 
 | [T-063](tickets/T-063-chay-test-t048-tren-mac-linux.md) Test Linux (cloud) | đã gộp (`103b6ee`), nhánh và worktree đã xóa | ✅ Windows 10.739 qua, 0 hỏng; đã đẩy `main` | SL-T063-2 → T-079; phần Mac chờ máy Mac |
 | [T-086](tickets/T-086-trang-thai-gui-nhap.md) Trạng thái gửi nháp (GĐ3) | `team/T-086` (`801fbdf`) | ✅ Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (2 Thấp) | ⏳ Lá Chắn rút gọn (phiên "Lá Chắn · T-056 kiểm màn hình chọn ảnh") |
 | [T-041](tickets/T-041-buoc-seo-that.md) Bước SEO thật (GĐ4) | `team/T-041` (`c059b41`) | ✅ Thợ Máy xong phần logic | ⏳ Soi Lỗi rút gọn phần logic (phiên "Soi Lỗi · T-040 kiểm nhanh lời dặn meta"); Họa Sĩ sau khi T-086 gộp (gộp `main` vào `team/T-041` trước) |
-| Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-088** |
+| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) Dọn client WordPress sau T-085 (GĐ4) | `team/T-088` (từ `main` `1d37a07`) | Giao 13:20 | ⏳ Thợ Máy (nhắn phiên "Thợ Máy · T-060 dọn client WordPress") |
+| Chờ phiếu trước | | **T-082** (câu báo đọc ảnh, sau T-056); **T-083** (chữ nhỏ alt ảnh AI, sau T-056); **T-084** (Cài đặt → Ảnh không in đường dẫn, sau T-056); **T-078** (`uv`: máy Windows đã lên 0.13.4, chờ máy Mac; `required-version`, README chưa giao); T-059 chờ chủ dự án bật Abilities, tạo tài khoản Biên tập viên, cập nhật Code Snippets | Số phiếu tiếp theo: **T-089** |
 
 ## Nhật ký bàn giao
 
 _Mục mới nhất ở trên cùng._
+
+### 2026-10-26 13:20 · Chỉ Huy B
+
+- **Chủ dự án duyệt** ("có") lập **T-088** (4 Thấp sau T-085). Giao ngay Thợ Máy (phiên T-060, quen `client.py`), chạy song song T-041 (không chung file). Số phiếu tiếp theo: **T-089**.
 
 ### 2026-10-26 13:07 · Chỉ Huy B
 

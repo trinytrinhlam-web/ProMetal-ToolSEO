@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-10-26 13:07 (Chỉ Huy B)._
+_Cập nhật: 2026-10-26 13:20 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,6 +36,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-086](tickets/T-086-trang-thai-gui-nhap.md) | GĐ3: trạng thái gửi nháp không chỉ nằm trong phiên (SL-T056-8 → -11, LC-T056-1) | Lá Chắn · T-056 kiểm màn hình chọn ảnh (T-086) | `team/T-086` | Họa Sĩ xong (`e2e345f`). 26/10 Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`801fbdf`: 5 lỗi đã sửa thật; 2 Thấp mới). ⏳ **10:53 Lá Chắn rút gọn đang kiểm** | [Họa Sĩ](reports/T-086-hoa-si.md) · [Soi Lỗi](reports/T-086-soi-loi.md) |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Soi Lỗi · T-040 kiểm nhanh lời dặn meta (T-041 logic) | `team/T-041` | 26/10 Thợ Máy **xong phần logic** (`c059b41`; 2.969 test liên quan qua). ⏳ **11:07 Soi Lỗi kiểm phần logic**; giao diện (Họa Sĩ) sau khi T-086 gộp | [Thợ Máy](reports/T-041-tho-may.md) |
+| [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | GĐ4: dọn lỗi Thấp client WordPress sau T-085 (SL-T085-1..3, LC-T085-1): NUL trong `_fields`, trả lời lồng quá sâu, câu báo khi tải ảnh lỗi giữa chừng | Thợ Máy · T-060 dọn client WordPress (T-088) | `team/T-088` | ⏳ **13:20 Thợ Máy đang làm** | |
 
 ## Chờ
 
@@ -155,4 +156,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-088
+## Số phiếu tiếp theo: T-089

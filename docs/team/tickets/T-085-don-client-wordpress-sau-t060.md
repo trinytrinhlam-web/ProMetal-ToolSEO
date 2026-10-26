@@ -59,3 +59,4 @@ W1, W2, W3, S2.
 - 2026-10-26 09:59 (Chỉ Huy B): chủ dự án duyệt; giao **Lá Chắn rút gọn** (nhắn phiên Lá Chắn T-060).
 - 2026-10-26 10:33 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`0d453d9`): LC-T060-1, -3, SL-T060-1 đóng; 4 Thấp (SL-T085-1 NUL sát tên trường `_fields`; SL-T085-2 + LC-T085-1 `response.json()` để lọt `RecursionError`/lỗi giải mã lạ; SL-T085-3 lỗi ở lệnh tải ảnh của `upload_media` chưa dặn ảnh có thể đã lên) → **phiếu dọn lỗi Thấp client WordPress sau T-085** (chờ chủ dự án duyệt lập; hạn trước khi hết GĐ4). Gộp `main` trên máy (`86a391c`), đang chạy toàn bộ test.
 - 2026-10-26 13:07 (Chỉ Huy B): **đã gộp vào `main`** (Windows 13.961 test qua, 0 hỏng, 45 phút); xóa nhánh `team/T-085`, worktree `wt-T-085`. Còn: 4 Thấp (SL-T085-1..3, LC-T085-1) → phiếu dọn mới, chờ chủ dự án duyệt lập.
+- 2026-10-26 13:20 (Chỉ Huy B): chủ dự án duyệt lập **T-088** cho 4 Thấp còn lại.
