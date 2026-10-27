@@ -37,13 +37,19 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh (lượt 2) | `team/T-082` | Thợ Máy xong (`552f870`); Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`7e2b4b3`: 2 Thấp SL-T082-1, -2). ⏳ **23:03 Thợ Máy lượt 2** | [Thợ Máy](reports/T-082-tho-may.md) · [Soi Lỗi](reports/T-082-soi-loi.md) |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Soi Lỗi · T-081 kiểm nhanh alt ảnh AI (T-083) | `team/T-083` | Thợ Máy xong (`eff4f12`; 39 file 4.681 qua). ⏳ **23:03 Soi Lỗi rút gọn** | [Thợ Máy](reports/T-083-tho-may.md) |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Thợ Máy · T-059 siết mã sau thử thật | `team/T-059` | 27/10 thử thật: ghi SEO qua Abilities, ảnh còn GPS, từ chối bài đã chuyển trạng thái: ĐẠT; `srcset` làm điện thoại nhận bản thu nhỏ mất GPS: chưa đạt. ⏳ **19:37 Thợ Máy bước 7** | |
-| [T-094](tickets/T-094-thiet-ke-giai-doan-5.md) | GĐ5: thiết kế kế hoạch, lịch, hẹn giờ và đăng bài (chỉ tài liệu; chia phiếu, câu hỏi cho chủ dự án) | Lá Chắn · T-060 kiểm client WordPress (đọc thiết kế) | `team/T-094` | Thợ Máy xong (`4812b96`): 8 phiếu T-096 → T-103, 6 câu hỏi (Chỉ Huy chọn khuyến nghị A theo dặn 27/10). ⏳ **23:03 Lá Chắn đọc thiết kế** | [Thợ Máy](reports/T-094-tho-may.md) |
-| [T-095](tickets/T-095-readme-buoc-seo-tai-khoan-wordpress.md) | README: bước 4 SEO, tài khoản Biên tập viên và mật khẩu ứng dụng (bài học thử thật T-059) | Lá Chắn · T-040 kiểm nhanh lời dặn meta (đọc README) | `team/T-095` | Thư Ký xong (`88d9606`). ⏳ **23:03 Lá Chắn đọc README** | [Thư Ký](reports/T-095-thu-ky.md) |
+| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML, kiểm link, dữ liệu xác nhận) | Thợ Máy · T-094 thiết kế Giai đoạn 5 (T-096) | `team/T-096` | ⏳ **23:46 Thợ Máy đang làm** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
+| [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa | Thợ Máy | Máy rảnh; gộp sau khi chủ dự án xem câu 1 |
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc, đề xuất có AI, SL-7 | Thợ Máy | Máy rảnh |
+| [T-099](tickets/T-099-client-hen-gio-dang-ngay.md) | GĐ5: client hẹn giờ, đăng ngay (`release_draft`) | Thợ Máy | T-091 gộp |
+| [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097, T-098 gộp |
+| [T-101](tickets/T-101-giao-dien-ke-hoach-cai-dat-google.md) | GĐ5: giao diện Kế hoạch, Cài đặt Google, Bài viết | Họa Sĩ | T-100, T-103 gộp |
+| [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-096, T-099, T-100 gộp |
+| [T-103](tickets/T-103-loi-dan-ai-doc-ke-hoach.md) | GĐ5: lời dặn AI đọc kế hoạch | Ngòi Bút | T-098 gộp |
 | [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1). Thấp | Thợ Máy | Máy rảnh |
 | [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ trong chữ website (SL-T088-1), giới hạn trên mã bài. Thấp | Thợ Máy | T-059 bước 7 gộp (cùng `client.py`) |
 | [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Họa Sĩ | Máy rảnh |
@@ -70,6 +76,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-094](tickets/T-094-thiet-ke-giai-doan-5.md) | Thiết kế Giai đoạn 5: kế hoạch trên Google Sheets, nhận kế hoạch 3 cách, AI đề xuất, hẹn giờ/đăng ngay qua một đường `release_draft`; 8 phiếu T-096 → T-103 | Thợ Máy | 2026-10-27 | [Thợ Máy](reports/T-094-tho-may.md) · Lá Chắn: [**đủ để mở phiếu code**](reports/T-094-la-chan.md) (44 điều kiện). Gộp `main` (chỉ tài liệu) |
+| [T-095](tickets/T-095-readme-buoc-seo-tai-khoan-wordpress.md) | README: mục «Bước SEO», tài khoản Biên tập viên và mật khẩu ứng dụng cho app | Thư Ký | 2026-10-27 | [Thư Ký](reports/T-095-thu-ky.md) · Lá Chắn: [**ĐẠT**](reports/T-095-la-chan.md) (Opus tạm). Gộp `main` (chỉ README) |
 | [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | Tab Ảnh của trang Cài đặt chỉ hiện tên ngắn thư mục ảnh (an toàn với tên lạ), báo lối tắt, không in đường dẫn đầy đủ | Họa Sĩ | 2026-10-27 | [Họa Sĩ](reports/T-084-hoa-si.md) · [Soi Lỗi](reports/T-084-soi-loi.md): đạt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-084-la-chan.md) (Opus tạm): 1 Thấp có từ trước SL-T084-1 → T-090. Gộp `main`, Windows 15.304 test qua, 0 hỏng |
 | [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật: meta title/description có AI gợi ý, viết lại từng ô, quay lại bản trước; đếm ký tự như Google, nhãn Nên/Cảnh báo/Chặn; slug; kiểm trùng bài đã đăng; liên kết nội bộ; schema FAQ; lưu SEO vào nháp; chép sang SiteSEO; công tắc ghi SEO lên website mặc định tắt; trang Kết nối WordPress hiện «SiteSEO: ghi được / chưa bật» | Thợ Máy (logic) · Họa Sĩ (giao diện) | 2026-10-27 | [Thợ Máy](reports/T-041-tho-may.md) (3 lượt) · [Họa Sĩ](reports/T-041-hoa-si.md) (4 lượt) · [Soi Lỗi](reports/T-041-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-041-la-chan.md) (Opus tạm): mọi điều kiện chuyển từ T-036 → T-040, T-042, T-086 đóng; LC-T041-1 đóng ở lượt 4; còn câu báo SL-T041-8 (emoji mới, giữ Chặn) để phiếu dọn sau. Gộp `main`, Windows 15.263 test qua, 0 hỏng |
 | [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) | «Gửi nháp»: hai tab cùng gửi một bài chỉ ra một bài nháp (so rồi đặt), chỉ lần gửi đã giành «đang gửi» mới ghi kết quả, lần gửi chưa tạo bài trả nháp về đúng trạng thái cũ, mã bài lạ không làm trang lỗi, ảnh xem trước từ đúng byte đã băm, băm ảnh đã duyệt lưu trong nháp; README bỏ lời dặn một tab | Họa Sĩ · Thư Ký (README) | 2026-10-27 | [Họa Sĩ](reports/T-089-hoa-si.md) (4 lượt) · [Soi Lỗi](reports/T-089-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT**](reports/T-089-la-chan.md) (Opus tạm; lượt 4 và README đạt, không còn lỗi mở) · [Thư Ký](reports/T-089-thu-ky.md). Gộp `main`, Windows 15.263 test qua, 0 hỏng |
@@ -163,4 +171,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-096
+## Số phiếu tiếp theo: T-104

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (mở đường cho cả giai đoạn) |
 | Phụ thuộc | Không (chỉ tài liệu) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ Một báo cáo thiết kế đủ để chia Giai đoạn 5 thành các phiếu
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo của chủ dự án «cứ làm liên tục, không cần hỏi» và Lộ trình Giai đoạn 5. Câu hỏi thiết kế gom lại hỏi chủ dự án một lần, không chặn phần việc khác.
+- 2026-10-27 23:46 (Chỉ Huy B): Lá Chắn đạt; **đã gộp `main`** (chỉ tài liệu).

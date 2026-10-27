@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-041 đã gộp; thử thật T-059 |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ D1 (không lộ bí mật trong tài liệu).
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-27 23:46 (Chỉ Huy B): Lá Chắn đạt; **đã gộp `main`** (chỉ tài liệu).
