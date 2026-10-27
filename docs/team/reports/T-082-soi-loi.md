@@ -187,7 +187,14 @@ $ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.p
   0 hỏng, 0 XPASS; 3 xfail = R2-1 ×2, R2-2 (T-048, không thuộc phiếu); khớp số Thợ Máy
 
 # Mọi file test gọi tới folders.py (grep "images.folders|ImageLibrary" trong tests/, 29 file) + tests/test_app_pages.py:
-(đang chạy: bắt đầu 19:10, máy quá bận; kết quả ghi ở commit sau)
+1 failed, 2629 passed, 51 skipped, 14 xfailed in 4234.03s (1:10:34)
+  1 ca hỏng: tests/test_drafts_images.py::test_lc_t055_1_case_variant_stays_ai_whatever_scanned_is[ref-theo-nhap]
+  hỏng ở bước pytest tạo thư mục tạm: OSError [WinError 1450] Insufficient system resources
+  (máy quá tải vì nhiều lượt pytest chạy cùng lúc), không phải lỗi code. Chạy riêng lại:
+$ uv run pytest "tests/test_drafts_images.py::test_lc_t055_1_case_variant_stays_ai_whatever_scanned_is"
+5 passed in 42.10s
+  14 xfail đều có từ trước, không liên quan: R2-1 ×2, R2-2 (T-048), SL-T067-1 ×4, SL-T070-4 ×7
+  51 bỏ qua: ca chỉ Mac/Linux (có 6 ca SL-T080-L-1 và 6 ca đối chứng của tests/test_soi_loi_t080_linux.py), cần symlink
 
 $ uv run ruff check .
 All checks passed!
