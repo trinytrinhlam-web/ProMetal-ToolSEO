@@ -6,19 +6,19 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 66% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 70% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
 | 0 · Bộ khung | **100%** | App mở bằng `run.bat`, đăng nhập bằng mật khẩu |
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
-| 3 · Ảnh | **khoảng 97%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục (nhận ảnh AI theo tên: "minh họa", tên công cụ AI…; file thẻ sửa tay chịu được file bị làm độc), chặn shortcode khi gửi lên WordPress, chèn ảnh vào nháp, nháp nhớ ảnh đã chọn. Còn: **màn hình chọn ảnh** và các phiếu an toàn trước nó. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
-| 4 · SEO trên trang | **khoảng 62%** | Meta title, mô tả, slug, schema FAQ, ghi SEO vào nháp qua SiteSEO. liên kết nội bộ (phần xử lý). Còn: lời dặn AI cho meta và anchor, **màn hình bước SEO**, thử thật trên website |
+| 3 · Ảnh | **khoảng 99%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chặn shortcode, chèn ảnh vào nháp. **Màn hình chọn ảnh** trên trang Soạn bài (Ảnh thật/AI, GPS, duyệt alt) và nút **«Gửi nháp»** kèm ảnh lên WordPress, nhớ trạng thái gửi, chống gửi trùng kể cả hai tab. Còn: vài phiếu dọn lỗi nhỏ (T-082, T-083, T-084), Lá Chắn rà cả giai đoạn. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
+| 4 · SEO trên trang | **khoảng 85%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, lời dặn AI cho meta và anchor, ghi SEO vào nháp qua SiteSEO. **Màn hình bước 4 «SEO»** trên trang Soạn bài chạy thật. Còn: thử thật trên website (T-059, cần chủ dự án chuẩn bị tài khoản và plugin), một phiếu dọn lỗi nhỏ |
 | 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
-Trên app hôm nay chủ dự án dùng thật được phần **viết bài bằng AI** (Soạn bài bước 1–3, cần khóa API). Phần ảnh, SEO, gửi bài và kế hoạch đã có xử lý bên trong nhưng chưa có màn hình, nên vẫn hiện "Bản demo".
+Trên app hôm nay chủ dự án dùng thật được trang **Soạn bài bước 1–5**: viết bài bằng AI, chọn ảnh thật cho chỗ cần ảnh, bước SEO (meta, slug, liên kết nội bộ, schema), rồi **«Gửi nháp»** lên WordPress (cần khóa API và kết nối WordPress). Kế hoạch, lịch đăng (Giai đoạn 5) và theo dõi thứ hạng (Giai đoạn 6) chưa làm.
 
 ## Đang làm
 
@@ -34,8 +34,6 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật (meta, slug, liên kết nội bộ, schema; lưu vào nháp; công tắc ghi SEO lên website mặc định tắt) | Lá Chắn · T-040 kiểm nhanh lời dặn meta (T-041) | `team/T-041` | Thợ Máy 2 lượt phần logic (`eac0431`); Soi Lỗi phần logic đạt có điều kiện, lỗi đã sửa. Đã gộp `main` vào nhánh (`13a554c`). Họa Sĩ xong giao diện (`a88c6e5`); phát hiện lỗi lùi ở kiểm ký tự điều khiển chữ SEO (15 test). Thợ Máy lượt 3 sửa xong (`cfdd56e`; 61 file test liên quan 8.078 qua). Họa Sĩ lượt 2 xong (`433c533`: dòng SiteSEO trên trang Kết nối WordPress, chữ bị chặn có test). Soi Lỗi cả phiếu **ĐẠT CÓ ĐIỀU KIỆN** (`f21bc3a`: SL-T041-1 → -7 đóng; 4 Thấp mới SL-T041-8 → -11). Họa Sĩ lượt 3 xong (`33d0655`: SL-T041-9, -10, -11; 535 test liên quan qua). ⏳ **27/10 Lá Chắn rút gọn cả phiếu** | [Thợ Máy](reports/T-041-tho-may.md) · [Soi Lỗi (logic)](reports/T-041-soi-loi.md) · [Họa Sĩ](reports/T-041-hoa-si.md) |
-| [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) | GĐ3: dọn lỗi Thấp gửi nháp sau T-086 (hai tab, mã bài lạ, ảnh xem trước theo byte đã băm, băm ảnh đã duyệt trong nháp) | Lá Chắn · T-056 kiểm màn hình chọn ảnh (T-089 lượt 4) | `team/T-089` | 26/10 Họa Sĩ **xong** (`87ad51c`; 3.908 test liên quan qua). Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`66131e5`: 1 Thấp). Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`d5d0e69`: không lỗi mới). Họa Sĩ lượt 2 sửa SL-T089-1 (`cf5a556`; 480 test liên quan qua). Soi Lỗi xem lại **ĐẠT CÓ ĐIỀU KIỆN** (`c636e9b`): SL-T089-1 đóng; 1 Thấp mới SL-T089-2 (lỗi lùi của lượt 2). Họa Sĩ lượt 3 sửa SL-T089-2 (`58100eb`; 493 test liên quan qua). Lá Chắn xem lại lượt 2 + 3 **ĐẠT CÓ ĐIỀU KIỆN** (`6f67bb2`): SL-T089-1, -2 đóng; 1 Thấp có từ trước LC-T089-1. **Lượt 1–3 đã gộp `main`** (Windows 14.804 test qua, 0 hỏng). Họa Sĩ lượt 4 sửa LC-T089-1 (`3b48502`; 498 test gửi nháp qua). ⏳ **14:45 Lá Chắn xem lại lượt 4** | [Họa Sĩ](reports/T-089-hoa-si.md) · [Soi Lỗi](reports/T-089-soi-loi.md) · [Lá Chắn](reports/T-089-la-chan.md) |
 
 ## Chờ
 
@@ -67,6 +65,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-041](tickets/T-041-buoc-seo-that.md) | GĐ4: bước 4 «SEO» của Soạn bài chạy thật: meta title/description có AI gợi ý, viết lại từng ô, quay lại bản trước; đếm ký tự như Google, nhãn Nên/Cảnh báo/Chặn; slug; kiểm trùng bài đã đăng; liên kết nội bộ; schema FAQ; lưu SEO vào nháp; chép sang SiteSEO; công tắc ghi SEO lên website mặc định tắt; trang Kết nối WordPress hiện «SiteSEO: ghi được / chưa bật» | Thợ Máy (logic) · Họa Sĩ (giao diện) | 2026-10-27 | [Thợ Máy](reports/T-041-tho-may.md) (3 lượt) · [Họa Sĩ](reports/T-041-hoa-si.md) (4 lượt) · [Soi Lỗi](reports/T-041-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-041-la-chan.md) (Opus tạm): mọi điều kiện chuyển từ T-036 → T-040, T-042, T-086 đóng; LC-T041-1 đóng ở lượt 4; còn câu báo SL-T041-8 (emoji mới, giữ Chặn) để phiếu dọn sau. Gộp `main`, Windows 15.263 test qua, 0 hỏng |
+| [T-089](tickets/T-089-gui-nhap-loi-thap-sau-t086.md) | «Gửi nháp»: hai tab cùng gửi một bài chỉ ra một bài nháp (so rồi đặt), chỉ lần gửi đã giành «đang gửi» mới ghi kết quả, lần gửi chưa tạo bài trả nháp về đúng trạng thái cũ, mã bài lạ không làm trang lỗi, ảnh xem trước từ đúng byte đã băm, băm ảnh đã duyệt lưu trong nháp; README bỏ lời dặn một tab | Họa Sĩ · Thư Ký (README) | 2026-10-27 | [Họa Sĩ](reports/T-089-hoa-si.md) (4 lượt) · [Soi Lỗi](reports/T-089-soi-loi.md) (2 lượt) · Lá Chắn: [**ĐẠT**](reports/T-089-la-chan.md) (Opus tạm; lượt 4 và README đạt, không còn lỗi mở) · [Thư Ký](reports/T-089-thu-ky.md). Gộp `main`, Windows 15.263 test qua, 0 hỏng |
 | [T-088](tickets/T-088-don-client-wordpress-sau-t085.md) | Client WordPress: bịt lối NUL trong `_fields`, đọc JSON trả lời không lọt lỗi lạ (trả lời lồng quá sâu không còn làm lỗi đỏ), lệnh tải ảnh lỗi giữa chừng dặn kiểm thư viện Media | Thợ Máy | 2026-10-27 | [Thợ Máy](reports/T-088-tho-may.md) · [Soi Lỗi](reports/T-088-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-088-la-chan.md) (Opus tạm): SL-T085-1..3, LC-T085-1 đóng, LC-T060-2 đóng hẳn; 1 Thấp có từ trước SL-T088-1 (chữ website có surrogate lẻ) chờ duyệt lập phiếu. Gộp `main`, Windows 14.722 test qua, 0 hỏng |
 | [T-086](tickets/T-086-trang-thai-gui-nhap.md) | Trạng thái gửi nháp lưu trong chính nháp (tải lại trang, mở bài khác vẫn khóa gửi trùng), khóa đơn điệu, băm ảnh đã duyệt chặn ảnh bị thay | Họa Sĩ | 2026-10-26 | [Họa Sĩ](reports/T-086-hoa-si.md) · [Soi Lỗi](reports/T-086-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-086-la-chan.md) (Opus tạm): 3 Thấp → T-089. Gộp `main`, Windows 14.032 test qua |
 | [T-087](tickets/T-087-readme-chon-anh.md) | README mục «Chọn ảnh cho bài», ảnh AI, ảnh công khai khi gửi nháp (thư viện Media liệt kê công khai), đoạn `[...]` | Thư Ký | 2026-10-26 | [Thư Ký](reports/T-087-thu-ky.md) (2 lượt) · Lá Chắn: [**ĐẠT**](reports/T-087-la-chan.md) (Opus tạm). Gộp `main` cùng T-085 |

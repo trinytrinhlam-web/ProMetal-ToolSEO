@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-036, T-037, T-038, T-039 đã gộp (T-040 nên gộp trước) |
-| Trạng thái | Lá Chắn kiểm cả phiếu |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -100,3 +100,4 @@ U1 (chữ từ site và AI phải escape; không `unsafe_allow_html` với chữ
 - 2026-10-27 08:16 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`433c533`): trang Kết nối WordPress hiện «SiteSEO: ghi được / chưa bật / chưa dò được»; chữ bị chặn sau lượt 3 có 9 test `AppTest` (không phải sửa code giao diện); câu liên kết nội bộ khi nút mờ nói đúng lý do; 11 file 497 qua. Còn «một ca chưa xử lý»: từ khóa chính có ký tự điều khiển làm client từ chối cả lệnh ghi SEO (an toàn, hiếm). Giao **Soi Lỗi rút gọn cả phiếu** (phiên Soi Lỗi T-040, người đã kiểm phần logic).
 - 2026-10-27 (Chỉ Huy B): **Soi Lỗi cả phiếu ĐẠT CÓ ĐIỀU KIỆN** (`f21bc3a`): SL-T041-1 → -7 đóng, R5 đạt, lỗi lùi lượt 3 chặn ở mọi đường trừ từ khóa chính; 4 Thấp mới: SL-T041-8 (emoji Unicode 16 bị chặn như ký tự chưa gán, chờ Lá Chắn quyết), SL-T041-9 (từ khóa chính chưa qua bộ kiểm chữ; «một ca chưa xử lý» của Họa Sĩ), SL-T041-10 (bước Xuất bản báo trái nhau khi mở lại bài), SL-T041-11 (nhãn «Nên» xanh khi khung chép báo chưa chép được). Không lỗi nào phải sửa trước Lá Chắn. Để nhanh: giao **Lá Chắn rút gọn cả phiếu** (phiên Lá Chắn T-040) và **song song Họa Sĩ lượt 3** sửa SL-T041-9, -10, -11 (chỉ `write.py` và test; Lá Chắn xem cả phần sửa trước khi chốt).
 - 2026-10-27 13:44 (Chỉ Huy B): **Họa Sĩ lượt 3 xong** (`33d0655`, mã `a735c7e`): SL-T041-9 (từ khóa chính kiểm như client, báo trước, không làm mất tiêu đề, mô tả hợp lệ), SL-T041-10, SL-T041-11; gỡ `xfail`; 11 file 535 qua (1 `xfail` SL-T041-8 chờ Lá Chắn quyết). Lá Chắn đang kiểm cả phiếu trên `a735c7e`.
+- 2026-10-27 16:42 (Chỉ Huy B): **Lá Chắn cả phiếu ĐẠT CÓ ĐIỀU KIỆN** (`31ecacb`): mọi điều kiện chuyển vào phiếu đóng; quyết SL-T041-8 giữ Chặn (chỉ sửa câu báo, phiếu dọn sau; Chỉ Huy duyệt Soi Lỗi đổi test `xfail` SL-T041-8 khi làm phiếu đó); SL-T041-9 → -11 Họa Sĩ đã sửa (lượt 3). Gộp `main` (`bd5a1f8`, Windows 15.252 test qua, 0 hỏng). **Họa Sĩ lượt 4** sửa LC-T041-1 (`site_host()` dùng `.hostname`), **Lá Chắn xem lại ĐẠT** (`8548e11`); gộp `main`, Windows 15.263 test qua, 0 hỏng. Xóa nhánh `team/T-041`, worktree `wt-T-041`. Còn lại (không chặn): câu báo SL-T041-8 (phiếu dọn sau, chờ chủ dự án duyệt), điều kiện Giai đoạn 5, kiểm lại bằng Fable sau 01/11.
