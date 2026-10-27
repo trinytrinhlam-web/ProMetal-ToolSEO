@@ -23,11 +23,16 @@ from seo_app.ai import registry as ai_registry
 from seo_app.content.prompts import MetaSuggestions
 from seo_app.onpage import meta as onpage_meta
 from seo_app.onpage.links import LinkSuggestion, LinkSuggestions
-from seo_app.onpage.schema import MSG_NO_FAQ
+from seo_app.onpage.schema import MSG_NO_FAQ, MSG_NO_FAQ_QUESTION
 from seo_app.storage import DraftPart
 from seo_app.storage.drafts import SendState
 from seo_app.text import escape_markdown
-from seo_app.wordpress.client import PublishedItem, PublishedList, WordPressClient
+from seo_app.wordpress.client import (
+    ConnectionInfo,
+    PublishedItem,
+    PublishedList,
+    WordPressClient,
+)
 
 # Fixture dùng chung: mật khẩu thử, cache ảnh xem trước tạm (Họa Sĩ T-056).
 env = ui.env
@@ -562,3 +567,139 @@ def test_unexpected_seo_error_keeps_draft_result(project_root, seo_ai, wordpress
     assert info.startswith(escape_markdown("Ghi SEO lên website gặp lỗi không mong đợi."))
     assert not any("chi tiết nội bộ" in text for text in ui.texts(at))
     assert ui.store().load_send_state(at.session_state["draft_id"]).post_id == POST_ID
+
+
+# ============================================================ lượt 2: trang Kết nối WordPress
+
+
+@pytest.mark.parametrize("writable", [True, False, None])
+def test_wordpress_page_shows_siteseo_status(project_root, wordpress, monkeypatch, writable):
+    """Ghi chú Chỉ Huy 2026-10-17 (phần giao diện của T-042): kiểm tra kết nối xong, trang Kết nối
+    WordPress hiện «SiteSEO: ghi được / chưa bật / chưa dò được» (``info.siteseo_status``), đã
+    thoát Markdown."""
+    info = ConnectionInfo(
+        "ProMetal", BASE_URL, "Lâm", ("editor",), True, True, True, siteseo_writable=writable
+    )
+    monkeypatch.setattr(WordPressClient, "check_connection", lambda self: info)
+    at = ui.pages.open_page(project_root, "wordpress.py")
+    run_ok(button(at, "Kiểm tra kết nối").click().run())
+    (listing,) = [m.value for m in at.markdown if "Tài khoản:" in m.value]
+    assert listing.endswith(f"- {escape_markdown(info.siteseo_status)}")
+    assert info.siteseo_status.startswith("SiteSEO: ")
+
+
+# ============================================================ lượt 2: chữ bị Chặn vì ký tự lạ
+
+BAD_TITLE = "Sửa cổng inox\x1b tại nhà Tân Phú"  # ESC lẫn vào khi dán từ nơi khác
+BAD_DESCRIPTION = DESCRIPTION.replace("Tân Phú", "Tân\x07 Phú")  # BEL
+
+
+def paste_bad_meta(at):
+    run_ok(at.text_input(key="seo_title").input(BAD_TITLE).run())
+    return run_ok(at.text_area(key="seo_description").input(BAD_DESCRIPTION).run())
+
+
+def test_pasted_control_chars_are_blocked_not_copied(project_root, seo_ai):
+    """Lượt 2 (Thợ Máy lượt 3): dán chữ có ký tự điều khiển vào ô title/description: nhãn «Chặn» và
+    câu nhắc xóa ô gõ lại (chữ thuần), khung chép không cho chép hai ô đó (slug vẫn chép được),
+    không lỗi đỏ. Ô và nháp giữ đúng chữ đã dán (không lặng lẽ bỏ ký tự)."""
+    at = paste_bad_meta(to_seo(project_root))
+    captions = [c.value for c in at.caption]
+    for check in (
+        onpage_meta.check_title(BAD_TITLE),
+        onpage_meta.check_description(BAD_DESCRIPTION),
+    ):
+        assert check.level is onpage_meta.Level.BLOCK
+        (message,) = check.messages
+        assert "Xóa ô rồi gõ lại chữ thường" in message
+        assert escape_markdown(message) in captions  # dòng dưới ô
+    assert sum(b.startswith(":red-badge[Chặn") for b in badges(at)) == 2
+    assert any(c.startswith("Tiêu đề SEO: chưa chép được.") for c in captions)
+    assert any(c.startswith("Mô tả SEO: chưa chép được.") for c in captions)
+    codes = [c.value for c in at.code]
+    assert "sua-cong-inox" in codes
+    assert not any("\x1b" in c or "\x07" in c for c in codes)
+    assert not at.error and not at.exception
+    assert at.session_state["seo_title"] == BAD_TITLE
+    saved = ui.store().load(at.session_state["draft_id"]).seo
+    assert (saved.title.text, saved.description.text) == (BAD_TITLE, BAD_DESCRIPTION)
+
+
+def test_blocked_control_chars_are_not_written(project_root, seo_ai, wordpress):
+    """Lượt 2: title, description bị Chặn vì ký tự điều khiển: bước Xuất bản báo «chưa dùng được»,
+    bật «Ghi SEO lên website» thì báo trước; gửi nháp chỉ ghi từ khóa chính, câu kết quả nói rõ
+    phần không ghi; không lỗi đỏ, không gửi ký tự lạ nào lên website."""
+    at = paste_bad_meta(to_seo(project_root))
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    lines = [m.value for m in at.markdown]
+    assert "⚠️ SEO: Tiêu đề SEO, Mô tả SEO chưa dùng được (xem bước SEO)" in lines
+    run_ok(at.toggle(key="seo_write").set_value(True).run())
+    will_skip = escape_markdown("Sẽ không ghi Tiêu đề SEO, Mô tả SEO: ở bước SEO đang báo «Chặn»")
+    assert will_skip in "\n".join(c.value for c in at.caption)
+    ui.send(at)
+    assert any("Đã tạo bài nháp" in s.value for s in at.success)
+    (run,) = [r for r in wordpress.fake.requests if ui.path_of(r) == RUN]
+    assert json.loads(run.body)["input"] == {"postId": POST_ID, "focus_keyphrase": KEYWORD}
+    bodies = [
+        r.body.decode("utf-8", "replace") if isinstance(r.body, bytes) else (r.body or "")
+        for r in wordpress.fake.requests
+    ]
+    odd = ("\x1b", "\x07", "\\u001b", "\\u0007")  # thô hay đã mã hóa JSON
+    assert not any(bad in body for body in bodies for bad in odd)
+    (info,) = [i.value for i in at.info if "Đã ghi SEO" in i.value]
+    assert escape_markdown("Không ghi Tiêu đề SEO, Mô tả SEO: ở bước SEO đang báo «Chặn».") in info
+    assert not at.error and not at.exception
+
+
+FAQ_WITHOUT_QUESTIONS = DraftPart(
+    heading="Câu hỏi thường gặp", versions=["Liên hệ xưởng để được tư vấn thêm."]
+)
+
+
+def test_faq_section_without_proper_questions_says_so(project_root, seo_ai):
+    """Lượt 2 (Thợ Máy lượt 3, câu ``MSG_NO_FAQ_QUESTION``): bài có mục «Câu hỏi thường gặp» mà
+    chưa có câu hỏi đúng dạng: Schema nói đúng điều đó (không còn «chưa có mục Hỏi đáp»), không
+    có JSON-LD, không có ô «Dùng schema»."""
+    snap = ui.article()
+    snap.parts.append(FAQ_WITHOUT_QUESTIONS)
+    at = to_seo(project_root, snap)
+    captions = [c.value for c in at.caption]
+    assert f"⚠️ {escape_markdown(MSG_NO_FAQ_QUESTION)}" in captions
+    assert not any(escape_markdown(MSG_NO_FAQ) in c for c in captions)
+    assert not [c for c in at.code if c.language == "json"]
+    assert not any(box.key == "seo_use_faq" for box in at.checkbox)
+
+
+# ============================================================ lượt 2: câu liên kết khi nút mờ
+
+NO_AI_HINT = "Nút «AI gợi ý liên kết» đang tắt vì AI chưa dùng được"
+NO_LIST_HINT = "Nút «AI gợi ý liên kết» cần danh sách bài đã đăng"
+CLICK_HINT = "Chưa có liên kết nội bộ nào: bấm «AI gợi ý liên kết»."
+
+
+def link_hints(at) -> list[str]:
+    return [c.value for c in at.caption if c.value.startswith("Chưa có liên kết nội bộ nào")]
+
+
+def test_links_hint_without_ai_key(project_root, wordpress):
+    """Góp ý 4 (lượt 1): chưa có khóa AI thì nút mờ, câu dưới bảng nói lý do thay cho «bấm…»."""
+    at = to_seo(project_root)  # không có ``seo_ai``: môi trường thử không có khóa AI
+    assert button(at, "✨ AI gợi ý liên kết").disabled
+    (hint,) = link_hints(at)
+    assert NO_AI_HINT in hint and CLICK_HINT not in hint
+
+
+def test_links_hint_without_wordpress(project_root, seo_ai):
+    """Chưa kết nối WordPress (không có danh sách bài): nút mờ, câu nói cần danh sách bài."""
+    at = to_seo(project_root)
+    assert button(at, "✨ AI gợi ý liên kết").disabled
+    (hint,) = link_hints(at)
+    assert NO_LIST_HINT in hint and CLICK_HINT not in hint
+
+
+def test_links_hint_when_button_works(project_root, seo_ai, wordpress):
+    """Có khóa AI và danh sách bài: nút bấm được, câu vẫn mời bấm như cũ."""
+    at = to_seo(project_root)
+    assert not button(at, "✨ AI gợi ý liên kết").disabled
+    assert link_hints(at) == [CLICK_HINT]

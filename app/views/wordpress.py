@@ -68,7 +68,9 @@ if info:
         f"- Tài khoản: **{plain(info.user_name)}** — vai trò: {roles}\n"
         f"- Viết bài: {'✅' if info.can_edit_posts else '❌'} · "
         f"Đăng bài: {'✅' if info.can_publish_posts else '❌'} · "
-        f"Tải ảnh lên: {'✅' if info.can_upload_files else '❌'}"
+        f"Tải ảnh lên: {'✅' if info.can_upload_files else '❌'}\n"
+        # T-041 (phần giao diện của T-042): «SiteSEO: ghi được / chưa bật / chưa dò được»
+        f"- {plain(info.siteseo_status)}"
     )
     if not (info.can_edit_posts and info.can_upload_files):
         st.warning(

@@ -2177,8 +2177,19 @@ def links_panel(writer: ContentWriter | None, listing: site_storage.SiteListing)
     for note in S.get("seo_link_notes", []):  # câu cố định, không chép chữ AI
         st.caption(escape_markdown(note))
     links: list[DraftLink] = S.get("seo_links", [])
-    if not links:
-        st.caption("Chưa có liên kết nội bộ nào: bấm «AI gợi ý liên kết».")
+    if not links:  # nói đúng lý do khi nút đang mờ (góp ý 4 của báo cáo Họa Sĩ)
+        if writer is None:
+            st.caption(
+                "Chưa có liên kết nội bộ nào. Nút «AI gợi ý liên kết» đang tắt vì AI chưa dùng "
+                "được (xem cảnh báo ở đầu trang)."
+            )
+        elif candidates is None:
+            st.caption(
+                "Chưa có liên kết nội bộ nào. Nút «AI gợi ý liên kết» cần danh sách bài đã đăng "
+                "trên website (xem dòng báo ở đầu bước SEO)."
+            )
+        elif candidates.items:
+            st.caption("Chưa có liên kết nội bộ nào: bấm «AI gợi ý liên kết».")
         return
     titles = {item.id: item.title for item in listing.index.items} if listing.index else {}
     rows = [
