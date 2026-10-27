@@ -463,11 +463,6 @@ def test_mo_lai_nhap_anh_ai_tien_to_ngoac_vuong_khong_gach_cheo():
 # ===== Lỗi tìm thấy (có từ trước, ngoài phạm vi T-081) =========================================
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T081-1: «(AI)» AI viết tách khỏi tiền tố («[Minh họa] (AI): …», «**Ảnh minh họa** "
-    "(AI): …») còn lại trong alt, chú thích: «Ảnh minh họa (AI): (AI): …»",
-)
 @pytest.mark.parametrize(
     "text",
     [
