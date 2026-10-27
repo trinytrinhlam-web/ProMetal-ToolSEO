@@ -284,6 +284,8 @@ Anh SEO/                            ← thư mục đã khai báo
 
 Còn ảnh nào chưa có alt hay chưa tick **Đã duyệt** thì chưa gửi bài được (mục 10). Nút khác: **📂 Mở thư mục chứa ảnh**, **🔁 Chọn ảnh khác**, **✖ Bỏ ảnh**. Ảnh đã chọn, alt, chú thích được lưu cùng bài đang soạn dở trên máy này; mở lại bài, app kiểm lại ảnh trên máy và báo nếu ảnh đã bị xóa hay đổi tên.
 
+Lúc bạn tick **Đã duyệt**, app nhớ «dấu vân tay» của đúng bản ảnh đang hiện (lưu trong nháp trên máy, không gửi đi đâu). Mở lại bài mà file ảnh đã bị thay bằng ảnh khác cùng tên thì ở khung ảnh app bỏ **Đã duyệt** («Ảnh này khác bản bạn đã duyệt trước đó…»), bắt xem lại ảnh, alt, chú thích rồi duyệt lại; bấm gửi thẳng ở bước Xuất bản thì app dừng, chưa gửi gì. Bài soạn dở lưu bằng bản app cũ (trước khi app có dấu vân tay này) thì các ảnh đã duyệt phải tick **Đã duyệt** lại một lần; app báo «… nháp không có «dấu vân tay» của ảnh lúc duyệt …».
+
 **Ảnh AI**
 
 Tạo ảnh ngay trong app đang tạm hoãn (hai nút **🎨 Tạo ảnh**, **🔄 Prompt khác** bị khóa). Cách làm:
@@ -307,7 +309,7 @@ Cần kết nối WordPress trước (mục 6). Ở bước **Xuất bản** c�
 1. Xem khung **Kiểm tra trước khi gửi**, trong đó có dòng «Chỗ cần ảnh đã có ảnh, alt đã duyệt: …». Ảnh nào chưa có alt hay chưa duyệt thì app báo tên mục và khóa nút gửi. Chỗ cần ảnh để trống thì bài gửi đi không có ảnh ở chỗ đó.
 2. Bài có từ 2 ảnh: chọn ảnh ở ô **Ảnh đại diện** (mặc định là ảnh đầu tiên). Bài một ảnh thì ảnh đó là ảnh đại diện.
 3. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh). Đoạn nằm ở **tiêu đề bài** hay **tiêu đề mục** thì chưa sửa được ở bước này: gửi nháp xong, mở bài trong WordPress và xóa đoạn đó **trước khi** bấm Lưu hay Đăng. (Cách khác: sửa tiêu đề ở bước **Dàn ý** rồi duyệt lại để AI viết lại toàn bài; cách này mất phần đã sửa tay và phải chọn lại ảnh.)
-4. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem «App nhớ việc đã gửi» và lời dặn ở cuối mục này).
+4. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem «App nhớ việc đã gửi» bên dưới).
 
 Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có nút **Mở bài nháp trong WordPress** và danh sách ảnh đã lên thư viện Media (tên file, địa chỉ ảnh). Nút gửi khóa lại; muốn tạo thêm một bài nháp nữa từ bài này thì tick **Tạo thêm một bài nháp mới** (ảnh sẽ tải lên lần nữa).
 
@@ -328,16 +330,18 @@ Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có n�
 App ghi «đang gửi» vào bài nháp trên máy ngay trước khi gửi, và ghi «đã gửi» kèm mã bài nháp khi website trả lời. Vì vậy tải lại trang (F5), đóng tab, mở bài khác rồi mở lại, hay hôm sau mở lại bài, app vẫn nhớ và không cho gửi trùng khi bạn chưa xác nhận:
 
 - **Bài đã gửi:** app ghi «Bài này đã gửi lên WordPress (bài nháp mã …, lúc …). Gửi lại sẽ tạo thêm một bài nháp mới và tải ảnh lên lần nữa.», có nút **Mở bài nháp trong WordPress**. Nút gửi khóa tới khi bạn tick **Tạo thêm một bài nháp mới**.
-- **Lần gửi trước chưa có kết quả** (tải lại trang, đóng tab hay mất mạng đúng lúc đang gửi, hoặc đang gửi ở cửa sổ khác): app nhắc «… **bài nháp có thể đã có trên website**», khóa nút tới khi bạn tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**. Kiểm **Bài viết → Nháp** và **Media → Thư viện** trước khi tick.
+- **Lần gửi trước chưa có kết quả** (tải lại trang, đóng tab hay mất mạng đúng lúc đang gửi, hoặc đang gửi ở cửa sổ khác): app nhắc «… **bài nháp có thể đã có trên website**», khóa nút tới khi bạn tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**. Kiểm **Bài viết → Nháp** và **Media → Thư viện** trước khi tick; đang gửi ở tab khác thì đợi tab đó xong rồi hãy xem.
 - **Lỡ bấm nút khác, bấm đúp, hay sang trang khác rồi quay lại lúc đang gửi:** app không gửi thêm. Lần gửi chưa xong thì trang hiện ô «⏳ Lần gửi nháp vừa bấm vẫn đang chạy, đợi gửi xong rồi mới hiện kết quả…»; xong thì hiện kết quả (có thể kèm dòng «Lần gửi này bị ngắt giữa chừng…»). Nút gửi vẫn khóa, phải tick xác nhận mới gửi tiếp được. Website chậm quá 60 giây thì app báo «Lần gửi nháp trước vẫn đang chạy (website chậm?)…»: đợi thêm rồi bấm lại hoặc tải lại trang.
+- **Cùng một bài mở ở hai tab (hay hai cửa sổ), bấm 📤 Gửi nháp ở cả hai:** chỉ ra **một** bài nháp. Tab bấm sau không gửi gì, báo «Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi (thường do bài vừa được gửi, hoặc đang gửi, ở một tab khác của app)…», và nút gửi khóa theo lời nhắc phía trên nút.
+- **Đã tick xác nhận rồi gửi, mà lần gửi đó hỏng trước khi tạo được bài** (ví dụ mất mạng lúc tải ảnh): bài giữ nguyên khóa như trước lúc gửi (vẫn «chưa có kết quả», hay vẫn «đã gửi» bài cũ). Muốn gửi tiếp thì kiểm trang quản trị rồi tick lại.
 
-**Lời dặn tạm thời** (tới khi app chặn được việc gửi cùng một bài từ hai tab)
+**Lần gửi thật đầu tiên**
 
-- **Đừng mở cùng một bài ở hai tab (hay hai cửa sổ) rồi bấm 📤 Gửi nháp ở cả hai.** Bấm cách nhau vài giây thì vẫn có thể ra **hai bài nháp**, ảnh tải lên hai lần. Mỗi lần gửi chỉ dùng một tab.
-- **Lần gửi thật đầu tiên**: thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh có vị trí GPS» **chụp ở nơi đã công khai** (xưởng, cửa hàng); đừng dùng ảnh nhà khách cho lần thử. Gửi xong, tải ảnh đó từ website về máy để kiểm GPS:
-  1. Trong danh sách ảnh đã lên thư viện Media, chép địa chỉ ảnh (dòng bắt đầu bằng `https://`), dán vào trình duyệt, chuột phải vào ảnh → **Save image as** để lưu về máy.
-  2. Trên Windows: chuột phải file vừa lưu → **Properties** → thẻ **Details**, kéo xuống phần **GPS**. Có **Latitude**, **Longitude** là ảnh còn GPS; không có phần đó thì báo Chỉ Huy. Trên Mac chưa thử cách kiểm này.
-  3. Kiểm xong thì xóa ngay bài nháp và ảnh thử trong trang quản trị (**Bài viết → Nháp**, **Media → Thư viện**).
+Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh có vị trí GPS» **chụp ở nơi đã công khai** (xưởng, cửa hàng); đừng dùng ảnh nhà khách cho lần thử. Gửi xong, tải ảnh đó từ website về máy để kiểm GPS:
+
+1. Trong danh sách ảnh đã lên thư viện Media, chép địa chỉ ảnh (dòng bắt đầu bằng `https://`), dán vào trình duyệt, chuột phải vào ảnh → **Save image as** để lưu về máy.
+2. Trên Windows: chuột phải file vừa lưu → **Properties** → thẻ **Details**, kéo xuống phần **GPS**. Có **Latitude**, **Longitude** là ảnh còn GPS; không có phần đó thì báo Chỉ Huy. Trên Mac chưa thử cách kiểm này.
+3. Kiểm xong thì xóa ngay bài nháp và ảnh thử trong trang quản trị (**Bài viết → Nháp**, **Media → Thư viện**).
 
 ## 11. Cập nhật phiên bản mới
 
