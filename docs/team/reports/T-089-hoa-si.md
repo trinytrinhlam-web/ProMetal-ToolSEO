@@ -6,7 +6,79 @@
 | Phiếu | [T-089](../tickets/T-089-gui-nhap-loi-thap-sau-t086.md) |
 | Ngày nộp | 2026-10-26 |
 | Nhánh | `team/T-089` (từ `main` `3d7f4b7`) |
-| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả |
+| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả. **Lượt 2 (2026-10-27):** SL-T089-1 đã sửa, ghi kết quả gửi kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089), gỡ 2 `xfail` (mục «Lượt 2») |
+
+## Lượt 2 (2026-10-27): SL-T089-1
+
+Theo báo cáo Soi Lỗi T-089 (SL-T089-1, Thấp), biên bản Lá Chắn T-089 (mục «Mức SL-T089-1», Ghi nhận 1, Điều kiện 2) và tin giao việc của Chỉ Huy B.
+
+**Tóm tắt (cho chủ dự án):** lỗi nhỏ cuối cùng của phần «gửi nháp» đã sửa. Trước đây, khi hai tab cùng gửi một bài, tab bị từ chối mà đúng lúc đó lại bị bấm thêm thì app có thể xóa mất ghi chú «đang gửi/đã gửi» của tab kia (mở lại bài là hết khóa). Nay chỉ tab đã thật sự bắt đầu gửi mới được ghi kết quả vào bài, và chỉ ghi khi ghi chú trong bài vẫn là của chính nó: tab bị từ chối không ghi gì; tab khác cố ý gửi thêm trong lúc tab này đang gửi thì kết quả của tab này không xóa ghi chú của tab kia (bài vẫn khóa, trang báo «chưa ghi được kết quả vào nháp»).
+
+| # | Việc | Cách làm | Test |
+|---|---|---|---|
+| 1 | `holder["claimed"]`: chỉ lần gửi đã ghi được «đang gửi» mới ghi kết quả | `send_and_record` dựng trạng thái «đang gửi» một lần (`app/views/write.py:2196`), ghi kiểu so rồi đặt; ghi được thì đặt `holder["claimed"]` = đúng trạng thái đó (`:2214`), trước khi gửi. Thua tab khác hay ghi hỏng (file nháp bận): không có dấu. `finish_send` chỉ thử ghi lại kết quả khi có dấu (`:2335`); `record_outcome` không có dấu thì không ghi gì (`:2257-2259`) | `SL: test_lost_tab_interrupted_keeps_other_tab_sending`, `…_keeps_other_tab_sent` (gỡ `xfail`), `N: test_pending_not_written_then_interrupted_writes_nothing` (biến thể «file nháp bận» Soi Lỗi nêu) |
+| 2 | Ghi kết quả kiểu so rồi đặt (Ghi nhận 1 của Lá Chắn T-089 = Rủi ro 1 lượt 1) | `record_outcome` ghi bằng `save_send_state(…, expected=(claimed, False))` (`:2263`): nháp còn đúng «đang gửi» của lần này thì ghi (kể cả xóa dòng khi chắc chắn chưa tạo gì); tab khác đã ghi «đang gửi» mới (người dùng cố ý tick «Tôi đã kiểm tra…» ở tab kia) thì **không ghi đè**, `note` = `MSG_STATE_CHANGED_ELSEWHERE` (`:187`, `:2275`), trang hiện kết quả của lần này kèm câu «Chưa ghi được kết quả gửi vào nháp (một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè)…»; nháp giữ khóa của tab kia. Lần thử ghi lại ở `finish_send` cũng so như vậy | `N: test_outcome_does_not_overwrite_other_tab_new_send`, `N: test_retry_in_finish_send_also_compares`, `N: test_expected_delete_only_own_state` (kho nháp: xóa dòng kiểu so rồi đặt) |
+| 3 | Gỡ 2 `xfail` của `tests/test_soi_loi_t089.py` khi XPASS | Cả hai báo `[XPASS(strict)]` trước khi gỡ; chỉ xóa 2 dấu (8 dòng), thân test không đổi | Mục «Bằng chứng lượt 2» |
+| 4 | Phạm vi | Chỉ `app/views/write.py` (luồng gửi nháp) và test; không đổi `seo_app/storage/drafts.py` (`save_send_state` có `expected` từ lượt 1), không đụng khối SEO, `seo_app/wordpress/**`, `config/**` | — |
+
+**Thử gỡ chỗ sửa lượt 2** (bản sao `git archive` của `d5d0e69` chép thêm `write.py` và hai file test của lượt 2, tức đúng nội dung `f2a72f5`; chạy 5 test của SL-T089-1 ở trên; script `T-089-hoa-si-scripts/mutate_l2.py`):
+
+| Đột biến | Kết quả |
+|---|---|
+| Mã lượt 1 (`d5d0e69`) với test mới | bắt được: 5 hỏng đúng câu kiểm (nháp mất «đang gửi» của tab kia, bị ghi đè `(False, 501)`, lần ghi kết quả không so); `N: test_expected_delete_only_own_state` qua (kho nháp đã đúng từ lượt 1) |
+| R2 ghi kết quả không so (giữ chốt `claimed`) | bắt được (2 hỏng) |
+| R3 bỏ chốt `claimed` ở `finish_send` và `record_outcome` (giữ ghi kết quả so rồi đặt) | **không bắt**, đúng thiết kế: hai lớp chặn độc lập. Không có dấu thì `expected=(None, False)`, chỉ ghi khi nháp không có dòng nào, nên không xóa, không ghi đè trạng thái tab kia. Chốt giữ để rõ ý (không có «đang gửi» của mình thì không ghi gì) |
+| R4 bỏ chốt `claimed` và ghi kết quả không so (như lượt 1) | bắt được (5 hỏng) |
+| Không đột biến | 5 qua |
+
+**Soát R5 lượt 2:** `tests/test_soi_loi_t089.py` chỉ xóa 2 dấu `@pytest.mark.xfail(...)`; `tests/test_t089_send_draft.py` thêm 4 test, không sửa test cũ. Không `skip`, không xóa test.
+
+**Bảo mật (W1, W2, U1, F2):** không đổi. Không thêm đường gửi hay lệnh ghi nào lên website (chỉ đổi cách ghi trạng thái trong nháp trên máy). Câu mới `MSG_STATE_CHANGED_ELSEWHERE` cố định, hiện qua `escape_markdown`. Ghi kết quả so rồi đặt chỉ bớt lần ghi (không bao giờ mở khóa thêm).
+
+**Thử gộp** (`git merge-tree`, không đụng thư mục làm việc): `main` cục bộ `11cb2c4` (đã có T-088, T-087), `origin/main` `e295f0e`, `origin/team/T-041` `cdc47d0`, `origin/team/T-088` `7e1fdae`: không xung đột.
+
+**Bằng chứng lượt 2:**
+
+```
+# Trước khi gỡ dấu:
+$ uv run pytest tests/test_soi_loi_t089.py -k keeps_other_tab
+[XPASS(strict)] SL-T089-1: tab thua so rồi đặt bị ngắt thì finish_send ghi đè trạng thái của tab kia
+[XPASS(strict)] SL-T089-1: tab thua so rồi đặt bị ngắt thì finish_send xóa «đã gửi» của tab kia
+
+$ PYTHONUTF8=1 uv run pytest tests/test_app_images.py tests/test_soi_loi_t056.py \
+    tests/test_la_chan_t056.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_drafts.py tests/test_drafts_images.py tests/test_app_pages.py \
+    tests/test_t086_send_state.py tests/test_storage_send_state.py \
+    tests/test_t089_send_draft.py tests/test_soi_loi_t089.py -q -rxXf
+480 passed, 1 skipped in 1333.04s (0:22:13)
+# Code f2a72f5, chạy 07:41 → 08:03 (máy đang bận 93% vì một lượt pytest khác chạy song song).
+# Không còn xfail nào trong 12 file (lượt 1: 2 xfail SL-T089-1).
+
+# Cây gộp nhánh (f2a72f5) với main cục bộ 11cb2c4 (đã có T-088 sửa client.py; git merge-tree,
+# xuất bằng git archive, chạy bằng venv của wt-T-089; pyproject.toml, uv.lock không đổi):
+$ pytest tests/test_t089_send_draft.py tests/test_soi_loi_t089.py tests/test_t086_send_state.py \
+    tests/test_soi_loi_t086.py tests/test_la_chan_t086.py tests/test_storage_send_state.py \
+    tests/test_wordpress_t088.py tests/test_soi_loi_t088.py -q -rxXf
+783 passed, 8 xfailed in 594.34s (0:09:54)
+# 8 xfail đều là SL-T088-1 có sẵn trên main (test_soi_loi_t088.py), không phải của T-089.
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan app/views/write.py tests/test_t089_send_draft.py \
+    tests/test_soi_loi_t089.py docs/team/reports/T-089-hoa-si.md
+"results": {}
+```
+
+**Đối chiếu việc lượt 2:**
+
+- [x] SL-T089-1: `holder["claimed"]`; `finish_send` chỉ ghi lại kết quả khi lần này đã ghi được «đang gửi»; ghi kết quả kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089).
+- [x] Gỡ 2 `xfail` của `tests/test_soi_loi_t089.py` khi XPASS (chỉ xóa dấu); thêm 4 test (có ca ghi kết quả so rồi đặt).
+- [x] Phạm vi: `app/views/write.py` và test; không đụng khối SEO của `drafts.py`.
+- [x] Test của tiêu chí xong + `tests/test_t086_send_state.py`, `tests/test_storage_send_state.py`, `tests/test_t089_send_draft.py`, `tests/test_soi_loi_t089.py`: 480 qua, 0 hỏng; `uv run ruff check .` sạch.
+- [ ] Soi Lỗi, Lá Chắn rút gọn lượt 2 (chưa tới lượt).
+
+Không mở lại app thật cho lượt 2: khe của SL-T089-1 chỉ vài mili giây, bấm tay không tái hiện được (Soi Lỗi cũng ghi vậy); bằng chứng là các test ngắt lần chạy thật ở trên. Luồng gửi bình thường (ghi kết quả so rồi đặt khi không có tab khác) được mọi test gửi nháp của T-056, T-086, T-089 kiểm (nháp ghi đúng «đã gửi, bài 501» sau khi gửi).
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -33,7 +105,7 @@
 2. **«Khác» là khác bất kỳ trường nào** (`pending`, `post_id`, `updated_at`): cùng «đang gửi» nhưng ghi lúc khác là lần gửi khác. Đồng hồ Windows nhảy 15,6 ms một lần; hai lần ghi chỉ có thể trùng giờ khi cách nhau dưới 15,6 ms, còn giữa lần vẽ người dùng thấy và cú bấm luôn có thao tác của người (lâu hơn nhiều).
 3. **Dòng trạng thái hỏng:** người dùng thấy «không đọc được trạng thái gửi» và xác nhận thì ghi được khi dòng vẫn hỏng (`seen_broken`); dòng hỏng thành dòng đọc được (hay ngược lại) thì không ghi. Đọc hỏng tạm thời (file nháp bận) lúc vẽ rồi bấm: không gửi, báo «trạng thái gửi vừa thay đổi», lần vẽ sau đọc lại (hướng an toàn).
 4. **Mở rộng `save_send_state` bằng `expected` thay vì thêm hàm mới:** ghi «đang gửi» vẫn đi qua đúng hàm cũ (test T-086 theo dõi hàm này vẫn đúng). Các lần ghi khác (kết quả gửi, test) không truyền `expected`, ghi luôn như trước. Hàm nay trả `True`/`False`.
-5. **Ghi kết quả (`record_outcome`) không so:** chỉ chạy sau khi chính lần này đã qua bước so rồi đặt. Rủi ro còn lại ở mục dưới.
+5. **Ghi kết quả (`record_outcome`) không so** (lượt 1): chỉ chạy sau khi chính lần này đã qua bước so rồi đặt. Soi Lỗi tìm ra `finish_send` vẫn gọi lại cho lần gửi chưa qua bước đó (SL-T089-1). **Lượt 2:** chỉ lần có dấu `claimed` mới ghi, và ghi kiểu so rồi đặt (mục «Lượt 2»).
 6. **Ảnh xem trước của ảnh đã chọn đi cùng `web_info`:** `make_preview` (được phép theo LC-T058-2) trên đúng byte đã băm; đọc cấu hình ảnh (`load_image_settings`) chuyển xuống sau khi có ảnh xem trước, nên `config/content.toml` sai vẫn thấy ảnh. `test_st_image_only_gets_preview_cache_bytes` vẫn qua không sửa: `make_preview` cho cùng byte với `PreviewCache.get` khi cùng file (mã hóa JPEG cố định).
 7. **Băm trong nháp:** trường tùy chọn, không đổi `SCHEMA_VERSION` (nháp khuôn 2 có hay không có trường đều mở được; bản app cũ mở nháp có băm thì coi ảnh đó là ảnh hỏng, bỏ ảnh, giữ chữ). Sai dạng thì bỏ băm thay vì bỏ ảnh (người dùng chỉ phải duyệt lại). Dùng `Field(exclude_if=…)` của pydantic (có từ 2.11; `uv.lock` khóa 2.14.1), không thêm thư viện.
 8. **Nháp cũ không có băm: bỏ «Đã duyệt» khi mở** (cách Lá Chắn T-086 Ghi nhận 1 đề xuất), thay vì gắn băm của file hiện tại lúc xem khung ảnh như T-086: không so được ảnh với lúc duyệt thì người dùng xem lại. Chỉ ảnh trong thư mục ảnh; ảnh AI chưa có file không bị ảnh hưởng.
@@ -149,7 +221,7 @@ Xong: dừng app, dừng WordPress giả, trả `launch.json` về đúng bản 
 
 ## Rủi ro và điểm cần chú ý
 
-1. **Ghi kết quả không so** (Quyết định 5): nếu trong lúc lần gửi của tab 1 đang chạy, người dùng ở tab 2 **cố ý** tick «Tôi đã kiểm tra…» (thấy «đang gửi» của tab 1) rồi gửi tiếp, thì kết quả của tab 1 ghi đè dấu «đang gửi» của tab 2. Nháp vẫn khóa («đã gửi»), chỉ đổi lời nhắc; cần thao tác xác nhận cố ý ở tab thứ hai. Không sửa trong phiếu này.
+1. ~~**Ghi kết quả không so** (Quyết định 5): nếu trong lúc lần gửi của tab 1 đang chạy, người dùng ở tab 2 **cố ý** tick «Tôi đã kiểm tra…» (thấy «đang gửi» của tab 1) rồi gửi tiếp, thì kết quả của tab 1 ghi đè dấu «đang gửi» của tab 2.~~ **Đã đóng ở lượt 2:** kết quả ghi kiểu so rồi đặt với đúng «đang gửi» của lần đó (mục «Lượt 2»).
 2. Bản app cũ (trước T-089) mở nháp có băm thì bỏ ảnh đó như ảnh hỏng (phần chữ giữ). Chỉ xảy ra khi quay về bản cũ.
 3. Lần so rồi đặt đợi tối đa 5 giây khi tab khác đang giữ file nháp (`_SQLITE_TIMEOUT`); quá thì báo «File nháp đang bận», chưa gửi gì.
 4. Ảnh xem trước của ảnh đã chọn không còn lấy từ cache trên ổ: mỗi phiên dựng lại một lần cho mỗi phiên bản file (ảnh 24 MP khoảng 0,35 giây, cùng lúc với lần nén thử WebP vốn đã có).
