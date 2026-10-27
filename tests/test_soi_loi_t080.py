@@ -270,14 +270,6 @@ def test_kelvin_sibling_seen_by_lstat_and_resolve_is_not_opened(tmp_path, monkey
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T080-1 (soi-loi): Windows, _opened_stat coi mọi lần _win_open hỏng là 'Không đọc "
-        "được mục này (không có quyền hoặc ổ đĩa vừa bị ngắt)', kể cả lỗi 3 (thư mục chứa ảnh vừa "
-        "bị dời đi sau khi kiểm); tráo thật đo được, cùng loại LC-T079-3"
-    ),
-)
 @pytest.mark.parametrize(
     ("call", "size"),
     [
@@ -318,15 +310,6 @@ def test_sl_t080_1_folder_moved_before_attribute_handle_is_not_permission_error(
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T080-2 (soi-loi): Windows, xem thư mục không giữ được thư mục (lỗi 32 khi chương "
-        "trình khác đang đổi tên nó) thì kiểm đường đi rồi scandir theo tên; thư mục vừa bị dời "
-        "đi thì _read_entries báo 'Không đọc được thư mục này (không có quyền hoặc ổ đĩa vừa bị "
-        "ngắt)'; tráo thật đo được, cùng loại LC-T079-3"
-    ),
-)
 def test_sl_t080_2_folder_moved_before_listing_is_not_permission_error(tmp_path, monkeypatch):
     """App không giữ được ``x`` (như lỗi 32 đo được khi chương trình khác đang đổi tên ``x``), nên
     kiểm đường đi rồi đọc danh sách theo tên; ``x`` bị dời đi đúng lúc đó. Mong đợi "vừa bị thay
@@ -409,15 +392,6 @@ def test_swap_during_resolve_is_refused_safely_on_windows(tmp_path, monkeypatch,
 
 
 @windows_only
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T080-L-1 phần Windows (soi-loi): resolve(strict=True) đi trọn qua tầng vừa bị tráo "
-        "thành junction (vòng lstat vừa thấy thư mục thật), _resolve_inside báo 'Đường dẫn nằm "
-        "ngoài thư mục ảnh được phép.' hay 'Đường dẫn ảnh không hợp lệ (tên ngắn hoặc tên khác của "
-        "cùng một mục).' thay vì 'vừa bị thay đổi'. Có từ T-048; an toàn, chỉ sai nghĩa câu báo"
-    ),
-)
 @pytest.mark.parametrize("target", TARGETS)
 @pytest.mark.parametrize("call", CALLS)
 def test_sl_t080_l_1_windows_swap_during_resolve_is_reported_as_changed(

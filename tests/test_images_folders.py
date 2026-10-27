@@ -768,7 +768,9 @@ def test_resolve_check_alone_blocks_junction_outside(tree, monkeypatch):
     exc = raises_safely(
         lambda: lib.read_image_bytes(ImageRef(0, "loi-tat/bi-mat.jpg")), tree["tmp"]
     )
-    assert "ngoài thư mục" in str(exc)
+    # T-082 (SL-T080-L-1): vòng kiểm liên kết không thấy liên kết mà ``resolve`` ra ngoài gốc thì
+    # báo "vừa bị thay đổi" (chỉ có thể do bị tráo), vẫn từ chối như liên kết.
+    assert isinstance(exc, folders._LinkError) and "thay đổi" in str(exc)
 
 
 @windows_only
@@ -1632,3 +1634,269 @@ def test_resolve_error_after_checked_levels(tmp_path, monkeypatch, make_error, m
     monkeypatch.setattr(Path, "resolve", failing_resolve)
     exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
     assert message in str(exc)
+
+
+# ----- T-082: câu báo khi bị tráo (SL-T080-1, -2, -L-1), đường dẫn ``resolve`` chỉ để so ---------
+
+SWAP_TARGETS = ["ngoai-goc", "trong-goc", "anh-em-kelvin"]
+
+
+@pytest.mark.parametrize("target", SWAP_TARGETS)
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_resolve_through_swapped_level_is_reported_as_changed(tmp_path, monkeypatch, target, call):
+    """SL-T080-L-1: vòng ``lstat`` vừa thấy ``x`` là thư mục thật mà ``resolve`` đi qua ``x`` ra
+    ngoài gốc, tới ``y`` trong gốc, hay tới ``y`` của thư mục anh em tên dấu Kelvin: chỉ có thể vì
+    ``x`` vừa bị tráo thành liên kết, nên báo "vừa bị thay đổi", vẫn từ chối như liên kết. App
+    không ``lstat`` gì trong đích ngoài gốc: đường dẫn ``resolve`` trả chỉ để so (Lá Chắn T-080,
+    Việc 4)."""
+    base = tmp_path / "cha"
+    write(base / "Ảnh kho" / "x" / "a.jpg", b"\xff\xd8 x")
+    write(base / "Ảnh kho" / "y" / "a.jpg", b"\xff\xd8 y, khac x")
+    root = (base / "Ảnh kho").resolve()
+    outside = {
+        "ngoai-goc": tmp_path / "ngoai",
+        "trong-goc": None,
+        "anh-em-kelvin": base / "Ảnh Kho",
+    }[target]
+    if target == "anh-em-kelvin" and outside.exists():  # APFS (Mac): dấu Kelvin là "K"
+        pytest.skip("ổ coi hai tên là một")
+    move_to = root / "y" if outside is None else write(outside / "y" / "a.jpg").parent
+    x = root / "x"
+    real_resolve, real_lstat = Path.resolve, os.lstat
+    looked: list[str] = []
+
+    def moved_resolve(self, strict=False):
+        if self == x or x in self.parents:
+            self = move_to.joinpath(*self.relative_to(x).parts)
+        return real_resolve(self, strict=strict)
+
+    def spy_lstat(path, *args, **kwargs):
+        looked.append(os.fspath(path))
+        return real_lstat(path, *args, **kwargs)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", moved_resolve)
+    monkeypatch.setattr(folders.os, "lstat", spy_lstat)
+    exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    assert isinstance(exc, folders._LinkError) and "thay đổi" in str(exc)
+    if outside is not None:
+        assert looked and not [p for p in looked if p.startswith(str(outside))]
+
+
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image"])
+def test_resolve_to_other_name_of_same_file_keeps_alias_message(tmp_path, monkeypatch, call):
+    """Tên khác của chính mục vừa ``lstat`` (như tên ngắn 8.3 của Windows; ở đây giả bằng hard link
+    mà ``resolve`` trả tên kia) vẫn báo "tên ngắn hoặc tên khác", không thành "vừa bị thay đổi"."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    try:
+        os.link(root / "x" / "a.jpg", root / "x" / "b.jpg")
+    except OSError as exc:  # pragma: no cover - ổ không có hard link
+        pytest.skip(f"không tạo được hard link: {exc.strerror}")
+    real_resolve = Path.resolve
+
+    def other_name(self, strict=False):
+        if self.name == "a.jpg":
+            self = self.with_name("b.jpg")
+        return real_resolve(self, strict=strict)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", other_name)
+    exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    assert "tên ngắn hoặc tên khác" in str(exc)
+
+
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_folder_renamed_during_resolve_is_reported_as_changed(tmp_path, monkeypatch, call):
+    """SL-T082-2: ``x`` bị đổi tên thành ``x-moi`` (trong gốc) đúng lúc ``resolve`` chạy, nên
+    ``resolve`` trả đường dẫn theo tên mới. Mục ở tên mới đúng là mục vừa ``lstat`` (dời theo thư
+    mục) nhưng chữ đã gõ không còn trỏ tới nó: thư mục vừa bị thay đổi, không phải tên ngắn. Báo
+    "vừa bị thay đổi", vẫn từ chối như liên kết."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    root = root.resolve()
+    x, renamed = root / "x", root / "x-moi"
+    real_resolve = Path.resolve
+
+    def renaming_resolve(self, strict=False):
+        if self == x or x in self.parents:
+            if x.exists():
+                x.rename(renamed)
+            self = renamed.joinpath(*self.relative_to(x).parts)
+        return real_resolve(self, strict=strict)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", renaming_resolve)
+    try:
+        exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    finally:
+        if renamed.exists():
+            renamed.rename(x)
+    assert isinstance(exc, folders._LinkError) and "thay đổi" in str(exc)
+
+
+@windows_only
+def test_real_short_8_3_name_keeps_alias_message(tmp_path):
+    """Windows giữ câu "tên ngắn hoặc tên khác" cho tên ngắn 8.3 thật (``resolve`` ra tên dài của
+    chính mục đó): đọc, kiểm, xem thư mục bằng tên ngắn đều bị từ chối với câu đó."""
+    import ctypes
+
+    def short_path(path: Path) -> str:
+        buffer = ctypes.create_unicode_buffer(1024)
+        ctypes.windll.kernel32.GetShortPathNameW(str(path), buffer, 1024)
+        return buffer.value
+
+    root = tmp_path / "anh"
+    target = write(root / "Thu muc dai ten lam nhe" / "Anh rat dai ten.jpg")
+    rel = Path(short_path(target)).relative_to(short_path(root)).as_posix()
+    if "~" not in rel:
+        pytest.skip("ổ này tắt tên ngắn 8.3")
+    lib = ImageLibrary([root])
+    for func in (
+        lambda: lib.read_image_bytes(ImageRef(0, rel)),
+        lambda: lib.stat_image(ImageRef(0, rel)),
+        lambda: lib.list_folder(0, rel.split("/")[0]),
+    ):
+        assert "tên ngắn hoặc tên khác" in str(raises_safely(func, tmp_path))
+
+
+LEVEL_CHANGES = {
+    "x-doi-di": "vừa bị thay đổi",
+    "x-thanh-junction": "vừa bị thay đổi",
+    "x-thanh-thu-muc-khac": "vừa bị thay đổi",
+    "khong-doi": "Không đọc được",
+}
+
+
+@windows_only
+@pytest.mark.parametrize(("change", "message"), LEVEL_CHANGES.items(), ids=LEVEL_CHANGES.keys())
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_resolve_access_denied_checks_levels_again(tmp_path, monkeypatch, change, message, call):
+    """SL-T080-1: ``resolve`` gặp lỗi Windows 5 (không có quyền, hay junction đang bị xóa) thì kiểm
+    lại từng tầng: ``x`` vừa bị dời đi, thành junction hay thành thư mục khác là "vừa bị thay đổi";
+    còn nguyên thì vẫn "Không đọc được" (không phân biệt được với lỗi quyền thật)."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    write(root / "y" / "a.jpg", b"\xff\xd8 y")
+    outside = write(tmp_path / "ngoai" / "a.jpg").parent
+    x, park = root / "x", tmp_path / "cat-tam"
+    real_resolve = Path.resolve
+
+    def denied_resolve(self, strict=False):
+        if self.name not in ("x", "a.jpg"):
+            return real_resolve(self, strict=strict)
+        if change != "khong-doi" and not park.exists():
+            x.rename(park)
+            if change == "x-thanh-junction":
+                make_junction(x, outside)
+            elif change == "x-thanh-thu-muc-khac":
+                (root / "y").rename(x)
+        raise OSError(errno.EACCES, "Access is denied", None, 5)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", denied_resolve)
+    try:
+        exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    finally:
+        if park.exists():
+            if change == "x-thanh-junction":
+                os.rmdir(x)
+            elif change == "x-thanh-thu-muc-khac":
+                x.rename(root / "y")
+            park.rename(x)
+    assert message in str(exc)
+
+
+OPEN_ERRORS = {2: "Không tìm thấy", 3: "Không tìm thấy", 5: "Không đọc được", 32: "Không đọc được"}
+
+
+@windows_only
+@pytest.mark.parametrize(
+    ("error", "message"), OPEN_ERRORS.items(), ids=[f"loi-{code}" for code in OPEN_ERRORS]
+)
+@pytest.mark.parametrize("size", [8, 2048], ids=["anh-thuong", "anh-qua-co"])
+def test_windows_attribute_handle_error_code_picks_message(
+    tmp_path, monkeypatch, error, message, size
+):
+    """SL-T080-1: mở handle hỏi thuộc tính của ảnh hỏng vì ổ không thấy file (lỗi 2) hay thư mục
+    trên đường đi (lỗi 3) ngay sau khi vừa thấy: "Không tìm thấy" như bản Mac/Linux, không "không
+    có quyền". Lỗi khác (5: không có quyền, 32: chương trình khác đang giữ) vẫn "Không đọc được".
+    Ảnh quá cỡ đi đường lấy lại mục để báo (LC-T079-2) cũng vậy."""
+    import ctypes
+
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg", b"x" * size)
+    real_win_open = folders._win_open
+
+    def failing_win_open(path, access):
+        if access != folders._FILE_READ_ATTRIBUTES:
+            return real_win_open(path, access)
+        ctypes.set_last_error(error)
+        return None
+
+    monkeypatch.setattr(folders, "_win_open", failing_win_open)
+    lib = ImageLibrary([root], max_file_bytes=1024)
+    exc = raises_safely(lambda: lib.stat_image(ImageRef(0, "x/a.jpg")), tmp_path)
+    assert message in str(exc)
+
+
+@windows_only
+def test_windows_stale_error_code_is_not_used(tmp_path, monkeypatch):
+    """Mã lỗi của lần gọi Windows trước (ở đây: 3, đặt ngay sau bước hỏi tên trên ổ) không lẫn vào
+    câu báo khi mở handle hỏi thuộc tính hỏng mà không đặt mã lỗi: vẫn "Không đọc được"."""
+    import ctypes
+
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    real_listed_name = folders._win_listed_name
+
+    def listed_then_stale(path):
+        name = real_listed_name(path)
+        ctypes.set_last_error(folders._ERROR_PATH_NOT_FOUND)
+        return name
+
+    monkeypatch.setattr(folders, "_win_listed_name", listed_then_stale)
+    monkeypatch.setattr(folders, "_win_open", lambda path, access: None)
+    exc = raises_safely(lambda: ImageLibrary([root]).stat_image(ImageRef(0, "x/a.jpg")), tmp_path)
+    assert "Không đọc được" in str(exc)
+
+
+def test_folder_gone_right_before_listing_is_reported_as_changed(tmp_path, monkeypatch):
+    """SL-T080-2: thư mục vừa được kiểm (giữ được, hay kiểm đường đi) mà lúc đọc danh sách ổ báo
+    không thấy: xem thẳng thư mục đó thì "vừa bị thay đổi", không "không có quyền"; quét cả cây thì
+    bỏ qua thư mục đó như mục bị tráo, ảnh khác vẫn ra. Nhận thư mục theo định danh trên ổ: Windows
+    đọc danh sách theo đường dẫn, Mac/Linux bằng ``os.scandir(fd)``."""
+    root = tmp_path / "anh"
+    write(root / "ok" / "a.jpg")
+    write(root / "x" / "b.jpg")
+    gone = os.stat(root / "x")
+    real_scandir = os.scandir
+
+    def fake_scandir(target):
+        st = os.fstat(target) if isinstance(target, int) else os.stat(target)
+        if (st.st_dev, st.st_ino) == (gone.st_dev, gone.st_ino):
+            raise FileNotFoundError(errno.ENOENT, "No such file or directory", str(target))
+        return real_scandir(target)
+
+    monkeypatch.setattr(folders.os, "scandir", fake_scandir)
+    lib = ImageLibrary([root])
+    exc = raises_safely(lambda: lib.list_folder(0, "x"), tmp_path)
+    assert isinstance(exc, folders._LinkError) and "thay đổi" in str(exc)
+    listing = lib.list_folder(0, recursive=True)
+    assert [entry.ref.rel_path for entry in listing.images] == ["ok/a.jpg"]
+    assert (listing.skipped.links, listing.skipped.unreadable) == (1, 0)
+
+
+def test_checked_file_does_not_hand_out_resolved_path(tmp_path):
+    """Lá Chắn T-080 Việc 4 (b): ``_checked_file`` không trả đường dẫn ``resolve`` trả (có thể nằm
+    trong thư mục anh em của gốc), chỉ trả cờ "``resolve`` trả đúng ``gốc/parts`` từng chữ": ngoài
+    gốc không có đường dẫn nào để chỗ gọi lỡ mở hay ``stat``."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    lib = ImageLibrary([root])
+    result = lib._checked_file(ImageRef(0, "x/a.jpg"))
+    assert [value for value in result if isinstance(value, os.PathLike)] == [root.resolve()]
+    _root, lst, exact = result
+    assert stat.S_ISREG(lst.st_mode) and exact is True
+    if IS_WINDOWS and case_insensitive(root):  # NTFS: ``resolve`` trả tên trên ổ, khác chữ đã gõ
+        assert lib._checked_file(ImageRef(0, "X/A.JPG"))[2] is False
