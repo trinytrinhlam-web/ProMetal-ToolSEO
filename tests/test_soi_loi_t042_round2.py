@@ -10,7 +10,7 @@ import itertools
 import json
 
 import pytest
-from fake_wordpress import BASE_URL, FakeWordPress, make_session, query
+from fake_wordpress import BASE_URL, FakeWordPress, make_session, query, siteseo_seo_answer
 
 from seo_app.wordpress import WordPressClient, WordPressError
 from seo_app.wordpress.client import (
@@ -40,7 +40,9 @@ def site(fake, *, run=None):
     fake.on("POST", POSTS, (201, {"id": 42, "status": "draft"}, {}))
     fake.on("GET", POST_42, {"id": 42, "status": "draft", "meta": {}})
     fake.on("GET", ABILITY, {"name": "siteseo-posts/seo-data-update"})
-    fake.on("POST", RUN, run if run is not None else {"updated": True})
+    # T-059: mặc định là khuôn thật của SiteSEO 1.4.2 (đo trên site 27/10), không còn
+    # ``{"updated": True}`` thiếu ``post``.
+    fake.on("POST", RUN, run if run is not None else siteseo_seo_answer)
 
 
 # ================================================================ SL-T042-2: _LEGACY_ENTITY
@@ -259,9 +261,8 @@ def test_featured_image_answer_for_other_or_published_post_is_reported(fake_wp, 
 @pytest.mark.parametrize(
     "answer",
     [
-        {"updated": True},
+        siteseo_seo_answer,  # khuôn thật (T-059)
         {"updated": True, "post": {"title": TITLE, "description": "khác", "robots": "x"}},
-        {"success": True},
     ],
 )
 def test_ability_siteseo_shapes_are_written(fake_wp, answer):
@@ -285,6 +286,10 @@ def test_ability_siteseo_shapes_are_written(fake_wp, answer):
         {"success": 1},
         {"updated": None},
         {},
+        # T-059: site thật (27/10) luôn trả ``updated`` + ``post``; hai khuôn này không còn được
+        # tính là đã ghi (``post`` bắt buộc, khuôn ``success`` bỏ).
+        {"updated": True},
+        {"success": True},
     ],
 )
 def test_ability_unconfirmed_shapes_are_not_written(fake_wp, answer):

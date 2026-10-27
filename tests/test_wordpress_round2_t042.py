@@ -6,7 +6,7 @@ Chỉ dùng site giả (``FakeWordPress``), không gọi mạng thật.
 import json
 
 import pytest
-from fake_wordpress import BASE_URL, make_session
+from fake_wordpress import BASE_URL, make_session, siteseo_seo_answer
 
 from seo_app.wordpress import WordPressClient, WordPressError
 
@@ -153,7 +153,7 @@ def test_featured_image_check_failure_has_fixed_message(fake_wp, client):
 
 @pytest.mark.parametrize("ability", [True, False])
 def test_draft_check_is_the_last_request_before_writing(fake_wp, client, ability):
-    draft_site(fake_wp, run={"updated": True}, ability=ability)
+    draft_site(fake_wp, run=siteseo_seo_answer, ability=ability)  # khuôn thật (T-059)
     fake_wp.on("GET", POST_42, {"id": 42, "status": "draft", "meta": {
         "_siteseo_titles_title": "", "_siteseo_titles_desc": ""}})
     fake_wp.on(
@@ -195,8 +195,7 @@ def test_meta_route_write_answer_must_be_same_draft(fake_wp, client, answer):
     "answer",
     [
         {"updated": True, "post": {"title": TITLE, "description": None}},  # khuôn SiteSEO
-        {"updated": True},
-        {"success": True},
+        siteseo_seo_answer,  # khuôn thật đo trên site 27/10 (T-059)
     ],
 )
 def test_ability_confirmed_answer_is_written(fake_wp, client, answer):
@@ -220,6 +219,10 @@ def test_ability_confirmed_answer_is_written(fake_wp, client, answer):
         {},
         True,
         1,
+        # T-059: site thật (27/10) luôn trả ``updated`` + ``post``; hai khuôn này không còn được
+        # tính là đã ghi (``post`` bắt buộc, khuôn ``success`` bỏ).
+        {"updated": True},
+        {"success": True},
     ],
 )
 def test_ability_answer_not_confirming_is_not_written(fake_wp, client, answer):
@@ -388,7 +391,7 @@ def test_normal_wordpress_url_is_accepted(url):
      "&frac12 giá", "&AMP"],
 )
 def test_legacy_entities_without_semicolon_blocked(fake_wp, client, text):
-    draft_site(fake_wp, run={"updated": True})
+    draft_site(fake_wp, run=siteseo_seo_answer)
     client.create_draft("A", "B")
     before = len(fake_wp.requests)
     with pytest.raises(WordPressError, match="mã ký tự HTML"):
@@ -398,7 +401,7 @@ def test_legacy_entities_without_semicolon_blocked(fake_wp, client, text):
 
 @pytest.mark.parametrize("text", ["R&D", "AT&T", "A & B", "Q&A", "P&G", "Cửa & cổng", "&Lt"])
 def test_plain_ampersand_still_passes(fake_wp, client, text):
-    draft_site(fake_wp, run={"updated": True})
+    draft_site(fake_wp, run=siteseo_seo_answer)
     client.create_draft("A", "B")
     assert client.set_seo_meta(42, title=text).written
 

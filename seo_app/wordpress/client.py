@@ -1863,24 +1863,32 @@ def _is_own_draft_answer(data: object, post_id: int) -> bool:
 
 
 def _ability_confirms(data: object, fields: dict[str, str]) -> bool:
-    """Câu trả lời 200 của ability ghi SEO có xác nhận rõ là đã ghi không (SL-T042-6).
+    """Câu trả lời 200 của ability ghi SEO có xác nhận rõ là đã ghi không (SL-T042-6, T-059).
 
-    Khuôn SiteSEO 1.4.2 (``update_post_seo_data`` trong ``main/abilitiesregister.php``):
-    ``{"updated": true, "post": {"title", "description", "focus_keyphrase", ...}}``; lỗi là
-    ``WP_Error`` (``invalid_post``, ``forbidden``). Nhận thêm ``{"success": true}``. Đúng
-    ``True`` (bool) mới tính; ``"false"``, ``0``, ``[]``, ``"ok"``, ``null``, thân lỗi
-    WordPress (``code``) đều là chưa ghi. Có ``post`` thì giá trị đã lưu phải đúng chữ đã gửi.
+    Chỉ nhận đúng khuôn SiteSEO 1.4.2 (``update_post_seo_data`` trong
+    ``main/abilitiesregister.php``), đã thấy trên site thật ngày 2026-10-27 (T-059):
+    ``{"updated": true, "post": {"title", "description", "canonical_url", "focus_keyphrase",
+    "seo_score", "robots", "social"}}``; lỗi là ``WP_Error`` (``invalid_post``, ``forbidden``).
+
+    - ``updated`` phải đúng ``True`` (bool); ``"true"``, ``1``, ``null``, thiếu khóa: chưa ghi.
+      Khuôn ``{"success": true}`` **không** còn được nhận (site thật không trả khóa này).
+    - ``post`` **bắt buộc** và là dict: đó là phần SiteSEO đọc lại sau khi lưu, chỉ nó cho biết
+      website lưu đúng chữ đã gửi (SiteSEO làm sạch chữ, ví dụ ``<`` thành ``&lt;``, thì giá trị
+      khác). Thiếu ``post`` là câu trả lời không phải của SiteSEO 1.4.2 (ability khác, lớp đệm,
+      plugin chen giữa): không xác nhận được, coi là chưa ghi (Lá Chắn T-042, việc 10).
+    - Mỗi trường đã gửi phải có trong ``post`` với giá trị **đúng từng chữ**.
+    - Thân lỗi WordPress (có ``code``), hay ``success`` khác ``True`` (SL-T042-8: một khóa nói rõ
+      "chưa ghi" thì không tin khóa kia): chưa ghi.
+
+    Sai bất kỳ điều nào thì app báo "không thành công" (người dùng chép tay vào hộp SiteSEO):
+    chiều an toàn, không bao giờ báo "đã ghi" khi chưa chắc.
     """
     if not isinstance(data, dict) or "code" in data:
         return False
-    if data.get("updated") is False or data.get("success") is False:
-        return False  # SL-T042-8: một khóa nói rõ "chưa ghi" thì không tin khóa kia
-    if data.get("updated") is not True and data.get("success") is not True:
+    if data.get("updated") is not True or data.get("success", True) is not True:
         return False
     snapshot = data.get("post")
-    if snapshot is None:
-        return True
-    if not isinstance(snapshot, dict):
+    if not fields or not isinstance(snapshot, dict):
         return False
     return all(snapshot.get(_ABILITY_FIELDS[name]) == value for name, value in fields.items())
 

@@ -26,7 +26,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
-from fake_wordpress import BASE_URL, make_session
+from fake_wordpress import BASE_URL, make_session, siteseo_seo_answer
 from PIL import Image
 
 import seo_app.wordpress.client as client_module
@@ -679,7 +679,7 @@ def real_site(fake_wp):
     for media_id in range(101, 110):
         fake_wp.on("POST", f"{MEDIA}/{media_id}", updated_media)
     fake_wp.on("GET", ABILITY, {"name": "siteseo-posts/seo-data-update"})
-    fake_wp.on("POST", f"{ABILITY}/run", {"success": True})
+    fake_wp.on("POST", f"{ABILITY}/run", siteseo_seo_answer)  # khuôn thật (T-059)
     return fake_wp
 
 

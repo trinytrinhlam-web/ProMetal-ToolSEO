@@ -6,7 +6,8 @@ kiện 4; T-050 điều kiện 4):
 - byte gửi lên đúng ``WebImage.data`` và còn GPS đúng giá trị (quyết định 5A);
 - tên file chỉ từ ``naming.image_file_name`` (thẻ đã chuẩn hóa, alt đã duyệt);
 - alt/chú thích gỡ ký tự rộng 0 và escape Markdown rồi mới escape HTML; ``<figure>`` do code dựng,
-  qua ``sanitize_html``; không lớp ``wp-image-N`` (không để WordPress chọn cỡ nhỏ mất GPS);
+  qua ``sanitize_html``; không lớp ``wp-image-N``, ``srcset`` chỉ có file đầy đủ (T-059: không để
+  WordPress chọn cỡ nhỏ mất GPS);
 - chỉ tạo nháp, ảnh đại diện chỉ cho bài nháp vừa tạo (``_own_draft``), mọi đường trong
   ``ALLOWED_ROUTES``; không bao giờ ``publish``/``future``;
 - lỗi giữa chừng: liệt kê ảnh đã lên thư viện, không xóa gì; kiểm sai thì chưa gửi gì.
@@ -252,10 +253,12 @@ def test_anh_dung_trong_bai_la_file_day_du_va_khong_co_wp_image(fake_wp, wp_clie
     send(wp_client, [DraftImage(web, alt="Cổng inox", tags=ImageTags(category="Cổng inox"))])
     content = sent_content(fake_wp)
     # src là file đầy đủ vừa tải (không phải cỡ nhỏ -300x200…); không lớp wp-image-N, không
-    # srcset/sizes: WordPress không tự thêm cỡ nhỏ đã mất GPS (quyết định 5A).
+    # sizes; srcset chỉ có chính file đầy đủ (T-059): WordPress không tự thêm cỡ nhỏ đã mất GPS
+    # (quyết định 5A).
     assert f'src="{UPLOADS}cong-inox.webp"' in content
     assert "wp-image-" not in content
-    assert "srcset" not in content and "sizes" not in content
+    assert f'srcset="{UPLOADS}cong-inox.webp 1x"' in content
+    assert content.count("srcset=") == 1 and "sizes" not in content
     assert f'width="{web.width}" height="{web.height}"' in content
     classes = re.findall(r'class="([^"]*)"', content)
     assert classes == ["wp-block-image"]
@@ -356,10 +359,11 @@ def test_chu_nguoi_dung_go_the_html_bi_escape_khong_thanh_the(fake_wp, wp_client
     caption = "</figcaption><script>alert(1)</script><a href='javascript:x'>bấm</a>"
     send(wp_client, [DraftImage(web, alt=alt, caption=caption)])
     content = sent_content(fake_wp)
-    # Trình duyệt chỉ thấy đúng 3 thẻ do code dựng, img chỉ có 4 thuộc tính do code đặt.
+    # Trình duyệt chỉ thấy đúng 3 thẻ do code dựng, img chỉ có 5 thuộc tính do code đặt
+    # (srcset: T-059).
     assert _browser_tags(content) == [
         ("figure", ["class"]),
-        ("img", ["src", "alt", "width", "height"]),
+        ("img", ["src", "alt", "srcset", "width", "height"]),
         ("figcaption", []),
     ]
     assert 'alt="&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"' in content
@@ -381,8 +385,8 @@ SRC = f"{UPLOADS}cong-inox.webp"
 def test_figure_html_dung_khuon_va_on_dinh_qua_bo_loc():
     out = image_html.figure_html(src=SRC, alt="Cổng inox", width=1600, height=1200, caption="Sau")
     assert out == (
-        f'<figure class="wp-block-image"><img src="{SRC}" alt="Cổng inox" width="1600" '
-        'height="1200"><figcaption>Sau</figcaption></figure>'
+        f'<figure class="wp-block-image"><img src="{SRC}" alt="Cổng inox" srcset="{SRC} 1x" '
+        'width="1600" height="1200"><figcaption>Sau</figcaption></figure>'
     )
     assert sanitize_html(out) == out
 
@@ -1022,7 +1026,8 @@ def test_t071_chu_thich_giong_thuoc_tinh_anh_van_dung_binh_thuong():
     "broken",
     [
         lambda out: re.sub(r'<img src="[^"]*"', "<img", out),  # bộ lọc bỏ src của ảnh
-        lambda out: re.sub(r' alt="[^"]*"( width)', r"\1", out),  # bộ lọc bỏ alt của ảnh
+        lambda out: re.sub(r' alt="[^"]*"( srcset)', r"\1", out),  # bộ lọc bỏ alt của ảnh
+        lambda out: re.sub(r' srcset="[^"]*"', "", out, count=1),  # bỏ srcset (T-059)
         lambda out: out.replace("<img ", "<span ", 1),  # bộ lọc bỏ hẳn thẻ ảnh
         lambda out: out.replace("</figure>", f'<img src="{SRC}" alt="x"></figure>'),  # hai ảnh
     ],

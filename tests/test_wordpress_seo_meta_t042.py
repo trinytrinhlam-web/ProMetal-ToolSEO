@@ -12,7 +12,7 @@ import json
 
 import pytest
 import requests
-from fake_wordpress import BASE_URL, make_session, query
+from fake_wordpress import BASE_URL, make_session, query, siteseo_seo_answer
 
 from seo_app.wordpress import SeoWriteResult, WordPressClient, WordPressError, is_allowed_route
 
@@ -51,7 +51,9 @@ def site(fake_wp, *, status="draft", meta=None, ability=None, run=None):
     )
     fake_wp.on("GET", ABILITY, ability if ability is not None else {"name": "siteseo-posts/"
                                                                      "seo-data-update"})
-    fake_wp.on("POST", RUN, run if run is not None else {"success": True})
+    # T-059: mặc định là khuôn thật của SiteSEO 1.4.2 (đo trên site 27/10), không còn
+    # ``{"success": True}``.
+    fake_wp.on("POST", RUN, run if run is not None else siteseo_seo_answer)
 
 
 def created(client):
