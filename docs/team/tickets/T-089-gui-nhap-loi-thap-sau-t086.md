@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Họa Sĩ lượt 3 sửa SL-T089-2 |
+| Trạng thái | Lá Chắn xem lại lượt 2 + 3 |
 
 ## Mục tiêu
 
@@ -59,3 +59,4 @@ W1, W2, U1, F2.
 - 2026-10-26 19:55 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`d5d0e69`): LC-T086-1, SL-T086-1, -2 đóng; băm ảnh đã duyệt trong nháp đạt; không lỗi mới; thử gộp với `main`, T-088, T-041 không xung đột. Theo cách làm mới, sửa luôn **SL-T089-1** trong phiếu (Họa Sĩ lượt 2, gồm ghi kết quả kiểu so rồi đặt, Ghi nhận 1 Lá Chắn) rồi Soi Lỗi, Lá Chắn xem lại nhanh và gộp cùng lượt toàn bộ test. Sau khi gộp: Thư Ký thêm vào README «nháp lưu từ bản cũ phải tick Đã duyệt ảnh lại một lần» (điều kiện Lá Chắn).
 - 2026-10-27 08:16 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`cf5a556`, mã `f2a72f5`): `holder["claimed"]`, `finish_send` chỉ ghi lại khi lần này đã ghi được «đang gửi», `record_outcome` ghi kiểu so rồi đặt (đóng Ghi nhận 1 Lá Chắn); gỡ 2 `xfail` SL-T089-1; 12 file 480 qua; gộp thử với `main` có T-088 783 qua. Giao **Soi Lỗi xem lại** (phiên Soi Lỗi T-056), rồi Lá Chắn xem lại.
 - 2026-10-27 (Chỉ Huy B): **Soi Lỗi xem lại lượt 2 ĐẠT CÓ ĐIỀU KIỆN** (`c636e9b`): SL-T089-1 đóng thật (6 biến thể, hai phiên thật), Ghi nhận 1 Lá Chắn đạt, không lùi ca cũ; 1 Thấp mới **SL-T089-2** (lỗi lùi của lượt 2: nháp mất dòng trạng thái trong lúc gửi thì `record_outcome` bỏ kết quả bài đã tạo; 2 `xfail`). Giao **Họa Sĩ lượt 3** (cách sửa Soi Lỗi gợi ý, khoảng 2 dòng, đã thử trên bản sao) và sửa câu báo; sau đó **Lá Chắn xem lại** lượt 2 + 3 (2 `xfail` của Soi Lỗi là phép kiểm lượt 3), rồi gộp.
+- 2026-10-27 (Chỉ Huy B): **Họa Sĩ lượt 3 xong** (`58100eb`, mã `8a1ba02`): SL-T089-2 (ghi thêm `expected=(None, False)` khi nháp không còn dòng nào), câu báo khi tab kia đã gửi xong nêu mã bài của lần này; gỡ 2 `xfail`; 12 file 493 qua; cây gộp với `main` và T-041 1.005 qua. Giao **Lá Chắn xem lại lượt 2 + 3**.
