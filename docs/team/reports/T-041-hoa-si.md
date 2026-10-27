@@ -174,3 +174,61 @@ files with results: 1                                          # chỉ file mồ
 | `seo_app/demo.py` | Xóa `META_TITLES`, `META_DESCRIPTIONS`, `SLUG`, `INTERNAL_LINKS`, `SCHEMA` |
 | `tests/test_t041_seo_ui.py` (mới) | 23 test giao diện (bảng trên) |
 | `docs/team/reports/T-041-hoa-si.md` | Báo cáo này |
+
+## Lượt 2 (2026-10-27)
+
+Sau lượt 3 của Thợ Máy (sửa lỗi lùi ở «Phát hiện» số 1: chữ SEO có ký tự điều khiển, ký tự lạ nay bị **Chặn** kèm câu nhắc ở mọi đường; câu schema mới `MSG_NO_FAQ_QUESTION`). Chỉ Huy mở thêm phạm vi `app/views/wordpress.py` cho «Phát hiện» số 3.
+
+### Tóm tắt (cho chủ dự án)
+
+- Trang **Kết nối WordPress**: bấm «Kiểm tra kết nối» xong có thêm dòng «SiteSEO: ghi được», «SiteSEO: chưa bật (bật Abilities trong SiteSEO…)» hay «SiteSEO: chưa dò được…», để biết công tắc «Ghi SEO lên website» có dùng được không.
+- Bước **SEO**: dán vào ô meta title/description chữ có ký tự điều khiển vô hình (thường lẫn vào khi chép từ nơi khác) thì ô hiện nhãn đỏ «Chặn» kèm câu «… Xóa ô rồi gõ lại chữ thường.»; khung «Chép sang SiteSEO» không cho chép ô đó; bước Xuất bản báo «chưa dùng được», bật «Ghi SEO lên website» thì báo trước và không ghi ô đó lên website. Không có lỗi đỏ.
+- Bài có mục «Câu hỏi thường gặp» mà chưa có câu hỏi đúng dạng: phần Schema nói rõ cách viết câu hỏi (trước đó báo nhầm «chưa có mục Hỏi đáp»).
+- Câu dưới «Liên kết nội bộ» khi nút «AI gợi ý liên kết» đang mờ nay nói đúng lý do (AI chưa dùng được, hay chưa có danh sách bài đã đăng) thay vì mời bấm nút.
+
+### Yêu cầu → cách làm → test
+
+Test ở `tests/test_t041_seo_ui.py` (thêm 9, tổng 32).
+
+| # | Yêu cầu (tin nhắn Chỉ Huy B) | Cách làm | Test |
+|---|---|---|---|
+| 1 | Trang Kết nối WordPress hiện `info.siteseo_status`, thoát Markdown | `app/views/wordpress.py`: dòng thứ ba trong danh sách quyền: `f"- {plain(info.siteseo_status)}"` (`plain` = `escape_markdown`, như các dòng khác của trang) | `test_wordpress_page_shows_siteseo_status[True/False/None]` |
+| 2a | Dán chữ có ký tự điều khiển: nhãn Chặn, câu nhắc rõ | Không đổi code giao diện: ô sửa → `DraftMetaVersions` (lượt 3 giữ ký tự lạ) → `check_title`/`check_description` Chặn → `check_lines` (huy hiệu đỏ, câu qua `escape_markdown`). Ô và nháp giữ đúng chữ đã dán | `test_pasted_control_chars_are_blocked_not_copied` |
+| 2b | Nút chép và công tắc ghi xử lý đúng trường bị chặn: không lỗi đỏ, không ghi | `final_seo` (lượt 1) nhận `None` từ `siteseo_copy` → khung chép «chưa chép được» + câu nhắc; `seo_check` «chưa dùng được»; `seo_request` bỏ trường đó, `seo_toggle` báo trước, câu kết quả nói «Không ghi …» | `test_pasted_control_chars_are_blocked_not_copied`, `test_blocked_control_chars_are_not_written` (lệnh ghi chỉ có từ khóa chính; không request nào mang ký tự lạ, thô hay dạng `\u001b`; không `st.error`, không lỗi trang) |
+| 2c | Câu schema mới hiện đúng | Không đổi code: `faq_panel` hiện `issues` qua `escape_markdown` | `test_faq_section_without_proper_questions_says_so` (có `MSG_NO_FAQ_QUESTION`, không còn `MSG_NO_FAQ`, không JSON-LD, không ô «Dùng schema») |
+| 3 | Câu liên kết nội bộ khi chưa có khóa AI khớp nút mờ | `links_panel`: chưa có liên kết thì: AI chưa dùng được → «Nút … đang tắt vì AI chưa dùng được (xem cảnh báo ở đầu trang)»; chưa có danh sách bài → «Nút … cần danh sách bài đã đăng trên website (xem dòng báo ở đầu bước SEO)»; có bài đích → giữ «bấm «AI gợi ý liên kết»»; danh sách có mà không bài nào cùng chủ đề → chỉ câu «Chưa có bài đã đăng nào cùng chủ đề…» như cũ | `test_links_hint_without_ai_key`, `test_links_hint_without_wordpress`, `test_links_hint_when_button_works` |
+| 4 | Không sửa `seo_app/**` | Không sửa | — |
+
+### Ghi chú
+
+- Từ khóa chính (gõ ở bước Chuẩn bị, không qua bộ kiểm meta) có ký tự điều khiển thì client từ chối **cả** lệnh ghi SEO bằng câu cố định «Từ khóa chính có ký tự điều khiển. Gõ lại chữ thường.» (hiện chữ thường, không ghi gì, bài nháp vẫn tạo bình thường). Giữ như vậy (an toàn, hiếm gặp); nếu muốn vẫn ghi tiêu đề, mô tả khi chỉ từ khóa hỏng thì `seo_request` bỏ riêng từ khóa (`seo_write_problem`), làm ở phiếu sau.
+- Không mở app thật lượt này: thay đổi giao diện chỉ là một dòng chữ trên trang WordPress và câu chú thích; đường chữ bị Chặn đi đúng các hàm đã thử trên trình duyệt ở lượt 1 (khung chép, công tắc, gửi nháp).
+
+### Bằng chứng lượt 2
+
+Windows 11, Git Bash, worktree `wt-T-041`.
+
+```
+$ uv run pytest tests/test_t041_seo_ui.py
+32 passed
+
+$ uv run pytest tests/test_t041_seo_ui.py tests/test_app_images.py tests/test_app_t044_safe_text.py \
+    tests/test_app_wordpress.py tests/test_app_pages.py tests/test_t041_drafts_seo.py \
+    tests/test_t041_links_ai.py tests/test_t041_meta.py tests/test_t041_schema.py \
+    tests/test_t041_site_index.py tests/test_soi_loi_t041.py        # code cdc47d0
+497 passed in 578.93s (0:09:38)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Thử gỡ chỗ làm (bản sao `git archive`, như lượt 1): L2-M1 bỏ dòng trạng thái SiteSEO → bắt được (3 test); L2-M2 dòng trạng thái không thoát Markdown → bắt được (3 test); L2-M3 câu liên kết luôn mời bấm dù nút mờ → bắt được.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `app/views/wordpress.py` | Dòng «SiteSEO: …» (`info.siteseo_status`, đã thoát Markdown) |
+| `app/views/write.py` | `links_panel`: câu khi chưa có liên kết theo lý do nút mờ |
+| `tests/test_t041_seo_ui.py` | 9 test mới (bảng trên) |
+| `docs/team/reports/T-041-hoa-si.md` | Mục này |
