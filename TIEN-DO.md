@@ -63,6 +63,19 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+### Việc anh xử lý sáng 28/10 (Chỉ Huy B ghi tối 27/10)
+
+Anh dặn: vấn đề nào chưa giải quyết được thì ghi lại để sáng mai anh xử lý. Đều là việc trên website, phần mềm không tự làm:
+
+1. **Tắt «Enable File-Based Execution» trong Code Snippets** (Snippets → Settings, mục Execution): hiện vẫn đang BẬT. Đây là đề xuất bảo mật từ 20/10 (Lá Chắn T-054). Tắt xong bấm Save, mở vài trang website xem còn bình thường.
+2. **Gỡ các mật khẩu ứng dụng cũ trên tài khoản quản trị** (Tài khoản → Hồ sơ → Mật khẩu ứng dụng): Claude_QA_ProMetal, Claude_SEO, Auto_Post_SEO, claude_optimize, SEOManager. Cái nào không còn dùng thì gỡ: mỗi cái có toàn quyền quản trị. Phần mềm SEO chỉ dùng tài khoản Biên tập viên `phan-mem-seo`.
+3. **Dọn snippet tạm trong Code Snippets**: «TEMP pm-claude-toolkit (Claude)» đang BẬT và còn khoảng 40 snippet tạm đã tắt (TEMP…, pm-lp-…, pm-purge…). Nhờ người làm web xem cái nào còn cần, còn lại xóa. Snippet tạm đang bật có thể mở đường gọi lạ trên website.
+4. **(Không gấp) Trả `.htaccess` về y hệt bản cũ**: tối 27/10 trình sửa `.htaccess` của SiteSEO Pro xóa mất 4 dòng `<IfModule>` (khối WordPress, khối PHP của cPanel). Website vẫn chạy đúng; muốn y hệt thì vào cPanel → File Manager, thay `.htaccess` bằng nội dung file sao lưu `sao-luu-htaccess-2026-10-27.txt` (thư mục `D:\ProMetal-ToolSEO`). **Không dùng trình sửa `.htaccess` của SiteSEO nữa.**
+5. **(Không gấp) Thùng rác bài viết**: còn 3 bài «[THỬ T-059]», WordPress tự xóa sau 30 ngày; muốn sạch ngay thì bấm «Dọn sạch thùng rác».
+6. Việc cũ vẫn mở (ghi từ 16/10, chưa xác nhận): dọn khối doanh nghiệp rỗng tên của SiteSEO, đoạn «3 chi nhánh…» ở trang chủ, mức giá «$$»; nhờ người làm web xác nhận các đường `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1` bắt buộc đăng nhập quản trị.
+
+Đã xong tối 27/10: SiteSEO lên 1.4.2 và bật AI Abilities; tài khoản Biên tập viên `phan-mem-seo` + mật khẩu ứng dụng riêng, Kiểm tra kết nối «SiteSEO: ghi được»; thử thật T-059 (ghi SEO, ảnh còn GPS, từ chối bài đã chuyển trạng thái); xóa ảnh thử; chọn (a) cho ảnh đại diện của theme (không GPS trên điện thoại).
+
 **Anh báo ngày 22/10: hiện chưa có máy Mac.** Bỏ việc nâng `uv` trên Mac. Máy Windows đã đủ: `certifi` mới, `uv` 0.13.4, nên bỏ lời dặn «không dùng app trên Wi-Fi công cộng» trên máy Windows. Khi có máy Mac: chạy `uv self update` rồi mở app bằng `run.command`.
 
 **Anh đã trả lời ngày 21/10: gộp T-075 (`certifi`) và T-055; duyệt nâng công cụ `uv` (T-078). Máy Windows đã lên `uv` 0.13.4. Việc của anh: trên máy Mac mở Terminal chạy `uv self update` (ở mạng nhà hoặc công ty), rồi mở app bằng `run.command`; máy Windows mở lại app bằng `run.bat`. Lời dặn «không dùng app trên Wi-Fi công cộng» bỏ được khi cả 2 máy xong việc này.**

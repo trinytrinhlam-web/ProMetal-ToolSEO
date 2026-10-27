@@ -59,6 +59,14 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-27 22:36 · Chỉ Huy B
+
+- **Chủ dự án dặn (27/10 tối):** «Cứ làm liên tục, không cần hỏi tôi, đến khi hết hạn mức; hạn mức mở lại thì chạy tiếp». «Vấn đề nào chưa giải quyết được thì ghi lại, sáng mai tôi xử lý; vấn đề nào có đề xuất thì làm theo đề xuất». Danh sách việc cho chủ dự án sáng 28/10: `TIEN-DO.md` mục 4 (đầu mục). Phiên Chỉ Huy B có nhịp cron mỗi giờ phút 17 để tự kiểm và cho chạy tiếp.
+- Đã gộp 27/10: T-088, T-089 (4 lượt + README), T-041 (4 lượt), T-084. Windows 15.304 test qua, 0 hỏng (`main` `f7bf17c` trở đi).
+- T-059 thử thật trên site xong (ghi SEO qua Abilities bằng tài khoản Biên tập viên `phan-mem-seo`, ảnh còn GPS, từ chối bài đã chuyển trạng thái). Lỗi 401 ban đầu do điền tên mật khẩu ứng dụng vào ô tên đăng nhập. Sự cố phụ: trình sửa `.htaccess` của SiteSEO Pro xóa dòng `<…>` khi lưu, đã sửa phần quan trọng (SpeedyCache viết lại); còn 4 dòng `<IfModule>` chờ chủ dự án (cPanel).
+- Đang chạy: Thợ Máy T-059 bước 7 (`srcset`, `_ability_confirms`), Soi Lỗi T-082, Thợ Máy T-083, Thợ Máy T-094 (thiết kế Giai đoạn 5), Thư Ký T-095 (README).
+- Hàng đợi: T-090 (máy rảnh), T-091 (sau T-059), T-092 (máy rảnh), T-093 (sau T-082, T-083).
+
 ### 2026-10-26 18:55 · Chỉ Huy B
 
 - **Lá Chắn T-087 lượt 3 ĐẠT** (`c6b0eda`): gộp và đẩy `main` (`0fc0c68`, chỉ README). Đang chạy: Họa Sĩ T-041 giao diện, Lá Chắn T-088 (chờ test gộp thử), Soi Lỗi T-089.
