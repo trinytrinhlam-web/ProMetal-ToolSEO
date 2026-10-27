@@ -30,10 +30,12 @@ import test_t086_send_state as t86
 from streamlit.runtime import Runtime
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.runtime.scriptrunner_utils.script_requests import RerunData
+from streamlit.runtime.state.safe_session_state import SafeSessionState
 
 from seo_app.images.folders import ImageLibrary
 from seo_app.storage import DraftStore
-from seo_app.storage.drafts import SendState
+from seo_app.storage.drafts import DraftError, SendState
+from seo_app.wordpress.client import WordPressClient, WordPressError
 
 # Fixture dùng chung (mật khẩu thử, cache ảnh xem trước tạm, AI giả, thư mục ảnh, WordPress giả).
 env = ui.env
@@ -459,5 +461,246 @@ def test_lost_tab_interrupted_keeps_other_tab_sent(project_root, root, fake_ai, 
     assert len(site.posts()) == 1
     state = ui.store().load_send_state(draft)
     assert state is not None and state.post_id == ui.POST_ID  # «đã gửi» của tab 1 phải còn
+    fresh = t86.reopen(project_root, draft)
+    assert button(fresh, SEND).disabled
+
+
+# ================================================= lượt 2: kiểm lại bản sửa SL-T089-1 (claimed)
+
+POST_2 = 502
+OTHER_TAB = "một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè"
+
+
+def in_other_session(work):
+    """Chạy ``work()`` (các lần chạy của một phiên khác) ngay giữa lần chạy của phiên này, rồi đặt
+    lại ``Runtime`` giả của lần chạy bên ngoài (xem ``send_in_other_session``)."""
+    outer = Runtime._instance
+    try:
+        return work()
+    finally:
+        Runtime._instance = outer
+
+
+def interrupt() -> None:
+    ctx = get_script_run_ctx()
+    ctx.script_requests.request_rerun(RerunData(page_script_hash=ctx.page_script_hash))
+
+
+def lose_then_interrupt(monkeypatch, *, busy: bool, at_cas: bool, at_write: int | None) -> list:
+    """Đúng lúc tab này ghi «đang gửi» kiểu so rồi đặt, tab kia vừa gửi xong (nháp ghi «đã gửi»
+    bài 501). Tab này thua so rồi đặt (``busy``: hay ghi hỏng vì file nháp bận). Người dùng bấm gì
+    đó ngay sau đó (``at_cas``) và/hoặc đúng lúc app sắp ghi (hay xóa) khóa thứ ``at_write`` vào
+    phiên sau khi thua, kể cả ở lần chạy sau. Trả các lần ngắt."""
+    original = DraftStore.save_send_state
+    lost: list[str] = []
+    fired: list[str] = []
+
+    def save(self, draft, state, *, expected=None):
+        if expected is None or lost:
+            return original(self, draft, state, expected=expected)
+        original(self, draft, SendState.now(pending=False, post_id=ui.POST_ID))  # tab kia
+        lost.append(draft)
+        if at_cas:
+            fired.append("so rồi đặt")
+            interrupt()
+        if busy:
+            raise DraftError(t86.BUSY)
+        return original(self, draft, state, expected=expected)
+
+    monkeypatch.setattr(DraftStore, "save_send_state", save)
+    writes: list[str] = []
+    original_set, original_del = SafeSessionState.__setitem__, SafeSessionState.__delitem__
+
+    def maybe_fire(name: str) -> None:
+        ctx = get_script_run_ctx()
+        if not lost or at_write is None or ctx is None or ctx.script_requests is None:
+            return
+        writes.append(name)
+        if len(writes) == at_write:
+            fired.append(name)
+            interrupt()
+
+    def setitem(self, name, value):
+        maybe_fire(name)
+        return original_set(self, name, value)
+
+    def delitem(self, name):
+        maybe_fire(name)
+        return original_del(self, name)
+
+    monkeypatch.setattr(SafeSessionState, "__setitem__", setitem)
+    monkeypatch.setattr(SafeSessionState, "__delitem__", delitem)
+    return fired
+
+
+@pytest.mark.parametrize(
+    ("busy", "at_cas", "at_write", "times"),
+    [
+        (False, False, 1, 1),
+        (False, False, 2, 1),
+        (False, True, 1, 2),
+        (True, True, None, 1),
+        (True, True, 1, 2),
+        (True, False, 2, 1),
+    ],
+    ids=["thua-ghi-1", "thua-ghi-2", "thua-hai-lan", "ban", "ban-hai-lan", "ban-ghi-2"],
+)
+def test_lost_or_busy_tab_interrupted_keeps_other_tab_sent(
+    project_root, root, fake_ai, site, monkeypatch, busy, at_cas, at_write, times
+):
+    """SL-T089-1 kiểm lại bằng biến thể: tab này thua so rồi đặt (hay ghi «đang gửi» hỏng vì file
+    nháp bận) đúng lúc tab kia vừa gửi xong bài 501; lần chạy bị ngắt ở các chỗ khác nhau sau đó,
+    có ca ngắt hai lần liên tiếp. Tab này không gửi, không ghi gì vào nháp: nháp giữ «đã gửi 501»
+    của tab kia, phiên mới phải tick «Tạo thêm»; không còn dấu sót."""
+    fired = lose_then_interrupt(monkeypatch, busy=busy, at_cas=at_cas, at_write=at_write)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    ui.send(at)
+    for _ in range(2):
+        run_ok(at.run())
+    assert len(fired) == times
+    assert site.fake.requests == []
+    state = ui.store().load_send_state(draft)
+    assert (state.pending, state.post_id) == (False, ui.POST_ID)
+    assert "_wp_sending" not in at.session_state
+    assert button(at, SEND).disabled
+    fresh = t86.reopen(project_root, draft)
+    assert button(fresh, SEND).disabled
+    run_ok(fresh.checkbox(key="_wp_again").check().run())
+    assert not button(fresh, SEND).disabled  # chỉ khóa «đã gửi», không khóa oan
+
+
+def confirm_and_send_in_other_tab(other):
+    """Tab 2 (phiên khác, đã mở nháp từ trước) vẽ lại trong lúc tab 1 đang gửi: thấy khóa «gửi dở»,
+    người dùng cố ý tick «Tôi đã kiểm tra…» rồi bấm «Gửi nháp» (Ghi nhận 1 của Lá Chắn T-089).
+    Lồng trong lần chạy của tab 1 thì không gán ``session_state`` từ test (Streamlit xét theo lần
+    chạy của tab 1), chỉ vẽ lại, tick, bấm."""
+
+    def work():
+        run_ok(other.run())
+        assert button(other, SEND).disabled
+        run_ok(other.checkbox(key="_wp_checked").check().run())
+        ui.send(other)
+
+    in_other_session(work)
+
+
+def test_confirmed_send_in_other_tab_keeps_its_record(project_root, root, fake_ai, site):
+    """Ghi nhận 1 bằng hai phiên thật: trong lúc website đang tạo bài 501 cho tab 1, tab 2 xác nhận
+    và gửi trọn bài 502. Kết quả tab 1 không ghi đè: nháp giữ «đã gửi 502» của tab 2; tab 1 vẫn hiện
+    bài 501, báo chưa ghi được vào nháp, khóa; phiên mới thấy «đã gửi» bài 502."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = t86.reopen(project_root, draft)  # tab 2 mở nháp từ trước
+    site.fake.on("GET", f"{ui.POSTS}/{POST_2}", lambda _r: {"id": POST_2, "status": "draft"})
+    site.fake.on(
+        "POST",
+        f"{ui.POSTS}/{POST_2}",
+        lambda r: {"id": POST_2, "status": "draft", **ui.body_of(r)},
+    )
+    original = site.create_post
+    tab2: list[str] = []
+
+    def create_post(request):
+        if tab2:  # bài của tab 2
+            return (201, {"id": POST_2, "status": "draft", "title": {"raw": "T"}}, {})
+        tab2.append("bắt đầu")
+        confirm_and_send_in_other_tab(other)
+        tab2.append("xong")  # lỗi trong lúc lồng bị client nuốt: chỉ tin khi tới được đây
+        return original(request)  # bài 501 của tab 1
+
+    site.fake.on("POST", ui.POSTS, create_post)
+    ui.send(at)
+    assert tab2 == ["bắt đầu", "xong"]
+    assert len(site.posts()) == 2
+    assert any(f"mã {POST_2}" in s.value for s in other.success)
+    state = ui.store().load_send_state(draft)
+    assert (state.pending, state.post_id) == (False, POST_2)
+    assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
+    assert any(OTHER_TAB in w.value for w in at.warning)
+    assert button(at, SEND).disabled
+    fresh = t86.reopen(project_root, draft)
+    assert button(fresh, SEND).disabled
+    assert any(f"mã {POST_2}" in i.value for i in fresh.info)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T089-2: nháp không còn dòng trạng thái gửi thì kết quả gửi bị bỏ (bài đã tạo)",
+)
+def test_confirmed_send_in_other_tab_failing_first_keeps_this_post(
+    project_root, root, fake_ai, site, monkeypatch
+):
+    """Như trên nhưng lần gửi tab 2 lỗi trước khi có request nào (``WordPressError``, ví dụ kiểm sai
+    trước khi gửi): tab 2 ghi «chưa gửi» (xóa dòng, đúng «đang gửi» của nó). Tab 1 tạo xong bài 501
+    nhưng ``record_outcome`` so với «đang gửi» của tab 1, thấy nháp không còn dòng nào, coi là «tab
+    khác vừa ghi trạng thái mới» nên **không ghi**: nháp không còn dấu vết bài 501, phiên mới mở
+    nháp nút bật, không nhắc, bấm là ra bài thứ hai. Lượt 1 (ghi không so) giữ được «đã gửi 501».
+    Mong đợi: kết quả có bài (hay chưa rõ) vẫn được ghi khi nháp không còn dòng trạng thái nào."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = t86.reopen(project_root, draft)  # tab 2 mở nháp từ trước
+    original_create = WordPressClient.create_draft_with_images
+    calls: list[int] = []
+
+    def create(self, title, parts, **kwargs):
+        calls.append(1)
+        if len(calls) == 2:  # lần gửi của tab 2
+            raise WordPressError("Lỗi thử: kiểm sai trước khi gửi, chưa gửi gì.")
+        return original_create(self, title, parts, **kwargs)
+
+    monkeypatch.setattr(WordPressClient, "create_draft_with_images", create)
+    original = site.create_post
+    tab2: list[str] = []
+
+    def create_post(request):
+        if not tab2:
+            tab2.append("bắt đầu")
+            confirm_and_send_in_other_tab(other)
+            tab2.append("xong")
+        return original(request)
+
+    site.fake.on("POST", ui.POSTS, create_post)
+    ui.send(at)
+    assert tab2 == ["bắt đầu", "xong"]
+    assert any("Lỗi thử" in e.value for e in other.error)  # tab 2: lỗi, chưa gửi gì
+    assert len(calls) == 2 and len(site.posts()) == 1
+    assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
+    state = ui.store().load_send_state(draft)
+    assert state is not None and state.post_id == ui.POST_ID  # bài 501 phải còn dấu trong nháp
+    fresh = t86.reopen(project_root, draft)
+    assert button(fresh, SEND).disabled
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T089-2: nháp bị xóa ở tab khác lúc đang gửi, tự lưu tạo lại thì không còn khóa",
+)
+def test_draft_deleted_elsewhere_while_sending_comes_back_locked(project_root, root, fake_ai, site):
+    """Trong lúc tab 1 đang gửi, tab 2 bấm «🗑️ Xóa» nháp này (``DraftStore.delete`` xóa cả dòng
+    trạng thái gửi). Tab 1 tạo xong bài 501 nhưng không ghi được kết quả (so rồi đặt thấy không còn
+    dòng nào; câu báo nói «một tab khác vừa ghi trạng thái gửi mới», không đúng). Tab 1 làm tiếp:
+    lần tự lưu tạo lại nháp, **không** kèm «đã gửi 501». Phiên mới mở nháp: nút bật, không nhắc.
+    Lượt 1 ghi «đã gửi 501» nên nháp tạo lại vẫn khóa. Mong đợi: như lượt 1."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    original = site.create_post
+
+    def create_post(request):
+        assert ui.store().delete(draft)  # tab 2 xóa nháp (như ``delete_draft``)
+        return original(request)
+
+    site.fake.on("POST", ui.POSTS, create_post)
+    ui.send(at)
+    assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
+    at.session_state["step"] = 2  # tab 1 làm tiếp: lần tự lưu tạo lại nháp
+    run_ok(at.run())
+    assert draft in [d.id for d in ui.store().list_drafts().drafts]
+    state = ui.store().load_send_state(draft)
+    assert state is not None and state.post_id == ui.POST_ID
     fresh = t86.reopen(project_root, draft)
     assert button(fresh, SEND).disabled
