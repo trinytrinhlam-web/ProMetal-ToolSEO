@@ -81,7 +81,7 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 **Anh đã trả lời ngày 16/10: 1A 2A 3A 4A 5A.** Các việc anh cần làm trên website. Làm lúc nào cũng được, phần mềm vẫn chạy trong lúc chờ:
 
-1. **Bật Abilities trong SiteSEO.** Vào trang quản trị WordPress → SiteSEO, tìm mục **Abilities** và bật lên. Phần mềm chỉ dùng tính năng này để ghi SEO cho bài **nháp do chính phần mềm tạo**.
+1. **Đã làm 27/10: cập nhật SiteSEO 1.1.6 → 1.4.2 và bật Abilities.** **Bật Abilities trong SiteSEO.** Vào trang quản trị WordPress → SiteSEO, tìm mục **Abilities** và bật lên. Phần mềm chỉ dùng tính năng này để ghi SEO cho bài **nháp do chính phần mềm tạo**.
 2. **Tạo tài khoản Biên tập viên riêng cho phần mềm.**
    - Vào **Người dùng → Thêm mới**, đặt tên ví dụ `phan-mem-seo`, vai trò **Biên tập viên (Editor)**.
    - Đăng nhập bằng tài khoản này, vào **Hồ sơ → Application Passwords** để tạo mật khẩu ứng dụng.
