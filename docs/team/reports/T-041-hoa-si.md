@@ -278,8 +278,11 @@ $ uv run pytest tests/test_app_images.py tests/test_app_pages.py tests/test_app_
     tests/test_t041_seo_ui.py tests/test_t041_site_index.py                  # code a735c7e
 535 passed, 1 xfailed in 608.02s (0:10:08)                                    # xfailed: SL-T041-8
 
-$ uv run ruff check .
-All checks passed!
+$ uv run ruff check $(git ls-files '*.py' | grep -v "test_la_chan_t04[01].py")   # mọi file đã theo dõi,
+All checks passed!                                                              # trừ 2 file Lá Chắn đang sửa
+
+$ uv run ruff check .        # cả thư mục: chỉ 1 lỗi E501 ở tests/test_la_chan_t041.py (Lá Chắn, chưa commit)
+Found 1 error.
 ```
 
 Thử gỡ chỗ sửa (bản sao `git archive` của `a735c7e`, script `T-041-hoa-si-scripts/mutate_l3.py`):
