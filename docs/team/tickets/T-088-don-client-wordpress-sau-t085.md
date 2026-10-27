@@ -55,3 +55,4 @@ W2, W3, S2.
 - 2026-10-26 13:53 (Chỉ Huy B): **Thợ Máy xong** (`1e87ce8`, 5/5; không sửa test cũ; 54 file test liên quan 6.987 qua). Giao **Soi Lỗi rút gọn** (phiên Soi Lỗi T-060).
 - 2026-10-26 15:19 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`b008dc8`): 4 lỗi cũ đóng; 1 Thấp SL-T088-1. Giao **Lá Chắn rút gọn** (phiên Lá Chắn T-060).
 - 2026-10-26 19:22 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`7e1fdae`), gộp được ngay. Gộp `main` trên máy (`913ea6c`), đang chạy toàn bộ test. SL-T088-1 (Thấp) chờ chủ dự án duyệt lập phiếu.
+- 2026-10-27 07:28 (Chỉ Huy B): lượt toàn bộ test tối 26/10 bị ngắt ở 75% khi máy dừng (chưa có test hỏng); chạy lại.

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Lá Chắn đạt có điều kiện, Họa Sĩ lượt 2 sửa SL-T089-1 |
+| Trạng thái | Họa Sĩ lượt 2 xong, Soi Lỗi xem lại |
 
 ## Mục tiêu
 
@@ -57,3 +57,4 @@ W1, W2, U1, F2.
 - 2026-10-26 15:19 (Chỉ Huy B): **Họa Sĩ xong** (`87ad51c`, 5/5; gỡ 3 `xfail`; 39 file test liên quan 3.908 qua). Giao **Soi Lỗi rút gọn** (phiên Soi Lỗi T-056).
 - 2026-10-26 19:22 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`66131e5`): 1 Thấp SL-T089-1 (2 `xfail`). Giao **Lá Chắn rút gọn** (phiên Lá Chắn T-056).
 - 2026-10-26 19:55 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`d5d0e69`): LC-T086-1, SL-T086-1, -2 đóng; băm ảnh đã duyệt trong nháp đạt; không lỗi mới; thử gộp với `main`, T-088, T-041 không xung đột. Theo cách làm mới, sửa luôn **SL-T089-1** trong phiếu (Họa Sĩ lượt 2, gồm ghi kết quả kiểu so rồi đặt, Ghi nhận 1 Lá Chắn) rồi Soi Lỗi, Lá Chắn xem lại nhanh và gộp cùng lượt toàn bộ test. Sau khi gộp: Thư Ký thêm vào README «nháp lưu từ bản cũ phải tick Đã duyệt ảnh lại một lần» (điều kiện Lá Chắn).
+- 2026-10-27 08:16 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`cf5a556`, mã `f2a72f5`): `holder["claimed"]`, `finish_send` chỉ ghi lại khi lần này đã ghi được «đang gửi», `record_outcome` ghi kiểu so rồi đặt (đóng Ghi nhận 1 Lá Chắn); gỡ 2 `xfail` SL-T089-1; 12 file 480 qua; gộp thử với `main` có T-088 783 qua. Giao **Soi Lỗi xem lại** (phiên Soi Lỗi T-056), rồi Lá Chắn xem lại.
