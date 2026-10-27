@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (làm sau T-056; không chặn T-056) |
 | Phụ thuộc | T-080 đã gộp vào `main`; T-056 xong |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ F1.
 - Lập theo đề xuất của Soi Lỗi T-080 (Windows và Linux); chủ dự án chọn phiếu dọn sau thay vì chỉ ghi nhận (2026-10-23).
 - 2026-10-23 14:32 (Chỉ Huy B): thêm điều kiện 2 của Lá Chắn T-080: ghi chú/làm chặt `_resolve_inside`, `_checked_file` (Việc 4 (a) bắt buộc, (b) nên làm, xem `docs/team/reports/T-080-la-chan.md`); chỉ đổi câu báo, mọi ca vẫn từ chối (`_ChangedError` là `_LinkError`); Windows giữ `_MSG_ALIAS` cho tên ngắn 8.3 thật; ép thắng (ổ máy và `\\localhost\C$`) vẫn 0 lọt.
 - 2026-10-27 17:35 (Chỉ Huy B): chủ dự án duyệt làm ngay. Nhánh `team/T-082` từ `main` `b60054f`, worktree `wt-T-082`; giao Thợ Máy (phiên mới). Chạy song song T-082, T-083, T-084 (khác file). Ca chỉ chạy trên Linux: không chạy cloud (chủ dự án chưa đồng ý), ghi rõ chưa kiểm được.
+- 2026-10-28 02:40 (Chỉ Huy B): Thợ Máy 2 lượt (`453208b`), Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (SL-T082-1, -2 sửa ở lượt 2), Lá Chắn rút gọn ĐẠT (`38006d4`). **Đã gộp `main`** (Windows 15.352 test qua, 0 hỏng); xóa nhánh `team/T-082`, worktree `wt-T-082`. 6 ca `tests/test_soi_loi_t080_linux.py` (chỉ chạy Linux/Mac) dự đoán XPASS, chưa chạy vì chưa được chạy cloud: lượt Linux/Mac đầu tiên phải gỡ 6 dấu đó.
