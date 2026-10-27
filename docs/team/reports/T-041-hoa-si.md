@@ -232,3 +232,74 @@ Thử gỡ chỗ làm (bản sao `git archive`, như lượt 1): L2-M1 bỏ dòn
 | `app/views/write.py` | `links_panel`: câu khi chưa có liên kết theo lý do nút mờ |
 | `tests/test_t041_seo_ui.py` | 9 test mới (bảng trên) |
 | `docs/team/reports/T-041-hoa-si.md` | Mục này |
+
+## Lượt 3 (2026-10-27)
+
+Sau Soi Lỗi lượt 2 (cả phiếu ĐẠT CÓ ĐIỀU KIỆN, `f21bc3a`): sửa SL-T041-9, -10, -11 (Thấp). **SL-T041-8** (emoji Unicode 16 bị Chặn nhầm) **chưa làm**: chờ Lá Chắn quyết hướng sửa.
+
+### Tóm tắt (cho chủ dự án)
+
+- **Từ khóa chính** có ký tự lạ (thường lẫn vào khi dán), có chữ website không nhận (ví dụ «<2m»), hay dài quá 200 ký tự:
+  - bước SEO có dòng «Từ khóa chính» nhãn đỏ «Chặn», kèm câu nhắc sửa ở bước 1 · Chuẩn bị;
+  - bước Xuất bản báo «SEO: Từ khóa chính chưa dùng được»; bật «Ghi SEO lên website» thì báo trước «Sẽ không ghi Từ khóa chính»;
+  - khi gửi, phần mềm vẫn ghi tiêu đề, mô tả hợp lệ, chỉ bỏ riêng từ khóa (trước đây: mất luôn cả tiêu đề, mô tả, hoặc lặng lẽ bỏ ký tự rồi ghi).
+- Bước **Xuất bản**: mở lại bài ở bước này rồi bật «Ghi SEO lên website», dòng kiểm SEO và câu báo của công tắc nay luôn nói cùng một điều.
+- Tiêu đề, mô tả có chữ website không nhận (`[gallery]`, «<2m», «&#37»): nhãn dưới ô nay đỏ «Chặn» kèm đúng lý do như khung chép (trước đây xanh «Nên»).
+
+### Lỗi → cách sửa → test
+
+Chỉ sửa `app/views/write.py`, dùng các hàm kiểm có sẵn của Thợ Máy; không sửa `seo_app/**`. Test mới ở `tests/test_t041_seo_ui.py` (thêm 7, tổng 39); `SL:` là `tests/test_soi_loi_t041.py`.
+
+| Mã | Cách sửa | Test |
+|---|---|---|
+| SL-T041-9 | `keyword_problem()`: từ khóa (gõ ở bước Chuẩn bị) kiểm như client sẽ kiểm: `has_odd_chars` (cả ký tự riêng, chưa gán mà client lặng lẽ bỏ), `seo_write_problem` (câu cố định của client), giới hạn `MAX_SEO_KEYWORD_CHARS` của client (nhập hằng); trống cũng báo. `final_seo` thêm trường «Từ khóa chính» (chữ đã chuẩn hóa hay `None` + lý do), nên `seo_request` bỏ riêng từ khóa hỏng khỏi lệnh ghi (vào `skipped`, câu báo trước và câu kết quả nêu tên), `seo_check` nêu «Từ khóa chính chưa dùng được». `keyword_line()` ở cột trái bước SEO: nhãn «Chặn» + câu nhắc (chữ thuần), chỉ hiện khi hỏng | `test_bad_keyword_is_flagged_on_seo_and_publish_steps[ESC/U+E000/nho-hon-so/qua-dai]`, `test_bad_keyword_does_not_lose_title_and_description`; `SL: test_sl_t041_9_bad_keyword_is_skipped_alone[ESC/U+E000]`, `SL: test_sl_t041_9_bad_keyword_is_warned_before_sending` (gỡ `xfail`) |
+| SL-T041-10 | `seo_check()`: công tắc bật thì `published_listing()` (cùng danh sách trong phiên mà `seo_request` dùng) **trước** khi vẽ dòng kiểm; công tắc tắt thì vẫn không tải (chỉ xem bước Xuất bản không gọi website) | `test_publish_step_loads_listing_only_when_toggle_is_on`; `SL: test_sl_t041_10_publish_checklist_agrees_with_seo_toggle` (gỡ `xfail`) |
+| SL-T041-11 | `meta_field`: nhãn dưới ô lấy `siteseo_copy(...).checks[0/1]` (kết quả kiểm đã nâng lên Chặn khi client từ chối ghi, đúng kết quả khung chép dùng) thay cho `check_title`/`check_description` trần | `test_description_badge_matches_copy_box` (ô mô tả); `SL: test_sl_t041_11_field_badge_is_red_when_copy_is_refused[shortcode/nho-hon-so/ma-ky-tu]` (gỡ `xfail`) |
+
+Gỡ `xfail` (chỉ xóa dấu): 4 dấu, 7 ca trong `tests/test_soi_loi_t041.py`; `git diff f21bc3a..a735c7e -- tests/test_soi_loi_t041.py` là 23 dòng xóa, 0 dòng thêm. Trước khi gỡ, cả 7 ca báo `XPASS(strict)`. Ca `xfail` còn lại duy nhất: SL-T041-8.
+
+### Quyết định
+
+1. **Không thêm khung chép «Từ khóa chính»** (đã thử rồi bỏ): test của Soi Lỗi `test_absurd_hand_edited_seo_block_keeps_page_working` đòi không còn khung chép nào khi cả ba ô bị Chặn, và bố cục đã duyệt có ba khung. Từ khóa hỏng có nhãn riêng ở cột trái; từ khóa đúng thì đã hiện ở đầu trang.
+2. **Giữ nguyên chữ «✅ SEO: tiêu đề, mô tả, đường dẫn đã sẵn sàng»** dù nay kiểm cả từ khóa (hỏng thì dòng ⚠️ nêu tên): đổi chữ thì `SL: test_sl_t041_10_…` qua oan (không bao giờ thấy chữ cũ).
+3. Dòng kiểm ở bước 5 khi công tắc bật có thể gọi website (tải danh sách bài) như lệnh ghi; website lỗi thì `site_listing` trả câu báo, không ném lỗi (như bước SEO).
+
+### Bằng chứng lượt 3
+
+Windows 11, Git Bash, worktree `wt-T-041` (Lá Chắn đang kiểm song song cùng thư mục: `tests/test_la_chan_t041.py` của Lá Chắn chưa commit, tôi không chạy, không commit).
+
+```
+$ uv run pytest tests/test_soi_loi_t041.py tests/test_t041_seo_ui.py      # a735c7e trước khi thêm 7 test của tôi
+174 passed, 1 xfailed                                                         # xfailed: SL-T041-8
+
+$ uv run pytest tests/test_app_images.py tests/test_app_pages.py tests/test_app_t044_safe_text.py \
+    tests/test_app_wordpress.py tests/test_soi_loi_t041.py tests/test_t041_drafts_seo.py \
+    tests/test_t041_links_ai.py tests/test_t041_meta.py tests/test_t041_schema.py \
+    tests/test_t041_seo_ui.py tests/test_t041_site_index.py                  # code a735c7e
+535 passed, 1 xfailed in 608.02s (0:10:08)                                    # xfailed: SL-T041-8
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Thử gỡ chỗ sửa (bản sao `git archive` của `a735c7e`, script `T-041-hoa-si-scripts/mutate_l3.py`):
+
+| Đột biến | Kết quả |
+|---|---|
+| L3-M1 gửi thẳng từ khóa chính chưa kiểm (như trước SL-T041-9) | bắt được (3 test) |
+| L3-M2 bước SEO không hiện nhãn từ khóa hỏng | bắt được (4 test) |
+| L3-M3 bỏ kiểm ký tự riêng / chưa gán của từ khóa | bắt được (3 test) |
+| L3-M4 bỏ giới hạn độ dài từ khóa của client | bắt được |
+| L3-M5 dòng kiểm bước 5 không tải danh sách khi công tắc bật (như trước SL-T041-10) | bắt được (2 test) |
+| L3-M6 dòng kiểm bước 5 luôn tải danh sách (chỉ xem cũng gọi website) | bắt được |
+| L3-M7 nhãn ô tiêu đề dùng kiểm trần (như trước SL-T041-11) | bắt được (3 test) |
+| L3-M8 nhãn ô mô tả dùng kiểm trần | bắt được |
+
+### Đã thay đổi (lượt 3)
+
+| File | Thay đổi |
+|---|---|
+| `app/views/write.py` | `keyword_problem`, `keyword_line`; `final_seo` thêm trường từ khóa; `siteseo_panel` chỉ chép ba trường; `seo_request` bỏ riêng từ khóa hỏng; `seo_check` tải danh sách khi công tắc bật; `meta_field` dùng kết quả kiểm của khung chép |
+| `tests/test_soi_loi_t041.py` | Gỡ 4 dấu `xfail` (SL-T041-9 → -11), không đổi thân test |
+| `tests/test_t041_seo_ui.py` | 7 test mới (bảng trên) |
+| `docs/team/reports/T-041-hoa-si.md` | Mục này |
