@@ -306,15 +306,21 @@ Trả lời đúng khuôn JSON đã cho."""
 _TRAILING = " ,;:-–—\\"
 
 
-def _cut(text: str, limit: int) -> str:
-    """Cắt ``text`` còn tối đa ``limit`` ký tự, ưu tiên cắt ở dấu cách (không cụt giữa chữ)."""
+def _cut(text: str, limit: int, *, whole_words: bool = False) -> str:
+    """Cắt ``text`` còn tối đa ``limit`` ký tự, ưu tiên cắt ở dấu cách (không cụt giữa chữ).
+
+    ``whole_words``: không bao giờ cụt giữa chữ; chỗ còn lại không chứa trọn chữ nào thì trả
+    chuỗi rỗng (chú thích ảnh AI ở giới hạn nhỏ chỉ còn tiền tố, Soi Lỗi SL-T068-3)."""
     if len(text) <= limit:
         return text
     cut = text[:limit]
-    if text[limit] != " " and " " in cut:
-        head = cut.rsplit(" ", 1)[0]
-        if len(head) >= limit // 2:
-            cut = head
+    if text[limit] != " ":
+        if " " in cut:
+            head = cut.rsplit(" ", 1)[0]
+            if whole_words or len(head) >= limit // 2:
+                cut = head
+        elif whole_words:
+            cut = ""
     return cut.rstrip(_TRAILING)
 
 
@@ -326,17 +332,20 @@ def _one_line(text: object) -> str:
     return " ".join(clean_ai_text(normalize_meta(_CONTROL_CHARS.sub(" ", text))).split())
 
 
-def clean_alt_text(text: object, limit: int) -> str:
+def clean_alt_text(text: object, limit: int, *, whole_words: bool = False) -> str:
     """Chữ AI viết cho alt/caption: chuẩn hóa (NFC, bỏ ký tự vô hình, ký tự điều khiển thành dấu
     cách), ``clean_ai_text`` (bỏ thẻ HTML, link; vô hiệu cú pháp link), gộp một dòng, cắt còn tối
-    đa ``limit`` ký tự."""
+    đa ``limit`` ký tự (``whole_words``: như ``_cut``, không bao giờ cụt giữa chữ)."""
     text = _one_line(text)
     if len(text) <= limit:
         return text
     # Lọc lại sau khi cắt (hàm lọc chạy lại không đổi gì), rồi chắc chắn không quá ``limit``.
-    text = " ".join(clean_ai_text(_cut(text, limit)).split())
+    text = " ".join(clean_ai_text(_cut(text, limit, whole_words=whole_words)).split())
     if len(text) > limit:
-        text = text[:limit].rstrip(_TRAILING)
+        if whole_words:
+            text = _cut(text, limit, whole_words=True)
+        else:
+            text = text[:limit].rstrip(_TRAILING)
     return text
 
 
@@ -344,18 +353,43 @@ def clean_alt_text(text: object, limit: int) -> str:
 _ALT_END = _TRAILING + ".…。"
 # Tiền tố mà AI đã tự viết cho ảnh AI (đúng hay gần đúng: «Minh hoạ», «Hình minh họa», «Ảnh minh
 # họa (AI)»…): bỏ đi rồi code ghi lại đúng một tiền tố chuẩn, không lặp «Minh họa Minh họa».
+# Nhận cả chữ không dấu («Minh hoa», «Anh minh hoa (AI)»), gọi khác («Tranh minh họa», «Hình vẽ
+# minh họa»), hai chữ nối bằng gạch hay dính liền («Minh-họa», «Minhhọa» khi ký tự rộng 0 bị bỏ),
+# «AI» không ngoặc («Ảnh minh họa AI:», chỉ chữ hoa) (Soi Lỗi SL-T068-1, G3). «họa» chỉ nhận đúng
+# dấu hay không dấu: «Minh Hòa» là tên riêng, không phải tiền tố. Sau tiền tố không được là chữ
+# cái hay chữ số; «_» thì được («_Minh họa_»).
+_WORD_SEP = r"[\s_\-‐‑]"
 _AI_PREFIX = re.compile(
-    r"(?:(?:bức\s+)?(?:hình\s+ảnh|ảnh|hình)\s+)?minh\s+h(?:ọa|oạ)\b(?:\s*\(\s*ai\s*\))?",
+    rf"(?:(?:b[ứu]c{_WORD_SEP}+)?"
+    rf"(?:h[ìi]nh{_WORD_SEP}+(?:[ảa]nh|v[ẽe])|tranh(?:{_WORD_SEP}+v[ẽe])?|[ảa]nh|h[ìi]nh)"
+    rf"{_WORD_SEP}+)?"
+    rf"minh{_WORD_SEP}*h(?:ọa|oạ|oa)(?:\s*\(\s*ai\s*\)|\s+(?-i:AI))?(?![^\W_])",
     re.IGNORECASE,
 )
-# Ngoặc AI hay đặt quanh tiền tố (lời dặn ``AI_PREFIX_NOTE`` và ví dụ ghi tiền tố trong «»):
-# ký tự mở → ký tự đóng. Tối đa ``_MAX_WRAP`` ký tự mở liền nhau («**Minh họa**», «"«Minh họa»"»).
+# «(AI)» hay «AI» đứng đầu phần còn lại: AI viết tách khỏi tiền tố («[Minh họa] (AI): …»,
+# «**Ảnh minh họa** (AI): …», «Minh họa: (AI) …», Soi Lỗi SL-T081-1) hay đứng đầu phần thân. Bỏ
+# luôn, để chú thích không thành «Ảnh minh họa (AI): (AI): …» và chạy lại không đổi chữ.
+_AI_TAG = re.compile(r"\(\s*ai\s*\)|(?-i:AI)(?![^\W_])", re.IGNORECASE)
+# Số thứ tự đầu dòng trước tiền tố («1. Minh họa: …», «2) Minh họa…», Soi Lỗi SL-T068-2); chỉ bỏ
+# khi ngay sau là tiền tố. Dấu đầu dòng «- », «• » nằm trong ``_AFTER_PREFIX``, «* » trong
+# ``_WRAPPERS``.
+_NUMBERED = re.compile(r"\d{1,3}[.)]\s*")
+# Ngoặc AI hay đặt quanh tiền tố (lời dặn ``AI_PREFIX_NOTE`` và ví dụ ghi tiền tố trong «»), cả dấu
+# Markdown («`Minh họa`», «_Minh họa_», «__Minh họa__», SL-T068-2): ký tự mở → ký tự đóng. Tối đa
+# ``_MAX_WRAP`` ký tự mở liền nhau («**Minh họa**», «"«Minh họa»"»).
 _WRAPPERS = {
     "«": "»", "“": "”", "‘": "’", "‹": "›", '"': '"', "'": "'", "(": ")", "[": "]", "*": "*",
+    "`": "`", "_": "_",
 }  # fmt: skip
 _MAX_WRAP = 3
 # Dấu cách và dấu câu dính sau tiền tố («Minh họa: », «Minh họa! », «Minh họa… », «Minh họa – »).
+# Ảnh AI: phần thân cũng không mở đầu bằng các dấu này («- cửa cuốn», «: cửa cuốn», gợi ý G1 Soi
+# Lỗi T-068), để chạy lại ``clean_suggestion`` không đổi chữ.
 _AFTER_PREFIX = " :,.;!?…-–—|/·•"
+# Cắt thô chữ AI còn tối đa ``_RAW_FACTOR`` lần giới hạn trước khi bỏ tiền tố (gợi ý G4 Soi Lỗi
+# T-068): chữ AI cực dài toàn tiền tố lặp không làm bước bỏ tiền tố chạy lâu. Đủ chỗ cho vài tiền tố
+# AI tự viết và phần thân dài hơn giới hạn (phần thân còn bị cắt theo giới hạn sau đó).
+_RAW_FACTOR = 4
 # ``escape_link_syntax`` thêm «\» ngay sau «]» khi theo sau là «[», «(» hay «:» (nhãn đầu dòng:
 # «[Minh họa]\: …»).
 # Bỏ «]» của tiền tố thì bỏ luôn dấu «\» đó, như ``plain_image_text`` gỡ nếu «]» còn; để lại thì
@@ -363,36 +397,56 @@ _AFTER_PREFIX = " :,.;!?…-–—|/·•"
 _LINK_ESCAPES = ("\\:", "\\[", "\\(")
 _ALT_SEP = " "
 _CAPTION_SEP = ": "
+# Giới hạn nhỏ nhất để ảnh AI còn nguyên tiền tố chuẩn (Lá Chắn LC-T068-1): alt cần tiền tố, dấu
+# cách và ít nhất một ký tự; chú thích được phép chỉ có tiền tố. Nhỏ hơn thì báo lỗi, không cắt
+# tiền tố. Mục [alt] của config/content.toml không cho đặt dưới 20 (``ALT_MIN_CHARS``), nên chỉ
+# lời gọi sai trong code mới gặp.
+AI_ALT_MIN_CHARS = len(AI_ALT_PREFIX) + len(_ALT_SEP) + 1
+AI_CAPTION_MIN_CHARS = len(AI_CAPTION_PREFIX)
+AI_LIMIT_TOO_SMALL = (
+    "Giới hạn {field} của ảnh AI là {limit} ký tự, nhỏ hơn {minimum}: không đủ chỗ cho tiền tố "
+    "«{prefix}»."
+)
 
 
 def _strip_ai_prefix(text: str) -> str:
     """Bỏ tiền tố AI tự viết ở đầu ``text`` (một dòng đã lọc, chưa cắt), kể cả khi tiền tố nằm
-    trong ngoặc («Minh họa», “Ảnh minh họa (AI)”, **Minh họa**) hay dính dấu câu («Minh họa!»,
-    «Minh họa…»), và bỏ tới khi hết («Minh họa «Minh họa» cửa cuốn»). Code ghi lại đúng một tiền
-    tố chuẩn sau đó (Soi Lỗi SL-T062-2).
+    trong ngoặc («Minh họa», “Ảnh minh họa (AI)”, **Minh họa**, `Minh họa`, _Minh họa_), sau dấu
+    đầu dòng («- Minh họa», «1. Minh họa») hay dính dấu câu («Minh họa!», «Minh họa…»), «(AI)»
+    tách khỏi tiền tố («[Minh họa] (AI): …»), và bỏ tới khi hết («Minh họa «Minh họa» cửa cuốn»).
+    Code ghi lại đúng một tiền tố chuẩn sau đó (Soi Lỗi SL-T062-2, SL-T068-1, -2, SL-T081-1).
 
     Ngoặc mở trước tiền tố mà ngay sau tiền tố không có ngoặc đóng thì là ngoặc bọc cả câu
     («Minh họa cửa cuốn»): bỏ ngoặc đóng ở cuối câu, nếu giữa câu không còn ngoặc đóng nào khác.
     Ngoặc đóng là «]» mà ngay sau còn dấu «\\» của ``escape_link_syntax`` («[Minh họa]\\: cổng»,
     «[Minh họa]\\[cổng sắt]») thì bỏ cả dấu «\\» đó (SL-T071-1); dấu «\\» ở chỗ khác giữ nguyên.
-    Không có tiền tố thì giữ nguyên ``text``, kể cả ngoặc."""
+
+    Phần còn lại không mở đầu bằng dấu ``_AFTER_PREFIX`` hay «(AI)», «AI» (G1), nên kết quả qua
+    hàm này lần nữa không đổi. Ngoài các thứ đó, không có tiền tố thì giữ nguyên, kể cả ngoặc."""
     while True:
+        text = text.lstrip(_AFTER_PREFIX)
+        tag = _AI_TAG.match(text)
+        if tag:
+            text = text[tag.end() :]
+            continue
+        numbered = _NUMBERED.match(text)
+        start = numbered.end() if numbered else 0
         size = 0
-        while size < _MAX_WRAP and text[size : size + 1] in _WRAPPERS:
+        while size < _MAX_WRAP and text[start + size : start + size + 1] in _WRAPPERS:
             size += 1
-        rest = text[size:].lstrip()
+        rest = text[start + size :].lstrip()
         match = _AI_PREFIX.match(rest)
         if not match:
             return text
         rest = rest[match.end() :].lstrip(_AFTER_PREFIX)
-        closing = "".join(_WRAPPERS[ch] for ch in reversed(text[:size]))
+        closing = "".join(_WRAPPERS[ch] for ch in reversed(text[start : start + size]))
         if closing and rest.startswith(closing):
             rest = rest[len(closing) :]
             if closing.endswith("]") and rest.startswith(_LINK_ESCAPES):
                 rest = rest[1:]
         elif closing and rest.endswith(closing) and closing not in rest[: -len(closing)]:
             rest = rest[: -len(closing)]
-        text = rest.lstrip(_AFTER_PREFIX)
+        text = rest
 
 
 def _meaningful(text: str) -> str:
@@ -410,13 +464,46 @@ def _lower_first(text: str) -> str:
     return text
 
 
-def _with_prefix(prefix: str, body: str, limit: int, sep: str) -> str:
+def _with_prefix(prefix: str, body: str, limit: int, sep: str, *, whole_words: bool = False) -> str:
     """``prefix`` + ``sep`` + ``body`` không quá ``limit`` ký tự; phần ``body`` bị cắt theo ranh
-    giới từ để tiền tố luôn còn nguyên. Lọc lại sau khi ghép (hàm lọc chạy lại không đổi gì)."""
+    giới từ để tiền tố luôn còn nguyên (``whole_words``: như ``_cut``). Lọc lại sau khi ghép (hàm
+    lọc chạy lại không đổi gì). ``limit`` không nhỏ hơn ``prefix`` (``clean_suggestion`` kiểm)."""
     room = limit - len(prefix) - len(sep)
-    if not body or room <= 0:
-        return prefix[:limit]
-    return clean_alt_text(f"{prefix}{sep}{_cut(_lower_first(body), room)}", limit)
+    body = _cut(_lower_first(body), room, whole_words=whole_words) if room > 0 else ""
+    if not body:
+        return prefix
+    return clean_alt_text(f"{prefix}{sep}{body}", limit, whole_words=whole_words)
+
+
+def _ai_body(text: str, room: int, *, end: str = "", whole_words: bool = False) -> str:
+    """Phần thân alt / chú thích ảnh AI: bỏ tiền tố AI tự viết, bỏ các dấu ``end`` ở cuối, cắt
+    còn tối đa ``room`` ký tự (``whole_words``: như ``_cut``). Cắt giữa chữ mà lộ ra tiền tố mới
+    («1. Minh_hoa10…» cắt còn «1. Minh_hoa») thì bỏ tiếp tới khi không đổi, để chạy lại
+    ``clean_suggestion`` trên kết quả không đổi chữ (mỗi vòng chữ ngắn đi, nên luôn dừng).
+
+    Chữ đầu tiên đã dài hơn ``room`` thì trả chuỗi rỗng: cắt ra chỉ còn mẩu một chữ cụt
+    («?????????? cửacuốnnhàphố…» bỏ dấu câu đầu rồi còn «cửacuốnnhàp»), không mô tả gì (như
+    SL-T062-1: alt báo lỗi, chú thích chỉ còn tiền tố)."""
+    while True:
+        text = _strip_ai_prefix(text).rstrip(end)
+        if len(text.split(" ", 1)[0]) > room:
+            return ""
+        body = clean_alt_text(text, room, whole_words=whole_words).rstrip(end)
+        if _strip_ai_prefix(body) == body:
+            return body
+        text = body
+
+
+def _check_ai_limits(max_chars: int, caption_max_chars: int) -> None:
+    """Ảnh AI: giới hạn phải đủ chỗ cho tiền tố chuẩn, không thì ``ValueError`` (LC-T068-1)."""
+    for field, limit, minimum, prefix in (
+        ("alt", max_chars, AI_ALT_MIN_CHARS, AI_ALT_PREFIX),
+        ("chú thích", caption_max_chars, AI_CAPTION_MIN_CHARS, AI_CAPTION_PREFIX),
+    ):
+        if limit < minimum:
+            raise ValueError(
+                AI_LIMIT_TOO_SMALL.format(field=field, limit=limit, minimum=minimum, prefix=prefix)
+            )
 
 
 def clean_suggestion(
@@ -433,25 +520,40 @@ def clean_suggestion(
     - ảnh AI (``ai_generated``, do code quyết): alt luôn bắt đầu «Minh họa», chú thích luôn bắt
       đầu «Ảnh minh họa (AI)» (chú thích AI để trống thì chỉ còn tiền tố), dù AI viết gì.
 
-    Thứ tự (Soi Lỗi SL-T062-3): lọc và gộp một dòng; ảnh AI thì bỏ tiền tố AI tự viết trên chữ
-    còn nguyên; cắt phần thân theo chỗ còn lại sau tiền tố chuẩn; rồi mới ghép tiền tố chuẩn.
+    Thứ tự (Soi Lỗi SL-T062-3): lọc và gộp một dòng; ảnh AI thì cắt thô (``_RAW_FACTOR``) rồi
+    bỏ tiền tố AI tự viết trên chữ còn lại; cắt phần thân theo chỗ còn lại sau tiền tố chuẩn
+    (``_ai_body``); rồi mới ghép tiền tố chuẩn. Chú thích ảnh AI không bao giờ cụt giữa chữ: không
+    đủ chỗ cho một chữ trọn thì chỉ còn tiền tố (SL-T068-3).
 
     Alt rỗng hay không có chữ cái, chữ số nào («???», «Minh họa !!!») sau khi lọc và cắt thì báo
-    ``AIError`` (alt như vậy không được dùng); chú thích như vậy thì coi như để trống.
+    ``AIError`` (alt như vậy không được dùng); chú thích như vậy thì coi như để trống. Ảnh AI mà
+    chữ đầu của phần thân dài hơn chỗ còn lại (cắt ra chỉ còn mẩu chữ cụt) cũng vậy. Ảnh AI mà
+    ``max_chars`` nhỏ hơn ``AI_ALT_MIN_CHARS`` hay ``caption_max_chars`` nhỏ hơn
+    ``AI_CAPTION_MIN_CHARS`` thì báo ``ValueError`` (lỗi lập trình, LC-T068-1).
+
+    Kết quả là điểm bất động: chạy lại hàm này trên chính kết quả (cùng tham số) không đổi chữ.
     """
-    alt, caption = _one_line(raw.alt), _one_line(raw.caption)
-    alt_room, caption_room = max_chars, caption_max_chars
     if ai_generated:
-        alt, caption = _strip_ai_prefix(alt), _strip_ai_prefix(caption)
-        alt_room = max(max_chars - len(AI_ALT_PREFIX) - len(_ALT_SEP), 0)
+        _check_ai_limits(max_chars, caption_max_chars)
+    alt, caption = _one_line(raw.alt), _one_line(raw.caption)
+    if ai_generated:
+        alt_room = max_chars - len(AI_ALT_PREFIX) - len(_ALT_SEP)
         caption_room = max(caption_max_chars - len(AI_CAPTION_PREFIX) - len(_CAPTION_SEP), 0)
-    alt = _meaningful(clean_alt_text(alt.rstrip(_ALT_END), alt_room).rstrip(_ALT_END))
-    caption = _meaningful(clean_alt_text(caption, caption_room))
+        alt = _ai_body(alt[: _RAW_FACTOR * max_chars], alt_room, end=_ALT_END)
+        caption = _ai_body(
+            caption[: _RAW_FACTOR * caption_max_chars], caption_room, whole_words=True
+        )
+    else:
+        alt = clean_alt_text(alt.rstrip(_ALT_END), max_chars).rstrip(_ALT_END)
+        caption = clean_alt_text(caption, caption_max_chars)
+    alt, caption = _meaningful(alt), _meaningful(caption)
     if not alt:
         raise AIError(EMPTY_ALT_MESSAGE)
     if ai_generated:
         alt = _with_prefix(AI_ALT_PREFIX, alt, max_chars, _ALT_SEP).rstrip(_ALT_END)
-        caption = _with_prefix(AI_CAPTION_PREFIX, caption, caption_max_chars, _CAPTION_SEP)
+        caption = _with_prefix(
+            AI_CAPTION_PREFIX, caption, caption_max_chars, _CAPTION_SEP, whole_words=True
+        )
     return AltSuggestion(alt=alt, caption=caption)
 
 

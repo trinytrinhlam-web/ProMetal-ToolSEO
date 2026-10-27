@@ -127,7 +127,6 @@ def test_real_photo_never_gets_ai_prefix_whatever_the_limit(text, limit):
 # gọi khác («Tranh minh họa», «Hình vẽ minh họa») không được nhận ra: code ghép thêm tiền tố
 # chuẩn, alt thành «Minh họa minh hoa cửa cuốn», chú thích «Ảnh minh họa (AI): AI: ray…». Tiền
 # tố vẫn còn (C6 giữ). Có từ trước T-068 (``main`` cũng vậy).
-@pytest.mark.xfail(strict=True, reason="SL-T068-1: tiền tố không dấu / gọi khác bị lặp")
 @pytest.mark.parametrize(
     ("alt", "caption"),
     [
@@ -145,7 +144,6 @@ def test_sl_t068_1_unaccented_or_renamed_prefix_is_written_once(alt, caption):
 
 
 # Alt chỉ có tiền tố viết như vậy không mô tả gì (như «Minh họa.», SL-T062-1) mà vẫn được nhận.
-@pytest.mark.xfail(strict=True, reason="SL-T068-1: alt chỉ có tiền tố không dấu vẫn được nhận")
 @pytest.mark.parametrize("alt", ["Minh hoa", "MINH HOA!", "Tranh minh họa"])
 def test_sl_t068_1_alt_that_is_only_such_a_prefix_is_refused(alt):
     with pytest.raises(AIError, match="không viết được alt"):
@@ -155,7 +153,6 @@ def test_sl_t068_1_alt_that_is_only_such_a_prefix_is_refused(alt):
 # SL-T068-2 (Thấp): tiền tố trong dấu Markdown khác «*» («`», «_», «__») hay sau dấu đầu dòng
 # («- », «1. », «• ») không được nhận ra: alt thành «Minh họa - Minh họa cửa cuốn», «Minh họa
 # `Minh họa` cửa cuốn». Tiền tố vẫn còn (C6 giữ). Có từ trước T-068.
-@pytest.mark.xfail(strict=True, reason="SL-T068-2: tiền tố trong Markdown / sau dấu đầu dòng")
 @pytest.mark.parametrize(
     ("alt", "caption"),
     [
@@ -175,7 +172,6 @@ def test_sl_t068_2_markdown_or_bulleted_prefix_is_written_once(alt, caption):
 
 # Alt chỉ có tiền tố như vậy thành «Minh họa - Minh họa», «Minh họa 1. Minh họa»: không mô tả
 # gì mà vẫn được nhận (chạy lại ``clean_suggestion`` trên chính kết quả đó thì lại báo lỗi).
-@pytest.mark.xfail(strict=True, reason="SL-T068-2: alt chỉ có tiền tố Markdown vẫn được nhận")
 @pytest.mark.parametrize(
     "alt", ["- Minh họa", "`Minh họa`", "_Minh họa_", "1. Minh họa", "• Minh họa"]
 )
@@ -189,7 +185,6 @@ def test_sl_t068_2_alt_that_is_only_such_a_prefix_is_refused(alt):
 # «Ảnh minh họa (AI): r», «Ảnh minh họa (AI): cử». Chú thích được phép chỉ có tiền tố, nên mong
 # đợi: không đủ chỗ cho một chữ trọn thì bỏ phần thân. Thợ Máy T-068 đã nêu (Rủi ro, mục 3); có
 # từ trước T-068. Sửa ở ``config/`` (nâng mức thấp nhất) không đủ: hàm vẫn nhận giới hạn 20.
-@pytest.mark.xfail(strict=True, reason="SL-T068-3: chú thích ảnh AI bị cắt giữa chữ ở 20–21")
 @pytest.mark.parametrize(
     ("caption", "limit"), [(CAPTION, 20), (CAPTION, 21), ("cửa cuốn", 20), ("cửa cuốn", 21)]
 )
