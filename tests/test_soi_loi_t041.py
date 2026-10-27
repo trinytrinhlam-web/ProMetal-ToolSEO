@@ -752,12 +752,6 @@ def wp_client_problem(text: str) -> str:
     return ""
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-9: từ khóa chính đi thẳng vào client, không qua bộ kiểm meta: có ký tự điều "
-    "khiển thì client từ chối cả lệnh ghi SEO (mất cả tiêu đề, mô tả hợp lệ); có ký tự riêng (Co) "
-    "thì bị lặng lẽ bỏ ký tự rồi ghi.",
-)
 @pytest.mark.parametrize("odd", [ESC, PRIVATE], ids=["ESC", "U+E000"])
 def test_sl_t041_9_bad_keyword_is_skipped_alone(project_root, seo_ai, wordpress, odd):
     snap = ui.article(keyword=f"sửa cổng{odd} inox")
@@ -770,11 +764,6 @@ def test_sl_t041_9_bad_keyword_is_skipped_alone(project_root, seo_ai, wordpress,
     assert not at.exception and not at.error
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-9: bật «Ghi SEO lên website» không báo trước rằng từ khóa chính có ký tự lạ "
-    "sẽ không ghi được (bước Xuất bản chỉ báo trước cho tiêu đề, mô tả).",
-)
 def test_sl_t041_9_bad_keyword_is_warned_before_sending(project_root, seo_ai, wordpress):
     at = _suggest_then_publish_with_seo(
         seo_ui.to_seo(project_root, ui.article(keyword=f"sửa cổng{ESC} inox"))
@@ -806,12 +795,6 @@ def test_seo_choices_do_not_leak_into_the_next_draft(project_root, seo_ai):
 DUPLICATE_OF_FIRST_TITLE = seo_ui.published(13, "Bài cũ", "bai-cu", meta_title=seo_ui.TITLES[0])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-10: phiên mới mở nháp ở bước Xuất bản (chưa tải danh sách bài): bật «Ghi SEO "
-    "lên website» thì lần vẽ đó vừa có dòng «✅ SEO: … đã sẵn sàng» vừa có «Sẽ không ghi Tiêu đề "
-    "SEO… đang báo «Chặn»» (dòng kiểm vẽ trước khi công tắc tải danh sách bài).",
-)
 def test_sl_t041_10_publish_checklist_agrees_with_seo_toggle(project_root, seo_ai, wordpress):
     wordpress.items = [*seo_ui.PUBLISHED, DUPLICATE_OF_FIRST_TITLE]
     at = seo_ui.to_seo(project_root)
@@ -840,12 +823,6 @@ def test_copy_box_refuses_what_client_refuses(project_root, seo_ai, bad):
     assert not any(bad in c.value for c in at.code)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-11: chữ client WordPress từ chối ghi (shortcode, «<» liền chữ số, mã ký tự "
-    "HTML thiếu «;»): nhãn dưới ô vẫn xanh «Nên», chỉ khung «Chép sang SiteSEO» báo «chưa chép "
-    "được».",
-)
 @pytest.mark.parametrize("bad", CLIENT_REFUSES, ids=["shortcode", "nho-hon-so", "ma-ky-tu"])
 def test_sl_t041_11_field_badge_is_red_when_copy_is_refused(project_root, seo_ai, bad):
     at = seo_ui.to_seo(project_root)

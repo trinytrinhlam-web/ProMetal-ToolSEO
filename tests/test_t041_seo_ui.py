@@ -703,3 +703,94 @@ def test_links_hint_when_button_works(project_root, seo_ai, wordpress):
     at = to_seo(project_root)
     assert not button(at, "✨ AI gợi ý liên kết").disabled
     assert link_hints(at) == [CLICK_HINT]
+
+
+# ============================================================ lượt 3: SL-T041-9, -10, -11
+
+ODD_KEYWORD_MESSAGE = (
+    "Từ khóa chính có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác)."
+)
+BAD_KEYWORDS = {
+    "ESC": ("sửa cổng\x1b inox", ODD_KEYWORD_MESSAGE),
+    "U+E000": ("sửa cổng inox", ODD_KEYWORD_MESSAGE),
+    "nho-hon-so": (
+        "cổng inox <2m",
+        onpage_meta.seo_write_problem("Từ khóa chính", "cổng inox <2m"),
+    ),
+    "qua-dai": ("cổng inox " * 25, "Từ khóa chính quá dài (tối đa 200 ký tự)."),
+}
+
+
+@pytest.mark.parametrize("bad", BAD_KEYWORDS.values(), ids=BAD_KEYWORDS.keys())
+def test_bad_keyword_is_flagged_on_seo_and_publish_steps(project_root, seo_ai, bad):
+    """SL-T041-9: từ khóa chính (gõ ở bước Chuẩn bị) không ghi được vào SiteSEO: bước SEO có dòng
+    «Từ khóa chính» nhãn «Chặn» và câu nhắc sửa ở bước 1 (chữ thuần); bước Xuất bản báo «Từ khóa
+    chính chưa dùng được». Không lỗi đỏ, không khung chép nào chép từ khóa đó."""
+    keyword, message = bad
+    assert message  # bộ kiểm có sẵn thật sự từ chối từ khóa này
+    at = to_seo(project_root, ui.article(keyword=keyword))
+    assert "Từ khóa chính" in [m.value for m in at.markdown]
+    assert badges(at)[-1] == ":red-badge[Chặn]"
+    captions = [c.value for c in at.caption]
+    assert escape_markdown(f"{message} Sửa từ khóa ở bước 1 · Chuẩn bị.") in captions
+    assert not any(keyword.strip() in c.value for c in at.code)
+    assert not at.error and not at.exception
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    lines = [m.value for m in at.markdown]
+    assert any(line.startswith("⚠️ SEO:") and "Từ khóa chính" in line for line in lines)
+
+
+def test_bad_keyword_does_not_lose_title_and_description(project_root, seo_ai, wordpress):
+    """SL-T041-9: từ khóa hỏng chỉ bị bỏ riêng: lệnh ghi SEO vẫn có tiêu đề (đã gắn đuôi), mô tả;
+    câu kết quả nói rõ «Không ghi Từ khóa chính»."""
+    at = to_seo(project_root, ui.article(keyword="cổng inox <2m"))
+    run_ok(at.text_input(key="seo_title").input(TITLES[0]).run())  # tự gõ: gợi ý AI cần từ khóa
+    run_ok(at.text_area(key="seo_description").input(DESCRIPTION).run())
+    at.session_state["step"] = 4
+    run_ok(at.run())
+    run_ok(at.toggle(key="seo_write").set_value(True).run())
+    will_skip = escape_markdown("Sẽ không ghi Từ khóa chính: ở bước SEO đang báo «Chặn»")
+    assert will_skip in "\n".join(c.value for c in at.caption)
+    ui.send(at)
+    (run,) = [r for r in wordpress.fake.requests if ui.path_of(r) == RUN]
+    assert json.loads(run.body)["input"] == {
+        "postId": POST_ID,
+        "title": onpage_meta.with_brand(TITLES[0]),
+        "description": DESCRIPTION,
+    }
+    (info,) = [i.value for i in at.info if "Đã ghi SEO" in i.value]
+    assert escape_markdown("Không ghi Từ khóa chính: ở bước SEO đang báo «Chặn».") in info
+
+
+def test_publish_step_loads_listing_only_when_toggle_is_on(project_root, seo_ai, wordpress):
+    """SL-T041-10: phiên mới mở nháp ở bước Xuất bản: công tắc tắt thì không tải danh sách bài
+    (chỉ xem không gọi website); bật thì tải trước khi vẽ dòng kiểm, dòng kiểm và câu báo của công
+    tắc nói cùng một điều."""
+    wordpress.items = [*PUBLISHED, published(13, "Bài cũ", "bai-cu", meta_title=TITLES[0])]
+    at = to_seo(project_root)
+    run_ok(button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    ui.to_publish(at)
+    fresh = ui.pages.open_page(project_root, "write.py")
+    run_ok(button(fresh, "Mở", key=f"open-{at.session_state['draft_id']}").click().run())
+    assert fresh.session_state["step"] == 4
+    assert "_site_listing" not in fresh.session_state
+    run_ok(fresh.toggle(key="seo_write").set_value(True).run())
+    lines = [m.value for m in fresh.markdown]
+    assert "⚠️ SEO: Tiêu đề SEO chưa dùng được (xem bước SEO)" in lines
+    will_skip = escape_markdown("Sẽ không ghi Tiêu đề SEO: ở bước SEO đang báo «Chặn»")
+    assert will_skip in "\n".join(c.value for c in fresh.caption)
+
+
+def test_description_badge_matches_copy_box(project_root, seo_ai):
+    """SL-T041-11 (cả ô mô tả): chữ client WordPress từ chối ghi thì nhãn dưới ô cũng đỏ «Chặn» kèm
+    đúng câu lý do của khung chép, không còn xanh «Nên»."""
+    at = to_seo(project_root)
+    bad = DESCRIPTION.replace("bản lề gỉ sét?", "bản lề [gallery] gỉ sét?")
+    run_ok(at.text_area(key="seo_description").input(bad).run())
+    title_badge, description_badge = badges(at)[:2]
+    assert description_badge.startswith(":red-badge[Chặn")
+    (reason,) = onpage_meta.siteseo_copy("", bad, "a-b").checks[1].messages
+    captions = [c.value for c in at.caption]
+    assert escape_markdown(reason) in captions  # dòng dưới ô
+    assert f"Mô tả SEO: chưa chép được. {escape_markdown(reason)}" in captions  # khung chép

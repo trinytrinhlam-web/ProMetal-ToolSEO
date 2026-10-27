@@ -98,8 +98,13 @@ from seo_app.storage.drafts import (
 )
 from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
 from seo_app.text import escape_markdown, markdown_link, paragraphs_to_html
+from seo_app.wordpress.client import (
+    MAX_SEO_KEYWORD_CHARS,
+    DraftImagesError,
+    WordPressClient,
+    WordPressError,
+)
 from seo_app.wordpress.client import DraftImage as WordPressImage
-from seo_app.wordpress.client import DraftImagesError, WordPressClient, WordPressError
 from seo_app.wordpress.shortcodes import find_shortcodes
 
 S = st.session_state
@@ -1886,6 +1891,11 @@ LEVEL_BADGES = {
 # phiếu giao bài nên chủ dự án không làm gì được với câu này: không hiện (góp ý G4 Soi Lỗi T-041).
 NO_ORDER_NOTICE = "Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài)."
 COPY_LABELS = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
+KEYWORD_LABEL = "Từ khóa chính"
+MSG_KEYWORD_ODD = (
+    "Từ khóa chính có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác)."
+)
+MSG_KEYWORD_FIX = "Sửa từ khóa ở bước 1 · Chuẩn bị."
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
 MSG_SEO_WILL_SKIP = "Sẽ không ghi {fields}: ở bước SEO đang báo «Chặn» (xem lý do ở đó)."
 MSG_SEO_SKIPPED = (
@@ -2054,11 +2064,16 @@ def meta_field(
     )
     if len(meta_versions(field)) > 1:
         st.caption(f"Bản {meta_index(field) + 1}/{len(meta_versions(field))}")
+    # Kiểm như khung chép (``siteseo_copy``): kể cả chữ client WordPress từ chối ghi (shortcode,
+    # «<» liền ký tự, mã ký tự HTML), để nhãn dưới ô khớp khung chép (SL-T041-11).
+    copy = onpage_meta.siteseo_copy(
+        meta_text("title"), meta_text("description"), S.get("seo_slug", ""), suffix=suffix
+    )
     if field == "title":
-        check = onpage_meta.check_title(meta_text(field), suffix)
+        check = copy.checks[0]
         duplicate = onpage_meta.check_title_duplicates(check.value, posts)
     else:
-        check = onpage_meta.check_description(meta_text(field))
+        check = copy.checks[1]
         duplicate = onpage_meta.check_description_duplicates(check.value, posts)
     check_lines(check, duplicate, length=check.length)
     return check
@@ -2094,10 +2109,37 @@ def site_host() -> str:
     return urlsplit(load_settings().wordpress_url).netloc or "website-cua-ban.vn"
 
 
+def keyword_problem() -> str:
+    """Lý do từ khóa chính không ghi được vào SiteSEO; chuỗi rỗng là ghi được (SL-T041-9). Từ khóa
+    gõ ở bước Chuẩn bị, không qua bộ kiểm meta: kiểm ở đây bằng các hàm có sẵn, như client sẽ kiểm
+    (``seo_write_problem``, giới hạn độ dài của client) và cả ký tự lạ client lặng lẽ bỏ
+    (``has_odd_chars``: ký tự riêng, chưa gán)."""
+    text = keyword()
+    if not text:
+        return f"Chưa có từ khóa chính. {MSG_KEYWORD_FIX}"
+    if onpage_meta.has_odd_chars(text):
+        problem = MSG_KEYWORD_ODD
+    else:
+        problem = onpage_meta.seo_write_problem(KEYWORD_LABEL, text)
+    if not problem and len(onpage_meta.normalize_meta(text)) > MAX_SEO_KEYWORD_CHARS:
+        problem = f"Từ khóa chính quá dài (tối đa {MAX_SEO_KEYWORD_CHARS} ký tự)."
+    return f"{problem} {MSG_KEYWORD_FIX}" if problem else ""
+
+
+def keyword_line() -> None:
+    """Từ khóa chính cũng được ghi vào SiteSEO: không ghi được thì nhãn «Chặn» và câu nhắc ngay ở
+    bước SEO (SL-T041-9). Ghi được thì không hiện thêm gì (từ khóa đã ở đầu trang)."""
+    problem = keyword_problem()
+    if problem:
+        st.markdown(KEYWORD_LABEL)
+        check_lines(onpage_meta.FieldCheck("keyword", "", 0, onpage_meta.Level.BLOCK, (problem,)))
+
+
 def final_seo(posts: list, suffix: str | None) -> list[tuple[str, str | None, str]]:
-    """Chữ SEO cuối cùng từng trường (tiêu đề đã gắn đuôi, mô tả, slug), chung cho «Chép sang
-    SiteSEO» và «Ghi SEO lên website»: (tên, chữ, lý do). Chữ là ``None`` khi trường bị Chặn: sai
-    dạng (``siteseo_copy``) hay trùng hệt bài đã đăng (kiểm trùng cũng ra mức «Chặn»)."""
+    """Chữ SEO cuối cùng từng trường (tiêu đề đã gắn đuôi, mô tả, slug, từ khóa chính), chung cho
+    «Chép sang SiteSEO», «Ghi SEO lên website» và dòng kiểm ở bước Xuất bản: (tên, chữ, lý do).
+    Chữ là ``None`` khi trường bị Chặn: sai dạng (``siteseo_copy``), trùng hệt bài đã đăng (kiểm
+    trùng cũng ra mức «Chặn»), từ khóa chính không ghi được (``keyword_problem``)."""
     slug = S.get("seo_slug", "")
     copy = onpage_meta.siteseo_copy(
         meta_text("title"), meta_text("description"), slug, suffix=suffix
@@ -2119,6 +2161,9 @@ def final_seo(posts: list, suffix: str | None) -> list[tuple[str, str | None, st
             fields.append((label, None, " ".join(duplicate.messages)))
         else:
             fields.append((label, value, ""))
+    problem = keyword_problem()
+    focus = None if problem else onpage_meta.normalize_meta(keyword())
+    fields.append((KEYWORD_LABEL, focus, problem))
     return fields
 
 
@@ -2131,6 +2176,8 @@ def siteseo_panel(posts: list, suffix: str | None) -> None:
         "mềm tự ghi: bật «Ghi SEO lên website» ở bước Xuất bản."
     )
     for label, value, reason in final_seo(posts, suffix):
+        if label not in COPY_LABELS:
+            continue  # từ khóa chính: không có khung chép (bố cục đã duyệt), xem ``keyword_line``
         if value is None:
             st.caption(f"{label}: chưa chép được. {escape_markdown(reason)}")
         else:
@@ -2245,6 +2292,7 @@ def step_seo(writer: ContentWriter | None) -> None:
         title = meta_field(writer, "title", posts, suffix)
         meta_field(writer, "description", posts, suffix)
         slug = slug_field(posts)
+        keyword_line()
     with right:
         st.markdown("**Xem trước trên Google**")
         st.markdown(  # ``serp_preview`` escape mọi chữ (U1)
@@ -2289,28 +2337,34 @@ def restore_seo(seo: DraftSeo) -> None:
 
 def seo_request() -> dict | None:
     """Chữ SEO sẽ ghi vào hộp SiteSEO sau khi tạo nháp (công tắc «Ghi SEO lên website» bật): đúng
-    chữ của «Chép sang SiteSEO» (``final_seo``: title đã gắn đuôi bằng ``with_brand``; trường bị
-    Chặn, kể cả vì trùng bài đã đăng, thì không ghi và ghi tên vào ``skipped``), kèm từ khóa chính.
-    Lấy trước khi gửi (đọc ``st.session_state``)."""
+    chữ của «Chép sang SiteSEO» (``final_seo``: title đã gắn đuôi bằng ``with_brand``, từ khóa
+    chính đã kiểm). Trường bị Chặn (kể cả vì trùng bài đã đăng, từ khóa hỏng) thì không ghi, ghi tên
+    vào ``skipped``: một trường hỏng không làm mất các trường còn lại (SL-T041-9). Lấy trước khi
+    gửi (đọc ``st.session_state``)."""
     if not S.get("seo_write"):
         return None
     listing = published_listing()
-    title, description, _slug = final_seo(onpage_meta.site_posts(listing.index), brand_suffix())
+    title, description, _slug, focus = final_seo(
+        onpage_meta.site_posts(listing.index), brand_suffix()
+    )
     return {
         "fields": {
             "title": title[1] or "",
             "description": description[1] or "",
-            "focus_keyword": keyword(),
+            "focus_keyword": focus[1] or "",
         },
-        "skipped": [label for label, value, _reason in (title, description) if value is None],
+        "skipped": [
+            label for label, value, _reason in (title, description, focus) if value is None
+        ],
     }
 
 
 def seo_check() -> tuple[bool, str]:
-    """Dòng SEO trong «Kiểm tra trước khi gửi» ở bước Xuất bản (thay dòng demo). Không tải danh
-    sách bài ở đây (chỉ xem bước Xuất bản thì không gọi website): kiểm trùng theo danh sách đã tải
-    ở bước SEO trong phiên, nếu có."""
-    listing = S.get("_site_listing")
+    """Dòng SEO trong «Kiểm tra trước khi gửi» ở bước Xuất bản (thay dòng demo). Công tắc «Ghi SEO
+    lên website» bật thì tải danh sách bài như lệnh ghi sẽ dùng, để dòng này khớp câu báo của công
+    tắc (SL-T041-10); tắt thì không tải (chỉ xem bước Xuất bản thì không gọi website), kiểm trùng
+    theo danh sách đã tải ở bước SEO trong phiên, nếu có."""
+    listing = published_listing() if S.get("seo_write") else S.get("_site_listing")
     posts = onpage_meta.site_posts(listing.index) if listing is not None else []
     fields = final_seo(posts, brand_suffix())
     missing = [label for label, value, _reason in fields if value is None]
