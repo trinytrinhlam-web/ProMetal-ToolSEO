@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING
 
 from seo_app.ai import AIError, AIRouter
 from seo_app.content import prompts
@@ -22,9 +23,12 @@ from seo_app.content.models import (
     Section,
     SectionText,
 )
-from seo_app.content.rules import ContentRules, find_banned
+from seo_app.content.rules import ContentRules, MetaRules, find_banned, load_meta_rules
 from seo_app.onpage import meta as onpage_meta
 from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
+
+if TYPE_CHECKING:  # chỉ để ghi kiểu: onpage.links → storage → drafts → workflow (vòng nhập)
+    from seo_app.onpage.links import Candidates, LinkReview
 
 INTRO_HEADING = "Mở bài"
 
@@ -189,9 +193,14 @@ def clamp_scores(scores: Scores) -> Scores:
 
 
 class ContentWriter:
-    def __init__(self, ai: AIRouter, rules: ContentRules) -> None:
+    def __init__(
+        self, ai: AIRouter, rules: ContentRules, meta_rules: MetaRules | None = None
+    ) -> None:
+        """``meta_rules``: mục ``[meta]`` của ``config/content.toml``; ``None`` thì đọc file mỗi
+        lần gợi ý meta (sửa file rồi bấm lại là có hiệu lực, như các mục khác)."""
         self.ai = ai
         self.rules = rules
+        self.meta_rules = meta_rules
         self.system = prompts.system_prompt(rules)
 
     def _run(self, task: str, prompt: str, schema):
@@ -273,23 +282,28 @@ class ContentWriter:
 
         ``which`` = "title" hoặc "description": viết lại riêng phần đó, danh sách của phần kia
         trả về rỗng (người dùng giữ nguyên phần kia). Phần được yêu cầu mà mọi gợi ý đều hỏng
-        thì báo ``AIError`` để người dùng bấm viết lại. ``brand_suffix``: hậu tố thương hiệu
-        (``None`` hoặc cấu hình sai thì dùng mặc định ``onpage_meta.BRAND_SUFFIX``).
+        thì báo ``AIError`` để người dùng bấm viết lại. ``brand_suffix``: hậu tố thương hiệu;
+        ``None`` thì lấy ``brand_suffix`` trong mục ``[meta]`` (cấu hình sai thì dùng mặc định
+        ``onpage_meta.BRAND_SUFFIX``). Gợi ý có cụm trong ``[meta].avoid`` (ngoài từ khóa chính)
+        bị bỏ. Mục ``[meta]`` sai dạng: ``ContentRulesError`` (một loại ``AIError``).
         """
         if which not in prompts.META_PARTS:
             raise ValueError(f"which phải là một trong {prompts.META_PARTS}")
         keyword = onpage_meta.normalize_meta(keyword)
         if not keyword:
             raise AIError("Chưa có từ khóa chính nên chưa gợi ý meta được. Nhập từ khóa trước.")
+        meta_rules = self.meta_rules if self.meta_rules is not None else load_meta_rules()
+        if brand_suffix is None:
+            brand_suffix = meta_rules.brand_suffix
         prompt = prompts.meta_prompt(
-            keyword, title, parts, which, current_title, current_description
+            keyword, title, parts, which, current_title, current_description, brand_suffix
         )
         raw = self._run("meta", prompt, prompts.MetaSuggestions)
         titles: list[str] = []
         descriptions: list[str] = []
         if which in ("both", "title"):
             titles = onpage_meta.filter_ai_titles(
-                raw.titles, keyword, self.rules.banned, brand_suffix
+                raw.titles, keyword, self.rules.banned, brand_suffix, meta_rules.avoid
             )
             if not titles:
                 raise AIError(
@@ -298,7 +312,7 @@ class ContentWriter:
                 )
         if which in ("both", "description"):
             descriptions = onpage_meta.filter_ai_descriptions(
-                raw.descriptions, keyword, self.rules.banned
+                raw.descriptions, keyword, self.rules.banned, meta_rules.avoid
             )
             if not descriptions:
                 raise AIError(
@@ -306,3 +320,30 @@ class ContentWriter:
                     " có link, giá hoặc cụm sáo rỗng). Bấm viết lại."
                 )
         return prompts.MetaSuggestions(titles=titles, descriptions=descriptions)
+
+    # 6. Gợi ý liên kết nội bộ (T-039 kiểm, T-041 gọi AI)
+    def internal_links(
+        self, title: str, parts: Sequence[Section], candidates: Candidates
+    ) -> LinkReview:
+        """AI gợi ý chỗ đặt link tới các bài đích do code chọn (``links.select_candidates``).
+
+        Điều kiện Lá Chắn T-039 số 2a: AI chỉ nhận ID và tiêu đề bài đích (không địa chỉ) trong
+        khung dữ liệu, chỉ trả ``LinkSuggestions``; code kiểm từng gợi ý (``check_suggestions``),
+        không dùng trường nào khác của câu trả lời. Việc ``links`` trong ``config/ai.toml`` bật
+        ``web_search`` thì từ chối (lời dặn có tiêu đề lấy từ website). Không có bài đích nào thì
+        không gọi AI. Gợi ý đạt là ``InternalLink`` (``LinkReview.links``); link chỉ được chèn
+        qua ``apply_links``/``place_links``.
+        """
+        from seo_app.onpage import links  # nhập muộn: links → storage → drafts → workflow
+
+        if not candidates.items:
+            return links.LinkReview((), (), ())
+        _, task = self.ai.get("links")
+        if task.web_search:
+            raise AIError(
+                "Việc gợi ý liên kết nội bộ không được bật web_search: xóa dòng web_search ở mục "
+                "[tasks.links] trong file config/ai.toml."
+            )
+        prompt = prompts.internal_links_prompt(title, parts, candidates.for_prompt())
+        raw = self._run("links", prompt, links.LinkSuggestions)
+        return links.check_suggestions(raw, parts, candidates)

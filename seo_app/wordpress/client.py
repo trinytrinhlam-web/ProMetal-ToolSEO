@@ -1702,7 +1702,9 @@ def _seo_text(label: str, raw: object, limit: int) -> str:
             f"{label} có dấu «<» liền ký tự khác: website có thể coi là thẻ HTML và bỏ đi. Thêm "
             "dấu cách sau «<» hoặc bỏ dấu «<» rồi gửi lại."
         )
-    if _CONTROL_CHARS.search(value):
+    # Xét trên chữ gốc: từ T-041 ``normalize_meta`` bỏ hẳn ký tự điều khiển (LC-T036-1), chữ đã
+    # chuẩn hóa không còn để thấy. Khoảng trắng loại điều khiển (tab, xuống dòng) vẫn được gộp.
+    if any(_CONTROL_CHARS.match(ch) and not ch.isspace() for ch in raw):
         raise WordPressError(f"{label} có ký tự điều khiển. Gõ lại chữ thường.")
     if len(value) > limit:
         raise WordPressError(f"{label} quá dài (tối đa {limit} ký tự).")

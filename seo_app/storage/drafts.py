@@ -8,6 +8,8 @@ thì bỏ qua và báo lỗi tiếng Việt, không làm sập app. File hỏng 
 Không dùng ``pickle``; mọi câu SQL dùng tham số ``?``. Khuôn không có chỗ nào cho khóa API
 hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
 
+Lựa chọn ở bước SEO (T-041) nằm trong ``DraftSnapshot.seo`` (``DraftSeo``, xem docstring lớp đó).
+
 Ảnh đã chọn cho chỗ cần ảnh (T-055, khuôn 2; thiết kế T-046 mục 7 G3-9):
 
 - Mỗi phần của bài nhớ một ``DraftImage``: ảnh trong thư mục ảnh hoặc ảnh tạo bằng AI, nguồn
@@ -44,7 +46,7 @@ import unicodedata
 import uuid
 from collections.abc import Collection, Iterable, Iterator
 from contextlib import closing, contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -87,6 +89,7 @@ from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError, tag
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags, unescape_link_syntax
 
 if TYPE_CHECKING:
+    from seo_app.onpage.links import InternalLink
     from seo_app.storage.image_tags import ImageTagStore
 
 DEFAULT_DRAFTS_FILE = PROJECT_ROOT / "data" / "drafts.sqlite"
@@ -397,6 +400,139 @@ class DraftPart(_Strict):
         return self.versions[self.current]
 
 
+# ---------------------------------------------------------------------- bước SEO (T-041)
+
+MAX_META_VERSIONS = 20  # số bản meta title/description giữ lại để quay lại bản trước
+MAX_SEO_TEXT_CHARS = 500  # một bản meta, slug (ký tự, sau chuẩn hóa); Google chỉ hiện ~60/160
+MAX_DRAFT_LINKS = 30  # như ``seo_app.onpage.links.MAX_CONSIDERED``
+
+
+def _from_file(info: ValidationInfo) -> bool:
+    """Đang đọc nháp từ file (``DraftStore.load`` truyền danh sách đếm ảnh hỏng vào context)."""
+    return isinstance((info.context or {}).get(_DROPPED_IMAGES), list)
+
+
+def _seo_text(value: object) -> object:
+    """Meta title, description, slug: chuẩn hóa nhẹ (NFC, một dòng: mọi khoảng trắng gộp thành một
+    dấu cách; bỏ surrogate lẻ, thứ không lưu, không hiện được), tối đa ``MAX_SEO_TEXT_CHARS``.
+
+    **Không** bỏ thẻ HTML, ``%%``, ký tự điều khiển hay ký tự lạ khác: chữ chỉ được hiện trong ô
+    sửa, bộ kiểm meta (``check_title``, ``check_description``, ``check_slug``) xét chữ này và báo
+    Chặn kèm câu báo để người dùng thấy mà sửa, không lặng lẽ bỏ ký tự rồi chép hay ghi lên website
+    (T-041 lượt 3: trước đó chuẩn hóa ở đây bỏ hết nên bộ kiểm không còn thấy). Không phải chữ thì
+    trả nguyên để pydantic báo sai khuôn."""
+    if not isinstance(value, str):
+        return value
+    text = _drop_surrogates(value[: MAX_SEO_TEXT_CHARS * _RAW_TEXT_FACTOR])
+    text = " ".join(unicodedata.normalize("NFC", text).split())
+    return text[:MAX_SEO_TEXT_CHARS].rstrip()
+
+
+class DraftMetaVersions(_Strict):
+    """Các bản của một ô meta (title hoặc description) và bản đang dùng, như ``DraftPart``: AI gợi
+    ý, viết lại hay người dùng sửa thì giao diện thêm bản mới; quay lại là lùi ``current``.
+
+    Giữ tối đa ``MAX_META_VERSIONS`` bản: bỏ các bản cũ nhất, nhưng **không bao giờ** bỏ bản đang
+    dùng (SL-T041-4); ``current`` ngoài khoảng thì về bản cuối (không báo lỗi, để lần tự lưu không
+    hỏng vì một chỉ số)."""
+
+    versions: list[str] = Field(default_factory=list)
+    current: int = Field(default=0, ge=0)
+
+    @field_validator("versions", mode="before")
+    @classmethod
+    def _clean_versions(cls, value: object) -> object:
+        return [_seo_text(text) for text in value] if isinstance(value, list) else value
+
+    @model_validator(mode="after")
+    def _keep_recent(self) -> DraftMetaVersions:
+        current = min(self.current, max(len(self.versions) - 1, 0))
+        extra = len(self.versions) - MAX_META_VERSIONS
+        if extra > 0:
+            dropped = set(range(extra + 1)) - {current}  # các bản cũ nhất, trừ bản đang dùng
+            if len(dropped) > extra:
+                dropped.discard(extra)
+            self.versions = [text for i, text in enumerate(self.versions) if i not in dropped]
+            current -= sum(1 for i in dropped if i < current)
+        self.current = current
+        return self
+
+    @property
+    def text(self) -> str:
+        """Bản đang dùng (chưa có bản nào thì chuỗi rỗng)."""
+        return self.versions[self.current] if self.versions else ""
+
+
+class DraftLink(_Strict):
+    """Một liên kết nội bộ đã kiểm (``seo_app.onpage.links.InternalLink``) và cột «Dùng».
+
+    Điều kiện Lá Chắn T-039 số 2b: ghi bằng ``DraftLink.from_link`` (``asdict``); đọc thì dựng lại
+    ``InternalLink(**d)`` (mỗi lần tạo ``DraftLink``), sai khuôn thì bỏ riêng liên kết đó
+    (``DraftSeo``). Không có địa chỉ: chèn link luôn qua ``apply_links``/``place_links``, địa chỉ
+    lấy từ danh sách bài lúc đó, kiểm lại từ đầu. ``anchor`` là chữ thuần, hiện bằng chữ thường.
+    """
+
+    section: int = Field(strict=True)
+    anchor: str
+    post_id: int = Field(strict=True)
+    use: bool = Field(default=True, strict=True)
+
+    @model_validator(mode="after")
+    def _is_internal_link(self) -> DraftLink:
+        self.to_link()  # ValueError nếu sai khuôn của InternalLink
+        return self
+
+    def to_link(self) -> InternalLink:
+        """``InternalLink`` dựng lại (đã kiểm); đưa vào ``apply_links``/``place_links``."""
+        # Nhập muộn: onpage.links → storage.site_index → storage/__init__ → drafts (vòng nhập).
+        from seo_app.onpage.links import InternalLink
+
+        return InternalLink(section=self.section, anchor=self.anchor, post_id=self.post_id)
+
+    @classmethod
+    def from_link(cls, link: InternalLink, *, use: bool = True) -> DraftLink:
+        return cls(**asdict(link), use=use)
+
+
+class DraftSeo(_Strict):
+    """Lựa chọn ở bước SEO (T-041): meta title, meta description (kèm các bản trước), slug, liên
+    kết nội bộ AI gợi ý (cột «Dùng»), có dùng schema FAQ không. Tự lưu cùng nháp như bước 1–3.
+
+    Đọc từ file là dữ liệu chưa tin cậy: chữ được chuẩn hóa (``_seo_text``), liên kết dựng lại
+    qua ``InternalLink`` (sai thì bỏ riêng liên kết đó). Giao diện vẫn hiện bằng chữ thuần hoặc đã
+    escape, và kiểm lại bằng ``seo_app.onpage`` (``check_title``, ``check_slug``…) trước khi dùng.
+    """
+
+    title: DraftMetaVersions = Field(default_factory=DraftMetaVersions)
+    description: DraftMetaVersions = Field(default_factory=DraftMetaVersions)
+    slug: str = ""
+    links: list[DraftLink] = Field(default_factory=list, max_length=MAX_DRAFT_LINKS)
+    use_faq: bool = Field(default=False, strict=True)
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def _clean_slug(cls, value: object) -> object:
+        return _seo_text(value)
+
+    @field_validator("links", mode="wrap")
+    @classmethod
+    def _drop_broken_links(
+        cls, value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> list[DraftLink]:
+        """Đọc nháp từ file: liên kết sai khuôn thì bỏ riêng liên kết đó, quá nhiều thì bỏ phần
+        thừa. Tạo trong code (giao diện, ``save``): sai khuôn là lỗi, báo ngay."""
+        if not _from_file(info) or not isinstance(value, list):
+            return handler(value)
+        kept = []
+        for item in value[:MAX_DRAFT_LINKS]:
+            try:
+                DraftLink.model_validate(item)
+            except ValidationError:
+                continue
+            kept.append(item)
+        return handler(kept)
+
+
 class DraftSnapshot(_Strict):
     """Đủ để dựng lại trang Soạn bài. Chữ giữ đúng như trong session (xem «Cách giao diện dùng»
     trong ``docs/team/reports/T-016-tho-may.md``)."""
@@ -416,6 +552,7 @@ class DraftSnapshot(_Strict):
     review: Review | None = None
     auto_fixed: int = Field(default=0, ge=0)
     ignored_flags: list[str] = Field(default_factory=list)
+    seo: DraftSeo = Field(default_factory=DraftSeo)  # bước SEO (T-041); nháp cũ: trống
     _dropped_images: int = PrivateAttr(default=0)
 
     @model_validator(mode="before")
@@ -467,6 +604,21 @@ class DraftSnapshot(_Strict):
         if isinstance(value, set | frozenset):
             return sorted(value)
         return value
+
+    @field_validator("seo", mode="wrap")
+    @classmethod
+    def _drop_broken_seo(
+        cls, value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> DraftSeo:
+        """Đọc nháp từ file: phần SEO sai khuôn (sửa tay, hỏng) thì bỏ cả phần SEO, chữ và ảnh của
+        bài giữ nguyên; người dùng chọn lại ở bước SEO. Tạo trong code: sai khuôn là lỗi, báo
+        ngay."""
+        try:
+            return handler(value)
+        except ValidationError:
+            if not _from_file(info):
+                raise
+            return DraftSeo()
 
     @property
     def title(self) -> str:
@@ -1181,8 +1333,11 @@ __all__ = [
     "CheckedImage",
     "DraftError",
     "DraftImage",
+    "DraftLink",
     "DraftList",
+    "DraftMetaVersions",
     "DraftPart",
+    "DraftSeo",
     "DraftSnapshot",
     "DraftStore",
     "DraftSummary",

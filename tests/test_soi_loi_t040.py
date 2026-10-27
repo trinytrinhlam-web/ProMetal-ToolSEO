@@ -8,7 +8,8 @@ Bổ sung cho ``tests/test_t040_prompts.py`` (Ngòi Bút), không lặp lại:
   website, hồ sơ doanh nghiệp) không đổi được một chữ nào của phần chỉ thị: phần ngoài khung dữ
   liệu giống hệt khi nhập chữ thường (điều kiện Lá Chắn T-039 số 1, security.md 2.4, A1);
 - mục ``[meta]`` không làm hỏng bộ đọc cấu hình nào đang có, kể cả khi bị sửa sai dạng; ghi chú
-  «chưa đọc mục này» đúng với code; các ngưỡng ghi trong chú thích khớp hằng số trong code;
+  trên mục đúng với code (T-040: «chưa đọc mục này»; từ T-041 phần mềm đọc mục này); các ngưỡng
+  ghi trong chú thích khớp hằng số trong code;
 - lời dặn khớp với bộ kiểm thật và với chính các quy tắc nó dạy.
 
 Lỗi tìm thấy được đánh dấu ``xfail(strict=True)`` kèm mã ``SL-T040-n``: sửa xong thì test tự báo
@@ -32,6 +33,7 @@ from seo_app.content.rules import (
     find_banned,
     load_alt_rules,
     load_image_settings,
+    load_meta_rules,
     load_rules,
 )
 from seo_app.onpage.meta import (
@@ -240,11 +242,6 @@ def _title_of_length(length: int) -> str:
     return title
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T040-1: lời dặn cho title 40-60 ký tự; title đúng 49 ký tự không được gắn đuôi "
-    "(49 + 12 > 60) mà cũng dưới 50 nên bộ kiểm ghi «hơi ngắn».",
-)
 def test_sl_t040_1_title_of_49_chars_is_not_short():
     accepted = accept_ai_title(_title_of_length(49), KEYWORD)
     assert accepted is not None
@@ -314,8 +311,9 @@ def test_every_config_reader_gives_same_result_with_or_without_meta(tmp_path):
     ],
 )
 def test_broken_meta_section_does_not_lock_any_reader(tmp_path, broken):
-    """Người dùng sửa [meta] sai dạng: mọi bộ đọc hiện có vẫn chạy (đúng với ghi chú «phần mềm
-    chưa đọc mục này»), trang Soạn bài và Cài đặt không bị khóa."""
+    """Người dùng sửa [meta] sai dạng: các bộ đọc mục khác vẫn chạy, trang Soạn bài và Cài đặt
+    không bị khóa. (Từ T-041 chỉ ``load_meta_rules`` báo lỗi, tức chỉ khóa việc AI gợi ý meta:
+    xem ``tests/test_t041_meta.py``.)"""
     path = tmp_path / "content.toml"
     base = _without_meta(tmp_path).read_text(encoding="utf-8")
     path.write_text(base + "\n[meta]\n" + broken + "\n", encoding="utf-8")
@@ -325,17 +323,20 @@ def test_broken_meta_section_does_not_lock_any_reader(tmp_path, broken):
     assert load_image_settings(path) == load_image_settings(CONTENT_CONFIG_FILE)
 
 
-def test_not_read_yet_note_is_above_meta_and_true():
-    """Ghi chú «CHƯA đọc mục [meta]» nằm ngay trên mục; và đúng thật: cụm chỉ có trong
-    ``avoid`` (không có trong [voice].banned) hôm nay vẫn lọt bộ kiểm meta."""
+def test_read_note_is_above_meta_and_true():
+    """Ghi chú «phần mềm đọc mục [meta]» nằm ngay trên mục; và đúng thật: cụm chỉ có trong
+    ``avoid`` (không có trong [voice].banned) bị bộ kiểm meta bỏ khi dùng ``[meta]`` đọc từ file.
+    (Đến T-040 ghi chú là «CHƯA đọc mục [meta]» và cụm này còn lọt; T-041 nối mục [meta].)"""
     comments = _meta_comments()
-    assert "CHƯA đọc mục [meta]" in comments.splitlines()[0]
+    assert "phần mềm đọc mục [meta]" in comments.splitlines()[0]
+    assert "CHƯA đọc" not in comments
     banned = load_rules().banned
     avoid = _meta_config()["avoid"]
     only_avoid = [p for p in avoid if not find_banned(f"Thợ {p} tận nhà.", banned)]
     assert "xem ngay" in only_avoid
     title = "Cửa sắt bị xệ: xem ngay cách tự chỉnh bản lề"
-    assert filter_ai_titles([title], KEYWORD, banned) != []
+    assert filter_ai_titles([title], KEYWORD, banned) != []  # không truyền avoid: lọt
+    assert filter_ai_titles([title], KEYWORD, banned, avoid=load_meta_rules().avoid) == []
 
 
 def test_thresholds_in_comment_match_code():

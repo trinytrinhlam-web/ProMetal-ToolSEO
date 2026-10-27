@@ -70,7 +70,7 @@ def test_invisible_chars_not_counted(invisible):
 def test_nfd_mixed_with_newlines_and_tabs():
     raw = "  " + nfd("Cửa sắt bị xệ:\r\n dấu hiệu\tsớm") + "\n\n và cách xử lý gọn "
     assert normalize_meta(raw) == BASE_TITLE
-    assert check_title(raw).length == 45
+    assert check_title(raw, "").length == 45  # suffix="": không tính đuôi (T-041)
 
 
 def test_nfd_description_same_level_as_nfc():
@@ -87,7 +87,7 @@ def test_nfd_description_same_level_as_nfc():
 )
 def test_title_thresholds_with_accented_letters(length, level):
     """Ngưỡng tính trên chữ NFC, kể cả khi đưa vào ở dạng NFD (mỗi "ữ" thành 3 ký tự)."""
-    result = check_title(nfd("ữ" * length))
+    result = check_title(nfd("ữ" * length), "")  # suffix="": không tính đuôi (T-041)
     assert (result.length, result.level) == (length, level)
 
 
@@ -676,9 +676,18 @@ def test_r2_not_price(ok):
     assert not mentions_price(f"Cửa sắt {ok} đẹp", KEYWORD)
 
 
-@pytest.mark.parametrize("ok", ["7 xu hướng", "vài xu hướng", "2 đô vật"])
-@pytest.mark.xfail(strict=True, reason="SL-T036-10: «xu hướng», «đô vật» bị coi là giá (xu, đô)")
+@pytest.mark.parametrize("ok", ["7 xu hướng", "vài xu hướng"])
 def test_r2_xu_huong_not_price(ok):
+    assert not mentions_price(f"Cửa sắt {ok} năm nay", KEYWORD)
+
+
+@pytest.mark.parametrize("ok", ["2 đô vật"])
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T036-10 phần «đô vật»: chưa sửa, điều kiện Lá Chắn T-036 số 2 chỉ cho loại trừ đúng"
+    " «xu hướng» (bỏ oan gợi ý, hướng an toàn)",
+)
+def test_r2_do_vat_not_price(ok):
     assert not mentions_price(f"Cửa sắt {ok} năm nay", KEYWORD)
 
 
@@ -734,11 +743,6 @@ def test_r2_brand_strip_linear(make):
         (mentions_price, lambda k: "1" * (k * 4000)),
     ],
     ids=["link-gach", "link-cham", "gia-so"],
-)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T036-12: has_link/mentions_price gọi thẳng với chuỗi dài vẫn bậc hai (hiện chỉ"
-    " gọi qua _ai_text đã cắt độ dài, Thấp)",
 )
 def test_r2_public_detectors_linear(fn, make):
     assert_scales_linearly(fn, make, label="soát link/giá")

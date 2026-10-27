@@ -90,7 +90,8 @@ def test_invisible_char_inside_letter_recombines():
      (60, Level.GOOD), (61, Level.GOOD), (65, Level.GOOD), (66, Level.WARN), (200, Level.WARN)],
 )  # fmt: skip
 def test_title_thresholds(length, level):
-    result = check_title("a" * length)
+    # suffix="": chấm đúng chữ đưa vào; mặc định check_title tính cả đuôi thương hiệu (T-041).
+    result = check_title("a" * length, "")
     assert result.level is level
     assert result.length == length
     assert result.messages
@@ -106,7 +107,7 @@ def test_description_thresholds(length, level):
 
 
 def test_gray_zone_has_hint():
-    assert "hơi ngắn" in check_title("a" * 40).messages[0]
+    assert "hơi ngắn" in check_title("a" * 40, "").messages[0]  # không đuôi (xem T-041)
     assert "hơi dài" in check_title("a" * 63).messages[0]
     assert "dài vừa" in check_title(TITLE_54).messages[0]
     assert check_description(DESC_140).level is Level.GOOD

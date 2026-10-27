@@ -223,19 +223,16 @@ def test_payload_through_build(payload):
     assert json.loads(result.json_ld)["mainEntity"][0]["acceptedAnswer"]["text"] == payload
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T038-1: ký tự thay thế lẻ (surrogate) lọt qua bộ kiểm")
 def test_lone_surrogate_blocked():
     result = _build(a="Trả lời \ud800 lỗi.")
     assert result.blocked
 
 
 def test_lone_surrogate_output_is_at_least_valid_json():
-    """Trạng thái hiện tại của SL-T038-1: JSON đọc lại được nhưng không mã hóa được UTF-8."""
+    """SL-T038-1 đã sửa ở T-041: surrogate lẻ bị Chặn nên không còn JSON-LD nào phải ghi ra UTF-8
+    (trước đó JSON đọc lại được nhưng không mã hóa được UTF-8)."""
     result = _build(a="Trả lời \ud800 lỗi.")
-    if result.json_ld is not None:
-        json.loads(result.json_ld)
-        with pytest.raises(UnicodeEncodeError):
-            result.json_ld.encode("utf-8")
+    assert result.json_ld is None
 
 
 def test_output_always_utf8_encodable_for_normal_vietnamese():
@@ -299,19 +296,16 @@ def test_paraphrase_and_case_change_blocked():
 BOLD_ANSWER_MD = "Thường **8–10 năm** nếu lau bụi mỗi tháng và sơn dặm chỗ trầy."
 
 
-def test_bold_answer_raw_markdown_passes_and_leaks_asterisks():
-    """Hiện tại: truyền đúng chữ thô thì qua, nhưng JSON-LD mang theo dấu ``**``."""
+def test_bold_answer_raw_markdown_passes_without_asterisks():
+    """Truyền đúng chữ thô thì qua, và JSON-LD không mang dấu ``**`` (SL-T038-2 đã sửa ở T-041;
+    trước đó test này ghi lại hành vi lỗi: JSON-LD còn ``**``)."""
     result = build_faq_page(
         [(Q, BOLD_ANSWER_MD)], article_text=_article(a=BOLD_ANSWER_MD), site_url=SITE
     )
     assert not result.blocked
-    assert "**" in json.loads(result.json_ld)["mainEntity"][0]["acceptedAnswer"]["text"]
+    assert json.loads(result.json_ld)["mainEntity"][0]["acceptedAnswer"]["text"] == A
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T038-2: câu trả lời chữ thường không khớp bài có **đậm**/link Markdown",
-)
 @pytest.mark.parametrize(
     "md_answer",
     [

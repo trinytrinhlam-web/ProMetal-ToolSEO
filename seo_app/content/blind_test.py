@@ -100,6 +100,7 @@ TASK_LABELS = {
     "rewrite": "Viết lại từng phần",
     "review": "Kiểm tra văn phong",
     "meta": "Gợi ý meta",
+    "links": "Gợi ý liên kết nội bộ",
     "alt": "Viết alt ảnh",
     "image": "Tạo ảnh AI",
 }
