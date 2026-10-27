@@ -43,7 +43,7 @@ from pydantic import BaseModel, Field
 from seo_app.content.models import Section
 from seo_app.content.rules import IGNORABLE_NOT_CF
 from seo_app.onpage.meta import SLUG_TRAILING_STOPWORDS, Level, has_link, worst
-from seo_app.sanitize import DANGEROUS_TAGS, is_safe_url
+from seo_app.sanitize import DANGEROUS_TAGS, escape_shortcodes, is_safe_url
 from seo_app.storage.site_index import SiteIndex
 from seo_app.text import remove_accents
 from seo_app.wordpress.client import PublishedItem, is_site_link
@@ -926,12 +926,22 @@ def place_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex)
     for r in sorted(inserts):
         run = runs[r]
         start, end, href = inserts[r]
+        # LC-T039-2: nút chữ gốc không có "[" "]" trần (HTML đã qua ``sanitize_html``, T-061) thì
+        # in lại vẫn vô hiệu shortcode; có "[" "]" trần (HTML chưa lọc) thì giữ như cũ, không đổi
+        # chữ gốc.
+        source = html_text[run.start : run.end]
+        neutral = "[" not in source and "]" not in source
+
+        def text(value: str, neutral: bool = neutral) -> str:
+            value = html.escape(value, quote=False)
+            return escape_shortcodes(value) if neutral else value
+
         out.append(html_text[previous : run.start])
-        out.append(html.escape(run.text[:start], quote=False))
+        out.append(text(run.text[:start]))
         out.append(f'<a href="{html.escape(href, quote=True)}">')
-        out.append(html.escape(run.text[start:end], quote=False))
+        out.append(text(run.text[start:end]))
         out.append("</a>")
-        out.append(html.escape(run.text[end:], quote=False))
+        out.append(text(run.text[end:]))
         previous = run.end
     out.append(html_text[previous:])
     return LinkPlacement("".join(out), tuple(applied), tuple(skipped))
