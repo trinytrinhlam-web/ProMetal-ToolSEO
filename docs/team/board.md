@@ -34,6 +34,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
+| _(không còn)_ | 27/10 16:42: T-041, T-088, T-089 đã gộp; chờ chủ dự án chọn việc tiếp | | | | |
 
 ## Chờ
 
