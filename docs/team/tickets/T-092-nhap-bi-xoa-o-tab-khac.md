@@ -20,7 +20,7 @@ Một bài đã gửi WordPress (nháp mang «đã gửi»/«đang gửi») khô
 
 ## Phạm vi
 
-- **Được sửa:** `app/views/write.py` (tự lưu, mở nháp), phần lưu/xóa nháp trong `seo_app/storage/drafts.py`, `.streamlit/config.toml` (chỉ yêu cầu 4), test.
+- **Được sửa:** `app/views/write.py` (tự lưu, mở nháp), phần lưu/xóa nháp trong `seo_app/storage/drafts.py`, `.streamlit/config.toml` (chỉ yêu cầu 4), `.env.example` (chỉ yêu cầu 5), test.
 - **Không được sửa:** `seo_app/wordpress/**`, khối SEO trong `drafts.py`, `config/**`.
 
 ## Yêu cầu
@@ -28,6 +28,7 @@ Một bài đã gửi WordPress (nháp mang «đã gửi»/«đang gửi») khô
 1. Tự lưu của tab còn mở không tạo lại nháp đã bị xóa một cách lặng lẽ (ví dụ: lưu kiểu «so rồi đặt» theo dấu phiên bản; nháp đã bị xóa thì báo rõ và hỏi tạo lại; nếu tạo lại thì giữ trạng thái gửi tab đó đang biết).
 2. Không lùi các ca T-086, T-089 (hai tab, ngắt giữa chừng, gửi dở, băm ảnh).
 3. Nháp cũ vẫn mở được; test cho các ca mới.
+5. Hai góp ý nhỏ từ Lá Chắn T-095 (làm theo đề xuất): chú thích «Chép sang SiteSEO» trên bước SEO nói dán đường dẫn vào **ô đường dẫn của bài** (không phải hộp SiteSEO), khớp README; chú thích `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` trong `.env.example` ghi rõ «tên đăng nhập của tài khoản Biên tập viên riêng» và «mật khẩu ứng dụng tạo trên chính tài khoản đó».
 4. Đề xuất của Lá Chắn T-084 (chủ dự án dặn 27/10 «vấn đề có đề xuất thì làm theo đề xuất»): đặt `client.showErrorDetails = "type"` trong `.streamlit/config.toml` để trang lỗi không in traceback có đường dẫn cài đặt; kiểm `tests/test_app_pages.py` và các test đọc cấu hình Streamlit vẫn qua.
 
 ## Yêu cầu bảo mật riêng
