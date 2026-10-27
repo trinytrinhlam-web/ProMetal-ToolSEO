@@ -37,13 +37,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh | `team/T-082` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Thợ Máy · T-083 lỗi chữ alt ảnh AI | `team/T-083` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
 | [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | GĐ3: trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-084) | `team/T-084` | Họa Sĩ xong (`98feec1`; 11 test mới, 441 test trang Cài đặt qua). ⏳ **17:55 Soi Lỗi rút gọn** | [Họa Sĩ](reports/T-084-hoa-si.md) |
+| [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Thợ Máy · T-059 siết mã sau thử thật | `team/T-059` | 27/10 thử thật: ghi SEO qua Abilities, ảnh còn GPS, từ chối bài đã chuyển trạng thái: ĐẠT; `srcset` làm điện thoại nhận bản thu nhỏ mất GPS: chưa đạt. ⏳ **19:37 Thợ Máy bước 7** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
-| [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
 | [T-072](tickets/T-072-gps-ref-phu-sai-khuon.md) | GPS: thẻ Ref phụ sai khuôn không làm mất vị trí (LC-T067-1) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: ảnh Zalo mất GPS) |
