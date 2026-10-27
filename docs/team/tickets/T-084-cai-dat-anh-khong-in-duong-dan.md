@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (sau T-056) |
 | Phụ thuộc | T-056 đã gộp vào `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ U1, U2.
 
 - Lập theo đề xuất của Họa Sĩ T-056; chủ dự án duyệt 2026-10-24.
 - 2026-10-27 17:35 (Chỉ Huy B): chủ dự án duyệt làm ngay. Nhánh `team/T-084` từ `main` `b60054f`, worktree `wt-T-084`; giao Họa Sĩ (phiên mới). Chạy song song T-082, T-083, T-084 (khác file).
+- 2026-10-27 22:34 (Chỉ Huy B): Họa Sĩ xong (`98feec1`); Soi Lỗi rút gọn ĐẠT (`0b07ff4`, 1 Thấp có từ trước SL-T084-1); Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`caf0ee3`). **Đã gộp vào `main`** (Windows 15.304 test qua, 0 hỏng; 3 giờ vì máy chạy song song nhiều phiên); xóa nhánh `team/T-084`, worktree `wt-T-084`. SL-T084-1 → T-090.
