@@ -34,8 +34,9 @@ Bài đang soạn nằm trong session_state:
 
 Gửi nháp (T-086): trạng thái gửi ghi vào kho nháp (``SendState``) trước khi gửi và ngay khi có kết
 quả, nên mở bài khác rồi mở lại, tải lại trang vẫn khóa nút. «Đang gửi» chỉ được ghi khi trạng
-thái trong nháp vẫn như lúc người dùng bấm (so rồi đặt trong một giao dịch, T-089: tab khác cùng
-bài vừa gửi thì dừng). Trong phiên: ``_wp_sending`` (đối tượng giữ kết quả, sửa tại chỗ),
+thái trong nháp vẫn như lúc người dùng bấm, kết quả chỉ được ghi thay đúng «đang gửi» của lần đó
+(so rồi đặt trong một giao dịch, T-089: tab khác cùng bài vừa gửi thì dừng, không xóa trạng thái
+của tab kia). Trong phiên: ``_wp_sending`` (đối tượng giữ kết quả, sửa tại chỗ),
 ``_wp_seen`` (trạng thái gửi ở lần vẽ trước), ``_wp_result``, ``_wp_sent``, ``_wp_maybe_draft``.
 Mọi lần đọc/ghi ``st.session_state`` và mọi lệnh ``st.*`` là chỗ Streamlit có thể dừng lần chạy
 (người dùng bấm gì đó): ghi khóa trước, bỏ dấu sau (LC-T056-1). Lần chạy mới bắt đầu ngay, song
@@ -182,6 +183,9 @@ MSG_OLD_APPROVAL = (
     "{count} ảnh có alt đã duyệt nhưng nháp không có «dấu vân tay» của ảnh lúc duyệt (ví dụ nháp "
     "lưu trước bản cập nhật này) nên app đã bỏ «Đã duyệt»: xem lại ảnh rồi duyệt lại ở bước Viết & "
     "kiểm tra."
+)
+MSG_STATE_CHANGED_ELSEWHERE = (
+    "một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè"
 )
 MSG_SENT_ELSEWHERE = (
     "Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi (thường do bài vừa được gửi, "
@@ -2185,12 +2189,13 @@ def send_and_record(
 
     «Đang gửi» ghi kiểu so rồi đặt (T-089, SL-T086-1): chỉ ghi khi trạng thái gửi trong nháp vẫn
     là ``seen`` (``(trạng thái, hỏng)`` người dùng thấy lúc bấm). Tab khác cùng bài vừa ghi «đang
-    gửi» hay «đã gửi» (lúc tab này còn kiểm lại, nén ảnh) thì không gửi gì, báo rõ.
+    gửi» hay «đã gửi» (lúc tab này còn kiểm lại, nén ảnh) thì không gửi gì, báo rõ. Ghi được thì
+    nhớ đúng trạng thái đã ghi (``holder["claimed"]``): chỉ lần gửi có dấu này mới được ghi kết quả
+    vào nháp (``record_outcome``, SL-T089-1).
     """
+    sending = SendState.now(pending=True, post_id=previous_post)
     try:
-        written = store.save_send_state(
-            holder["draft"], SendState.now(pending=True, post_id=previous_post), expected=seen
-        )
+        written = store.save_send_state(holder["draft"], sending, expected=seen)
     except Exception as exc:
         reason = str(exc) if isinstance(exc, DraftError) else "lỗi không mong đợi"
         holder["result"] = {
@@ -2206,6 +2211,7 @@ def send_and_record(
         holder["result"] = {"ok": False, "message": MSG_SENT_ELSEWHERE}
         holder["state"] = (False, previous_post)
         return
+    holder["claimed"] = sending
     pending, post_id = True, previous_post
     try:
         result = client.create_draft_with_images(title, parts)
@@ -2243,11 +2249,18 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
 
     ``SendState`` dựng trong khối bắt lỗi (LC-T086-1): website trả mã bài ngoài khoảng nháp ghi
     được (từ 2⁶³) thì báo câu cố định, không để lỗi thoát lên trang ở lần chạy này và các lần
-    ``finish_send`` thử ghi lại."""
+    ``finish_send`` thử ghi lại.
+
+    Chỉ lần gửi đã ghi được «đang gửi» (``holder["claimed"]``) mới ghi kết quả, và ghi kiểu so rồi
+    đặt với đúng dấu đó (T-089, SL-T089-1): lần gửi thua tab khác không xóa trạng thái của tab kia;
+    tab khác đã cố ý xác nhận gửi tiếp (ghi «đang gửi» mới) thì kết quả lần này không ghi đè."""
+    claimed = holder.get("claimed")
+    if claimed is None:
+        return
     pending, post_id = holder["state"]
     try:
         state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
-        store.save_send_state(holder["draft"], state)
+        written = store.save_send_state(holder["draft"], state, expected=(claimed, False))
     except DraftError as exc:
         holder["note"] = str(exc)
     except ValueError:  # ValidationError là một dạng ValueError: mã bài lạ từ website
@@ -2255,8 +2268,11 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     except Exception:
         holder["note"] = "lỗi không mong đợi"
     else:
-        holder["saved"] = True
-        holder.pop("note", None)
+        if written:
+            holder["saved"] = True
+            holder.pop("note", None)
+        else:  # nháp giữ trạng thái tab kia vừa ghi (vẫn khóa nút), không đoán
+            holder["note"] = MSG_STATE_CHANGED_ELSEWHERE
 
 
 def apply_send(holder: dict, *, interrupted: bool) -> None:
@@ -2312,8 +2328,15 @@ def finish_send() -> None:
         if not done.is_set():
             S._wp_result = {"ok": False, "message": MSG_STILL_SENDING}
             return
-    if holder.get("result") is not None and not holder.get("saved"):
-        record_outcome(draft_store(), holder)  # lần trước chưa ghi được kết quả vào nháp: thử lại
+    # Lần trước đã ghi «đang gửi» mà chưa ghi được kết quả vào nháp: thử lại. Lần gửi chưa ghi được
+    # «đang gửi» (thua tab khác, file nháp bận) thì không ghi gì: nháp giữ trạng thái đang có
+    # (SL-T089-1).
+    if (
+        holder.get("claimed") is not None
+        and holder.get("result") is not None
+        and not holder.get("saved")
+    ):
+        record_outcome(draft_store(), holder)
     apply_send(holder, interrupted=True)
 
 

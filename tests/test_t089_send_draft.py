@@ -8,6 +8,9 @@
 - SL-T086-2: khung ảnh đã chọn hiện ảnh xem trước dựng từ đúng byte đã băm.
 - Yêu cầu 4: băm nội dung file lúc duyệt alt lưu trong ``DraftImage`` (``approved_sha256``); mở lại
   nháp mà ảnh khác băm thì bắt duyệt lại; nháp cũ (không có băm) vẫn mở được, phải duyệt lại.
+- Lượt 2, SL-T089-1: chỉ lần gửi đã ghi được «đang gửi» (``holder["claimed"]``) mới ghi kết quả,
+  và ghi kiểu so rồi đặt với đúng dấu đó: lần gửi không ghi được «đang gửi» rồi bị ngắt không ghi
+  gì; tab khác cố ý gửi tiếp trong lúc tab này đang gửi thì kết quả tab này không ghi đè.
 
 Dùng lại ảnh giả, WordPress giả, AI giả của ``tests/test_app_images.py``; không gọi mạng thật.
 """
@@ -26,13 +29,15 @@ import streamlit as st
 import test_app_images as ui
 import test_soi_loi_t056 as sl
 import test_t086_send_state as t86
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.runtime.scriptrunner_utils.script_requests import RerunData
 
 import seo_app.storage.drafts as drafts
 from seo_app.images import process as image_process
 from seo_app.images.folders import ImageLibrary
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL
 from seo_app.storage import DraftSnapshot, DraftStore
-from seo_app.storage.drafts import DraftImage, SendState
+from seo_app.storage.drafts import DraftError, DraftImage, SendState
 
 # Fixture dùng chung (mật khẩu thử, cache ảnh xem trước tạm, AI giả, thư mục ảnh, WordPress giả).
 env = ui.env
@@ -449,3 +454,126 @@ def test_old_draft_without_hash_needs_new_approval(project_root, root, fake_ai):
     assert at.session_state[f"altok-{pid}"] is True
     assert not any(OLD_APPROVAL in w.value for w in at.warning)
     assert ui.saved_image(at).approved_sha256 == file_hash(root / ui.REAL_FILE)
+
+
+# ======================================== Lượt 2, SL-T089-1: chỉ lần đã ghi «đang gửi» ghi kết quả
+
+
+OTHER_TAB = "một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè"
+BUSY = t86.BUSY
+
+
+def test_expected_delete_only_own_state(store):
+    """Ghi «chưa gửi» (xóa dòng) kiểu so rồi đặt: chỉ xóa khi trạng thái trong nháp vẫn đúng như
+    ``expected``; tab khác vừa ghi trạng thái mới thì giữ nguyên."""
+    draft = store.save(DraftSnapshot()).id
+    mine = pending()
+    store.save_send_state(draft, mine)
+    time.sleep(0.05)  # đồng hồ Windows nhảy 15,6 ms một lần: hai lần ghi khác giờ
+    other = pending()
+    store.save_send_state(draft, other)
+    assert not store.save_send_state(draft, None, expected=(mine, False))
+    assert store.load_send_state(draft) == other
+    assert store.save_send_state(draft, None, expected=(other, False))
+    assert store.load_send_state(draft) is None
+
+
+def interrupt_now() -> None:
+    """Người dùng bấm gì đó đúng lúc này: lần chạy dừng ở chỗ dừng kế tiếp (yêu cầu chạy lại)."""
+    ctx = get_script_run_ctx()
+    ctx.script_requests.request_rerun(RerunData(page_script_hash=ctx.page_script_hash))
+
+
+def test_pending_not_written_then_interrupted_writes_nothing(
+    project_root, root, fake_ai, site, monkeypatch
+):
+    """Tab khác vừa ghi «đang gửi» và đang giữ file nháp, nên tab này ghi «đang gửi» hỏng (file nháp
+    bận): không gửi gì; lần chạy bị ngắt ngay sau đó. Lần chạy sau ``finish_send`` không ghi gì vào
+    nháp (tab này chưa ghi được «đang gửi»): nháp giữ đúng «đang gửi» của tab kia, phiên mới vẫn
+    khóa (biến thể «file nháp bận» của SL-T089-1)."""
+    other = pending()
+    original = DraftStore.save_send_state
+    fired: list[str] = []
+
+    def save(self, draft, state, *, expected=None):
+        if expected is None or fired:
+            return original(self, draft, state, expected=expected)
+        original(self, draft, other)  # tab khác ghi «đang gửi» trước
+        fired.append(draft)
+        interrupt_now()
+        raise DraftError(BUSY)
+
+    monkeypatch.setattr(DraftStore, "save_send_state", save)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    ui.send(at)
+    run_ok(at.run())
+    assert fired == [draft]
+    assert site.fake.requests == []
+    assert ui.store().load_send_state(draft) == other
+    assert "_wp_sending" not in at.session_state
+    assert button(at, SEND).disabled
+    fresh = t86.reopen(project_root, draft)
+    assert any(UNSURE in e.value for e in fresh.error) and button(fresh, SEND).disabled
+
+
+def other_tab_sends_during_request(site, draft: str, other: SendState) -> None:
+    """Trong lúc website đang tạo bài nháp của tab này, tab khác (người dùng cố ý tick «Tôi đã kiểm
+    tra…») ghi «đang gửi» mới của nó (Ghi nhận 1 của Lá Chắn T-089)."""
+    original = site.create_post
+
+    def create_post(request):
+        ui.store().save_send_state(draft, other)
+        return original(request)
+
+    site.fake.on("POST", ui.POSTS, create_post)
+
+
+def test_outcome_does_not_overwrite_other_tab_new_send(project_root, root, fake_ai, site):
+    """Kết quả lần gửi này ghi kiểu so rồi đặt với «đang gửi» chính nó đã ghi: tab khác đã ghi
+    «đang gửi» mới thì không ghi đè (nháp giữ khóa «gửi dở» của tab kia, không đoán). Trang vẫn
+    hiện kết quả (bài 501) và báo chưa ghi được vào nháp, nút khóa."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = pending()
+    other_tab_sends_during_request(site, draft, other)
+    ui.send(at)
+    assert len(site.posts()) == 1
+    assert ui.store().load_send_state(draft) == other
+    assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
+    assert any(OTHER_TAB in w.value for w in at.warning)
+    assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled
+
+
+def test_retry_in_finish_send_also_compares(project_root, root, fake_ai, site, monkeypatch):
+    """Lần ghi kết quả đầu hỏng (file nháp bận) và lần chạy bị ngắt; trước khi ``finish_send`` thử
+    ghi lại, tab khác cố ý gửi tiếp (ghi «đang gửi» mới). Lần thử lại cũng so rồi đặt: không ghi
+    đè, báo; nháp giữ trạng thái tab kia."""
+    original = DraftStore.save_send_state
+    other = pending()
+    outcome_calls: list[bool] = []
+
+    def save(self, draft, state, *, expected=None):
+        if expected is None or expected[0] is None:  # lần ghi «đang gửi» của tab này: ghi thật
+            return original(self, draft, state, expected=expected)
+        outcome_calls.append(True)
+        if len(outcome_calls) == 1:  # ghi kết quả lần đầu: file nháp bận, rồi bị ngắt
+            original(self, draft, other)  # tab khác gửi tiếp trước khi tab này thử lại
+            interrupt_now()
+            raise DraftError(BUSY)
+        return original(self, draft, state, expected=expected)
+
+    monkeypatch.setattr(DraftStore, "save_send_state", save)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    ui.send(at)
+    run_ok(at.run())
+    assert len(outcome_calls) == 2  # lần đầu trong lúc gửi, lần thử lại ở ``finish_send``
+    assert len(site.posts()) == 1
+    assert ui.store().load_send_state(draft) == other
+    assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
+    assert any(OTHER_TAB in w.value for w in at.warning)
+    assert button(at, SEND).disabled

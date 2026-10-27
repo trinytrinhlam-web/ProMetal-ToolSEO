@@ -404,10 +404,6 @@ def lose_and_get_interrupted(monkeypatch, other_tab: SendState | None) -> list[b
     return results
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T089-1: tab thua so rồi đặt bị ngắt thì finish_send ghi đè trạng thái của tab kia",
-)
 def test_lost_tab_interrupted_keeps_other_tab_sending(
     project_root, root, fake_ai, site, monkeypatch
 ):
@@ -434,10 +430,6 @@ def test_lost_tab_interrupted_keeps_other_tab_sending(
     assert button(fresh, SEND).disabled
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T089-1: tab thua so rồi đặt bị ngắt thì finish_send xóa «đã gửi» của tab kia",
-)
 def test_lost_tab_interrupted_keeps_other_tab_sent(project_root, root, fake_ai, site, monkeypatch):
     """Ca hay gặp nhất của SL-T086-1 (hai tab bấm cách nhau một giây, ảnh lớn): tab 1 gửi **trọn**
     (bài 501, nháp ghi «đã gửi») trong lúc tab 2 nén ảnh; tab 2 thua so rồi đặt, lần chạy bị ngắt
