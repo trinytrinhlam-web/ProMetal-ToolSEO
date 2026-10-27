@@ -19,6 +19,17 @@ Lớp CSS: chỉ ``wp-block-image`` trên ``<figure>`` (kiểu dáng ảnh của
 ``wp-image-<mã>`` vào ``<img>``: có lớp này WordPress tự thêm ``srcset`` (các cỡ nhỏ do WordPress
 tạo, đã bị bỏ EXIF), điện thoại sẽ tải bản không còn GPS. Quyết định 5A: ảnh trong bài dùng file
 đầy đủ 1600 px để GPS tới người xem và Google.
+
+``srcset`` chỉ một ứng viên là chính file đầy đủ (T-059 bước 7): thử thật 2026-10-27, bài gửi
+không có ``wp-image-<mã>`` mà trang vẫn in ``<img class="wp-image-951" srcset="…800w, …768w,
+…300w">`` (một thứ phía website gắn lớp đó; WordPress lõi chỉ lấy mã ảnh từ lớp này), nên điện
+thoại tải bản thu nhỏ đã mất GPS. ``wp_filter_content_tags`` (``wp-includes/media.php``) chỉ gọi
+``wp_img_tag_add_srcset_and_sizes_attr`` khi thẻ **chưa có** `` srcset=``: thẻ có sẵn
+``srcset="<file đầy đủ> 1x"`` thì WordPress để nguyên, dù thẻ có lớp ``wp-image-<mã>`` hay không;
+trình duyệt chỉ có một lựa chọn là file đầy đủ. Không ghi ``sizes`` (chỉ có ý nghĩa với ứng viên
+"w"), không ghi ``loading`` (WordPress tự thêm ``loading``/``fetchpriority`` theo vị trí ảnh).
+Giới hạn: tài khoản không có quyền ``unfiltered_html`` thì kses của WordPress bỏ ``srcset`` khi
+lưu (Biên tập viên trên site đơn có quyền này); và lớp đó vẫn bị gắn thì WordPress lại tự thêm.
 """
 
 from __future__ import annotations
@@ -41,8 +52,11 @@ MAX_IMAGE_EDGE = 10_000  # cạnh ảnh (px) ghi vào width/height; ảnh đăng
 
 # Ký tự điều khiển (C0, DEL, C1): thành dấu cách trước khi gộp khoảng trắng.
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
-# Địa chỉ ảnh: không khoảng trắng, ký tự điều khiển, dấu nháy, ``<``, ``>``, dấu huyền, ``\``.
-_SRC_UNSAFE = re.compile(r"[\s\x00-\x1f\x7f-\x9f\"'<>`\\]")
+# Địa chỉ ảnh: không khoảng trắng, ký tự điều khiển, dấu nháy, ``<``, ``>``, dấu huyền, ``\``,
+# dấu phẩy (``srcset`` tách ứng viên bằng dấu phẩy; WordPress bỏ dấu phẩy khỏi tên file tải lên).
+_SRC_UNSAFE = re.compile(r"[\s\x00-\x1f\x7f-\x9f\"'<>`\\,]")
+# Mô tả của ứng viên duy nhất trong ``srcset``: file đầy đủ cho mọi màn hình.
+_SRCSET_DESCRIPTOR = "1x"
 # "\" giữa "]" (không bị escape: đứng sau một số chẵn dấu "\") và ":" (SL-T054-1, LC-T054-3).
 # ``escape_link_syntax`` chỉ thêm dấu này khi "[" mở nhãn đứng đầu dòng, và
 # ``unescape_link_syntax`` cũng chỉ gỡ khi "[" còn ở đầu dòng. ``clean_suggestion`` ghép tiền tố
@@ -101,6 +115,8 @@ def _check_edge(value: object) -> int:
 def figure_html(*, src: str, alt: str, width: int, height: int, caption: str = "") -> str:
     """``<figure class="wp-block-image"><img …><figcaption>…</figcaption></figure>``.
 
+    ``<img src alt srcset width height>``: ``srcset`` chỉ có ``src`` (``1x``) để WordPress không
+    tự thêm các cỡ nhỏ đã mất GPS (T-059, xem đầu module).
     ``alt``, ``caption``: chữ người dùng đã duyệt (có thể còn ký tự ngắt rộng 0, escape Markdown
     của ``clean_ai_text``); hàm tự làm sạch bằng ``plain_image_text`` rồi escape. Chú thích rỗng
     thì không có ``<figcaption>``. ``width``, ``height``: cỡ thật của file ảnh (``WebImage``).
@@ -112,20 +128,27 @@ def figure_html(*, src: str, alt: str, width: int, height: int, caption: str = "
         raise ImageHtmlError(_MSG_NO_ALT)
     caption_text = plain_image_text(caption)
     width, height = _check_edge(width), _check_edge(height)
+    src_escaped = html.escape(src, quote=True)
     img = (
-        f'<img src="{html.escape(src, quote=True)}" alt="{html.escape(alt_text, quote=True)}" '
-        f'width="{width}" height="{height}">'
+        f'<img src="{src_escaped}" alt="{html.escape(alt_text, quote=True)}" '
+        f'srcset="{src_escaped} {_SRCSET_DESCRIPTOR}" width="{width}" height="{height}">'
     )
     figcaption = (
         f"<figcaption>{html.escape(caption_text, quote=True)}</figcaption>" if caption_text else ""
     )
     cleaned = sanitize_html(f'<figure class="{FIGURE_CLASS}">{img}{figcaption}</figure>')
-    # Bộ lọc là chốt cuối: nó mà bỏ src hay alt (địa chỉ lạ lọt qua bước kiểm ở trên) thì dừng,
-    # không gửi một ảnh hỏng vào bài. So với ``src`` đúng dạng bộ lọc in ra ("[" thành "&#91;").
-    # Chỉ tìm trong thẻ ``<img>``, không trong chữ chú thích (LC-T054-6): chú thích
-    # ``src="https://…" alt=x`` không được làm chốt này tưởng ảnh vẫn còn ``src``.
-    src_attr = escape_shortcodes(html.escape(src, quote=True))
+    # Bộ lọc là chốt cuối: nó mà bỏ src, alt hay srcset (địa chỉ lạ lọt qua bước kiểm ở trên)
+    # thì dừng, không gửi một ảnh hỏng (hay ảnh để WordPress tự chọn cỡ nhỏ mất GPS) vào bài. So
+    # với ``src`` đúng dạng bộ lọc in ra ("[" thành "&#91;"). Chỉ tìm trong thẻ ``<img>``, không
+    # trong chữ chú thích (LC-T054-6): chú thích ``src="https://…" alt=x`` không được làm chốt
+    # này tưởng ảnh vẫn còn ``src``.
+    src_attr = escape_shortcodes(src_escaped)
     img_tags = _IMG_TAG.findall(cleaned)
-    if len(img_tags) != 1 or f' src="{src_attr}"' not in img_tags[0] or " alt=" not in img_tags[0]:
+    if (
+        len(img_tags) != 1
+        or f' src="{src_attr}"' not in img_tags[0]
+        or f' srcset="{src_attr} {_SRCSET_DESCRIPTOR}"' not in img_tags[0]
+        or " alt=" not in img_tags[0]
+    ):
         raise ImageHtmlError(_MSG_BAD_SRC)
     return cleaned

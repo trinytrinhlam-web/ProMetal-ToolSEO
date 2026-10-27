@@ -57,6 +57,26 @@ class FakeWordPress(BaseAdapter):
         pass
 
 
+def siteseo_seo_answer(request: requests.PreparedRequest) -> dict[str, Any]:
+    """Trả lời ``seo-data-update/run`` đúng khuôn thật của SiteSEO 1.4.2 (đo trên site 2026-10-27,
+    T-059): ``{"updated": true, "post": {…}}``, ``post`` là dữ liệu SEO đọc lại sau khi lưu. Site
+    giả lưu y chữ đã gửi; trường không gửi để rỗng như bài mới. Không có khóa ``success``."""
+    sent = json.loads(request.body or "{}").get("input", {})
+    post = {name: sent.get(name, "") for name in ("title", "description", "focus_keyphrase")}
+    post.update(
+        canonical_url=None,
+        seo_score=None,
+        robots=dict.fromkeys(
+            ("noindex", "nofollow", "noimageindex", "noarchive", "nosnippet"), False
+        ),
+        social=dict.fromkeys(
+            ("og_title", "og_description", "og_image", "twitter_title", "twitter_description",
+             "twitter_image"),
+        ),
+    )
+    return {"updated": True, "post": post}
+
+
 def query(request: requests.PreparedRequest) -> dict[str, list[str]]:
     return parse_qs(urlsplit(request.url).query)
 

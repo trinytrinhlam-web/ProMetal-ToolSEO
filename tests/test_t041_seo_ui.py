@@ -16,7 +16,7 @@ import pytest
 import streamlit as st
 import test_app_images as ui
 from fake_ai import FakeProvider
-from fake_wordpress import BASE_URL, make_session
+from fake_wordpress import BASE_URL, make_session, siteseo_seo_answer
 
 import seo_app.storage.site_index as site_index
 from seo_app.ai import registry as ai_registry
@@ -152,7 +152,7 @@ def wordpress(monkeypatch, fake_wp):
     fake_wp.on("POST", POSTS, (201, {"id": POST_ID, "status": "draft", "title": {"raw": "T"}}, {}))
     fake_wp.on("GET", f"{POSTS}/{POST_ID}", post_501)
     fake_wp.on("GET", ABILITY, {"name": "siteseo-posts/seo-data-update"})
-    fake_wp.on("POST", RUN, {"success": True})
+    fake_wp.on("POST", RUN, siteseo_seo_answer)  # khuôn thật của SiteSEO 1.4.2 (T-059)
     return Site
 
 

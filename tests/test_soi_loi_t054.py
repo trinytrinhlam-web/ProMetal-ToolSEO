@@ -415,11 +415,12 @@ def test_alt_chu_thich_doc_chi_con_la_chu(fake_wp, wp_client, site, web, case):
 
     content = sent_content(fake_wp)
     page = _Figures(content)
-    # Trình duyệt chỉ thấy đúng các thẻ do code dựng, img chỉ 4 thuộc tính do code đặt.
+    # Trình duyệt chỉ thấy đúng các thẻ do code dựng, img chỉ 5 thuộc tính do code đặt
+    # (srcset một ứng viên là file đầy đủ: T-059).
     assert page.tags == [
         ("p", []),
         ("figure", ["class"]),
-        ("img", ["src", "alt", "width", "height"]),
+        ("img", ["src", "alt", "srcset", "width", "height"]),
         ("figcaption", []),
     ]
     assert page.imgs[0]["alt"] == plain

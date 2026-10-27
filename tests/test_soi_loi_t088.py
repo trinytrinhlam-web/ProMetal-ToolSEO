@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
-from fake_wordpress import BASE_URL, FakeWordPress, make_session
+from fake_wordpress import BASE_URL, FakeWordPress, make_session, siteseo_seo_answer
 from PIL import Image
 from requests.structures import CaseInsensitiveDict
 from streamlit.testing.v1 import AppTest
@@ -253,7 +253,7 @@ def _normal_site(fake):
     for media_id in range(101, 110):
         fake.on("POST", f"{MEDIA}/{media_id}", updated)
     fake.on("GET", ABILITY, {"name": "siteseo-posts/seo-data-update"})
-    fake.on("POST", f"{ABILITY}/run", {"success": True})
+    fake.on("POST", f"{ABILITY}/run", siteseo_seo_answer)  # khuôn thật (T-059)
 
 
 CALLS = {

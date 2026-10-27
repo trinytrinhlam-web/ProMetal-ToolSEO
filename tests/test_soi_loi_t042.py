@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import requests
-from fake_wordpress import BASE_URL, FakeWordPress, make_session
+from fake_wordpress import BASE_URL, FakeWordPress, make_session, siteseo_seo_answer
 
 from seo_app.wordpress import WordPressClient, WordPressError, is_allowed_route
 
@@ -53,7 +53,9 @@ def site(fake, *, status="draft", meta=None, ability=True, run=None, meta_answer
         fake.on("GET", ABILITY, {"name": "siteseo-posts/seo-data-update"})
     else:
         fake.on("GET", ABILITY, (404, {"code": "rest_no_route", "message": SECRET}, {}))
-    fake.on("POST", RUN, run if run is not None else {"success": True})
+    # T-059: mặc định là khuôn thật của SiteSEO 1.4.2 (đo trên site 27/10), không còn
+    # ``{"success": True}``.
+    fake.on("POST", RUN, run if run is not None else siteseo_seo_answer)
     if meta_answer is not None:
         fake.on("POST", POST_42, meta_answer)
 
