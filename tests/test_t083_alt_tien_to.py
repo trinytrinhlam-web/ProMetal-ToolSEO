@@ -74,6 +74,15 @@ PREFIXES = [
     "1. Minh họa",
     "2) Ảnh minh họa (AI)",
     "10. «Minh họa»",
+    # SL-T083-1 (lượt 2): «+ », «> », «>> », dấu đầu dòng Unicode, dấu trộn
+    "+ Minh họa",
+    "+ **Minh họa**",
+    "> Ảnh minh họa (AI)",
+    ">> Minh họa",
+    "> > Minh hoa",
+    "● Minh họa",
+    "▪ Ảnh minh họa (AI)",
+    "1. + Minh họa",
     # SL-T081-1: «(AI)», «AI» tách khỏi tiền tố hay đứng trước
     "[Minh họa] (AI)",
     "**Ảnh minh họa** (AI)",
@@ -122,6 +131,10 @@ def test_anh_that_khong_bo_tien_to(prefix):
         ("1. cửa cuốn", f"{AI_ALT_PREFIX} 1. cửa cuốn"),
         ("Minh họa 2) cửa cuốn", f"{AI_ALT_PREFIX} 2) cửa cuốn"),
         ("2024. Cửa cuốn", f"{AI_ALT_PREFIX} 2024. Cửa cuốn"),
+        # «+», «>», dấu đầu dòng Unicode cũng chỉ bỏ khi ngay sau là tiền tố (SL-T083-1).
+        ("> 5 mét cửa cuốn", f"{AI_ALT_PREFIX} > 5 mét cửa cuốn"),
+        ("+ cửa cuốn", f"{AI_ALT_PREFIX} + cửa cuốn"),
+        ("● cửa cuốn", f"{AI_ALT_PREFIX} ● cửa cuốn"),
     ],
 )
 def test_chu_khong_phai_tien_to_duoc_giu(alt, expected):

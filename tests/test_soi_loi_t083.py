@@ -424,11 +424,6 @@ def test_gui_site_gia_tien_to_kieu_moi_van_vo_hieu_shortcode(site, wp_client, im
 # ===== Lỗi tìm thấy ============================================================================
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T083-1: dấu đầu dòng Markdown «+ » và dấu trích dẫn «> » trước tiền tố AI tự viết "
-    "chưa được bỏ: alt «Minh họa + Minh họa …», alt chỉ «+ Minh họa» vẫn được nhận",
-)
 @pytest.mark.parametrize("marker", ["+ ", "> ", ">> ", "+ **"])
 def test_sl_t083_1_dau_dau_dong_cong_va_trich_dan_truoc_tien_to(marker):
     closer = "**" if marker.endswith("**") else ""

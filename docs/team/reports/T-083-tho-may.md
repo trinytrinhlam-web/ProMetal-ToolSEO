@@ -160,3 +160,58 @@ Không gọi AI, WordPress hay mạng thật; test dùng dữ liệu giả và b
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 · SL-T083-1 (2026-10-28)
+
+Chỉ Huy B giao sau khi Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`docs/team/reports/T-083-soi-loi.md`, đầu nhánh `36e9721`): sửa luôn SL-T083-1 trước khi qua Lá Chắn.
+
+### Tóm tắt (cho chủ dự án)
+
+AI viết gạch đầu dòng bằng dấu «+ » hay dấu trích dẫn «> » trước «Minh họa» (ví dụ «+ Minh họa: cửa cuốn») thì alt nay chỉ còn **một** «Minh họa» như các kiểu gạch đầu dòng khác; alt chỉ có «+ Minh họa» bị từ chối như alt «???». Chữ thật như «> 5 mét» vẫn giữ nguyên.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/images/alt.py` | `_NUMBERED` thành `_LIST_MARK` (`:373-377`): ngoài số thứ tự «1. », «2) », nhận thêm «+ », «> », «>> », «> > », dấu đầu dòng Unicode «● », «◦ », «▪ » (Ghi nhận 2 của Soi Lỗi) và dấu trộn («1. + », «> 1. »). Như số thứ tự, **chỉ bỏ khi ngay sau là tiền tố** (`:434-435`), nên «> 5 mét», «+ cửa», «● cửa» giữ nguyên. Docstring `_strip_ai_prefix` thêm ví dụ |
+| `tests/test_soi_loi_t083.py` | Gỡ 5 dòng `@pytest.mark.xfail(...)` của `test_sl_t083_1_…` (4 ca). Thân test không đổi, 0 dòng thêm |
+| `tests/test_t083_alt_tien_to.py` | Thêm 8 kiểu tiền tố vào `PREFIXES` («+ », «+ **…**», «> », «>> », «> > Minh hoa», «● », «▪ », «1. + ») và 3 ca chữ thật giữ nguyên («> 5 mét», «+ cửa», «● cửa»); tổng 1.307 ca |
+| `docs/team/reports/T-083-tho-may.md` | Mục này |
+
+Không làm «1 - », «a) » (Ghi nhận 2): dạng này dễ trùng chữ thật («a) lá cửa»), Soi Lỗi không ghi thành lỗi.
+
+**Vì sao không thêm «+», «>» vào `_AFTER_PREFIX` (bỏ ở mọi đầu chữ như «- »):** «> 5 mét» là chữ thật («lớn hơn 5 mét»); bỏ luôn sẽ đổi nghĩa. Bỏ chỉ khi ngay sau là tiền tố vẫn giữ kết quả bất động: «Minh họa + cửa» chạy lại vẫn là «Minh họa + cửa».
+
+### Bằng chứng
+
+Cùng 39 file của lượt 1 (tiêu chí xong + nơi gọi `clean_suggestion`, `clean_alt_text`), thêm `tests/test_soi_loi_t083.py`:
+
+```
+$ uv run pytest -q -p no:cacheprovider -rfEX <39 file như lượt 1> tests/test_soi_loi_t083.py
+(2026-10-28 00:41:27 → 01:23:11 +0700, gốc 36e9721 + thay đổi lượt 2; máy chạy cùng lúc pytest của phiên khác)
+5651 passed, 20 skipped, 1 xfailed in 2496.04s (0:41:36)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- 0 hỏng, 0 XPASS (log không có dòng `FAILED`, `ERROR`, `XPASS`). 1 `xfailed` vẫn là SL-T041-8 (`tests/test_soi_loi_t041.py`, phần SEO, có từ trước); 20 bỏ qua do máy như lượt 1.
+- 4 ca SL-T083-1 qua với `--runxfail` trước khi gỡ dấu (`4 passed`); `tests/test_t083_alt_tien_to.py tests/test_soi_loi_t083.py` sau khi gỡ: `2066 passed`.
+- `git diff -- tests/test_soi_loi_t083.py`: 5 dòng `-` (dòng dấu `xfail`), 0 dòng `+`.
+- Log: thư mục ghi chú chung, `T-083-tho-may-scripts/t083-l2-tests.log`.
+
+Thử ngẫu nhiên lại (script `fuzz_t083.py` thêm «+ », «> », «>> », «● », «+ **», «1. + » vào bộ sinh và «> 5 mét», «+ cửa» vào phần thân; 60.000 cặp, hạt giống 83083, so bản `main` `b60054f`): ảnh thật khác bản `main` **0**; ảnh AI thiếu tiền tố, quá giới hạn, sai NFC **0**; chạy lại đổi chữ **0** (bản `main` 7.356); chữ lưu còn cú pháp link sống **0**; «\» mới **0**; lỗi lạ **0**. `fuzz_t083_l2_marks.py`: alt / chú thích còn dấu «+», «>», «●», số thứ tự rồi đúng một tiền tố code nhận ra: bản `main` 11.622, bản mới **0**. Script và log ở thư mục ghi chú chung, `T-083-tho-may-scripts/`.
+
+### Đối chiếu
+
+- [x] SL-T083-1 sửa (4 ca `xfail` cũ qua, gỡ dấu, chỉ xóa dòng)
+- [x] C6 giữ (test C6 cũ và mới qua; thử ngẫu nhiên 0 lần thiếu tiền tố)
+- [x] Chặn link, shortcode giữ (`tests/test_shortcode_t061.py`, `tests/test_soi_loi_t061.py`, `tests/test_t081_alt_gach_cheo.py`, `tests/test_soi_loi_t081.py`, `tests/test_soi_loi_t083.py` qua; thử ngẫu nhiên 0)
+- [x] Kết quả bất động (test và thử ngẫu nhiên 0/60.000)
+- [x] Test như lượt 1 (tiêu chí xong + nơi gọi `clean_suggestion`, `clean_alt_text`) thêm `tests/test_soi_loi_t083.py`; `uv run ruff check .` sạch
+
+### Rủi ro
+
+- Dấu đầu dòng Unicode khác («◆», «★», «➤»…), «1 - », «a) » trước tiền tố vẫn lặp như bản `main`. Tiền tố chuẩn vẫn đứng đầu (C6); người dùng duyệt alt trước khi gửi.

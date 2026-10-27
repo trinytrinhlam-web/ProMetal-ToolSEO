@@ -370,10 +370,11 @@ _AI_PREFIX = re.compile(
 # «**Ảnh minh họa** (AI): …», «Minh họa: (AI) …», Soi Lỗi SL-T081-1) hay đứng đầu phần thân. Bỏ
 # luôn, để chú thích không thành «Ảnh minh họa (AI): (AI): …» và chạy lại không đổi chữ.
 _AI_TAG = re.compile(r"\(\s*ai\s*\)|(?-i:AI)(?![^\W_])", re.IGNORECASE)
-# Số thứ tự đầu dòng trước tiền tố («1. Minh họa: …», «2) Minh họa…», Soi Lỗi SL-T068-2); chỉ bỏ
-# khi ngay sau là tiền tố. Dấu đầu dòng «- », «• » nằm trong ``_AFTER_PREFIX``, «* » trong
-# ``_WRAPPERS``.
-_NUMBERED = re.compile(r"\d{1,3}[.)]\s*")
+# Số thứ tự, dấu đầu dòng «+ », dấu trích dẫn «> » («>> », «> > ») và vài dấu đầu dòng Unicode
+# («● », «◦ », «▪ ») trước tiền tố («1. Minh họa: …», «+ Minh họa…», Soi Lỗi SL-T068-2,
+# SL-T083-1); chỉ bỏ khi ngay sau là tiền tố, để chữ thật như «> 5 mét» còn nguyên. Dấu đầu dòng
+# «- », «• » nằm trong ``_AFTER_PREFIX``, «* » trong ``_WRAPPERS``.
+_LIST_MARK = re.compile(r"(?:(?:\d{1,3}[.)]|[+>●◦▪])\s*)+")
 # Ngoặc AI hay đặt quanh tiền tố (lời dặn ``AI_PREFIX_NOTE`` và ví dụ ghi tiền tố trong «»), cả dấu
 # Markdown («`Minh họa`», «_Minh họa_», «__Minh họa__», SL-T068-2): ký tự mở → ký tự đóng. Tối đa
 # ``_MAX_WRAP`` ký tự mở liền nhau («**Minh họa**», «"«Minh họa»"»).
@@ -412,9 +413,10 @@ AI_LIMIT_TOO_SMALL = (
 def _strip_ai_prefix(text: str) -> str:
     """Bỏ tiền tố AI tự viết ở đầu ``text`` (một dòng đã lọc, chưa cắt), kể cả khi tiền tố nằm
     trong ngoặc («Minh họa», “Ảnh minh họa (AI)”, **Minh họa**, `Minh họa`, _Minh họa_), sau dấu
-    đầu dòng («- Minh họa», «1. Minh họa») hay dính dấu câu («Minh họa!», «Minh họa…»), «(AI)»
-    tách khỏi tiền tố («[Minh họa] (AI): …»), và bỏ tới khi hết («Minh họa «Minh họa» cửa cuốn»).
-    Code ghi lại đúng một tiền tố chuẩn sau đó (Soi Lỗi SL-T062-2, SL-T068-1, -2, SL-T081-1).
+    đầu dòng («- Minh họa», «+ Minh họa», «> Minh họa», «1. Minh họa») hay dính dấu câu («Minh
+    họa!», «Minh họa…»), «(AI)» tách khỏi tiền tố («[Minh họa] (AI): …»), và bỏ tới khi hết («Minh
+    họa «Minh họa» cửa cuốn»). Code ghi lại đúng một tiền tố chuẩn sau đó (Soi Lỗi SL-T062-2,
+    SL-T068-1, -2, SL-T081-1, SL-T083-1).
 
     Ngoặc mở trước tiền tố mà ngay sau tiền tố không có ngoặc đóng thì là ngoặc bọc cả câu
     («Minh họa cửa cuốn»): bỏ ngoặc đóng ở cuối câu, nếu giữa câu không còn ngoặc đóng nào khác.
@@ -429,8 +431,8 @@ def _strip_ai_prefix(text: str) -> str:
         if tag:
             text = text[tag.end() :]
             continue
-        numbered = _NUMBERED.match(text)
-        start = numbered.end() if numbered else 0
+        mark = _LIST_MARK.match(text)
+        start = mark.end() if mark else 0
         size = 0
         while size < _MAX_WRAP and text[start + size : start + size + 1] in _WRAPPERS:
             size += 1
