@@ -2105,8 +2105,15 @@ def slug_field(posts: list) -> str:
 
 
 def site_host() -> str:
-    """Tên miền để xem trước kiểu Google (chỉ để hiện; chưa khai báo WordPress thì chữ mẫu)."""
-    return urlsplit(load_settings().wordpress_url).netloc or "website-cua-ban.vn"
+    """Tên máy của website để xem trước kiểu Google (chỉ để hiện). Chỉ lấy ``hostname`` (bỏ
+    ``tên:mật-khẩu@``, cổng, truy vấn; chữ thường): ``WORDPRESS_URL`` khai sai kiểu
+    ``https://tên:mật-khẩu@…`` không được lộ bí mật lên màn hình (LC-T041-1). Chưa khai báo hay
+    địa chỉ hỏng (``urlsplit`` ném ``ValueError``, ví dụ thiếu «]») thì chữ mẫu, trang không lỗi."""
+    try:
+        host = urlsplit(load_settings().wordpress_url).hostname
+    except ValueError:
+        host = None
+    return host or "website-cua-ban.vn"
 
 
 def keyword_problem() -> str:

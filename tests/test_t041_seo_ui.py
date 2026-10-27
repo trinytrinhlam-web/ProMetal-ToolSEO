@@ -794,3 +794,41 @@ def test_description_badge_matches_copy_box(project_root, seo_ai):
     captions = [c.value for c in at.caption]
     assert escape_markdown(reason) in captions  # dòng dưới ô
     assert f"Mô tả SEO: chưa chép được. {escape_markdown(reason)}" in captions  # khung chép
+
+
+# ============================================================ lượt 4: LC-T041-1
+
+PLACEHOLDER_HOST = "website-cua-ban.vn"
+SECRET = "MAT-KHAU-GIA-L4"  # chuỗi mồi, không phải mật khẩu thật
+SITE_URLS = {
+    "ten-mat-khau": (f"https://ten-gia:{SECRET}@suachuacuasat.com", "suachuacuasat.com"),
+    "ten-mat-khau-cong-chu-hoa": (
+        f"https://ten-gia:{SECRET}@SuaChuaCuaSat.com:8443/wp",
+        "suachuacuasat.com",
+    ),
+    "chi-mat-khau": (f"https://:{SECRET}@suachuacuasat.com", "suachuacuasat.com"),
+    "cong": ("https://suachuacuasat.com:8443", "suachuacuasat.com"),
+    "truy-van": (f"https://suachuacuasat.com/?token={SECRET}", "suachuacuasat.com"),
+    "ipv6": ("https://[2001:db8::1]:8443", "2001:db8::1"),
+    "ipv6-thieu-ngoac": ("https://[2001:db8::1", PLACEHOLDER_HOST),  # urlsplit ném ValueError
+    "khong-ten-may": (f"https://ten-gia:{SECRET}@", PLACEHOLDER_HOST),
+    "thieu-https": ("suachuacuasat.com", PLACEHOLDER_HOST),
+    "trong": ("", PLACEHOLDER_HOST),
+}
+
+
+@pytest.mark.parametrize("url, host", SITE_URLS.values(), ids=SITE_URLS.keys())
+def test_serp_preview_shows_only_host_of_wordpress_url(
+    project_root, seo_ai, monkeypatch, url, host
+):
+    """LC-T041-1: khung «Xem trước trên Google» chỉ hiện tên máy của ``WORDPRESS_URL`` (không
+    tên đăng nhập, mật khẩu, cổng, truy vấn; chữ thường). Địa chỉ trống hay hỏng (kể cả kiểu làm
+    ``urlsplit`` ném lỗi) thì chữ mẫu, trang không lỗi."""
+    monkeypatch.setenv("WORDPRESS_URL", url)
+    at = to_seo(project_root)
+    (preview,) = [block for block in html_blocks(at) if 'class="serp"' in block]
+    assert f'<div class="url">{host} › sua-cong-inox</div>' in preview
+    for hidden in (SECRET, "ten-gia", "8443", "token", "SuaChuaCuaSat"):
+        assert hidden not in preview
+    assert not any(SECRET in text for text in ui.texts(at))
+    assert not at.exception
