@@ -28,7 +28,9 @@ Chữ website trả về có ký tự surrogate lẻ (U+D800–U+DFFF) không đ
 
 1. Mọi chữ client lấy từ website (tên site, tên người dùng, tiêu đề bài, tên chuyên mục, thẻ…) bỏ hoặc thay surrogate lẻ ở một chỗ dùng chung.
 2. `_positive_id` có giới hạn trên (ví dụ 2⁶³−1), quá thì như mã sai khuôn.
-3. Test; mọi test client WordPress cũ vẫn qua (grep mọi nơi gọi).
+3. **SL-T059-1** (Soi Lỗi T-059, Thấp, có từ trước): SiteSEO lưu chữ qua `sanitize_text_field` (đổi «< » thành `&lt;`, cắt «%» kèm 2 ký tự hex, WordPress bỏ «\») nên `_ability_confirms` báo «chưa ghi» dù đã ghi: so theo bản đã chuẩn hóa như SiteSEO, hoặc chặn trước khi gửi các ký tự đó kèm câu báo; gỡ 5 `xfail` khi XPASS.
+4. Rủi ro kses (Soi Lỗi T-059): tài khoản thiếu quyền `unfiltered_html` thì WordPress bỏ `srcset` khi lưu bài, ảnh trong bài lại mất GPS trên điện thoại: `check_connection` báo được tài khoản có `unfiltered_html` không (phần giao diện cảnh báo ở trang Kết nối WordPress: báo Chỉ Huy giao Họa Sĩ).
+5. Test; mọi test client WordPress cũ vẫn qua (grep mọi nơi gọi).
 
 ## Yêu cầu bảo mật riêng
 
@@ -36,7 +38,7 @@ W2, W3.
 
 ## Tiêu chí xong
 
-- [ ] Yêu cầu 1–3
+- [ ] Yêu cầu 1–5
 - [ ] Test liên quan + `uv run ruff check .`; toàn bộ test do Chỉ Huy chạy khi gộp
 - [ ] Báo cáo `docs/team/reports/T-091-tho-may.md`
 

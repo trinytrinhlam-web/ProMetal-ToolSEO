@@ -85,6 +85,8 @@ Anh dặn: vấn đề nào chưa giải quyết được thì ghi lại để s
 
 8. **Sổ rủi ro (Lá Chắn T-094 hỏi):** dòng ngày 15/10 (biến proxy và chứng chỉ của máy có thể chuyển hướng kết nối) hiện chỉ ghi cho thư viện AI. Đề nghị ghi rõ áp dụng cho cả kết nối WordPress và Google. Muốn khai thác phải chiếm được máy trước, mức Thấp. Anh đồng ý thì Chỉ Huy ghi sổ.
 
+9. **Thử lại một bài nháp có một ảnh** sau khi gộp T-059 bước 7 (ảnh trong bài không còn bản thu nhỏ mất GPS): Chỉ Huy tạo bài thử bằng app khi anh có mặt, kiểm nguồn trang chỉ còn file đầy đủ và GPS còn; anh xóa bài và ảnh thử sau.
+
 Đã xong tối 27/10: SiteSEO lên 1.4.2 và bật AI Abilities; tài khoản Biên tập viên `phan-mem-seo` + mật khẩu ứng dụng riêng, Kiểm tra kết nối «SiteSEO: ghi được»; thử thật T-059 (ghi SEO, ảnh còn GPS, từ chối bài đã chuyển trạng thái); xóa ảnh thử; chọn (a) cho ảnh đại diện của theme (không GPS trên điện thoại).
 
 **Anh báo ngày 22/10: hiện chưa có máy Mac.** Bỏ việc nâng `uv` trên Mac. Máy Windows đã đủ: `certifi` mới, `uv` 0.13.4, nên bỏ lời dặn «không dùng app trên Wi-Fi công cộng» trên máy Windows. Khi có máy Mac: chạy `uv self update` rồi mở app bằng `run.command`.
