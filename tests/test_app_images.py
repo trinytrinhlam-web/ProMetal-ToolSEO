@@ -10,6 +10,7 @@ Mỗi test gắn với một điều kiện trong mục "Ghi chú của Chỉ Hu
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import html
 import io
 import json
@@ -787,7 +788,8 @@ def test_tags_read_per_page_at_most_200(project_root, tmp_path, monkeypatch):
 
 def test_open_draft_uses_checked_image_not_draft_fields(project_root, root):
     """Ảnh của nháp được kiểm lại khi mở (``check_draft_images``); hiện, duyệt theo kết quả kiểm
-    (thẻ theo thư mục thật), không theo trường trong nháp (Lá Chắn T-055 b)."""
+    (thẻ theo thư mục thật), không theo trường trong nháp (Lá Chắn T-055 b). Nháp mang băm của
+    file lúc duyệt (T-089; nháp không có băm thì phải duyệt lại: ``test_t089_send_draft.py``)."""
     chosen = DraftImage(
         source=SOURCE_REAL,
         root_index=0,
@@ -796,6 +798,7 @@ def test_open_draft_uses_checked_image_not_draft_fields(project_root, root):
         alt="Bản lề cổng gỉ",
         alt_approved=True,
         caption="Bản lề gỉ sau 3 năm",
+        approved_sha256=hashlib.sha256((root / REAL_FILE).read_bytes()).hexdigest(),
     )
     at, pid = open_article(project_root, article(chosen))
     checked = at.session_state[f"pick-{pid}"]

@@ -208,10 +208,6 @@ def test_other_tab_after_send_is_locked(project_root, root, fake_ai, site):
     assert button(other, SEND).disabled
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T086-1: hai tab cùng một nháp, bấm gửi cách nhau vài giây vẫn ra hai bài",
-)
 def test_other_tab_starts_sending_while_this_tab_prepares(
     project_root, root, fake_ai, site, monkeypatch
 ):
@@ -242,10 +238,6 @@ def test_other_tab_starts_sending_while_this_tab_prepares(
 # ========================================================= ảnh xem trước cũ, băm nội dung mới
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T086-2: ảnh xem trước lấy từ cache theo cỡ, giờ sửa: duyệt gắn với ảnh chưa thấy",
-)
 def test_preview_shown_matches_approved_content(project_root, root, fake_ai, site, monkeypatch):
     """Lưới ảnh đã tạo ảnh xem trước của ``IMG_0002.jpg`` (cache trên ổ, khóa theo cỡ và giờ sửa).
     File bị thay tại chỗ bằng ảnh khác cùng cỡ, giờ sửa đặt lại như cũ, **có GPS**. Chọn ảnh: khung

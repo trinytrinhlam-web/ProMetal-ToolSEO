@@ -15,7 +15,6 @@ Lỗi), dùng lại ảnh giả, WordPress giả, AI giả của ``tests/test_ap
 
 from __future__ import annotations
 
-import pytest
 import test_app_images as ui
 
 from seo_app.storage.drafts import SendState
@@ -33,10 +32,6 @@ SEND = ui.SEND_LABEL
 HUGE_ID = 2**63  # WordPress lưu mã bài kiểu BIGINT UNSIGNED: tới 2⁶⁴ − 1 vẫn là số hợp lệ của site
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T086-1: mã bài website trả từ 2⁶³ làm record_outcome ném lỗi ngoài khối bắt",
-)
 def test_lc_t086_1_huge_post_id_from_site_does_not_break_page(project_root, root, fake_ai, site):
     """Website trả mã bài 2⁶³ (site hỏng hay bị chiếm; client không giới hạn trên). Mong đợi: trang
     không lỗi, vẫn khóa nút (nháp còn «đang gửi» hay đã ghi kết quả), lần chạy sau cũng không lỗi.

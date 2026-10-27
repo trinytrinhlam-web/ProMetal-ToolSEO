@@ -306,11 +306,11 @@ def test_result_not_saved_to_draft_is_reported_and_stays_unsure(
     original = DraftStore.save_send_state
     calls: list[SendState | None] = []
 
-    def flaky(self, draft, state):
+    def flaky(self, draft, state, **kwargs):
         calls.append(state)
         if len(calls) > 1:
             raise DraftError(BUSY)
-        return original(self, draft, state)
+        return original(self, draft, state, **kwargs)
 
     monkeypatch.setattr(DraftStore, "save_send_state", flaky)
     at, _pid = ui.ready_image(project_root)
@@ -329,7 +329,7 @@ def test_cannot_write_pending_does_not_send(project_root, root, fake_ai, site, m
     """Chưa ghi được «đang gửi» vào nháp: không gửi gì (thiếu dấu đó, tải lại trang lúc đang gửi là
     mất khóa chống gửi trùng), báo rõ; kho nháp ổn lại thì gửi được."""
 
-    def busy(self, draft, state):
+    def busy(self, draft, state, **kwargs):
         raise DraftError(BUSY)
 
     monkeypatch.setattr(DraftStore, "save_send_state", busy)

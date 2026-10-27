@@ -30,6 +30,10 @@ Trạng thái «Gửi nháp» (T-086, SL-T056-8, -11): ``SendState`` lưu ở b�
 (không nằm trong JSON của nháp), nên lần tự lưu nháp không ghi đè, giờ lưu nháp không đổi, và nháp
 cũ (không có dòng nào) vẫn mở như trước. Giao diện ghi «đang gửi» **trước** khi gửi, ghi kết quả
 ngay khi có, đọc lại khi vẽ nút gửi (kể cả sau khi mở lại nháp, tải lại trang).
+
+T-089: «đang gửi» ghi kiểu so rồi đặt (``save_send_state`` có ``expected``, một giao dịch giữ khóa
+ghi) để hai tab cùng bài không cùng gửi (SL-T086-1). Lần duyệt alt nhớ băm nội dung file ảnh lúc
+duyệt (``DraftImage.approved_sha256``) để nháp mở lại vẫn so được ảnh với bản đã duyệt.
 """
 
 from __future__ import annotations
@@ -93,6 +97,7 @@ STEP_COUNT = 5  # Chuẩn bị · Dàn ý · Viết & kiểm tra · SEO · Xuấ
 SCHEMA_VERSION = 2
 _OLD_SCHEMA_VERSIONS = frozenset({1})  # vẫn mở được, nâng lên SCHEMA_VERSION khi mở
 _ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")  # băm SHA-256 dạng hex thường (``hexdigest``)
 _SQLITE_TIMEOUT = 5  # giây chờ khi file đang bị một lần lưu khác giữ
 
 # Ảnh đã chọn (T-055). Số thứ tự thư mục gốc lớn hơn mức này không thể do app ghi: bỏ ảnh đó.
@@ -215,6 +220,11 @@ class DraftImage(_Strict):
     thành ``"ai"``. Hạng mục chỉ nhận giá trị ``ImageTags`` chấp nhận (sai thì bỏ trống, không giữ
     chữ lạ). Alt, chú thích: một dòng, đã lọc, tối đa ``MAX_ALT_CHARS``/``MAX_CAPTION_CHARS``; alt
     rỗng thì không thể "đã duyệt". Prompt: nhiều dòng, tối đa ``MAX_PROMPT_CHARS``.
+
+    ``approved_sha256`` (T-089, Ghi nhận 1 của Lá Chắn T-086): băm SHA-256 nội dung file ảnh lúc
+    người dùng duyệt alt, để nháp mở lại vẫn so được ảnh trên máy với bản đã duyệt. Chỉ đi cùng lần
+    duyệt của ảnh trong thư mục ảnh; sai dạng thì bỏ (giao diện bắt duyệt lại, không bỏ ảnh). Trống
+    thì không ghi vào JSON: nháp không có băm giữ đúng khuôn cũ.
     """
 
     source: str = SOURCE_AI
@@ -225,6 +235,7 @@ class DraftImage(_Strict):
     alt_approved: bool = Field(default=False, strict=True)
     caption: str = ""
     prompt: str = ""
+    approved_sha256: str = Field(default="", exclude_if=lambda value: not value)
 
     @field_validator("source", mode="before")
     @classmethod
@@ -257,6 +268,13 @@ class DraftImage(_Strict):
     def _clean_prompt_text(cls, value: object) -> object:
         return _clean_prompt(value)
 
+    @field_validator("approved_sha256", mode="before")
+    @classmethod
+    def _sha256_or_empty(cls, value: object) -> str:
+        if isinstance(value, str) and _SHA256_PATTERN.fullmatch(value):
+            return value
+        return ""
+
     @model_validator(mode="after")
     def _check_place(self) -> DraftImage:
         if self.root_index is None:
@@ -270,6 +288,8 @@ class DraftImage(_Strict):
                 raise ValueError("đường dẫn ảnh không hợp lệ") from None
         if not self.alt:
             self.alt_approved = False
+        if not self.alt_approved or self.root_index is None:
+            self.approved_sha256 = ""  # băm chỉ đi cùng lần duyệt của ảnh trong thư mục ảnh
         return self
 
     @classmethod
@@ -282,6 +302,7 @@ class DraftImage(_Strict):
         alt_approved: bool = False,
         caption: str = "",
         prompt: str = "",
+        approved_sha256: str = "",
     ) -> DraftImage:
         """Ảnh chọn từ thư mục ảnh. ``image``: ``ImageEntry``/``ImageRef`` **của kết quả quét**
         (khóa lựa chọn, điều kiện Lá Chắn T-048); ``tags``: thẻ đang dùng cho ảnh (``resolve``)."""
@@ -297,6 +318,7 @@ class DraftImage(_Strict):
             alt_approved=alt_approved,
             caption=caption,
             prompt=prompt,
+            approved_sha256=approved_sha256,
         )
 
     @property
@@ -631,37 +653,43 @@ class DraftStore:
         """
         _check_id(draft_id)
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT length(CAST(data AS BLOB)) FROM send_states WHERE id = ?", (draft_id,)
-            ).fetchone()
-            if row is None:
-                return None
-            if row[0] is None or row[0] > MAX_SEND_STATE_BYTES:
-                raise DraftError(_MSG_SEND_STATE_BROKEN)
-            (data,) = conn.execute(
-                "SELECT data FROM send_states WHERE id = ?", (draft_id,)
-            ).fetchone()
-        try:
-            if isinstance(data, bytes):
-                data = data.decode("utf-8")
-            if not isinstance(data, str):
-                raise TypeError("dữ liệu không phải chữ")
-            return SendState.model_validate_json(data)
-        except (ValidationError, UnicodeDecodeError, TypeError):
-            raise DraftError(_MSG_SEND_STATE_BROKEN) from None
+            return _read_send_state(conn, draft_id)
 
-    def save_send_state(self, draft_id: str, state: SendState | None) -> None:
+    def save_send_state(
+        self,
+        draft_id: str,
+        state: SendState | None,
+        *,
+        expected: tuple[SendState | None, bool] | None = None,
+    ) -> bool:
         """Ghi trạng thái gửi của nháp; ``None`` thì xóa (T-086). Không đụng nội dung, giờ lưu của
-        nháp; lần tự lưu nháp (``save``) cũng không đụng trạng thái này."""
+        nháp; lần tự lưu nháp (``save``) cũng không đụng trạng thái này. Trả ``True`` khi đã ghi.
+
+        ``expected`` (so rồi đặt, T-089, SL-T086-1): ``(trạng thái, hỏng)`` người dùng thấy lúc bấm
+        gửi, như ``load_send_state`` trả (``hỏng``: dòng không đọc được). Đọc và ghi trong **một**
+        giao dịch giữ khóa ghi từ đầu (``BEGIN IMMEDIATE``): trạng thái trong nháp đã khác (tab khác
+        vừa ghi «đang gửi», «đã gửi») thì không ghi gì, trả ``False``. Mọi tab trên một máy đi qua
+        cùng file nên hai tab không cùng qua được bước này."""
         _check_id(draft_id)
+        data = None if state is None else state.model_dump_json()
         with self._connect() as conn:
-            if state is None:
+            if expected is not None:
+                conn.execute("BEGIN IMMEDIATE")  # lần ghi khác phải đợi tới khi giao dịch này xong
+                try:
+                    current, broken = _read_send_state(conn, draft_id), False
+                except DraftError:
+                    current, broken = None, True
+                seen, seen_broken = expected
+                if broken != seen_broken or (not broken and current != seen):
+                    return False
+            if data is None:
                 conn.execute("DELETE FROM send_states WHERE id = ?", (draft_id,))
             else:
                 conn.execute(
                     "INSERT OR REPLACE INTO send_states (id, data) VALUES (?, ?)",
-                    (draft_id, state.model_dump_json()),
+                    (draft_id, data),
                 )
+        return True
 
     # ------------------------------------------------------------ nội bộ
 
@@ -714,6 +742,27 @@ class DraftStore:
             target = self.path.with_name(f"{self.path.stem}.hong-{stamp}-{n}{self.path.suffix}")
         self.path.replace(target)
         return target
+
+
+def _read_send_state(conn: sqlite3.Connection, draft_id: str) -> SendState | None:
+    """Trạng thái gửi của nháp, đọc trên kết nối đang mở (``load_send_state``, và lần so rồi đặt
+    của ``save_send_state``). Dòng quá lớn, sai khuôn: ``DraftError`` câu cố định."""
+    row = conn.execute(
+        "SELECT length(CAST(data AS BLOB)) FROM send_states WHERE id = ?", (draft_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    if row[0] is None or row[0] > MAX_SEND_STATE_BYTES:
+        raise DraftError(_MSG_SEND_STATE_BROKEN)
+    (data,) = conn.execute("SELECT data FROM send_states WHERE id = ?", (draft_id,)).fetchone()
+    try:
+        if isinstance(data, bytes):
+            data = data.decode("utf-8")
+        if not isinstance(data, str):
+            raise TypeError("dữ liệu không phải chữ")
+        return SendState.model_validate_json(data)
+    except (ValidationError, UnicodeDecodeError, TypeError):
+        raise DraftError(_MSG_SEND_STATE_BROKEN) from None
 
 
 def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
