@@ -34,22 +34,22 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Chỉ Huy B (gộp) | `team/T-083` | Lá Chắn rút gọn **ĐẠT** (`a5e8086`, 0 lỗi). ⏳ **28/10 02:20 chờ gộp `main`** (sau lượt toàn bộ test của T-082) | [Thợ Máy](reports/T-083-tho-may.md) · [Soi Lỗi](reports/T-083-soi-loi.md) · [Lá Chắn](reports/T-083-la-chan.md) |
-| [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Chỉ Huy B (gộp) | `team/T-059` | Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`de8809c`: SL-T059-1 Thấp → T-091; rủi ro kses bỏ `srcset` → T-091). ⏳ **28/10 02:20 chờ gộp `main`** (sau lượt toàn bộ test của T-082), rồi thử lại một nháp một ảnh khi chủ dự án có mặt | [Thợ Máy](reports/T-059-tho-may.md) · [Soi Lỗi](reports/T-059-soi-loi.md) · [Lá Chắn](reports/T-059-la-chan.md) |
+| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Chỉ Huy B (gộp) | `team/T-083` | Lá Chắn rút gọn **ĐẠT** (`a5e8086`, 0 lỗi). ⏳ **28/10 02:44 gộp `main` trên máy, đang chạy toàn bộ test** | [Thợ Máy](reports/T-083-tho-may.md) · [Soi Lỗi](reports/T-083-soi-loi.md) · [Lá Chắn](reports/T-083-la-chan.md) |
+| [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Chỉ Huy B (gộp) | `team/T-059` | Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`de8809c`: SL-T059-1 Thấp → T-091; rủi ro kses bỏ `srcset` → T-091). ⏳ **28/10 02:44 gộp `main` trên máy, đang chạy toàn bộ test (cùng T-083)** | [Thợ Máy](reports/T-059-tho-may.md) · [Soi Lỗi](reports/T-059-soi-loi.md) · [Lá Chắn](reports/T-059-la-chan.md) |
 | [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML, kiểm link, dữ liệu xác nhận) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-096) | `team/T-096` | Thợ Máy 2 lượt (`c961000`); Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (`088ebbe`: 7 lỗi đóng, 2 Thấp mới). ⏳ **28/10 02:20 Lá Chắn rút gọn** | [Thợ Máy](reports/T-096-tho-may.md) · [Soi Lỗi](reports/T-096-soi-loi.md) |
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Thợ Máy · T-083 lỗi chữ alt ảnh AI (T-098) | `team/T-098` | ⏳ **28/10 02:21 Thợ Máy đang làm** | |
+| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1) | Thợ Máy · T-041 Lưu SEO vào nháp (T-090) | `team/T-090` | ⏳ **28/10 02:44 Thợ Máy đang làm** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa | Thợ Máy | Máy rảnh; gộp sau khi chủ dự án xem câu 1 |
-| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc, đề xuất có AI, SL-7 | Thợ Máy | Máy rảnh |
 | [T-099](tickets/T-099-client-hen-gio-dang-ngay.md) | GĐ5: client hẹn giờ, đăng ngay (`release_draft`) | Thợ Máy | T-091 gộp |
 | [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097, T-098 gộp |
 | [T-101](tickets/T-101-giao-dien-ke-hoach-cai-dat-google.md) | GĐ5: giao diện Kế hoạch, Cài đặt Google, Bài viết | Họa Sĩ | T-100, T-103 gộp |
 | [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-096, T-099, T-100 gộp |
 | [T-103](tickets/T-103-loi-dan-ai-doc-ke-hoach.md) | GĐ5: lời dặn AI đọc kế hoạch | Ngòi Bút | T-098 gộp |
-| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1). Thấp | Thợ Máy | Máy rảnh |
 | [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ trong chữ website (SL-T088-1), giới hạn trên mã bài. Thấp | Thợ Máy | T-059 bước 7 gộp (cùng `client.py`) |
 | [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Họa Sĩ | Máy rảnh |
 | [T-093](tickets/T-093-la-chan-ra-soat-giai-doan-3.md) | Lá Chắn rà soát toàn bộ Giai đoạn 3 trước khi đóng giai đoạn | Lá Chắn | T-082, T-083 gộp |
