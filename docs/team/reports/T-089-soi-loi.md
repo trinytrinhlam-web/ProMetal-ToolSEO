@@ -4,9 +4,73 @@
 |---|---|
 | Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 |
 | Phiếu | [T-089](../tickets/T-089-gui-nhap-loi-thap-sau-t086.md) |
-| Ngày nộp | 2026-10-26 |
-| Nhánh | `team/T-089` (kiểm code `87ad51c`, gốc `main` `3d7f4b7`) |
-| Kết quả | Hoàn thành (kiểm rút gọn, kèm thử trình duyệt thật với WordPress giả). **Kết luận: ĐẠT CÓ ĐIỀU KIỆN, chuyển Lá Chắn rút gọn được ngay.** LC-T086-1, SL-T086-1, SL-T086-2 **đã sửa thật** (cách tái hiện cũ và biến thể); băm ảnh đã duyệt lưu trong nháp đạt. Lỗi mới: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T089-1), không chặn gộp. Soát R5: **đạt**. Thử gộp với `main` và `team/T-041` mới nhất: **không xung đột** |
+| Ngày nộp | 2026-10-26 (lượt 2: 2026-10-27) |
+| Nhánh | `team/T-089` (kiểm code `87ad51c`, gốc `main` `3d7f4b7`; lượt 2: code `f2a72f5`, đầu nhánh `cf5a556`) |
+| Kết quả | Hoàn thành (kiểm rút gọn, kèm thử trình duyệt thật với WordPress giả). **Kết luận: ĐẠT CÓ ĐIỀU KIỆN, chuyển Lá Chắn rút gọn được ngay.** LC-T086-1, SL-T086-1, SL-T086-2 **đã sửa thật** (cách tái hiện cũ và biến thể); băm ảnh đã duyệt lưu trong nháp đạt. Lỗi mới: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T089-1), không chặn gộp. Soát R5: **đạt**. Thử gộp với `main` và `team/T-041` mới nhất: **không xung đột**. **Lượt 2 (2026-10-27): SL-T089-1 đã sửa thật; 1 Thấp mới SL-T089-2 do chính bản sửa (lùi so với lượt 1 ở hai ca hiếm), không chặn gộp; vẫn ĐẠT CÓ ĐIỀU KIỆN** (mục «Lượt 2») |
+
+## Lượt 2 (2026-10-27): kiểm lại nhanh bản sửa SL-T089-1
+
+Theo tin giao việc của Chỉ Huy B (2026-10-27) và mục «Lượt 2» của báo cáo Họa Sĩ: `holder["claimed"]` (chỉ lần đã ghi được «đang gửi» mới ghi kết quả), `finish_send` chỉ thử ghi lại khi có dấu đó, `record_outcome` ghi kiểu so rồi đặt với `expected=(claimed, False)`, câu báo `MSG_STATE_CHANGED_ELSEWHERE`; gỡ 2 `xfail` SL-T089-1, thêm 4 test.
+
+**Tóm tắt (cho chủ dự án):**
+
+- Lỗi nhỏ SL-T089-1 **đã sửa thật**: hai tab cùng gửi một bài, tab bị từ chối dù bị bấm thêm đúng lúc (một hay hai lần liên tiếp), hay gặp lúc file nháp bận, đều không còn xóa ghi chú «đã gửi/đang gửi» của tab kia; mở lại bài vẫn khóa đúng, tick «Tạo thêm» là gửi được (không khóa oan). Người dùng cố ý gửi tiếp ở tab thứ hai trong lúc tab đầu đang gửi: bài nhớ đúng lần gửi sau, tab đầu vẫn hiện bài của nó và báo rõ.
+- Gửi một tab bình thường vẫn ghi «đã gửi»; các ca cũ (bấm gì đó giữa lúc gửi, ngắt hai lần, gửi dở, mã bài lạ, nháp sửa tay) vẫn đúng.
+- Còn **1 lỗi nhỏ mới (SL-T089-2)**, sinh ra từ chính bản sửa: nếu đúng lúc tab đầu đang gửi mà ở tab khác **bài bị xóa**, hoặc lần gửi cố ý ở tab khác **hỏng ngay** (chưa gửi gì), thì bài tab đầu vừa tạo không được ghi vào nháp; mở lại bài (nháp được lưu lại) không còn khóa, bấm là ra bài thứ hai. Bản lượt 1 không bị hai ca này. Rất khó gặp; sửa khoảng 2 dòng (đã thử trên bản sao: đóng được, các test khác vẫn qua).
+
+| Việc kiểm | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T089-1, cách tái hiện cũ (tab thua so rồi đặt bị ngắt; tab kia đang gửi / đã gửi trọn bài 501) | **Đã sửa** | `SL: test_lost_tab_interrupted_keeps_other_tab_sending`, `…_keeps_other_tab_sent` (Họa Sĩ gỡ `xfail` sau khi XPASS) qua |
+| Biến thể: thua so rồi đặt hay ghi «đang gửi» hỏng (file nháp bận) đúng lúc tab kia vừa gửi xong bài 501; ngắt ở lần ghi phiên thứ 1, thứ 2 sau đó; ngắt hai lần liên tiếp (ngay sau lần so rồi đặt và ở lần ghi đầu của lần chạy sau) | **Đạt** | `SL: test_lost_or_busy_tab_interrupted_keeps_other_tab_sent` × 6 (thua-ghi-1, thua-ghi-2, thua-hai-lan, ban, ban-hai-lan, ban-ghi-2): không request nào, nháp giữ «đã gửi 501» của tab kia, không còn `_wp_sending`, phiên mới khóa «đã gửi» và tick «Tạo thêm» thì mở (không khóa oan). Họa Sĩ `N: test_pending_not_written_then_interrupted_writes_nothing` (tab kia «đang gửi») qua |
+| Ghi nhận 1 của Lá Chắn (tab kia cố ý tick «Tôi đã kiểm tra…» rồi gửi tiếp trong lúc tab này đang gửi) | **Đạt** (có Ghi nhận chữ L2-1) | Họa Sĩ `N: test_outcome_does_not_overwrite_other_tab_new_send`, `N: test_retry_in_finish_send_also_compares` qua. Thêm bằng **hai phiên thật** (`SL: test_confirmed_send_in_other_tab_keeps_its_record`): trong lúc website đang tạo bài 501 cho tab 1, tab 2 vẽ lại, thấy khóa «gửi dở», tick, gửi trọn bài 502: nháp giữ «đã gửi 502»; tab 1 hiện «Đã tạo bài nháp… (mã 501)» kèm câu «Chưa ghi được kết quả gửi vào nháp (một tab khác của app vừa ghi trạng thái gửi mới…)», khóa; phiên mới thấy «đã gửi» bài 502 |
+| Không lùi các ca T-086/T-089 cũ | **Đạt** | Bộ test liên quan (mục «Bằng chứng lượt 2»): gửi một tab ghi «đã gửi 501» (`assert_one_post_locked_with_result`), ngắt ở từng lần ghi và ngắt hai lần (`test_soi_loi_t086.py`), gửi dở, mã bài lạ (2⁶³, 2⁶⁴, 10³⁰, âm, chữ…), nháp sửa tay, hai phiên luân phiên 3 vòng, «Tạo thêm» ba lần một tab |
+| `xfail` gỡ đúng R5 | **Đạt** | `git diff d5d0e69..cf5a556 -- tests/`: `tests/test_soi_loi_t089.py` chỉ xóa 2 dấu `@pytest.mark.xfail(...)` (8 dòng), thân test không đổi; `tests/test_t089_send_draft.py` thêm 4 test, một dòng import thêm `DraftError`, không sửa test cũ. Không `skip`, không xóa test |
+| Thử gộp | **Không xung đột** | `git merge-tree`: `cf5a556` + `origin/main` `e295f0e`; + `origin/team/T-041` `433c533` (T-041 thêm `write_seo` ngay sau `record_outcome` trong `send_and_record`, ghép đúng chỗ); gộp lần lượt cả ba |
+
+**Lỗi mới lượt 2** (test `xfail(strict=True)` trong `tests/test_soi_loi_t089.py`; `--runxfail`: hỏng đúng câu kiểm «nháp phải còn dấu bài 501»):
+
+| Mã | Mức | Lỗi | Tái hiện | Mong đợi | Thực tế | Gợi ý sửa |
+|---|---|---|---|---|---|---|
+| SL-T089-2 | Thấp (lùi so với lượt 1, hai ca hiếm) | Kết quả gửi bị bỏ khi nháp không còn dòng trạng thái gửi: `record_outcome` so với «đang gửi» của chính lần này, thấy «không có dòng» và coi là «tab khác vừa ghi trạng thái mới», nên không ghi dù bài đã tạo trên website | (1) `test_confirmed_send_in_other_tab_failing_first_keeps_this_post` (hai phiên thật): trong lúc website đang tạo bài 501 cho tab 1, tab 2 tick «Tôi đã kiểm tra…», gửi, lỗi trước khi có request nào (`WordPressError`, ví dụ kiểm sai trước khi gửi) nên ghi «chưa gửi» (xóa dòng, đúng «đang gửi» của nó). (2) `test_draft_deleted_elsewhere_while_sending_comes_back_locked`: trong lúc tab 1 đang gửi, tab 2 bấm «🗑️ Xóa» nháp (`DraftStore.delete` xóa cả dòng trạng thái gửi); tab 1 làm tiếp, lần tự lưu tạo lại nháp | Nháp ghi «đã gửi 501» (hay «đang gửi» khi chưa rõ); phiên mới mở nháp khóa, phải tick «Tạo thêm» | Nháp không có dòng trạng thái gửi; phiên mới mở nháp: nút «Gửi nháp» bật, không nhắc gì, bấm là ra bài thứ hai. Tab 1 báo «một tab khác của app vừa ghi trạng thái gửi mới» (ca 2 sai: nháp bị xóa). Đối chứng trên bản sao `git archive` `d5d0e69` (lượt 1, ghi không so): cả hai ca nháp giữ «đã gửi 501», phiên mới khóa | Trong `record_outcome`: so rồi đặt với `claimed` hỏng mà kết quả có bài hay chưa rõ (`state` khác `None`) thì thử thêm một lần so rồi đặt với «không có dòng» (`expected=(None, False)`): dòng của tab khác (đang gửi/đã gửi) vẫn không bị ghi đè, chỉ ghi khi nháp trống. Thử sửa giả đúng 2 dòng đó trên bản sao: 2 test `xfail` qua (`--runxfail`) cùng 16 test liên quan (4 test lượt 2 của Họa Sĩ, SL-T089-1 và các biến thể, hai phiên). Giữ chốt `claimed` (lớp chặn chính cho tab thua). Câu báo nên tách ca «nháp bị xóa» |
+
+**Ghi nhận lượt 2 (không phải lỗi):**
+
+- L2-1. Câu báo khi không ghi đè: «Chưa ghi được kết quả gửi vào nháp (một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè): mở lại nháp này sau sẽ thấy nhắc «chưa có kết quả», hãy kiểm…». Vế «sẽ thấy nhắc chưa có kết quả» chỉ đúng khi tab kia còn đang gửi; tab kia gửi xong thì mở lại thấy «đã gửi bài 502» (thấy ở `test_confirmed_send_in_other_tab_keeps_its_record`). Nên đổi vế sau cho ca này (ví dụ «nháp giữ trạng thái của tab kia; kiểm trang quản trị: bài này (mã …) cũng đã lên»).
+- L2-2. Đột biến R3 của Họa Sĩ (bỏ chốt `claimed`, giữ so rồi đặt) không bắt là đúng: hai lớp chặn độc lập. Khi sửa SL-T089-2 theo gợi ý (ghi khi nháp trống), chốt `claimed` thành lớp chặn chính cho tab thua, cần giữ.
+- L2-3. Lượt 2 không thử lại trên trình duyệt thật (hai ca trình duyệt của lượt 1 không đổi đường đi: tab thắng ghi kết quả bằng so rồi đặt với «đang gửi» của chính nó).
+
+**Bằng chứng lượt 2:**
+
+File test của Soi Lỗi: `tests/test_soi_loi_t089.py` thêm 9 ca (6 biến thể SL-T089-1, 1 ca hai phiên cho Ghi nhận 1, 2 `xfail` SL-T089-2): nay 42 ca, 40 qua, 2 `xfail`. Không sửa code ứng dụng.
+
+```
+$ PYTHONUTF8=1 uv run pytest tests/test_app_images.py tests/test_soi_loi_t056.py \
+    tests/test_la_chan_t056.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_drafts.py tests/test_drafts_images.py tests/test_app_pages.py \
+    tests/test_t086_send_state.py tests/test_storage_send_state.py \
+    tests/test_t089_send_draft.py tests/test_soi_loi_t089.py -q -rxXf
+480 passed, 1 skipped in 1396.65s (0:23:16)   # code f2a72f5 (đầu nhánh cf5a556), trước khi thêm
+                                               # test lượt 2 của Soi Lỗi; không còn xfail nào
+
+$ PYTHONUTF8=1 uv run pytest tests/test_soi_loi_t089.py -rxXf \
+    -W error::pytest.PytestUnhandledThreadExceptionWarning
+40 passed, 2 xfailed in 323.46s (0:05:23)      # 2 xfail = SL-T089-2
+
+$ uv run pytest tests/test_soi_loi_t089.py --runxfail -k "failing_first or deleted_elsewhere"
+2 failed   # hỏng đúng câu kiểm: assert state is not None (nháp không còn dấu bài 501)
+# Cùng 2 test trên bản sao git archive d5d0e69 (mã lượt 1): 2 passed   -> lỗi lùi do lượt 2
+# Bản sao HEAD + sửa giả 2 dòng trong record_outcome (gợi ý ở bảng trên), --runxfail:
+18 passed  # 2 test SL-T089-2 + 16 test liên quan (4 test lượt 2 của Họa Sĩ, SL-T089-1 và biến thể,
+           # hai phiên, «Tạo thêm» ba lần)
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan tests/test_soi_loi_t089.py docs/team/reports/T-089-soi-loi.md
+"results": {}
+```
+
+**Kết luận lượt 2: ĐẠT CÓ ĐIỀU KIỆN, chuyển Lá Chắn rút gọn được.** SL-T089-1 đóng thật (cả ca tab thua bị ngắt, file nháp bận rồi ngắt, ngắt hai lần, tab kia cố ý gửi tiếp); không lùi các ca T-086/T-089 cũ; R5 đạt. Điều kiện: SL-T089-2 (Thấp, hai ca hiếm, lùi so với lượt 1, sửa khoảng 2 dòng trong `record_outcome`): Họa Sĩ sửa luôn trong phiếu này (khuyên, vì đúng chỗ vừa sửa) hoặc Chỉ Huy lập phiếu theo dõi. Không chặn gộp: so với `main` (hai tab bấm gần nhau là ra hai bài) bản này vẫn tốt hơn hẳn.
 
 ## Tóm tắt (cho chủ dự án)
 
