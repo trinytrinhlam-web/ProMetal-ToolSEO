@@ -1,4 +1,5 @@
-"""Lá Chắn T-040: test chứng minh LC-T040-1 (Thấp), ``xfail(strict=True)`` tới khi sửa.
+"""Lá Chắn T-040: test của LC-T040-1 (Thấp). Đã sửa ở T-041 (Thợ Máy), dấu ``xfail`` đã gỡ; test
+giữ lại để canh.
 
 Lời dặn meta mới (T-040) cho AI giữ nguyên từ khóa có chữ về giá («giá sửa cửa sắt»), «phần chữ
 còn lại vẫn không có con số, mức giá hay chữ nào về giá». Bộ kiểm (``mentions_price``, có từ
