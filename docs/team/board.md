@@ -34,16 +34,15 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| _(không còn)_ | 27/10 16:42: T-041, T-088, T-089 đã gộp; chờ chủ dự án chọn việc tiếp | | | | |
+| [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh | `team/T-082` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
+| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Thợ Máy · T-083 lỗi chữ alt ảnh AI | `team/T-083` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
+| [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | GĐ3: trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2) | Họa Sĩ · T-084 Cài đặt ảnh không in đường dẫn | `team/T-084` | ⏳ **27/10 17:35 Họa Sĩ đang làm** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
-| [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | Sửa câu báo đọc ảnh khi bị tráo thư mục (SL-T080-1, -2, -L-1). Thấp, sau T-056 | Thợ Máy | T-080 gộp; T-056 xong |
-| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | Dọn lỗi chữ nhỏ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1). Thấp, sau T-056 | Thợ Máy | T-081 gộp; T-056 xong |
-| [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | Trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2, có từ trước). Thấp, sau T-056 | Họa Sĩ | T-056 gộp |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật một bài nháp, ghi SEO lên site (có chủ dự án) | Chỉ Huy, Thợ Máy | T-042 gộp; chủ dự án bật Abilities, tạo tài khoản Biên tập viên |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |

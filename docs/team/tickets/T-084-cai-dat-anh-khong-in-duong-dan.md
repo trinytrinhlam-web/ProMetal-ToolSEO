@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (sau T-056) |
 | Phụ thuộc | T-056 đã gộp vào `main` |
-| Trạng thái | Mới (chờ T-056 gộp) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ U1, U2.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo đề xuất của Họa Sĩ T-056; chủ dự án duyệt 2026-10-24.
+- 2026-10-27 17:35 (Chỉ Huy B): chủ dự án duyệt làm ngay. Nhánh `team/T-084` từ `main` `b60054f`, worktree `wt-T-084`; giao Họa Sĩ (phiên mới). Chạy song song T-082, T-083, T-084 (khác file).

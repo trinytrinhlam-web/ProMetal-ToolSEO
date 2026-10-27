@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (làm sau T-056; không chặn T-056) |
 | Phụ thuộc | T-081 đã gộp vào `main`; T-056 xong |
-| Trạng thái | Mới (chờ T-081 gộp và T-056 xong) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -55,3 +55,4 @@ W3 (mục 2.3), A3 theo mặc định.
 ## Ghi chú của Chỉ Huy
 
 - Lập theo khuyến nghị gom của Lá Chắn T-068 và Soi Lỗi T-081; chủ dự án duyệt 2026-10-23.
+- 2026-10-27 17:35 (Chỉ Huy B): chủ dự án duyệt làm ngay. Nhánh `team/T-083` từ `main` `b60054f`, worktree `wt-T-083`; giao Thợ Máy (phiên mới). Chạy song song T-082, T-083, T-084 (khác file).
