@@ -87,6 +87,8 @@ Anh dặn: vấn đề nào chưa giải quyết được thì ghi lại để s
 
 9. **Thử lại một bài nháp có một ảnh** sau khi gộp T-059 bước 7 (ảnh trong bài không còn bản thu nhỏ mất GPS): Chỉ Huy tạo bài thử bằng app khi anh có mặt, kiểm nguồn trang chỉ còn file đầy đủ và GPS còn; anh xóa bài và ảnh thử sau.
 
+10. **Sổ rủi ro (Lá Chắn T-059 hỏi):** tài khoản Biên tập viên `phan-mem-seo` mặc định có quyền chèn mã HTML tùy ý vào bài (`unfiltered_html`); cách giữ GPS ảnh trong bài dựa vào quyền này. Nếu mật khẩu ứng dụng bị lộ, người có nó chèn được mã chạy trên trang (chỉ trong bài, không vào được quản trị). Đề nghị ghi vào sổ rủi ro (giữ mật khẩu ứng dụng trong `.env`, thu hồi ngay khi nghi lộ). Anh đồng ý thì Chỉ Huy ghi sổ.
+
 Đã xong tối 27/10: SiteSEO lên 1.4.2 và bật AI Abilities; tài khoản Biên tập viên `phan-mem-seo` + mật khẩu ứng dụng riêng, Kiểm tra kết nối «SiteSEO: ghi được»; thử thật T-059 (ghi SEO, ảnh còn GPS, từ chối bài đã chuyển trạng thái); xóa ảnh thử; chọn (a) cho ảnh đại diện của theme (không GPS trên điện thoại).
 
 **Anh báo ngày 22/10: hiện chưa có máy Mac.** Bỏ việc nâng `uv` trên Mac. Máy Windows đã đủ: `certifi` mới, `uv` 0.13.4, nên bỏ lời dặn «không dùng app trên Wi-Fi công cộng» trên máy Windows. Khi có máy Mac: chạy `uv self update` rồi mở app bằng `run.command`.
