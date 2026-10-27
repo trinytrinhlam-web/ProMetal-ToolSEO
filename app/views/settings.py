@@ -1,5 +1,8 @@
 """Cài đặt: văn phong, mô hình AI (có thử mù), ảnh, kết nối."""
 
+import unicodedata
+from pathlib import Path
+
 import streamlit as st
 
 from seo_app import demo, env_file, ui
@@ -8,7 +11,9 @@ from seo_app.ai.base import EFFORTS, redact_secrets
 from seo_app.ai.registry import PROVIDERS
 from seo_app.config import load_settings
 from seo_app.content import blind_test, load_rules
+from seo_app.images.folders import ImageLibrary
 from seo_app.sanitize import escape_link_syntax
+from seo_app.text import escape_markdown
 
 S = st.session_state
 
@@ -431,6 +436,73 @@ def blind_models_tab(settings) -> None:
         _show_reveal()
 
 
+# ------------------------------------------------------------------ tab Ảnh: thư mục ảnh thật
+# Hiện như trang Soạn bài (T-084, ghi chú U2 của Lá Chắn T-048): chỉ tên thư mục gốc lấy từ
+# ``ImageLibrary.roots()``, không bao giờ in đường dẫn khai báo trong IMAGE_FOLDERS. Tên lấy từ máy
+# là dữ liệu chưa tin cậy: ký tự vô hình hiện thành «�», cô lập hướng chữ, escape Markdown, không
+# qua ``unsafe_allow_html`` (U1). ``folder_name_md`` và ``through_link`` chép theo ``name_md`` và
+# ``_through_link`` của ``views/write.py`` (file trang, không nhập được): sửa bên nào thì sửa cả
+# bên kia.
+
+# Ký tự không nhìn thấy hoặc làm tên trông khác thật (như ``_HIDDEN_IN_NAME`` của Soạn bài).
+_HIDDEN_IN_NAME = frozenset({"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"})
+
+
+def folder_name_md(name: str) -> str:
+    """Tên thư mục để hiện bằng Markdown: «�» thay ký tự vô hình, cô lập hướng chữ, escape."""
+    visible = "".join(
+        "\ufffd" if unicodedata.category(ch) in _HIDDEN_IN_NAME else ch for ch in name
+    )
+    return escape_markdown(f"\u2068{visible}\u2069")
+
+
+def through_link(folder: Path) -> bool:
+    """Đường dẫn thư mục gốc có tầng nào là lối tắt (symlink, junction) không."""
+    try:
+        folder = folder.expanduser()
+        return any(part.is_symlink() or part.is_junction() for part in (folder, *folder.parents))
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
+def image_folders_list(settings) -> None:
+    """Thư mục ảnh thật theo thứ tự khai báo: tên cuối, tìm thấy hay không, có đi qua lối tắt."""
+    st.markdown("**Thư mục ảnh thật**")
+    folders = settings.image_folders
+    if not folders:
+        st.caption("Chưa khai báo. Điền IMAGE_FOLDERS trong file .env.")
+        return
+    try:
+        roots = ImageLibrary.from_settings(settings).roots()
+    except (OSError, ValueError):
+        # Câu lỗi của hệ điều hành có đường dẫn đầy đủ: chỉ báo câu cố định.
+        st.warning(
+            "Không đọc được thư mục ảnh trên máy này (không có quyền hoặc ổ đĩa vừa bị ngắt). "
+            "Tải lại trang để thử lại."
+        )
+        return
+    lines, linked = [], False
+    for root in roots:
+        # ``root.message`` là câu cố định của ImageLibrary (số thứ tự, không có đường dẫn).
+        found = "✅ tìm thấy" if root.available else f"⚠️ {escape_markdown(root.message)}"
+        line = f"{root.index + 1}. {folder_name_md(root.label)} — {found}"
+        if through_link(folders[root.index]):
+            line += " · ↪️ đi qua lối tắt"
+            linked = True
+        lines.append(line)
+    st.markdown("\n".join(lines))
+    if linked:
+        st.warning(
+            "Thư mục ghi «đi qua lối tắt» là lối tắt (symlink/junction) hoặc nằm trong một lối "
+            "tắt: app đọc thư mục mà lối tắt trỏ tới. Hãy chắc đó đúng là thư mục ảnh bạn muốn "
+            "(khai báo thẳng ổ đĩa, ví dụ E:/, thì không bị)."
+        )
+    st.caption(
+        "Đọc từ IMAGE_FOLDERS trong file .env, theo thứ tự khai báo. App chỉ hiện tên thư mục "
+        "cuối, không hiện đường dẫn đầy đủ."
+    )
+
+
 # Đọc cấu hình sau các callback ở trên, nên trạng thái "đã khai báo" đổi ngay khi vừa lưu.
 settings = load_settings()
 
@@ -470,13 +542,7 @@ with models:
     blind_models_tab(settings)
 
 with images:
-    st.markdown("**Thư mục ảnh thật**")
-    if settings.image_folders:
-        for folder in settings.image_folders:
-            found = "✅ tìm thấy" if folder.is_dir() else "⚠️ không thấy trên máy này"
-            st.markdown(f"- `{folder}` — {found}")
-    else:
-        st.caption("Chưa khai báo. Điền IMAGE_FOLDERS trong file .env.")
+    image_folders_list(settings)
     st.text_input(
         "Phong cách chung cho ảnh AI (thêm vào mọi prompt)",
         "realistic photo, natural daylight, Vietnamese townhouse context, no text, no logo",
