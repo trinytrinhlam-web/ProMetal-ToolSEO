@@ -1,0 +1,40 @@
+# T-093 · Lá Chắn rà soát toàn bộ Giai đoạn 3 (ảnh) trước khi đóng giai đoạn
+
+| Mục | Nội dung |
+|---|---|
+| Giao cho | Lá Chắn (`la-chan`) |
+| Người giao | Chỉ Huy B |
+| Ngày giao | 2026-10-27 |
+| Giai đoạn | Giai đoạn 3 |
+| Mức ưu tiên | Trung bình |
+| Phụ thuộc | T-082, T-083, T-084 đã gộp |
+| Trạng thái | Chờ (sau T-082, T-083) |
+
+## Mục tiêu
+
+Một biên bản rà soát cả Giai đoạn 3 trên `main` (không chỉ từng phiếu): đọc thư mục ảnh, xử lý ảnh, thẻ ảnh, alt AI, chọn ảnh trên Soạn bài, gửi nháp kèm ảnh, trạng thái gửi; tìm lỗ hổng ở chỗ các phiếu nối với nhau, xác nhận sổ rủi ro (`docs/team/security.md` mục 6) còn đúng, liệt kê điều kiện còn mở.
+
+## Bối cảnh
+
+- Các biên bản Lá Chắn từ T-047 tới T-089 trong `docs/team/reports/`; sổ rủi ro `docs/team/security.md` mục 6.
+- Thử thật T-059 (27/10): ảnh lên site giữ GPS, WordPress tự thêm `srcset` (bản thu nhỏ mất GPS; ảnh trong bài sửa ở T-059 bước 7, ảnh đại diện của theme chủ dự án chấp nhận).
+
+## Phạm vi
+
+- Chỉ đọc code, chạy test, viết test `xfail(strict=True)` trong `tests/test_la_chan_t093.py` khi có lỗi (mã LC-T093-n). Không sửa code ứng dụng. Không gọi website thật.
+
+## Yêu cầu
+
+1. Danh sách điều kiện Lá Chắn còn mở của Giai đoạn 3: đóng hay chưa, phiếu nào giữ.
+2. Rà chéo các chỗ nối: đường ảnh từ thư mục → xử lý → AI alt → nháp → WordPress (F1, F2, A3, W2, W3, U1, U2).
+3. Sổ rủi ro mục 6 còn đúng không; đề xuất dòng mới nếu có (chủ dự án quyết ghi sổ).
+4. Kết luận giai đoạn: đóng được không, cần gì trước.
+
+## Tiêu chí xong
+
+- [ ] Yêu cầu 1–4
+- [ ] Biên bản `docs/team/reports/T-093-la-chan.md` (ghi «chạy tạm Claude Opus 5.5, cần kiểm lại bằng Claude Fable sau 01/11»)
+
+## Ghi chú của Chỉ Huy
+
+- Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi»; việc đã có trong kế hoạch («Lá Chắn rà cả Giai đoạn 3»).

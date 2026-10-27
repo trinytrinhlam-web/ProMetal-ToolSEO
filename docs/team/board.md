@@ -38,11 +38,17 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Thợ Máy · T-083 lỗi chữ alt ảnh AI | `team/T-083` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
 | [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | GĐ3: trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-084) | `team/T-084` | Họa Sĩ xong (`98feec1`; 11 test mới, 441 test trang Cài đặt qua). ⏳ **17:55 Soi Lỗi rút gọn** | [Họa Sĩ](reports/T-084-hoa-si.md) |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Thợ Máy · T-059 siết mã sau thử thật | `team/T-059` | 27/10 thử thật: ghi SEO qua Abilities, ảnh còn GPS, từ chối bài đã chuyển trạng thái: ĐẠT; `srcset` làm điện thoại nhận bản thu nhỏ mất GPS: chưa đạt. ⏳ **19:37 Thợ Máy bước 7** | |
+| [T-094](tickets/T-094-thiet-ke-giai-doan-5.md) | GĐ5: thiết kế kế hoạch, lịch, hẹn giờ và đăng bài (chỉ tài liệu; chia phiếu, câu hỏi cho chủ dự án) | Thợ Máy · T-094 thiết kế Giai đoạn 5 | `team/T-094` | ⏳ **27/10 19:53 Thợ Máy đang làm** | |
+| [T-095](tickets/T-095-readme-buoc-seo-tai-khoan-wordpress.md) | README: bước 4 SEO, tài khoản Biên tập viên và mật khẩu ứng dụng (bài học thử thật T-059) | Thư Ký · T-095 README bước SEO | `team/T-095` | ⏳ **27/10 19:53 Thư Ký đang làm** | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
+| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1). Thấp | Thợ Máy | Máy rảnh |
+| [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ trong chữ website (SL-T088-1), giới hạn trên mã bài. Thấp | Thợ Máy | T-059 bước 7 gộp (cùng `client.py`) |
+| [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Họa Sĩ | Máy rảnh |
+| [T-093](tickets/T-093-la-chan-ra-soat-giai-doan-3.md) | Lá Chắn rà soát toàn bộ Giai đoạn 3 trước khi đóng giai đoạn | Lá Chắn | T-082, T-083 gộp |
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
@@ -157,4 +163,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-090
+## Số phiếu tiếp theo: T-096
