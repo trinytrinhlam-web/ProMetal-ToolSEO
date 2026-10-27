@@ -36,7 +36,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 |---|---|---|---|---|---|
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh | `team/T-082` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Thợ Máy · T-083 lỗi chữ alt ảnh AI | `team/T-083` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
-| [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | GĐ3: trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2) | Họa Sĩ · T-084 Cài đặt ảnh không in đường dẫn | `team/T-084` | ⏳ **27/10 17:35 Họa Sĩ đang làm** | |
+| [T-084](tickets/T-084-cai-dat-anh-khong-in-duong-dan.md) | GĐ3: trang Cài đặt → Ảnh không in đường dẫn đầy đủ (U2) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-084) | `team/T-084` | Họa Sĩ xong (`98feec1`; 11 test mới, 441 test trang Cài đặt qua). ⏳ **17:55 Soi Lỗi rút gọn** | [Họa Sĩ](reports/T-084-hoa-si.md) |
 
 ## Chờ
 
