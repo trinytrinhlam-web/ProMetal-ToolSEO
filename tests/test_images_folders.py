@@ -1658,9 +1658,9 @@ def test_resolve_through_swapped_level_is_reported_as_changed(tmp_path, monkeypa
         "trong-goc": None,
         "anh-em-kelvin": base / "Ảnh Kho",
     }[target]
+    if target == "anh-em-kelvin" and outside.exists():  # APFS (Mac): dấu Kelvin là "K"
+        pytest.skip("ổ coi hai tên là một")
     move_to = root / "y" if outside is None else write(outside / "y" / "a.jpg").parent
-    if target == "anh-em-kelvin":
-        assert len(os.listdir(base)) == 2, "ổ coi hai tên là một"
     x = root / "x"
     real_resolve, real_lstat = Path.resolve, os.lstat
     looked: list[str] = []
@@ -1704,6 +1704,35 @@ def test_resolve_to_other_name_of_same_file_keeps_alias_message(tmp_path, monkey
     monkeypatch.setattr(Path, "resolve", other_name)
     exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
     assert "tên ngắn hoặc tên khác" in str(exc)
+
+
+@pytest.mark.parametrize("call", ["read_image_bytes", "stat_image", "list_folder"])
+def test_folder_renamed_during_resolve_is_reported_as_changed(tmp_path, monkeypatch, call):
+    """SL-T082-2: ``x`` bị đổi tên thành ``x-moi`` (trong gốc) đúng lúc ``resolve`` chạy, nên
+    ``resolve`` trả đường dẫn theo tên mới. Mục ở tên mới đúng là mục vừa ``lstat`` (dời theo thư
+    mục) nhưng chữ đã gõ không còn trỏ tới nó: thư mục vừa bị thay đổi, không phải tên ngắn. Báo
+    "vừa bị thay đổi", vẫn từ chối như liên kết."""
+    root = tmp_path / "anh"
+    write(root / "x" / "a.jpg")
+    root = root.resolve()
+    x, renamed = root / "x", root / "x-moi"
+    real_resolve = Path.resolve
+
+    def renaming_resolve(self, strict=False):
+        if self == x or x in self.parents:
+            if x.exists():
+                x.rename(renamed)
+            self = renamed.joinpath(*self.relative_to(x).parts)
+        return real_resolve(self, strict=strict)
+
+    lib = ImageLibrary([root])
+    monkeypatch.setattr(Path, "resolve", renaming_resolve)
+    try:
+        exc = raises_safely(lambda: _call(lib, call, "x/a.jpg"), tmp_path)
+    finally:
+        if renamed.exists():
+            renamed.rename(x)
+    assert isinstance(exc, folders._LinkError) and "thay đổi" in str(exc)
 
 
 @windows_only

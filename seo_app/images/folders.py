@@ -668,8 +668,9 @@ class ImageLibrary:
         Vòng ``lstat`` vừa thấy mọi tầng là mục thật (không liên kết), tên an toàn (không ``..``),
         gốc đã ``resolve``: ``resolve`` ra ngoài gốc, hay ra một mục khác mục cuối vừa ``lstat``,
         chỉ vì một tầng vừa bị tráo thành liên kết, nên báo "vừa bị thay đổi" (SL-T080-L-1), vẫn từ
-        chối (``_ChangedError`` là ``_LinkError``). Tên ngắn 8.3 của Windows (cùng mục, tên khác)
-        vẫn là "tên ngắn hoặc tên khác".
+        chối (``_ChangedError`` là ``_LinkError``); thư mục vừa bị đổi tên (chữ đã gõ không còn trỏ
+        tới mục) cũng vậy. Tên ngắn 8.3 của Windows (cùng mục, tên khác) vẫn là "tên ngắn hoặc tên
+        khác".
         """
         current = root
         last: os.stat_result | None = None
@@ -717,10 +718,12 @@ class ImageLibrary:
         if len(actual) != len(parts) or any(
             _name_key(a) != _name_key(b) for a, b in zip(actual, parts, strict=False)
         ):
-            # Tên ngắn là tên khác của chính mục vừa ``lstat``; ``resolve`` ra mục khác (hay mục
-            # không còn) là một tầng vừa bị tráo. Hỏi mục theo tên ghép vào gốc, không theo
-            # ``resolved`` (có thể nằm trong thư mục anh em của gốc).
-            if _still_same_entry(root.joinpath(*actual), last):
+            # Tên ngắn là tên khác của chính mục vừa ``lstat``: cả tên ``resolve`` trả lẫn chữ đã
+            # gõ vẫn trỏ tới mục đó. ``resolve`` ra mục khác (hay mục không còn) là một tầng vừa
+            # bị tráo; chữ đã gõ không còn trỏ tới mục là thư mục vừa bị đổi tên (SL-T082-2).
+            # Hỏi mục theo tên ghép vào gốc, không theo ``resolved`` (có thể nằm trong thư mục anh
+            # em của gốc).
+            if _still_same_entry(root.joinpath(*actual), last) and _still_same_entry(current, last):
                 raise ImageFolderError(_MSG_ALIAS)
             raise _ChangedError()
         return resolved, last

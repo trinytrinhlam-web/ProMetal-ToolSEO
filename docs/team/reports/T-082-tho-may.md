@@ -122,3 +122,47 @@ $ uv run ruff format --check tests/test_images_folders.py seo_app/images/folders
 
 1. **Chỉ Huy:** trước lượt cloud Linux (khi chủ dự án đồng ý) hay khi chạy trên Mac thật, chạy `tests/test_soi_loi_t080_linux.py` cùng `tests/test_images_folders.py` với `-rsxX`; 6 ca SL-T080-L-1 XPASS thì gỡ dấu `xfail` (chỉ xóa dấu).
 2. **Thợ Máy (phiếu sau, nếu Chỉ Huy thấy cần):** Linux trả ELOOP khi mở file vừa thành symlink (`_open_image`, `O_NOFOLLOW`) đang báo "Không mở được ảnh (không có quyền hoặc file vừa bị đổi)."; Soi Lỗi Linux gợi ý tách thành "Ảnh vừa bị thay đổi…". Tôi không làm vì là gợi ý tùy chọn, không có test nào và không kiểm được trên Linux. LC-T048-2, -3 (liệt kê qua chính handle đang giữ) cũng còn để ngỏ.
+
+## Lượt 2 (2026-10-27 tới 2026-10-28, sau Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN `7e2b4b3`)
+
+Chỉ Huy B giao sửa 2 lỗi Thấp của [báo cáo Soi Lỗi T-082](T-082-soi-loi.md), trước khi qua Lá Chắn. Nhánh từ `7e2b4b3`.
+
+### Đã sửa
+
+| Lỗi | Sửa | File |
+|---|---|---|
+| **SL-T082-1** (chỉ test, Mac): ca `anh-em-kelvin` tạo thư mục `Ảnh Kho` (dấu Kelvin) cạnh `Ảnh kho`; APFS mặc định coi hai tên là một nên lệnh tạo đích ghi đè ảnh trong gốc rồi `assert` hỏng oan | Theo gợi ý của Soi Lỗi: trước khi ghi đích, ổ đã thấy tên dấu Kelvin (tức coi hai tên là một) thì `pytest.skip("ổ coi hai tên là một")`; bỏ `assert` sau khi ghi. Trên Windows (NTFS) và Linux (ext4) ca vẫn chạy | `tests/test_images_folders.py` (test của chính T-082) |
+| **SL-T082-2** (Windows, câu báo): thư mục `x` bị **đổi tên** trong gốc đúng lúc `resolve` giữ handle, `resolve` trả đường dẫn theo tên mới; mục ở tên mới đúng là mục vừa `lstat` nên app báo "tên ngắn hoặc tên khác" | Theo gợi ý của Soi Lỗi: ở nhánh tên khác của `_resolve_inside`, chỉ giữ câu "tên ngắn hoặc tên khác" khi **cả** mục ở tên `resolve` trả **lẫn** mục ở chữ đã gõ (`gốc/parts`) vẫn là mục vừa `lstat` (`_still_same_entry` cả hai); chữ đã gõ không còn trỏ tới mục → `_ChangedError` ("Thư mục vừa bị thay đổi…"). Vẫn từ chối. Tên ngắn 8.3 thật và hard link thỏa cả hai nên giữ câu cũ. Thêm docstring | `seo_app/images/folders.py` |
+
+Thêm 3 test `test_folder_renamed_during_resolve_is_reported_as_changed` (đọc, `stat`, xem thư mục; chạy cả trên Mac/Linux): `resolve` giả đổi tên `x` thành `x-moi` trong gốc rồi trả đường dẫn theo tên mới, mong "vừa bị thay đổi" và `_LinkError`. Không sửa test nào của agent khác.
+
+Giới hạn (như Soi Lỗi đã nêu, chấp nhận): thư mục bị đổi tên rồi trả lại tên cũ trước bước kiểm này thì vẫn ra câu "tên ngắn hoặc tên khác" (không phân biệt được).
+
+### Bằng chứng lượt 2
+
+```
+# Test mới trên bản lượt 1 (git archive HEAD = 7e2b4b3, chỉ thay tests/test_images_folders.py):
+3 failed (test_folder_renamed_during_resolve_is_reported_as_changed ×3: ra "tên ngắn hoặc tên khác"), 12 passed
+  12 qua ở cả hai bản: 9 ca resolve qua tầng bị tráo, 2 ca hard link, 1 ca tên ngắn 8.3 thật (giữ câu "tên ngắn")
+
+# Lệnh test của phiếu, code lượt 2:
+$ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py tests/test_images_folders_t063.py tests/test_soi_loi_t079.py tests/test_la_chan_t079.py tests/test_soi_loi_t080.py -rfxX
+448 passed, 24 skipped, 3 xfailed in 53.63s
+  so lượt 1: +3 ca mới; 3 xfail = R2-1 ×2, R2-2 (T-048); 0 hỏng, 0 XPASS
+
+# Các file test khác gọi tới folders.py + test_app_pages.py (cùng danh sách lượt 1):
+1 failed, 2184 passed, 27 skipped, 11 xfailed in 3328.90s (0:55:28)
+  1 hỏng: tests/test_app_images.py::test_spot_is_real_picker_and_nothing_scanned_until_opened,
+  "AppTest script run timed out after 30(s)" (máy bận: cùng bộ test lượt 1 chạy 23 phút, lượt này 55 phút)
+  Chạy lại riêng ca đó: 1 passed; chạy lại cả tests/test_app_images.py: 58 passed
+  11 xfail như lượt 1 (SL-T067 ×4, SL-T070-4 ×7), 0 XPASS
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check seo_app/images/folders.py tests/test_images_folders.py
+2 files already formatted
+```
+
+- Ép thắng chạy lại trên code lượt 2: `lc79_forced.py` (ổ máy) 7/7 kiểu đích, `lc80_forced_unc.py` (`\\localhost\C$`) 6/6: **0 lọt**, cả đọc lẫn `stat` đều "Ảnh vừa bị thay đổi…", thư mục sạch sau. `sl80_forced_win.py` (Soi Lỗi) 396 ca: 0 lọt nội dung, cỡ, tên; 0 câu tả file ngoài; 0 lộ đường dẫn; sạch sau 396/396; bảng câu báo giống hệt lượt 1 (phép ép này không đổi tên thư mục trong gốc nên không chạm SL-T082-2).
+- Chưa chạy lại phép tráo thật (đua) để đếm câu "tên ngắn" (Soi Lỗi đề nghị tự chạy lại sau khi sửa).
+- 6 ca Linux/Mac của `tests/test_soi_loi_t080_linux.py` vẫn giữ `xfail`, chưa kiểm được (như lượt 1, Rủi ro 2); 16 ca mới chạy được trên Mac/Linux (13 lượt 1 + 3 lượt 2) cũng chưa ai chạy ở đó.
