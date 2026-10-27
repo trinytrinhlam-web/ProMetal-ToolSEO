@@ -669,9 +669,10 @@ def test_place_links_on_sanitized_html_never_reopens_shortcodes_fuzz():
     assert applied > 100
 
 
-# ================================================================== lỗi tìm thấy (xfail)
-
-_SL1 = "SL-T096-1: dữ liệu màn hình xác nhận chạy bậc hai (email trần, dòng chỉ có địa chỉ)"
+# ================================================================== lỗi lượt 1 (đã sửa ở lượt 2)
+#
+# SL-T096-1 → 7 tìm ở lượt 1, Thợ Máy sửa ở lượt 2: các test dưới chuyển XPASS rồi được gỡ dấu
+# ``xfail`` (không đổi ``assert``), nay canh để lỗi không quay lại. Docstring tả lỗi lúc tìm ra.
 
 
 @pytest.mark.parametrize(
@@ -698,9 +699,6 @@ def test_sl1_embedded_urls_linear():
 def test_sl1_build_article_linear_on_long_word():
     """Ảnh hưởng tới người dùng: dựng bài (mỗi lần hiện màn hình xác nhận) chậm theo bình phương."""
     assert_scales_linearly(build, lambda k: "a" * (k * 2500), label="dựng bài")
-
-
-_SL2 = "SL-T096-2: bước SEO nhận cụm từ có ký hiệu Markdown mà HTML cuối không có"
 
 
 @pytest.mark.parametrize(
@@ -831,3 +829,59 @@ def test_sl7_backtick_line_with_backticks_after_is_not_a_fence(first_line):
     built = build(f"{first_line}\n\nĐoạn sau là chữ thường.")
     assert "<p>Đoạn sau là chữ thường.</p>" in built.html
     assert "<pre>" not in built.html
+
+
+# ================================================================== lỗi lượt 2 (xfail)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T096-8: tiêu đề trong trích dẫn, mục danh sách: bước SEO nhận, bộ dựng bỏ link",
+)
+@pytest.mark.parametrize(
+    "body, anchor",
+    [
+        ("> ### Mẹo bảo dưỡng cửa\n> Lau ray mỗi tháng.", "Mẹo bảo dưỡng cửa"),
+        ("- ### Mẹo bảo dưỡng cửa\n- Lau ray mỗi tháng.", "Mẹo bảo dưỡng cửa"),
+        ("> Mẹo bảo dưỡng cửa\n> ---\n> Lau ray mỗi tháng.", "Mẹo bảo dưỡng cửa"),
+    ],
+    ids=["trong-trích-dẫn", "trong-mục-danh-sách", "gạch-dưới-trong-trích-dẫn"],
+)
+def test_sl8_heading_inside_quote_or_list_is_not_accepted_then_dropped(body, anchor):
+    """Phần còn sót của SL-T096-2: ``markdown_blocks`` coi «> ### …», «- ### …» (và dòng gạch
+    dưới trong trích dẫn) là chữ đoạn văn, bộ chuyển dựng thành ``<h3>`` trong ``<blockquote>``,
+    ``<li>``; ``place_links`` không chèn vào tiêu đề nên link bị bỏ khi dựng, link bắt buộc thành
+    Chặn «Thiếu link bắt buộc». Mong đợi như SL-T096-2: bước SEO nhận thì bộ dựng chèn được."""
+    sections = [Section(heading="Mở bài", body=body)]
+    review = check_suggestions(
+        LinkSuggestions(links=[LinkSuggestion(post_id=10, section=0, anchor=anchor)]),
+        sections,
+        CANDS,
+    )
+    built = build(body, links=review.links, required_ids=[10])
+    assert not review.links or built.review.skipped_links == ()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T096-9: không ảnh nào đánh dấu ảnh đại diện: client lấy ảnh đầu, dữ liệu xác "
+    "nhận báo không có",
+)
+def test_sl9_review_says_which_image_becomes_featured():
+    """``create_draft_with_images`` lấy ảnh đầu tiên trong bài làm ảnh đại diện khi không ảnh nào
+    ``featured`` (``wordpress/client.py:1410``). Bộ dựng giữ ``featured=False`` cho mọi ảnh: màn
+    hình xác nhận (thiết kế 3.5: «ảnh đại diện») và mã băm nói không có ảnh đại diện, còn website
+    nhận ảnh đầu. Mong đợi: dữ liệu xác nhận chỉ đúng ảnh sẽ làm ảnh đại diện, hoặc báo chưa
+    chọn."""
+    built = build_article(
+        title="Bài thử",
+        parts=[ArticlePart("", "Mở bài."), ArticlePart("Mục hai", "Thân mục hai.")],
+        index=INDEX,
+        images=[
+            ArticleImage(section=0, sha256="a" * 64, alt="Ảnh mở bài"),
+            ArticleImage(section=1, sha256="b" * 64, alt="Ảnh mục hai"),
+        ],
+    )
+    shown = [row.section for row in built.review.images if row.featured]
+    warned = any("ảnh đại diện" in problem.message for problem in built.review.problems)
+    assert shown == [0] or warned

@@ -9,6 +9,7 @@
 | Mức kiểm | Rút gọn |
 | Kết quả | Hoàn thành |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: chuyển Lá Chắn được. 0 Nghiêm trọng, 0 Cao, **1 Trung bình** (SL-T096-1), **6 Thấp** (SL-T096-2 → 7). **Phải sửa trước Lá Chắn: SL-T096-1.** Mỗi lỗi có test `xfail(strict=True)` trong `tests/test_soi_loi_t096.py` |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN** (đầu nhánh `c961000`): 7 lỗi lượt 1 đóng thật. 2 lỗi mới **Thấp** (SL-T096-8, -9), không lỗi nào phải sửa trước Lá Chắn. **Chuyển Lá Chắn được.** Xem mục «Lượt 2» cuối báo cáo |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -192,3 +193,119 @@ $ for i in 1..5; uv run pytest tests/test_publish_markdown.py tests/test_soi_loi
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (xem lại nhanh, 2026-10-28, đầu nhánh `c961000`)
+
+### Tóm tắt lượt 2 (cho chủ dự án)
+
+- **Cả 7 lỗi lượt 1 đã sửa thật.** 25 ca test của tôi trước đây đỏ (đánh dấu «lỗi chờ sửa») nay qua; Thợ Máy chỉ gỡ dấu, không đổi điều kiện kiểm.
+- **Không còn chậm theo bình phương.** Chữ 20.000 ký tự hay 20.000 dòng dựng xong trong vài phần mười giây tới vài giây; gấp 4 độ dài thì chậm khoảng 4 lần.
+- **Link nội bộ trên 20 bài thật:** 6.930 link bước SEO nhận, **cả 6.930 đều chèn được** (lượt 1 bị bỏ 111 link vì dấu gạch đầu dòng).
+- **Không lọt link hay HTML mới**, kể cả với cách in lại chữ mới của phần chèn link.
+- **2 lỗi Thấp mới**, đều an toàn, không cần sửa trước khi qua Lá Chắn:
+  - tiêu đề nằm **trong** khung trích dẫn hay gạch đầu dòng vẫn được bước SEO nhận làm chỗ đặt link rồi bị bỏ khi gửi (dạng hiếm);
+  - bài có ảnh mà chưa chọn ảnh đại diện thì website tự lấy ảnh đầu, nhưng màn hình xác nhận lại báo «không có ảnh đại diện».
+
+### 7 lỗi lượt 1: đóng thật
+
+| Mã | Soi Lỗi kiểm | Kết quả |
+|---|---|---|
+| SL-T096-1 | 4 test tốc độ (nay qua); đo lại 25 dạng đầu vào xấu ở 20.000 và 80.000 ký tự cho cả `build_article` lẫn `check_suggestions`; đo 5 MB | **Đóng** (số đo ở dưới) |
+| SL-T096-2 | 9 ca (nay qua); thử nghiệm 20 bài thật **tính cả** cụm từ dính dấu `- ` | **Đóng**: 6.930/6.930 link chèn được |
+| SL-T096-3 | 1 ca (nay qua): một mục, dạng chữ thật | **Đóng** |
+| SL-T096-4 | 4 ca (nay qua): tiêu đề, đoạn trích, alt, chú thích | **Đóng** |
+| SL-T096-5 | 3 ca (nay qua): khác byte, alt, ảnh đại diện → `BuildError` | **Đóng** |
+| SL-T096-6 | 1 ca (nay qua); thêm thử ngẫu nhiên 40.000 lần `place_links` (HTML thô và đã lọc, đủ kiểu `&#91;`, `&lsqb;`, `&amp` không «;», `&ampx`, `&NotEqualTilde;`…): chữ người đọc thấy không đổi, không lần nào sinh thêm `[` `]` trần, 22.784 link được chèn | **Đóng** |
+| SL-T096-7 | 3 ca (nay qua) | **Đóng** |
+
+Gỡ `xfail` đúng R5: diff `5d88877..c961000` của `tests/test_soi_loi_t096.py` chỉ bỏ 10 dòng `@pytest.mark.xfail(…)`, không đổi `assert` nào. Ở lượt này tôi dọn 2 hằng chữ `_SL1`, `_SL2` không còn dùng và ghi chú đầu nhóm test (file của tôi).
+
+### Tốc độ (thời gian CPU, máy Windows đang chạy song song agent khác)
+
+| Đầu vào | `check_suggestions` (bước SEO) | `build_article` (bộ dựng) |
+|---|---|---|
+| Từ dài 20.000 ký tự / 80.000 ký tự | 0,03 s / 0,06 s | 0,02 s / 0,06 s |
+| 20.000 dòng gạch đầu dòng (80.000 ký tự) | 0,33 s | 4,0 s |
+| 20.000 dòng trích dẫn `>` | 0,11 s | 0,19 s |
+| 20.000 dòng có hai dấu cách cuối dòng | 0,11 s | 1,8 s |
+| 80.000 dòng trống trong khối mã | 0,03 s | 0,16 s |
+| 25 dạng xấu, 20.000 → 80.000 ký tự | tỉ lệ 1–6 (tuyến tính) | tỉ lệ 2–5 (tuyến tính) |
+| **5 MB** bài chữ thường | 3,2 s | 20,6 s |
+| 5 MB một «từ» liền | 4,1 s | 4,4 s |
+| 5 MB dòng trống trong khối mã | 3,1 s | 11,9 s |
+| 5 MB dòng gạch đầu dòng (1,3 triệu mục) | 20,5 s | 236 s |
+| 5 MB `` `a` `` lặp / bảng / danh sách lồng | 4,8 / 7,2 / 10,4 s | 180 / 142 / 177 s |
+
+Tất cả tuyến tính (vài dạng chạy dưới 16 ms ở 20.000 ký tự thì đồng hồ CPU của Windows làm tròn về 0, tỉ lệ đo ra vô nghĩa; các dạng đó vẫn dưới 0,1 s ở 80.000 ký tự). Dạng độc cực đoan 5 MB mất 2–4 phút: xem «Ghi nhận lượt 2».
+
+### Không lùi T-039, T-041 (mọi file test dùng `links.py`)
+
+Nơi gọi các hàm đổi: `markdown_blocks`, `_anchor_words` chỉ có `check_suggestions`, `place_links` gọi (cùng file); `check_suggestions` chạy ở bước SEO qua `ContentWriter.internal_links` (`seo_app/content/workflow.py:349`); `place_links` chỉ có `seo_app/publish/render.py` gọi; `seo_app/storage/drafts.py` chỉ dùng `InternalLink` (không đổi). Link cũ đã lưu trong nháp có dạng «- Kéo cửa…» nay vẫn chèn được vì `place_links` đọc cụm từ qua `_anchor_words`.
+
+```
+$ uv run pytest tests/test_la_chan_t039.py tests/test_onpage_links.py tests/test_publish_markdown.py \
+    tests/test_publish_render.py tests/test_soi_loi_t039.py tests/test_soi_loi_t041.py \
+    tests/test_soi_loi_t096.py tests/test_t040_prompts.py tests/test_t041_drafts_seo.py \
+    tests/test_t041_links_ai.py tests/test_t041_seo_ui.py tests/test_la_chan_t041.py tests/test_app_pages.py
+1132 passed, 7 xfailed in 218.48s (0:03:38)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+7 `xfail` = 4 ca mới của lượt này (SL-T096-8 × 3, SL-T096-9) + 3 ca có từ trước của SL-T041-8 (emoji mới, phiếu T-090). Gồm 3 ca LC-T039-2 (`test_la_chan_t039.py`), 1.000 mẫu ngẫu nhiên của `test_soi_loi_t039.py`, giao diện bước SEO T-041 và mọi trang app.
+
+### Không lọt link, HTML mới (chạy lại các bộ thử lượt 1 trên code lượt 2)
+
+- `tests/test_soi_loi_t096.py`: 188 qua (gồm 34 mẫu độc × 2 dạng qua cả bộ dựng, 63 ca địa chỉ đứng một mình bị Chặn ở 3 hình thức, mã băm giữa 2 tiến trình), 4 `xfail` mới.
+- Ngoài repo: 86/86 lần dựng với chữ độc sạch; 4.000 bài ngẫu nhiên không ném lỗi, mã băm ổn định, HTML luôn sạch; 32 dạng địa chỉ đứng một mình cho đúng kết quả như lượt 1 (một mục cho địa chỉ có `&`).
+- 30 dạng chỗ dễ lệch giữa bước SEO và bộ dựng (trích dẫn, danh sách, bảng lồng nhau; rào mã; `\`, `&nbsp;`, `&amp;` trong `mã`; thẻ HTML dạng chữ; dấu mục 10 chữ số…): chỉ 3 dạng lệch còn lại, là SL-T096-8.
+
+### Lỗi mới (lượt 2)
+
+| Mã | Mức | Tóm tắt | Test |
+|---|---|---|---|
+| SL-T096-8 | Thấp | Tiêu đề **trong** trích dẫn hay mục danh sách («> ### …», «- ### …», dòng gạch dưới trong trích dẫn): bước SEO nhận cụm từ ở đó, bộ dựng dựng `<h3>` nên bỏ link; link bắt buộc thành Chặn | `test_sl8_*` (3) |
+| SL-T096-9 | Thấp | Không ảnh nào `featured`: client lấy ảnh đầu tiên làm ảnh đại diện (`wordpress/client.py:1410`), dữ liệu xác nhận và mã băm lại ghi «không có ảnh đại diện» | `test_sl9_*` (1) |
+
+#### SL-T096-8 (Thấp) · Tiêu đề trong trích dẫn, mục danh sách
+
+- **Tái hiện:** thân `"> ### Mẹo bảo dưỡng cửa\n> Lau ray mỗi tháng."`, AI chọn «Mẹo bảo dưỡng cửa» → `check_suggestions` nhận; `build_article` ra `<blockquote><h3>Mẹo bảo dưỡng cửa</h3>…` và báo «không thấy cụm từ ở chỗ chèn được»; là trang bắt buộc thì Chặn «Thiếu link bắt buộc». Tương tự `"- ### Mẹo bảo dưỡng cửa\n- Lau ray mỗi tháng."` và `"> Mẹo bảo dưỡng cửa\n> ---\n> Lau ray mỗi tháng."`.
+- **Nguyên nhân:** `markdown_blocks` chỉ nhận tiêu đề ở đầu dòng (dòng bắt đầu bằng «>» hay dấu mục danh sách là chữ đoạn văn), còn bộ chuyển đọc phần trong trích dẫn, mục danh sách như một thân riêng (`_blocks(quoted)`, `_blocks(content)`) nên thấy tiêu đề.
+- **Mong đợi:** như SL-T096-2: cụm từ bước SEO nhận thì bộ dựng chèn được, hoặc bước SEO bỏ ngay. Hướng an toàn (không chèn vào tiêu đề), dạng viết hiếm (trên 20 bài thật không gặp).
+
+#### SL-T096-9 (Thấp) · Ảnh đại diện mặc định không hiện ở màn hình xác nhận
+
+- **Tái hiện:** `build_article(…, images=[ArticleImage(section=0, …), ArticleImage(section=1, …)])` không ảnh nào `featured=True` → `review.images` cả hai `featured=False`, không câu báo nào; `content_parts` nhận `DraftImage` cũng `featured=False` (khớp nhau), rồi `create_draft_with_images` đặt **ảnh phần 0** làm ảnh đại diện (`_plan_draft_images`: `chosen[0] if chosen else planned[0].source`).
+- **Mong đợi:** thiết kế 3.5 (hàng «Bài»: «ảnh đại diện»), LC-T094-7, -8: dữ liệu xác nhận và mã băm nói đúng ảnh website sẽ dùng. Sửa gợi ý: bộ dựng đánh dấu ảnh đầu (theo thứ tự phần) là ảnh đại diện khi không ảnh nào được chọn, như client; hoặc báo «chưa chọn ảnh đại diện».
+- **Thực tế:** chủ dự án tick xác nhận mà không thấy ảnh nào sẽ thành ảnh đại diện công khai. Ảnh vẫn là ảnh đã duyệt (byte, alt đúng), không phải lỗ bảo mật.
+
+### Ghi nhận lượt 2 (không xếp lỗi)
+
+- **5 MB chữ độc dựng 2–4 phút** (tuyến tính, hằng số lớn ở danh sách, bảng, `mã`: khoảng 0,2 ms mỗi mục danh sách). Chữ AI bị giới hạn số token nên thực tế dưới vài trăm KB (200 KB dạng nặng nhất khoảng 10 giây); chỉ người dùng tự dán chữ cực lớn mới gặp. Nên có giới hạn cỡ thân bài khi dựng (ví dụ 500 KB một phần, báo câu cố định) ở T-102 hoặc lượt sau.
+- **Rào mã đóng khác CommonMark** (có từ lượt 1, cả hai nơi cùng cách nên link vẫn khớp): dòng «```python» bên trong khối mã đóng khối (CommonMark: rào đóng không có chữ phía sau), rào 4 dấu «````» bị đóng bởi «```» (CommonMark: phải đủ 4). Bài trên website khác bản xem trước ở dạng hiếm này.
+- `_anchor_words` bỏ một dấu mục ở đầu cụm từ cả khi dấu đó là gạch ngang trong câu («Nhiệt độ - Kéo cửa»): link bọc phần chữ sau dấu, vẫn đúng bài, vô hại.
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest tests/test_soi_loi_t096.py tests/test_publish_markdown.py tests/test_publish_render.py   # trước khi thêm test mới
+347 passed in 35.23s
+
+$ uv run pytest tests/test_soi_loi_t096.py
+188 passed, 4 xfailed in 18.28s
+
+$ uv run pytest tests/test_soi_loi_t096.py --runxfail -k "sl8 or sl9"
+4 failed   # đỏ đúng lý do: 3 ca «Link 1 … không thấy cụm từ…» (SL-T096-8), «assert [] == [0]» (SL-T096-9)
+```
+
+Script ngoài repo (thư mục ghi chú chung `T-096-soi-loi-scripts/`): `corpus3.py` (20 bài thật), `perf3.py`, `perf5mb.py` (tốc độ), `probe5.py` (30 dạng lệch, ảnh đại diện), `reprint1.py` (in lại theo ký tự), `hostile1.py`, `fuzz1.py`, `embed1.py`.
+
+### Đề xuất lượt 2
+
+- **Chuyển Lá Chắn ngay.** SL-T096-8, -9 là Thấp, sửa ở T-102 hoặc lượt dọn sau:
+  - SL-T096-9 nên sửa trước khi T-102 nối màn hình xác nhận: bộ dựng đánh dấu ảnh đại diện mặc định như client;
+  - SL-T096-8: `markdown_blocks` đọc phần sau «>» và sau dấu mục danh sách như bộ chuyển (hoặc bỏ dòng tiêu đề ở đó).
+- T-102: giới hạn cỡ bài khi dựng (Ghi nhận lượt 2).
