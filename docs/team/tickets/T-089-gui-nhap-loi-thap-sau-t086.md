@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Gộp `main` (chạy toàn bộ test); Họa Sĩ lượt 4 sửa LC-T089-1 |
+| Trạng thái | Lượt 1–3 đã gộp `main`; Lá Chắn xem lại lượt 4 |
 
 ## Mục tiêu
 
@@ -61,3 +61,4 @@ W1, W2, U1, F2.
 - 2026-10-27 (Chỉ Huy B): **Soi Lỗi xem lại lượt 2 ĐẠT CÓ ĐIỀU KIỆN** (`c636e9b`): SL-T089-1 đóng thật (6 biến thể, hai phiên thật), Ghi nhận 1 Lá Chắn đạt, không lùi ca cũ; 1 Thấp mới **SL-T089-2** (lỗi lùi của lượt 2: nháp mất dòng trạng thái trong lúc gửi thì `record_outcome` bỏ kết quả bài đã tạo; 2 `xfail`). Giao **Họa Sĩ lượt 3** (cách sửa Soi Lỗi gợi ý, khoảng 2 dòng, đã thử trên bản sao) và sửa câu báo; sau đó **Lá Chắn xem lại** lượt 2 + 3 (2 `xfail` của Soi Lỗi là phép kiểm lượt 3), rồi gộp.
 - 2026-10-27 (Chỉ Huy B): **Họa Sĩ lượt 3 xong** (`58100eb`, mã `8a1ba02`): SL-T089-2 (ghi thêm `expected=(None, False)` khi nháp không còn dòng nào), câu báo khi tab kia đã gửi xong nêu mã bài của lần này; gỡ 2 `xfail`; 12 file 493 qua; cây gộp với `main` và T-041 1.005 qua. Giao **Lá Chắn xem lại lượt 2 + 3**.
 - 2026-10-27 13:44 (Chỉ Huy B): **Lá Chắn xem lại lượt 2 + 3 ĐẠT CÓ ĐIỀU KIỆN** (`6f67bb2`): SL-T089-1, SL-T089-2, phần ghi đè của Ghi nhận 1 đóng; câu báo mới đạt U1; không lùi; gộp được ngay. 1 Thấp **LC-T089-1** có từ trước (cả lượt 1 và `main`): tab 2 cố ý xác nhận gửi rồi hỏng lúc tải ảnh, chưa tạo gì → xóa trạng thái gửi, nháp quên bài tab 1 vừa tạo. Gộp `main` trên máy (`6cfeda9`), đang chạy toàn bộ test. LC-T089-1 đúng mục tiêu phiếu (hai tab) → **Họa Sĩ lượt 4** trên cùng nhánh (trả lại đúng trạng thái cũ theo kết quả gửi), rồi Lá Chắn xem lại, gộp lần nữa. Sau lượt 4: Thư Ký viết lại «Lời dặn tạm thời» README (điều kiện Lá Chắn; nháp cũ phải tick duyệt ảnh lại một lần; lần gửi thật đầu tiên vẫn một bài, một ảnh, một tab).
+- 2026-10-27 14:45 (Chỉ Huy B): **lượt 1–3 đã gộp vào `main`** (Windows 14.804 test qua, 0 hỏng, 1 giờ; ruff sạch). Giữ nhánh `team/T-089`, worktree `wt-T-089` cho lượt 4. **Họa Sĩ lượt 4 xong** (`3b48502`, mã `e7549ea`): lần gửi chưa tạo gì trả nháp về đúng trạng thái cũ (so rồi đặt với `claimed`), xét theo kết quả gửi; gỡ `xfail` LC-T089-1; 13 file 498 qua. Giao **Lá Chắn xem lại lượt 4**.
