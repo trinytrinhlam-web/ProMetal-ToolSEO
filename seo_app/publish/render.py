@@ -32,7 +32,6 @@ import json
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from seo_app.images.html import plain_image_text
 from seo_app.onpage.links import (
@@ -55,9 +54,8 @@ from seo_app.publish.review import (
 )
 from seo_app.sanitize import sanitize_html, strip_tags, unbreak_autolinks, unescape_link_syntax
 from seo_app.storage.site_index import SiteIndex
+from seo_app.wordpress.client import DraftImage
 from seo_app.wordpress.shortcodes import find_shortcodes
-
-T = TypeVar("T")
 
 DIGEST_VERSION = "t096-1"  # đổi khi đổi cách chuẩn hóa: mã băm cũ không còn khớp
 MODES = ("draft", "future", "publish")
@@ -167,18 +165,41 @@ class BuiltArticle:
         """Mã băm người dùng đã xác nhận có đúng gói này không."""
         return isinstance(digest, str) and hmac.compare_digest(digest, self.digest)
 
-    def content_parts(self, images: Mapping[int, T]) -> list[str | T]:
+    def content_parts(self, images: Mapping[int, DraftImage]) -> list[str | DraftImage]:
         """Nội dung theo thứ tự cho ``create_draft_with_images``: HTML phần 0, ảnh phần 0, HTML
-        phần 1… ``images``: đối tượng ảnh của client theo số phần, **đúng** các phần đã khai
-        trong ``build_article`` (ảnh đã băm, đã liệt kê ở màn hình xác nhận)."""
-        if set(images) != {image.section for image in self.images}:
+        phần 1… ``images``: ``DraftImage`` theo số phần, **đúng** các ảnh đã khai trong
+        ``build_article`` (đã băm, đã liệt kê ở màn hình xác nhận): cùng phần, cùng băm byte
+        ``image.data``, cùng alt, chú thích (chữ thường như ``figure_html``), ảnh đại diện, GPS.
+        Khác (ảnh bị thay sau khi xác nhận…) thì ``BuildError``, chưa gửi gì (SL-T096-5)."""
+        expected = {image.section: image for image in self.images}
+        if set(images) != set(expected):
             raise BuildError(_MSG_BAD_INPUT.format(what="ảnh không khớp bài đã dựng"))
-        parts: list[str | T] = []
+        for number, draft in images.items():
+            if not _same_image(draft, expected[number]):
+                raise BuildError(_MSG_BAD_INPUT.format(what="ảnh khác ảnh đã xác nhận"))
+        parts: list[str | DraftImage] = []
         for number, section in enumerate(self.sections):
             parts.append(section)
             if number in images:
                 parts.append(images[number])
         return parts
+
+
+def _same_image(draft: object, image: ArticleImage) -> bool:
+    """``draft`` (``DraftImage`` sẽ tải) đúng là ảnh ``image`` đã băm trong mã xác nhận."""
+    from seo_app.images.process import WebImage  # nhập muộn như client: kéo theo Pillow
+
+    if not isinstance(draft, DraftImage) or not isinstance(draft.image, WebImage):
+        return False
+    data = draft.image.data
+    return (
+        isinstance(data, bytes)
+        and hmac.compare_digest(hashlib.sha256(data).hexdigest(), image.sha256)
+        and plain_image_text(draft.alt) == image.alt
+        and plain_image_text(draft.caption) == image.caption
+        and draft.featured is image.featured
+        and draft.image.has_gps is image.has_gps
+    )
 
 
 def plain_line(text: object) -> str:
@@ -321,7 +342,8 @@ def build_article(
     sections = _split(final, len(items)) if items else ()
 
     final_title = strip_tags(plain_line(title)).strip()  # như ``create_draft``
-    final_excerpt = escape_text(plain_line(excerpt))
+    plain_excerpt = plain_line(excerpt)
+    final_excerpt = escape_text(plain_excerpt)
     final_images = tuple(
         ArticleImage(
             section=image.section,
@@ -341,6 +363,7 @@ def build_article(
         report=report,
         skipped=placed.skipped,
         title=final_title,
+        excerpt=plain_excerpt,
         images=final_images,
         index=index,
         slug=slug,
@@ -406,6 +429,7 @@ def _review(
     report: LinkReport,
     skipped: tuple[str, ...],
     title: str,
+    excerpt: str,
     images: tuple[ArticleImage, ...],
     index: SiteIndex,
     slug: str,
@@ -452,7 +476,9 @@ def _review(
                 "vào bài. Viết thêm chữ quanh địa chỉ hoặc bỏ địa chỉ.",
             )
         )
-    bare = bare_addresses(final, index.site)
+    # Cả chữ ngoài thân bài: tiêu đề, đoạn trích, chú thích hiện công khai, alt máy đọc được.
+    outside = [title, excerpt, *(t for image in images for t in (image.alt, image.caption))]
+    bare = bare_addresses(final, index.site, texts=outside)
     if bare:
         problems.append(
             Notice(
@@ -462,7 +488,7 @@ def _review(
             )
         )
 
-    shortcodes = _shortcodes(title, sections, names, images)
+    shortcodes = _shortcodes(title, excerpt, sections, names, images)
     if shortcodes:
         problems.append(
             Notice(
@@ -523,12 +549,18 @@ def _review(
 
 
 def _shortcodes(
-    title: str, sections: tuple[str, ...], names: list[str], images: tuple[ArticleImage, ...]
+    title: str,
+    excerpt: str,
+    sections: tuple[str, ...],
+    names: list[str],
+    images: tuple[ArticleImage, ...],
 ) -> tuple[tuple[str, str], ...]:
     """(chỗ, đoạn) dạng shortcode trong mọi chữ sẽ gửi, như ``shortcode_findings`` của trang Soạn
-    bài: tiêu đề bài, từng phần (chữ đã giải mã của HTML cuối), alt và chú thích ảnh; thêm các
-    đoạn chỉ thấy khi ghép mọi chữ theo đúng thứ tự gửi («[» ở mục này, «]» ở mục sau)."""
+    bài: tiêu đề bài, đoạn trích, từng phần (chữ đã giải mã của HTML cuối), alt và chú thích
+    ảnh; thêm các đoạn chỉ thấy khi ghép mọi chữ theo đúng thứ tự gửi («[» ở mục này, «]» ở mục
+    sau)."""
     found: list[tuple[str, str]] = [("Tiêu đề bài", s) for s in find_shortcodes(title)]
+    found.extend(("Đoạn trích", s) for s in find_shortcodes(excerpt))
     by_section = {image.section: image for image in images}
     content: list[str] = []
     for number, section in enumerate(sections):

@@ -21,7 +21,9 @@ không vào ``st.markdown``).
 
 from __future__ import annotations
 
+import html
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
@@ -47,23 +49,25 @@ _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 # ``\s`` của PCRE (PHP, không cờ /u): chỉ khoảng trắng ASCII. ``\s`` của Python còn khớp dấu
 # cách không ngắt…, nên viết rõ.
 _SPACE = r"[ \t\n\r\f\v]"
+_PCRE_SPACE = " \t\n\r\f\v"
 _NOT_SPACE_URL = r"[^ \t\n\r\f\v<>\"]"
 # ``WP_Embed::autoembed`` (``wp-includes/class-wp-embed.php``), WordPress 6.9:
 #   '|^(\s*)(https?://[^\s<>"]+)(\s*)$|im'   và   '|(<p(?: [^>]*)?>\s*)(https?://[^\s<>"]+)(\s*<\/p>)|i'
-_EMBED_LINE = re.compile(
-    rf"^({_SPACE}*)(https?://{_NOT_SPACE_URL}+)({_SPACE}*)$", re.IGNORECASE | re.MULTILINE
-)
+# Biểu thức thứ nhất (dòng chỉ có một địa chỉ) xét từng dòng bằng ``_URL_ALONE`` cho cùng kết quả mà
+# không quay lui qua các dòng trống (SL-T096-1). Biểu thức thứ hai dùng lượng từ chiếm hữu ``*+``.
+_URL_ALONE = re.compile(rf"https?://{_NOT_SPACE_URL}++", re.IGNORECASE)
 _EMBED_PARAGRAPH = re.compile(
-    rf"(<p(?: [^>]*)?>{_SPACE}*)(https?://{_NOT_SPACE_URL}+)({_SPACE}*</p>)", re.IGNORECASE
+    rf"(<p(?: [^>]*+)?>{_SPACE}*+)(https?://{_NOT_SPACE_URL}++)({_SPACE}*+</p>)", re.IGNORECASE
 )
 _IN_TAG = re.compile(r"<[^>]*>")  # thẻ, chú thích (gần đúng ``wp_html_split``)
 _LINE_BREAK_MARK = "<!-- wp-line-break -->"
 _ONLY_URL = re.compile(r"https?://\S+", re.IGNORECASE)
 
-# Địa chỉ trần trong chữ (đã giải mã). Dừng ở khoảng trắng, "<", ">", dấu nháy kép.
-_BARE_URL = re.compile(r"https?://[^\s<>\"]+", re.IGNORECASE)
-_BARE_WWW = re.compile(r"(?<![\w./@-])www\.[^\s<>\"]+", re.IGNORECASE)
-_BARE_EMAIL = re.compile(r"[\w.%+-]+@[\w-]+(?:\.[\w-]+)+")
+# Địa chỉ trần trong chữ (đã giải mã). Dừng ở khoảng trắng, "<", ">", dấu nháy kép. Phần tên
+# email chỉ bắt đầu ở đầu một dãy (nhìn lùi) và mọi lượng từ chiếm hữu: tuyến tính (SL-T096-1).
+_BARE_URL = re.compile(r"https?://[^\s<>\"]++", re.IGNORECASE)
+_BARE_WWW = re.compile(r"(?<![\w./@-])www\.[^\s<>\"]++", re.IGNORECASE)
+_BARE_EMAIL = re.compile(r"(?<![\w.%+-])[\w.%+-]++@[\w-]++(?:\.[\w-]++)+")
 _TRAILING = ".,;:!?)]}»”’'\"…"
 
 # Khối chữ: mỗi khối một đoạn khi tìm shortcode, chỗ nhúng (như ``links._PARAGRAPH_TAGS``).
@@ -244,9 +248,12 @@ def _trim(address: str) -> str:
     return address.rstrip(_TRAILING)
 
 
-def bare_addresses(html_text: str, site: str) -> tuple[BareAddress, ...]:
-    """Địa chỉ web, ``www.``, email còn dạng chữ (không phải ``href``) trong ``html_text``, theo
-    thứ tự, không lặp, tối đa ``MAX_LISTED``."""
+def bare_addresses(
+    html_text: str, site: str, *, texts: Iterable[str] = ()
+) -> tuple[BareAddress, ...]:
+    """Địa chỉ web, ``www.``, email còn dạng chữ (không phải ``href``) trong ``html_text`` rồi
+    trong ``texts`` (chữ thường ngoài thân bài: tiêu đề, đoạn trích, alt, chú thích ảnh;
+    SL-T096-4), theo thứ tự, không lặp, tối đa ``MAX_LISTED``."""
     found: list[BareAddress] = []
     seen: set[str] = set()
 
@@ -258,7 +265,7 @@ def bare_addresses(html_text: str, site: str) -> tuple[BareAddress, ...]:
         _host, ascii_host, flags = address_flags(target, site, bare=kind != "url")
         found.append(BareAddress(text, kind, ascii_host, flags))
 
-    for text in block_texts(html_text):
+    for text in [*block_texts(html_text), *texts]:
         covered = text
         for match in _BARE_URL.finditer(text):
             add(_trim(match.group()), "url")
@@ -279,11 +286,14 @@ def embedded_urls(html_text: str) -> tuple[str, ...]:
     chỉ là một địa chỉ (``<li>https://…</li>``…), phòng trình soạn khối hay giao diện khác của
     WordPress nhúng tiếp."""
     content = _IN_TAG.sub(lambda m: m.group().replace("\n", _LINE_BREAK_MARK), html_text)
-    urls: list[str] = []
-    for pattern in (_EMBED_LINE, _EMBED_PARAGRAPH):
-        urls.extend(match.group(2) for match in pattern.finditer(content))
+    urls: list[str] = []  # chữ thô (đã giải mã ``&amp;``): một địa chỉ chỉ một mục (SL-T096-3)
+    for line in content.split("\n"):  # '|^(\s*)(https?://…)(\s*)$|im', từng dòng
+        stripped = line.strip(_PCRE_SPACE)
+        if _URL_ALONE.fullmatch(stripped):
+            urls.append(html.unescape(stripped))
+    urls.extend(html.unescape(m.group(2)) for m in _EMBED_PARAGRAPH.finditer(content))
     for text in block_texts(html_text):
-        stripped = text.strip(" \t\n\r\f\v")
+        stripped = text.strip(_PCRE_SPACE)
         if _ONLY_URL.fullmatch(stripped):
             urls.append(stripped)
     return tuple(dict.fromkeys(urls))[:MAX_LISTED]

@@ -144,3 +144,86 @@ Nơi gọi `place_links`/`apply_links` (grep `seo_app app tests`): chỉ có `te
 
 - T-102 (Họa Sĩ): dùng đúng hợp đồng ở mục «Cách T-102 dùng». Tính `digest` lúc hiện màn hình xác nhận, dựng lại và so ngay trước lệnh mạng đầu tiên (LC-T094-38). Hiện `ascii_host` cạnh mọi link ra ngoài (LC-T039-1).
 - Soi Lỗi: thêm mẫu thật từ các bài đã viết (chỉ chữ) vào test bộ chuyển. Thử thêm tổ hợp danh sách lồng trong trích dẫn và bảng có `mã` chứa `|`.
+
+---
+
+## Lượt 2 (2026-10-28 01:40 +07:00, theo lệnh `date`)
+
+Sửa đủ 7 lỗi của [Soi Lỗi rút gọn](T-096-soi-loi.md) (1 Trung bình, 6 Thấp). Chỉ Huy B mở phạm vi cho `markdown_blocks` và `place_links` trong `seo_app/onpage/links.py`. Cả 25 ca `xfail(strict=True)` của `tests/test_soi_loi_t096.py` chuyển XPASS; đã gỡ 10 dòng dấu `xfail`, **không đổi `assert`**.
+
+### Tóm tắt (cho chủ dự án)
+
+- Màn hình xác nhận không còn chậm khi bài có một «chữ» rất dài hay khối mã nhiều dòng trống: nay chạy thẳng theo độ dài bài, không còn tăng theo bình phương.
+- **Link nội bộ bước SEO đã duyệt thì lúc gửi bài chèn được.** Ví dụ AI chọn cụm từ có cả dấu gạch đầu dòng «- Kéo cửa…»: trước bị bỏ (trên 20 bài thật cả 111 link kiểu này bị bỏ), nay chèn đúng phần chữ. Những cụm từ bài gửi đi không thể có link (vắt qua chỗ xuống dòng, ô bảng thừa cột) thì bị bỏ ngay ở bước SEO, không đợi tới lúc gửi.
+- Danh sách địa chỉ web, email cần xem lại giờ gồm cả tiêu đề bài, đoạn trích, alt, chú thích ảnh.
+- Lúc gửi, ảnh phải đúng ảnh đã xác nhận (cùng file, cùng alt, chú thích, ảnh đại diện), khác là dừng.
+
+### Đã sửa
+
+| Mã | Mức | Sửa ở đâu |
+|---|---|---|
+| SL-T096-1 | Trung bình | `review.py`: biểu thức email chỉ bắt đầu ở đầu một dãy (nhìn lùi `(?<![\w.%+-])`) và dùng lượng từ chiếm hữu `++`; địa chỉ trần, `www.` cũng chiếm hữu. Chỗ nhúng: biểu thức «dòng chỉ có địa chỉ» của WordPress xét **từng dòng** (`split("\n")`, bỏ khoảng trắng ASCII hai đầu, `fullmatch`): cùng kết quả, không quay lui qua dòng trống; biểu thức `<p>` dùng `*+`, `++` |
+| SL-T096-3 | Thấp | `embedded_urls` giải mã `&amp;` (`html.unescape`) mọi địa chỉ tìm được trên HTML trước khi bỏ trùng: một địa chỉ, một mục, dạng chữ người dùng đọc |
+| SL-T096-4 | Thấp | `bare_addresses(html, site, texts=…)` nhận thêm chữ ngoài thân; bộ dựng truyền tiêu đề cuối, đoạn trích, alt, chú thích (đã đổi về chữ thường). `_shortcodes` xét thêm đoạn trích |
+| SL-T096-5 | Thấp | `BuiltArticle.content_parts` chỉ nhận `DraftImage`, so từng ảnh với ảnh đã băm: SHA-256 của `image.data`, `plain_image_text(alt)`, `plain_image_text(caption)`, ảnh đại diện, GPS; khác là `BuildError` (chưa gửi gì) |
+| SL-T096-6 | Thấp | `place_links` in lại chữ của nút được chèn link theo **từng ký tự** (`_literal_chars`, `_reprint`): "[" "]" vốn trần trong HTML gốc giữ trần (ca so nguyên văn `test_nfd_html_gets_link_around_original_text` vẫn qua), "[" "]" vốn là `&#91;` `&#93;` vô hiệu lại. Không xác định được nguồn thì vô hiệu (hướng an toàn) |
+| SL-T096-7 | Thấp | Hàm dùng chung `_fence_open` (`links.py`): rào bằng dấu huyền mà phía sau còn dấu «`» thì không phải rào (CommonMark 4.5). Dùng ở cả `markdown_blocks` và bộ chuyển |
+| SL-T096-2 | Thấp | Xem mục dưới |
+
+### SL-T096-2: bước SEO và bài gửi đi đọc Markdown cùng một cách
+
+Các hàm chia khối nay **dùng chung** giữa `markdown_blocks` (bước SEO) và bộ chuyển (`seo_app/publish/markdown.py`), đặt trong `links.py`: `_code_spans` (đoạn `mã` theo CommonMark, ghép đúng cặp dãy dấu huyền cùng độ dài, tuyến tính), `_fence_open`, `_is_thematic_break`, `_table_cells`, `_table_width`. Bộ chuyển nhận tiêu đề `#` theo đúng cách đo thụt lề của `markdown_blocks`.
+
+| Dạng (bảng của Soi Lỗi) | Cách sửa | Kết quả |
+|---|---|---|
+| `- `, `+ `, `1. `, `1) ` ở đầu cụm từ | `_anchor_words` bỏ **một** từ đầu nếu đúng dạng dấu mục danh sách (`[-+*]` hay `\d{1,9}[.)]`), còn ≥ 2 từ mới nhận | **Chèn được** (phần chữ sau dấu). Áp cho cả cụm từ đã lưu trong nháp cũ (vì `place_links` cũng đọc qua `_anchor_words`) |
+| Hai dấu cách cuối dòng, `\` cuối dòng | `markdown_blocks` đổi chỗ xuống dòng cứng thành `\x00` (HTML có `<br>` ở đó) | Bước SEO bỏ cụm từ vắt qua chỗ đó, câu báo «không có nguyên văn» |
+| Mã ký tự `&eacute;`, `\` escape | `markdown_blocks` giải mã như bộ chuyển (cùng `_ENTITY`, `_entity_value`, `_ESCAPABLE` của `sanitize.py`) | Cụm từ «sửa cửa kéo» chèn được; cụm từ có `&eacute;` bị bỏ ở bước SEO |
+| Dòng nối tiếp sau trích dẫn `>` | Bộ chuyển nhận dòng nối tiếp lười (lazy) vào đoạn trong trích dẫn, như CommonMark và như `markdown_blocks` | **Chèn được** |
+| Ô bảng thừa cột | `markdown_blocks` bỏ ô thừa như bảng GFM (cùng `_table_width`) | Bước SEO bỏ cụm từ trong ô thừa |
+| Hai đoạn `mã` trên một dòng | `markdown_blocks` chỉ che đúng các đoạn mã (`_code_spans`), không che cả quãng giữa | Bước SEO và bộ dựng chọn cùng một đoạn văn |
+
+Mọi link vẫn chỉ trỏ bài đã đăng (`href` từ `SiteIndex`), không nới bộ lọc nào.
+
+### Nơi gọi và test của chúng
+
+`markdown_blocks`, `_anchor_words` chỉ được `check_suggestions`, `place_links` (cùng file) gọi. `check_suggestions` chạy ở bước SEO T-041 qua `ContentWriter.internal_links` (`seo_app/content/workflow.py:349`, trang Soạn bài gọi). `place_links`, `apply_links` chỉ có `seo_app/publish/render.py` gọi. Các hàm mới chỉ dùng trong `links.py` và `seo_app/publish/markdown.py`. Test của các nơi đó nằm trong lượt chạy dưới (T-039, T-040, T-041 gồm giao diện bước SEO, trang app).
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest tests/test_soi_loi_t096.py        # trước khi gỡ dấu, đã sửa code
+25 failed (XPASS(strict) cả 25 ca SL-T096-1 → 7), 316 passed   # cùng lượt với 3 file T-096
+
+$ uv run pytest tests/test_la_chan_t039.py tests/test_onpage_links.py tests/test_publish_markdown.py \
+    tests/test_publish_render.py tests/test_soi_loi_t039.py tests/test_soi_loi_t041.py \
+    tests/test_soi_loi_t096.py tests/test_t040_prompts.py tests/test_t041_drafts_seo.py \
+    tests/test_t041_links_ai.py tests/test_t041_seo_ui.py tests/test_la_chan_t041.py tests/test_app_pages.py
+1120 passed, 3 xfailed in 485.51s (0:08:05)
+# 3 xfail có từ trước, cùng lỗi SL-T041-8 (emoji mới, phiếu T-090): 1 ở test_soi_loi_t041.py,
+# 2 ở test_la_chan_t041.py. Gồm 4 test tốc độ SL-T096-1 (bare_addresses 2 dạng, embedded_urls,
+# build_article) và test_markdown_blocks_linear của T-039.
+
+$ uv run pytest tests/test_publish_markdown.py tests/test_publish_render.py tests/test_la_chan_t039.py
+165 passed in 19.01s     # sau khi thêm 12 ca lượt 2 (chạy riêng vì thêm sau lượt chạy lớn)
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check seo_app/publish seo_app/onpage/links.py tests/test_publish_render.py tests/test_publish_markdown.py
+7 files already formatted
+```
+
+Test mới của lượt 2 (`tests/test_publish_markdown.py`): chữ khối `markdown_blocks` đúng như người đọc thấy (xuống dòng cứng hai kiểu, mã ký tự, `\` escape, chỉ che đúng đoạn `mã`, dấu huyền sau `\`), bảng bỏ ô thừa ở cả hai nơi, dòng «```chữ```» là đoạn văn ở cả hai nơi, rào mã thật vẫn ẩn mã, dòng nối tiếp sau trích dẫn. `tests/test_publish_render.py`: `content_parts` từ chối ảnh không phải `DraftImage`, khác byte, alt, chú thích, ảnh đại diện.
+
+### Đối chiếu tiêu chí lượt 2
+
+- [x] SL-T096-1 (Trung bình, bắt buộc trước Lá Chắn): sửa, có test tốc độ (4 ca của Soi Lỗi, nay qua)
+- [x] SL-T096-2 → 7: sửa; 25 ca `xfail` thành qua, đã gỡ dấu (không đổi `assert`)
+- [x] Không sửa test cũ của người khác (chỉ gỡ dấu `xfail` theo dặn); test cũ của T-039, T-041 qua
+- [x] `markdown_blocks`, `place_links`: grep nơi gọi, chạy test của chúng (mục trên)
+
+### Rủi ro lượt 2
+
+- `_anchor_words` nay bỏ **một** dấu mục danh sách ở đầu cụm từ. Cụm từ đúng là bắt đầu bằng «1.» có nghĩa riêng (hiếm) thì link lấy phần chữ sau nó; vẫn chỉ trỏ bài đã đăng.
+- `markdown_blocks` đổi chữ của khối (giải mã `&…;`, bỏ `\`, che xuống dòng cứng). Gợi ý link đã lưu trong nháp cũ không bị ảnh hưởng: `place_links` kiểm lại từ đầu trên HTML; gợi ý nào không còn khớp thì bị bỏ kèm câu báo, như trước.
+- Dùng thêm tên riêng (`_ENTITY`, `_entity_value`, `_ESCAPABLE`) của `sanitize.py` để `links.py` và bộ chuyển giải mã y như nhau. Sửa các hàm đó thì chạy lại test của `seo_app/publish/` và `tests/test_onpage_links.py`.

@@ -367,3 +367,52 @@ def test_every_markdown_block_text_is_findable_in_html():
 )
 def test_converter_scales_linearly(unit):
     assert_scales_linearly(markdown_to_html, lambda k: unit * (500 * k), label=unit)
+
+
+# ------------------------------------------------------------------ lượt 2: đọc như bộ chuyển
+
+
+@pytest.mark.parametrize(
+    "body, block",
+    [
+        # Xuống dòng cứng: HTML có <br>, cụm từ không vắt qua được (SL-T096-2).
+        ("Gọi dịch vụ sửa  \ncửa kéo", "Gọi dịch vụ sửa  \x00cửa kéo"),
+        ("Gọi dịch vụ sửa\\\ncửa kéo", "Gọi dịch vụ sửa\x00cửa kéo"),
+        # Mã ký tự, "\\" escape: như người đọc thấy.
+        ("sửa cửa k&eacute;o \\*x\\* &bogus;", "sửa cửa kéo *x* &bogus;"),
+        # Chỉ che đúng các đoạn `mã` (không che cả quãng giữa hai đoạn mã).
+        ("Dùng `a` hoặc dịch vụ `b` nhé", "Dùng \x00\x00\x00 hoặc dịch vụ \x00\x00\x00 nhé"),
+        ("``x ` y`` z", "\x00" * len("``x ` y``") + " z"),
+        ("\\`không phải mã`", "`không phải mã`"),
+    ],
+)
+def test_markdown_blocks_text_is_what_reader_sees(body, block):
+    assert markdown_blocks(body) == [block]
+
+
+def test_markdown_blocks_drop_extra_table_cells_like_gfm():
+    body = "| Lỗi | Cách |\n|---|---|\n| Kẹt | Lau ray | gọi thợ kiểm tra |"
+    blocks = markdown_blocks(body)
+    assert blocks == ["| Lỗi | Cách |", "|---|---|", "| Kẹt | Lau ray |"]
+    assert "gọi thợ" not in markdown_to_html(body)
+
+
+@pytest.mark.parametrize("first", ["```lệnh``` là lệnh.", "``` aa ```", "```` `x`"])
+def test_backtick_line_with_backticks_after_is_paragraph_in_both(first):
+    body = f"{first}\n\nĐoạn sau."
+    assert markdown_blocks(body)[-1] == "Đoạn sau."
+    assert markdown_to_html(body).endswith("<p>Đoạn sau.</p>")
+    assert "<pre>" not in markdown_to_html(body)
+
+
+def test_real_fence_still_hides_code_in_both():
+    body = "```python\nx = 1\n```\nĐoạn sau."
+    assert markdown_blocks(body) == ["Đoạn sau."]
+    assert markdown_to_html(body) == "<pre><code>x = 1</code></pre>\n<p>Đoạn sau.</p>"
+
+
+def test_quote_lazy_line_joins_paragraph():
+    out = markdown_to_html("> Kéo cửa thật chậm\nđể nghe tiếng kêu.\n\nĐoạn mới.")
+    assert out == (
+        "<blockquote>\n<p>Kéo cửa thật chậm để nghe tiếng kêu.</p>\n</blockquote>\n<p>Đoạn mới.</p>"
+    )

@@ -674,7 +674,6 @@ def test_place_links_on_sanitized_html_never_reopens_shortcodes_fuzz():
 _SL1 = "SL-T096-1: dữ liệu màn hình xác nhận chạy bậc hai (email trần, dòng chỉ có địa chỉ)"
 
 
-@pytest.mark.xfail(strict=True, reason=_SL1)
 @pytest.mark.parametrize(
     "make",
     [lambda k: "<p>" + "a" * (k * 2500) + "</p>", lambda k: "<p>" + "a." * (k * 1250) + "</p>"],
@@ -686,7 +685,6 @@ def test_sl1_bare_addresses_linear(make):
     assert_scales_linearly(lambda text: bare_addresses(text, SITE), make, label="địa chỉ trần")
 
 
-@pytest.mark.xfail(strict=True, reason=_SL1)
 def test_sl1_embedded_urls_linear():
     """Khối mã (hay đoạn có ``&#10;``) có nhiều dòng trống: ``^\\s*`` của biểu thức nhúng ăn qua
     mọi dòng trống phía sau rồi lùi lại, ở từng đầu dòng."""
@@ -697,7 +695,6 @@ def test_sl1_embedded_urls_linear():
     )
 
 
-@pytest.mark.xfail(strict=True, reason=_SL1)
 def test_sl1_build_article_linear_on_long_word():
     """Ảnh hưởng tới người dùng: dựng bài (mỗi lần hiện màn hình xác nhận) chậm theo bình phương."""
     assert_scales_linearly(build, lambda k: "a" * (k * 2500), label="dựng bài")
@@ -706,7 +703,6 @@ def test_sl1_build_article_linear_on_long_word():
 _SL2 = "SL-T096-2: bước SEO nhận cụm từ có ký hiệu Markdown mà HTML cuối không có"
 
 
-@pytest.mark.xfail(strict=True, reason=_SL2)
 @pytest.mark.parametrize(
     "body, anchor",
     [
@@ -736,7 +732,6 @@ def test_sl2_accepted_anchor_is_always_placed(body, anchor):
     assert not review.links or built.review.skipped_links == ()
 
 
-@pytest.mark.xfail(strict=True, reason=_SL2)
 def test_sl2_link_does_not_take_another_paragraph():
     """``markdown_blocks`` che cả quãng từ dấu «`» đầu tới dấu «`» cuối dòng, HTML chỉ có từng
     `mã`: bước SEO kiểm link «dịch vụ sửa cửa kéo» ở đoạn 2 (đoạn 1 bị che), bộ dựng lại chèn vào
@@ -759,7 +754,6 @@ def test_sl2_link_does_not_take_another_paragraph():
     assert built.review.skipped_links == ()
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T096-3: địa chỉ có «&» bị đếm hai lần ở chỗ nhúng")
 def test_sl3_embed_with_ampersand_listed_once():
     """Link YouTube kiểu ``…watch?v=abc&t=10`` đứng một mình: liệt kê hai lần (dạng ``&amp;`` của
     HTML và dạng đã giải mã), câu báo ghi «Có 2 đoạn» dù chỉ có một đoạn."""
@@ -769,7 +763,6 @@ def test_sl3_embed_with_ampersand_listed_once():
     assert any(p.message.startswith("Có 1 đoạn") for p in built.review.problems)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T096-4: địa chỉ ngoài thân bài không được liệt kê")
 @pytest.mark.parametrize("where", ["title", "excerpt", "alt", "caption"])
 def test_sl4_bare_addresses_outside_body_are_listed(where):
     """Tiêu đề bài, đoạn trích, chú thích ảnh hiện công khai (alt đọc được bằng máy): địa chỉ,
@@ -794,7 +787,6 @@ def _draft_image(data: bytes, alt: str, *, featured: bool = False) -> DraftImage
     )
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T096-5: content_parts không kiểm ảnh khớp ảnh đã băm")
 @pytest.mark.parametrize("change", ["byte", "alt", "featured"])
 def test_sl5_content_parts_rejects_images_other_than_confirmed(change):
     """Mã băm xác nhận gồm băm byte, alt, ảnh đại diện (LC-T094-8), nhưng ``content_parts`` chỉ
@@ -813,7 +805,6 @@ def test_sl5_content_parts_rejects_images_other_than_confirmed(change):
         built.content_parts({0: other})
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T096-6: place_links mở lại «[» đã vô hiệu")
 def test_sl6_place_links_keeps_encoded_bracket_next_to_bare_one():
     """Nút chữ có «&#91;» (đã vô hiệu) và «]» trần: chữ in lại thành «[gallery id=1]» trần, tức
     tạo ra shortcode chạy được mà đầu vào không có (phần còn sót của LC-T039-2). Bộ dựng không
@@ -826,7 +817,6 @@ def test_sl6_place_links_keeps_encoded_bracket_next_to_bare_one():
     assert "[gallery" not in out
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T096-7: dòng «```chữ```…» mở khối mã tới hết phần")
 @pytest.mark.parametrize(
     "first_line",
     ["```lệnh``` là lệnh mở cửa.", "``` aa ```", "```` `x`"],

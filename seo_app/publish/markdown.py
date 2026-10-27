@@ -32,45 +32,38 @@ Chạy gần tuyến tính theo độ dài; độ sâu lồng và số dấu m�
 from __future__ import annotations
 
 import html
-import html.entities
 import re
 import unicodedata
-from bisect import bisect_right
 from dataclasses import dataclass, field
 
-from seo_app.onpage.links import _is_atx_heading, _is_list_item, _is_rule
-from seo_app.sanitize import escape_shortcodes
+from seo_app.onpage.links import (
+    MAX_TABLE_COLUMNS,
+    _code_spans,
+    _fence_open,
+    _is_atx_heading,
+    _is_list_item,
+    _is_rule,
+    _is_thematic_break,
+    _table_cells,
+    _table_width,
+)
+from seo_app.sanitize import _ENTITY, _ESCAPABLE, _entity_value, escape_shortcodes
 
 MAX_DEPTH = 6  # danh sách, trích dẫn lồng quá mức này thì phần trong là chữ thường
 MAX_LOOKBACK = 100  # số dấu mở đậm/nghiêng xét lại cho một dấu đóng
-MAX_COLUMNS = 30  # số cột tối đa của bảng
+MAX_COLUMNS = MAX_TABLE_COLUMNS  # số cột tối đa của bảng (dùng chung với ``markdown_blocks``)
 
 # Ký tự bỏ khỏi chữ: điều khiển C0/C1 (trừ tab, xuống dòng), điều khiển hướng chữ, nửa cặp lẻ.
-_DROPPED = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f‪-‮⁦-⁩\ud800-\udfff]")
+_DROPPED = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f‪-‮⁦-⁩\ud800-\udfff]")
 _LINES = re.compile(r"\r\n|\r|\n")
-_ESCAPABLE = frozenset("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
-_ENTITY = re.compile(r"&(?:#[xX]([0-9a-fA-F]{1,6})|#([0-9]{1,7})|([A-Za-z][A-Za-z0-9]{0,31}));")
 _PLAIN = re.compile(r"[^\\\n`&*_]+")
-_BACKTICKS = re.compile(r"`+")
 _CLOSING_HASHES = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
-_TABLE_DELIMITER = re.compile(r"^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 _ORDERED = re.compile(r"([0-9]{1,9})[.)]")
 
 
 def escape_text(value: str) -> str:
     """Chữ trong HTML: bỏ ký tự lạ, escape, vô hiệu shortcode (LC-T094-4)."""
     return escape_shortcodes(html.escape(_DROPPED.sub("", value), quote=False))
-
-
-def _entity_value(match: re.Match[str]) -> str | None:
-    """Chữ mà Markdown giải mã từ ``&…;`` (như ``sanitize._entity_value``); không hợp lệ: None."""
-    hex_digits, dec_digits, name = match.groups()
-    if name is not None:
-        return html.entities.html5.get(name + ";")
-    code = int(hex_digits, 16) if hex_digits is not None else int(dec_digits)
-    if code == 0 or code > 0x10FFFF or 0xD800 <= code <= 0xDFFF:
-        return "�"
-    return chr(code)
 
 
 def _is_punctuation(ch: str) -> bool:
@@ -153,21 +146,14 @@ def _match_emphasis(tokens: list[str | _Delimiter]) -> None:
             stack.append(token)
 
 
-def _backtick_runs(text: str) -> dict[int, list[int]]:
-    """Vị trí bắt đầu của mọi dãy dấu huyền, theo độ dài dãy (tìm dãy đóng bằng ``bisect``)."""
-    runs: dict[int, list[int]] = {}
-    for match in _BACKTICKS.finditer(text):
-        runs.setdefault(len(match.group()), []).append(match.start())
-    return runs
-
-
 def inline_html(text: str) -> str:
     """Chữ trong một khối (các dòng nối bằng ``\\n``) → HTML trong dòng. Không có thẻ nào ngoài
-    ``<strong>``, ``<em>``, ``<code>``, ``<br>``."""
+    ``<strong>``, ``<em>``, ``<code>``, ``<br>``. Đoạn `mã` tìm bằng ``_code_spans``, cùng hàm
+    với ``markdown_blocks`` (bước SEO che đúng các đoạn mã này)."""
     text = text.strip()
     tokens: list[str | _Delimiter] = []
     buffer: list[str] = []
-    backticks = _backtick_runs(text)
+    code_spans = _code_spans(text)
 
     def flush() -> None:
         if buffer:
@@ -208,23 +194,20 @@ def inline_html(text: str) -> str:
             while i < n and text[i] in " \t":
                 i += 1
         elif char == "`":
-            end = i
-            while end < n and text[end] == "`":
-                end += 1
-            size = end - i
-            starts = backticks.get(size, [])
-            k = bisect_right(starts, i)
-            if k == len(starts):  # không có dãy đóng cùng độ dài: chữ thường
+            if i not in code_spans:  # không có dãy đóng cùng độ dài: chữ thường
+                end = i
+                while end < n and text[end] == "`":
+                    end += 1
                 buffer.append(text[i:end])
                 i = end
                 continue
-            close = starts[k]
-            code = text[end:close].replace("\n", " ")
+            end, size = code_spans[i]
+            code = text[i + size : end - size].replace("\n", " ")
             if len(code) >= 2 and code[0] == " " and code[-1] == " " and code.strip(" "):
                 code = code[1:-1]
             flush()
             tokens.append(f"<code>{escape_text(code)}</code>")
-            i = close + size
+            i = end
         elif char == "&":
             match = _ENTITY.match(text, i)
             value = _entity_value(match) if match is not None else None
@@ -285,43 +268,13 @@ def _heading_tag(level: int) -> str:
     return f"h{max(3, level)}"
 
 
-def _table_cells(row: str) -> list[str]:
-    """Ô của một dòng bảng: tách ở "|" không có "\\" đứng trước, bỏ "|" ở hai đầu."""
-    body = row.strip()
-    if body.startswith("|"):
-        body = body[1:]
-    if body.endswith("|") and not body.endswith("\\|"):
-        body = body[:-1]
-    cells: list[str] = []
-    current: list[str] = []
-    i = 0
-    while i < len(body):
-        if body[i] == "\\" and body[i + 1 : i + 2] == "|":
-            current.append("|")
-            i += 2
-            continue
-        if body[i] == "|":
-            cells.append("".join(current).strip())
-            current = []
-        else:
-            current.append(body[i])
-        i += 1
-    cells.append("".join(current).strip())
-    return cells
-
-
 def _table(rows: list[str]) -> list[str]:
-    """Các dòng bắt đầu bằng "|": bảng nếu dòng 2 là dòng kẻ cùng số cột, không thì mỗi dòng
-    một đoạn (như ``markdown_blocks``: mỗi dòng bảng là một khối)."""
-    header = _table_cells(rows[0])
-    if (
-        len(rows) < 2
-        or not _TABLE_DELIMITER.match(rows[1].strip())
-        or len(_table_cells(rows[1])) != len(header)
-        or len(header) > MAX_COLUMNS
-    ):
+    """Các dòng bắt đầu bằng "|": bảng nếu dòng 2 là dòng kẻ cùng số cột (``_table_width``, cùng
+    hàm với ``markdown_blocks``), không thì mỗi dòng một đoạn (mỗi dòng bảng là một khối)."""
+    width = _table_width(rows)
+    if width is None:
         return [f"<p>{inline_html(row)}</p>" for row in rows]
-    width = len(header)
+    header = _table_cells(rows[0])
     lines = [
         "<table>",
         "<thead>",
@@ -369,14 +322,19 @@ def _marker(line: str) -> _Marker | None:
     )
 
 
+def _spaces(line: str) -> int:
+    """Số dấu cách đầu dòng, đúng cách ``markdown_blocks`` đo khi nhận tiêu đề ``#``."""
+    return len(line) - len(line.lstrip(" "))
+
+
 def _is_special(line: str) -> bool:
-    """Dòng mở một khối mới (không nối tiếp được đoạn văn của mục danh sách)."""
+    """Dòng mở một khối mới (không nối tiếp được đoạn văn của mục danh sách, của trích dẫn)."""
     stripped = line.strip()
-    indent = _indent(line)
-    return (
-        stripped.startswith(("```", "~~~", "|", ">"))
-        or _is_atx_heading(stripped, indent)
-        or (_is_rule(stripped, "-*_") and len(stripped.replace(" ", "").replace("\t", "")) >= 3)
+    return bool(
+        _fence_open(stripped)
+        or stripped.startswith(("|", ">"))
+        or _is_atx_heading(stripped, _spaces(line))
+        or _is_thematic_break(stripped)
     )
 
 
@@ -467,9 +425,8 @@ def _blocks(lines: list[str], depth: int) -> list[tuple[str, str, str]]:
         line = lines[i]
         stripped = line.strip()
         indent = _indent(line)
-        if stripped.startswith(("```", "~~~")):
+        if fence := _fence_open(stripped):  # «```chữ```» không mở khối mã (SL-T096-7)
             flush()
-            fence = stripped[:3]
             code: list[str] = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith(fence):
@@ -480,7 +437,7 @@ def _blocks(lines: list[str], depth: int) -> list[tuple[str, str, str]]:
             continue
         if not stripped:
             flush()
-        elif _is_atx_heading(stripped, indent):
+        elif _is_atx_heading(stripped, _spaces(line)):
             flush()
             level = len(stripped) - len(stripped.lstrip("#"))
             content = _CLOSING_HASHES.sub("", stripped[level:].strip())
@@ -493,7 +450,7 @@ def _blocks(lines: list[str], depth: int) -> list[tuple[str, str, str]]:
             paragraph.clear()
             if body:
                 out.append(("h", f"<h3>{body}</h3>", ""))
-        elif _is_rule(stripped, "-*_") and len(stripped.replace(" ", "").replace("\t", "")) >= 3:
+        elif _is_thematic_break(stripped):
             flush()
             out.append(("hr", "<hr>", ""))
         elif stripped.startswith("|"):
@@ -515,9 +472,22 @@ def _blocks(lines: list[str], depth: int) -> list[tuple[str, str, str]]:
         elif stripped.startswith(">") and indent <= 3:
             flush()
             quoted = []
-            while i < len(lines) and lines[i].strip().startswith(">") and _indent(lines[i]) <= 3:
-                inner = lines[i].lstrip(" \t")[1:]
-                quoted.append(inner[1:] if inner.startswith(" ") else inner)
+            while i < len(lines):
+                current = lines[i]
+                if current.strip().startswith(">") and _indent(current) <= 3:
+                    inner = current.lstrip(" \t")[1:]
+                    quoted.append(inner[1:] if inner.startswith(" ") else inner)
+                elif (
+                    current.strip()
+                    and quoted[-1].strip()
+                    and _marker(current) is None
+                    and not _is_special(current)
+                ):
+                    # Dòng nối tiếp (lazy) của đoạn văn trong trích dẫn, như CommonMark và như
+                    # ``markdown_blocks`` (cùng một khối): «> Kéo cửa…⏎để nghe…» (SL-T096-2).
+                    quoted.append(current.strip())
+                else:
+                    break
                 i += 1
             if depth + 1 >= MAX_DEPTH:
                 body = inline_html("\n".join(q.strip() for q in quoted if q.strip()))

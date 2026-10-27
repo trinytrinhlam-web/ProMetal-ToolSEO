@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 import seo_app.publish.render as render
+from seo_app.images.process import WebImage
 from seo_app.onpage.links import InternalLink, LinkKind, check_links
 from seo_app.onpage.meta import Level
 from seo_app.publish.render import (
@@ -45,6 +46,7 @@ from seo_app.publish.review import (
 from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text
 from seo_app.storage.site_index import SiteIndex
 from seo_app.wordpress import PublishedItem
+from seo_app.wordpress.client import DraftImage
 
 SITE = "https://suachuacuasat.com"
 SERVICE = PublishedItem(
@@ -116,18 +118,41 @@ def test_sections_match_old_layout_and_links_are_applied():
     assert built.categories == (3,) and built.tags == (7, 8) and built.slug == "cua-keo-keu-rit"
 
 
+def _draft(data: bytes, alt: str, *, caption: str = "", featured: bool = False) -> DraftImage:
+    return DraftImage(
+        image=WebImage(data=data, width=1, height=1, gps=None),
+        alt=alt,
+        caption=caption,
+        featured=featured,
+    )
+
+
 def test_content_parts_put_image_after_its_section():
-    built = build()
-    assert built.content_parts({1: "ẢNH"}) == [
+    data = b"anh-da-duyet"
+    alt = clean_ai_text("Thợ tra dầu ray cửa kéo, xem www.abc.vn")  # có ký tự ngắt T-031
+    image = ArticleImage(section=1, sha256=hashlib.sha256(data).hexdigest(), alt=alt, caption="c")
+    built = build(images=[image])
+    draft = _draft(data, alt, caption="c")
+    assert built.content_parts({1: draft}) == [
         built.sections[0],
         built.sections[1],
-        "ẢNH",
+        draft,
         built.sections[2],
     ]
     with pytest.raises(BuildError):
         built.content_parts({})  # thiếu ảnh đã khai
     with pytest.raises(BuildError):
-        built.content_parts({1: "ẢNH", 2: "ẢNH LẠ"})  # ảnh chưa qua bộ dựng
+        built.content_parts({1: draft, 2: draft})  # ảnh chưa qua bộ dựng
+    with pytest.raises(BuildError):
+        built.content_parts({1: "ẢNH"})  # không phải DraftImage
+    for other in (
+        _draft(b"anh-khac", alt, caption="c"),
+        _draft(data, alt + "!", caption="c"),
+        _draft(data, alt, caption="khác"),
+        _draft(data, alt, caption="c", featured=True),
+    ):
+        with pytest.raises(BuildError):
+            built.content_parts({1: other})
 
 
 def test_order_filter_link_filter_check_on_the_same_string(monkeypatch):
