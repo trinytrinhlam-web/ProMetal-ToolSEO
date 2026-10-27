@@ -6,7 +6,72 @@
 | Phiếu | [T-089](../tickets/T-089-gui-nhap-loi-thap-sau-t086.md) |
 | Ngày nộp | 2026-10-26 |
 | Nhánh | `team/T-089` (từ `main` `3d7f4b7`) |
-| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả. **Lượt 2 (2026-10-27):** SL-T089-1 đã sửa, ghi kết quả gửi kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089), gỡ 2 `xfail` (mục «Lượt 2») |
+| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả. **Lượt 2 (2026-10-27):** SL-T089-1 đã sửa, ghi kết quả gửi kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089), gỡ 2 `xfail` (mục «Lượt 2»). **Lượt 3 (2026-10-27):** SL-T089-2 (lỗi lùi của lượt 2) đã sửa, câu báo khi tab kia đã ghi trạng thái mới nói đúng, gỡ 2 `xfail` (mục «Lượt 3») |
+
+## Lượt 3 (2026-10-27): SL-T089-2, câu báo L2-1
+
+Theo mục «Lượt 2» của báo cáo Soi Lỗi T-089 (SL-T089-2, gợi ý sửa, Ghi nhận L2-1, L2-2) và tin giao việc của Chỉ Huy B.
+
+**Tóm tắt (cho chủ dự án):** bản sửa lượt 2 sinh một lỗi nhỏ ở hai ca rất hiếm: đúng lúc tab đầu đang gửi mà ở tab khác bài bị xóa, hoặc lần gửi cố ý ở tab khác hỏng ngay, thì bài tab đầu vừa tạo không được ghi vào nháp (mở lại bài là hết khóa). Nay khi nháp không còn ghi chú gửi nào, app vẫn ghi lại bài vừa tạo nên mở lại bài vẫn khóa; ghi chú của tab khác (nếu có) vẫn không bị ghi đè. Câu báo khi tab kia đã ghi trạng thái mới nay nói đúng cả khi tab kia đã gửi xong: nháp giữ trạng thái của tab kia, bài của lần này (mã …) cũng đã lên website, hãy kiểm trang quản trị.
+
+| # | Việc | Cách làm | Test |
+|---|---|---|---|
+| 1 | SL-T089-2: nháp không còn dòng trạng thái gửi lúc đang gửi | `record_outcome` (`app/views/write.py:2268-2269`): so với «đang gửi» của chính lần này hỏng mà kết quả có bài hay chưa rõ (`state` khác `None`) thì ghi thêm một lần với `expected=(None, False)`: chỉ ghi khi nháp **không còn dòng nào**; dòng của tab khác («đang gửi», «đã gửi») vẫn không bị ghi đè. Giữ chốt `claimed` (lớp chặn chính cho tab thua, Ghi nhận L2-2). Lần này chưa tạo gì (`state` là `None`) mà tab khác đã ghi trạng thái mới thì không còn gì để ghi: coi là xong, không báo (`:2277`) | `SL: test_confirmed_send_in_other_tab_failing_first_keeps_this_post`, `SL: test_draft_deleted_elsewhere_while_sending_comes_back_locked` (gỡ `xfail`), `N: test_outcome_recorded_when_send_state_row_gone`, `N: test_nothing_created_and_other_tab_wrote_no_note` |
+| 2 | Câu báo khi tab kia đã ghi trạng thái mới (Ghi nhận L2-1) | `record_outcome` đặt `holder["kept_other"]` (`:2282`), `apply_send` chép sang kết quả trên trang (`:2307`); `send_result` hiện câu riêng `kept_other_message` (`:2399`, `:2447`): «Chưa ghi được kết quả gửi vào nháp: một tab khác của app vừa ghi trạng thái gửi mới cho bài này, app không ghi đè; nháp giữ trạng thái gửi của tab kia. Bài nháp của lần gửi này (mã 501) cũng đã có trên website [hay: có thể cũng đã có, khi chưa rõ]. Mở trang quản trị WordPress, kiểm tra Bài viết → Nháp trước khi gửi lại.» Bỏ vế «mở lại nháp sẽ thấy nhắc chưa có kết quả» cho ca này (sai khi tab kia đã gửi xong). Các ca «chưa ghi được» khác (file nháp bận, mã bài lạ) giữ câu cũ (đúng: nháp giữ «đang gửi» của chính lần này) | `N: test_kept_other_message_names_this_post` (tab kia đã gửi xong bài 777), `N: test_kept_other_message_when_result_unsure` (kết quả chưa rõ: không có mã, trang không lỗi); test lượt 2 của Họa Sĩ và Soi Lỗi tìm câu «một tab khác…» vẫn qua |
+| 3 | Gỡ 2 `xfail` SL-T089-2 của `tests/test_soi_loi_t089.py` | Cả hai báo `[XPASS(strict)]` trước khi gỡ; chỉ xóa 2 dấu (8 dòng), thân test không đổi | Mục «Bằng chứng lượt 3» |
+| 4 | Phạm vi | Chỉ `app/views/write.py` (luồng gửi nháp) và test; không đổi `seo_app/storage/drafts.py`, khối SEO, `seo_app/wordpress/**`, `config/**` | — |
+
+**Thử gỡ chỗ sửa lượt 3** (bản sao `git archive` của `c636e9b` chép thêm `write.py` và hai file test của lượt 3, tức đúng nội dung `8a1ba02`; script `T-089-hoa-si-scripts/mutate_l3.py`):
+
+| Đột biến | Kết quả |
+|---|---|
+| L3-a bỏ lần ghi thêm khi nháp trống (như lượt 2) | bắt được (3 hỏng: 2 test SL-T089-2 của Soi Lỗi, `N: test_outcome_recorded_when_send_state_row_gone`) |
+| L3-b lần ghi thêm không so (`expected=None`, ghi đè cả dòng tab khác) | bắt được (4 hỏng: 2 test lượt 2 của Họa Sĩ, câu báo, `SL: test_confirmed_send_in_other_tab_keeps_its_record`) |
+| L3-c câu báo cũ khi tab kia đã ghi (bỏ `kept_other`) | bắt được (2 hỏng) |
+| L3-d lần này chưa tạo gì vẫn báo «chưa ghi được» | bắt được (1 hỏng) |
+| Không đột biến (9 test trên) | 9 qua |
+
+**Soát R5 lượt 3:** `tests/test_soi_loi_t089.py` chỉ xóa 2 dấu `@pytest.mark.xfail(...)` SL-T089-2; `tests/test_t089_send_draft.py` thêm 4 test, không sửa test cũ. Không `skip`, không xóa test.
+
+**Bảo mật (W1, W2, U1, F2):** không đổi. Lần ghi thêm chỉ ghi trạng thái gửi trong nháp trên máy, chỉ khi nháp không còn dòng nào (không bao giờ ghi đè hay xóa trạng thái của tab khác, không mở khóa thêm); không thêm lệnh nào lên website. Câu báo mới ghép từ câu cố định và mã bài (số nguyên từ website, như các câu kết quả khác); không `unsafe_allow_html`. Dòng trạng thái ghi cho nháp vừa bị xóa ở tab khác chỉ là một dòng nhỏ trong `send_states` (nháp được lưu lại thì khóa đúng; không lưu lại thì dòng nằm yên, không ảnh hưởng gì).
+
+**Bằng chứng lượt 3:**
+
+```
+# Trước khi gỡ dấu:
+$ uv run pytest tests/test_soi_loi_t089.py -k "failing_first or deleted_elsewhere"
+[XPASS(strict)] SL-T089-2: nháp không còn dòng trạng thái gửi thì kết quả gửi bị bỏ (bài đã tạo)
+[XPASS(strict)] SL-T089-2: nháp bị xóa ở tab khác lúc đang gửi, tự lưu tạo lại thì không còn khóa
+
+$ PYTHONUTF8=1 uv run pytest tests/test_app_images.py tests/test_soi_loi_t056.py \
+    tests/test_la_chan_t056.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_drafts.py tests/test_drafts_images.py tests/test_app_pages.py \
+    tests/test_t086_send_state.py tests/test_storage_send_state.py \
+    tests/test_t089_send_draft.py tests/test_soi_loi_t089.py -q -rxXf
+493 passed, 1 skipped in 755.19s (0:12:35)
+# Code 8a1ba02, chạy 09:04 → 09:17. Không còn xfail nào (lượt 2 của Soi Lỗi: 2 xfail SL-T089-2).
+
+# Cây gộp lần lượt nhánh (8a1ba02) → main e8343fa (đã gộp T-088) → team/T-041 f21bc3a (git merge-tree,
+# không xung đột; T-041 ghép write_seo ngay sau record_outcome trong send_and_record; xuất bằng
+# git archive, chạy bằng venv của wt-T-089; T-041 không đổi pyproject.toml, uv.lock):
+$ pytest tests/test_t089_send_draft.py tests/test_soi_loi_t089.py tests/test_t086_send_state.py \
+    tests/test_soi_loi_t086.py tests/test_la_chan_t086.py tests/test_storage_send_state.py \
+    tests/test_t041_seo_ui.py tests/test_t041_drafts_seo.py tests/test_soi_loi_t041.py \
+    tests/test_wordpress_t088.py tests/test_soi_loi_t088.py -q -rxXf
+1005 passed, 16 xfailed in 594.71s (0:09:54)
+# 16 xfail đều có sẵn ở nhánh khác: 8 của tests/test_soi_loi_t041.py, 8 SL-T088-1; không cái nào của T-089.
+
+$ uv run ruff check .
+All checks passed!
+```
+
+**Đối chiếu việc lượt 3:**
+
+- [x] SL-T089-2: ghi thêm một lần với `expected=(None, False)` khi so rồi đặt hỏng mà kết quả không phải «chưa gửi»; giữ chốt `claimed`; gỡ 2 `xfail` (chỉ xóa dấu).
+- [x] Câu báo «mở lại nháp sẽ thấy nhắc chưa có kết quả» sửa cho ca tab kia đã ghi trạng thái mới (đúng cả khi tab kia đã gửi xong).
+- [x] Phạm vi: `app/views/write.py` và test.
+- [x] Test liên quan như lượt 2: 493 qua, 0 hỏng; `uv run ruff check .` sạch.
+- [ ] Soi Lỗi, Lá Chắn rút gọn lượt 3 (chưa tới lượt).
 
 ## Lượt 2 (2026-10-27): SL-T089-1
 
