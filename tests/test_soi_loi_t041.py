@@ -25,6 +25,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import requests
+import test_app_images as ui
+import test_t041_seo_ui as seo_ui
 from fake_wordpress import BASE_URL, FakeWordPress, make_session
 
 from seo_app.ai import AIError, AIRouter, TaskConfig
@@ -37,7 +39,9 @@ from seo_app.images.tags import SOURCE_REAL
 from seo_app.onpage.links import Candidate, Candidates, apply_links
 from seo_app.onpage.meta import (
     TITLE_LIMITS,
+    Level,
     accept_ai_title,
+    check_description,
     check_slug_duplicates,
     check_title,
     has_keyword,
@@ -64,6 +68,7 @@ from seo_app.storage.site_index import (
     SiteIndexStore,
     site_listing,
 )
+from seo_app.text import escape_markdown
 from seo_app.wordpress import PublishedItem, WordPressClient, WordPressError
 from seo_app.wordpress import client as wp_client
 
@@ -545,3 +550,304 @@ def test_sl_t041_7_meta_prompt_follows_configured_suffix(monkeypatch, suffix):
 def test_meta_suggestions_model_is_what_ai_returns():
     """Khuôn AI trả về cho meta không đổi ở T-041 (Họa Sĩ dựa vào đó)."""
     assert set(MetaSuggestions.model_fields) == {"titles", "descriptions"}
+
+
+# ======================================================= 5. giao diện và lượt 3 (Soi Lỗi lượt 2)
+#
+# Trang Soạn bài thật (``AppTest``), AI giả, WordPress giả của ``tests/test_t041_seo_ui.py`` (Họa
+# Sĩ); file cache danh sách bài, kho nháp trong thư mục tạm.
+
+env = ui.env  # mật khẩu thử, không có khóa AI thật (dùng chung với test giao diện)
+previews = ui.previews
+site_cache = seo_ui.site_cache
+seo_ai = seo_ui.seo_ai
+wordpress = seo_ui.wordpress
+ESC, PRIVATE = chr(0x1B), chr(0xE000)
+
+
+def _saved_and_edited(snap: DraftSnapshot, change) -> str:
+    """Lưu ``snap`` vào kho nháp của trang rồi sửa tay JSON bằng ``change(obj)``."""
+    store = ui.store()
+    store.save(snap)
+    obj = _read_json(store, snap.id)
+    change(obj)
+    _write_json(store, snap.id, obj)
+    return snap.id
+
+
+def _open_seo_step(project_root, draft_id: str):
+    """Phiên mới: mở nháp ``draft_id`` ở trang Soạn bài rồi sang bước SEO."""
+    at = ui.pages.open_page(project_root, "write.py")
+    ui.run_ok(ui.button(at, "Mở", key=f"open-{draft_id}").click().run())
+    at.session_state["step"] = 3
+    return ui.run_ok(at.run())
+
+
+def _captions(at) -> list[str]:
+    return [c.value for c in at.caption]
+
+
+def _seo_runs(site) -> list[dict]:
+    return [json.loads(r.body)["input"] for r in site.fake.requests if ui.path_of(r) == seo_ui.RUN]
+
+
+def _suggest_then_publish_with_seo(at):
+    """AI gợi ý meta ở bước SEO, sang bước Xuất bản, bật «Ghi SEO lên website»."""
+    ui.run_ok(ui.button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    ui.to_publish(at)
+    return ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_old_drafts_open_and_seo_step_starts_empty(project_root, seo_ai, version):
+    """Nháp lưu trước T-041 (khuôn 1 như T-016/T-021, khuôn 2 như ``main`` có ảnh) mở được ở trang
+    thật: bước SEO trống, slug gợi ý từ từ khóa, AI gợi ý được, không lỗi."""
+
+    def before_t041(obj):
+        del obj["seo"]
+        if version == 1:
+            obj["schema_version"] = 1
+            for part in obj["parts"]:
+                part.pop("chosen_image", None)
+
+    at = _open_seo_step(project_root, _saved_and_edited(ui.article(), before_t041))
+    assert at.session_state["seo_slug"] == "sua-cong-inox"
+    assert sum(b.startswith(":red-badge[Chặn · 0 ký tự") for b in seo_ui.badges(at)) == 2
+    ui.run_ok(ui.button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    assert at.session_state["seo_title"] == seo_ui.TITLES[0]
+    assert not at.exception and not at.error
+
+
+ABSURD_TITLES = [
+    "<script>alert(1)</script>",
+    "x" * 500,
+    "[gallery ids=1] Sửa cổng inox",
+    f"Sửa cổng inox{ESC} tại nhà",
+    "%%sitename%%",
+]
+
+
+def test_absurd_hand_edited_seo_block_keeps_page_working(project_root, seo_ai, wordpress):
+    """Khối SEO sửa tay vô lý (thẻ, shortcode, ``%%``, ký tự điều khiển, chữ 500 ký tự, slug có
+    «/..», liên kết tới bài không có, một liên kết sai khuôn, «Dùng schema» khi bài không có Hỏi
+    đáp): trang vẫn chạy, mọi ô sai là «Chặn» và không chép được, chữ thô không thành HTML, liên kết
+    sai khuôn bị bỏ riêng; bật «Ghi SEO» rồi gửi nháp thì chỉ từ khóa chính được ghi."""
+
+    def absurd(obj):
+        obj["seo"] = {
+            "title": {"versions": ABSURD_TITLES, "current": 3},
+            "description": {"versions": ["<b>Mô tả</b> " * 40], "current": 0},
+            "slug": "Cửa Sắt/../../etc",
+            "links": [
+                {"section": 9, "anchor": "không có trong bài", "post_id": 424242, "use": True},
+                {"section": 0, "anchor": "x y", "post_id": 1, "use": "có"},  # sai khuôn: bỏ riêng
+            ],
+            "use_faq": True,
+        }
+
+    at = _open_seo_step(project_root, _saved_and_edited(ui.article(), absurd))
+    assert not at.exception and not at.error
+    assert at.session_state["seo_title"] == ABSURD_TITLES[3]
+    assert sum(b.startswith(":red-badge[Chặn") for b in seo_ui.badges(at)) == 3
+    for label in ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)"):
+        assert any(c.startswith(f"{label}: chưa chép được.") for c in _captions(at)), label
+    assert not [c for c in at.code if c.language != "json"]  # không khung chép nào
+    for block in seo_ui.html_blocks(at):
+        assert "<script" not in block and "<b>" not in block
+    (table,) = at.dataframe
+    assert table.value.to_dict("records") == [
+        {"Dùng": True, "Cụm từ trong bài": "không có trong bài", "Trỏ tới bài": "bài #424242"}
+    ]
+    assert not any(box.key == "seo_use_faq" for box in at.checkbox)
+    ui.to_publish(at)
+    ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    ui.send(at)
+    assert _seo_runs(wordpress) == [{"postId": seo_ui.POST_ID, "focus_keyphrase": seo_ui.KEYWORD}]
+    sent = " ".join(str(r.body) for r in wordpress.fake.requests)
+    assert "424242" not in sent and "<script" not in sent and "gallery" not in sent
+
+
+def test_without_ai_key_meta_is_typed_checked_and_copied(project_root):
+    """Chưa có khóa AI: mọi nút AI ở bước SEO mờ, vẫn tự gõ được; tiêu đề gõ tay được đếm cả đuôi
+    thương hiệu và hiện ở khung «Chép sang SiteSEO»."""
+    at = seo_ui.to_seo(project_root)  # không có ``seo_ai``: môi trường thử không có khóa AI
+    keys = ("seo-ai-both", "seo-ai-title", "seo-ai-description")
+    ai_buttons = [b for b in at.button if b.key in keys]
+    assert len(ai_buttons) == 3 and all(b.disabled for b in ai_buttons)
+    title = "Sửa cổng inox tại Tân Phú: thay bản lề gỉ"
+    ui.run_ok(at.text_input(key="seo_title").input(title).run())
+    assert with_brand(title) in [c.value for c in at.code]
+    assert any(escape_markdown("(tính cả đuôi thương hiệu)") in c for c in _captions(at))
+    assert not at.exception
+
+
+@pytest.mark.parametrize(
+    "space",
+    ["\t", "\n", "\r\n", chr(0x0B), chr(0x0C), chr(0x1C), chr(0x85), chr(0xA0), chr(0x2028),
+     chr(0x3000)],
+    ids=["tab", "LF", "CRLF", "VT", "FF", "FS", "NEL", "NBSP", "LS", "IDSP"],
+)  # fmt: skip
+def test_whitespace_controls_are_folded_not_blocked(space):
+    """Tab, xuống dòng và các khoảng trắng khác (kể cả loại điều khiển) chỉ gộp thành dấu cách ở
+    mọi đường: ô kiểm, khung chép, client WordPress; không bị Chặn."""
+    title = f"Cửa sắt bị xệ:{space}tự kiểm tra hay nên gọi thợ?"
+    check = check_title(title)
+    assert check.level is not Level.BLOCK
+    assert check.value == with_brand("Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?")
+    assert siteseo_copy(title, DESC, "cua-sat-bi-xe").title == check.value
+    assert wp_client._seo_text("Tiêu đề SEO", title, 300) == normalize_meta(title)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        unicodedata.normalize("NFD", DESC),
+        DESC + " " + chr(0x2B50),
+        DESC + " " + chr(0x2764) + chr(0xFE0F),
+    ],
+    ids=["tieng-viet-NFD", "emoji-cu", "emoji-co-VS16"],
+)
+def test_vietnamese_and_known_emoji_are_not_blocked(text):
+    assert check_description(text).level is not Level.BLOCK
+    assert siteseo_copy("Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?", text, "a-b").description
+
+
+@pytest.mark.parametrize(
+    "invisible", [chr(0x200B), chr(0xFEFF), chr(0xAD)], ids=["ZWSP", "BOM", "SHY"]
+)
+def test_invisible_format_chars_are_dropped_the_same_way_everywhere(invisible):
+    """Ký tự định dạng vô hình (Cf: dấu cách rộng 0, BOM, gạch nối mềm) không bị Chặn mà bị bỏ, như
+    thiết kế T-036/T-042; chữ khung chép, chữ client ghi và chữ người dùng nhìn thấy là một."""
+    title = f"Cửa sắt bị xệ: tự{invisible} kiểm tra hay nên gọi thợ?"
+    copied = siteseo_copy(title, DESC, "cua-sat-bi-xe").title
+    assert copied == with_brand("Cửa sắt bị xệ: tự kiểm tra hay nên gọi thợ?")
+    assert wp_client._seo_text("Tiêu đề SEO", copied, 300) == copied
+
+
+NEW_EMOJI = chr(0x1FAE9)  # «face with bags under eyes», Unicode 16.0 (2024)
+python_without_new_emoji = pytest.mark.skipif(
+    unicodedata.category(NEW_EMOJI) != "Cn", reason="Python này đã biết emoji Unicode 16"
+)
+
+
+@python_without_new_emoji
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T041-8: emoji mới hơn bảng Unicode của Python 3.12 (15.0) là ký tự «chưa gán» (Cn): "
+    "tiêu đề, mô tả có emoji Unicode 16 bị Chặn với câu «ký tự điều khiển hoặc ký tự lạ (không "
+    "nhìn thấy…)», gợi ý AI có nó bị bỏ, dù client WordPress ghi được.",
+)
+def test_sl_t041_8_new_emoji_is_not_blocked():
+    title = f"Cửa sắt bị xệ {NEW_EMOJI} tự kiểm tra hay nên gọi thợ?"
+    assert not wp_client_problem(title)  # client WordPress ghi được chữ này
+    assert check_title(title).level is not Level.BLOCK
+    assert check_description(f"{DESC} {NEW_EMOJI}").level is not Level.BLOCK
+
+
+def wp_client_problem(text: str) -> str:
+    try:
+        wp_client._seo_text("Tiêu đề SEO", text, 300)
+    except WordPressError as exc:
+        return str(exc)
+    return ""
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T041-9: từ khóa chính đi thẳng vào client, không qua bộ kiểm meta: có ký tự điều "
+    "khiển thì client từ chối cả lệnh ghi SEO (mất cả tiêu đề, mô tả hợp lệ); có ký tự riêng (Co) "
+    "thì bị lặng lẽ bỏ ký tự rồi ghi.",
+)
+@pytest.mark.parametrize("odd", [ESC, PRIVATE], ids=["ESC", "U+E000"])
+def test_sl_t041_9_bad_keyword_is_skipped_alone(project_root, seo_ai, wordpress, odd):
+    snap = ui.article(keyword=f"sửa cổng{odd} inox")
+    at = _suggest_then_publish_with_seo(seo_ui.to_seo(project_root, snap))
+    ui.send(at)
+    (payload,) = _seo_runs(wordpress)
+    assert payload["title"] == with_brand(seo_ui.TITLES[0])
+    assert payload["description"] == seo_ui.DESCRIPTION
+    assert "focus_keyphrase" not in payload  # không ghi từ khóa hỏng, không lặng lẽ sửa
+    assert not at.exception and not at.error
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T041-9: bật «Ghi SEO lên website» không báo trước rằng từ khóa chính có ký tự lạ "
+    "sẽ không ghi được (bước Xuất bản chỉ báo trước cho tiêu đề, mô tả).",
+)
+def test_sl_t041_9_bad_keyword_is_warned_before_sending(project_root, seo_ai, wordpress):
+    at = _suggest_then_publish_with_seo(
+        seo_ui.to_seo(project_root, ui.article(keyword=f"sửa cổng{ESC} inox"))
+    )
+    assert any("Từ khóa chính" in c and "ghi" in c for c in _captions(at))
+
+
+def test_seo_choices_do_not_leak_into_the_next_draft(project_root, seo_ai):
+    """Mở nháp khác trong cùng phiên: các bản meta, slug, công tắc ghi SEO của nháp trước bị xóa
+    (khóa ``seo_*`` và bản sao ``_kept``), nháp sau bắt đầu trống."""
+    at = seo_ui.to_seo(project_root)
+    ui.run_ok(ui.button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    ui.run_ok(at.text_input(key="seo_slug").input("cong-inox-nhap-a").run())
+    ui.to_publish(at)
+    ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    other = ui.article()
+    ui.store().save(other)
+    at.session_state["step"] = 0
+    ui.run_ok(at.run())
+    ui.run_ok(ui.button(at, "Mở", key=f"open-{other.id}").click().run())
+    at.session_state["step"] = 3
+    ui.run_ok(at.run())
+    assert at.session_state["seo_slug"] == "sua-cong-inox"
+    assert at.session_state["seo_title"] == "" and at.session_state["seo_description"] == ""
+    ui.to_publish(at)
+    assert at.toggle(key="seo_write").value is False
+
+
+DUPLICATE_OF_FIRST_TITLE = seo_ui.published(13, "Bài cũ", "bai-cu", meta_title=seo_ui.TITLES[0])
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T041-10: phiên mới mở nháp ở bước Xuất bản (chưa tải danh sách bài): bật «Ghi SEO "
+    "lên website» thì lần vẽ đó vừa có dòng «✅ SEO: … đã sẵn sàng» vừa có «Sẽ không ghi Tiêu đề "
+    "SEO… đang báo «Chặn»» (dòng kiểm vẽ trước khi công tắc tải danh sách bài).",
+)
+def test_sl_t041_10_publish_checklist_agrees_with_seo_toggle(project_root, seo_ai, wordpress):
+    wordpress.items = [*seo_ui.PUBLISHED, DUPLICATE_OF_FIRST_TITLE]
+    at = seo_ui.to_seo(project_root)
+    ui.run_ok(ui.button(at, "✨ AI gợi ý tiêu đề và mô tả SEO").click().run())
+    ui.to_publish(at)  # nháp lưu ở bước Xuất bản
+    fresh = ui.pages.open_page(project_root, "write.py")
+    ui.run_ok(ui.button(fresh, "Mở", key=f"open-{at.session_state['draft_id']}").click().run())
+    ui.run_ok(fresh.toggle(key="seo_write").set_value(True).run())
+    assert any("Sẽ không ghi Tiêu đề SEO" in c for c in _captions(fresh))  # công tắc báo đúng
+    ready = "✅ SEO: tiêu đề, mô tả, đường dẫn đã sẵn sàng"
+    assert ready not in [m.value for m in fresh.markdown]
+
+
+CLIENT_REFUSES = [
+    "Sửa cổng inox [gallery] tại nhà Tân Phú",
+    "Sửa cổng inox cao <2m tại nhà Tân Phú",
+    "Sửa cổng inox &#37 giảm tại nhà Tân Phú",
+]
+
+
+@pytest.mark.parametrize("bad", CLIENT_REFUSES, ids=["shortcode", "nho-hon-so", "ma-ky-tu"])
+def test_copy_box_refuses_what_client_refuses(project_root, seo_ai, bad):
+    at = seo_ui.to_seo(project_root)
+    ui.run_ok(at.text_input(key="seo_title").input(bad).run())
+    assert any(c.startswith("Tiêu đề SEO: chưa chép được.") for c in _captions(at))
+    assert not any(bad in c.value for c in at.code)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T041-11: chữ client WordPress từ chối ghi (shortcode, «<» liền chữ số, mã ký tự "
+    "HTML thiếu «;»): nhãn dưới ô vẫn xanh «Nên», chỉ khung «Chép sang SiteSEO» báo «chưa chép "
+    "được».",
+)
+@pytest.mark.parametrize("bad", CLIENT_REFUSES, ids=["shortcode", "nho-hon-so", "ma-ky-tu"])
+def test_sl_t041_11_field_badge_is_red_when_copy_is_refused(project_root, seo_ai, bad):
+    at = seo_ui.to_seo(project_root)
+    ui.run_ok(at.text_input(key="seo_title").input(bad).run())
+    assert seo_ui.badges(at)[0].startswith(":red-badge[Chặn")
