@@ -306,3 +306,48 @@ Thử gỡ chỗ sửa (bản sao `git archive` của `a735c7e`, script `T-041-h
 | `tests/test_soi_loi_t041.py` | Gỡ 4 dấu `xfail` (SL-T041-9 → -11), không đổi thân test |
 | `tests/test_t041_seo_ui.py` | 7 test mới (bảng trên) |
 | `docs/team/reports/T-041-hoa-si.md` | Mục này |
+
+## Lượt 4 (2026-10-27)
+
+Sau Lá Chắn cả phiếu (ĐẠT CÓ ĐIỀU KIỆN, `31ecacb`): sửa **LC-T041-1** (Thấp). SL-T041-8 không đụng (Lá Chắn quyết giữ Chặn, câu báo để phiếu dọn sau).
+
+### Tóm tắt (cho chủ dự án)
+
+- Khung «Xem trước trên Google» ở bước SEO nay chỉ hiện tên website (ví dụ `suachuacuasat.com`), kể cả khi `.env` lỡ ghi địa chỉ kèm tên đăng nhập, mật khẩu (`https://tên:mật-khẩu@…`), cổng hay phần sau dấu «?». Trước đây tên đăng nhập và mật khẩu hiện ngay trên khung, chụp màn hình gửi người khác là lộ.
+- Địa chỉ website ghi hỏng (ví dụ thiếu dấu «]») không còn làm trang Soạn bài báo lỗi ở bước SEO: khung xem trước hiện chữ mẫu.
+
+### Lỗi → cách sửa → test
+
+| Mã | Cách sửa | Test |
+|---|---|---|
+| LC-T041-1 | `site_host()` (`app/views/write.py`): `urlsplit(WORDPRESS_URL).hostname` thay cho `.netloc` (bỏ `tên:mật-khẩu@`, cổng, truy vấn; chữ thường); `urlsplit` ném `ValueError` (địa chỉ hỏng, ví dụ `https://[2001:db8::1`) thì chữ mẫu «website-cua-ban.vn». Tìm ra thêm khi viết test: trước đây địa chỉ hỏng kiểu này làm bước SEO lỗi trang (client WordPress thì báo câu cố định) | `test_serp_preview_shows_only_host_of_wordpress_url` × 10 kiểu (tên:mật-khẩu, kèm cổng và chữ hoa, chỉ mật khẩu, cổng, truy vấn có mồi, IPv6, IPv6 thiếu «]», không có tên máy, thiếu `https://`, trống); `tests/test_la_chan_t041.py::test_lc1_serp_preview_never_shows_credentials_of_wordpress_url` (gỡ `xfail`), `::test_serp_preview_shows_plain_host` (canh) |
+
+Soát `grep -rn "netloc\|WORDPRESS_URL" app/` và mọi chỗ hiện địa chỉ (`urlsplit`, `base_url`, `site_url`): chỉ `site_host()` đọc thẳng `WORDPRESS_URL`. Trang Kết nối WordPress hiện `client.base_url` (client từ chối địa chỉ có `@`, `?`, `#`, `%` ngay khi tạo) và `info.site_url` (địa chỉ website tự báo, đã thoát Markdown); câu nhắc «Nên đổi WORDPRESS_URL sang https://» là chữ cố định, không chép giá trị. Không còn chỗ nào cần sửa.
+
+Gỡ `xfail` (chỉ xóa dấu): 1 dấu trong `tests/test_la_chan_t041.py` (4 dòng xóa, 0 dòng thêm); trước khi gỡ, ca này báo `XPASS(strict)`.
+
+Thử gỡ chỗ sửa (bản sao `git archive` của `7aa4dbd`): L4-M1 lại dùng `.netloc` → bắt được (7 test); L4-M2 bỏ bắt `ValueError` → bắt được (ca IPv6 thiếu «]»).
+
+### Bằng chứng lượt 4
+
+Windows 11, Git Bash, worktree `wt-T-041`.
+
+```
+$ uv run pytest tests/test_t041_seo_ui.py tests/test_la_chan_t041.py -k "only_host or lc1 or plain_host"
+12 passed
+
+$ uv run pytest tests/test_t041_drafts_seo.py tests/test_t041_links_ai.py tests/test_t041_meta.py \n    tests/test_t041_schema.py tests/test_t041_seo_ui.py tests/test_t041_site_index.py \n    tests/test_soi_loi_t041.py tests/test_la_chan_t041.py tests/test_app_pages.py   # code 7aa4dbd
+457 passed, 3 xfailed in 172.09s (0:02:52)          # 3 xfailed: SL-T041-8 (1 Soi Lỗi, 2 Lá Chắn)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Đã thay đổi (lượt 4)
+
+| File | Thay đổi |
+|---|---|
+| `app/views/write.py` | `site_host()`: `hostname`, bắt `ValueError` |
+| `tests/test_la_chan_t041.py` | Gỡ dấu `xfail` LC-T041-1, không đổi thân test |
+| `tests/test_t041_seo_ui.py` | 10 ca kiểu địa chỉ (bảng trên) |
+| `docs/team/reports/T-041-hoa-si.md` | Mục này |
