@@ -2191,7 +2191,8 @@ def send_and_record(
     là ``seen`` (``(trạng thái, hỏng)`` người dùng thấy lúc bấm). Tab khác cùng bài vừa ghi «đang
     gửi» hay «đã gửi» (lúc tab này còn kiểm lại, nén ảnh) thì không gửi gì, báo rõ. Ghi được thì
     nhớ đúng trạng thái đã ghi (``holder["claimed"]``): chỉ lần gửi có dấu này mới được ghi kết quả
-    vào nháp (``record_outcome``, SL-T089-1).
+    vào nháp (``record_outcome``, SL-T089-1); và nhớ trạng thái nó đã thay (``holder["replaced"]``)
+    để trả lại khi lần gửi không tạo được bài nào (LC-T089-1).
     """
     sending = SendState.now(pending=True, post_id=previous_post)
     try:
@@ -2212,6 +2213,8 @@ def send_and_record(
         holder["state"] = (False, previous_post)
         return
     holder["claimed"] = sending
+    # Dòng hỏng thì không trả lại được: giữ «đang gửi» của lần này (vẫn khóa «gửi dở»).
+    holder["replaced"] = sending if seen[1] else seen[0]
     pending, post_id = True, previous_post
     try:
         result = client.create_draft_with_images(title, parts)
@@ -2256,16 +2259,25 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     tab khác đã cố ý xác nhận gửi tiếp (ghi «đang gửi» mới) thì kết quả lần này không ghi đè
     (``kept_other``). Nháp không còn dòng trạng thái gửi nào (tab khác xóa nháp, hay lần gửi cố ý ở
     tab khác hỏng trước khi gửi gì nên ghi «chưa gửi») mà lần này có bài hay chưa rõ thì vẫn ghi,
-    chỉ khi nháp vẫn trống (SL-T089-2): nháp tạo lại vẫn khóa. Lần này chưa tạo gì mà tab khác đã
-    ghi trạng thái mới thì không còn gì để ghi."""
+    chỉ khi nháp vẫn trống (SL-T089-2): nháp tạo lại vẫn khóa.
+
+    Lần gửi không tạo được bài nào (lỗi mà không «bài nháp có thể đã có»; xét theo kết quả gửi,
+    không so mã bài) thì trả nháp về **đúng** trạng thái mà «đang gửi» của nó đã thay
+    (``holder["replaced"]``), không xóa trắng (LC-T089-1): tab này cố ý gửi tiếp trong lúc tab kia
+    đang gửi thì nháp lại là «đang gửi» của tab kia, kết quả tab kia (bài đã tạo) ghi được, nháp
+    vẫn khóa. Tab khác đã ghi trạng thái mới thì không còn gì để ghi."""
     claimed = holder.get("claimed")
     if claimed is None:
         return
     pending, post_id = holder["state"]
+    nothing_created = not holder["result"]["ok"] and not pending
     try:
-        state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
+        if nothing_created:
+            state = holder.get("replaced")
+        else:
+            state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
         written = store.save_send_state(holder["draft"], state, expected=(claimed, False))
-        if not written and state is not None:
+        if not written and not nothing_created and state is not None:
             written = store.save_send_state(holder["draft"], state, expected=(None, False))
     except DraftError as exc:
         holder["note"] = str(exc)
@@ -2274,7 +2286,7 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     except Exception:
         holder["note"] = "lỗi không mong đợi"
     else:
-        if written or state is None:
+        if written or nothing_created:
             holder["saved"] = True
             holder.pop("note", None)
             holder.pop("kept_other", None)

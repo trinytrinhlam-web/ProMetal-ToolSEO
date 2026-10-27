@@ -26,7 +26,6 @@ from __future__ import annotations
 import sys
 import threading
 
-import pytest
 import test_app_images as ui
 import test_t086_send_state as t86
 
@@ -72,11 +71,6 @@ class OverloadedSite:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T089-1: tab 1 tạo bài trước, tab 2 (cố ý gửi tiếp) hỏng sau mà chưa tạo gì: "
-    "nháp mất khóa",
-)
 def test_lc_t089_1_confirmed_send_elsewhere_creating_nothing_keeps_this_post(
     project_root, root, fake_ai, site
 ):

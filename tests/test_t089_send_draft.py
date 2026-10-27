@@ -664,3 +664,78 @@ def test_nothing_created_and_other_tab_wrote_no_note(project_root, root, fake_ai
     assert ui.store().load_send_state(draft) == other
     assert not any("Chưa ghi được kết quả" in w.value for w in at.warning)
     assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled
+
+
+# ============ Lượt 4, LC-T089-1: lần gửi không tạo được bài nào trả lại đúng trạng thái đã thay
+
+
+def media_rejected(site) -> None:
+    """Website từ chối ảnh (4xx): lỗi ở bước tải ảnh, chưa có bài nháp nào (không «có thể có»)."""
+    site.fake.on("POST", ui.MEDIA, lambda _r: (400, {"code": "x", "message": "Bad request"}, {}))
+
+
+def test_failed_send_after_unsure_lock_restores_it(project_root, root, fake_ai, site):
+    """Nháp đang «gửi dở» (lần gửi trước chưa rõ kết quả); người dùng tick «Tôi đã kiểm tra…», gửi,
+    nhưng lần này hỏng trước khi tạo bài. Nháp trả về **đúng** «gửi dở» cũ (không xóa trắng): vẫn
+    khóa, phải xác nhận lại (hướng an toàn, LC-T089-1)."""
+    at, _pid = ui.ready_image(project_root)
+    draft = draft_id(at)
+    unsure = pending()
+    ui.store().save_send_state(draft, unsure)
+    ui.to_publish(at)
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    media_rejected(site)
+    ui.send(at)
+    assert ui.counts(site) == (0, 1)
+    assert ui.store().load_send_state(draft) == unsure
+    assert at.checkbox(key="_wp_checked").value is False
+    assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled
+
+
+def test_failed_send_after_sent_restores_exact_record(project_root, root, fake_ai, site):
+    """Nháp «đã gửi 777»; người dùng tick «Tạo thêm», gửi, hỏng trước khi tạo bài: nháp trả về
+    đúng dòng cũ (cùng mã bài, cùng giờ), vẫn khóa «đã gửi»."""
+    at, _pid = ui.ready_image(project_root)
+    draft = draft_id(at)
+    sent = SendState.now(pending=False, post_id=777)
+    ui.store().save_send_state(draft, sent)
+    ui.to_publish(at)
+    run_ok(at.checkbox(key="_wp_again").check().run())
+    media_rejected(site)
+    ui.send(at)
+    assert ui.store().load_send_state(draft) == sent
+    assert any("bài nháp mã 777" in i.value for i in at.info) and button(at, SEND).disabled
+
+
+def test_created_post_with_same_id_is_a_new_record(project_root, root, fake_ai, site):
+    """«Không tạo được gì» xét theo kết quả gửi, không so mã bài: lần gửi thứ hai tạo bài và website
+    trả lại đúng mã cũ (501, như WordPress giả) vẫn là một lần gửi mới, ghi dòng mới (giờ mới),
+    không bị coi là «chưa tạo gì» mà trả về dòng cũ."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    ui.send(at)
+    first = ui.store().load_send_state(draft)
+    time.sleep(0.05)  # đồng hồ Windows nhảy 15,6 ms một lần: hai lần ghi khác giờ
+    run_ok(at.checkbox(key="_wp_again").check().run())
+    ui.send(at)
+    second = ui.store().load_send_state(draft)
+    assert len(site.posts()) == 2
+    assert (second.pending, second.post_id) == (False, ui.POST_ID)
+    assert second.updated_at > first.updated_at
+
+
+def test_failed_send_after_broken_state_keeps_lock(project_root, root, fake_ai, site):
+    """Dòng trạng thái gửi hỏng (người dùng thấy «không đọc được…», tick «Tôi đã kiểm tra…»), gửi,
+    hỏng trước khi tạo bài: dòng hỏng không trả lại được nên nháp giữ «đang gửi» của lần này (vẫn
+    khóa «gửi dở»), không xóa trắng."""
+    at, _pid = ui.ready_image(project_root)
+    draft = draft_id(at)
+    broken_row(ui.store(), draft)
+    ui.to_publish(at)
+    run_ok(at.checkbox(key="_wp_checked").check().run())
+    media_rejected(site)
+    ui.send(at)
+    state = ui.store().load_send_state(draft)
+    assert state is not None and state.pending
+    assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled

@@ -6,7 +6,76 @@
 | Phiếu | [T-089](../tickets/T-089-gui-nhap-loi-thap-sau-t086.md) |
 | Ngày nộp | 2026-10-26 |
 | Nhánh | `team/T-089` (từ `main` `3d7f4b7`) |
-| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả. **Lượt 2 (2026-10-27):** SL-T089-1 đã sửa, ghi kết quả gửi kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089), gỡ 2 `xfail` (mục «Lượt 2»). **Lượt 3 (2026-10-27):** SL-T089-2 (lỗi lùi của lượt 2) đã sửa, câu báo khi tab kia đã ghi trạng thái mới nói đúng, gỡ 2 `xfail` (mục «Lượt 3») |
+| Kết quả | Hoàn thành: yêu cầu 1–5; LC-T086-1, SL-T086-1, SL-T086-2 đã sửa, gỡ `xfail` 3 ca (chỉ xóa dấu); băm ảnh đã duyệt lưu trong `DraftImage` (điều kiện 3 của Lá Chắn T-086). Đã thử trên trình duyệt thật với WordPress giả. **Lượt 2 (2026-10-27):** SL-T089-1 đã sửa, ghi kết quả gửi kiểu so rồi đặt (đóng cả Ghi nhận 1 của Lá Chắn T-089), gỡ 2 `xfail` (mục «Lượt 2»). **Lượt 3 (2026-10-27):** SL-T089-2 (lỗi lùi của lượt 2) đã sửa, câu báo khi tab kia đã ghi trạng thái mới nói đúng, gỡ 2 `xfail` (mục «Lượt 3»). **Lượt 4 (2026-10-27):** LC-T089-1 đã sửa (lần gửi không tạo được bài nào trả nháp về đúng trạng thái đã thay), gỡ 1 `xfail` (mục «Lượt 4») |
+
+## Lượt 4 (2026-10-27): LC-T089-1
+
+Theo mục «Xem lại lượt 2 + 3» của biên bản Lá Chắn T-089 (LC-T089-1, cách sửa gợi ý, bẫy đã gặp, Ghi nhận xem lại 1) và tin giao việc của Chỉ Huy B.
+
+**Tóm tắt (cho chủ dự án):** lỗi nhỏ cuối cùng Lá Chắn tìm ra đã sửa. Trước đây: cùng một bài mở ở hai tab, tab đầu đang gửi; ở tab hai bạn cố ý tick «Tôi đã kiểm tra…» rồi gửi; tab đầu tạo xong bài trước, rồi lần gửi ở tab hai hỏng (chưa tạo gì): app quên bài tab đầu, nút «Gửi nháp» mở lại. Nay lần gửi nào hỏng mà chưa tạo được bài thì app trả ghi chú trong bài về **đúng** như trước lúc nó bắt đầu gửi (không xóa trắng): ca trên, bài trở lại «tab đầu đang gửi / có thể đã có bài», nút vẫn khóa, bạn kiểm trang quản trị là thấy bài của tab đầu. Một thay đổi nhỏ đi kèm (hướng an toàn): bài đang «gửi dở», bạn tick xác nhận rồi gửi lại mà lần đó hỏng trước khi tạo bài, thì bài vẫn «gửi dở», phải tick lại.
+
+| # | Việc | Cách làm | Test |
+|---|---|---|---|
+| 1 | LC-T089-1: lần gửi không tạo được gì trả lại đúng trạng thái «đang gửi» của nó đã thay, không xóa trắng | `send_and_record` nhớ trạng thái mà «đang gửi» của lần này đã thay (`holder["replaced"]` = `seen`, `app/views/write.py:2217`); dòng hỏng (không trả lại được) thì giữ chính «đang gửi» của lần này (vẫn khóa «gửi dở»). `record_outcome`: lần gửi **không tạo được bài nào** (`:2273`) thì ghi lại `holder["replaced"]` (`:2276`) kiểu so rồi đặt với `claimed` (`:2279`): nháp vẫn đúng «đang gửi» của lần này thì trả về trạng thái cũ (kể cả xóa dòng khi trước đó chưa gửi lần nào); đã khác (tab khác ghi trạng thái mới) thì không ghi gì, không báo (`:2289`); không thử ghi thêm khi nháp trống (`:2280`: lần này không có bài nào để giữ) | `LC: test_lc_t089_1_confirmed_send_elsewhere_creating_nothing_keeps_this_post` (gỡ `xfail`), `N: test_failed_send_after_unsure_lock_restores_it`, `N: test_failed_send_after_sent_restores_exact_record`, `N: test_failed_send_after_broken_state_keeps_lock`; T-086 `test_error_before_any_draft_clears_pending` (lần gửi đầu hỏng trước khi tạo gì: nháp vẫn «chưa gửi», nút bật) vẫn qua |
+| 2 | «Không tạo được gì» xét theo **kết quả gửi**, không so mã bài | `nothing_created = not holder["result"]["ok"] and not pending` (`:2273`): đúng hai nhánh lỗi mà chắc chắn chưa có bài (`DraftImagesError` không `maybe_draft`: lỗi ở bước tải ảnh; `WordPressError`: kiểm sai trước khi gửi). Lần gửi có bài (`ok`) dù website trả lại đúng mã cũ (WordPress giả trả 501 cho mọi bài) vẫn ghi dòng mới; kết quả chưa rõ (`maybe_draft`, lỗi lạ) vẫn ghi «đang gửi» như cũ | `N: test_created_post_with_same_id_is_a_new_record` (lần gửi thứ hai cùng mã 501: dòng mới, giờ mới), `N: test_two_sessions_create_more_only_once`, `SL: test_two_sessions_take_turns_one_post_per_round` (hai test Lá Chắn nêu là bẫy của cách so mã bài) |
+| 3 | Gỡ `xfail` LC-T089-1 trong `tests/test_la_chan_t089.py` | Báo `[XPASS(strict)]` trước khi gỡ; xóa dấu và dòng `import pytest` không còn dùng (ruff F401, như lượt 1 với `tests/test_la_chan_t086.py`); thân test không đổi | Mục «Bằng chứng lượt 4» |
+| 4 | Ghi nhận xem lại 1 của Lá Chắn (câu `kept_other_message` «có thể cũng đã có» khi lần này chưa tạo gì) | Hết ca này: lần gửi chưa tạo gì không còn ra `kept_other` (nếu tab khác đã ghi trạng thái mới thì coi là xong, không báo); `kept_other` chỉ còn khi lần này có bài («mã …») hay chưa rõ («có thể cũng đã có»), đúng cả hai | `N: test_nothing_created_and_other_tab_wrote_no_note`, `N: test_kept_other_message_*` |
+| 5 | Phạm vi | Chỉ `app/views/write.py` (luồng gửi nháp) và test; không đổi `seo_app/storage/drafts.py` (`save_send_state` với `expected` đủ dùng) | — |
+
+Ảnh hưởng tới luồng một tab (đã kiểm bằng test): lần gửi đầu hỏng trước khi tạo gì: nháp vẫn «chưa gửi», nút bật (như cũ); nháp «đã gửi X», tick «Tạo thêm», gửi hỏng trước khi tạo gì: nháp vẫn đúng dòng «đã gửi X» cũ (trước đây ghi lại «đã gửi X» với giờ mới, cùng khóa); nháp «gửi dở», tick «Tôi đã kiểm tra…», gửi hỏng trước khi tạo gì: nháp vẫn «gửi dở», phải tick lại (trước đây mở khóa; hướng an toàn, Lá Chắn đã nêu).
+
+**Thử gỡ chỗ sửa lượt 4** (bản sao `git archive` của `6f67bb2` chép thêm `write.py` và hai file test của lượt 4, tức đúng nội dung `e7549ea`; script `T-089-hoa-si-scripts/mutate_l4.py`):
+
+| Đột biến | Kết quả |
+|---|---|
+| L4-a không trả lại, xóa trắng như lượt 3 | bắt được (3 hỏng: LC-T089-1, hai ca trả lại «gửi dở», «đã gửi») |
+| L4-b nhận «chưa tạo gì» bằng so mã bài (bẫy Lá Chắn đã gặp) | bắt được (3 hỏng: cùng mã 501 là dòng mới, hai test hai phiên «Tạo thêm») |
+| L4-c trả lại không so (ghi đè trạng thái tab khác) | bắt được (1 hỏng) |
+| L4-d dòng hỏng cũng xóa trắng | bắt được (1 hỏng) |
+| Không đột biến (8 test trên) | 8 qua |
+
+**Soát R5 lượt 4:** `tests/test_la_chan_t089.py` chỉ xóa dấu `@pytest.mark.xfail(...)` và `import pytest` thừa (6 dòng); `tests/test_t089_send_draft.py` thêm 4 test, không sửa test cũ. Không `skip`, không xóa test.
+
+**Bảo mật (W1, W2, U1, F2):** không đổi. Chỉ đổi trạng thái gửi ghi trong nháp trên máy; lần trả lại là so rồi đặt với dấu của chính lần này (không bao giờ ghi đè hay xóa trạng thái tab khác) và chỉ trả về trạng thái đã có trước đó (không mở khóa thêm so với trước lúc gửi). Không thêm lệnh nào lên website, không câu báo mới.
+
+**Bằng chứng lượt 4:**
+
+```
+# Trước khi gỡ dấu:
+$ uv run pytest tests/test_la_chan_t089.py
+[XPASS(strict)] LC-T089-1: tab 1 tạo bài trước, tab 2 (cố ý gửi tiếp) hỏng sau mà chưa tạo gì: nháp mất khóa
+
+# Mọi file test luồng gửi nháp (grep -l "send_and_record\|finish_send\|record_outcome\|save_send_state"
+# tests/: 7 file) + 8 file tiêu chí xong của phiếu (test gửi nháp T-056 nằm trong đó): 13 file
+$ PYTHONUTF8=1 uv run pytest tests/test_app_images.py tests/test_soi_loi_t056.py \
+    tests/test_la_chan_t056.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_drafts.py tests/test_drafts_images.py tests/test_app_pages.py \
+    tests/test_t086_send_state.py tests/test_storage_send_state.py \
+    tests/test_t089_send_draft.py tests/test_soi_loi_t089.py tests/test_la_chan_t089.py -q -rxXf
+498 passed, 1 skipped in 970.42s (0:16:10)
+# Code e7549ea, chạy 13:57 → 14:13. Không còn xfail nào.
+
+# Cây gộp lần lượt nhánh (e7549ea) → main cục bộ 4e81776 (đã gộp T-089 tới 6f67bb2, T-088) →
+# team/T-041 33d0655 (git merge-tree, không xung đột; xuất bằng git archive, chạy bằng venv của
+# wt-T-089; T-041 không đổi pyproject.toml, uv.lock):
+$ pytest tests/test_t089_send_draft.py tests/test_soi_loi_t089.py tests/test_la_chan_t089.py \
+    tests/test_t086_send_state.py tests/test_soi_loi_t086.py tests/test_la_chan_t086.py \
+    tests/test_storage_send_state.py tests/test_t041_seo_ui.py tests/test_t041_drafts_seo.py \
+    tests/test_soi_loi_t041.py tests/test_wordpress_t088.py tests/test_soi_loi_t088.py -q -rxXf
+1024 passed, 9 xfailed in 758.76s (0:12:38)
+# 9 xfail đều có sẵn ở nhánh khác: 1 SL-T041-8 (tests/test_soi_loi_t041.py), 8 SL-T088-1.
+
+$ uv run ruff check .
+All checks passed!
+```
+
+**Đối chiếu việc lượt 4:**
+
+- [x] LC-T089-1: lần gửi không tạo được gì trả lại đúng trạng thái «đang gửi» của nó đã thay (so rồi đặt), không xóa trắng; «không tạo được gì» xét theo kết quả gửi, không so mã bài.
+- [x] Gỡ `xfail` LC-T089-1 (chỉ xóa dấu và `import pytest` thừa); thêm 4 test.
+- [x] Phạm vi: `app/views/write.py` và test (không cần sửa `drafts.py`).
+- [x] Mọi test luồng gửi nháp + tiêu chí xong: 498 qua, 0 hỏng; `uv run ruff check .` sạch; thử gỡ chỗ sửa: 4/4 bắt được.
+- [ ] Soi Lỗi, Lá Chắn rút gọn lượt 4 (chưa tới lượt).
 
 ## Lượt 3 (2026-10-27): SL-T089-2, câu báo L2-1
 

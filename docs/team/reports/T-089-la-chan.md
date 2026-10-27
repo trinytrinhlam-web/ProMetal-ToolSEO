@@ -11,6 +11,7 @@
 | Ngày | 2026-10-26 (19:22 → 19:51 +07, giờ máy) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp** (SL-T089-1 của Soi Lỗi, giữ Thấp); Lá Chắn không có lỗi mới. LC-T086-1, SL-T086-1, SL-T086-2 **đã đóng** đúng điều kiện 2 biên bản Lá Chắn T-086; băm ảnh đã duyệt trong nháp đạt điều kiện 3 (phần băm). Ghi nhận 2 (mã bài trong nháp không dùng để ghi lên website) vẫn giữ. W1, W2, U1, F2 đạt. **Gộp `main` được ngay**: thử gộp với `origin/main` `e295f0e`, `team/T-088`, `team/T-041` không xung đột; 15 file test liên quan trên cây gộp 1.210 qua, 0 hỏng; T-041 lên `ee1de90` thử lại: 17 file 1.394 qua, 0 hỏng; ruff sạch |
 | **Kết luận xem lại lượt 2 + 3** (2026-10-27) | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp mới** (LC-T089-1: có từ trước, không phải lỗi lùi). SL-T089-1, SL-T089-2 **đã đóng**; Ghi nhận 1 đóng phần ghi đè; không lùi LC-T086-1, SL-T086-1, SL-T086-2, băm ảnh đã duyệt, Ghi nhận 2; câu báo mới đạt U1; R5 đạt. **Gộp `main` được ngay** (đầu nhánh `58100eb`; thử gộp với `main` `828da87`, T-041 `f21bc3a` và `a735c7e` không xung đột, 18 file test trên cây gộp 1.511 qua, 0 hỏng). Xem mục [Xem lại lượt 2 + 3](#xem-lại-lượt-2--3-2026-10-27) |
+| **Kết luận xem lại lượt 4** (2026-10-27) | **ĐẠT** · 0 lỗi mới; LC-T089-1 **đã đóng** (lần gửi không tạo được bài nào trả nháp về đúng trạng thái cũ, so rồi đặt); không lùi SL-T089-1, SL-T089-2, Ghi nhận 1, LC-T086-1, SL-T086-1, SL-T086-2, băm ảnh đã duyệt, Ghi nhận 2; R5 đạt. **Gộp `main` được ngay** (đầu nhánh `3b48502`; thử gộp với `main` `641a837`, T-041 `33d0655` không xung đột, 20 file trên cây gộp 1.554 qua, 0 hỏng). Xem mục [Xem lại lượt 4](#xem-lại-lượt-4-2026-10-27) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -163,4 +164,59 @@ Theo tin giao việc của Chỉ Huy B (2026-10-27). Đầu nhánh `58100eb` (m�
 1. **Gộp `main`:** được ngay. Chỉ Huy chạy toàn bộ pytest trên Windows khi gộp như thường lệ.
 2. **LC-T089-1 (Thấp) → Họa Sĩ**, phiếu dọn sau (hoặc lượt 4 nếu Chỉ Huy muốn đóng trọn trong T-089); gỡ `xfail` của `tests/test_la_chan_t089.py` khi XPASS (chỉ xóa dấu). Soi Lỗi, Lá Chắn rút gọn.
 3. **Thư Ký, sau khi gộp T-089** (thay điều kiện 3 lượt đầu): viết lại khối «Lời dặn tạm thời» của README: mở cùng một bài ở hai tab rồi bấm gửi nay không còn ra hai bài nháp; giữ một câu tới khi LC-T089-1 xong: thấy «bài nháp có thể đã có…» trong lúc tab khác đang gửi thì đợi tab đó gửi xong, đừng tick «Tôi đã kiểm tra…»; nháp lưu trước bản này phải tick «Đã duyệt» ảnh lại một lần; lần gửi thật đầu tiên (T-059) giữ «một bài, một ảnh, một tab».
+4. **Lá Chắn:** kiểm lại phần xem lại này bằng Claude Fable sau 01/11.
+
+## Xem lại lượt 4 (2026-10-27)
+
+Theo tin giao việc của Chỉ Huy B (2026-10-27). Đầu nhánh `3b48502` (mã `e7549ea`). Đọc mục «Lượt 4» báo cáo Họa Sĩ; `git diff 6f67bb2..3b48502`: phần app chỉ đổi `app/views/write.py` (`send_and_record`, `record_outcome`; không câu báo mới); test: gỡ `xfail` LC-T089-1, thêm 4 test của Họa Sĩ. Số dòng theo `3b48502`. 14:28 → 14:55 +07, giờ máy.
+
+**Tóm tắt (cho chủ dự án):**
+
+- Lỗi nhỏ LC-T089-1 đã sửa đúng: lần gửi nào hỏng mà chưa tạo được bài thì app trả ghi chú gửi của bài về **đúng như trước lúc nó bắt đầu gửi**. Ca hai tab ở lượt trước: bài vẫn khóa, mở trang quản trị là thấy bài của tab đầu.
+- Thay đổi nhỏ bạn có thể gặp (hướng an toàn): bài đang «gửi dở», bạn tick «Tôi đã kiểm tra…» rồi gửi mà lần đó hỏng trước khi tạo bài (ví dụ mất mạng lúc tải ảnh) thì bài vẫn «gửi dở», muốn gửi tiếp phải tick lại.
+- Không có lỗi mới. Bản này an toàn để gộp.
+
+| Điểm kiểm | Kết quả | Bằng chứng |
+|---|---|---|
+| **LC-T089-1** | **Đóng** | `send_and_record` nhớ trạng thái mà «đang gửi» của lần này thay (`holder["replaced"]`, `write.py:2217`; dòng hỏng thì chính «đang gửi» của lần này), ngay sau `claimed` (`:2215`), trước khi gửi. `record_outcome`: lần gửi không tạo được bài nào (`nothing_created`, `:2273`) thì ghi `replaced` (`:2276`) kiểu so rồi đặt với `claimed` (`:2279`); không ghi thêm khi nháp trống (`:2280`); không ghi được (tab khác đã ghi trạng thái mới) thì coi là xong, không báo (`:2289`). Ca LC-T089-1: tab 2 trả lại đúng «đang gửi» của tab 1 → nháp «gửi dở», khóa. `tests/test_la_chan_t089.py` (đã gỡ `xfail`) qua. Đọc mã thêm ca nhiều tab cố ý gửi chồng nhau (A, B, C, mỗi tab thay «đang gửi» của tab trước): lần chưa tạo gì trả lại từng nấc, dòng còn lại luôn là «đang gửi» của một lần có thể đã tạo bài hay kết quả thật của nó → không mở khóa |
+| «Chưa tạo gì» không sai theo hướng mở khóa khi website đã có bài | **Đạt** (một giả định có từ T-054: Ghi nhận lượt 4 số 1) | `nothing_created = not ok and not pending` chỉ đúng ở hai nhánh: (a) `WordPressError` thường: chỉ ném ở bước kiểm trước khi gửi (tiêu đề, phần bài, ảnh); trong khối gửi mọi lỗi đổi thành `DraftImagesError`; sau khi tạo bài, lỗi đặt ảnh đại diện thành `message`, kết quả vẫn `ok` (`client.py:1308-1317`). (b) `DraftImagesError` không `maybe_draft`: lỗi ở bước tải ảnh (chưa tới lệnh tạo bài: `creating` tắt, `client.py:1242`, `:1272`) hoặc lệnh tạo bài bị từ chối 4xx (`:1281-1293`). Hết giờ, mất mạng, lỗi SSL: `WordPressError` không mã (`client.py:1446-1466`); chuyển hướng 3xx, 5xx: mã không phải 4xx (`:1467-1475`) → `maybe_draft` → «gửi dở». Câu trả lời 2xx hỏng (không JSON, sai khuôn: `_json`, `_post_from`) → lỗi không mã → `maybe_draft`. Lỗi lạ (không phải `WordPressError`) ở mọi bước, kể cả sau khi tạo bài → `except Exception` giữ `pending` (`write.py:2232`) → «gửi dở». Lỗi thoát ra sau khi website đã trả kết quả (lúc dựng `holder["result"]`): `result` còn `None`, `finish_send` không ghi gì, nháp giữ «đang gửi» → khóa. Lần trả lại chỉ về **đúng** trạng thái trước lúc bấm gửi: không bao giờ mở khóa hơn trước lúc gửi |
+| Không lùi SL-T089-1 | **Đạt** | Chốt `claimed` giữ nguyên (`:2215`, `:2270`, guard của `finish_send`); tab thua không có `claimed`, `replaced`, không ghi gì |
+| Không lùi SL-T089-2 | **Đạt** | Lần gửi có bài hay chưa rõ vẫn ghi thêm khi nháp trống (`:2280-2281`); hai test SL-T089-2 của Soi Lỗi qua. Riêng lần gửi **chưa tạo gì** mà nháp bị xóa ở tab khác: không ghi (Ghi nhận lượt 4 số 2) |
+| Không lùi Ghi nhận 1 (lượt đầu) | **Đạt** | Kết quả có bài vẫn so rồi đặt với `claimed` (`:2279`), không ghi đè trạng thái mới của tab khác (`kept_other`, `:2294`); lần trả lại cũng so rồi đặt, không ghi đè, không xóa dòng của tab khác |
+| Không lùi LC-T086-1, SL-T086-1, SL-T086-2, băm ảnh đã duyệt, Ghi nhận 2 | **Đạt** | `SendState.now` cho kết quả có bài vẫn trong `try`; lần ghi «đang gửi» với `seen` không đổi; phần ảnh, băm, mã bài trong nháp không nằm trong diff. Test qua (bộ test dưới) |
+| U1, W1, W2 | **Đạt** | Không câu báo mới, không thêm `unsafe_allow_html` (vẫn 7 chỗ `=True`), không lệnh mới lên website; chỉ đổi trạng thái gửi trong nháp trên máy |
+| Thay đổi người dùng thấy | **Đạt** (hướng an toàn) | Nháp «gửi dở», tick «Tôi đã kiểm tra…», gửi hỏng trước khi tạo bài: vẫn «gửi dở», phải tick lại (trước đây mở khóa). Nháp «đã gửi X», tick «Tạo thêm», gửi hỏng trước khi tạo gì: giữ đúng dòng «đã gửi X» cũ. Lần gửi đầu hỏng trước khi tạo gì: vẫn «chưa gửi», nút bật như cũ (T-086 `test_error_before_any_draft_clears_pending` qua). Nên ghi vào README (điều kiện Thư Ký) |
+| Gỡ `xfail` đúng R5 | **Đạt** | `git diff 6f67bb2..3b48502 -- tests/`: `tests/test_la_chan_t089.py` chỉ xóa dấu `@pytest.mark.xfail(...)` LC-T089-1 và dòng `import pytest` không còn dùng (6 dòng; ruff F401, như `tests/test_la_chan_t086.py` ở lượt 1), thân test không đổi; `tests/test_t089_send_draft.py` chỉ thêm 4 test và hàm phụ `media_rejected`. Không `skip`, không xóa test |
+| Thử gộp | **Không xung đột** | Mục «Thử gộp lượt 4» dưới |
+
+**Ghi nhận lượt 4 (không phải lỗi):**
+
+1. Giả định «website trả 4xx cho lệnh tạo bài = chưa tạo bài» (có từ T-054, LC-T054-2) nay quyết định cả việc trả nháp về trạng thái cũ. WordPress lõi, với đúng các trường app gửi lúc tạo bài (`status`, `title`, `content`; không `categories`, `tags`, `meta`, `featured_media`, `template`), không trả 4xx sau khi đã thêm bài; chỉ plugin hay tường lửa làm sai (ví dụ `wp_die(…, 403)` trong `save_post`, `rest_after_insert_post`, lọc `rest_post_dispatch`, luật tường lửa xét câu trả lời) mới tạo được ca «bài đã có mà lệnh báo 4xx». Khi đó nháp về đúng trạng thái trước lúc gửi (lần gửi đầu: «chưa gửi»), y như `main` và các lượt trước; câu của client nói «chưa tạo bài nháp». Không lùi. Muốn chặn hẳn: phiếu client sau coi 4xx ở lệnh tạo bài là «có thể đã có» (đổi lại: lỗi cấu hình 4xx cũng khóa «gửi dở»).
+2. Lần gửi chưa tạo gì mà nháp bị xóa ở tab khác trong lúc gửi: không ghi gì (lượt 3 ghi lại «đã gửi» bài cũ vào dòng mồ côi nên nháp được tự lưu tạo lại vẫn khóa). Không phải lỗi: xóa nháp ở một tab trong khi tab khác còn mở rồi tự lưu tạo lại thì trạng thái gửi mất theo nháp, kể cả khi không gửi gì (có từ T-055/T-086, ngoài phiếu này). Có thể gom vào phiếu dọn sau: tự lưu không tạo lại nháp vừa bị xóa ở tab khác, hay giữ trạng thái gửi của nháp đã gửi.
+3. Trả lại đúng đối tượng trạng thái cũ (cùng giờ ghi) làm lần so rồi đặt của tab khác thấy trạng thái đó khớp lại: đúng ý (lần này không tạo gì, nháp đúng như lúc tab kia thấy). An toàn vì «chưa tạo gì» xét theo nhánh kết quả, không so mã bài (bẫy đã nêu ở lượt 2 + 3; Họa Sĩ có test `test_created_post_with_same_id_is_a_new_record`, cùng hai test hai phiên «Tạo thêm»).
+
+### Thử gộp lượt 4
+
+| Việc | Kết quả |
+|---|---|
+| `git merge-tree --write-tree` của `3b48502` với `origin/main` `828da87`, `main` trên máy `4e81776` (Chỉ Huy đã gộp T-089 tới `6f67bb2`, chưa push) và `origin/team/T-041` `33d0655` | Không xung đột |
+| Cây gộp lần lượt `3b48502` → `main` `4e81776` → T-041 `33d0655` (xuất `git archive` ra thư mục nháp, chạy bằng venv của `wt-T-089`: `pyproject.toml`, `uv.lock` không đổi); 20 file: 7 file luồng gửi nháp (grep), 6 file tiêu chí xong còn lại, T-041 (`test_t041_seo_ui`, `test_t041_drafts_seo`, `test_soi_loi_t041`, `test_t041_meta`, `test_t041_schema`), client sau T-088 (`test_wordpress_t088`, `test_soi_loi_t088`) | **1.554 passed, 1 skipped, 9 xfailed, 0 failed** (1.293,8 s, `PYTHONUTF8=1`; chạy song song với lượt nhánh). 9 xfail đều có sẵn ở nhánh khác: 1 SL-T041-8 (`team/T-041`), 8 SL-T088-1 (`main`). `ruff check .` trên cây gộp: All checks passed! Sau đó `origin/main` lên `641a837` (Chỉ Huy push; so với `4e81776` chỉ thêm `CLAUDE.md`, `docs/team/board.md`, phiếu T-089): `merge-tree` với nhánh, và lần lượt với T-041 `33d0655`, vẫn sạch |
+
+### Kết quả công cụ quét lượt 4
+
+| Công cụ | Kết quả |
+|---|---|
+| detect-secrets (`PYTHONUTF8=1`) | `{}`: 4 file đổi từ `6f67bb2` và biên bản này |
+| bandit | `uvx bandit -r app/views/write.py`: 0 vấn đề |
+| pip-audit | Không chạy lại: `uv.lock` không đổi |
+| ruff | `uv run ruff check .`: All checks passed! (nhánh `3b48502` và cây gộp) |
+| pytest (nhánh `3b48502`) | 13 file: 7 file luồng gửi nháp (`grep -l "send_and_record\|finish_send\|record_outcome\|save_send_state" tests/`) + 6 file tiêu chí xong còn lại (`test_app_images`, `test_soi_loi_t056`, `test_la_chan_t056`, `test_storage_drafts`, `test_drafts_images`, `test_app_pages`), `PYTHONUTF8=1`: **498 passed, 1 skipped, 0 failed**, không còn xfail nào (1.004,5 s; chạy song song với lượt cây gộp). Khớp số Họa Sĩ lượt 4; `tests/test_la_chan_t089.py` (đã gỡ `xfail`) qua |
+
+**Kết luận xem lại lượt 4: ĐẠT** · 0 lỗi mới; LC-T089-1 **đóng**; không lùi SL-T089-1, SL-T089-2, Ghi nhận 1, LC-T086-1, SL-T086-1, SL-T086-2, băm ảnh đã duyệt, Ghi nhận 2; «chưa tạo gì» không mở khóa khi website đã có bài, trừ ca plugin/tường lửa trả 4xx sau khi đã thêm bài (Ghi nhận lượt 4 số 1, có từ T-054, như `main`); R5 đạt. Phiếu T-089 không còn lỗi mở nào của Soi Lỗi hay Lá Chắn. **Gộp `main` được ngay.**
+
+**Việc theo sau (không chặn gộp):**
+
+1. **Gộp `main`:** được ngay. Chỉ Huy chạy toàn bộ pytest trên Windows khi gộp như thường lệ.
+2. **Thư Ký, sau khi gộp** (thay điều kiện 3 của lượt 2 + 3): viết lại khối «Lời dặn tạm thời» của README: hai tab cùng gửi một bài nay chỉ ra một bài nháp, lời dặn «một tab» bỏ được; thêm: bài «gửi dở», tick xác nhận rồi gửi mà hỏng trước khi tạo bài thì vẫn «gửi dở», phải tick lại; nháp lưu trước bản này phải tick «Đã duyệt» ảnh lại một lần; lần gửi thật đầu tiên (T-059) giữ «một bài, một ảnh, một tab».
+3. Ghi nhận lượt 4 số 1, 2: phiếu dọn sau nếu Chỉ Huy muốn (không bắt buộc).
 4. **Lá Chắn:** kiểm lại phần xem lại này bằng Claude Fable sau 01/11.
