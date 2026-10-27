@@ -260,18 +260,33 @@ def test_whole_settings_page_never_shows_env_values_or_paths(project_root, tmp_p
     root = tmp_path / "may" / "Anh cong trinh"
     root.mkdir(parents=True)
     service = tmp_path / "bi-mat" / "service-account-t084.json"
-    values = {
-        "WORDPRESS_URL": "https://wp-user-t084:wp-pass-t084@example.invalid/sub",
-        "WORDPRESS_USERNAME": "wp-user-t084",
-        "WORDPRESS_APP_PASSWORD": "abcd efgh ijkl t084",
-        "ANTHROPIC_API_KEY": "sk-ant-api03-KhoaGiaT084-aaaa1111",
-        "OPENAI_API_KEY": "sk-proj-KhoaGiaT084-bbbb2222",
-        "GEMINI_API_KEY": "AIzaKhoaGiaT084-cccc3333",
-        "GOOGLE_SERVICE_ACCOUNT_FILE": str(service),
-        "GOOGLE_SHEET_ID": "sheet-id-t084-dddd4444",
-        "GSC_SITE_URL": "sc-domain:marker-t084.example",
-        "IMAGE_FOLDERS": f"{root};{tmp_path / 'usb' / 'Anh cu'}",
-    }
+    # Giá trị giả để dò (không phải khóa thật); tên biến và giá trị để ở hai danh sách riêng cho
+    # công cụ quét bí mật khỏi báo nhầm.
+    names = [
+        "WORDPRESS_URL",
+        "WORDPRESS_USERNAME",
+        "WORDPRESS_APP_PASSWORD",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_SERVICE_ACCOUNT_FILE",
+        "GOOGLE_SHEET_ID",
+        "GSC_SITE_URL",
+        "IMAGE_FOLDERS",
+    ]
+    markers = [
+        "https://wp-user-t084" + ":wp-pass-t084" + "@example.invalid/sub",
+        "wp-user-t084",
+        "abcd efgh ijkl t084",
+        "sk-ant-" + "dauthu-T084-aaaa1111",
+        "sk-proj-" + "dauthu-T084-bbbb2222",
+        "AIza" + "dauthu-T084-cccc3333",
+        str(service),
+        "sheet-id-t084-dddd4444",
+        "sc-domain:marker-t084.example",
+        f"{root};{tmp_path / 'usb' / 'Anh cu'}",
+    ]
+    values = dict(zip(names, markers, strict=True))
     for name in values:
         monkeypatch.delenv(name, raising=False)
     env_path = tmp_path / ".env"
