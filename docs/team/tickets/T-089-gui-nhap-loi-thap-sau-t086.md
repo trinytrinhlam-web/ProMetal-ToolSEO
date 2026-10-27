@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 3) |
 | Phụ thuộc | T-086 đã gộp |
-| Trạng thái | Lá Chắn xem lại lượt 2 + 3 |
+| Trạng thái | Gộp `main` (chạy toàn bộ test); Họa Sĩ lượt 4 sửa LC-T089-1 |
 
 ## Mục tiêu
 
@@ -60,3 +60,4 @@ W1, W2, U1, F2.
 - 2026-10-27 08:16 (Chỉ Huy B): **Họa Sĩ lượt 2 xong** (`cf5a556`, mã `f2a72f5`): `holder["claimed"]`, `finish_send` chỉ ghi lại khi lần này đã ghi được «đang gửi», `record_outcome` ghi kiểu so rồi đặt (đóng Ghi nhận 1 Lá Chắn); gỡ 2 `xfail` SL-T089-1; 12 file 480 qua; gộp thử với `main` có T-088 783 qua. Giao **Soi Lỗi xem lại** (phiên Soi Lỗi T-056), rồi Lá Chắn xem lại.
 - 2026-10-27 (Chỉ Huy B): **Soi Lỗi xem lại lượt 2 ĐẠT CÓ ĐIỀU KIỆN** (`c636e9b`): SL-T089-1 đóng thật (6 biến thể, hai phiên thật), Ghi nhận 1 Lá Chắn đạt, không lùi ca cũ; 1 Thấp mới **SL-T089-2** (lỗi lùi của lượt 2: nháp mất dòng trạng thái trong lúc gửi thì `record_outcome` bỏ kết quả bài đã tạo; 2 `xfail`). Giao **Họa Sĩ lượt 3** (cách sửa Soi Lỗi gợi ý, khoảng 2 dòng, đã thử trên bản sao) và sửa câu báo; sau đó **Lá Chắn xem lại** lượt 2 + 3 (2 `xfail` của Soi Lỗi là phép kiểm lượt 3), rồi gộp.
 - 2026-10-27 (Chỉ Huy B): **Họa Sĩ lượt 3 xong** (`58100eb`, mã `8a1ba02`): SL-T089-2 (ghi thêm `expected=(None, False)` khi nháp không còn dòng nào), câu báo khi tab kia đã gửi xong nêu mã bài của lần này; gỡ 2 `xfail`; 12 file 493 qua; cây gộp với `main` và T-041 1.005 qua. Giao **Lá Chắn xem lại lượt 2 + 3**.
+- 2026-10-27 13:44 (Chỉ Huy B): **Lá Chắn xem lại lượt 2 + 3 ĐẠT CÓ ĐIỀU KIỆN** (`6f67bb2`): SL-T089-1, SL-T089-2, phần ghi đè của Ghi nhận 1 đóng; câu báo mới đạt U1; không lùi; gộp được ngay. 1 Thấp **LC-T089-1** có từ trước (cả lượt 1 và `main`): tab 2 cố ý xác nhận gửi rồi hỏng lúc tải ảnh, chưa tạo gì → xóa trạng thái gửi, nháp quên bài tab 1 vừa tạo. Gộp `main` trên máy (`6cfeda9`), đang chạy toàn bộ test. LC-T089-1 đúng mục tiêu phiếu (hai tab) → **Họa Sĩ lượt 4** trên cùng nhánh (trả lại đúng trạng thái cũ theo kết quả gửi), rồi Lá Chắn xem lại, gộp lần nữa. Sau lượt 4: Thư Ký viết lại «Lời dặn tạm thời» README (điều kiện Lá Chắn; nháp cũ phải tick duyệt ảnh lại một lần; lần gửi thật đầu tiên vẫn một bài, một ảnh, một tab).
