@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp (trước khi hết Giai đoạn 4; SL-T085-1 bắt buộc trước phiếu nào đưa giá trị tham số lấy từ dữ liệu ngoài vào `_request`) |
 | Phụ thuộc | T-085 đã gộp |
-| Trạng thái | Lá Chắn đạt có điều kiện, đang gộp |
+| Trạng thái | Xong |
 
 ## Mục tiêu
 
@@ -56,3 +56,4 @@ W2, W3, S2.
 - 2026-10-26 15:19 (Chỉ Huy B): **Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`b008dc8`): 4 lỗi cũ đóng; 1 Thấp SL-T088-1. Giao **Lá Chắn rút gọn** (phiên Lá Chắn T-060).
 - 2026-10-26 19:22 (Chỉ Huy B): **Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN** (`7e1fdae`), gộp được ngay. Gộp `main` trên máy (`913ea6c`), đang chạy toàn bộ test. SL-T088-1 (Thấp) chờ chủ dự án duyệt lập phiếu.
 - 2026-10-27 07:28 (Chỉ Huy B): lượt toàn bộ test tối 26/10 bị ngắt ở 75% khi máy dừng (chưa có test hỏng); chạy lại.
+- 2026-10-27 08:47 (Chỉ Huy B): **đã gộp vào `main`** (Windows 14.722 test qua, 0 hỏng, 1 giờ 18 phút; ruff sạch); xóa nhánh `team/T-088`, worktree `wt-T-088`. SL-T088-1 (Thấp, có từ trước) chờ chủ dự án duyệt lập phiếu.
