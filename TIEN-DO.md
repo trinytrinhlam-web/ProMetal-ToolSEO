@@ -74,6 +74,15 @@ Anh dặn: vấn đề nào chưa giải quyết được thì ghi lại để s
 5. **(Không gấp) Thùng rác bài viết**: còn 3 bài «[THỬ T-059]», WordPress tự xóa sau 30 ngày; muốn sạch ngay thì bấm «Dọn sạch thùng rác».
 6. Việc cũ vẫn mở (ghi từ 16/10, chưa xác nhận): dọn khối doanh nghiệp rỗng tên của SiteSEO, đoạn «3 chi nhánh…» ở trang chủ, mức giá «$$»; nhờ người làm web xác nhận các đường `/prometal/v1/deploy-files`, `/prometal/v1/purge`, `/code-snippets/v1` bắt buộc đăng nhập quản trị.
 
+7. **Giai đoạn 5 (kế hoạch, lịch, hẹn giờ, đăng bài): 6 câu thiết kế** (báo cáo `docs/team/reports/T-094-tho-may.md`). Theo lời anh dặn «có đề xuất thì làm theo đề xuất», Chỉ Huy **chọn khuyến nghị A cho cả 6 câu**; anh muốn đổi câu nào thì báo sáng mai:
+   - 1A: khai báo `google-auth` là thư viện của app (đã có sẵn trong máy vì thư viện Gemini cần, không tải thêm).
+   - 2A: file kế hoạch tải lên chỉ nhận CSV/TXT; Excel thì chép rồi dán (B là thêm thư viện `openpyxl`).
+   - 3A: kế hoạch nằm ở tab «KeHoach» với các cột cố định (app tìm cột theo tên, anh vẫn sửa tay được).
+   - 4A: app tự ghi 4 ô trạng thái trên Sheets sau khi gửi bài.
+   - 5A: bài đã là nháp từ trước thì hẹn giờ trong trang quản trị WordPress.
+   - 6A: «Cập nhật bài cũ» để giai đoạn sau.
+   - Việc anh cần chuẩn bị cho Giai đoạn 5 (khi tới bước thử thật): tạo service account Google, chia sẻ file Google Sheets kế hoạch cho email của service account, lưu file khóa JSON ngoài thư mục dự án.
+
 Đã xong tối 27/10: SiteSEO lên 1.4.2 và bật AI Abilities; tài khoản Biên tập viên `phan-mem-seo` + mật khẩu ứng dụng riêng, Kiểm tra kết nối «SiteSEO: ghi được»; thử thật T-059 (ghi SEO, ảnh còn GPS, từ chối bài đã chuyển trạng thái); xóa ảnh thử; chọn (a) cho ảnh đại diện của theme (không GPS trên điện thoại).
 
 **Anh báo ngày 22/10: hiện chưa có máy Mac.** Bỏ việc nâng `uv` trên Mac. Máy Windows đã đủ: `certifi` mới, `uv` 0.13.4, nên bỏ lời dặn «không dùng app trên Wi-Fi công cộng» trên máy Windows. Khi có máy Mac: chạy `uv self update` rồi mở app bằng `run.command`.

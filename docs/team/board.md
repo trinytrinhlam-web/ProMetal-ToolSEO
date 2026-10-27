@@ -34,11 +34,11 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh | `team/T-082` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
-| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Thợ Máy · T-083 lỗi chữ alt ảnh AI | `team/T-083` | ⏳ **27/10 17:35 Thợ Máy đang làm** | |
+| [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | GĐ3: sửa câu báo đọc ảnh khi thư mục bị dời/tráo (SL-T080-1, -2, -L-1); chỉ đổi câu, không nới lớp chặn | Thợ Máy · T-082 câu báo đọc ảnh (lượt 2) | `team/T-082` | Thợ Máy xong (`552f870`); Soi Lỗi rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`7e2b4b3`: 2 Thấp SL-T082-1, -2). ⏳ **23:03 Thợ Máy lượt 2** | [Thợ Máy](reports/T-082-tho-may.md) · [Soi Lỗi](reports/T-082-soi-loi.md) |
+| [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | GĐ3: dọn lỗi chữ alt, chú thích ảnh AI (SL-T068-1..3, LC-T068-1, SL-T081-1) | Soi Lỗi · T-081 kiểm nhanh alt ảnh AI (T-083) | `team/T-083` | Thợ Máy xong (`eff4f12`; 39 file 4.681 qua). ⏳ **23:03 Soi Lỗi rút gọn** | [Thợ Máy](reports/T-083-tho-may.md) |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | GĐ4: thử thật một bài nháp, ghi SEO lên site; siết code theo kết quả thật | Thợ Máy · T-059 siết mã sau thử thật | `team/T-059` | 27/10 thử thật: ghi SEO qua Abilities, ảnh còn GPS, từ chối bài đã chuyển trạng thái: ĐẠT; `srcset` làm điện thoại nhận bản thu nhỏ mất GPS: chưa đạt. ⏳ **19:37 Thợ Máy bước 7** | |
-| [T-094](tickets/T-094-thiet-ke-giai-doan-5.md) | GĐ5: thiết kế kế hoạch, lịch, hẹn giờ và đăng bài (chỉ tài liệu; chia phiếu, câu hỏi cho chủ dự án) | Thợ Máy · T-094 thiết kế Giai đoạn 5 | `team/T-094` | ⏳ **27/10 19:53 Thợ Máy đang làm** | |
-| [T-095](tickets/T-095-readme-buoc-seo-tai-khoan-wordpress.md) | README: bước 4 SEO, tài khoản Biên tập viên và mật khẩu ứng dụng (bài học thử thật T-059) | Thư Ký · T-095 README bước SEO | `team/T-095` | ⏳ **27/10 19:53 Thư Ký đang làm** | |
+| [T-094](tickets/T-094-thiet-ke-giai-doan-5.md) | GĐ5: thiết kế kế hoạch, lịch, hẹn giờ và đăng bài (chỉ tài liệu; chia phiếu, câu hỏi cho chủ dự án) | Lá Chắn · T-060 kiểm client WordPress (đọc thiết kế) | `team/T-094` | Thợ Máy xong (`4812b96`): 8 phiếu T-096 → T-103, 6 câu hỏi (Chỉ Huy chọn khuyến nghị A theo dặn 27/10). ⏳ **23:03 Lá Chắn đọc thiết kế** | [Thợ Máy](reports/T-094-tho-may.md) |
+| [T-095](tickets/T-095-readme-buoc-seo-tai-khoan-wordpress.md) | README: bước 4 SEO, tài khoản Biên tập viên và mật khẩu ứng dụng (bài học thử thật T-059) | Lá Chắn · T-040 kiểm nhanh lời dặn meta (đọc README) | `team/T-095` | Thư Ký xong (`88d9606`). ⏳ **23:03 Lá Chắn đọc README** | [Thư Ký](reports/T-095-thu-ky.md) |
 
 ## Chờ
 
