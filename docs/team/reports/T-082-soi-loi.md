@@ -17,20 +17,20 @@ Còn **2 lỗi nhỏ (Thấp), không chặn**: (1) 3 ca thử mới của phi�
 
 ## Phạm vi và cách kiểm
 
-Diff `git diff b60054f..552f870`: `seo_app/images/folders.py` (+86/−15), `tests/test_images_folders.py` (+240/−1: 35 ca mới, 1 dòng kiểm câu báo của test T-048), `tests/test_soi_loi_t080.py` (−26: gỡ 3 dấu `xfail`), báo cáo Thợ Máy. Tôi:
+Diff `git diff b60054f..552f870`: `seo_app/images/folders.py` (+85/−16), `tests/test_images_folders.py` (+240/−1: 35 ca mới, 1 dòng kiểm câu báo của test T-048), `tests/test_soi_loi_t080.py` (−26: gỡ 3 dấu `xfail`), báo cáo Thợ Máy. Tôi:
 
 1. Đọc toàn bộ diff, đối chiếu từng lỗi với cách sửa tôi gợi ý ở T-080 và điều kiện 2 của Lá Chắn T-080 (Việc 4).
 2. Ép kẻ tráo "luôn thắng" (`sl80_forced_win.py` của tôi, thêm tuỳ chọn mở gốc qua `\\localhost\C$`) trên `main` `b60054f` và T-082; chạy thêm nguyên bản `lc79_forced.py`, `lc80_forced_unc.py` của Lá Chắn.
 3. Tráo thật bằng tiến trình riêng (`sl80_race_win.py`), đếm lọt và phân bố câu báo.
-4. Thử đột biến 12 kiểu trên các chỗ mới (`sl82_mutate.py`).
+4. Thử đột biến 13 kiểu trên các chỗ mới (`sl82_mutate.py`).
 5. Soát test: dòng đổi trong test T-048, gỡ `xfail` (so AST), 35 ca mới, 6 ca Linux/Mac (đọc mã).
-6. Không chặn oan: so kết quả `main`/T-080 với T-082 trên cây ảnh thường (`sl80_perf_same.py`).
+6. Không chặn oan: so kết quả `main` (đã có T-080) với T-082 trên cây ảnh thường (`sl80_perf_same.py`).
 
 Script, số liệu thô: thư mục ghi chú chung của nhóm phiên, `T-082-soi-loi-scripts/` (không commit). Mọi file thử nằm trong thư mục tạm riêng, file "bí mật" là mồi tự tạo.
 
 ## Xác nhận từng lỗi đã đóng
 
-### SL-T080-L-1 · `resolve` đi qua tầng vừa bị tráo — **đóng đúng ý**
+### SL-T080-L-1 · `resolve` đi qua tầng vừa bị tráo — **đóng đúng ý, còn một ca sót (SL-T082-2)**
 
 - `resolve` ra ngoài gốc → `_ChangedError` ("Thư mục vừa bị thay đổi trong lúc đọc, hãy thử lại.") thay `_LinkError(_MSG_OUTSIDE)` (`seo_app/images/folders.py:711-712`). Cả hai là `_LinkError`: vẫn từ chối, khi quét vẫn đếm vào `links`. `_MSG_OUTSIDE` đã bỏ; không còn chỗ nào dùng (grep `seo_app/`, `app/`, `tests/`).
 - `resolve` ra tên khác (khác khóa tên): so định danh mục ở **`gốc/tên resolve trả`** với mục cuối vừa `lstat` (`_still_same_entry`, `:465-476`, dùng ở `:716-725`). Cùng mục (tên ngắn 8.3, hard link) → giữ `_MSG_ALIAS`; khác, mất, là liên kết, không hỏi được → `_ChangedError`. Đúng điều kiện Lá Chắn T-080 ("Windows giữ `_MSG_ALIAS` cho tên ngắn 8.3 thật"); Thợ Máy dùng một luật cho mọi HĐH thay vì tách "Mac/Linux luôn báo thay đổi" như gợi ý lượt Linux: tôi đồng ý, gọn hơn và đúng nghĩa với hard link.
@@ -119,7 +119,7 @@ Cây 300 ảnh 60 KB, 3 tầng, 12 thư mục (gốc tên NFD; thư mục, ảnh
 | Ổ | Phép kiểm | Giống `main` | T-082 báo lỗi |
 |---|---|---|---|
 | NTFS cục bộ | 5.505 | **5.505** | **0** |
-| `\\localhost\C$` | __UNC__ |
+| `\\localhost\C$` | chạy hơn 1 giờ chưa xong (máy quá bận), không dùng làm bằng chứng; qua ổ mạng chỉ dựa vào ép thắng 330 ca và script Lá Chắn ở trên (đều đọc được ảnh mồi khi không bị tráo) | | |
 
 Tốc độ (ổ máy, xen kẽ, trung vị 3 vòng, `main` / T-082): `stat_image` 6,60 / 6,75 ms; `read_image_bytes` 35,99 / 34,70 ms; `list_folder` 13,12 / 11,50 ms; đọc `ref` gõ chữ hoa 34,72 / 35,17 ms: ngang nhau (T-082 không đụng đường chạy bình thường, chỉ thêm một lệnh đặt mã lỗi và một danh sách `lstat` đã có).
 
@@ -178,7 +178,23 @@ Cách sửa (một dòng, Thợ Máy): đổi `assert len(os.listdir(base)) == 2
 
 ## Bằng chứng
 
-(Đang chạy bộ test liên quan; cập nhật ở commit sau.)
+Máy Windows 11 Pro 10.0.26300, Python 3.12.15, worktree `wt-T-082`, nhánh `team/T-082` (code `552f870`). Máy đang chạy song song nhiều lượt pytest của phiên khác (rất chậm).
+
+```
+# Đúng lệnh trong tiêu chí xong của phiếu:
+$ uv run pytest tests/test_images_folders.py tests/test_images_folders_soi_loi.py tests/test_images_folders_t063.py tests/test_soi_loi_t079.py tests/test_la_chan_t079.py tests/test_soi_loi_t080.py -rsxX
+445 passed, 24 skipped, 3 xfailed in 227.79s (0:03:47)
+  0 hỏng, 0 XPASS; 3 xfail = R2-1 ×2, R2-2 (T-048, không thuộc phiếu); khớp số Thợ Máy
+
+# Mọi file test gọi tới folders.py (grep "images.folders|ImageLibrary" trong tests/, 29 file) + tests/test_app_pages.py:
+(đang chạy: bắt đầu 19:10, máy quá bận; kết quả ghi ở commit sau)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- Đột biến (13 kiểu) và ép thắng: mục "Mọi ca vẫn bị từ chối".
+- Không thêm file test, không đổi file code nào; chỉ thêm báo cáo này. Script thử ở thư mục ghi chú chung.
 
 ## Đối chiếu tiêu chí xong (phần Soi Lỗi)
 
