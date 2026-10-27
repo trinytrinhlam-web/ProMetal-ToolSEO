@@ -116,7 +116,7 @@ $ uv run ruff format --check seo_app/images/alt.py tests/test_t083_alt_tien_to.p
 - 28 ca `xfail` cũ (23 SL-T068, 5 SL-T081) qua với `--runxfail` trước khi gỡ dấu (`289 passed` trên 2 file); sau khi gỡ dấu vẫn qua (lượt chạy ở trên, 0 `xfailed`, 0 `XPASS` trong 2 file đó).
 - `git diff origin/main -- tests/test_soi_loi_t068.py tests/test_soi_loi_t081.py`: chỉ có 10 dòng `-` (dòng dấu `xfail`), 0 dòng `+`.
 
-**Thử ngẫu nhiên** trên bản cuối (script ngoài repo, trong scratchpad của phiên: `fuzz_t083.py`, `fuzz_t083_classify.py`; bản `main` của `alt.py` lấy bằng `git show b60054f:seo_app/images/alt.py`): 60.000 cặp alt/chú thích (hạt giống 83083) ghép 0–3 tiền tố từ 23 kiểu (có cả «Minh Hòa», «Minh hoạt», «Ảnh AI», «ai») × 24 kiểu mở đầu (ngoặc, `` ` ``, `_`, dấu đầu dòng, số thứ tự, `<b>`) × 18 kiểu nối (có `\:`, xuống dòng, NBSP, ký tự rộng 0) rồi 0–5 mảnh thân (shortcode, link, thẻ, email, `www.`, `\[`, chữ Hán, emoji, chữ rất dài), giới hạn alt 20–500, chú thích 20–1000:
+**Thử ngẫu nhiên** trên bản cuối (script ngoài repo, ở thư mục ghi chú chung của các phiên, `T-083-tho-may-scripts/`: `fuzz_t083.py`, `fuzz_t083_classify.py`, kèm log hai lượt test; bản `main` của `alt.py` lấy bằng `git show b60054f:seo_app/images/alt.py`): 60.000 cặp alt/chú thích (hạt giống 83083) ghép 0–3 tiền tố từ 23 kiểu (có cả «Minh Hòa», «Minh hoạt», «Ảnh AI», «ai») × 24 kiểu mở đầu (ngoặc, `` ` ``, `_`, dấu đầu dòng, số thứ tự, `<b>`) × 18 kiểu nối (có `\:`, xuống dòng, NBSP, ký tự rộng 0) rồi 0–5 mảnh thân (shortcode, link, thẻ, email, `www.`, `\[`, chữ Hán, emoji, chữ rất dài), giới hạn alt 20–500, chú thích 20–1000:
 
 | Đo | Bản `main` | Bản mới |
 |---|---|---|
