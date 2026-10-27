@@ -119,9 +119,9 @@ Cây 300 ảnh 60 KB, 3 tầng, 12 thư mục (gốc tên NFD; thư mục, ảnh
 | Ổ | Phép kiểm | Giống `main` | T-082 báo lỗi |
 |---|---|---|---|
 | NTFS cục bộ | 5.505 | **5.505** | **0** |
-| `\\localhost\C$` | chạy hơn 1 giờ chưa xong (máy quá bận), không dùng làm bằng chứng; qua ổ mạng chỉ dựa vào ép thắng 330 ca và script Lá Chắn ở trên (đều đọc được ảnh mồi khi không bị tráo) | | |
+| `\\localhost\C$` | 2.265 | **2.265** | **0** |
 
-Tốc độ (ổ máy, xen kẽ, trung vị 3 vòng, `main` / T-082): `stat_image` 6,60 / 6,75 ms; `read_image_bytes` 35,99 / 34,70 ms; `list_folder` 13,12 / 11,50 ms; đọc `ref` gõ chữ hoa 34,72 / 35,17 ms: ngang nhau (T-082 không đụng đường chạy bình thường, chỉ thêm một lệnh đặt mã lỗi và một danh sách `lstat` đã có).
+Ổ mạng (120 ảnh, 2 vòng) chạy lúc máy quá tải (khoảng 400 ms mỗi lời gọi ở cả hai bản) nên chỉ dùng phần so kết quả, không dùng số đo tốc độ. Tốc độ (ổ máy, xen kẽ, trung vị 3 vòng, `main` / T-082): `stat_image` 6,60 / 6,75 ms; `read_image_bytes` 35,99 / 34,70 ms; `list_folder` 13,12 / 11,50 ms; đọc `ref` gõ chữ hoa 34,72 / 35,17 ms: ngang nhau (T-082 không đụng đường chạy bình thường, chỉ thêm một lệnh đặt mã lỗi và một danh sách `lstat` đã có).
 
 ## Soát test
 
