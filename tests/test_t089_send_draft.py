@@ -577,3 +577,90 @@ def test_retry_in_finish_send_also_compares(project_root, root, fake_ai, site, m
     assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
     assert any(OTHER_TAB in w.value for w in at.warning)
     assert button(at, SEND).disabled
+
+
+# ============================== Lượt 3, SL-T089-2: nháp mất dòng trạng thái gửi lúc đang gửi
+
+
+KEPT = "nháp giữ trạng thái gửi của tab kia"
+STALE_TAIL = "sẽ thấy nhắc «chưa có kết quả»"
+
+
+def on_request(site, path: str, before, reply=None) -> None:
+    """Website giả: ngay khi nhận lệnh ``POST path`` của tab này, chạy ``before()`` (việc ở tab khác
+    trong lúc tab này đang gửi), rồi trả lời như thường (hay ``reply``)."""
+    original = site.create_post if path == ui.POSTS else site.create_media
+
+    def handler(request):
+        before()
+        return original(request) if reply is None else reply
+
+    site.fake.on("POST", path, handler)
+
+
+def test_outcome_recorded_when_send_state_row_gone(project_root, root, fake_ai, site):
+    """SL-T089-2: trong lúc tab này đang gửi, dòng trạng thái gửi của nháp mất (lần gửi cố ý ở tab
+    khác hỏng trước khi gửi gì nên ghi «chưa gửi»). Kết quả lần này (bài 501) vẫn được ghi vì nháp
+    trống: khóa «đã gửi», không báo thừa; phiên mới phải tick «Tạo thêm»."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    on_request(site, ui.POSTS, lambda: ui.store().save_send_state(draft, None))
+    ui.send(at)
+    state = ui.store().load_send_state(draft)
+    assert (state.pending, state.post_id) == (False, ui.POST_ID)
+    assert not any("Chưa ghi được kết quả" in w.value for w in at.warning)
+    assert button(at, SEND).disabled
+    fresh = t86.reopen(project_root, draft)
+    assert any(f"mã {ui.POST_ID}" in i.value.replace("\\", "") for i in fresh.info)
+    assert button(fresh, SEND).disabled
+
+
+def test_kept_other_message_names_this_post(project_root, root, fake_ai, site):
+    """Ghi nhận L2-1 của Soi Lỗi: tab khác ghi trạng thái mới trong lúc tab này đang gửi. Câu báo
+    nói nháp giữ trạng thái của tab kia và bài của lần này (mã 501) cũng đã lên; không còn nói «sẽ
+    thấy nhắc chưa có kết quả» (sai khi tab kia đã gửi xong)."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = SendState.now(pending=False, post_id=777)  # tab kia đã gửi xong bài 777
+    on_request(site, ui.POSTS, lambda: ui.store().save_send_state(draft, other))
+    ui.send(at)
+    assert ui.store().load_send_state(draft) == other
+    (warning,) = [w.value for w in at.warning if OTHER_TAB in w.value]
+    assert KEPT in warning and f"mã {ui.POST_ID}" in warning
+    assert STALE_TAIL not in warning
+    assert button(at, SEND).disabled
+
+
+def test_kept_other_message_when_result_unsure(project_root, root, fake_ai, site):
+    """Như trên nhưng lần gửi này lỗi đúng lúc tạo nháp (không rõ bài đã lên chưa): câu báo nói bài
+    của lần này «có thể» đã lên, không có mã bài; trang không lỗi; nháp giữ trạng thái tab kia."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = pending()
+    bad_gateway = (502, {"code": "x", "message": "Bad gateway"}, {})
+    on_request(site, ui.POSTS, lambda: ui.store().save_send_state(draft, other), bad_gateway)
+    ui.send(at)
+    assert ui.store().load_send_state(draft) == other
+    (warning,) = [w.value for w in at.warning if OTHER_TAB in w.value]
+    assert KEPT in warning and "có thể cũng đã có trên website" in warning
+    assert STALE_TAIL not in warning
+    assert button(at, SEND).disabled
+
+
+def test_nothing_created_and_other_tab_wrote_no_note(project_root, root, fake_ai, site):
+    """Lần gửi này hỏng trước khi tạo gì (website từ chối ảnh), trong lúc đó tab khác ghi «đang gửi»
+    mới: không có gì để ghi, nháp giữ «đang gửi» của tab kia, không báo «chưa ghi được kết quả»."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = draft_id(at)
+    other = pending()
+    bad_request = (400, {"code": "x", "message": "Bad request"}, {})
+    on_request(site, ui.MEDIA, lambda: ui.store().save_send_state(draft, other), bad_request)
+    ui.send(at)
+    assert ui.counts(site) == (0, 1)
+    assert ui.store().load_send_state(draft) == other
+    assert not any("Chưa ghi được kết quả" in w.value for w in at.warning)
+    assert any(UNSURE in e.value for e in at.error) and button(at, SEND).disabled

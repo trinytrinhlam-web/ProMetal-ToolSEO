@@ -2253,7 +2253,11 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
 
     Chỉ lần gửi đã ghi được «đang gửi» (``holder["claimed"]``) mới ghi kết quả, và ghi kiểu so rồi
     đặt với đúng dấu đó (T-089, SL-T089-1): lần gửi thua tab khác không xóa trạng thái của tab kia;
-    tab khác đã cố ý xác nhận gửi tiếp (ghi «đang gửi» mới) thì kết quả lần này không ghi đè."""
+    tab khác đã cố ý xác nhận gửi tiếp (ghi «đang gửi» mới) thì kết quả lần này không ghi đè
+    (``kept_other``). Nháp không còn dòng trạng thái gửi nào (tab khác xóa nháp, hay lần gửi cố ý ở
+    tab khác hỏng trước khi gửi gì nên ghi «chưa gửi») mà lần này có bài hay chưa rõ thì vẫn ghi,
+    chỉ khi nháp vẫn trống (SL-T089-2): nháp tạo lại vẫn khóa. Lần này chưa tạo gì mà tab khác đã
+    ghi trạng thái mới thì không còn gì để ghi."""
     claimed = holder.get("claimed")
     if claimed is None:
         return
@@ -2261,6 +2265,8 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     try:
         state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
         written = store.save_send_state(holder["draft"], state, expected=(claimed, False))
+        if not written and state is not None:
+            written = store.save_send_state(holder["draft"], state, expected=(None, False))
     except DraftError as exc:
         holder["note"] = str(exc)
     except ValueError:  # ValidationError là một dạng ValueError: mã bài lạ từ website
@@ -2268,11 +2274,13 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     except Exception:
         holder["note"] = "lỗi không mong đợi"
     else:
-        if written:
+        if written or state is None:
             holder["saved"] = True
             holder.pop("note", None)
+            holder.pop("kept_other", None)
         else:  # nháp giữ trạng thái tab kia vừa ghi (vẫn khóa nút), không đoán
-            holder["note"] = MSG_STATE_CHANGED_ELSEWHERE
+            holder["kept_other"] = True
+            holder.pop("note", None)
 
 
 def apply_send(holder: dict, *, interrupted: bool) -> None:
@@ -2292,7 +2300,12 @@ def apply_send(holder: dict, *, interrupted: bool) -> None:
     if result is None:  # dừng ngay trong lúc gửi: không có kết quả nào
         S._wp_result = {"ok": False, "message": MSG_SEND_INTERRUPTED}
     else:
-        S._wp_result = {**result, "interrupted": interrupted, "note": holder.get("note", "")}
+        S._wp_result = {
+            **result,
+            "interrupted": interrupted,
+            "note": holder.get("note", ""),
+            "kept_other": holder.get("kept_other", False),
+        }
     if not unsure:
         S.pop("_wp_maybe_draft", None)
     S.pop("_wp_sending", None)
@@ -2383,6 +2396,20 @@ def sent_message(saved: SendState | None) -> str:
     )
 
 
+def kept_other_message(result: dict) -> str:
+    """Kết quả lần gửi này không ghi vào nháp vì tab khác đã ghi trạng thái gửi mới (T-089): nháp
+    nhắc theo tab kia (còn đang gửi hay đã gửi xong), còn bài của lần này nằm trên website."""
+    if result["ok"]:
+        mine = f"Bài nháp của lần gửi này (mã {result['post_id']}) cũng đã có trên website."
+    else:
+        mine = "Bài nháp của lần gửi này có thể cũng đã có trên website."
+    return (
+        f"Chưa ghi được kết quả gửi vào nháp: {MSG_STATE_CHANGED_ELSEWHERE}; nháp giữ trạng thái "
+        f"gửi của tab kia. {mine} Mở trang quản trị WordPress, kiểm tra Bài viết → Nháp trước khi "
+        "gửi lại."
+    )
+
+
 def send_result() -> None:
     """Kết quả lần gửi gần nhất. Mọi chữ từ WordPress hay câu lỗi hiện bằng ``escape_markdown`` hay
     ``st.text`` (Lá Chắn T-054 4c, T-071 3b), không ``unsafe_allow_html``."""
@@ -2417,7 +2444,9 @@ def send_result() -> None:
             "Lần gửi này bị ngắt giữa chừng (bấm nút khác hoặc bấm đúp lúc đang gửi); trên đây là "
             "kết quả app đã nhận được từ website."
         )
-    if result.get("note"):
+    if result.get("kept_other"):
+        st.warning(kept_other_message(result))
+    elif result.get("note"):
         st.warning(
             f"Chưa ghi được kết quả gửi vào nháp ({escape_markdown(result['note'])}): mở lại nháp "
             "này sau sẽ thấy nhắc «chưa có kết quả», hãy kiểm trang quản trị trước khi gửi lại."

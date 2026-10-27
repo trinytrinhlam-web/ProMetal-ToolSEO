@@ -626,10 +626,6 @@ def test_confirmed_send_in_other_tab_keeps_its_record(project_root, root, fake_a
     assert any(f"mã {POST_2}" in i.value for i in fresh.info)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T089-2: nháp không còn dòng trạng thái gửi thì kết quả gửi bị bỏ (bài đã tạo)",
-)
 def test_confirmed_send_in_other_tab_failing_first_keeps_this_post(
     project_root, root, fake_ai, site, monkeypatch
 ):
@@ -675,10 +671,6 @@ def test_confirmed_send_in_other_tab_failing_first_keeps_this_post(
     assert button(fresh, SEND).disabled
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T089-2: nháp bị xóa ở tab khác lúc đang gửi, tự lưu tạo lại thì không còn khóa",
-)
 def test_draft_deleted_elsewhere_while_sending_comes_back_locked(project_root, root, fake_ai, site):
     """Trong lúc tab 1 đang gửi, tab 2 bấm «🗑️ Xóa» nháp này (``DraftStore.delete`` xóa cả dòng
     trạng thái gửi). Tab 1 tạo xong bài 501 nhưng không ghi được kết quả (so rồi đặt thấy không còn
