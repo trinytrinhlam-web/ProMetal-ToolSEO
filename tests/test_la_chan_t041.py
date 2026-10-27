@@ -46,10 +46,6 @@ def serp_blocks(at) -> list[str]:
 # ============================================================ LC-T041-1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T041-1: xem trước Google hiện netloc của WORDPRESS_URL, kể cả tên:mật-khẩu@",
-)
 def test_lc1_serp_preview_never_shows_credentials_of_wordpress_url(
     project_root, seo_ai, monkeypatch
 ):

@@ -163,3 +163,39 @@ Không điều kiện nào bắt buộc trước khi gộp T-041 vào `main`.
 | 4 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
 
 Không có rủi ro nào cần chủ dự án quyết định chấp nhận; không thêm dòng vào sổ rủi ro (`security.md` mục 6).
+
+## Xem lại lượt 4 (2026-10-27, 15:11–15:16 +07)
+
+> Chạy tạm Claude Opus 5.5, cần kiểm lại bằng Claude Fable sau 01/11.
+
+Họa Sĩ lượt 4 sửa LC-T041-1: code `7aa4dbd`, báo cáo `a657efe` (mục «Lượt 4» của `docs/team/reports/T-041-hoa-si.md`). Phạm vi xem: `git diff 31ecacb..a657efe` (4 file: `app/views/write.py` +9/−2, `tests/test_la_chan_t041.py` −4, `tests/test_t041_seo_ui.py` +38, báo cáo).
+
+**Kết luận lượt 4: ĐẠT.** LC-T041-1 **đóng**; không lỗi mới; không lùi. Kết luận cả phiếu thành **ĐẠT CÓ ĐIỀU KIỆN** chỉ còn điều kiện 2 (SL-T041-8 câu báo, phiếu dọn sau), 3 (Giai đoạn 5), 4 (Fable); điều kiện 1 đã xong. **Gộp `main` được ngay.**
+
+| Việc | Kết quả | Bằng chứng |
+|---|---|---|
+| `site_host()` chỉ lấy tên máy, không lộ tên/mật khẩu | **Đạt** | `write.py:2107-2116`: `urlsplit(load_settings().wordpress_url).hostname` trong `try`, `ValueError` thì `None`, rỗng thì chữ mẫu «website-cua-ban.vn». `hostname` của Python bỏ phần `tên:mật-khẩu@` (tách ở dấu `@` **cuối**), cổng, đường dẫn, truy vấn, chữ thường. Tôi thử thêm 16 dạng lạ với chuỗi mồi (không có trong test của Họa Sĩ): nhiều dấu `@` (`ten:mk@c@site`), cổng sai (`:abc`, `:99999`), `[ten:mk@::1]`, `[v1.x]`, `%3A` thay dấu hai chấm, tab trong phần mật khẩu, gạch chéo ngược trước `@`, thiếu `https:`, `https:///…`, chữ HOA: **0** dạng lộ chuỗi mồi; dạng hỏng (`[` thiếu `]`, `[ten:mk@::1]`) ra `ValueError` → chữ mẫu |
+| Cổng, IPv6, URL trống/hỏng không làm trang lỗi | **Đạt** | Test `test_serp_preview_shows_only_host_of_wordpress_url` (10 ca: tên:mật-khẩu, kèm cổng và chữ HOA, chỉ mật khẩu, cổng, truy vấn có mồi, IPv6, IPv6 thiếu «]», không tên máy, thiếu `https://`, trống): khung xem trước đúng `<div class="url">{tên máy} › sua-cong-inox</div>`, không chuỗi mồi, `ten-gia`, `8443`, `token`, chữ hoa, `not at.exception`. Họa Sĩ còn tìm ra địa chỉ hỏng kiểu `https://[2001:db8::1` trước đây làm bước SEO **lỗi trang** (`urlsplit` ném `ValueError`): nay hết |
+| Chỗ khác trong `app/**` hiện `WORDPRESS_URL`/`netloc` | **Đạt** | `grep -rnE "netloc\|WORDPRESS_URL\|wordpress_url\|base_url\|site_url\|hostname\|urlsplit" app/`: chỉ còn `site_host()`; trang Kết nối WordPress hiện `client.base_url` (client từ chối địa chỉ có `@`, `?`, `#`, `%` ngay khi tạo, `_is_plain_site_url`), `info.site_url` (địa chỉ website tự báo, qua `plain()`), và một câu cố định nhắc đổi sang `https://` (không chép giá trị). Khớp phần soát của Họa Sĩ |
+| Gỡ `xfail` đúng R5 | **Đạt** | `git diff 31ecacb 7aa4dbd -- tests/test_la_chan_t041.py`: 4 dòng xóa (đúng khối `@pytest.mark.xfail(...)` của LC-T041-1), 0 dòng thêm, thân test giữ nguyên. Test canh `test_serp_preview_shows_plain_host` vẫn qua |
+| Không lùi gì khác | **Đạt** | Code đổi duy nhất là thân `site_host()`; không đụng `seo_app/**`, đường ghi SEO, công tắc. Các dấu `xfail` còn lại chỉ là SL-T041-8 (1 của Soi Lỗi, 2 của tôi, theo quyết định giữ Chặn) |
+
+Bằng chứng (Windows 11, Git Bash, worktree `wt-T-041` tại `a657efe`, không có thay đổi chưa commit của phiên khác):
+
+```
+$ uv run ruff check .
+All checks passed!
+
+$ uv run pytest tests/test_t041_drafts_seo.py tests/test_t041_links_ai.py tests/test_t041_meta.py \
+    tests/test_t041_schema.py tests/test_t041_seo_ui.py tests/test_t041_site_index.py \
+    tests/test_la_chan_t041.py tests/test_soi_loi_t041.py tests/test_app_pages.py
+457 passed, 3 xfailed in 145.58s (0:02:25)            # 3 xfail: SL-T041-8 (1 Soi Lỗi, 2 Lá Chắn)
+
+$ uv run pytest tests/test_la_chan_t041.py --runxfail
+2 failed, 8 passed                                    # 2 ca câu báo SL-T041-8 (chờ phiếu dọn); LC-T041-1 qua
+
+$ git merge-tree --write-tree origin/main origin/team/T-041   # main 641a837
+c98c66c…                                              # không xung đột
+```
+
+`main` trên máy Chỉ Huy đã gộp `31ecacb` (chưa lên `origin`); lượt 4 so với `31ecacb` chỉ thêm thân `site_host()` và test, nên gộp tiếp không đụng phần nào khác. `detect-secrets` (đặt `PYTHONUTF8=1`, mồi tiếng Việt bắt 1/1) trên biên bản này sau khi thêm mục lượt 4: không có phát hiện mới (các mục cũ là chuỗi giả, đã ghi ở «Báo nhầm đã loại»).
