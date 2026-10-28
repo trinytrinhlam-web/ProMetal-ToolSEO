@@ -45,12 +45,6 @@ def _no_surrogate(text: str) -> bool:
     return True
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T091-1 (Lá Chắn thêm dạng): website không khai bảng mã, trả JSON UTF-16/32 (có "
-    "hay không BOM); requests tự đoán bảng mã nên surrogate lẻ lọt _json (byte không có "
-    "\\ud8 ASCII)",
-)
 @pytest.mark.parametrize(
     "encoding", ["utf-16-le", "utf-16-be", "utf-32-le", "utf-32-be", "utf-16", "utf-32"]
 )

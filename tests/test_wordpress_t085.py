@@ -388,6 +388,10 @@ def test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien(
     message = str(err.value)
     assert "có thể đã lên thư viện Media" in message and "Media → Thư viện" in message
     assert str(media_id) not in message
+    # Như ``assert_says_in_media_library``: câu báo không chép lời máy chủ, địa chỉ website
+    # (T-091 lượt 2, SL-T091-3: trả lại 5 kiểm phương án A không cho nới).
+    for piece in ("0909", "evil", "quản trị</b>", "example.com", "anh-khac"):
+        assert piece not in message, piece
 
 
 def test_ma_anh_bang_gioi_han_van_ghi_de_binh_thuong(fake_wp, wp_client):

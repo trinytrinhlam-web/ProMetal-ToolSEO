@@ -117,12 +117,23 @@ def test_chu_co_dau_gach_nguoc_u_khong_bi_doi(fake_wp, client):
     assert client.check_connection().site_name == text
 
 
-def test_khong_co_ma_thoat_surrogate_thi_khong_di_qua_du_lieu(fake_wp, client, monkeypatch):
-    calls = []
-    monkeypatch.setattr(client_module, "_without_lone_surrogates", calls.append)
+def test_luon_loc_sau_khi_giai_ma_du_byte_khong_co_ma_thoat(fake_wp, client, monkeypatch):
+    """T-091 lượt 2 (SL-T091-1, Chỉ Huy giao theo cách sửa của Lá Chắn 28/10): mọi câu trả lời JSON
+    đều qua bộ lọc **sau khi giải mã**, kể cả khi byte không có mã thoát «\\uD8..» (website khai
+    UTF-16, UTF-32…). Thay ca lượt 1 «không có mã thoát thì không đi qua dữ liệu» (ghim phép tắt
+    nay bỏ). Chữ sạch giữ nguyên."""
+    seen = []
+    real = client_module._without_lone_surrogates
+
+    def spy(data):
+        seen.append(data)
+        return real(data)
+
+    monkeypatch.setattr(client_module, "_without_lone_surrogates", spy)
     connection_site(fake_wp)
-    client.check_connection()
-    assert calls == []
+    info = client.check_connection()
+    assert len(seen) >= 2  # «/» và «users/me»
+    assert info.site_name == "ProMetal" and info.user_name == "Lâm"
 
 
 # ================================================================ 2. giới hạn trên của mã

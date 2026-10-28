@@ -283,15 +283,8 @@ def test_loi_wordpress_co_surrogate_van_la_cau_co_dinh():
     assert not has_surrogate(str(caught.value)) and not has_surrogate(caught.value.code)
 
 
-_SL1 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T091-1: _json chỉ đi qua dữ liệu khi BYTE câu trả lời có mã thoát \\uD8..; "
-    "response.json() giải mã theo charset của website (utf-16, utf-32, utf-7, cp500 không có "
-    "byte đó) nên surrogate lẻ lọt ra như trước T-091",
-)
 
 
-@_SL1
 @pytest.mark.parametrize("charset", ["utf-16", "utf-16-le", "utf-32", "utf-7", "cp500"])
 def test_sl_t091_1_bang_ma_khac_utf8_van_khong_lot_surrogate(charset):
     text = json.dumps(good_root(name="Site " + SUR))  # chữ ASCII có mã thoát lẻ
@@ -430,12 +423,6 @@ def test_bai_da_dang_ma_bang_bien_luu_tam_duoc(tmp_path):
     assert [item.id for item in listing.index.items] == [MAX_ID]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T091-2: _published_from/PublishedItem chỉ chặn mã ≤ 0, không có MAX_ID; "
-    "SiteIndexStore.save ném OverflowError (SQLite INTEGER) mà site_listing chỉ bắt "
-    "WordPressError, SiteIndexError",
-)
 @pytest.mark.parametrize("post_id", [MAX_ID + 1, 2**64, 10**30])
 def test_sl_t091_2_bai_da_dang_ma_qua_bien_bi_bo_khong_vo_luu_tam(tmp_path, post_id):
     routes = {**list_routes(POSTS, [published(post_id), published(8)]), **list_routes(PAGES, [])}

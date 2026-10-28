@@ -90,3 +90,59 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-28): sửa theo Soi Lỗi `2ff1425`, Lá Chắn `ed5d86b`
+
+Chỉ Huy B giao 28/10 20:45. Sửa 4 việc theo cột «Cách sửa» của `T-091-la-chan.md` và `T-091-soi-loi.md`; không đổi thư viện, không gọi website thật.
+
+### Tóm tắt (cho chủ dự án)
+
+- Chữ hỏng từ website nay bị thay bằng «�» trong mọi trường hợp, kể cả khi website gửi chữ theo bảng mã khác thường (UTF-16, UTF-32…), nên trang không vỡ.
+- Danh sách bài đã đăng bỏ qua mục có mã bài lớn bất thường thay vì làm lỗi bước SEO.
+- Hai test cũ ghim câu báo «mã bài nháp lớn bất thường» được đổi sang câu báo mới «bài nháp có thể đã có trên website», vẫn kiểm đủ: 1 bài, nút khóa, «đang gửi».
+
+### Đã thay đổi
+
+| Việc | File | Thay đổi |
+|---|---|---|
+| **SL-T091-1** (surrogate lọt khi bảng mã khác UTF-8) | `seo_app/wordpress/client.py` `_json` (`:1551`) | Lọc **luôn** trên dữ liệu đã giải mã: `return _without_lone_surrogates(response.json())`. Bỏ phép tắt «byte không có mã thoát `\uD8..` thì không đi qua dữ liệu» (`_SURROGATE_ESCAPE` đã xóa): với `charset=utf-16/utf-32/utf-7/cp500`, hay website không khai bảng mã mà `requests` tự đoán UTF-16/32, surrogate không hiện thành mã thoát trong byte. Bộ lọc đi bằng ngăn xếp, một lượt, rẻ |
+| **SL-T091-2** (mã bài đã đăng > 2⁶³−1) | `PublishedItem.__post_init__` (`:546`), `_published_from` (`:1658`) | `PublishedItem` chỉ nhận mã `_positive_id` (1 … `MAX_ID`); `_published_from` đưa `_positive_id(raw["id"])` vào, mã quá biên thành `None` → `PublishedItem` từ chối → mục bị bỏ, đúng đường «mã sai khuôn». `SiteIndexStore.save` không còn gặp số quá biên. Lớp phòng thêm Lá Chắn nêu (`SiteIndexStore.save` đổi `OverflowError` thành `SiteIndexError`) ở `seo_app/storage/site_index.py`, ngoài phạm vi phiếu: chưa làm, ghi «Đề xuất» |
+| **LC-T091-1** (2 test cũ hỏng) | `tests/test_t089_send_draft.py` `assert_huge_id_reported_and_locked` | Bảng «Test cũ đã đổi (lượt 2)» bên dưới |
+| **SL-T091-3** (ca T-085 mất 5 kiểm) | `tests/test_wordpress_t085.py::test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien` | Trả lại đủ 5 kiểm «câu báo không chép»: `0909`, `evil`, `quản trị</b>`, `example.com`, `anh-khac` (như `assert_says_in_media_library`) |
+| Gỡ dấu `xfail` | `tests/test_soi_loi_t091.py` (dấu `_SL1` 5 ca SL-T091-1, dấu 3 ca SL-T091-2), `tests/test_la_chan_t091.py` (dấu 18 ca SL-T091-1) | 26 ca đều `XPASS(strict)` trước khi gỡ; **chỉ xóa dòng dấu** (gồm dòng định nghĩa `_SL1` và `@_SL1`), không đổi điều kiện ca nào |
+
+### Test cũ đã đổi (lượt 2, Chỉ Huy duyệt 28/10)
+
+| # | Ca | Điều kiện cũ | Điều kiện mới | Lý do |
+|---|---|---|---|---|
+| 9–10 | `tests/test_t089_send_draft.py::test_huge_post_id_fixed_note_and_lock`, `::test_huge_post_id_when_run_interrupted` (mã 2⁶³, cảnh mở bài `ui.open_article`; chung hàm `assert_huge_id_reported_and_locked`) | Cảnh báo `NOTE` («website trả mã bài nháp lớn bất thường…») và thông báo thành công có «mã {HUGE_ID}» | Lỗi có `UNSURE` («bài nháp có thể đã có trên website»); không thông báo thành công nào có mã 2⁶³; **thêm**: không request nào chứa mã đó. **Giữ nguyên:** 1 bài trước và sau, nháp giữ «đang gửi», nút khóa ngay và qua 2 lần chạy lại; ca bị ngắt vẫn kiểm `_wp_sending` đã bỏ và `UNSURE` | LC-T091-1, **Chỉ Huy duyệt 28/10** theo đúng mẫu phương án A (cùng kiểu ca 3–7 lượt 1). Hằng `NOTE` để nguyên trong file (không còn dùng ở đây) |
+| 11 | `tests/test_t091_don_client_wordpress.py::test_khong_co_ma_thoat_surrogate_thi_khong_di_qua_du_lieu` (ca của tôi, lượt 1) → `test_luon_loc_sau_khi_giai_ma_du_byte_khong_co_ma_thoat` | Không có mã thoát trong byte thì `_without_lone_surrogates` không được gọi (ghim phép tắt tối ưu) | Mọi câu trả lời JSON đều qua bộ lọc sau khi giải mã (≥ 2 lần trong `check_connection`); chữ sạch giữ nguyên | SL-T091-1: cách sửa trong biên bản Lá Chắn (Chỉ Huy giao theo cách đó 28/10) bỏ phép tắt; biên bản ghi rõ ca này phải đổi. Ca ghim một phép tối ưu, không phải tính chất an toàn |
+| (2) | `tests/test_wordpress_t085.py::test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien` | Lượt 1 bỏ mất 5 kiểm «không chép» | Trả lại 5 kiểm (chặt lại như trước phương án A) | SL-T091-3 |
+
+### Bằng chứng (lượt 2)
+
+Máy Windows của chủ dự án, worktree `wt-T-091` (nhánh `team/T-091`, đầu `ed5d86b` trước lượt 2), 2026-10-28 21:49 (+07).
+
+```
+$ uv run pytest -q tests/test_soi_loi_t091.py tests/test_la_chan_t091.py <ca đã đổi>   # trước khi gỡ dấu
+26 failed, 152 passed      # 26 «failed» đều là XPASS(strict): 5 + 3 Soi Lỗi, 18 Lá Chắn; ca đã đổi đều qua
+
+$ uv run pytest -q -p no:cacheprovider <72 file test liên quan>   # sau khi gỡ dấu; toàn bộ do Chỉ Huy chạy khi gộp
+1 failed, 10544 passed, 4 skipped, 10 xfailed in 3538.55s (0:58:58)
+FAILED tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted   # đo khóa luồng, máy bận
+
+$ uv run pytest -q tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted
+1 passed in 39.81s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+72 file = 61 file client WordPress của lượt 1, mọi file có số lớn hay câu «lớn bất thường» (`2**63`, `2**64`, `10**19`, `10**20`, `10**30`, `HUGE_ID`, `MAX_ID`, `MSG_POST_ID_OUT_OF_RANGE`, `PublishedItem`, `_published_from`: 34 file), `tests/test_t089_send_draft.py`, `tests/test_t086_send_state.py`, `tests/test_soi_loi_t091.py`, `tests/test_la_chan_t091.py`. Ca T-037 hỏng oan khi máy bận (lượt 1 và Lá Chắn cũng gặp), chạy riêng qua. 10 `xfail`, 4 bỏ qua có từ trước, thuộc phiếu khác (không còn dấu `xfail` nào của T-091). Không còn chỗ nào dùng `_SURROGATE_ESCAPE` (grep `seo_app`, `app`, `tests`).
+
+### Đề xuất (lượt 2)
+
+- **Phiếu dọn sau (Thợ Máy, cần mở phạm vi `seo_app/storage/site_index.py`):** `SiteIndexStore.save` đổi `OverflowError` thành `SiteIndexError` (lớp phòng thêm của SL-T091-2, Lá Chắn nêu).
+- Ghi nhận 1, 3 của Lá Chắn (nếu Chỉ Huy muốn) gom cùng phiếu dọn client WordPress sau.

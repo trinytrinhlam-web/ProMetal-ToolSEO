@@ -71,9 +71,14 @@ def huge_post_id(site) -> None:
 
 
 def assert_huge_id_reported_and_locked(at, site) -> None:
+    """T-091 (Chỉ Huy duyệt 28/10, phương án A, R5): client coi mã ≥ 2⁶³ như mã sai khuôn, nên câu
+    cố định là «bài nháp có thể đã có trên website» (trước: câu ``NOTE`` «mã lớn bất thường» và
+    thông báo thành công «mã {HUGE_ID}»); không thông báo nào, không lệnh nào mang mã đó. Giữ
+    nguyên: 1 bài, nháp giữ «đang gửi», nút khóa qua 2 lần chạy lại."""
     assert len(site.posts()) == 1
-    assert any(NOTE in w.value for w in at.warning)  # câu cố định, không dấu vết lỗi
-    assert any(f"mã {HUGE_ID}" in s.value for s in at.success)
+    assert any(UNSURE in e.value for e in at.error)  # câu cố định, không dấu vết lỗi
+    assert not any(str(HUGE_ID) in s.value for s in at.success)
+    assert all(str(HUGE_ID) not in r.url for r in site.fake.requests)
     assert ui.store().load_send_state(draft_id(at)).pending  # nháp giữ «đang gửi»
     assert button(at, SEND).disabled
     for _ in range(2):  # các lần chạy sau không lỗi lại, vẫn khóa, không gửi thêm

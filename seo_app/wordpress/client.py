@@ -543,7 +543,7 @@ class PublishedItem:
     modified_gmt: str = ""  # "YYYY-MM-DDTHH:MM:SS" giờ UTC như WordPress trả; trống nếu thiếu
 
     def __post_init__(self) -> None:
-        if type(self.id) is not int or self.id <= 0:
+        if _positive_id(self.id) is None:  # số nguyên 1 … MAX_ID (SL-T091-2)
             raise ValueError("id phải là số nguyên dương")
         if self.type not in PUBLISHED_TYPES:
             raise ValueError("loại phải là post hoặc page")
@@ -1544,12 +1544,11 @@ class WordPressClient:
 
         Mọi chữ website trả (tên site, tên tài khoản, vai trò, tiêu đề bài, tên chuyên mục, địa
         chỉ ảnh…) đi qua đây: ký tự surrogate lẻ được thay ở đây, một chỗ cho cả client
-        (``_without_lone_surrogates``, SL-T088-1)."""
+        (``_without_lone_surrogates``, SL-T088-1). Lọc **luôn**, trên dữ liệu đã giải mã: website
+        khai hay ``requests`` tự đoán bảng mã khác UTF-8 (UTF-16, UTF-32, UTF-7, cp500…) thì
+        surrogate không hiện ra thành mã thoát ``\\uD8..`` trong byte (SL-T091-1)."""
         try:
-            data = response.json()
-            if _SURROGATE_ESCAPE.search(response.content):
-                data = _without_lone_surrogates(data)
-            return data
+            return _without_lone_surrogates(response.json())
         except Exception as exc:  # chỉ bọc bước giải mã: lỗi nào cũng là "không đọc được"
             raise WordPressError(
                 f"WordPress không trả về dữ liệu JSON đọc được (mã {response.status_code}; có "
@@ -1655,7 +1654,8 @@ def _published_from(raw: object, kind: str, base_url: str) -> PublishedItem | No
     modified = raw.get("modified_gmt")
     try:
         return PublishedItem(
-            id=raw.get("id"),  # type: ignore[arg-type]  # PublishedItem tự kiểm kiểu
+            # Mã quá MAX_ID như mã sai khuôn: PublishedItem từ chối, mục bị bỏ (SL-T091-2).
+            id=_positive_id(raw.get("id")),  # type: ignore[arg-type]
             type=kind,
             slug=slug if _matches(_SLUG_PATTERN, slug, MAX_SLUG_CHARS) else "",
             link=link,  # type: ignore[arg-type]
@@ -1885,9 +1885,6 @@ def _positive_id(value: object) -> int | None:
 # chỉ ảnh thành một chữ, một file khác).
 _LONE_SURROGATE = re.compile(f"[{chr(0xD800)}-{chr(0xDFFF)}]")
 _REPLACEMENT = "\N{REPLACEMENT CHARACTER}"
-# JSON chỉ tạo được surrogate lẻ từ mã thoát «\\uD800»…«\\uDFFF» (UTF-8 hợp lệ không chứa chúng):
-# không có mã thoát dạng đó thì khỏi đi qua dữ liệu.
-_SURROGATE_ESCAPE = re.compile(re.escape(bytes([0x5C])) + rb"u[dD][89a-fA-F]")
 
 
 def _without_lone_surrogates(data: Any) -> Any:
