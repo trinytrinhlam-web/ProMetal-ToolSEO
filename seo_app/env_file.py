@@ -10,7 +10,12 @@ toàn hơn sửa file bằng tay:
 - Mọi dòng khác, chú thích và thứ tự trong ``.env`` được giữ nguyên.
 - Ghi ra file tạm cùng thư mục rồi thay thế (``os.replace``); Mac/Linux đặt quyền ``600``.
 
-Không hàm nào ở đây trả về, in ra hay ghi log giá trị khóa (security.md 2.1).
+Riêng ``GOOGLE_SHEET_ID`` (T-097, LC-T094-15) có hàm ghi riêng ``set_google_sheet_id`` với bộ
+kiểm riêng ``validate_sheet_id`` (chỉ ``[A-Za-z0-9_-]{25,100}``, chặt hơn khóa AI). Đường dẫn
+file khóa Google (``GOOGLE_SERVICE_ACCOUNT_FILE``) **không** ghi được từ giao diện.
+
+Không hàm nào ở đây trả về, in ra hay ghi log giá trị khóa (security.md 2.1); câu báo về mã
+Sheet cũng không chép mã (mã Sheet là thông tin cần giữ, LC-T094-15).
 """
 
 from __future__ import annotations
@@ -38,6 +43,11 @@ _ALLOWED_VALUE = re.compile(r"[A-Za-z0-9_\-.:+/~]+")
 _BOM = "﻿"
 # Thời gian chờ tối đa (giây) khi kiểm tra khóa với máy chủ AI.
 CHECK_TIMEOUT_SECONDS = 15.0
+
+# Mã Google Sheet (đoạn giữa "/d/" và "/edit" trong link): chỉ chữ, số ASCII, "-", "_" (T-097,
+# LC-T094-15). Dùng chung cho mọi nơi kiểm mã Sheet (``seo_app/google/sheets.py``).
+SHEET_ID_VAR = "GOOGLE_SHEET_ID"
+SHEET_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{25,100}")
 
 
 class EnvFileError(ValueError):
@@ -248,6 +258,44 @@ def clear_api_key(name: str, env_file: Path | None = None) -> None:
     """
     _check_name(name)
     _write_value(name, "", env_file, add_if_missing=False)
+
+
+def validate_sheet_id(value: object) -> str:
+    """Kiểm mã Google Sheet sẽ ghi vào ``.env`` (bộ kiểm riêng, LC-T094-15). Trả mã đã bỏ
+    khoảng trắng hai đầu.
+
+    Chỉ nhận đúng ``SHEET_ID_PATTERN`` (toàn chuỗi): không xuống dòng, ``=``, dấu nháy, ``#``,
+    dấu cách, ký tự ngoài ASCII…, nên không chèn được biến khác vào ``.env``. Câu báo không bao
+    giờ chép mã (kể cả một phần).
+    """
+    if not isinstance(value, str):
+        raise EnvFileError("Mã Google Sheet phải là chữ.")
+    cleaned = value.strip()
+    if not cleaned:
+        raise EnvFileError("Chưa có mã Google Sheet.")
+    if not SHEET_ID_PATTERN.fullmatch(cleaned):
+        raise EnvFileError(
+            "Mã Google Sheet không đúng dạng (25–100 ký tự, chỉ chữ không dấu, số, «-» và «_»). "
+            "Hãy dán lại link Sheet."
+        )
+    return cleaned
+
+
+def set_google_sheet_id(value: str, env_file: Path | None = None) -> None:
+    """Ghi ``GOOGLE_SHEET_ID`` vào ``.env`` (mặc định ``config.DEFAULT_ENV_FILE``, tra lúc gọi).
+
+    Cùng cách ghi với khóa AI: thay đúng dòng của biến (hoặc thêm vào cuối), giữ nguyên mọi dòng
+    khác, ghi nguyên tử, Mac/Linux quyền ``600``, đọc lại để chắc chắn.
+    """
+    _write_value(SHEET_ID_VAR, validate_sheet_id(value), env_file)
+
+
+def clear_google_sheet_id(env_file: Path | None = None) -> None:
+    """Để trống ``GOOGLE_SHEET_ID`` (``GOOGLE_SHEET_ID=``), giữ nguyên dòng và vị trí của nó.
+
+    Chưa có file hoặc chưa có dòng của biến thì không làm gì.
+    """
+    _write_value(SHEET_ID_VAR, "", env_file, add_if_missing=False)
 
 
 def overridden_by_os_environ(name: str, environ: Mapping[str, str] | None = None) -> bool:

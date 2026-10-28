@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=1.13.0",
+    # Xác thực tài khoản dịch vụ Google để đọc/ghi Google Sheets (seo_app/google/). Đã cài sẵn
+    # nhờ google-genai, ghi tên ra đây vì app dùng trực tiếp (chủ dự án chốt câu 1A 2026-10-28,
+    # T-097); giữ đúng bản đã khóa, không nới.
+    "google-auth>=2.62.0",
     # Thư viện chính hãng của Gemini và ChatGPT (chủ dự án duyệt 2026-10-14, T-018).
     "google-genai>=2.30.1",
     "openai>=3.31.0",
