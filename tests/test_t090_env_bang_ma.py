@@ -208,13 +208,19 @@ def test_set_password_after_resave_as_utf8_works(project_root, tmp_path, monkeyp
 
 def test_set_password_cannot_write_env(project_root, tmp_path, monkeypatch, capsys):
     """Đọc được mà không ghi được ``.env`` (chỉ đọc, đang bị khóa): sau khi gõ mật khẩu thì báo câu
-    cố định kèm tên loại lỗi, không traceback, không đường dẫn; file giữ nguyên."""
+    cố định kèm tên loại lỗi, không traceback, không đường dẫn; file giữ nguyên.
 
-    class Unwritable(type(tmp_path)):
-        def write_text(self, *args, **kwargs):
-            raise PermissionError(13, "Permission denied", str(self))
+    T-104 (Chỉ Huy B duyệt đổi cách giả lỗi, R5): ``set_password`` nay ghi file tạm rồi
+    ``os.replace`` (LC-T090-2), không còn gọi ``Path.write_text``; lỗi được giả ở ``os.replace``
+    của bộ ghi (``seo_app.env_file``), đúng chỗ Windows từ chối khi ``.env`` đang bị giữ. Điều
+    kiện kiểm giữ nguyên ý cũ."""
+    import seo_app.env_file as env_file
 
-    env_path = Unwritable(tmp_path / ".env")
+    def refuse(src, dst):
+        raise PermissionError(13, "Permission denied", str(dst))
+
+    monkeypatch.setattr(env_file.os, "replace", refuse)
+    env_path = tmp_path / ".env"
     env_path.write_bytes(TEXT.encode("utf-8"))
     code, _ = run_set_password(project_root, monkeypatch, env_path, typed)
     assert code == 1

@@ -12,14 +12,23 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import re
 import shutil
 import sys
 from pathlib import Path
 
 from seo_app.auth import hash_password
 from seo_app.config import DEFAULT_ENV_FILE, ENV_RESAVE_UTF8, PROJECT_ROOT, ConfigError
+from seo_app.env_file import (
+    PASSWORD_HASH_VAR,
+    EnvFileError,
+    EnvFileFormatError,
+    EnvFileReadError,
+    EnvFileWriteError,
+    set_password_hash,
+)
 
-KEY = "APP_PASSWORD_HASH"
+KEY = PASSWORD_HASH_VAR
 MIN_LENGTH = 8
 # Câu cố định khi không đọc, ghi được .env (SL-T084-1, T-090): không traceback, không đường dẫn,
 # không nội dung .env, không câu lỗi gốc.
@@ -28,52 +37,69 @@ MSG_ENV_UNREADABLE = (
     "Không đọc được file .env ({error}). Đóng chương trình đang mở file (nếu có), kiểm tra quyền "
     "đọc file rồi chạy lại set_password."
 )
+# Chép .env.example thành .env (chưa có .env) không được: không có file cũ nào để nói «còn nguyên».
 MSG_ENV_UNWRITABLE = (
     "Không ghi được file .env ({error}). Đóng chương trình đang mở file (nếu có), kiểm tra quyền "
     "ghi file rồi chạy lại set_password."
 )
+# Ghi mã băm không được: bộ ghi ghi file tạm rồi mới thay (T-104, LC-T090-2), nên .env cũ chưa bị
+# đụng tới.
+MSG_ENV_KEPT = (
+    "Không ghi được file .env ({error}). File .env cũ vẫn còn nguyên. Đóng chương trình đang mở "
+    "file (nếu có), kiểm tra quyền ghi file rồi chạy lại set_password."
+)
+MSG_ENV_FORMAT = (
+    "File .env có dòng sai định dạng nên chưa ghi được mật khẩu mới; file .env cũ vẫn còn nguyên. "
+    "Mở .env, sửa dòng đó (thường là thiếu dấu nháy đóng) rồi chạy lại set_password."
+)
+# Xuống dòng đúng như python-dotenv (app) đọc: chỉ CR, LF (không cắt ở FF, VT, NEL, U+2028…).
+_DOTENV_LINES = re.compile(r"\r\n|\r|\n")
 
 
 def read_env_lines(env_file: Path) -> list[str]:
-    """Các dòng của .env (rỗng nếu chưa có file). File lưu sai bảng mã (Notepad «ANSI», UTF-16) hay
+    """Các dòng của .env (rỗng nếu chưa có file), tách đúng như python-dotenv (chỉ CR, LF). Dùng để
+    kiểm .env đọc được trước khi hỏi mật khẩu. File lưu sai bảng mã (Notepad «ANSI», UTF-16) hay
     không đọc được thì ``ConfigError`` câu cố định."""
     try:
         if not env_file.exists():
             return []
-        return env_file.read_text(encoding="utf-8").splitlines()
+        text = env_file.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ConfigError(MSG_ENV_NOT_UTF8) from exc
     except OSError as exc:
         raise ConfigError(MSG_ENV_UNREADABLE.format(error=type(exc).__name__)) from exc
+    lines = _DOTENV_LINES.split(text)
+    return lines[:-1] if lines and not lines[-1] else lines
 
 
 def set_env_value(env_file: Path, key: str, value: str, template: Path | None = None) -> None:
-    """Ghi ``key=value`` vào file .env: thay dòng cũ nếu có, không thì thêm vào cuối.
+    """Ghi mã băm ``key=value`` vào file .env bằng bộ ghi của ``seo_app.env_file``
+    (``set_password_hash``; T-104, LC-T090-1, -2): thay **mọi** dòng của biến (app dùng dòng
+    cuối), giữ nguyên mọi dòng khác, ghi file tạm rồi thay nguyên tử. Chưa có dòng thì thêm cuối.
 
     Nếu .env chưa tồn tại và có ``template`` (.env.example) thì sao chép template trước. Không đọc
-    hay ghi được .env thì ``ConfigError`` câu cố định (``read_env_lines``, ``MSG_ENV_UNWRITABLE``).
+    hay ghi được .env thì ``ConfigError`` câu cố định; ghi lỗi thì .env cũ còn nguyên.
     """
+    if key != KEY:
+        raise ValueError("set_password chỉ ghi APP_PASSWORD_HASH.")
     try:
         if not env_file.exists() and template is not None and template.is_file():
             shutil.copyfile(template, env_file)
     except OSError as exc:
         raise ConfigError(MSG_ENV_UNWRITABLE.format(error=type(exc).__name__)) from exc
 
-    lines = read_env_lines(env_file)
-    new_line = f"{key}={value}"
-    replaced = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith(f"{key}=") or stripped.startswith(f"export {key}="):
-            lines[i] = new_line
-            replaced = True
-            break
-    if not replaced:
-        lines.append(new_line)
     try:
-        env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except OSError as exc:
-        raise ConfigError(MSG_ENV_UNWRITABLE.format(error=type(exc).__name__)) from exc
+        set_password_hash(value, env_file)
+    except EnvFileWriteError as exc:
+        raise ConfigError(MSG_ENV_KEPT.format(error=exc.error_name)) from exc
+    except EnvFileReadError as exc:
+        if exc.not_utf8:
+            raise ConfigError(MSG_ENV_NOT_UTF8) from exc
+        raise ConfigError(MSG_ENV_UNREADABLE.format(error=exc.error_name)) from exc
+    except EnvFileFormatError as exc:
+        raise ConfigError(MSG_ENV_FORMAT) from exc
+    except EnvFileError as exc:  # câu cố định của bộ ghi (liên kết tắt, dòng thiếu nháy…)
+        raise ConfigError(str(exc)) from exc
 
 
 def ask_password() -> str:
