@@ -241,3 +241,61 @@ All checks passed!
 
 - `tests/test_la_chan_t098.py` không có (Lá Chắn không thêm file test).
 - Lượt 3 sửa `seo_app/plan/model.py`, `parse.py`, `propose.py`, `seo_app/content/workflow.py` (chỉ `plan_changes`) và test; không đụng `app/`, `seo_app/wordpress/`, `seo_app/storage/`, `config/`.
+
+## Lượt 4 (2026-10-28 19:02 +07:00) · Soi Lỗi lượt 3 (`2e0d29b`): sửa 3 lỗi Thấp SL-T098-18 → -20
+
+Chỉ Huy B giao (28/10 18:50, sau khi T-098 gộp `main` `24013b3`): sửa 3 lỗi Thấp trước T-100, T-101, theo gợi ý của Soi Lỗi; không lùi SL-T098-1 → -17 và các điều kiện LC-T094 (thẻ HTML, ký tự vô hình, số điện thoại/email, không có biểu thức chạy lâu).
+
+### Tóm tắt (cho chủ dự án)
+
+- File CSV quên đóng một dấu ngoặc kép: nay luôn báo «Không đọc được bảng…», kể cả khi phía dưới còn ô có ngoặc kép (trước đó các dòng ở giữa bị gộp vào một ô, không báo).
+- Bảng «brief» (dòng tên ở trên rồi các dòng «Từ khóa, …», «Ngày, …») không còn ra bài giả; nội dung được coi là ghi chú để AI đọc.
+- Dòng mới tự ghi Mã bài (ví dụ «B-004») giữ đúng mã đó, dù đứng sau một dòng mới chưa có mã; đưa lại cùng file thì không ra đề xuất lạ.
+
+### Đã sửa
+
+| Mã | Sửa | Chỗ |
+|---|---|---|
+| SL-T098-18 | Sau lượt đọc lại không `strict`, `_merged_by_quote` đi theo đúng cách `csv` đọc ngoặc kép: ngoặc chỉ mở ô khi đứng đầu ô; «""» trong ngoặc là một dấu ngoặc. Nó báo `BAD_TABLE` trong 2 trường hợp: (1) phần trong ngoặc **qua nhiều dòng** rồi «đóng» ở một dấu ngoặc có chữ theo sau, thật ra là dấu mở của một ô phía dưới; (2) tới hết file mà ngoặc vẫn chưa đóng. Trường hợp (2) là dạng gần mới: ô «"Đức" là hãng» đứng **trước** làm lượt `strict` dừng sớm, rồi một ngoặc phía dưới không đóng. **Khác gợi ý «ô nào có xuống dòng thì là lỗi»:** bảng chép từ Google Sheets có cả ô nhiều dòng (SL-T098-10) lẫn ô «"Đức" là hãng» (SL-T098-12) vẫn đọc được; theo gợi ý thì bảng đó sẽ báo lỗi oan. Mỗi ký tự xét một lần (tìm bằng `re`/`str.find`, không quay lui) | `parse.py` `_csv_rows`, `_merged_by_quote` |
+| SL-T098-19 | CSV/TSV: đã bỏ qua dòng tên thì dòng tiêu đề phải nhận ra **ít nhất hai cột**, hoặc mọi ô có chữ đều là tên cột (bảng một cột «Từ khóa» dưới dòng tên vẫn đọc, cột «Từ khóa» ghi trùng hai lần cũng vậy). «BRIEF BÀI VIẾT / Từ khóa, sửa cửa cuốn / Ngày, …» thành chữ tự do như lượt 1. Đánh đổi: dòng tên + tiêu đề chỉ có «Từ khóa» và một cột lạ (ví dụ «Người phụ trách») cũng thành chữ tự do; AI vẫn đọc được, không mất chữ. Bảng không có dòng tên giữ như cũ | `parse.py` `_find_header` |
+| SL-T098-20 | `compare_rows` **giữ trước** mọi mã mới ghi sẵn trong bảng (mã chưa có trong kế hoạch, dòng không «Bỏ»), rồi mới cấp mã cho dòng mới chưa có mã và dòng cũ chưa có mã. Hai dòng ghi cùng một mã mới: dòng đầu giữ, dòng sau được cấp mã mới (như trước); dòng «Bỏ» không giữ mã | `propose.py` `compare_rows` |
+
+### Không lùi
+
+- Mọi test của Soi Lỗi (SL-T098-1 → -20) qua; trong `tests/test_soi_loi_t098.py` không còn dấu `xfail` nào.
+- Điều kiện LC-T094 không đổi: lượt này không đụng `PlanRow`, bộ làm sạch, kiểm thẻ HTML, dò số điện thoại/email. Biểu thức mới duy nhất là `(?<![^\n<dấu phân cách>])"`, chỉ nhìn lùi một ký tự. Test `test_quote_check_time_grows_linearly`: chữ dài gấp 8 thì thời gian dưới 16 lần.
+- So bản `main` (`24013b3`) với bản mới:
+  - 11 file thật trong `docs/plan/`: kết quả giống hệt (số dòng, chữ tự do, câu báo, dòng bỏ).
+  - 40.000 CSV ngẫu nhiên có ô ngoặc chuẩn, ô nhiều dòng, «"Đức" là hãng», ô `""`: không có `BAD_TABLE` mới nào. Khác biệt duy nhất là ca dòng tên + tiêu đề có cột lạ (đánh đổi của SL-T098-19 ở trên).
+  - Khi thêm ô ngoặc không đóng: mọi `BAD_TABLE` mới đều có ngoặc không đóng.
+  - Script thử ở thư mục scratchpad, không commit.
+
+### Test
+
+- Gỡ 3 dấu `xfail` (SL-T098-18 → -20) trong `tests/test_soi_loi_t098.py`: **18 dòng xóa, 0 dòng thêm**; mọi dòng xóa là dòng dấu `@pytest.mark.xfail(...)` (soát bằng `git diff`). Không đổi điều kiện ca nào.
+- Thêm 10 test của tôi:
+  - `tests/test_plan_parse.py`, 7 test:
+    - ngoặc không đóng sau ô «"Đức" là hãng» vẫn `BAD_TABLE`;
+    - ô nhiều dòng (có «""») cùng ô «"Đức" là hãng» đọc đủ, cả CSV lẫn bảng dán;
+    - thời gian kiểm ngoặc tuyến tính;
+    - dòng tên + tiêu đề chỉ có «Từ khóa» vẫn là kế hoạch;
+    - brief dưới dòng tên là chữ tự do, cả CSV lẫn bảng dán.
+  - `tests/test_plan_propose.py`, 3 test:
+    - mã ghi sẵn được giữ, đưa lại cùng bảng thì không có đề xuất;
+    - dòng cũ chưa mã không lấy mã ghi sẵn;
+    - mã ghi trùng hay ở dòng «Bỏ» không được giữ.
+
+```
+$ uv run pytest -q tests/test_plan_model.py tests/test_plan_parse.py tests/test_plan_propose.py \
+    tests/test_plan_ai.py tests/test_soi_loi_t098.py tests/test_soi_loi_t003_t009.py \
+    tests/test_t040_prompts.py tests/test_content_workflow.py tests/test_prompt_data_frames.py \
+    tests/test_content_edge_cases.py
+(2026-10-28 19:00:44 → 19:02:21 +0700)
+781 passed in 91.08s (0:01:31)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- Lượt 4 chỉ sửa `seo_app/plan/parse.py`, `seo_app/plan/propose.py` và test; không đụng `app/`, `seo_app/content/`, `seo_app/google/`, `config/`.
+- Ghi cho T-101 (như lượt 3): `compare_rows` có thể báo `PlanKeyError` (chỉ khi hết thật 99.999 mã), nên bắt và hiện câu cố định của nó.

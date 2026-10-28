@@ -1257,12 +1257,6 @@ def test_round3_sl_t098_17_new_keys_after_the_largest_fill_free_numbers():
     assert [p.key for p in result.items] == ["B-1001", "B-1002"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-18 (Thấp): lượt đọc lại không strict (sửa SL-T098-12) làm sống lại SL-T098-3: "
-    "ngoặc kép không đóng mà phía sau còn một ô có ngoặc kép thì csv «đóng» ngoặc ở đó, lỗi strict "
-    "không phải «hết file», đọc lại không strict nên mọi dòng ở giữa bị gộp vào một ô, không báo",
-)
 @pytest.mark.parametrize(
     "case", ["csv-o-ngoac-phay", "csv-ngoac-dau", "dan-ngoac-dau"], ids=lambda case: case
 )
@@ -1283,24 +1277,12 @@ def test_sl_t098_18_unclosed_quote_before_a_later_quote_is_reported(case):
     assert keywords == ["sửa", "cửa cuốn", "cửa kéo", "cổng inox"] or result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-19 (Thấp): CSV có dòng tên một ô phía trên bảng «Mục – Nội dung» không có "
-    "dòng tiêu đề (kiểu bảng brief bài viết) vẫn lấy dòng dữ liệu «Từ khóa, …» làm tiêu đề: "
-    "«Ngày», «Ghi chú»… thành bài giả, tick sẵn (lượt 1: chữ tự do). Biến thể gần của SL-T098-13",
-)
 def test_sl_t098_19_title_row_above_a_key_value_csv_is_not_a_plan():
     text = "BRIEF BÀI VIẾT,,\nTừ khóa,sửa cửa cuốn,\nNgày,12/11/2026,\nGhi chú,gọi khách trước,\n"
     result = csv_file(text)
     assert not {"Ngày", "Ghi chú"} & {row.keyword for row in result.rows}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-20 (Thấp, có từ lượt 1): bảng đưa vào có dòng mới tự ghi Mã bài (B-004) đứng "
-    "sau một dòng mới chưa có mã: dòng chưa mã được cấp B-004 trước, dòng ghi B-004 bị đổi sang "
-    "B-005 không báo; đưa lại đúng file đó thì B-004 khớp theo mã, đề xuất đổi từ khóa bài khác",
-)
 def test_sl_t098_20_key_written_in_the_table_is_kept_for_a_new_row():
     current = [PlanRow(key=f"B-00{n}", keyword=f"bài cũ {n}") for n in (1, 2, 3)]
     incoming = [PlanRow(keyword="cửa sắt mỹ thuật"), PlanRow(key="B-004", keyword="lan can kính")]

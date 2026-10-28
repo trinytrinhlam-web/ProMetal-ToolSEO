@@ -200,14 +200,22 @@ def compare_rows(
 
     Khớp: dòng có Mã bài thì theo mã (mã chưa có trong kế hoạch là dòng mới giữ mã đó); dòng không
     có mã thì theo từ khóa. Ô trống trong bảng không xóa giá trị đang có. Dòng mới chưa có mã, và
-    dòng cũ chưa có mã được đề xuất đổi, được cấp mã kế tiếp. ``posts``: bài đã đăng
-    (``SiteIndex.items``) để cảnh báo trùng.
+    dòng cũ chưa có mã được đề xuất đổi, được cấp mã kế tiếp, sau khi đã giữ mọi mã mới ghi sẵn
+    trong bảng (dòng ghi «B-004» đứng sau một dòng chưa có mã vẫn giữ «B-004», Soi Lỗi SL-T098-20).
+    ``posts``: bài đã đăng (``SiteIndex.items``) để cảnh báo trùng.
     """
     by_key = {row.key: row for row in current if row.key}
     by_keyword: dict[str, PlanRow] = {}
     for row in current:
         by_keyword.setdefault(keyword_key(row.keyword), row)
     keys = _Keys(row.key for row in current)
+    written = {
+        row.key
+        for row in incoming
+        if row.key and row.key not in by_key and row.status != model.STATUS_DROPPED
+    }
+    for key in written:
+        keys.take(key)
     matched: set[int] = set()
     proposals: list[Proposal] = []
     duplicates = 0
@@ -224,7 +232,11 @@ def compare_rows(
             continue
         if row.status == model.STATUS_DROPPED:
             continue  # «Bỏ» một bài chưa có trong kế hoạch: không có gì để bỏ
-        key = row.key if row.key and keys.take(row.key) else keys.new()
+        if row.key in written:
+            written.discard(row.key)  # dòng sau ghi trùng mã này thì được cấp mã mới
+            key = row.key
+        else:
+            key = keys.new()
         proposals.append(Proposal(Action.ADD, key, _new_row(row, key), reason=REASON_NEW))
     notes = (NOTE_DUPLICATES.format(count=duplicates),) if duplicates else ()
     checked = check_proposals(proposals, current, posts=posts, today=today)
