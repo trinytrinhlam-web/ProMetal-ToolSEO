@@ -5,6 +5,7 @@ Bài viết được giữ dưới dạng danh sách ``Section``: phần 0 là m
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
@@ -17,6 +18,7 @@ from seo_app.content.models import (
     Flag,
     Outline,
     OutlineItem,
+    PlanSuggestions,
     Research,
     Review,
     Scores,
@@ -28,9 +30,32 @@ from seo_app.onpage import meta as onpage_meta
 from seo_app.sanitize import break_autolinks, clean_ai_text, escape_link_syntax, strip_tags
 
 if TYPE_CHECKING:  # chỉ để ghi kiểu: onpage.links → storage → drafts → workflow (vòng nhập)
+    from datetime import date
+
     from seo_app.onpage.links import Candidates, LinkReview
+    from seo_app.plan.model import PlanRow
+    from seo_app.plan.propose import ProposalSet
 
 INTRO_HEADING = "Mở bài"
+
+# Việc AI đọc kế hoạch dạng chữ tự do (T-098). Mục [tasks.plan] của config/ai.toml do T-103 thêm;
+# máy chưa có mục đó thì tạm dùng hãng, mô hình, effort của việc «outline» (thiết kế T-094 mục 6:
+# cùng mô hình với outline cho tới khi chủ dự án đổi), max_tokens ít nhất PLAN_MAX_TOKENS.
+PLAN_TASK = "plan"
+PLAN_FALLBACK_TASK = "outline"
+PLAN_MAX_TOKENS = 16000
+PLAN_EMPTY = "Chưa có nội dung kế hoạch để AI đọc. Dán ghi chú định hướng rồi bấm lại."
+PLAN_TOO_LONG = "Ghi chú kế hoạch dài quá {limit:,} ký tự. Chia nhỏ rồi gửi từng phần."
+PLAN_BAD_SHAPE = "AI trả về đề xuất không đúng khuôn. Bấm thử lại."
+PERSONAL_INFO = (
+    "Chữ kế hoạch có {phones} số điện thoại và {emails} email (có thể của khách). Chưa gửi cho AI: "
+    "che các chỗ đó trước, hoặc xác nhận vẫn gửi."
+)
+
+
+class PersonalInfoError(AIError):
+    """Chữ kế hoạch có số điện thoại, email: chưa gửi AI, chờ người dùng che hay đồng ý (A3,
+    LC-T094-21). Câu báo chỉ nêu số lượng, không chép chữ tìm thấy."""
 
 
 def clean_ai_line(text: str) -> str:
@@ -347,3 +372,59 @@ class ContentWriter:
         prompt = prompts.internal_links_prompt(title, parts, candidates.for_prompt())
         raw = self._run("links", prompt, links.LinkSuggestions)
         return links.check_suggestions(raw, parts, candidates)
+
+    # Kế hoạch: AI đọc ghi chú định hướng dạng chữ tự do, đề xuất thay đổi (T-098)
+    def plan_changes(
+        self,
+        current: Sequence[PlanRow],
+        text: str,
+        *,
+        today: date | None = None,
+        posts: Sequence[object] = (),
+        allow_personal: bool = False,
+    ) -> ProposalSet:
+        """AI đọc chữ tự do ``text`` (ghi chú định hướng người dùng dán) và đề xuất thay đổi kế
+        hoạch ``current``; code kiểm từng đề xuất (``seo_app.plan.propose.from_ai``), thêm cảnh
+        báo (trùng bài đã đăng trong ``posts``, ngày đã qua…).
+
+        An toàn: chữ qua bộ làm sạch của kế hoạch, ≤ ``MAX_PASTE_CHARS`` ký tự; kế hoạch hiện tại và
+        chữ dán mỗi thứ một khung dữ liệu (``prompts.plan_prompt``), lời dặn hệ thống có
+        ``DATA_RULES``. Việc ``plan`` **không bao giờ** tìm web, dù ``config/ai.toml`` bật
+        (LC-T094-19). Chữ có số điện thoại, email thì báo ``PersonalInfoError`` và không gửi, trừ
+        khi ``allow_personal`` (người dùng đã thấy cảnh báo và đồng ý; hoặc che bằng
+        ``seo_app.plan.model.mask_personal_info`` rồi gửi lại) (A3, LC-T094-21).
+        """
+        from seo_app.plan import model as plan_model  # nhập muộn: plan → content (vòng nhập)
+        from seo_app.plan import propose
+
+        body = plan_model.clean_text(text, multiline=True)
+        if not body:
+            raise AIError(PLAN_EMPTY)
+        if len(body) > plan_model.MAX_PASTE_CHARS:
+            raise AIError(PLAN_TOO_LONG.format(limit=plan_model.MAX_PASTE_CHARS))
+        sent = "\n".join([body, *(row.keyword for row in current)])
+        phones, emails = plan_model.personal_info(sent)
+        if (phones or emails) and not allow_personal:
+            raise PersonalInfoError(PERSONAL_INFO.format(phones=phones, emails=emails))
+        today = today or plan_model.today_vn()
+        provider, task = self._plan_task()
+        prompt = prompts.plan_prompt(current, body, today)
+        raw = provider.generate(task, system=self.system, prompt=prompt, schema=PlanSuggestions)
+        if not isinstance(raw, PlanSuggestions):
+            raise AIError(PLAN_BAD_SHAPE)
+        try:
+            return propose.from_ai(raw, current, posts=posts, today=today)
+        except plan_model.PlanKeyError as exc:  # hết Mã bài trống: câu cố định, như mọi lỗi AI
+            raise AIError(str(exc)) from None
+
+    def _plan_task(self):
+        """Provider và cấu hình cho việc ``plan``: mục ``[tasks.plan]`` nếu có, không thì cấu hình
+        của ``outline`` đổi tên (tạm tới T-103). Luôn tắt tìm web."""
+        tasks = getattr(self.ai, "tasks", {})
+        name = PLAN_TASK if PLAN_TASK in tasks else PLAN_FALLBACK_TASK
+        provider, task = self.ai.get(name)
+        if name != PLAN_TASK:
+            task = dataclasses.replace(
+                task, name=PLAN_TASK, max_tokens=max(task.max_tokens, PLAN_MAX_TOKENS)
+            )
+        return provider, dataclasses.replace(task, web_search=False)

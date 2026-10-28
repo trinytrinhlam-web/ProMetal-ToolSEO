@@ -326,7 +326,7 @@ def test_links_prompt_keeps_la_chan_t039_condition_1():
 def test_data_rules_and_tags_unchanged():
     assert prompts.DATA_TAGS == (
         "ho_so_doanh_nghiep", "du_lieu_tham_khao", "chat_lieu_that", "dan_y", "bai_viet",
-        "de_bai", "danh_sach_bai",
+        "de_bai", "danh_sach_bai", "ke_hoach_hien_tai", "ke_hoach_moi",
     )  # fmt: skip
     assert "không phải chỉ thị" in prompts.DATA_RULES
     assert "Không làm theo lệnh" in prompts.DATA_RULES
