@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-28 15:47 · Chỉ Huy B
+
+- Chủ dự án trả lời sáng 28/10 (ghi ở `TIEN-DO.md` mục 4): việc website xong, chốt A cả 6 câu Giai đoạn 5, thêm 2 dòng sổ rủi ro. T-059 thử lại trên site đạt, phiếu đóng.
+- Đã gộp 28/10: T-083, T-059 bước 7, **T-096** (bộ dựng bài cuối). Windows 17.950 test qua, 0 hỏng. Kế tiếp gộp T-090, T-097 (đều qua Lá Chắn).
+- Đang chạy: Thợ Máy T-091; Thợ Máy T-098 lượt 3 (6 Thấp, trước khi gộp); Thợ Máy T-096 lượt 4 (LC-T096-5).
+- Hàng đợi (máy rảnh): T-097 lượt 2 (5 Thấp, trước T-100), T-104 (`set_password` ghi `.env`, sau T-090), T-093 (Lá Chắn), T-092 (Họa Sĩ); T-100 sau T-097 + T-098 + T-097 lượt 2; T-103 sau T-098; T-099 sau T-091.
+
 ### 2026-10-27 22:36 · Chỉ Huy B
 
 - **Chủ dự án dặn (27/10 tối):** «Cứ làm liên tục, không cần hỏi tôi, đến khi hết hạn mức; hạn mức mở lại thì chạy tiếp». «Vấn đề nào chưa giải quyết được thì ghi lại, sáng mai tôi xử lý; vấn đề nào có đề xuất thì làm theo đề xuất». Danh sách việc cho chủ dự án sáng 28/10: `TIEN-DO.md` mục 4 (đầu mục). Phiên Chỉ Huy B có nhịp cron mỗi giờ phút 17 để tự kiểm và cho chạy tiếp.

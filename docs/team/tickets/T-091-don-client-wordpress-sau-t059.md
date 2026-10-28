@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-059 bước 7 đã gộp (cùng sửa `seo_app/wordpress/client.py`) |
-| Trạng thái | Chờ (sau T-059) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ W2, W3.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 15:47 (Chỉ Huy B): T-059 bước 7 đã gộp. Nhánh `team/T-091` từ `main` `1b45f5d`, worktree `wt-T-091`; giao Thợ Máy (phiên Thợ Máy T-059).

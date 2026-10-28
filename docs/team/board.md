@@ -6,7 +6,7 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 74% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 75% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
@@ -14,8 +14,8 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
 | 3 · Ảnh | **khoảng 99%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chặn shortcode, chèn ảnh vào nháp. **Màn hình chọn ảnh** trên trang Soạn bài (Ảnh thật/AI, GPS, duyệt alt) và nút **«Gửi nháp»** kèm ảnh lên WordPress, nhớ trạng thái gửi, chống gửi trùng kể cả hai tab. Còn: vài phiếu dọn lỗi nhỏ (T-082, T-083, T-084), Lá Chắn rà cả giai đoạn. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
-| 4 · SEO trên trang | **khoảng 95%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27/10** (ghi SEO, ảnh còn GPS). Còn: 2 phiếu dọn lỗi nhỏ (T-090, T-091), thử lại một nháp có ảnh |
-| 5 · Kế hoạch, lịch, đăng bài | **khoảng 15%** | Thiết kế xong (T-094: kế hoạch trên Google Sheets, AI đề xuất, hẹn giờ/đăng ngay qua một đường có xác nhận), chia 8 phiếu; bộ dựng bài cuối (T-096) đang kiểm bảo mật, phần đọc kế hoạch (T-098) đang làm |
+| 4 · SEO trên trang | **khoảng 96%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27–28/10** (ghi SEO, ảnh còn GPS cả trên điện thoại). Còn: 2 phiếu dọn lỗi nhỏ (T-090 qua kiểm bảo mật, T-091 đang làm) |
+| 5 · Kế hoạch, lịch, đăng bài | **khoảng 20%** | Thiết kế xong (T-094: kế hoạch trên Google Sheets, AI đề xuất, hẹn giờ/đăng ngay qua một đường có xác nhận), chia 8 phiếu; **bộ dựng bài cuối (T-096) xong**; nối Google Sheets (T-097) qua kiểm bảo mật; đọc kế hoạch (T-098) đang sửa lỗi nhỏ |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
 Trên app hôm nay chủ dự án dùng thật được trang **Soạn bài bước 1–5**: viết bài bằng AI, chọn ảnh thật cho chỗ cần ảnh, bước SEO (meta, slug, liên kết nội bộ, schema), rồi **«Gửi nháp»** lên WordPress (cần khóa API và kết nối WordPress). Kế hoạch, lịch đăng (Giai đoạn 5) và theo dõi thứ hạng (Giai đoạn 6) chưa làm.
@@ -34,23 +34,25 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML, kiểm link, dữ liệu xác nhận) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-096 xem lại) | `team/T-096` | Thợ Máy 3 lượt (`7ea52e8`: LC-T096-1 → -4, SL-T096-8, -9). ⏳ **28/10 10:28 Lá Chắn xem lại lượt 3** | [Thợ Máy](reports/T-096-tho-may.md) · [Soi Lỗi](reports/T-096-soi-loi.md) |
-| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Thợ Máy · T-083 lỗi chữ alt ảnh AI (T-098 lượt 2) | `team/T-098` | Thợ Máy xong (`ff8f542`); Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`84f32ec`: 2 Trung bình, 9 Thấp). ⏳ **28/10 10:28 Thợ Máy lượt 2** | |
-| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-090) | `team/T-090` | Thợ Máy 2 lượt (`97fc800`: câu báo emoji mới, `.env` sai bảng mã, câu FAQ, `set_password`). ⏳ **28/10 10:28 Soi Lỗi rút gọn** | |
-| [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa, khai báo `google-auth` (chủ dự án chốt 28/10) | Soi Lỗi · T-060 kiểm client WordPress (T-097) | `team/T-097` | Thợ Máy xong (`c260116`; 250 test mới, 24 file 2.277 qua, `pip-audit` sạch). ⏳ **28/10 10:28 Soi Lỗi rút gọn** | [Thợ Máy](reports/T-097-tho-may.md) |
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Thợ Máy · T-083 lỗi chữ alt ảnh AI (T-098 lượt 3) | `team/T-098` | Thợ Máy 2 lượt (`d52f162`); Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (`9e7cea6`: 11/11 lỗi cũ đóng, 6 Thấp mới SL-T098-12 → -17); Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`b520623`: 0 lỗi mới). ⏳ **28/10 15:47 Thợ Máy lượt 3** (sửa 6 Thấp trước khi gộp, theo đề xuất Soi Lỗi, Lá Chắn) | [Soi Lỗi](reports/T-098-soi-loi.md) · [Lá Chắn](reports/T-098-la-chan.md) |
+| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-090) | `team/T-090` | Thợ Máy 2 lượt (`97fc800`); Soi Lỗi ĐẠT (`0207c88`); Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`4af2d4b`: 2 Thấp có từ trước ở `set_password` → T-104). ⏳ **Chỉ Huy gộp** | [Soi Lỗi](reports/T-090-soi-loi.md) · [Lá Chắn](reports/T-090-la-chan.md) |
+| [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa, khai báo `google-auth` (chủ dự án chốt 28/10) | Lá Chắn · T-060 kiểm client WordPress (T-097) | `team/T-097` | Thợ Máy xong (`c260116`); Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`82bf0c0`: 4 Thấp); Lá Chắn đầy đủ **ĐẠT CÓ ĐIỀU KIỆN** (`4f6a970`: 1 Thấp mới LC-T097-1, không lỗi nào phải sửa trước khi gộp). ⏳ **Chỉ Huy gộp** | [Thợ Máy](reports/T-097-tho-may.md) · [Soi Lỗi](reports/T-097-soi-loi.md) · [Lá Chắn](reports/T-097-la-chan.md) |
+| [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ (SL-T088-1), giới hạn mã bài, SL-T059-1 (`sanitize_text_field`), báo quyền `unfiltered_html`. Thấp | Thợ Máy · T-059 siết mã sau thử thật (T-091) | `team/T-091` | ⏳ **28/10 15:47 Thợ Máy làm** (nhánh từ `main` `1b45f5d`) | |
+| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) lượt 4 | LC-T096-5 (Thấp): lớp chặn nhúng làm đúng điều kiện `isMatch` của Gutenberg (đoạn «`https://…` + chữ»), gỡ 4 `xfail`; đổi điều kiện ca `<p><a …>https://…</a> rồi</p>` của `test_embed_patterns_not_found` (Chỉ Huy duyệt 28/10) | Thợ Máy · T-094 thiết kế Giai đoạn 5 (T-096 lượt 4) | `team/T-096` | ⏳ **28/10 15:47 Thợ Máy lượt 4** (nhánh tua tới `main` `1b45f5d`; bắt buộc trước khi T-102 nối bộ dựng) | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-099](tickets/T-099-client-hen-gio-dang-ngay.md) | GĐ5: client hẹn giờ, đăng ngay (`release_draft`) | Thợ Máy | T-091 gộp |
-| [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097, T-098 gộp |
+| [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097, T-098 gộp; T-097 lượt 2 (SL-T097-1, -2, LC-T097-1) |
 | [T-101](tickets/T-101-giao-dien-ke-hoach-cai-dat-google.md) | GĐ5: giao diện Kế hoạch, Cài đặt Google, Bài viết | Họa Sĩ | T-100, T-103 gộp |
-| [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-096, T-099, T-100 gộp |
+| [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-099, T-100 gộp; T-096 lượt 4 (LC-T096-5). T-096 đã gộp 28/10 |
 | [T-103](tickets/T-103-loi-dan-ai-doc-ke-hoach.md) | GĐ5: lời dặn AI đọc kế hoạch | Ngòi Bút | T-098 gộp |
-| [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ trong chữ website (SL-T088-1), giới hạn trên mã bài. Thấp | Thợ Máy | T-059 bước 7 gộp (cùng `client.py`) |
+| [T-104](tickets/T-104-set-password-ghi-env-an-toan.md) | `set_password` ghi `.env` an toàn: thay đúng dòng app đọc, ghi nguyên tử (LC-T090-1, -2, có từ trước). Thấp | Thợ Máy | T-090 gộp; máy rảnh |
 | [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Họa Sĩ | Máy rảnh |
-| [T-093](tickets/T-093-la-chan-ra-soat-giai-doan-3.md) | Lá Chắn rà soát toàn bộ Giai đoạn 3 trước khi đóng giai đoạn | Lá Chắn | T-082, T-083 gộp |
+| [T-097](tickets/T-097-google-sheets-service-account.md) lượt 2 | 5 Thấp của Soi Lỗi, Lá Chắn: SL-T097-1, -2, LC-T097-1 (thân câu trả lời chuyển hướng bị đọc hết) trước khi T-100 dùng client; SL-T097-3, -4 trước khi T-101 làm trang Cài đặt → Google | Thợ Máy | T-097 gộp; máy rảnh |
+| [T-093](tickets/T-093-la-chan-ra-soat-giai-doan-3.md) | Lá Chắn rà soát toàn bộ Giai đoạn 3 trước khi đóng giai đoạn | Lá Chắn | **Máy rảnh** (T-082, T-083 đã gộp) |
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
 | [T-064](tickets/T-064-don-loi-thap-doc-thu-muc-anh.md) | Dọn lỗi Thấp đọc thư mục ảnh (LC-T048-2/-3/-4c/-5, `os.fstat`) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: lỗi nhỏ không chặn) |
@@ -73,6 +75,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML an toàn, kiểm link, chặn nhúng, dữ liệu cho màn hình xác nhận); chưa nối vào app (T-102 nối) | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-096-tho-may.md) 3 lượt · [Soi Lỗi](reports/T-096-soi-loi.md) 2 lượt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-096-la-chan.md) (xem lại lượt 3: 6/6 lỗi đóng); 1 Thấp mới LC-T096-5 → lượt 4 ngắn trước T-102. Gộp `main`, Windows 17.950 test qua, 0 hỏng |
 | [T-083](tickets/T-083-don-loi-chu-mo-ta-anh.md) | Alt và chú thích ảnh AI không lặp hay cụt tiền tố «Minh họa» khi AI viết kiểu lạ (không dấu, gạch đầu dòng, dấu Markdown, «(AI)» tách); chú thích ở giới hạn nhỏ không cụt | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-083-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-083-soi-loi.md): đạt có điều kiện (SL-T083-1 sửa ở lượt 2) · Lá Chắn: [**ĐẠT**](reports/T-083-la-chan.md) (Opus tạm). Gộp `main`, Windows 17.562 test qua, 0 hỏng |
 | [T-059](tickets/T-059-thu-that-ghi-seo-mot-bai-nhap.md) | Thử thật trên website (27/10): ghi SEO qua Abilities bằng tài khoản Biên tập viên, ảnh còn GPS, từ chối bài đã chuyển trạng thái; siết code theo kết quả: xác nhận ghi SEO theo khuôn thật, ảnh trong bài ghi sẵn `srcset` file đầy đủ (điện thoại nhận ảnh còn GPS) | Chỉ Huy · Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-059-tho-may.md) · [Soi Lỗi](reports/T-059-soi-loi.md): đạt có điều kiện · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-059-la-chan.md) (Opus tạm): SL-T059-1, kiểm `unfiltered_html` → T-091. Còn: thử lại một nháp một ảnh trên site khi chủ dự án có mặt. Gộp `main`, Windows 17.562 test qua, 0 hỏng |
 | [T-082](tickets/T-082-cau-bao-doc-anh-sau-t080.md) | Câu báo đọc ảnh khi thư mục bị dời/tráo đúng nghĩa («vừa bị thay đổi», «không tìm thấy»), không nới lớp chặn nào | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-082-tho-may.md) (2 lượt) · [Soi Lỗi](reports/T-082-soi-loi.md): đạt có điều kiện (2 Thấp đã sửa) · Lá Chắn: [**ĐẠT**](reports/T-082-la-chan.md) (Opus tạm). 6 ca chỉ chạy Linux/Mac chưa chạy (chưa được chạy cloud). Gộp `main`, Windows 15.352 test qua, 0 hỏng |
@@ -171,4 +174,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-104
+## Số phiếu tiếp theo: T-105

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-28); lượt 4 ngắn LC-T096-5 đang làm (trước T-102) |
 
 ## Mục tiêu
 
@@ -45,3 +45,4 @@ Làm phần **T-096** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 15:47 (Chỉ Huy B): Lá Chắn xem lại lượt 3 ĐẠT CÓ ĐIỀU KIỆN (`d864943`, 6/6 lỗi đóng). Gộp `main` (`1b45f5d`), Windows 17.950 test qua, 0 hỏng. LC-T096-5 (Thấp) làm theo đề xuất của Lá Chắn: lượt 4 ngắn của Thợ Máy (phiên Thợ Máy T-094), nhánh `team/T-096` tua tới `main`; Chỉ Huy duyệt đổi điều kiện ca `<p><a …>https://…</a> rồi</p>` của `test_embed_patterns_not_found` cùng lượt sửa.
