@@ -105,3 +105,52 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <8 file của phiếu>
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-28): sửa 5 lỗi Thấp của Soi Lỗi, Lá Chắn
+
+Chỉ Huy B giao 28/10 18:50, trên `team/T-097` vừa tua tới `main` `24013b3`. Sửa theo cách hai biên bản gợi ý (`T-097-soi-loi.md`, `T-097-la-chan.md` mục «Sửa mẫu»); không đổi thư viện, không thêm phụ thuộc, không gọi Google thật.
+
+### Tóm tắt (cho chủ dự án)
+
+- Google trả lời lạ (lệnh chuyển hướng, mã truy cập hỏng) không còn làm phần mềm đọc quá giới hạn bộ nhớ hay hiện lỗi kỹ thuật: mọi trường hợp ra câu báo tiếng Việt cố định.
+- Khi lệnh ghi lên Sheet gặp câu trả lời chuyển hướng, phần mềm coi là «có thể đã ghi» để bước sau đọc lại Sheet trước, không thêm dòng trùng.
+- File khóa Google nằm trong thư mục phần mềm hay thư mục ảnh bị từ chối kể cả khi đường dẫn viết theo kiểu đặc biệt của Windows; file trong «Shared drives», «Other computers» của Google Drive cũng có cảnh báo «thư mục đồng bộ».
+
+### Đã thay đổi
+
+| Lỗi | Sửa ở đâu | Cách sửa |
+|---|---|---|
+| **LC-T097-1** (thân 3xx bị đọc hết) | `seo_app/google/sheets.py`: `_Redirected`, `_refuse_redirect`; `_TokenRequest.__call__` và `SheetsClient._call` thêm `hooks={"response": [_refuse_redirect]}` | Móc `response` của `requests` chạy ngay khi có mã trả lời, **trước** `Session.resolve_redirects` (hàm đọc, giải nén hết thân 3xx cả khi `allow_redirects=False`). Gặp 3xx: `response.close()` (không đọc thân), ném `_Redirected`. `_call` đổi thành `SheetsError` câu «chuyển hướng», `unsure` theo loại lệnh; `_TokenRequest` trả `_TokenResponse(mã, {}, b"")` (google-auth báo lỗi xin mã → câu cố định). Giữ `allow_redirects=False`, `max_redirects = 0`, nhánh `TooManyRedirects` cũ để phòng thêm |
+| **SL-T097-1** (`OverflowError`, `RecursionError` lọt) | `SheetsClient._access_token` | Nhánh bắt cuối thêm **đúng** `OverflowError`, `RecursionError` (ra `_MSG_AUTH`). Không bắt `Exception` (theo Lá Chắn: lỗi `RealNetworkBlocked` của bộ chặn mạng trong test phải lọt ra) |
+| **SL-T097-2** (3xx không `Location` báo `unsure=False`) | `SheetsClient._call` | Đi chung nhánh `_Redirected` ở trên (móc chặn mọi 3xx, có hay không `Location`) với `unsure=writes`; nhánh kiểm `300 <= status < 400` sau đó (phòng thêm) cũng thêm `unsure=writes` |
+| **SL-T097-3** (đường `\\?\…`, `\\?\Volume{…}\…`, `\\?\GLOBALROOT\??\…`, `\\localhost\D$\…` lọt) | `seo_app/google/service_account.py`: `_identity`, `_inside_by_identity`; `_is_within` | So **danh tính thư mục** trước: đi ngược từng thư mục cha của đường gõ và đường thật, so `(st_dev, st_ino)` với thư mục dự án và từng gốc thư mục ảnh (bỏ qua khi `st_ino == 0`, như `seo_app/images/folders.py`); không khớp thì so chuỗi như cũ (ổ không cho số file, thư mục chưa có). Không chỉ bỏ tiền tố `\\?\` (dạng Volume, GLOBALROOT vẫn lọt). Cách này cũng bắt symlink, junction và (suy luận, chưa thử trên Mac) chữ hoa thường trên ổ Mac (Rủi ro 5 lượt 1) |
+| **SL-T097-4** (thiếu thư mục Google Drive) | `_SYNC_MARKERS`, `_in_sync_folder`, `ServiceAccount.in_sync_folder` | Thêm `shared drives`, `other computers` và tên tiếng Việt `bộ nhớ dùng chung`, `drive dùng chung`, `máy tính khác` (tên tiếng Việt chưa xác minh trên máy chủ dự án; chỉ là Cảnh báo); so tên thư mục sau NFC (tên dạng tổ hợp NFD cũng nhận, Ghi nhận 8 của Soi Lỗi). **Dấu hiệu cho giao diện:** trường mới `ServiceAccount.in_sync_folder` (bool, mặc định `False`); câu Cảnh báo vẫn trong `warnings`. Hiện cảnh báo: Họa Sĩ, T-101 |
+| Test | `tests/test_la_chan_t097.py`, `tests/test_soi_loi_t097.py` | Gỡ **27 dấu `xfail`** (đều `XPASS(strict)` trước khi gỡ: 7 LC-T097-1, 4 SL-T097-3 của Lá Chắn; 6 SL-T097-1, 4 SL-T097-2, 4 SL-T097-3, 2 SL-T097-4 của Soi Lỗi), **chỉ xóa dòng dấu** (gồm dòng định nghĩa biến dấu `_LC1`, `_SL3_MORE`, `_SL1`, `_SL3` và các dòng `@…`); không đổi điều kiện ca nào |
+| Test của tôi | `tests/test_google_service_account.py` | Thêm 6 ca: `in_sync_folder` đúng cho «Shared drives», «Other computers», «Bộ nhớ dùng chung», «Máy tính khác», «Drive của tôi» dạng NFD; thư mục thường thì `False`, không cảnh báo; ca cũ «thư mục đồng bộ» kiểm thêm `in_sync_folder is True` |
+
+### Bằng chứng (lượt 2)
+
+Máy Windows của chủ dự án, worktree `wt-T-097` (nhánh `team/T-097` từ `main` `24013b3`), 2026-10-28 19:37 (+07).
+
+```
+$ uv run pytest -q tests/test_google_sheets.py tests/test_google_service_account.py tests/test_soi_loi_t097.py tests/test_la_chan_t097.py   # trước khi gỡ dấu
+27 failed, 569 passed, 3 skipped        # 27 «failed» đều là XPASS(strict): đúng 27 ca xfail của 5 lỗi, không hỏng nào khác
+
+$ uv run pytest -q -p no:cacheprovider <81 file test liên quan>   # sau khi gỡ dấu; toàn bộ test do Chỉ Huy chạy khi gộp
+6952 passed, 65 skipped, 45 xfailed, 1 warning in 2386.93s (0:39:46)
+
+$ uv run pytest -q -p no:cacheprovider tests/test_google_service_account.py   # có 6 ca mới của lượt 2
+59 passed, 3 skipped in 13.00s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+81 file: mọi file test T-097 (`test_google_*.py`, `test_soi_loi_t097.py`, `test_la_chan_t097.py`), và mọi file nhắc tới `seo_app.google`, `fake_google`, `seo_app.config`/`load_settings`, `env_file`, thư mục ảnh (`images.folders`, `ImageLibrary`). 45 `xfail`, 65 bỏ qua, 1 cảnh báo pydantic có từ trước, thuộc phiếu khác (không còn dấu `xfail` nào trong hai file test T-097). Ca chia sẻ quản trị `\\localhost\D$` chạy thật trên máy này (không bỏ qua).
+
+### Còn lại, ngoài phạm vi lượt 2
+
+- Ghi nhận 1 của Lá Chắn (lỗi gốc vẫn ở `__context__`), Ghi nhận 2 (`_check_call` có thể ném `TypeError`, `ValueError` với thân hỏng do code gọi), Ghi nhận 3 của Soi Lỗi (`MAX_UPDATES` và câu báo), Ghi nhận 4, 5, 6 (liên kết cứng; khóa EC; `load_settings`) giữ nguyên như hai biên bản đã xếp «không xếp lỗi» hay chờ `config.py` mở lại.
+- Điều kiện 3 của Lá Chắn (T-101: không giữ client, `ServiceAccount`, đối tượng lỗi trong `st.session_state`; hiện chữ thường; dùng `in_sync_folder`/`warnings` cho cảnh báo) chép sang phiếu T-101.

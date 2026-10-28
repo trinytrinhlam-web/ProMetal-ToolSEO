@@ -14,8 +14,9 @@ An toàn (điều kiện Lá Chắn LC-T094-2, -12, -13, -15):
   tới 120 giây và đi theo chuyển hướng): giờ chờ 30 giây, không theo chuyển hướng, câu trả lời
   ≤ 64 KB. Không dùng ``before_request``/``AuthorizedSession`` (bản 2.62.0 tự mở luồng nền gọi
   thêm ``iamcredentials.googleapis.com``): chỉ ``refresh`` rồi tự gắn header ``Bearer``.
-- Mọi lệnh: giờ chờ ≤ 30 giây, ``allow_redirects=False`` (phiên ``max_redirects = 0``), đọc câu
-  trả lời theo luồng, quá 2 MB thì bỏ. Lỗi 429: lệnh đọc thử lại tối đa 3 lần (1, 2, 4 giây
+- Mọi lệnh: giờ chờ ≤ 30 giây, ``allow_redirects=False`` (phiên ``max_redirects = 0``), câu trả
+  lời 3xx đóng ngay, không đọc thân (móc ``_refuse_redirect``, LC-T097-1), đọc câu trả lời theo
+  luồng, quá 2 MB thì bỏ. Lỗi 429: lệnh đọc thử lại tối đa 3 lần (1, 2, 4 giây
   cộng ngẫu nhiên), lệnh ghi ô thử lại 1 lần, lệnh thêm dòng và ``:batchUpdate`` **không bao
   giờ** tự thử lại.
 - Câu lỗi cố định theo mã HTTP: không chép lời máy chủ Google, mã Sheet, chữ trong ô.
@@ -280,6 +281,25 @@ class _TooLarge(Exception):
     pass
 
 
+class _Redirected(Exception):
+    """Câu trả lời 3xx: đã đóng, **chưa đọc** thân (LC-T097-1)."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(status)
+        self.status = status
+
+
+def _refuse_redirect(response: requests.Response, *_args: Any, **_kwargs: Any) -> requests.Response:
+    """Móc ``response`` của ``requests``, gắn vào mọi lệnh (Sheets và xin mã): chạy ngay khi có mã
+    trả lời, **trước** ``Session.resolve_redirects`` (hàm này đọc và giải nén hết thân câu trả lời
+    3xx cả khi ``allow_redirects=False``, rồi mới ném ``TooManyRedirects``; LC-T097-1). Gặp 3xx
+    (có hay không có ``Location``) thì đóng câu trả lời, không đọc thân, ném ``_Redirected``."""
+    if 300 <= response.status_code < 400:
+        response.close()
+        raise _Redirected(response.status_code)
+    return response
+
+
 def _read_limited(response: requests.Response, limit: int) -> bytes:
     """Đọc thân câu trả lời theo luồng; quá ``limit`` byte (sau giải nén) thì ``_TooLarge``."""
     declared = response.headers.get("Content-Length", "")
@@ -353,7 +373,11 @@ class _TokenRequest(google_transport.Request):
                 allow_redirects=False,
                 stream=True,
                 auth=_NoAuth(),
+                hooks={"response": [_refuse_redirect]},
             )
+        except _Redirected as exc:
+            # Máy chủ mã trả 3xx: không đọc thân, không đi theo; google-auth thấy mã khác 200.
+            return _TokenResponse(exc.status, {}, b"")
         except requests.exceptions.TooManyRedirects as exc:
             # Máy chủ mã trả 3xx: không đi theo; google-auth thấy mã khác 200 và báo lỗi xin mã.
             return _TokenResponse(_close_and_status(exc) or 302, {}, b"")
@@ -763,7 +787,17 @@ class SheetsClient:
                 raise SheetsError(_refresh_message(exc)) from None
             except google_exceptions.TransportError:
                 raise SheetsError(_MSG_AUTH_NETWORK) from None
-            except (google_exceptions.GoogleAuthError, ValueError, TypeError, KeyError):
+            except (
+                google_exceptions.GoogleAuthError,
+                ValueError,
+                TypeError,
+                KeyError,
+                # google-auth 2.62.0: ``_parse_expiry`` ném OverflowError với ``expires_in`` quá
+                # lớn; ``json.loads`` thân lồng sâu ném RecursionError (SL-T097-1). Không bắt
+                # ``Exception``: lỗi của bộ chặn mạng trong test phải lọt ra được.
+                OverflowError,
+                RecursionError,
+            ):
                 raise SheetsError(_MSG_AUTH) from None
         token = credentials.token
         if not isinstance(token, str) or not _TOKEN.fullmatch(token):
@@ -810,7 +844,14 @@ class SheetsClient:
                 allow_redirects=False,
                 stream=True,
                 auth=_Bearer(token),
+                hooks={"response": [_refuse_redirect]},
             )
+        except _Redirected as exc:
+            # 3xx (có hay không có Location): không đọc thân, không đi theo. Lệnh ghi có thể đã
+            # chạy trên Google: ``unsure`` theo loại lệnh (SL-T097-2).
+            raise SheetsError(
+                _MSG_REDIRECT.format(code=exc.status), status_code=exc.status, unsure=writes
+            ) from None
         except requests.exceptions.TooManyRedirects as exc:
             # Phiên có max_redirects = 0: requests ném lỗi này cho mọi câu trả lời 3xx (kể cả khi
             # không đi theo). Không có lệnh nào được gửi tới địa chỉ mới.
@@ -828,8 +869,10 @@ class SheetsClient:
             raise SheetsError(_MSG_NETWORK.format(kind=type(exc).__name__), unsure=writes) from None
         status = response.status_code
         try:
-            if 300 <= status < 400:
-                raise SheetsError(_MSG_REDIRECT.format(code=status), status_code=status)
+            if 300 <= status < 400:  # phòng thêm (móc đã chặn mọi 3xx trước khi tới đây)
+                raise SheetsError(
+                    _MSG_REDIRECT.format(code=status), status_code=status, unsure=writes
+                )
             return status, _read_limited(response, MAX_RESPONSE_BYTES)
         except _TooLarge:
             raise SheetsError(_MSG_TOO_BIG, status_code=status, unsure=writes) from None

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -268,6 +269,29 @@ def test_thu_muc_dong_bo_chi_canh_bao(tmp_path, private_key, folder):
     assert account.email == EMAIL  # vẫn dùng được, chỉ cảnh báo
     assert any("đồng bộ lên mây" in warning for warning in account.warnings)
     assert all(str(synced) not in warning for warning in account.warnings)
+    assert account.in_sync_folder is True
+
+
+@pytest.mark.parametrize(
+    "folder",
+    ["Shared drives", "Other computers", "Bộ nhớ dùng chung", "Máy tính khác",
+     unicodedata.normalize("NFD", "Drive của tôi")],  # tên dạng tổ hợp (NFD) cũng nhận ra
+)
+def test_thu_muc_khac_cua_google_drive_cung_canh_bao(tmp_path, private_key, folder):
+    """T-097 lượt 2 (SL-T097-4): thư mục cạnh «My Drive» trên ổ Google Drive cũng là đồng bộ."""
+    project = tmp_path / "du-an"
+    project.mkdir()
+    synced = tmp_path / folder / "Nhom SEO"
+    synced.mkdir(parents=True)
+    account = load(write_key(synced, key_info(private_key)), project)
+    assert account.in_sync_folder is True
+    assert any("đồng bộ lên mây" in warning for warning in account.warnings)
+
+
+def test_thu_muc_thuong_khong_co_dau_hieu_dong_bo(outside, private_key):
+    secret_dir, project = outside
+    account = load(write_key(secret_dir, key_info(private_key)), project)
+    assert account.in_sync_folder is False and account.warnings == ()
 
 
 def test_quyen_file_rong_tren_mac_linux_canh_bao(outside, private_key):

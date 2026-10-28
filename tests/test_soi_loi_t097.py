@@ -279,12 +279,6 @@ def assert_fixed(error: BaseException, *forbidden: str) -> None:
 
 
 # ================================================================ SL-T097-1 (xfail)
-_SL1 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-1: google-auth _parse_expiry ném OverflowError, json.loads ném RecursionError; "
-    "_access_token chỉ bắt RefreshError, TransportError, GoogleAuthError, ValueError, TypeError, "
-    "KeyError nên lỗi lọt khỏi SheetsClient (không thành câu cố định)",
-)
 TOKEN_ODD_LEAKS = {
     "expires_in vô cực (1e400)": (200, b'{"access_token":"ya29.x","expires_in":1e400}'),
     "expires_in 300 tỷ giây": (200, b'{"access_token":"ya29.x","expires_in":300000000000}'),
@@ -295,7 +289,6 @@ TOKEN_ODD_LEAKS = {
 }
 
 
-@_SL1
 @pytest.mark.parametrize("answer", TOKEN_ODD_LEAKS.values(), ids=TOKEN_ODD_LEAKS)
 def test_sl_t097_1_lenh_xin_ma_tra_loi_la_thanh_cau_co_dinh(fake, client, answer):
     fake.on("POST", TOKEN_URL, answer)
@@ -346,11 +339,6 @@ def test_lenh_xin_ma_5xx_thu_lai_cua_thu_vien_roi_cau_co_dinh(fake, client, monk
 
 
 # ================================================================ SL-T097-2 (xfail)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-2: _call ném SheetsError cho mã 3xx không Location mà không đặt unsure=writes "
-    "(nhánh TooManyRedirects khi có Location thì có)",
-)
 @pytest.mark.parametrize(
     "command, status",
     [("update", 302), ("append", 302), ("append", 307), ("structure", 302)],
@@ -916,11 +904,6 @@ def test_cac_dang_duong_dan_khac_van_bi_bat(dirs, rsa_pem, where, message):
 
 
 _WINDOWS_ONLY = pytest.mark.skipif(os.name != "nt", reason="dạng đường dẫn chỉ có trên Windows")
-_SL3 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-3: _is_within so chuỗi sau normcase; realpath giữ tiền tố \\\\?\\ khi đường gõ "
-    "có nó, và \\\\localhost\\X$ là UNC khác chuỗi ổ đĩa, nên file trong dự án/thư mục ảnh lọt",
-)
 
 
 def _admin_share(path: Path) -> str:
@@ -929,7 +912,6 @@ def _admin_share(path: Path) -> str:
 
 
 @_WINDOWS_ONLY
-@_SL3
 @pytest.mark.parametrize("where", ["dự án", "thư mục ảnh"])
 def test_sl_t097_3_tien_to_thiet_bi_vao_du_an_hay_thu_muc_anh_bi_tu_choi(dirs, rsa_pem, where):
     folder = dirs.project if where == "dự án" else dirs.images
@@ -939,7 +921,6 @@ def test_sl_t097_3_tien_to_thiet_bi_vao_du_an_hay_thu_muc_anh_bi_tu_choi(dirs, r
 
 
 @_WINDOWS_ONLY
-@_SL3
 def test_sl_t097_3_thu_muc_anh_khai_tien_to_thiet_bi(dirs, rsa_pem):
     inside = write_key(dirs.images, rsa_pem)
     with pytest.raises(ServiceAccountError, match="thư mục ảnh"):
@@ -947,7 +928,6 @@ def test_sl_t097_3_thu_muc_anh_khai_tien_to_thiet_bi(dirs, rsa_pem):
 
 
 @_WINDOWS_ONLY
-@_SL3
 def test_sl_t097_3_chia_se_quan_tri_localhost_vao_du_an(dirs, rsa_pem):
     inside = write_key(dirs.project, rsa_pem)
     shared = _admin_share(inside)
@@ -970,11 +950,6 @@ def test_thu_muc_dong_bo_co_canh_bao(dirs, rsa_pem, parts):
     assert any("đồng bộ" in warning for warning in account.warnings)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-4: _SYNC_MARKERS không có «shared drives», «other computers» (thư mục của "
-    "Google Drive for Desktop nằm cạnh «My Drive» trên cùng ổ ảo, ví dụ G:\\Other computers)",
-)
 @pytest.mark.parametrize("parts", [("Shared drives", "Nhom SEO"), ("Other computers", "May nha")])
 def test_sl_t097_4_thu_muc_google_drive_khac_cung_canh_bao(dirs, rsa_pem, parts):
     folder = dirs.outside.joinpath(*parts)
