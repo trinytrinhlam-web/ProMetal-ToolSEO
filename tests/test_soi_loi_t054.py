@@ -35,6 +35,7 @@ from seo_app.images.tags import SOURCE_AI, ImageTags, TagError
 from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text, escape_shortcodes, sanitize_html
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import (
+    MAX_ID,
     DraftImage,
     DraftImagesError,
     DraftWithImages,
@@ -723,13 +724,29 @@ def test_tai_anh_tra_du_lieu_sai_kieu_thi_dung(fake_wp, wp_client, site, web, an
     assert [(r.method, path(r)) for r in fake_wp.requests] == [("POST", MEDIA)]
 
 
-def test_ma_anh_qua_lon_bi_danh_sach_duong_chan(fake_wp, wp_client, site, web):
-    huge = 10**19  # 20 chữ số: ngoài mẫu mã ảnh của ALLOWED_ROUTES
+@pytest.mark.parametrize("huge", [10**19, 2**63], ids=["10^19", "2^63"])
+def test_ma_anh_qua_lon_bi_danh_sach_duong_chan(fake_wp, wp_client, site, web, huge):
+    """T-091 (Chỉ Huy duyệt phương án A 28/10): mã ảnh quá ``MAX_ID`` (2⁶³−1) như mã sai khuôn,
+    giống ``test_tai_anh_tra_du_lieu_sai_kieu_thi_dung`` (trước: client nhận mã, liệt kê
+    ``uploaded == [huge]``, lệnh ghi alt bị danh sách đường chặn). Giữ: chỉ một lệnh tải, không
+    lệnh nào gọi tiếp với mã quá lớn, câu báo nói ảnh có thể đã lên thư viện Media."""
     fake_wp.on("POST", MEDIA, (201, {"id": huge, "source_url": f"{UPLOADS}a.webp"}, {}))
     with pytest.raises(DraftImagesError) as error:
         send(wp_client, [DraftImage(web, alt="Cổng")])
     assert [(r.method, path(r)) for r in fake_wp.requests] == [("POST", MEDIA)]
-    assert [image.id for image in error.value.uploaded] == [huge]
+    assert error.value.uploaded == () and error.value.maybe_uploaded is True
+    assert "thư viện Media" in str(error.value) and str(huge) not in str(error.value)
+
+
+def test_ma_anh_bang_gioi_han_van_nhan(fake_wp, wp_client, site, web):
+    """Biên T-091: mã ảnh đúng ``MAX_ID`` (2⁶³−1) vẫn hợp lệ: ghi alt, tạo nháp bình thường."""
+    site.next_id = MAX_ID
+    fake_wp.on("POST", f"{MEDIA}/{MAX_ID}", site.update_media)
+    result = send(wp_client, [DraftImage(web, alt="Cổng")])
+    assert [image.id for image in result.images] == [MAX_ID]
+    assert [(r.method, path(r)) for r in fake_wp.requests][:2] == [
+        ("POST", MEDIA), ("POST", f"{MEDIA}/{MAX_ID}")
+    ]
 
 
 @pytest.mark.parametrize("answer", [[], None, "ok", {}, {"id": "101"}, {"id": 102}, {"id": True}])

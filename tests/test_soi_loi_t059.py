@@ -229,12 +229,6 @@ def test_ban_python_cua_sanitize_text_field_dung_cho_ca_da_biet():
     assert php_stripslashes("C:\\\\x") == "C:\\x"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T059-1: chữ SEO hợp lệ mà SiteSEO 1.4.2 lưu khác đi (sanitize_text_field: «< » "
-    "thành «&lt; », «%» + 2 ký tự hex bị bỏ; wp_unslash bỏ «\\»): website đã ghi nhưng app báo "
-    "«không thành công»",
-)
 @pytest.mark.parametrize(
     "field,text",
     [
