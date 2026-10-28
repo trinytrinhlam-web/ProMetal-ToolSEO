@@ -28,7 +28,7 @@ from enum import StrEnum
 from pydantic import ValidationError
 
 from seo_app.content.models import PlanSuggestion, PlanSuggestions
-from seo_app.onpage.meta import compare_key, has_html, similarity
+from seo_app.onpage.meta import compare_key, has_html, mentions_price, similarity
 from seo_app.plan import model
 from seo_app.plan.model import FIELD_LABELS, PlanRow, clean_text, fold_key, keyword_key
 from seo_app.text import slugify
@@ -77,6 +77,10 @@ WARN_DOORWAY = (
 WARN_PERSONAL = (
     "Đề xuất của AI có số điện thoại hoặc email: kiểm tra trước khi đưa vào kế hoạch (có thể là "
     "thông tin của khách)."
+)
+WARN_PRICE = (
+    "Đề xuất của AI có nhắc tới giá: Pro-Metal không công bố giá. Kiểm tra trước khi đưa vào kế "
+    "hoạch (ghi chú của thợ sẽ thành chất liệu thật của bài)."
 )
 WARN_MANY_AI = "AI đề xuất {count} thay đổi cùng lúc: xem kỹ từng dòng trước khi tick."
 NOTE_DUPLICATES = "{count} dòng trùng một bài đã khớp ở dòng trên nên bỏ qua."
@@ -325,7 +329,8 @@ def from_ai(
     có từ khóa hay có Mã bài, «Cập nhật»/«Bỏ» nói Mã bài không có thật, hai mục cùng một Mã bài,
     quá ``MAX_AI_ITEMS`` mục. «Cập nhật» không đổi gì thì bỏ qua (không tính là sai).
 
-    Thêm cảnh báo: chữ AI có số điện thoại, email (A3); AI đề xuất quá ``AI_MANY`` thay đổi."""
+    Thêm cảnh báo: chữ AI có số điện thoại, email (A3); chữ AI đưa vào dòng có giá (LC-T103-1); AI
+    đề xuất quá ``AI_MANY`` thay đổi."""
     if not isinstance(raw, PlanSuggestions):
         raise TypeError("cần PlanSuggestions")
     items = list(raw.items)
@@ -342,7 +347,13 @@ def from_ai(
             proposals.append(proposal)
     many = [WARN_MANY_AI.format(count=len(proposals))] if len(proposals) > AI_MANY else []
     proposals = [
-        proposal.with_warnings([*many, *([WARN_PERSONAL] if _has_personal(proposal) else [])])
+        proposal.with_warnings(
+            [
+                *many,
+                *([WARN_PERSONAL] if _has_personal(proposal) else []),
+                *([WARN_PRICE] if _has_price(proposal) else []),
+            ]
+        )
         for proposal in proposals
     ]
     checked = check_proposals(proposals, current, posts=posts, today=today)
@@ -364,12 +375,39 @@ def _has_personal(proposal: Proposal) -> bool:
     """Chữ **do AI đưa** (lý do; với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường AI đổi) có số
     điện thoại, email. Chữ cũ của dòng không tính: ghi chú có số khách là chuyện thường (Soi Lỗi
     SL-T098-15)."""
+    texts = [proposal.reason, *_ai_texts(proposal)]
+    return any(any(model.personal_info(text)) for text in texts if text)
+
+
+# ``mentions_price`` coi chữ dài hơn ``MAX_SCAN_CHARS`` (1.000) là có giá: dò ghi chú dài (tới
+# 2.000 ký tự) theo từng khúc gối nhau, để ghi chú dài không bị cảnh báo oan.
+_PRICE_WINDOW = 900
+_PRICE_STEP = 700
+
+
+def _ai_texts(proposal: Proposal) -> list[str]:
+    """Chữ **do AI đưa** trong dòng đề xuất: với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường
+    AI đổi (Soi Lỗi SL-T098-15)."""
     if proposal.action is Action.ADD:
         names: Iterable[str] = _AI_TEXT_FIELDS
     else:
         names = [name for name in _AI_TEXT_FIELDS if name in proposal.changes]
-    texts = [proposal.reason, *(getattr(proposal.after, name) for name in names)]
-    return any(any(model.personal_info(text)) for text in texts if text)
+    return [text for name in names if (text := getattr(proposal.after, name))]
+
+
+def _has_price(proposal: Proposal) -> bool:
+    """Chữ AI đưa vào dòng kế hoạch nói về giá («150.000đ», «1,5 triệu», «500k», «bảng giá»):
+    ``mentions_price`` của bước SEO, không tính chỗ nằm trong từ khóa chính (Lá Chắn LC-T103-1,
+    góp ý G2 của Soi Lỗi T-103). Pro-Metal không công bố giá; ghi chú của thợ thành «Kinh nghiệm
+    của xưởng» ở Soạn bài, nơi số liệu được coi là thật."""
+    keyword = proposal.after.keyword
+    for text in _ai_texts(proposal):
+        starts = list(range(0, max(len(text) - _PRICE_WINDOW, 0) + 1, _PRICE_STEP))
+        if starts[-1] + _PRICE_WINDOW < len(text):
+            starts.append(len(text) - _PRICE_WINDOW)  # khúc cuối, gối lên khúc trước
+        if any(mentions_price(text[start : start + _PRICE_WINDOW], keyword) for start in starts):
+            return True
+    return False
 
 
 def _ai_values(item: PlanSuggestion) -> dict[str, object] | None:

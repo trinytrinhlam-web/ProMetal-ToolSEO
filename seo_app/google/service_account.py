@@ -237,11 +237,25 @@ def _identity(path: Path) -> tuple[int, int] | None:
 
 
 def _inside_by_identity(candidate: Path, base: Path) -> bool:
-    """Một trong các thư mục cha của ``candidate`` (kể cả chính nó) là đúng thư mục ``base``."""
+    """Một trong các thư mục cha của đường **thật** của ``candidate`` (kể cả chính nó) là đúng thư
+    mục ``base``.
+
+    Đi ngược theo đường thật (``resolve``: không còn ``..``, symlink, junction), không theo chữ của
+    đường gõ: «<dự án>\\..\\ngoai\\k.json» không có thư mục cha nào là thư mục dự án (Soi Lỗi
+    SL-T097-5). Hai đường thật ở **hai ổ có chữ khác nhau** (``H:\\``, ``I:\\``) thì không tin danh
+    tính: ổ Google Drive for Desktop cho mọi ổ cùng số nhận dạng thư mục (Soi Lỗi T-097, ghi nhận
+    lượt 2 số 1). Cách viết khác của cùng một ổ (``\\\\localhost\\D$\\…``, ``\\\\?\\Volume{…}``)
+    vẫn so danh tính (SL-T097-3)."""
     target = _identity(base)
     if target is None:
         return False
-    current = candidate
+    try:
+        current = candidate.resolve(strict=False)
+        base_drive = base.resolve(strict=False).drive
+    except (OSError, RuntimeError, ValueError):
+        return False
+    if _other_drive_letter(current.drive, base_drive):
+        return False
     for _ in range(512):  # đường dẫn sâu bất thường: dừng (phép so chuỗi vẫn chạy)
         if _identity(current) == target:
             return True
@@ -250,6 +264,12 @@ def _inside_by_identity(candidate: Path, base: Path) -> bool:
             return False
         current = parent
     return False
+
+
+def _other_drive_letter(first: str, second: str) -> bool:
+    """Hai ổ đều viết bằng chữ ổ (``C:``, ``H:``) và khác chữ: chắc chắn là hai ổ khác nhau."""
+    letters = [drive.casefold() for drive in (first, second)]
+    return all(len(d) == 2 and d[1] == ":" for d in letters) and letters[0] != letters[1]
 
 
 def _in_sync_folder(path: Path) -> bool:

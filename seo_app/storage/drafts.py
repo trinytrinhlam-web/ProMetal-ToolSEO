@@ -10,6 +10,17 @@ hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
 
 Lựa chọn ở bước SEO (T-041) nằm trong ``DraftSnapshot.seo`` (``DraftSeo``, xem docstring lớp đó).
 
+Kế hoạch (T-100, khuôn 3; thiết kế T-094 mục 1.6, 1.7; Lá Chắn LC-T094-30):
+
+- Nháp mở từ một dòng kế hoạch nhớ ``DraftSnapshot.plan`` (``DraftPlanRef``: Mã bài, mã băm Sheet,
+  trạng thái và Mã bài WordPress lúc mở). Sai khuôn thì bỏ phần này, bài vẫn mở.
+- ``SendState`` thêm hình thức gửi (nháp, hẹn giờ, đăng ngay), giờ hẹn, đã chuyển trạng thái hay
+  chưa, không rõ kết quả lệnh chuyển; dòng trạng thái cũ (chưa có các trường này) vẫn đọc được.
+- Việc ghi Google Sheet còn nợ sau khi gửi (mất mạng) nằm ở bảng ``plan_writes``
+  (``PlanStatusWrite``, một việc cho mỗi nháp), không ở cache kế hoạch (cache xóa được). Xóa nháp
+  không xóa việc còn nợ của nó (bài đã lên website, dòng kế hoạch vẫn phải cập nhật). Thử lại chỉ
+  ghi Sheet.
+
 Ảnh đã chọn cho chỗ cần ảnh (T-055, khuôn 2; thiết kế T-046 mục 7 G3-9):
 
 - Mỗi phần của bài nhớ một ``DraftImage``: ảnh trong thư mục ảnh hoặc ảnh tạo bằng AI, nguồn
@@ -49,7 +60,7 @@ from contextlib import closing, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import (
@@ -86,6 +97,7 @@ from seo_app.images.folders import (
     SubFolder,
 )
 from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError, tags_for_image
+from seo_app.plan import model as plan_model
 from seo_app.sanitize import clean_ai_text, escape_link_syntax, strip_tags, unescape_link_syntax
 
 if TYPE_CHECKING:
@@ -96,9 +108,11 @@ DEFAULT_DRAFTS_FILE = PROJECT_ROOT / "data" / "drafts.sqlite"
 MAX_DRAFTS = 30
 MAX_DRAFT_BYTES = 5 * 1024 * 1024  # một nháp (JSON, UTF-8) không quá 5 MB
 STEP_COUNT = 5  # Chuẩn bị · Dàn ý · Viết & kiểm tra · SEO · Xuất bản
-# 1: chữ của bài (T-016). 2: thêm ảnh đã chọn cho chỗ cần ảnh (T-055).
-SCHEMA_VERSION = 2
-_OLD_SCHEMA_VERSIONS = frozenset({1})  # vẫn mở được, nâng lên SCHEMA_VERSION khi mở
+# 1: chữ của bài (T-016). 2: thêm ảnh đã chọn cho chỗ cần ảnh (T-055). 3: gắn với dòng kế hoạch
+# (``plan``, T-100).
+SCHEMA_VERSION = 3
+_OLD_SCHEMA_VERSIONS = frozenset({1, 2})  # vẫn mở được, nâng lên SCHEMA_VERSION khi mở
+_NO_IMAGE_VERSIONS = frozenset({1})  # khuôn chưa có ảnh đã chọn
 _ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")  # băm SHA-256 dạng hex thường (``hexdigest``)
 _SQLITE_TIMEOUT = 5  # giây chờ khi file đang bị một lần lưu khác giữ
@@ -126,6 +140,11 @@ _MSG_FOLDER_NAME = (
 # Trạng thái gửi (T-086): một dòng JSON vài chục byte; lớn hơn mức này là bị sửa tay, hỏng.
 MAX_SEND_STATE_BYTES = 4096
 _MSG_SEND_STATE_BROKEN = "Trạng thái gửi ghi trong nháp bị hỏng nên không đọc được."
+# Việc ghi Google Sheet còn nợ (T-100): một dòng JSON vài trăm byte; giữ tối đa chừng này việc.
+MAX_PLAN_WRITE_BYTES = 4096
+MAX_PLAN_WRITES = 200
+_MSG_PLAN_WRITE_BROKEN = "Việc ghi Google Sheet còn nợ của nháp này bị hỏng nên không đọc được."
+_SHEET_HASH_PATTERN = _SHA256_PATTERN
 # Prompt: bỏ ký tự điều khiển (trừ xuống dòng, tab), ký tự vô hình/định dạng (kể cả ký tự đảo
 # hướng chữ), surrogate lẻ (không ghi được ra UTF-8).
 _PROMPT_DROP = frozenset({"Cc", "Cf", "Cs"})
@@ -134,6 +153,9 @@ _category = unicodedata.category
 
 class DraftError(Exception):
     """Lỗi kho nháp; thông báo tiếng Việt, hiện thẳng được cho người dùng."""
+
+
+_UNSET = object()  # ``save_plan_write``: không so rồi đặt
 
 
 def new_draft_id() -> str:
@@ -533,6 +555,118 @@ class DraftSeo(_Strict):
         return handler(kept)
 
 
+def _plan_key(value: object) -> str:
+    """Mã bài đúng dạng chuẩn (``B-001``): khác dạng chuẩn là dữ liệu sửa tay."""
+    if not isinstance(value, str) or len(value) > 9:
+        raise ValueError("mã bài sai")
+    key = plan_model.parse_key(value)
+    if not key or key != value:
+        raise ValueError("mã bài sai")
+    return key
+
+
+def _sheet_hash(value: object) -> str:
+    if not isinstance(value, str) or not _SHEET_HASH_PATTERN.fullmatch(value):
+        raise ValueError("mã băm Sheet phải là 64 ký tự hex")
+    return value
+
+
+class DraftPlanRef(_Strict):
+    """Nháp mở từ một dòng kế hoạch (thiết kế T-094 mục 1.6; T-100).
+
+    - ``key``: Mã bài của dòng (``B-001``); ``sheet_hash``: mã băm SHA-256 của mã Google Sheet
+      (không giữ mã gốc, LC-T094-29).
+    - ``status``, ``wp_post_id``: trạng thái và Mã bài WordPress của dòng lúc mở bài: ghi trạng
+      thái sau khi gửi chỉ khi dòng chưa bị đổi ở nơi khác (``seo_app.plan.sync.write_status``).
+    - ``opened_at``: lúc mở (có múi giờ).
+
+    Đọc từ file là dữ liệu chưa tin cậy: khuôn chặt, không có chữ nào để hiện ra giao diện."""
+
+    key: str
+    sheet_hash: str
+    status: str
+    wp_post_id: int | None = Field(default=None, ge=1, le=plan_model.MAX_POST_ID, strict=True)
+    opened_at: AwareDatetime
+
+    @field_validator("key", mode="before")
+    @classmethod
+    def _valid_key(cls, value: object) -> str:
+        return _plan_key(value)
+
+    @field_validator("sheet_hash", mode="before")
+    @classmethod
+    def _valid_hash(cls, value: object) -> str:
+        return _sheet_hash(value)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _valid_status(cls, value: object) -> str:
+        if not isinstance(value, str) or value not in plan_model.STATUSES:
+            raise ValueError("trạng thái kế hoạch không thuộc danh sách")
+        return value
+
+
+# Trạng thái app tự ghi vào dòng kế hoạch (câu hỏi 4A): «Đang viết» khi mở bài, rồi sau khi gửi.
+APP_PLAN_STATUSES = (
+    plan_model.STATUS_WRITING,
+    plan_model.STATUS_DRAFT_SENT,
+    plan_model.STATUS_SCHEDULED,
+    plan_model.STATUS_PUBLISHED,
+)
+
+
+class PlanStatusWrite(_Strict):
+    """Một việc ghi trạng thái vào dòng kế hoạch trên Google Sheet (thiết kế T-094 mục 1.7; T-100):
+    trạng thái mới, Mã bài WordPress, ngày đăng thực tế (giờ hẹn hay giờ đăng), kèm trạng thái và
+    Mã bài WordPress lúc mở bài (``expect_*``) để kiểm xung đột. Lưu trong ``drafts.sqlite`` khi
+    chưa ghi được (mất mạng); thử lại chỉ ghi Sheet, không bao giờ gửi lại WordPress (LC-T094-30).
+
+    Đọc từ file là dữ liệu chưa tin cậy: khuôn chặt (đúng kiểu, giờ có múi giờ)."""
+
+    key: str
+    sheet_hash: str
+    status: str
+    wp_post_id: int | None = Field(default=None, ge=1, le=plan_model.MAX_POST_ID, strict=True)
+    published_at: AwareDatetime | None = None
+    expect_status: str
+    expect_post_id: int | None = Field(default=None, ge=1, le=plan_model.MAX_POST_ID, strict=True)
+    created_at: AwareDatetime
+
+    @field_validator("key", mode="before")
+    @classmethod
+    def _valid_key(cls, value: object) -> str:
+        return _plan_key(value)
+
+    @field_validator("sheet_hash", mode="before")
+    @classmethod
+    def _valid_hash(cls, value: object) -> str:
+        return _sheet_hash(value)
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _valid_status(cls, value: object) -> str:
+        if not isinstance(value, str) or value not in APP_PLAN_STATUSES:
+            raise ValueError("app chỉ ghi trạng thái Đang viết, Đã gửi nháp, Đã hẹn giờ, Đã đăng")
+        return value
+
+    @field_validator("expect_status", mode="before")
+    @classmethod
+    def _valid_expect(cls, value: object) -> str:
+        if not isinstance(value, str) or value not in plan_model.STATUSES:
+            raise ValueError("trạng thái kế hoạch không thuộc danh sách")
+        return value
+
+    @model_validator(mode="after")
+    def _post_for_sent(self) -> PlanStatusWrite:
+        if self.status != plan_model.STATUS_WRITING and self.wp_post_id is None:
+            raise ValueError("gửi xong thì phải có Mã bài WordPress")
+        if self.status == plan_model.STATUS_WRITING and (
+            self.wp_post_id is not None or self.published_at is not None
+        ):
+            raise ValueError("«Đang viết» không có Mã bài WordPress, ngày đăng")
+        return self
+
+
 class DraftSnapshot(_Strict):
     """Đủ để dựng lại trang Soạn bài. Chữ giữ đúng như trong session (xem «Cách giao diện dùng»
     trong ``docs/team/reports/T-016-tho-may.md``)."""
@@ -553,6 +687,7 @@ class DraftSnapshot(_Strict):
     auto_fixed: int = Field(default=0, ge=0)
     ignored_flags: list[str] = Field(default_factory=list)
     seo: DraftSeo = Field(default_factory=DraftSeo)  # bước SEO (T-041); nháp cũ: trống
+    plan: DraftPlanRef | None = None  # dòng kế hoạch đã mở bài này (T-100); nháp cũ: không có
     _dropped_images: int = PrivateAttr(default=0)
 
     @model_validator(mode="before")
@@ -564,9 +699,11 @@ class DraftSnapshot(_Strict):
         if not isinstance(data, dict):
             return data
         parts = data.get("parts")
-        if data.get("schema_version", SCHEMA_VERSION) == SCHEMA_VERSION or not isinstance(
-            parts, list
-        ):
+        version = data.get("schema_version", SCHEMA_VERSION)
+        # Chỉ khuôn 1 chưa có ảnh: khuôn 2 trở lên giữ ảnh (T-100 nâng lên khuôn 3). Số khuôn lạ
+        # thì bỏ ảnh như trước, rồi ``_known_version`` từ chối cả nháp.
+        known_with_images = type(version) is int and version not in _NO_IMAGE_VERSIONS
+        if (known_with_images and version <= SCHEMA_VERSION) or not isinstance(parts, list):
             return data
         dropped = (info.context or {}).get(_DROPPED_IMAGES)
         kept = []
@@ -620,6 +757,20 @@ class DraftSnapshot(_Strict):
                 raise
             return DraftSeo()
 
+    @field_validator("plan", mode="wrap")
+    @classmethod
+    def _drop_broken_plan(
+        cls, value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> DraftPlanRef | None:
+        """Đọc nháp từ file: phần kế hoạch sai khuôn (sửa tay, hỏng) thì bỏ (nháp như không gắn
+        với dòng kế hoạch nào), chữ và ảnh của bài giữ nguyên. Tạo trong code: sai là lỗi."""
+        try:
+            return handler(value)
+        except ValidationError:
+            if not _from_file(info):
+                raise
+            return None
+
     @property
     def title(self) -> str:
         """Tên hiển thị trong danh sách: tiêu đề bài, rồi tiêu đề dàn ý, rồi từ khóa."""
@@ -658,12 +809,46 @@ class SendState(_Strict):
     pending: bool = Field(default=False, strict=True)
     post_id: int | None = Field(default=None, ge=1, lt=2**63, strict=True)
     updated_at: AwareDatetime
+    # T-100 (thiết kế T-094 mục 3.2 bước 6): hình thức gửi, giờ hẹn, đã chuyển trạng thái trên
+    # website chưa, lệnh chuyển lỗi giữa chừng (có thể đã chuyển). Dòng cũ không có: gửi nháp.
+    mode: Literal["draft", "future", "publish"] = "draft"
+    scheduled_for: AwareDatetime | None = None
+    released: bool = Field(default=False, strict=True)
+    release_unknown: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> SendState:
+        if self.mode == "draft" and (self.released or self.release_unknown):
+            raise ValueError("gửi nháp thì không chuyển trạng thái")
+        if (self.mode == "future") != (self.scheduled_for is not None):
+            raise ValueError("chỉ hẹn giờ mới có giờ hẹn, và phải có giờ hẹn")
+        if self.released and self.release_unknown:
+            raise ValueError("đã chuyển và không rõ kết quả không cùng lúc")
+        if (self.released or self.release_unknown) and self.post_id is None:
+            raise ValueError("chuyển trạng thái thì phải có mã bài")
+        return self
 
     @classmethod
     def now(
-        cls, *, pending: bool, post_id: int | None, timezone: str = DEFAULT_TIMEZONE
+        cls,
+        *,
+        pending: bool,
+        post_id: int | None,
+        timezone: str = DEFAULT_TIMEZONE,
+        mode: Literal["draft", "future", "publish"] = "draft",
+        scheduled_for: datetime | None = None,
+        released: bool = False,
+        release_unknown: bool = False,
     ) -> SendState:
-        return cls(pending=pending, post_id=post_id, updated_at=datetime.now(ZoneInfo(timezone)))
+        return cls(
+            pending=pending,
+            post_id=post_id,
+            updated_at=datetime.now(ZoneInfo(timezone)),
+            mode=mode,
+            scheduled_for=scheduled_for,
+            released=released,
+            release_unknown=release_unknown,
+        )
 
 
 @dataclass
@@ -843,6 +1028,94 @@ class DraftStore:
                 )
         return True
 
+    # ------------------------------------------------------------ kế hoạch (T-100)
+
+    def find_plan_draft(self, key: str, sheet_hash: str) -> str | None:
+        """Mã nháp mới nhất gắn với dòng kế hoạch ``key`` của Sheet ``sheet_hash`` (thiết kế 1.6:
+        đã có nháp cho mã bài này thì mở nháp đó, không tạo nháp thứ hai); không có: ``None``.
+
+        Lọc nhanh theo chữ JSON (dấu ngoặc kép trong chữ của bài luôn được JSON ghi thoát, nên chỉ
+        khớp khóa thật), rồi **mở lại** từng nháp tìm được để xác nhận: nháp hỏng, phần kế hoạch sai
+        khuôn thì bỏ qua."""
+        key, sheet_hash = _plan_key(key), _sheet_hash(sheet_hash)
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id FROM drafts WHERE instr(data, ?) > 0 AND instr(data, ?) > 0 "
+                "ORDER BY saved_ts DESC, rowid DESC LIMIT 5",
+                (f'"key":"{key}"', f'"sheet_hash":"{sheet_hash}"'),
+            ).fetchall()
+        for (draft_id,) in rows:
+            try:
+                snapshot = self.load(draft_id)
+            except DraftError:
+                continue
+            if snapshot.plan and (snapshot.plan.key, snapshot.plan.sheet_hash) == (key, sheet_hash):
+                return draft_id
+        return None
+
+    def load_plan_write(self, draft_id: str) -> PlanStatusWrite | None:
+        """Việc ghi Google Sheet còn nợ của nháp; ``None``: không có. Dòng hỏng: ``DraftError``."""
+        _check_id(draft_id)
+        with self._connect() as conn:
+            return _read_plan_write(conn, draft_id)
+
+    def save_plan_write(
+        self,
+        draft_id: str,
+        write: PlanStatusWrite | None,
+        *,
+        expected: PlanStatusWrite | None | object = _UNSET,
+    ) -> bool:
+        """Ghi việc ghi Sheet còn nợ của nháp (thay việc cũ); ``None`` thì bỏ. Trả ``True`` khi đã
+        ghi. ``expected``: so rồi đặt trong một giao dịch giữ khóa ghi (như ``save_send_state``):
+        việc trong kho đã khác (tab khác vừa ghi việc mới, dòng hỏng) thì không đụng, trả
+        ``False``. Giữ tối đa ``MAX_PLAN_WRITES`` việc mới nhất."""
+        _check_id(draft_id)
+        data = None if write is None else write.model_dump_json()
+        with self._connect() as conn:
+            if expected is not _UNSET:
+                conn.execute("BEGIN IMMEDIATE")  # lần ghi khác phải đợi tới khi giao dịch này xong
+                try:
+                    current = _read_plan_write(conn, draft_id)
+                except DraftError:
+                    return False
+                if current != expected:
+                    return False
+            if data is None:
+                conn.execute("DELETE FROM plan_writes WHERE id = ?", (draft_id,))
+                return True
+            stamp = datetime.now(ZoneInfo(self.timezone)).timestamp()
+            conn.execute(
+                "INSERT OR REPLACE INTO plan_writes (id, data, saved_ts) VALUES (?, ?, ?)",
+                (draft_id, data, stamp),
+            )
+            conn.execute(
+                "DELETE FROM plan_writes WHERE id != ? AND id NOT IN "
+                "(SELECT id FROM plan_writes WHERE id != ? ORDER BY saved_ts DESC, rowid DESC "
+                "LIMIT ?)",
+                (draft_id, draft_id, MAX_PLAN_WRITES - 1),
+            )
+        return True
+
+    def list_plan_writes(self) -> list[tuple[str, PlanStatusWrite]]:
+        """Mọi việc ghi Sheet còn nợ (cũ nhất trước). Dòng hỏng (sửa tay) bị bỏ qua."""
+        with self._connect() as conn:
+            ids = conn.execute(
+                "SELECT id FROM plan_writes ORDER BY saved_ts, rowid LIMIT ?",
+                (MAX_PLAN_WRITES,),
+            ).fetchall()
+            found: list[tuple[str, PlanStatusWrite]] = []
+            for (draft_id,) in ids:
+                if not isinstance(draft_id, str) or not _ID_PATTERN.fullmatch(draft_id):
+                    continue
+                try:
+                    write = _read_plan_write(conn, draft_id)
+                except DraftError:
+                    continue
+                if write is not None:
+                    found.append((draft_id, write))
+        return found
+
     # ------------------------------------------------------------ nội bộ
 
     @contextmanager
@@ -878,6 +1151,11 @@ class DraftStore:
                 conn.execute(
                     "CREATE TABLE IF NOT EXISTS send_states ("
                     "id TEXT PRIMARY KEY, data TEXT NOT NULL)"
+                )
+                # T-100: việc ghi Google Sheet còn nợ; file cũ chưa có thì tạo thêm.
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS plan_writes ("
+                    "id TEXT PRIMARY KEY, data TEXT NOT NULL, saved_ts REAL NOT NULL)"
                 )
         except sqlite3.DatabaseError as exc:
             raise DraftError(_db_message(exc)) from None
@@ -915,6 +1193,27 @@ def _read_send_state(conn: sqlite3.Connection, draft_id: str) -> SendState | Non
         return SendState.model_validate_json(data)
     except (ValidationError, UnicodeDecodeError, TypeError):
         raise DraftError(_MSG_SEND_STATE_BROKEN) from None
+
+
+def _read_plan_write(conn: sqlite3.Connection, draft_id: str) -> PlanStatusWrite | None:
+    """Việc ghi Sheet còn nợ của nháp, đọc trên kết nối đang mở. Dòng quá lớn, sai khuôn:
+    ``DraftError`` câu cố định."""
+    row = conn.execute(
+        "SELECT length(CAST(data AS BLOB)) FROM plan_writes WHERE id = ?", (draft_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    if row[0] is None or row[0] > MAX_PLAN_WRITE_BYTES:
+        raise DraftError(_MSG_PLAN_WRITE_BROKEN)
+    (data,) = conn.execute("SELECT data FROM plan_writes WHERE id = ?", (draft_id,)).fetchone()
+    try:
+        if isinstance(data, bytes):
+            data = data.decode("utf-8")
+        if not isinstance(data, str):
+            raise TypeError("dữ liệu không phải chữ")
+        return PlanStatusWrite.model_validate_json(data)
+    except (ValidationError, UnicodeDecodeError, TypeError):
+        raise DraftError(_MSG_PLAN_WRITE_BROKEN) from None
 
 
 def clean_loaded(snapshot: DraftSnapshot) -> DraftSnapshot:
@@ -1282,11 +1581,14 @@ def _is_healthy(path: Path) -> bool:
                 return False
             columns = {row[1] for row in conn.execute("PRAGMA table_info(drafts)")}
             send_columns = {row[1] for row in conn.execute("PRAGMA table_info(send_states)")}
+            write_columns = {row[1] for row in conn.execute("PRAGMA table_info(plan_writes)")}
     except sqlite3.DatabaseError:
         return False
     needed = {"id", "title", "keyword", "saved_at", "saved_ts", "data"}
-    return (not columns or needed <= columns) and (
-        not send_columns or {"id", "data"} <= send_columns
+    return (
+        (not columns or needed <= columns)
+        and (not send_columns or {"id", "data"} <= send_columns)
+        and (not write_columns or {"id", "data", "saved_ts"} <= write_columns)
     )
 
 
@@ -1328,8 +1630,11 @@ __all__ = [
     "MAX_DRAFT_BYTES",
     "MAX_PROMPT_CHARS",
     "MAX_ROOT_INDEX",
+    "MAX_PLAN_WRITES",
+    "MAX_PLAN_WRITE_BYTES",
     "MAX_SEND_STATE_BYTES",
     "SCHEMA_VERSION",
+    "APP_PLAN_STATUSES",
     "CheckedImage",
     "DraftError",
     "DraftImage",
@@ -1337,10 +1642,12 @@ __all__ = [
     "DraftList",
     "DraftMetaVersions",
     "DraftPart",
+    "DraftPlanRef",
     "DraftSeo",
     "DraftSnapshot",
     "DraftStore",
     "DraftSummary",
+    "PlanStatusWrite",
     "SendState",
     "check_chosen_image",
     "check_draft_images",

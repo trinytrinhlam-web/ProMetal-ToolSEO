@@ -412,3 +412,47 @@ def test_written_key_repeated_or_dropped_is_not_kept():
     assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-010", "B-011"]
     incoming = [PlanRow(key="B-010", keyword="cửa xếp", status="Bỏ"), PlanRow(keyword="cửa nhôm")]
     assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-005"]
+
+
+# ------------------------------------------------------- T-100: giá trong chữ AI (LC-T103-1, G2)
+
+PRICED = [
+    pytest.param("cap_nhat", "B-001", {"notes": "Giá thay bản lề 150.000đ, rẻ nhất quận"},
+                 id="cap-nhat-ghi-chu-150000d"),
+    pytest.param("cap_nhat", "B-001", {"notes": "Nhắc khách: thay motor chỉ 1,5 triệu"},
+                 id="cap-nhat-ghi-chu-1-5-trieu"),
+    pytest.param("cap_nhat", "B-001", {"title_hint": "Bảng giá lan can cầu thang sắt"},
+                 id="cap-nhat-tieu-de-bang-gia"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "secondary": "sửa cửa kéo 500k"},
+                 id="them-tu-khoa-phu-500k"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "notes": "Sửa trọn gói 2 triệu"},
+                 id="them-ghi-chu-2-trieu"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "notes": "x " * 700 + "giá 500k"},
+                 id="them-ghi-chu-dai-gia-o-cuoi"),
+]  # fmt: skip
+
+
+@pytest.mark.parametrize(("action", "key", "fields"), PRICED)
+def test_price_in_ai_text_warns_and_is_not_preselected(action, key, fields):
+    result = ai(suggestion(action=action, key=key, **fields))
+    (proposal,) = result.items
+    assert propose.WARN_PRICE in proposal.warnings and not proposal.preselected
+
+
+def test_price_already_in_plan_or_inside_the_keyword_is_not_warned():
+    current = [*CURRENT[:1], PlanRow(key="B-002", keyword="sơn tĩnh điện", notes="Giá 1,2 triệu")]
+    result = from_ai(
+        PlanSuggestions(items=[suggestion(action="cap_nhat", key="B-002", priority="Cao")]),
+        current,
+        today=TODAY,
+    )
+    assert result.items[0].warnings == () and result.items[0].preselected
+    (add,) = ai(suggestion(action="them", keyword="báo giá cổng inox giá rẻ",
+                           title_hint="Báo giá cổng inox giá rẻ tại xưởng")).items  # fmt: skip
+    assert propose.WARN_PRICE not in add.warnings
+
+
+def test_long_ai_notes_without_price_are_not_warned():
+    notes = "Khách hỏi cách chỉnh bản lề cổng sắt bị xệ và cách tra dầu. " * 33  # ~2.000 ký tự
+    (add,) = ai(suggestion(action="them", keyword="chỉnh bản lề cổng", notes=notes[:2000])).items
+    assert propose.WARN_PRICE not in add.warnings and add.preselected
