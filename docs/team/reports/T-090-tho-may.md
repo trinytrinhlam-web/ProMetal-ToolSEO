@@ -5,8 +5,8 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-090](../tickets/T-090-don-loi-thap-chu-seo-va-env.md) |
 | Nhánh | `team/T-090` (worktree `D:\ProMetal-ToolSEO\wt-T-090`), gốc `main` `1e49185` |
-| Ngày nộp | 2026-10-28 08:30 (+0700) |
-| Kết quả | Hoàn thành (yêu cầu 1–3). Không cần sửa `app/**`: `app/main.py` đã hiện câu của `ConfigError` thành trang báo lỗi |
+| Ngày nộp | 2026-10-28 08:30 (+0700); lượt 2: 2026-10-28 10:26 (+0700) |
+| Kết quả | Hoàn thành (yêu cầu 1–3). Không cần sửa `app/**`: `app/main.py` đã hiện câu của `ConfigError` thành trang báo lỗi. Lượt 2: làm đề xuất 2 (câu báo FAQ) và 3 (`set_password`), mục [«Lượt 2»](#lượt-2--đề-xuất-2-và-3-2026-10-28) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -181,3 +181,157 @@ Việc ngoài phạm vi phiếu, Chỉ Huy quyết:
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 · Đề xuất 2 và 3 (2026-10-28)
+
+Chỉ Huy B giao (chủ dự án dặn «có đề xuất thì làm theo đề xuất»), mở phạm vi `seo_app/onpage/schema.py` (đúng chỗ câu báo ký tự lạ) và `scripts/hash_password.py`. Đề xuất 1 (từ khóa chính, `app/views/write.py`) giao Họa Sĩ ở T-092, tôi không làm. Đề xuất 4 vẫn chờ chủ dự án.
+
+### Tóm tắt (cho chủ dự án)
+
+- Mục Hỏi đáp của bài có biểu tượng cảm xúc rất mới: schema Hỏi đáp vẫn không dựng (như trước), nhưng câu báo nay nói đúng: «Trả lời 1: có ký tự phần mềm chưa nhận ra (có thể là biểu tượng cảm xúc rất mới). Sửa trong bài: xóa ký tự đó hoặc thay bằng biểu tượng quen thuộc.» Ký tự vô hình thì câu báo nói rõ là không nhìn thấy, thường do dán từ nơi khác, và cách sửa (gõ lại câu đó).
+- Bấm đúp `set_password` khi file `.env` lưu sai bảng mã: cửa sổ báo ngay bằng tiếng Việt cách lưu lại file bằng UTF-8 rồi chạy lại, **chưa bắt gõ mật khẩu**; không còn lỗi tiếng Anh dài kèm đường dẫn. File `.env` không đọc hay ghi được (đang mở ở chương trình khác, không có quyền) cũng có câu báo riêng. File `.env` không bị đụng tới khi báo lỗi.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/onpage/meta.py` | Tách phần phân loại khỏi `odd_char_messages` thành `odd_char_kinds(text)` (`:134-150`), dùng chung cho meta và FAQ. Câu báo meta, mức Chặn không đổi |
+| `seo_app/onpage/schema.py` | `_check_text` (`:330-350`) dùng `odd_char_kinds`: hai câu báo theo loại, có cách sửa trong bài. Bỏ `_ODD_CATEGORIES`, `_has_control` (chỉ chỗ này dùng). Không đổi `normalize_text` hay tập ký tự bị Chặn |
+| `seo_app/config.py` | Tách phần đầu câu báo bảng mã thành `ENV_RESAVE_UTF8` (`:45`) để `set_password` dùng chung; `MSG_ENV_NOT_UTF8` (`:49`) giữ nguyên từng chữ |
+| `scripts/hash_password.py` | Câu cố định `MSG_ENV_NOT_UTF8`, `MSG_ENV_UNREADABLE`, `MSG_ENV_UNWRITABLE` (`:24-34`); `read_env_lines` mới (`:37-47`); `set_env_value` báo `ConfigError` câu cố định khi chép mẫu, đọc, ghi lỗi; `main` kiểm `.env` **trước** khi hỏi mật khẩu (`:97-102`), lỗi lúc ghi thì báo «Chưa lưu mật khẩu mới.» (`:115-119`), thoát mã 1, không traceback |
+| `tests/test_t090_meta_emoji_moi.py` | Thêm 6 hàm, 182 ca (mục «Test mới» dưới) |
+| `tests/test_t090_env_bang_ma.py` | Thêm 6 hàm, 10 ca |
+| `tests/test_t041_schema.py` | Test của tôi ở T-041: ca U+0378 mong câu mới (mục «R5» dưới) |
+
+### Cách sửa
+
+**Câu báo FAQ.** Như ô meta (mục «Cách sửa» lượt 1), nhưng xét chữ đã chuẩn hóa của câu hỏi, trả lời (`normalize_text`, như trước):
+
+| Ký tự còn lại sau chuẩn hóa | Câu báo |
+|---|---|
+| Chưa gán, có thể là biểu tượng mới (emoji Unicode 16, U+0378…) | «{Câu hỏi n / Trả lời n}: có ký tự phần mềm chưa nhận ra (có thể là biểu tượng cảm xúc rất mới). Sửa trong bài: xóa ký tự đó hoặc thay bằng biểu tượng quen thuộc.» |
+| Điều khiển, surrogate lẻ, ký tự riêng, «không phải ký tự», mã để dành cho ký tự vô hình | «{…}: có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác). Sửa trong bài: gõ lại câu đó bằng chữ thường.» (câu cũ chỉ có «có ký tự điều khiển hoặc ký tự lạ.») |
+
+Tập ký tự bị Chặn ở FAQ **không đổi** (điều kiện 1 của Lá Chắn T-038): đã so cách cũ (`_has_control` trên chữ đã chuẩn hóa) với cách mới trên **từng** mã của cả bảng mã (1.114.112 mã): 0 khác biệt (`str.isspace` và `\s` của `re` trùng nhau, nên bỏ qua khoảng trắng như `odd_char_kinds` không đổi gì sau `normalize_text`). Test canh `test_faq_blocks_exactly_the_same_chars_as_before` giữ điều này. Ba mã «mặc định bỏ qua» U+2065, U+FFF0–U+FFF8 vẫn bị `normalize_text` bỏ như trước (không Chặn), có test canh.
+
+`schema.py` nhập `odd_char_kinds` từ `meta.py`: không tạo vòng nhập (`meta.py` không nhập `schema.py`; `schema.py` vốn đã kéo `meta.py` vào qua `seo_app.content`). Đã thử nhập riêng từng module trước tiên trong một trình Python mới: `seo_app.onpage.schema`, `seo_app.onpage.meta`, `seo_app.content`, `seo_app.onpage.links`, `seo_app.wordpress.client`, `seo_app.storage`, `seo_app.images.alt`, `seo_app.images.html`, `seo_app.content.prompts`: đều được.
+
+**`set_password`.** Câu báo bảng mã dùng chung phần đầu với app, chỉ khác bước cuối: «File .env không đọc được dạng UTF-8 (thường do Notepad lưu kiểu «ANSI»). Mở file .env, chọn Lưu thành (Save As), ở ô Mã hóa (Encoding) chọn UTF-8, lưu đè rồi chạy lại set_password.»
+
+| Lúc | Trước | Nay |
+|---|---|---|
+| `.env` sai bảng mã (cp1252, cp1258, UTF-16) | Bắt gõ mật khẩu hai lần, rồi traceback tiếng Anh (`UnicodeDecodeError`, đường dẫn thư mục app) | Báo ngay «Chưa đặt được mật khẩu. File .env không đọc được dạng UTF-8…», chưa hỏi mật khẩu, thoát mã 1 |
+| `.env` không đọc được | Traceback (`PermissionError` kèm đường dẫn đầy đủ) | «Chưa đặt được mật khẩu. Không đọc được file .env (PermissionError). Đóng chương trình đang mở file (nếu có), kiểm tra quyền đọc file rồi chạy lại set_password.» |
+| Đọc được mà không ghi được `.env`, hay không chép được `.env.example` sang | Traceback | «Chưa lưu mật khẩu mới. Không ghi được file .env (PermissionError). … kiểm tra quyền ghi file rồi chạy lại set_password.» |
+| `--print` (chỉ in mã băm) | Không đọc `.env` | Như cũ: không đọc, không cần `.env` đúng |
+
+Câu báo chỉ có tên loại lỗi, không đường dẫn, không nội dung `.env`, không câu lỗi gốc; lỗi gốc nối sau `ConfigError` (`from exc`) nhưng không in ra. Dòng «Đã lưu mật khẩu mới vào {đường dẫn}.» khi thành công giữ như cũ (không thuộc lỗi này).
+
+### Test mới
+
+`tests/test_t090_meta_emoji_moi.py`, mục «lượt 2» (182 ca):
+
+| Test | Kiểm |
+|---|---|
+| `test_faq_unknown_char_stays_blocked_with_accurate_message` (14) | 4 emoji Unicode 16 và 3 mã chưa gán, ở câu hỏi và câu trả lời: Chặn, không JSON-LD, đúng một câu báo mở đầu «Câu hỏi 1: / Trả lời 1: có ký tự phần mềm chưa nhận ra», có cách sửa, không có «không nhìn thấy», «điều khiển», không chép lại ký tự |
+| `test_faq_control_invisible_and_noncharacters_keep_old_message` (162) | 81 ký tự (Cc, Cs, Co, đủ 66 «không phải ký tự», mã để dành còn lại sau chuẩn hóa) × câu hỏi, trả lời: Chặn, câu «ký tự điều khiển hoặc ký tự lạ (không nhìn thấy…)», không có câu mới |
+| `test_faq_drops_reserved_ignorable_chars_as_before` (3) | Canh: U+2065, U+FFF0, U+FFF8 vẫn bị bỏ, không Chặn |
+| `test_faq_blocks_exactly_the_same_chars_as_before` | Canh: Chặn đúng khi chữ đã chuẩn hóa còn Cc, Cs, Co, Cn (quét mỗi 11 mã một trên cả bảng mã) |
+| `test_faq_both_kinds_give_two_issues` | Có cả hai loại: hai câu báo |
+| `test_seo_step_faq_shows_accurate_message_for_new_emoji` | Trang Soạn bài, bước SEO, bài có mục Hỏi đáp với emoji mới: không có JSON-LD, câu dưới phần Schema là câu mới |
+
+`tests/test_t090_env_bang_ma.py`, mục «lượt 2» (10 ca, `.env` giả, thay `getpass` bằng hàm giả):
+
+| Test | Kiểm |
+|---|---|
+| `test_set_password_with_env_in_other_encoding_stops_before_asking` (4) | cp1252, cp1258, UTF-16 LE/BE: thoát mã 1, **không gọi** `getpass`, in đúng một dòng câu cố định; không đường dẫn (thư mục app, thư mục tạm, thư mục nhà), không nội dung `.env`, không «Traceback», «decode»…; file giữ nguyên từng byte |
+| `test_set_password_after_resave_as_utf8_works` (2) | UTF-8 có và không BOM: mật khẩu mới lưu được, app đọc được (`load_settings` + `verify_password`), các dòng khác giữ nguyên |
+| `test_set_password_cannot_write_env` | Ghi lỗi (`PermissionError`): «Chưa lưu mật khẩu mới. Không ghi được file .env (PermissionError).», không đường dẫn, file giữ nguyên |
+| `test_set_password_env_unreadable_gives_fixed_message` | Đọc lỗi: câu cố định kèm tên loại lỗi, không đường dẫn |
+| `test_set_password_cannot_create_env_from_template` | Chép `.env.example` lỗi: câu cố định, không tạo file |
+| `test_print_mode_does_not_need_env` | Canh: `--print` vẫn chạy khi `.env` hỏng, không đụng file |
+
+Lỗi giả (`PermissionError`) tạo bằng lớp con của `Path` hay thay `shutil.copyfile`, không đổi quyền file thật, nên chạy như nhau trên Windows, Mac, Linux (kể cả máy chạy bằng tài khoản quản trị).
+
+### R5: test cũ đã đổi
+
+| File, dòng | Trước | Sau | Lý do |
+|---|---|---|---|
+| `tests/test_t041_schema.py:65-67` (của tôi, T-041) | `test_odd_chars_blocked`: cả 6 ký tự (kể cả U+0378, chưa gán) mong câu có «ký tự lạ» | U+0378 mong câu mới «chưa nhận ra»; 5 ký tự còn lại giữ «ký tự lạ». Vẫn đủ 12 ca, vẫn Chặn, vẫn kiểm không JSON-LD, không chép lại ký tự | Hệ quả trực tiếp của đề xuất 2 Chỉ Huy giao (U+0378 cùng nhóm với emoji mới). Không bớt ca, không nới điều kiện Chặn |
+
+Không đổi test nào của Soi Lỗi hay Lá Chắn ở lượt này. `tests/test_hash_password_script.py` (4 test cũ của script) không đổi và vẫn qua.
+
+### Bằng chứng
+
+Cùng máy Windows, Python 3.12.15. Máy rất bận lúc chạy (CPU khoảng 92% do các phiên khác), nên lượt dài gấp đôi lượt 1.
+
+**Test mới bắt được lỗi trên bản lượt 1.** Chép cây `17a8eda` (lượt 1, `git archive`) ra thư mục nháp, thêm 2 file test T-090 bản lượt 2, chạy các ca lượt 2 (`-k "faq or set_password or print_mode"`) bằng venv của worktree: **`185 failed, 6 passed`**. 6 ca qua trên cả hai bản đúng là ca canh: `test_faq_drops_reserved_ignorable_chars_as_before` (3), `test_set_password_after_resave_as_utf8_works` (2), `test_print_mode_does_not_need_env` (1). Lần thử đầu, test trang SEO FAQ qua cả trên bản cũ (nó so câu trên trang với câu do chính code đang chạy dựng), nên tôi thêm điều kiện «có chữ *chưa nhận ra*» rồi chạy lại: hỏng đúng trên bản cũ. Test canh `test_faq_blocks_exactly_the_same_chars_as_before` thêm sau lượt này, nên không nằm trong 191 ca trên (qua trên bản mới, xem dưới).
+
+**Test liên quan, 90 file:** 81 file của lượt 1 (cùng cách lấy danh sách) cộng mọi file test nhập `seo_app.onpage.schema`, `build_article_faq`, `build_faq_page`, `validate_faq_page` (thêm `test_onpage_schema.py`, `test_soi_loi_t038.py` của T-038) và mọi file có chữ `hash_password` (thêm `test_app.py`, `test_auth.py`, `test_edit_unescape.py`, `test_soi_loi_round4.py`, `test_soi_loi_round5.py`, `test_soi_loi_t019_luot2.py`, `test_ui_escape.py`: các file này dùng hàm băm mật khẩu để đăng nhập app).
+
+```
+$ uv run pytest -q -p no:cacheprovider --no-header -rfEX \
+    tests/test_ai.py tests/test_ai_openai_gemini.py tests/test_ai_openai_gemini_soi_loi.py \
+    tests/test_ai_t026.py tests/test_app.py tests/test_app_images.py tests/test_app_pages.py \
+    tests/test_app_t044_safe_text.py tests/test_app_wordpress.py tests/test_auth.py \
+    tests/test_blind_test.py tests/test_config.py tests/test_config_tolerance.py \
+    tests/test_content_edge_cases.py tests/test_content_workflow.py tests/test_edit_unescape.py \
+    tests/test_env_file.py tests/test_hash_password_script.py tests/test_images_process.py \
+    tests/test_images_tags.py tests/test_la_chan_t040.py tests/test_la_chan_t041.py \
+    tests/test_la_chan_t060.py tests/test_la_chan_t089.py tests/test_onpage_links.py \
+    tests/test_onpage_meta.py tests/test_onpage_schema.py tests/test_phase2_fixes.py \
+    tests/test_sanitize.py tests/test_sanitize_hardening.py tests/test_settings_blind.py \
+    tests/test_settings_images.py tests/test_settings_keys.py tests/test_shortcode_t061.py \
+    tests/test_site_index.py tests/test_soi_loi_round4.py tests/test_soi_loi_round5.py \
+    tests/test_soi_loi_t003_t009.py tests/test_soi_loi_t016_t020.py tests/test_soi_loi_t019.py \
+    tests/test_soi_loi_t019_luot2.py tests/test_soi_loi_t021_t017.py tests/test_soi_loi_t023.py \
+    tests/test_soi_loi_t031.py tests/test_soi_loi_t036.py tests/test_soi_loi_t037.py \
+    tests/test_soi_loi_t038.py tests/test_soi_loi_t039.py tests/test_soi_loi_t040.py \
+    tests/test_soi_loi_t041.py tests/test_soi_loi_t042.py \
+    tests/test_soi_loi_t042_paging_cache.py tests/test_soi_loi_t042_round2.py \
+    tests/test_soi_loi_t043.py tests/test_soi_loi_t044.py tests/test_soi_loi_t045.py \
+    tests/test_soi_loi_t047.py tests/test_soi_loi_t049.py tests/test_soi_loi_t051.py \
+    tests/test_soi_loi_t054.py tests/test_soi_loi_t056.py tests/test_soi_loi_t059.py \
+    tests/test_soi_loi_t060.py tests/test_soi_loi_t061.py tests/test_soi_loi_t062.py \
+    tests/test_soi_loi_t075.py tests/test_soi_loi_t084.py tests/test_soi_loi_t085.py \
+    tests/test_soi_loi_t088.py tests/test_soi_loi_t089.py tests/test_t040_prompts.py \
+    tests/test_t041_drafts_seo.py tests/test_t041_links_ai.py tests/test_t041_meta.py \
+    tests/test_t041_schema.py tests/test_t041_seo_ui.py tests/test_t041_site_index.py \
+    tests/test_t059_siet_ghi_seo_va_srcset.py tests/test_t062_image_config.py \
+    tests/test_t090_env_bang_ma.py tests/test_t090_meta_emoji_moi.py tests/test_ui_escape.py \
+    tests/test_wordpress_client.py tests/test_wordpress_images.py \
+    tests/test_wordpress_published.py tests/test_wordpress_round2_t042.py \
+    tests/test_wordpress_seo_meta_t042.py tests/test_wordpress_t060.py \
+    tests/test_wordpress_t085.py tests/test_wordpress_t088.py
+(2026-10-28 08:57:30 → 10:19:39 +0700)
+1 failed, 10457 passed, 12 skipped, 26 xfailed in 4919.00s (1:21:59)
+FAILED tests/test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted
+```
+
+- **Ca hỏng không do lượt này, là test đo thời gian:** test giữ khóa SQLite ở luồng khác **10 giây** rồi tự nhả; các bước kiểm bên trong mất khoảng 9 giây trên máy này, máy bận thì vượt 10 giây, khóa nhả trước bước cuối nên «DID NOT RAISE». Lượt này không đụng `seo_app/storage/site_index.py` hay chỗ nào test đó gọi. Ca này đã hỏng y như vậy khi máy bận ở nhiều phiếu trước (báo cáo T-041 Thợ Máy lượt 2, T-041 Họa Sĩ, T-050 Lá Chắn, T-060, T-085 Thợ Máy), lần nào chạy riêng cũng qua. Chạy lại riêng ngay sau (10:20:13): `1 passed` (bước gọi mất 9,19 giây); cả file `tests/test_soi_loi_t037.py`: `139 passed`. Đề nghị Soi Lỗi nới thời gian giữ khóa của test này (ví dụ 30 giây) để khỏi hỏng oan khi máy bận.
+- 0 XPASS (log không có dòng `XPASS`). 26 `xfailed` là lỗi đã biết, có sẵn trên `main`: 24 ca như lượt 1 và 2 ca `test_soi_loi_round4.py::test_r4_3_code_span_is_not_escaped` (file mới thêm vào danh sách; chạy riêng: `525 passed, 2 xfailed`). 12 bỏ qua do máy, như lượt 1.
+- Bản cuối (thêm test canh FAQ, đổi bước quét 7 → 11 sau khi lượt dài đã bắt đầu), chạy lại trên đúng bản commit (10:23:38 → 10:24:29): `tests/test_t090_meta_emoji_moi.py tests/test_t090_env_bang_ma.py tests/test_t041_schema.py tests/test_hash_password_script.py` → **`394 passed in 46.63s`**.
+
+```
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check scripts/hash_password.py seo_app/config.py seo_app/onpage/meta.py \
+    tests/test_t090_meta_emoji_moi.py tests/test_t090_env_bang_ma.py tests/test_t041_schema.py
+6 files already formatted
+$ PYTHONUTF8=1 uvx --offline detect-secrets scan <7 file đã sửa ở lượt này>
+```
+
+- `ruff format --check seo_app/onpage/schema.py`: một dòng trống thiếu có từ trước (mục «Rủi ro» dưới).
+- `detect-secrets`: `tests/test_t090_env_bang_ma.py:30` (chuỗi mồi `FAKE_KEY` của lượt 1, dời xuống 5 dòng); `tests/test_t041_schema.py:212` có từ trước (`secret = "MA-BI-MAT-T041"`, chuỗi mồi ở T-041, cùng dòng trên `1e49185` là `:210`).
+- Gộp thử `team/T-090` (bản commit lượt 2, `52ce068`) với `origin/main` `3f228bc` (`git merge-tree`): không xung đột. Từ gốc nhánh `1e49185`, `main` chỉ đổi tài liệu (không file code, test, script nào).
+
+### Đối chiếu
+
+- [x] Đề xuất 2: câu báo FAQ tách «chưa nhận ra» / «không nhìn thấy», vẫn Chặn đúng tập ký tự cũ (`schema.py:330-350`; 182 ca mới; `test_t041_schema.py`, `test_soi_loi_t041.py::test_lc_t038_1_…`, `test_onpage_schema.py`, `test_soi_loi_t038.py` qua)
+- [x] Đề xuất 3: `set_password` báo câu tiếng Việt cố định khi `.env` lưu «ANSI»/UTF-16 (và khi không đọc, ghi được), không traceback, không đường dẫn (`scripts/hash_password.py`; 10 ca mới; `test_hash_password_script.py` qua)
+- [x] Test liên quan + `uv run ruff check .` sạch; báo cáo mục này
+
+### Rủi ro
+
+- `ruff format --check seo_app/onpage/schema.py` báo một dòng trống thiếu trước `check_schema_type` (`:240`): có sẵn từ trước trên `main` `1e49185` (cùng chỗ đó), không do lượt này; tôi không sửa để diff chỉ gồm phần được mở phạm vi. `ruff check .` sạch.
+- Ghi `.env` của `set_password` vẫn là ghi đè trực tiếp như trước (không qua file tạm như `seo_app/env_file.py`): nếu máy tắt đúng lúc ghi thì `.env` có thể hỏng. Có từ trước, ngoài phạm vi; nếu muốn thì phiếu sau cho dùng cách ghi an toàn của `env_file.py`.
