@@ -287,12 +287,45 @@ def test_embed_patterns_are_found(html_text):
     "html_text",
     [
         "<p>Xem https://x.example/a ngay</p>",
-        '<p><a href="https://suachuacuasat.com/x/">https://suachuacuasat.com/x/</a> rồi</p>',
         "<p>ftp://x.example</p>",
     ],
 )
 def test_embed_patterns_not_found(html_text):
     assert embedded_urls(html_text) == ()
+
+
+def test_paragraph_starting_with_one_https_url_then_text_is_found():
+    """LC-T096-5 (lượt 4, Chỉ Huy B duyệt đổi điều kiện ca này: trước ở
+    ``test_embed_patterns_not_found``): trình soạn khối coi cả đoạn «địa chỉ https:// + chữ» là
+    một địa chỉ nên nhúng khi «Chuyển thành khối». Bộ dựng không sinh được HTML này (chữ link
+    không được giống địa chỉ), ca chỉ kiểm hàm ``embedded_urls``."""
+    html_text = '<p><a href="https://suachuacuasat.com/x/">https://suachuacuasat.com/x/</a> rồi</p>'
+    assert embedded_urls(html_text) == ("https://suachuacuasat.com/x/ rồi",)
+
+
+@pytest.mark.parametrize(
+    ("text", "embedded"),
+    [
+        ("HTTPS://x.vn/a vài chữ", True),  # không phân biệt hoa thường
+        ("https://x.vn", True),
+        ("https://x.vn?a=1 b", True),
+        ("https://x.vn/bai-viet.html xem", True),  # đuôi html, php vẫn là trang
+        ("https://x.vn/a.php", True),
+        # Có dấu cách để hai biểu thức của WordPress (địa chỉ đứng một mình) không bắt: chỉ thử
+        # điều kiện của trình soạn khối.
+        ("https://x.vn/xem video.mp4", False),  # đuôi tệp: khối Embed bỏ qua
+        ("https://x.vn/xem video.MP4", True),  # biểu thức phân biệt hoa thường: vẫn Chặn
+        ("https://x.vn/a b.png", False),
+        ("https:///a b", False),  # tên máy rỗng
+        ("https://x vn/a", False),  # tên máy có khoảng trắng
+        ("https://a.vn/x xem https://b.vn", False),  # hai https://
+        ("Xem https://x.vn/a", False),
+        ("http://x.vn/a xem", False),
+    ],
+)
+def test_block_editor_embed_conditions(text, embedded):
+    """LC-T096-5: đúng bốn điều kiện ``isMatch`` của khối Embed (Gutenberg)."""
+    assert bool(embedded_urls(f"<p>{text}</p>")) is embedded
 
 
 @pytest.mark.parametrize("mode", ["draft", "future", "publish"])

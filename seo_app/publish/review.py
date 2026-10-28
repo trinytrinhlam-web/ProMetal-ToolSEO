@@ -62,6 +62,10 @@ _EMBED_PARAGRAPH = re.compile(
 _IN_TAG = re.compile(r"<[^>]*>")  # thẻ, chú thích (gần đúng ``wp_html_split``)
 _LINE_BREAK_MARK = "<!-- wp-line-break -->"
 _ONLY_URL = re.compile(r"https?://\S+", re.IGNORECASE)
+_HTTPS = "https://"
+# ``getFilename`` có đuôi tệp (ảnh, video…) thì khối Embed bỏ qua; ``htm``, ``html``, ``php`` vẫn
+# là trang. Đúng biểu thức Gutenberg (phân biệt hoa thường: «.MP4» không khớp nên vẫn Chặn).
+_FILE_EXTENSION = re.compile(r"\.(?!(html?|php)$)[a-z0-9]++$")
 # ``String.prototype.trim`` của JavaScript (khoảng trắng và xuống dòng theo ECMAScript): trình soạn
 # khối (Gutenberg, khối Embed, «Chuyển thành khối») bỏ các ký tự này ở hai đầu đoạn rồi xét đoạn
 # có phải đúng một địa chỉ không. Gồm cả dấu cách không ngắt, BOM, khoảng trắng Unicode;
@@ -293,10 +297,10 @@ def embedded_urls(html_text: str) -> tuple[str, ...]:
     """Địa chỉ WordPress sẽ nhúng (oEmbed) khi hiện bài (LC-T094-6). Rỗng: không có chỗ nào.
 
     Hai biểu thức của ``WP_Embed::autoembed`` áp trên ``html_text`` sau khi đổi ``\\n`` nằm trong
-    thẻ thành dấu giữ chỗ (như ``wp_replace_in_html_tags``), cộng một lớp chặt hơn: khối có chữ
-    chỉ là một địa chỉ (``<li>https://…</li>``…), bỏ khoảng trắng hai đầu như ``trim()`` của
-    JavaScript (cả ``&nbsp;``, BOM: LC-T096-4), phòng trình soạn khối hay giao diện khác của
-    WordPress nhúng tiếp."""
+    thẻ thành dấu giữ chỗ (như ``wp_replace_in_html_tags``), cộng một lớp chặt hơn cho trình soạn
+    khối («Chuyển thành khối»): khối có chữ chỉ là một địa chỉ (``<li>https://…</li>``…), hay
+    bắt đầu bằng đúng một địa chỉ ``https://`` rồi tới chữ (``_block_editor_embeds``), sau khi bỏ
+    khoảng trắng hai đầu như ``trim()`` của JavaScript (cả ``&nbsp;``, BOM: LC-T096-4, -5)."""
     content = _IN_TAG.sub(lambda m: m.group().replace("\n", _LINE_BREAK_MARK), html_text)
     urls: list[str] = []  # chữ thô (đã giải mã ``&amp;``): một địa chỉ chỉ một mục (SL-T096-3)
     for line in content.split("\n"):  # '|^(\s*)(https?://…)(\s*)$|im', từng dòng
@@ -306,9 +310,36 @@ def embedded_urls(html_text: str) -> tuple[str, ...]:
     urls.extend(html.unescape(m.group(2)) for m in _EMBED_PARAGRAPH.finditer(content))
     for text in block_texts(html_text):
         stripped = text.strip(_JS_TRIM)  # như ``textContent.trim()`` của trình soạn khối
-        if _ONLY_URL.fullmatch(stripped):
+        if _ONLY_URL.fullmatch(stripped) or _block_editor_embeds(stripped):
             urls.append(stripped)
     return tuple(dict.fromkeys(urls))[:MAX_LISTED]
+
+
+def _block_editor_embeds(text: str) -> bool:
+    """Trình soạn khối coi cả đoạn ``text`` (đã bỏ khoảng trắng hai đầu như ``trim()``) là một
+    địa chỉ và nhúng khi «Chuyển thành khối» (LC-T096-5). Theo điều kiện ``isMatch`` của khối
+    Embed, biến đổi ``raw`` (Gutenberg ``packages/block-library/src/embed/transforms.js``):
+    ``isURL`` là ``new URL(chữ)``, nhận cả dấu cách trong đường dẫn, nên «https://… vài chữ» cũng
+    là một địa chỉ. Đủ cả bốn điều kiện thì nhúng:
+
+    - bắt đầu bằng ``https://`` (không phân biệt hoa thường);
+    - có đúng một ``https://``;
+    - tên máy (trước «/», «?», «#» đầu tiên) không rỗng, không có khoảng trắng;
+    - tên file cuối đường dẫn (dấu cách tính như ``%20``) không phải đuôi tệp, trừ ``htm``,
+      ``html``, ``php`` (``getFilename``).
+    """
+    lowered = text.lower()
+    if not lowered.startswith(_HTTPS) or lowered.count(_HTTPS) != 1:
+        return False
+    rest = text[len(_HTTPS) :]
+    cut = min((i for i in (rest.find(c) for c in "/?#") if i >= 0), default=len(rest))
+    host = rest[:cut]
+    if not host or any(char.isspace() for char in host):
+        return False
+    path = rest[cut:] if rest[cut : cut + 1] == "/" else ""
+    path = path.split("?", 1)[0].split("#", 1)[0]
+    filename = path.rsplit("/", 1)[-1].replace(" ", "%20")
+    return _FILE_EXTENSION.search(filename) is None
 
 
 __all__ = [

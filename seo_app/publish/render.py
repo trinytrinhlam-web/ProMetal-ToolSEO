@@ -570,8 +570,9 @@ def _review(
         problems.append(
             Notice(
                 block,
-                f"Có {len(embeds)} đoạn chỉ có một địa chỉ web: WordPress sẽ nhúng cả trang đó "
-                "vào bài. Viết thêm chữ quanh địa chỉ hoặc bỏ địa chỉ.",
+                f"Có {len(embeds)} đoạn chỉ có một địa chỉ web, hoặc mở đầu bằng một địa chỉ "
+                "https:// rồi tới chữ: WordPress sẽ nhúng cả trang đó vào bài. Viết chữ trước "
+                "địa chỉ hoặc bỏ địa chỉ.",
             )
         )
     # Cả chữ ngoài thân bài: tiêu đề, đoạn trích, chú thích hiện công khai, alt máy đọc được.

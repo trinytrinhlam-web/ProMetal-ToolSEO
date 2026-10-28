@@ -200,11 +200,6 @@ def test_lc4_url_with_other_text_is_not_blocked(body):
 # ------------------------------------------------------------------ LC-T096-5
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T096-5: đoạn bắt đầu bằng một địa chỉ https:// rồi có chữ: trình soạn khối vẫn coi "
-    "là một địa chỉ (new URL nhận dấu cách) và nhúng khi «Chuyển thành khối»",
-)
 @pytest.mark.parametrize(
     "body",
     [
