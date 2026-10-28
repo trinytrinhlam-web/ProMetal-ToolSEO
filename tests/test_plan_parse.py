@@ -3,6 +3,7 @@
 Không gọi mạng, không gọi AI.
 """
 
+import time
 from datetime import UTC, date, datetime
 
 import pytest
@@ -416,3 +417,49 @@ def test_markdown_header_is_the_row_before_the_separator():
     text = "| Tháng 11 |\n| Từ khóa | Ngày |\n|---|---|\n| cửa cuốn | 12/11/2026 |\n"
     (row,) = read_paste(text).rows
     assert (row.keyword, row.planned_date) == ("cửa cuốn", date(2026, 11, 12))
+
+
+# ------------------------------------------------------------------- lượt 4 (Soi Lỗi T-098)
+
+
+def test_csv_quote_left_open_after_a_quoted_start_cell_is_an_error():
+    # Ô «"Đức" là hãng» làm lượt strict dừng trước; ngoặc không đóng phía dưới vẫn phải báo.
+    text = 'Từ khóa,Ghi chú\ncửa kéo,"Đức" là hãng\nsửa,"chưa đóng\ncửa cuốn,abc\n'
+    with pytest.raises(PlanSourceError) as raised:
+        read_file(text.encode(), "a.csv")
+    assert str(raised.value) == parse.BAD_TABLE
+
+
+@pytest.mark.parametrize("sep", [",", "\t"], ids=["csv", "dan"])
+def test_multiline_cell_and_quoted_start_cell_are_both_read(sep):
+    text = (
+        f'Từ khóa{sep}Ghi chú\ncửa cuốn{sep}"dòng ""1""\ndòng 2"\n'
+        f'cửa kéo{sep}"Đức" là hãng\ncổng{sep}x\n'
+    )
+    result = read_file(text.encode(), "a.csv") if sep == "," else read_paste(text)
+    assert [row.keyword for row in result.rows] == ["cửa cuốn", "cửa kéo", "cổng"]
+
+
+def test_quote_check_time_grows_linearly():
+    line = 'cửa,"Đức" là "x",' + '"a""b",' * 20 + '"c\nd"\n'
+    small, big = line * 100, line * 800
+    timings = []
+    for _ in range(3):
+        for text in (small, big):
+            start = time.perf_counter()
+            parse._merged_by_quote(text, ",")
+            timings.append((len(text), time.perf_counter() - start))
+    best = {size: min(t for s, t in timings if s == size) for size, _ in timings}
+    assert best[len(big)] < 16 * best[len(small)] + 0.05
+
+
+def test_title_row_then_keyword_only_header_is_still_a_plan():
+    data = csv_bytes("cửa cuốn", "cửa kéo", header="Kế hoạch tháng 11\nTừ khóa chính")
+    assert [row.keyword for row in read_file(data, "a.csv").rows] == ["cửa cuốn", "cửa kéo"]
+
+
+@pytest.mark.parametrize("sep", [",", "\t"], ids=["csv", "dan"])
+def test_title_row_above_key_value_rows_is_free_text(sep):
+    text = f"BRIEF BÀI VIẾT\nTừ khóa{sep}sửa cửa cuốn\nNgày đăng{sep}12/11/2026\n"
+    result = read_file(text.encode(), "a.csv") if sep == "," else read_paste(text)
+    assert not result.rows and "sửa cửa cuốn" in result.free_text

@@ -251,15 +251,45 @@ def _csv_rows(text: str, delimiter: str) -> list[list[str]]:
     """Các dòng của bảng CSV/TSV. Đọc ``strict`` trước: file hết mà ngoặc kép chưa đóng thì báo
     ``BAD_TABLE`` (mặc định ``csv`` gộp mọi dòng sau vào một ô mà không báo, Soi Lỗi SL-T098-3).
     Lỗi ``strict`` khác (ô **mở đầu** bằng chữ trong ngoặc kép rồi có chữ sau: «"Đức" là hãng»,
-    Excel, Google Sheets chép ra kiểu này) thì đọc lại không ``strict``, như trước (SL-T098-12)."""
+    Excel, Google Sheets chép ra kiểu này) thì đọc lại không ``strict``, như trước (SL-T098-12),
+    rồi vẫn báo ``BAD_TABLE`` nếu ``_merged_by_quote`` (SL-T098-18)."""
     for strict in (True, False):
         reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter, strict=strict)
         try:
-            return _limited_rows(reader)
+            rows = _limited_rows(reader)
         except csv.Error as exc:
             if not strict or _CSV_EOF_IN_QUOTES in str(exc):
                 raise PlanSourceError(BAD_TABLE) from None
+            continue
+        if not strict and _merged_by_quote(text, delimiter):
+            raise PlanSourceError(BAD_TABLE)
+        return rows
     raise PlanSourceError(BAD_TABLE)  # không tới được: lượt không strict trả về hoặc báo lỗi
+
+
+def _merged_by_quote(text: str, delimiter: str) -> bool:
+    """Lượt đọc không ``strict`` có gộp nhiều dòng vào một ô vì một ngoặc kép không đóng không
+    (Soi Lỗi SL-T098-18). Đi theo đúng cách ``csv`` đọc: ngoặc kép chỉ mở ô khi đứng đầu ô, «""»
+    trong ngoặc là một dấu ngoặc. Báo khi phần trong ngoặc **qua nhiều dòng** rồi «đóng» ở một dấu
+    ngoặc có chữ theo sau (thật ra là dấu mở của một ô phía dưới, như «"Đức" là hãng»), hoặc tới
+    hết file vẫn chưa đóng. Ô nhiều dòng đóng đúng chỗ (rồi dấu phân cách hay hết dòng) và ô
+    «"Đức" là hãng» trên một dòng vẫn đọc như trước. Mỗi ký tự xét một lần."""
+    opening = re.compile(rf'(?<![^\n{re.escape(delimiter)}])"')
+    pos = 0
+    while found := opening.search(text, pos):
+        start = end = found.end()
+        while True:
+            end = text.find('"', end)
+            if end < 0:
+                return True  # hết file mà ngoặc chưa đóng
+            if not text.startswith('"', end + 1):
+                break
+            end += 2  # «""»: một dấu ngoặc trong ô
+        closed = text[end + 1 : end + 2] in ("", "\n", delimiter)
+        if not closed and text.find("\n", start, end) >= 0:
+            return True
+        pos = end + 1
+    return False
 
 
 def _limited_rows(rows) -> list[list[str]]:
@@ -405,13 +435,19 @@ def _find_header(table: list[list[str]]) -> tuple[int, dict[str, int], list[str]
     """(Chỉ số dòng tiêu đề, cột, câu báo) cho bảng CSV/TSV: dòng đầu có cột từ khóa, chỉ được bỏ
     qua các dòng phía trên có **tối đa một ô có chữ** (dòng tên bảng), trong ``_HEADER_SCAN`` dòng
     đầu. Gặp dòng có từ hai ô có chữ mà không có cột từ khóa thì thôi: bảng «Mục – Nội dung» không
-    bao giờ bị lấy dòng dữ liệu «Từ khóa | …» làm tiêu đề (Soi Lỗi SL-T098-13). ``None`` nếu không
-    có."""
+    bao giờ bị lấy dòng dữ liệu «Từ khóa | …» làm tiêu đề (Soi Lỗi SL-T098-13). Đã bỏ qua dòng
+    tên thì dòng tiêu đề phải nhận ra ít nhất hai cột, hoặc mọi ô có chữ đều là tên cột: bảng
+    khóa – giá trị không tiêu đề dưới dòng tên (brief bài viết: «Từ khóa, sửa cửa cuốn», «Ngày,
+    12/11») không bị lấy dòng dữ liệu làm tiêu đề (SL-T098-19). ``None`` nếu không có."""
     for start, header in enumerate(table[:_HEADER_SCAN]):
         columns, warnings = _header_map(header)
+        filled = sum(bool(cell.strip()) for cell in header)
         if "keyword" in columns:
+            known = sum(fold_key(cell[:MAX_CELL_CHARS]) in _HEADERS for cell in header)
+            if start and len(columns) < 2 and filled > known:
+                return None
             return start, columns, warnings
-        if sum(bool(cell.strip()) for cell in header) > 1:
+        if filled > 1:
             return None
     return None
 

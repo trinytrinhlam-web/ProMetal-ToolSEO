@@ -9,6 +9,7 @@
 | **Phải sửa trước Lá Chắn** | **SL-T098-1** (bộ kiểm «AI không đưa HTML vào kế hoạch» bị lách bằng một ký tự vô hình; sửa 2–3 dòng). **Nên sửa cùng lượt**: SL-T098-2 (file kế hoạch nhiều bảng chỉ đọc bảng đầu: kế hoạch 6 tháng thật mất 104/112 dòng, không báo). Các lỗi Thấp không chặn; rẻ nên sửa trước khi gộp: SL-T098-3, -7, -11 |
 | **Kết luận lượt 2** (đầu nhánh `d52f162`, 2026-10-28) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-1 → -11 **đóng cả 11** (thử lại cả biến thể gần); 12 dấu `xfail` gỡ đúng R5; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **6 Thấp mới** (SL-T098-12 → -17, đều do phần sửa lượt 2, có `xfail(strict=True)`). **Không lỗi nào phải sửa trước Lá Chắn.** Không lùi `main`: bản gộp thử với `main` `1b45f5d` (có T-096) sạch, 3.797 test qua. Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-28-1358-0700--soát-lượt-sửa-của-thợ-máy-d52f162) |
 | **Kết luận lượt 3** (đầu nhánh `34302fa`, 2026-10-28) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-12 → -17 **đóng cả 6** (thử cả biến thể gần); 6 dấu `xfail` gỡ đúng R5; 11 lỗi lượt 1 không lùi; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp mới** (SL-T098-18 do lượt 3, -19 biến thể của -13, -20 có từ lượt 1; có `xfail(strict=True)`). **Không lỗi nào chặn gộp**, lượt 3 không đụng chỗ bảo mật. Chạy được với `main` mới nhất `d1506cb` (T-096, T-090, T-097): bản gộp thử 26 file test, 4.586 qua, 0 hỏng. Chi tiết: mục [«Lượt 3»](#lượt-3-2026-10-28-1733-0700--soát-lượt-sửa-của-thợ-máy-34302fa) |
+| **Kết luận lượt 4** (đầu nhánh `acf982b`, 2026-10-28) | **ĐẠT**: SL-T098-18 → -20 **đóng cả 3** (thử cả biến thể gần); 3 dấu `xfail` gỡ đúng R5; SL-T098-1 → -17 không lùi; **0 lỗi mới** (0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp); **cả 20 lỗi Soi Lỗi của T-098 đã đóng**. Lượt 4 không đụng chỗ bảo mật (hàm dò ngoặc mới chạy tuyến tính). Chi tiết: mục [«Lượt 4»](#lượt-4-2026-10-28-1948-0700--soát-lượt-sửa-của-thợ-máy-acf982b) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -321,3 +322,54 @@ Ghi cho phiếu sau (không xếp lỗi): `compare_rows` có thể báo `PlanKey
 
 1. Gộp `main` được (không lỗi Trung bình trở lên, không đụng chỗ bảo mật).
 2. Sửa SL-T098-18, -19, -20 trong một phiếu dọn nhỏ trước T-100 (T-100 dùng `compare_rows` và đọc bảng từ Sheet khác); gỡ dấu `xfail` khi XPASS (R5).
+
+---
+
+## Lượt 4 (2026-10-28 19:48 +07:00) · soát lượt sửa của Thợ Máy (`acf982b`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 28/10 19:20: xác nhận SL-T098-18 → -20 đóng (thêm biến thể gần), soát R5, tìm lỗi mới do lượt 4, không lùi SL-T098-1 → -17, ghi rõ nếu lượt 4 đụng chỗ bảo mật |
+| Đầu nhánh soát | `acf982b`, gốc `24013b3` (`main` đã gộp T-098 lượt 3 cùng T-096 lượt 4; `main` cục bộ chưa đổi thêm, nên nhánh đúng bằng `main` + phần sửa lượt 4) |
+| **Kết luận lượt 4** | **ĐẠT**: SL-T098-18 → -20 **đóng cả 3** (thử cả biến thể gần); 3 dấu `xfail` gỡ đúng R5; SL-T098-1 → -17 **không lùi**; **0 lỗi mới** (0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp). Toàn bộ 20 lỗi Soi Lỗi của T-098 đã đóng |
+| Bảo mật | Lượt 4 **không** đụng `PlanRow`, bộ làm sạch, bộ kiểm thẻ HTML, ký tự vô hình, dò số điện thoại, email. Hàm mới `_merged_by_quote` chỉ quyết «đọc được hay `BAD_TABLE`», dữ liệu vẫn qua `PlanRow`; biểu thức mới chỉ nhìn lùi một ký tự, đo **tuyến tính** (8 kiểu chuỗi độc, cỡ ×4 thì thời gian ~×4; ca chậm nhất 0,65 s với file gần 1 MB). Không cần Lá Chắn xem lại |
+
+### Tóm tắt (cho chủ dự án)
+
+- 3 lỗi nhỏ lần trước đã sửa thật: CSV quên đóng dấu ngoặc kép nay luôn báo «Không đọc được bảng…» (kể cả khi phía dưới còn ô có ngoặc kép); bảng «brief» có dòng tên phía trên không còn ra bài giả; dòng mới tự ghi Mã bài (ví dụ «B-004») giữ đúng mã, đưa lại cùng file không ra đề xuất lạ.
+- Không có lỗi mới. Mọi lỗi tôi tìm ở phiếu này (20 lỗi qua 4 lượt) đã đóng.
+- Không có gì phải anh/chị quyết.
+
+### R5
+
+| Test | Thay đổi | Kết luận |
+|---|---|---|
+| `tests/test_soi_loi_t098.py` (của tôi) | 18 dòng xóa, 0 dòng thêm: đúng 3 dấu `@pytest.mark.xfail(...)` của SL-T098-18 → -20; thân test, điều kiện khẳng định không đổi | **Đúng R5** |
+| `tests/test_plan_parse.py`, `test_plan_propose.py` (của Thợ Máy) | Chỉ thêm 10 test lượt 4; không xóa, không sửa dòng cũ | **Đúng R5** |
+
+### Từng lỗi lượt 3
+
+| Lỗi | Ca cũ | Biến thể gần (mới, đều qua) | Kết quả |
+|---|---|---|---|
+| SL-T098-18 | 3 ca qua | Ngoặc không đóng rồi phía dưới có: ô ngoặc chuẩn cuối dòng, ô ngoặc rỗng, ngoặc giữa ô («inch "5" x»); ô «"Đức" là» đứng **trước** ngoặc không đóng; dấu phân cách «;»; bảng dán (tab): đều `BAD_TABLE`. Còn đọc đúng: ô nhiều dòng có «""» cùng ô «"Đức" là» và ô ngoặc rỗng; ngoặc giữa chữ trong ô; ngoặc sau dấu cách đầu ô; bảng dán kiểu Excel có ô nhiều dòng. 3.000 CSV ngẫu nhiên (ngoặc, «""», xuống dòng, «"x" y»): không ngoại lệ lạ nào | **Đóng** |
+| SL-T098-19 | 1 ca qua | Brief dán (tab), hai dòng tên + brief → chữ tự do; dòng tên + «Từ khóa chính, Ngày», + một cột «Từ khóa», + «STT, Từ khóa, Ngày», + cột «Từ khóa» ghi trùng → vẫn là kế hoạch; 11 file thật trong `docs/plan/` cho kết quả như lượt 3 | **Đóng** |
+| SL-T098-20 | 1 ca qua | 8 dòng một lượt: hai dòng mới chưa mã, dòng cũ chưa mã, «B-005», «B-004» ghi sẵn, «B-004» ghi trùng, «B-009» ở dòng «Bỏ», «KV-001»: mã ghi sẵn giữ đúng, mã ghi trùng và dòng chưa mã nhận mã mới không đụng mã ghi sẵn, mọi mã khác nhau; dòng «Bỏ» không giữ mã; đưa lại cùng bảng, cả cùng thứ tự lẫn đảo thứ tự: **không** có đề xuất nào | **Đóng** |
+| SL-T098-1 → -17 | 333 ca của lượt 1 → 3 vẫn qua | — | **Không lùi** |
+
+### Ghi nhận (không xếp lỗi)
+
+- **Giới hạn vốn có của CSV:** ngoặc kép không đóng mà dấu ngoặc **gặp sau** đứng ngay trước dấu phân cách hay cuối dòng (ví dụ ô «cao 5"») thì `csv` (cả chế độ `strict`) hiểu đó là một ô nhiều dòng hợp lệ, các dòng ở giữa vào chung ô đó, không báo. Dạng này giống hệt ô nhiều dòng thật (Excel, Google Sheets vẫn xuất), nên không phân biệt được mà không chặn oan bảng đúng. Từ lượt 1 tới nay đều như vậy.
+- **Đánh đổi của SL-T098-18:** ô nhiều dòng trong ngoặc rồi **có chữ sau dấu đóng** (`"dòng 1` xuống dòng `dòng 2" thêm`, CSV sai chuẩn) nay báo `BAD_TABLE` (lượt 3 đọc lỏng). Excel, Google Sheets không xuất dạng này.
+- **Đánh đổi của SL-T098-19 (G13, góp ý nhỏ):** dòng tên + tiêu đề chỉ có «Từ khóa» và một cột lạ (ví dụ «STT, Từ khóa») thành chữ tự do (AI đọc, không mất chữ). «STT» rất hay gặp trong bảng tính tiếng Việt: có thể coi «STT», «TT», «#», «No.» là tên cột biết (bỏ qua khi đọc) để ca này vẫn là bảng.
+
+### Bằng chứng (lượt 4)
+
+- `uv run pytest tests/test_soi_loi_t098.py`: **351 passed** (thêm 18 ca lượt 4: 5 biến thể ngoặc không đóng, 1 bảng dán, 4 ngoặc hợp lệ, 1 thời gian tuyến tính, 6 dòng tên, 1 mã ghi sẵn), không còn `xfail`.
+- 10 file test liên quan trên nhánh (4 file kế hoạch, file của tôi, `test_soi_loi_t003_t009.py`, `test_t040_prompts.py`, `test_content_workflow.py`, `test_prompt_data_frames.py`, `test_content_edge_cases.py`): **799 passed**.
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn và `PYTHONUTF8=1 uvx detect-secrets scan` (file test + mồi thử): sạch.
+- Script thử lượt 4: `T-098-soi-loi-scripts/round4.py`, `round4_speed.py` (thư mục ghi chú chung).
+
+### Đề xuất (lượt 4)
+
+1. Gộp `main` được; không cần Lá Chắn xem lại (lượt 4 chỉ sửa chức năng, không đụng chỗ bảo mật).
+2. G13 (nhận «STT», «TT», «#» là tên cột) có thể làm kèm T-100 hay T-101, không gấp.

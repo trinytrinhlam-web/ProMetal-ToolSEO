@@ -383,3 +383,32 @@ def test_keys_exhausted_is_a_fixed_error_only_when_a_new_key_is_needed():
     with pytest.raises(model.PlanKeyError) as raised:
         keys.new()
     assert str(raised.value) == model.KEYS_EXHAUSTED.format(prefix="B")
+
+
+# ------------------------------------------------------------------- lượt 4 (Soi Lỗi T-098)
+
+
+def test_key_written_in_table_is_kept_and_reading_the_table_again_changes_nothing():
+    incoming = [PlanRow(keyword="cửa sắt mỹ thuật"), PlanRow(key="B-005", keyword="lan can kính")]
+    result = compare_rows(CURRENT, incoming, today=TODAY)
+    assert [(p.key, p.after.keyword) for p in result.items] == [
+        ("B-006", "cửa sắt mỹ thuật"),
+        ("B-005", "lan can kính"),
+    ]
+    plan = [*CURRENT, *(p.after for p in result.items)]
+    assert compare_rows(plan, incoming, today=TODAY).items == ()
+
+
+def test_old_row_without_key_does_not_take_a_key_written_in_the_table():
+    current = [PlanRow(key="B-001", keyword="cổng inox"), PlanRow(keyword="cửa cuốn")]
+    incoming = [PlanRow(keyword="cửa cuốn", priority="Cao"),
+                PlanRow(key="B-002", keyword="lan can kính")]  # fmt: skip
+    keys = [p.key for p in compare_rows(current, incoming, today=TODAY).items]
+    assert keys == ["B-003", "B-002"]
+
+
+def test_written_key_repeated_or_dropped_is_not_kept():
+    incoming = [PlanRow(key="B-010", keyword="cửa kéo"), PlanRow(key="B-010", keyword="cổng xếp")]
+    assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-010", "B-011"]
+    incoming = [PlanRow(key="B-010", keyword="cửa xếp", status="Bỏ"), PlanRow(keyword="cửa nhôm")]
+    assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-005"]

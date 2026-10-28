@@ -1257,12 +1257,6 @@ def test_round3_sl_t098_17_new_keys_after_the_largest_fill_free_numbers():
     assert [p.key for p in result.items] == ["B-1001", "B-1002"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-18 (Thấp): lượt đọc lại không strict (sửa SL-T098-12) làm sống lại SL-T098-3: "
-    "ngoặc kép không đóng mà phía sau còn một ô có ngoặc kép thì csv «đóng» ngoặc ở đó, lỗi strict "
-    "không phải «hết file», đọc lại không strict nên mọi dòng ở giữa bị gộp vào một ô, không báo",
-)
 @pytest.mark.parametrize(
     "case", ["csv-o-ngoac-phay", "csv-ngoac-dau", "dan-ngoac-dau"], ids=lambda case: case
 )
@@ -1283,27 +1277,116 @@ def test_sl_t098_18_unclosed_quote_before_a_later_quote_is_reported(case):
     assert keywords == ["sửa", "cửa cuốn", "cửa kéo", "cổng inox"] or result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-19 (Thấp): CSV có dòng tên một ô phía trên bảng «Mục – Nội dung» không có "
-    "dòng tiêu đề (kiểu bảng brief bài viết) vẫn lấy dòng dữ liệu «Từ khóa, …» làm tiêu đề: "
-    "«Ngày», «Ghi chú»… thành bài giả, tick sẵn (lượt 1: chữ tự do). Biến thể gần của SL-T098-13",
-)
 def test_sl_t098_19_title_row_above_a_key_value_csv_is_not_a_plan():
     text = "BRIEF BÀI VIẾT,,\nTừ khóa,sửa cửa cuốn,\nNgày,12/11/2026,\nGhi chú,gọi khách trước,\n"
     result = csv_file(text)
     assert not {"Ngày", "Ghi chú"} & {row.keyword for row in result.rows}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-20 (Thấp, có từ lượt 1): bảng đưa vào có dòng mới tự ghi Mã bài (B-004) đứng "
-    "sau một dòng mới chưa có mã: dòng chưa mã được cấp B-004 trước, dòng ghi B-004 bị đổi sang "
-    "B-005 không báo; đưa lại đúng file đó thì B-004 khớp theo mã, đề xuất đổi từ khóa bài khác",
-)
 def test_sl_t098_20_key_written_in_the_table_is_kept_for_a_new_row():
     current = [PlanRow(key=f"B-00{n}", keyword=f"bài cũ {n}") for n in (1, 2, 3)]
     incoming = [PlanRow(keyword="cửa sắt mỹ thuật"), PlanRow(key="B-004", keyword="lan can kính")]
     result = propose.compare_rows(current, incoming, today=TODAY)
     keys = {p.after.keyword: p.key for p in result.items}
     assert keys["lan can kính"] == "B-004" and keys["cửa sắt mỹ thuật"] != "B-004"
+
+
+# ============================================================ lượt 4 (2026-10-28)
+# Biến thể gần của SL-T098-18 → -20 (phải qua).
+
+HEAD_CSV = "Từ khóa,Ghi chú\n"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        HEAD_CSV + 'sửa,"chưa đóng\ncửa cuốn,abc\ncửa kéo,"x"\ncổng,y\n',
+        HEAD_CSV + 'sửa,"chưa đóng\ncửa cuốn,abc\ncửa kéo,"",x\ncổng,y\n',
+        HEAD_CSV + 'sửa,"Đức" là hãng\ncửa cuốn,"chưa đóng\ncửa kéo,x\n',
+        HEAD_CSV + 'sửa,"chưa đóng\ncửa cuốn,abc\ncửa kéo,inch "5" x\n',
+        'Từ khóa;Ghi chú\nsửa;"chưa đóng\ncửa cuốn;abc\ncửa kéo;"x" y\n',
+    ],
+    ids=["o-ngoac-cuoi-dong", "o-ngoac-rong", "duc-truoc", "ngoac-giua-o", "dau-cham-phay"],
+)
+def test_round4_sl_t098_18_unclosed_quote_variants_are_refused(text):
+    with pytest.raises(parse.PlanSourceError) as raised:
+        csv_file(text)
+    assert str(raised.value) == parse.BAD_TABLE
+
+
+def test_round4_sl_t098_18_unclosed_quote_in_a_paste_is_refused():
+    text = 'Từ khóa\tGhi chú\nsửa\t"chưa đóng\ncửa cuốn\tabc\ncửa kéo\t"x" y\ncổng\tz\n'
+    with pytest.raises(parse.PlanSourceError) as raised:
+        parse.read_paste(text)
+    assert str(raised.value) == parse.BAD_TABLE
+
+
+@pytest.mark.parametrize(
+    ("source", "text", "notes"),
+    [
+        ("csv", HEAD_CSV + 'sửa,"dòng 1\ndòng ""2"""\ncửa cuốn,"Đức" là\ncửa kéo,""\n',
+         ['dòng 1\ndòng "2"', "Đức là", ""]),
+        ("csv", HEAD_CSV + 'sửa,x "a\ncửa cuốn,"Đức" là\ncửa kéo,y\n', ['x "a', "Đức là", "y"]),
+        ("csv", HEAD_CSV + 'sửa, "chưa\ncửa cuốn,"Đức" là\ncửa kéo,y\n', ['"chưa', "Đức là", "y"]),
+        ("paste",
+         'Từ khóa\tGhi chú\nsửa\t"dòng 1\ndòng 2"\ncửa cuốn\t"Đức" là\ncửa kéo\tanh "gấp"\n',
+         ["dòng 1\ndòng 2", "Đức là", 'anh "gấp"']),
+    ],
+    ids=["nhieu-dong-duc-rong", "ngoac-giua-o", "ngoac-sau-dau-cach", "dan-excel"],
+)  # fmt: skip
+def test_round4_sl_t098_18_valid_quotes_are_still_read(source, text, notes):
+    result = parse.read_paste(text) if source == "paste" else csv_file(text)
+    assert [row.notes for row in result.rows] == notes
+
+
+def test_round4_sl_t098_18_quote_check_time_grows_linearly():
+    def body(size: int) -> bytes:
+        return (HEAD_CSV + 'sửa,"Đức" là\n' + '""\n' * size).encode()
+
+    small_data, big_data = body(30_000), body(240_000)
+    small, big = fastest(lambda: parse.read_file(small_data, "a.csv"),
+                         lambda: parse.read_file(big_data, "a.csv"), rounds=2)  # fmt: skip
+    assert big < 16 * small + 0.1
+
+
+@pytest.mark.parametrize(
+    ("source", "text", "keywords"),
+    [
+        ("paste", "BRIEF\nTừ khóa\tsửa cửa cuốn\nNgày\t12/11/2026\n", []),
+        ("csv", "BRIEF,\nBài 1,\nTừ khóa,sửa cửa\nNgày,12/11\n", []),
+        ("csv", "Kế hoạch,\nTừ khóa chính,Ngày\ncửa cuốn,12/11/2026\n", ["cửa cuốn"]),
+        ("csv", "Kế hoạch\nTừ khóa\ncửa cuốn\ncửa kéo\n", ["cửa cuốn", "cửa kéo"]),
+        ("csv", "Kế hoạch,,\nSTT,Từ khóa,Ngày\n1,cửa cuốn,12/11/2026\n", ["cửa cuốn"]),
+        ("csv", "Kế hoạch,\nTừ khóa,Từ khóa\ncửa cuốn,x\n", ["cửa cuốn"]),
+    ],
+    ids=["brief-dan", "hai-dong-ten", "hai-cot-biet", "mot-cot", "stt-va-hai-cot", "cot-trung"],
+)
+def test_round4_sl_t098_19_title_rows_and_headers(source, text, keywords):
+    result = parse.read_paste(text) if source == "paste" else csv_file(text)
+    assert [row.keyword for row in result.rows] == keywords
+    assert bool(result.free_text) is not bool(keywords)
+
+
+def test_round4_sl_t098_20_written_keys_are_kept_and_new_keys_stay_unique():
+    current = [PlanRow(key=f"B-00{n}", keyword=f"bài cũ {n}") for n in (1, 2, 3)]
+    current.append(PlanRow(keyword="mái tôn"))
+    incoming = [
+        PlanRow(keyword="a1 x"),
+        PlanRow(keyword="mái tôn", priority="Cao"),
+        PlanRow(key="B-005", keyword="lan can"),
+        PlanRow(keyword="a2 x"),
+        PlanRow(key="B-004", keyword="cổng"),
+        PlanRow(key="B-004", keyword="cổng phụ"),
+        PlanRow(key="B-009", keyword="mái che", status="Bỏ"),
+        PlanRow(key="KV-001", keyword="khu vực 1"),
+    ]
+    result = propose.compare_rows(current, incoming, today=TODAY)
+    keys = {p.after.keyword: p.key for p in result.items}
+    assert keys["lan can"] == "B-005" and keys["cổng"] == "B-004" and keys["khu vực 1"] == "KV-001"
+    assert "mái che" not in keys  # «Bỏ» một bài chưa có: không có gì để bỏ
+    assert len(set(keys.values())) == len(keys)
+    assert not {"B-004", "B-005"} & {keys["a1 x"], keys["a2 x"], keys["mái tôn"], keys["cổng phụ"]}
+    applied = current[:3] + [p.after for p in result.items]
+    for order in (incoming, incoming[::-1]):
+        again = [row for row in order if row.status != "Bỏ" and row.keyword != "cổng phụ"]
+        assert not propose.compare_rows(applied, again, today=TODAY).items
