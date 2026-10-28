@@ -29,6 +29,7 @@ from seo_app.wordpress.client import (
     _PUBLISHED_FIELDS,
     ALLOWED_JSON_KEYS,
     ALLOWED_ROUTES,
+    MAX_ID,
     SITESEO_ABILITY_PATH,
     SITESEO_ABILITY_RUN_PATH,
 )
@@ -372,14 +373,34 @@ def test_tra_loi_ghi_de_khong_dung_anh_vua_tao_thi_bao_loi(fake_wp, wp_client, a
     assert_says_in_media_library(str(err.value))
 
 
-def test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien(fake_wp, wp_client):
-    """Mã ảnh quá 19 chữ số (ngoài mẫu đường): lệnh ghi đè bị chặn trước khi gửi, câu báo vẫn
-    nói ảnh đã ở thư viện Media (Ghi nhận 4 của Soi Lỗi T-060)."""
-    uploaded(fake_wp, media_id=10**20)
+@pytest.mark.parametrize("media_id", [10**20, 2**63], ids=["10^20", "2^63"])
+def test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien(
+    fake_wp, wp_client, media_id
+):
+    """Mã ảnh quá ``MAX_ID`` (2⁶³−1): lệnh ghi đè không bao giờ được gửi, câu báo vẫn nói ảnh
+    (có thể) đã ở thư viện Media, dặn kiểm Media → Thư viện (Ghi nhận 4 của Soi Lỗi T-060).
+    T-091 (Chỉ Huy duyệt phương án A 28/10): mã quá lớn như mã sai khuôn nên câu báo là câu «có
+    thể đã lên thư viện» (SL-T085-3), không còn ghi «mã ảnh {mã}» như trước."""
+    uploaded(fake_wp, media_id=media_id)
     with pytest.raises(WordPressError) as err:
         wp_client.upload_media(JPEG, "cong.jpg")
     assert [urlsplit(r.url).path for r in fake_wp.requests] == [MEDIA]
-    assert_says_in_media_library(str(err.value), media_id=10**20)
+    message = str(err.value)
+    assert "có thể đã lên thư viện Media" in message and "Media → Thư viện" in message
+    assert str(media_id) not in message
+    # Như ``assert_says_in_media_library``: câu báo không chép lời máy chủ, địa chỉ website
+    # (T-091 lượt 2, SL-T091-3: trả lại 5 kiểm phương án A không cho nới).
+    for piece in ("0909", "evil", "quản trị</b>", "example.com", "anh-khac"):
+        assert piece not in message, piece
+
+
+def test_ma_anh_bang_gioi_han_van_ghi_de_binh_thuong(fake_wp, wp_client):
+    """Biên T-091: mã ảnh đúng ``MAX_ID`` (2⁶³−1) vẫn hợp lệ, lệnh ghi đè gửi đúng ảnh đó."""
+    uploaded(fake_wp, media_id=MAX_ID)
+    fake_wp.on("POST", f"{MEDIA}/{MAX_ID}", lambda r: {"id": MAX_ID, **body(r)})
+    media = wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
+    assert media.id == MAX_ID
+    assert [urlsplit(r.url).path for r in fake_wp.requests] == [MEDIA, f"{MEDIA}/{MAX_ID}"]
 
 
 def test_ghi_de_thanh_cong_lay_dia_chi_alt_cua_dung_anh(fake_wp, wp_client):
