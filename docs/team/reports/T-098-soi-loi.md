@@ -7,6 +7,7 @@
 | Ngày nộp | 2026-10-28 |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, **2 Trung bình** (SL-T098-1, -2), **9 Thấp** (SL-T098-3 → -11), 8 góp ý. Test `xfail(strict=True)` cho cả 11 lỗi |
 | **Phải sửa trước Lá Chắn** | **SL-T098-1** (bộ kiểm «AI không đưa HTML vào kế hoạch» bị lách bằng một ký tự vô hình; sửa 2–3 dòng). **Nên sửa cùng lượt**: SL-T098-2 (file kế hoạch nhiều bảng chỉ đọc bảng đầu: kế hoạch 6 tháng thật mất 104/112 dòng, không báo). Các lỗi Thấp không chặn; rẻ nên sửa trước khi gộp: SL-T098-3, -7, -11 |
+| **Kết luận lượt 2** (đầu nhánh `d52f162`, 2026-10-28) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-1 → -11 **đóng cả 11** (thử lại cả biến thể gần); 12 dấu `xfail` gỡ đúng R5; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **6 Thấp mới** (SL-T098-12 → -17, đều do phần sửa lượt 2, có `xfail(strict=True)`). **Không lỗi nào phải sửa trước Lá Chắn.** Không lùi `main`: bản gộp thử với `main` `1b45f5d` (có T-096) sạch, 3.797 test qua. Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-28-1358-0700--soát-lượt-sửa-của-thợ-máy-d52f162) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -172,3 +173,84 @@ SL-T098-2: `parse.read_file(open("docs/plan/ke_hoach_6_thang_chi_tiet.md","rb").
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-28 13:58 +07:00) · soát lượt sửa của Thợ Máy (`d52f162`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 28/10 13:50: xác nhận SL-T098-1 → -11 đóng thật (thêm biến thể gần), soát R5 12 dấu `xfail` được gỡ, tìm lỗi mới do phần sửa (ngày giờ nhiều dạng, so trùng theo dòng, mã «B-1» = «B-001», AI hơn 20 đề xuất không tick sẵn), không lùi `main` (vừa gộp T-096) |
+| Đầu nhánh soát | `d52f162` (Thợ Máy lượt 2, sau báo cáo `84f32ec`); Thợ Máy chỉ sửa 3 file `seo_app/plan/` và test |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN**: 11/11 lỗi cũ đóng; **6 Thấp mới** (SL-T098-12 → -17); 0 Nghiêm trọng, 0 Cao, 0 Trung bình. **Không lỗi nào phải sửa trước Lá Chắn.** Nên sửa trước khi gộp (đều nhỏ): SL-T098-13 (dòng kế hoạch giả, tick sẵn), -17 (sập khi có mã «B-99999»), -12 (cả bảng dán hỏng vì một ô mở đầu bằng ngoặc kép) |
+
+### Tóm tắt (cho chủ dự án)
+
+- Các lỗi lần trước đã được sửa thật. Tôi thử lại đúng các ca cũ, thêm nhiều cách «lách» gần giống: không còn lọt chữ HTML do AI viết; file kế hoạch 6 tháng nay đọc đủ 112 bài; dò số điện thoại, email nhận thêm nhiều cách viết và chạy rất nhanh; kế hoạch 1.000 dòng so trong chưa tới nửa giây (trước gần một phút).
+- Phần sửa sinh 6 lỗi nhỏ mới, không lỗi nào nguy hiểm:
+  1. Một ô bắt đầu bằng chữ trong ngoặc kép (ví dụ `"Đức" là hãng tốt`) làm cả bảng dán bị từ chối.
+  2. Bảng dạng «tên mục – nội dung» có một dòng «Từ khóa» bị đọc nhầm thành kế hoạch: các dòng «Ngày», «Ghi chú»… thành bài giả, tick sẵn (file yêu cầu phần mềm trong `docs/plan/` cho ra 10 bài giả).
+  3. Từ khóa viết tắt «P. Tân Định», «P. Đa Kao»… không còn được cảnh báo «trang cửa ngõ».
+  4. AI chỉ đổi mức ưu tiên một bài mà ghi chú cũ có số khách cũng bị cảnh báo «AI có số điện thoại», bỏ tick.
+  5. Ô ngày dạng `46337.0` nay thành giờ đăng 0 giờ đêm.
+  6. Kế hoạch có mã bài «B-99999» thì phần so bảng và đề xuất AI báo lỗi, không chạy được.
+- Không có gì phải anh/chị quyết.
+
+### R5
+
+| Test | Thay đổi | Kết luận |
+|---|---|---|
+| `tests/test_soi_loi_t098.py` (của tôi) | 55 dòng xóa, 0 dòng thêm; mọi dòng xóa thuộc 12 dấu `@pytest.mark.xfail(...)` (11 dấu nhiều dòng của SL-T098-1 → -11, 1 dấu một dòng của ca file thật SL-T098-2); thân test, điều kiện khẳng định không đổi | **Đúng R5** |
+| `tests/test_plan_model.py`, `test_plan_parse.py`, `test_plan_propose.py` (của Thợ Máy) | Đổi theo hành vi mới có chủ đích (G2, G7): `test_key_format` («b-1» → «B-001»), `test_times` thêm giờ có giây, SA/CH/AM/PM; `test_times_rejected` bỏ `08:00:00` (nay nhận) nhưng thêm 5 ca phải từ chối («08:00:61», «13 PM», «0 AM», «8:00 sáng», «8 chiều»); thêm 15 test lượt 2 | **Đúng R5**: không ca nào bị nới mà không có hành vi mới đi kèm |
+
+### Từng lỗi cũ
+
+| Lỗi | Ca cũ | Biến thể gần (mới, đều qua) | Kết quả |
+|---|---|---|---|
+| SL-T098-1 | 15 ca qua | 14 ký tự chen sau «<» (U+200B, U+00AD, U+2060, U+FEFF, U+034F, U+180E, U+FFA0, U+3164, U+FE0F, U+E0100, NUL, U+E0041, U+200E, U+202E) × 5 trường (70 ca): mục bị bỏ; dạng NFKC và đánh dấu khác (`＜script＞`, `﹤b﹥`, chú thích HTML, `<?php`, `<!doctype`, NUL chen giữa thẻ, chữ hoa): bị bỏ; chữ «<» thường («giá < 5 triệu», «cửa <3m», «a <- b», `⟨b⟩`, `&lt;b&gt;`): vẫn giữ | **Đóng** |
+| SL-T098-2 | 2 ca qua | File thật: kế hoạch 6 tháng 112 dòng + 1 bỏ (từ khóa dài quá 120 ký tự), SEO local 15; nhiều bảng chung mã (`B-1`/`B-001` giữ dòng đầu, câu báo «Bảng 2: …»), bảng không có cột từ khóa được đếm; giới hạn 1.000 dòng tính chung (3 bảng × 400 → câu cố định) | **Đóng** |
+| SL-T098-3 | Qua (ngoặc không đóng → câu cố định) | — | **Đóng**; xem SL-T098-12 |
+| SL-T098-4 | 2 ca qua | Ô in đậm, nghiêng, mã bỏ dấu bọc. Ghi nhận (không xếp lỗi): gạch chéo ngược thật đứng trước gạch đứng (đường dẫn Windows cuối ô) vẫn bị coi là gạch đứng escape, rất hiếm | **Đóng** |
+| SL-T098-5 | 4 ca qua | `(+84)909123456`, `+84-909-123-456`, `84 909 123 456` | **Đóng** |
+| SL-T098-6 | 2 ca qua | Số toàn chiều rộng có dấu cách, U+FFA0 chen giữa số, ký tự vô hình + dấu cách | **Đóng** |
+| SL-T098-7 | Qua | 9 chuỗi độc khác cho cả số điện thoại và email (`0`, `0 `, `(0)`, `0-(-`, `+84`, `(+84) `, `a.@`, `@a.`, `a-`), đo cả `mask_personal_info`: tuyến tính (20.000 ký tự ~15 ms, trước 4,5–5,2 s) | **Đóng** |
+| SL-T098-8 | 3 ca qua | — | **Đóng**; xem SL-T098-14 |
+| SL-T098-9 | Qua | 2 dòng chưa mã cùng đổi được cấp `B-001`, `B-002` khác nhau; «Bỏ» dòng chưa mã cũng được cấp mã; `changes` có `key` | **Đóng** |
+| SL-T098-10 | Qua | Dán 600 dòng có ô nhiều dòng: đọc thẳng thành bảng (0,03 s) | **Đóng** |
+| SL-T098-11 | Qua | Đo: so bảng 1.000 + 1.000 dòng 0,23 s (trước 31–59 s); đề xuất AI 100 mục × kế hoạch 1.000 dòng 0,06 s (trước 8,1 s); thêm test tỉ lệ cho đường AI | **Đóng** |
+| Góp ý | — | G1, G3, G4 đúng; G2 đúng (xem SL-T098-16); G5 đúng (xem SL-T098-15); G7 đúng (xem SL-T098-13, -17); G8: 20 đề xuất tick sẵn, 21 (lẫn «Cập nhật»; mục sai không tính) thì không; G6 để T-103 (đúng phạm vi) | — |
+
+### Lỗi mới (lượt 2)
+
+| # | Mức | Mô tả | Vị trí | Do phần sửa | Test |
+|---|---|---|---|---|---|
+| SL-T098-12 | Thấp | `csv` chạy `strict=True` nên ô **mở đầu** bằng chữ trong ngoặc kép rồi có chữ sau (`"Đức" là hãng tốt`) làm hỏng **cả bảng**, câu báo nói «dấu ngoặc kép không đóng» dù ngoặc đã đóng. Excel, Google Sheets chép ô không xuống dòng ra nguyên chữ (không bọc ngoặc), CSV gõ tay cũng hay gặp. Lượt 1 đọc được (chỉ mất dấu ngoặc). Gợi ý: chỉ coi «hết file khi còn trong ngoặc» là lỗi; lỗi `strict` khác thì đọc lại không `strict` | `seo_app/plan/parse.py:241` | SL-T098-3 | `test_sl_t098_12_…` (dán, CSV) |
+| SL-T098-13 | Thấp | Tìm dòng tiêu đề trong 5 dòng đầu bắt nhầm **dòng dữ liệu** có ô «Từ khóa»/«Từ khóa chính»: bảng dạng «Mục – Nội dung» thành kế hoạch, các dòng sau («Ngày», «Ghi chú»…) thành bài giả, **tick sẵn**. File thật `docs/plan/yeu_cau_phan_mem_ProMetal_ToolSEO.md` (lượt 1: chữ tự do) nay cho 10 bài giả («Slug», «Tiêu đề dự kiến», «Từ khóa phụ, ý cần có»…). Gợi ý: Markdown thì dòng tiêu đề luôn là dòng ngay trước dòng phân cách «\|---\|» (không dò); CSV chỉ bỏ qua dòng phía trên có tối đa một ô không trống (dòng tên bảng) | `parse.py:132`, `:381` (`_find_header`) | G7 | `test_sl_t098_13_…` (Markdown, CSV, file thật) |
+| SL-T098-14 | Thấp | Nhánh viết tắt «p.»/«q.» + tên của `_LOCATION` không bao giờ khớp: `_location_template` nhận chữ đã `keyword_key` (dấu chấm thành dấu cách). «sửa cửa P. Tân Định / P. Đa Kao / P. Bến Nghé» mất cảnh báo trang cửa ngõ (lượt 1 có). Gợi ý: trên chữ đã bỏ dấu, nhận «p»/«q» **đứng riêng** rồi tên: «phụ kiện» không bị bắt vì «phu» không phải «p» đứng riêng | `propose.py:513` | SL-T098-8 | `test_sl_t098_14_…` |
+| SL-T098-15 | Thấp | `_has_personal` xét mọi trường chữ của dòng **sau khi đổi**, gồm chữ cũ: AI chỉ đổi ưu tiên (hay «Bỏ») một dòng mà ghi chú cũ có số khách cũng bị cảnh báo «Đề xuất của AI có số điện thoại hoặc email», bỏ tick. Ghi chú có số khách là chuyện thường (vì vậy ghi chú không gửi AI). Gợi ý: chỉ xét các trường AI gửi (đã đổi) và lý do | `propose.py:345` | G5 | `test_sl_t098_15_…` («Cập nhật», «Bỏ») |
+| SL-T098-16 | Thấp | `_SERIAL_TIME_RE` nhận cả phần lẻ toàn chữ số 0: ô ngày `46337.0` (lượt 1 là ngày trần như `46337`) nay đặt giờ đăng **00:00** (nửa đêm), đè giờ mặc định. Gợi ý: phần lẻ toàn 0 là ngày trần | `model.py:139`, `:284` | G2 | `test_sl_t098_16_…` (2 ca) |
+| SL-T098-17 | Thấp | `_Keys.__init__` gọi `model.next_key` ngay khi dựng: kế hoạch có mã «B-99999» (gõ tay trên Sheet: dữ liệu chưa tin cậy) làm **mọi** lần so bảng, đề xuất AI báo `ValueError` «hết mã bài», kể cả khi chỉ «Cập nhật» (lượt 1 chỉ lỗi khi thật sự cần cấp mã mới). `ValueError` không phải `AIError` nên `plan_changes` để lọt ra giao diện như lỗi lạ. Gợi ý: tính số lớn nhất trực tiếp, chỉ báo «hết mã» (câu cố định) khi cần cấp mã mới | `propose.py:158` | SL-T098-11 | `test_sl_t098_17_…` |
+
+Góp ý lượt 2 (không xếp lỗi, không test `xfail`):
+
+- **G9** Ô «ngày giờ» có giờ không có dấu «:» (`12/06/2026 8 PM`) mất **cả ngày** (`_DATE_TIME_RE` đòi dấu giờ), trong khi `8 PM` đứng riêng nay đọc được; ISO có múi giờ (`2026-06-12T08:00:00+07:00`) mất giờ (có câu báo). Sheets, Excel không xuất hai dạng này.
+- **G10** Dòng trùng là dòng cũ chưa có mã thì câu cảnh báo ghi «Từ khóa trùng dòng **mới** trong kế hoạch»: dễ hiểu nhầm là dòng vừa thêm; nên ghi «dòng chưa có mã».
+- **G11** Dò số điện thoại nay cho cách tới 3 ký tự (cả xuống dòng, ngoặc) nên có thêm vài dương tính giả kiểu «Lô 0 - 1 - 2 - … - 9» (hiếm; chỉ là cảnh báo, người dùng vẫn gửi được). Từ khóa có «quán» (bỏ dấu thành «quan») vẫn bị coi là địa danh («lắp cửa kính quán cà phê / quán trà sữa / quán ăn» → cảnh báo cửa ngõ), có từ lượt 1.
+- **G12** Cho T-100: mã bài nay chuẩn hóa («B-1» → «B-001»): khi ghi Sheet theo mã phải so mã trên Sheet sau chuẩn hóa (ô Sheet có thể còn «B-1»); đề xuất «Cấp mã bài» cho dòng cũ chưa có mã: T-100 phải tìm dòng đó không qua mã.
+
+### Không lùi `main`
+
+- `main` cục bộ `1b45f5d` (đã gộp T-096, chưa lên GitHub) và nhánh không sửa chung file nào (gốc chung `15bfaca`).
+- Bản gộp thử trong `git worktree` tạm (không nhánh, không push, đã gỡ): gộp không xung đột; 22 file test (kế hoạch, lời dặn, nội dung, liên kết nội bộ, T-096, T-083, T-062, trang app): **3797 passed, 4 xfailed, 0 failed**; file test của tôi bản lượt 2 trên bản gộp: **296 passed, 11 xfailed**. Test canh SL-7 (mọi hàm `…_prompt` có `keyword`) vẫn qua sau khi `main` đổi `seo_app/images/alt.py` (T-083); T-096 không thêm lời dặn có từ khóa.
+
+### Bằng chứng (lượt 2)
+
+- `uv run pytest tests/test_soi_loi_t098.py`: **296 passed, 11 xfailed**; `--runxfail` với SL-T098-12 → -17: 11 hỏng, đúng câu khẳng định (`BAD_TABLE`, bài giả, thiếu cảnh báo cửa ngõ, cảnh báo số điện thoại thừa, giờ `00:00`, `ValueError`).
+- 10 file test liên quan trên nhánh (4 file kế hoạch, file của tôi, `test_soi_loi_t003_t009.py`, `test_t040_prompts.py`, `test_content_workflow.py`, `test_prompt_data_frames.py`, `test_content_edge_cases.py`): **728 passed, 11 xfailed**.
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; `PYTHONUTF8=1 uvx detect-secrets scan` (file test + mồi thử): chỉ bắt mồi; quét ký tự ẩn: sạch.
+- Script thử lượt 2: `T-098-soi-loi-scripts/round2.py` (thư mục ghi chú chung).
+
+### Đề xuất (lượt 2)
+
+1. Chuyển Lá Chắn rút gọn được ngay (không lỗi Trung bình trở lên).
+2. Thợ Máy sửa trong một lượt nhỏ trước khi gộp: SL-T098-13, -17, -12 (mỗi lỗi vài dòng); -14, -15, -16 sửa cùng lúc nếu tiện (đều nhỏ). Gỡ dấu `xfail` khi XPASS (R5).

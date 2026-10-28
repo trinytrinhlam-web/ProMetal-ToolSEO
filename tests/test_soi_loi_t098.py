@@ -944,3 +944,231 @@ def test_sl_t098_11_compare_rows_time_grows_linearly():
     small, big = fastest(lambda: propose.compare_rows(*small_plan, today=TODAY),
                          lambda: propose.compare_rows(*big_plan, today=TODAY))  # fmt: skip
     assert big < 10 * small + 0.03
+
+
+# ============================================================ lượt 2 (2026-10-28)
+# Biến thể gần của lỗi đã sửa (phải qua) và lỗi mới do phần sửa lượt 2 gây ra (xfail strict).
+
+HIDDEN_AFTER_LT = {
+    "zwsp": chr(0x200B), "shy": chr(0x00AD), "wj": chr(0x2060), "bom": chr(0xFEFF),
+    "cgj": chr(0x034F), "mvs": chr(0x180E), "hwf": chr(0xFFA0), "hf": chr(0x3164),
+    "vs16": chr(0xFE0F), "vs-sup": chr(0xE0100), "nul": chr(0), "tag": chr(0xE0041),
+    "lrm": chr(0x200E), "rlo": chr(0x202E),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("field", ["keyword", "title_hint", "notes", "secondary", "reason"])
+@pytest.mark.parametrize("hidden", list(HIDDEN_AFTER_LT.values()), ids=list(HIDDEN_AFTER_LT))
+def test_round2_sl_t098_1_any_hidden_character_after_lt_is_dropped(field, hidden):
+    html = f"<{hidden}img src=x onerror=alert(1)> cửa"
+    fields = {"keyword": "cửa sắt mỹ thuật", "reason": "ghi chú nói", field: html}
+    item = suggestion(action="them", **fields)
+    result = propose.from_ai(PlanSuggestions(items=[item]), CURRENT, today=TODAY)
+    assert (len(result.items), result.dropped) == (0, 1)
+
+
+@pytest.mark.parametrize(
+    ("text", "kept"),
+    [
+        ("＜script＞x＜/script＞", False),
+        ("﹤b﹥x", False),
+        ("<!-- x -->", False),
+        ("<?php x ?>", False),
+        ("<!doctype html>", False),
+        (f"<scr{chr(0)}ipt>", False),
+        ("<SCRIPT>", False),
+        ("giá < 5 triệu", True),
+        ("cửa <3m", True),
+        ("a <- b", True),
+        ("⟨b⟩ x", True),
+        ("&lt;b&gt; x", True),
+    ],
+)
+def test_round2_sl_t098_1_markup_forms_dropped_plain_less_than_kept(text, kept):
+    item = suggestion(action="them", keyword="cửa sắt", notes=text, reason="x")
+    result = propose.from_ai(PlanSuggestions(items=[item]), CURRENT, today=TODAY)
+    assert len(result.items) == int(kept)
+
+
+def test_round2_sl_t098_2_real_plans_read_every_table():
+    six = PLAN_DIR / "ke_hoach_6_thang_chi_tiet.md"
+    result = parse.read_file(six.read_bytes(), six.name)
+    assert (len(result.rows), result.skipped) == (112, 1)
+    local = PLAN_DIR / "seo_local_hcm_20_bai_thang_vi.md"
+    assert len(parse.read_file(local.read_bytes(), local.name).rows) == 15
+
+
+def test_round2_sl_t098_2_tables_share_keys_and_the_row_limit():
+    head = "| Mã bài | Từ khóa | Ngày |\n|---|---|---|\n"
+    text = (
+        f"{head}| B-1 | sửa cửa cuốn | 12/11/2026 |\n\n"
+        "| Tháng | Số bài |\n|---|---|\n| 11 | 20 |\n\n"
+        f"{head}| B-001 | cửa kéo | 13/11/2026 |\n| B-2 | cửa sắt | 14/11/2026 |\n"
+    )
+    result = parse.read_paste(text)
+    assert [r.key for r in result.rows] == ["B-001", "B-002"] and result.skipped == 1
+    assert parse.UNREAD_TABLES.format(count=1) in result.warnings
+    assert any(w.startswith("Bảng 2: Mã bài trùng") for w in result.warnings)
+    many = "\n\n".join(
+        head + "".join(f"| | từ khóa {t}-{i} | 12/11/2026 |\n" for i in range(400))
+        for t in range(3)
+    )
+    with pytest.raises(parse.PlanSourceError) as raised:
+        parse.read_file(many.encode(), "k.md")
+    assert str(raised.value) == parse.TOO_MANY_ROWS
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "(+84)909123456",
+        "+84-909-123-456",
+        "84 909 123 456",
+        "".join(chr(0xFF10 + int(c)) if c.isdigit() else c for c in "0909 123 456"),
+        f"0909{chr(0xFFA0)}123456",
+        f"Gọi chị Lan: 0909{chr(0x200B)} 123 456.",
+    ],
+)
+def test_round2_sl_t098_5_6_more_phone_forms_are_found_and_masked(text):
+    assert model.personal_info(text)[0] == 1
+    assert model.personal_info(model.mask_personal_info(text)) == (0, 0)
+
+
+@pytest.mark.parametrize("unit", ["0", "0 ", "(0)", "0-(-", "+84", "(+84) ", "a.@", "@a.", "a-"])
+def test_round2_sl_t098_7_personal_info_linear_on_adversarial_text(unit):
+    small, big = fastest(lambda: model.mask_personal_info(unit * 300),
+                         lambda: model.mask_personal_info(unit * 2_400))  # fmt: skip
+    assert big < 16 * small + 0.05
+
+
+def test_round2_sl_t098_9_keyless_rows_get_distinct_keys():
+    current = (PlanRow(keyword="sửa cửa cuốn"), PlanRow(keyword="cửa kéo đài loan"),
+               PlanRow(keyword="cổng inox"))  # fmt: skip
+    incoming = (PlanRow(keyword="sửa cửa cuốn", notes="a"), PlanRow(keyword="cửa kéo đài loan",
+                notes="b"), PlanRow(keyword="cổng inox", status="Bỏ"))  # fmt: skip
+    result = propose.compare_rows(current, incoming, today=TODAY)
+    assert [(p.action, p.key) for p in result.items] == [
+        (Action.UPDATE, "B-001"), (Action.UPDATE, "B-002"), (Action.DROP, "B-003"),
+    ]  # fmt: skip
+    assert all(p.before.key == "" and "key" in p.changes for p in result.items)
+
+
+def test_round2_sl_t098_11_ai_check_time_grows_linearly():
+    def plan(size: int) -> tuple[PlanSuggestions, list[PlanRow]]:
+        current = [PlanRow(key=f"B-{i:03d}", keyword=f"sửa cửa cuốn loại {i} tại nhà")
+                   for i in range(1, size + 1)]  # fmt: skip
+        items = [suggestion(action="them", keyword=f"cửa sắt mẫu {i}", reason="x")
+                 for i in range(20)]  # fmt: skip
+        return PlanSuggestions(items=items), current
+
+    small_plan, big_plan = plan(100), plan(800)
+    small, big = fastest(lambda: propose.from_ai(*small_plan, today=TODAY),
+                         lambda: propose.from_ai(*big_plan, today=TODAY))  # fmt: skip
+    assert big < 10 * small + 0.03
+
+
+@pytest.mark.parametrize(
+    ("count", "preselected"), [(20, True), (21, False)], ids=["20-tick-san", "21-khong-tick"]
+)
+def test_round2_g8_many_ai_proposals_are_not_preselected(count, preselected):
+    items = [suggestion(action="them", keyword=f"cửa cuốn mẫu {i}", reason="x")
+             for i in range(count - 1)]  # fmt: skip
+    items += [suggestion(action="cap_nhat", key="B-001", priority="Cao", reason="x"),
+              suggestion(action="add", keyword="không hợp lệ", reason="x")]  # fmt: skip
+    result = propose.from_ai(PlanSuggestions(items=items), CURRENT, today=TODAY)
+    assert len(result.items) == count and result.dropped == 1
+    assert all(p.preselected == preselected for p in result.items)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-12 (Thấp): csv strict=True (sửa SL-T098-3) làm hỏng cả bảng khi một ô mở đầu "
+    'bằng chữ trong ngoặc kép rồi có chữ sau («"Đức" là hãng»), kiểu Excel, Google Sheets chép '
+    "ra khi ô không xuống dòng; trước lượt 2 bảng vẫn đọc được",
+)
+@pytest.mark.parametrize("source", ["paste", "csv"])
+def test_sl_t098_12_cell_starting_with_a_quoted_word_does_not_break_the_table(source):
+    if source == "paste":
+        result = parse.read_paste('Từ khóa\tGhi chú\nsửa cửa cuốn\t"Đức" là hãng tốt\ncửa kéo\tx\n')
+    else:
+        result = csv_file('Từ khóa,Ghi chú\nsửa cửa cuốn,"Đức" là hãng tốt\ncửa kéo,x\n')
+    assert [r.keyword for r in result.rows] == ["sửa cửa cuốn", "cửa kéo"]
+    assert "Đức" in result.rows[0].notes and "là hãng tốt" in result.rows[0].notes
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-13 (Thấp): tìm dòng tiêu đề trong 5 dòng đầu (góp ý G7) bắt nhầm một dòng dữ "
+    "liệu có ô «Từ khóa»: bảng khóa-giá trị thành dòng kế hoạch giả, tick sẵn (file thật "
+    "yeu_cau_phan_mem_ProMetal_ToolSEO.md: 10 dòng «Slug», «Tiêu đề dự kiến»…)",
+)
+@pytest.mark.parametrize("case", ["markdown", "csv", "real-file"])
+def test_sl_t098_13_key_value_table_is_not_a_plan(case):
+    if case == "markdown":
+        result = parse.read_paste(
+            "| Mục | Nội dung |\n|---|---|\n| Từ khóa | sửa cửa cuốn |\n| Ngày | 12/11/2026 |\n"
+            "| Ghi chú | gọi khách trước |\n"
+        )
+    elif case == "csv":
+        result = csv_file(
+            "Mục,Nội dung\nTừ khóa,sửa cửa cuốn\nNgày,12/11/2026\nGhi chú,gọi khách\n"
+        )
+    else:
+        path = PLAN_DIR / "yeu_cau_phan_mem_ProMetal_ToolSEO.md"
+        result = parse.read_file(path.read_bytes(), path.name)
+    bogus = {"Ngày", "Ghi chú", "Slug", "Tiêu đề dự kiến", "Từ khóa phụ, ý cần có"}
+    assert not bogus & {row.keyword for row in result.rows}
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-14 (Thấp): nhánh «p.»/«q.» + tên của bộ nhận địa danh (sửa SL-T098-8) không "
+    "bao giờ khớp vì từ khóa đã bỏ dấu chấm (fold_key): «sửa cửa P. Tân Định / P. Đa Kao / P. Bến "
+    "Nghé» mất cảnh báo trang cửa ngõ (lượt 1 có)",
+)
+def test_sl_t098_14_ward_abbreviation_with_a_name_is_a_place():
+    keywords = ("sửa cửa P. Tân Định", "sửa cửa P. Đa Kao", "sửa cửa P. Bến Nghé")
+    current = [PlanRow(key=f"B-00{i}", keyword=k) for i, k in enumerate(keywords[:2], 1)]
+    (proposal,) = propose.compare_rows(current, [PlanRow(keyword=keywords[2])], today=TODAY).items
+    assert propose.WARN_DOORWAY in proposal.warnings
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-15 (Thấp): cảnh báo «Đề xuất của AI có số điện thoại hoặc email» (góp ý G5) "
+    "xét cả chữ cũ của dòng: AI chỉ đổi ưu tiên (hay «Bỏ») một dòng có sẵn số khách trong ghi chú "
+    "cũng bị cảnh báo, bỏ tick",
+)
+@pytest.mark.parametrize("action", ["cap_nhat", "bo"])
+def test_sl_t098_15_personal_warning_only_for_text_from_the_ai(action):
+    current = [PlanRow(key="B-001", keyword="cửa cuốn austdoor", notes="Anh Ba 0909 123 456")]
+    fields = {"priority": "Cao"} if action == "cap_nhat" else {}
+    item = suggestion(action=action, key="B-001", reason="ghi chú nói", **fields)
+    (proposal,) = propose.from_ai(PlanSuggestions(items=[item]), current, today=TODAY).items
+    assert propose.WARN_PERSONAL not in proposal.warnings
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-16 (Thấp): số ngày có phần lẻ toàn chữ số 0 («46337.0», trước lượt 2 là ngày "
+    "trần như «46337») nay thành giờ đăng 00:00 (nửa đêm), đè giờ đăng mặc định",
+)
+@pytest.mark.parametrize("raw", ["46337.0", "46337.00"])
+def test_sl_t098_16_serial_with_zero_fraction_is_a_plain_date(raw):
+    (row,) = csv_file(f"Từ khóa,Ngày\nsửa cửa,{raw}\n").rows
+    assert (row.planned_date, row.planned_time) == (date(2026, 11, 11), "")
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-17 (Thấp): bộ cấp mã mới (_Keys, sửa SL-T098-11) gọi next_key ngay khi dựng: "
+    "kế hoạch có mã «B-99999» (gõ tay trên Sheet) làm mọi lần so bảng và đề xuất AI báo ValueError "
+    "«hết mã bài», kể cả khi chỉ cập nhật (lượt 1 chỉ lỗi khi cần cấp mã mới)",
+)
+def test_sl_t098_17_largest_key_does_not_break_updates():
+    current = [PlanRow(key="B-99999", keyword="cửa cuốn"), PlanRow(key="B-001", keyword="cửa kéo")]
+    changed = PlanRow(key="B-001", keyword="cửa kéo", priority="Cao")
+    table = propose.compare_rows(current, [changed], today=TODAY)
+    item = suggestion(action="cap_nhat", key="B-001", priority="Cao", reason="x")
+    ai = propose.from_ai(PlanSuggestions(items=[item]), current, today=TODAY)
+    assert [p.action for p in table.items] == [p.action for p in ai.items] == [Action.UPDATE]
