@@ -282,3 +282,28 @@ def test_readback_failure_message_tells_the_real_cause(project_root, tmp_path, m
     assert env.read_bytes() == OTHER.encode()  # bản cũ đã được trả lại: đúng
     assert "File .env cũ vẫn còn nguyên" in out or "file .env cũ vẫn còn nguyên" in out
     assert "sai định dạng" not in out and "dấu nháy" not in out
+
+
+# =============================== SL-T104-2 (có từ trước): biến môi trường của máy đè lên .env
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T104-2 (có từ trước): máy có biến môi trường APP_PASSWORD_HASH thì app dùng biến "
+    "đó, set_password vẫn báo «Đã lưu mật khẩu mới»: mật khẩu mới không có hiệu lực",
+)
+def test_os_environment_hash_is_reported(project_root, tmp_path, monkeypatch):
+    """App đọc ``APP_PASSWORD_HASH`` trong biến môi trường của máy trước ``.env``
+    (``load_settings``: biến môi trường đè giá trị file). Máy có biến đó (ví dụ từng đặt tay) thì
+    ``set_password`` ghi ``.env`` xong báo «Đã lưu mật khẩu mới», nhưng app vẫn dùng mã băm cũ:
+    mật khẩu mới bị từ chối, mật khẩu cũ vẫn đăng nhập được (như hệ quả của LC-T090-1, đường
+    khác). Trang Cài đặt đã nhắc việc này cho khóa API (``overridden_by_os_environ``). Mong đợi:
+    ``set_password`` báo rõ (mật khẩu mới chỉ có hiệu lực khi gỡ biến đó khỏi máy), không báo đã
+    xong như bình thường."""
+    env = tmp_path / ".env"
+    env.write_bytes(OTHER.encode())
+    monkeypatch.setenv(KEY, OLD)
+    code, out = run_set_password(project_root, monkeypatch, env)
+    active = load_settings(env_file=env).password_hash  # như app: biến môi trường đè .env
+    assert not verify_password(NEW_PASSWORD, active)  # đúng là chưa có hiệu lực
+    assert code != 0 or "biến môi trường" in out, out
