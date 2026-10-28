@@ -29,6 +29,7 @@ Một bài đã gửi WordPress (nháp mang «đã gửi»/«đang gửi») khô
 2. Không lùi các ca T-086, T-089 (hai tab, ngắt giữa chừng, gửi dở, băm ảnh).
 3. Nháp cũ vẫn mở được; test cho các ca mới.
 5. Hai góp ý nhỏ từ Lá Chắn T-095 (làm theo đề xuất): chú thích «Chép sang SiteSEO» trên bước SEO nói dán đường dẫn vào **ô đường dẫn của bài** (không phải hộp SiteSEO), khớp README; chú thích `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` trong `.env.example` ghi rõ «tên đăng nhập của tài khoản Biên tập viên riêng» và «mật khẩu ứng dụng tạo trên chính tài khoản đó».
+6. Đề xuất 1 của Thợ Máy T-090: câu báo từ khóa chính có emoji mới trong `app/views/write.py` dùng `odd_char_messages` (câu «phần mềm chưa nhận ra ký tự này» thay vì «không nhìn thấy»); đổi `tests/test_t041_seo_ui.py:711` theo (Chỉ Huy duyệt, R5).
 4. Đề xuất của Lá Chắn T-084 (chủ dự án dặn 27/10 «vấn đề có đề xuất thì làm theo đề xuất»): đặt `client.showErrorDetails = "type"` trong `.streamlit/config.toml` để trang lỗi không in traceback có đường dẫn cài đặt; kiểm `tests/test_app_pages.py` và các test đọc cấu hình Streamlit vẫn qua.
 
 ## Yêu cầu bảo mật riêng
