@@ -332,3 +332,43 @@ All checks passed!
 ### Rủi ro lượt 4
 
 - Lớp này xét mọi khối chữ (đoạn, mục danh sách, ô bảng, tiêu đề), còn Gutenberg chỉ xét đoạn `<p>`. Một mục danh sách mở đầu bằng một địa chỉ `https://` rồi tới chữ cũng bị Chặn (chặt hơn, theo cùng hướng với lớp «khối chỉ có một địa chỉ» đã duyệt ở LC-T096-4). Người dùng viết chữ trước địa chỉ là qua.
+
+---
+
+## Lượt 5 (2026-10-28 22:00 +07:00, theo lệnh `date`)
+
+Sửa **LC-T096-6** (Thấp) của [Lá Chắn xem lại lượt 4](T-096-la-chan.md), theo đúng cách Lá Chắn đề xuất. Nhánh đã được Chỉ Huy tua tới `main` `b241e79`.
+
+### Tóm tắt (cho chủ dự án)
+
+Lớp chặn «WordPress sẽ nhúng trang ngoài khi Chuyển thành khối» nay đọc địa chỉ đúng như trình duyệt đọc. Bốn cách viết lạ trước đây lọt qua nay đều bị Chặn: có tab trong tên miền, dùng dấu «\» thay «/», thừa dấu «/», có tên đăng nhập trước «@».
+
+### Đã sửa
+
+| Chỗ | Thay đổi |
+|---|---|
+| `seo_app/publish/review.py` `_block_editor_embeds` | Trước khi tách tên máy, làm như bộ phân tích URL WHATWG (`new URL`): bỏ tab, xuống dòng (U+0009, U+000A, U+000D) ở mọi chỗ; «\» là «/» (cả khi lấy tên file); bỏ mọi «/», «\» thừa ngay sau `https:`; tên máy là phần sau «@» cuối cùng của phần tên máy. Hai điều kiện «bắt đầu bằng `https://`» và «đúng một `https://`» vẫn xét trên chữ gốc như trước. Chỉ dùng `translate`, `replace`, `lstrip`, `find`, `rpartition`: tuyến tính |
+| `tests/test_la_chan_t096.py` | Gỡ 1 dấu `xfail` (5 ca LC-T096-6, đã XPASS), không đổi `assert` |
+| `tests/test_publish_render.py` | `test_block_editor_embed_conditions` thêm 8 ca (tab trong và sau tên máy, «\», «/» thừa, «\» thừa, tên đăng nhập và mật khẩu có dấu cách, tên máy sau «@» có dấu cách thì không Chặn, «\» chia tên file đuôi `.mp4` thì không Chặn); thêm `test_block_editor_check_is_linear` (4 dạng chữ dài: «/», «a@», đường dẫn có tab và dấu cách, «\») |
+
+Giữ nguyên, vẫn qua: 3 ca canh `test_lc6_invalid_url_with_text_is_not_blocked` của Lá Chắn (`new URL` từ chối thì không Chặn: dấu cách sau tên máy, cổng có dấu cách, dấu cách không ngắt trong tên máy), 3 ca canh LC-T096-5, 7 ca «không chặn oan» của Soi Lỗi, 13 ca cũ của tôi.
+
+### Bằng chứng lượt 5
+
+```
+$ uv run pytest tests/test_la_chan_t096.py tests/test_publish_render.py   # trước khi gỡ dấu
+5 XPASS(strict) (LC-T096-6), 125 passed
+
+$ uv run pytest tests/test_la_chan_t096.py tests/test_soi_loi_t096.py tests/test_publish_markdown.py \
+    tests/test_publish_render.py tests/test_la_chan_t039.py tests/test_onpage_links.py tests/test_soi_loi_t039.py
+920 passed in 64.89s (0:01:04)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Quét lại `review.py`, `tests/test_publish_render.py`: không ký tự vô hình hay tab viết trần (tab trong test viết dạng mã `\t`).
+
+### Rủi ro lượt 5
+
+- Theo Quan sát lượt 4 của Lá Chắn: biểu thức đuôi tệp của Gutenberg có cờ `i`, nên ca «.MP4» của bộ dựng chặt hơn Gutenberg (Chặn oan đoạn mở đầu bằng địa chỉ tệp viết hoa, rất hiếm). Lượt này không đổi (ngoài phạm vi LC-T096-6); muốn khớp thì thêm `re.IGNORECASE` và đổi ca «.MP4» khi Chỉ Huy duyệt.

@@ -321,11 +321,35 @@ def test_paragraph_starting_with_one_https_url_then_text_is_found():
         ("https://a.vn/x xem https://b.vn", False),  # hai https://
         ("Xem https://x.vn/a", False),
         ("http://x.vn/a xem", False),
+        # LC-T096-6: tách tên máy như trình duyệt (WHATWG ``new URL``).
+        ("https://x.v\tn/a xem", True),  # tab bị bỏ ở mọi chỗ
+        ("https://x.vn\t/a xem", True),
+        ("https://x.vn\\a xem", True),  # «\» là «/» với https
+        ("https:///x.vn/a xem", True),  # «/» thừa sau https: bị bỏ
+        ("https://\\\\x.vn/a xem", True),
+        ("https://tên đăng nhập:mật khẩu@x.vn/a xem", True),  # tên máy là phần sau «@»
+        ("https://a@b c/a xem", False),  # tên máy sau «@» có dấu cách
+        ("https://x.vn\\xem video.mp4", False),  # «\» cũng chia tên file
     ],
 )
 def test_block_editor_embed_conditions(text, embedded):
-    """LC-T096-5: đúng bốn điều kiện ``isMatch`` của khối Embed (Gutenberg)."""
+    """LC-T096-5, -6: đúng bốn điều kiện ``isMatch`` của khối Embed (Gutenberg)."""
     assert bool(embedded_urls(f"<p>{text}</p>")) is embedded
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda k: "<p>https://" + "/" * (4000 * k) + "x.vn/a b</p>",
+        lambda k: "<p>https://" + "a@" * (2000 * k) + "x.vn/a b</p>",
+        lambda k: "<p>https://x.vn/" + "a b\t" * (1000 * k) + "</p>",
+        lambda k: "<p>https://" + "\\" * (4000 * k) + "x</p>",
+    ],
+    ids=["gach", "a-cong", "duong-dan-dai", "gach-nguoc"],
+)
+def test_block_editor_check_is_linear(make):
+    """LC-T096-6: chỉ phép tìm, cắt chuỗi, không biểu thức quay lui."""
+    assert_scales_linearly(embedded_urls, make, label="trình soạn khối")
 
 
 @pytest.mark.parametrize("mode", ["draft", "future", "publish"])

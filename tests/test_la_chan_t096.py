@@ -234,11 +234,6 @@ def test_lc5_url_not_at_start_or_not_https_is_not_blocked(body):
 TAB, BS, NBSP = chr(9), chr(92), chr(0xA0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T096-6: new URL (WHATWG) bỏ tab, coi «\\» như «/», bỏ qua «/» thừa, bỏ tên đăng "
-    "nhập; _block_editor_embeds không làm vậy nên đoạn vẫn thành khối nhúng mà không bị Chặn",
-)
 @pytest.mark.parametrize(
     "body",
     [

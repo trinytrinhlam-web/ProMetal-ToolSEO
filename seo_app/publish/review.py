@@ -63,6 +63,7 @@ _IN_TAG = re.compile(r"<[^>]*>")  # thẻ, chú thích (gần đúng ``wp_html_s
 _LINE_BREAK_MARK = "<!-- wp-line-break -->"
 _ONLY_URL = re.compile(r"https?://\S+", re.IGNORECASE)
 _HTTPS = "https://"
+_URL_IGNORED = str.maketrans("", "", "\t\n\r")  # WHATWG bỏ tab, xuống dòng ở mọi chỗ của URL
 # ``getFilename`` có đuôi tệp (ảnh, video…) thì khối Embed bỏ qua; ``htm``, ``html``, ``php`` vẫn
 # là trang. Đúng biểu thức Gutenberg (phân biệt hoa thường: «.MP4» không khớp nên vẫn Chặn).
 _FILE_EXTENSION = re.compile(r"\.(?!(html?|php)$)[a-z0-9]++$")
@@ -324,16 +325,23 @@ def _block_editor_embeds(text: str) -> bool:
 
     - bắt đầu bằng ``https://`` (không phân biệt hoa thường);
     - có đúng một ``https://``;
-    - tên máy (trước «/», «?», «#» đầu tiên) không rỗng, không có khoảng trắng;
+    - tên máy không rỗng, không có khoảng trắng;
     - tên file cuối đường dẫn (dấu cách tính như ``%20``) không phải đuôi tệp, trừ ``htm``,
       ``html``, ``php`` (``getFilename``).
+
+    Tên máy, đường dẫn tách như bộ phân tích URL của trình duyệt (WHATWG, ``new URL``; LC-T096-6):
+    bỏ tab, xuống dòng ở mọi chỗ; với ``https`` dấu «\\» là «/»; bỏ mọi «/», «\\» thừa ngay sau
+    ``https:``; phần tên máy kết thúc ở «/», «\\», «?», «#» đầu tiên, và tên máy là phần sau «@»
+    cuối cùng (phần trước là tên đăng nhập, mật khẩu, có dấu cách cũng được). Chỉ dùng phép tìm,
+    cắt chuỗi: tuyến tính theo độ dài.
     """
     lowered = text.lower()
     if not lowered.startswith(_HTTPS) or lowered.count(_HTTPS) != 1:
         return False
-    rest = text[len(_HTTPS) :]
+    url = text.translate(_URL_IGNORED).replace("\\", "/")
+    rest = url[len("https:") :].lstrip("/")
     cut = min((i for i in (rest.find(c) for c in "/?#") if i >= 0), default=len(rest))
-    host = rest[:cut]
+    host = rest[:cut].rpartition("@")[2]
     if not host or any(char.isspace() for char in host):
         return False
     path = rest[cut:] if rest[cut : cut + 1] == "/" else ""
