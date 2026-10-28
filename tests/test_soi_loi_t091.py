@@ -15,7 +15,8 @@ hàm hay bảng kỳ vọng của Thợ Máy):
 5. Soát R5: ca cũ đổi ở ``tests/test_wordpress_t085.py`` bỏ mất phần kiểm «không chép lời máy chủ,
    địa chỉ site» (SL-T091-3): ca dưới đây kiểm lại phần đó.
 
-Lỗi tìm ra (``xfail(strict=True)``; sửa xong thì gỡ dấu):
+Lỗi tìm ra lượt 1 (``xfail(strict=True)``; Thợ Máy đã sửa và gỡ dấu ở lượt 2). Lượt 2: thêm ca
+biến thể ở cuối file, không lỗi mới.
 
 - **SL-T091-1** (Thấp): surrogate lẻ lọt ``_json`` khi website khai bảng mã khác UTF-8
   (``charset=utf-16``, ``utf-32``, ``utf-7``, ``cp500``): bộ lọc chỉ dò mã thoát ``\uD8..`` trên
@@ -281,8 +282,6 @@ def test_loi_wordpress_co_surrogate_van_la_cau_co_dinh():
     with pytest.raises(WordPressError) as caught:
         client.check_connection()
     assert not has_surrogate(str(caught.value)) and not has_surrogate(caught.value.code)
-
-
 
 
 @pytest.mark.parametrize("charset", ["utf-16", "utf-16-le", "utf-32", "utf-7", "cp500"])
@@ -682,3 +681,72 @@ def test_connection_info_tao_kieu_cu_van_duoc():
     info = ConnectionInfo("Site", BASE_URL, "Lâm", ("editor",), True, True, True)
     assert info.can_unfiltered_html is False and info.siteseo_writable is None
     assert info.unfiltered_html_status  # mặc định là chưa biết có quyền: có câu nhắc
+
+
+# ================================================================ Lượt 2 (2026-10-28)
+_ROOT_TEXT = json.dumps(good_root(name="Site " + SUR + " " + LOW))  # ASCII, có mã thoát lẻ
+_UTF7_RAW = ('{"name": "Site +2AA-", "home": "https://example.com", "namespaces": ["wp/v2"]}')
+
+
+@pytest.mark.parametrize(
+    "body, content_type",
+    [
+        (_ROOT_TEXT.encode("utf-16-be"), "application/json; charset=utf-16-be"),
+        (_ROOT_TEXT.encode("utf-32-le"), "application/json; charset=utf-32-le"),
+        (_ROOT_TEXT.encode("utf-32-be"), "application/json; charset=utf-32-be"),
+        (_ROOT_TEXT.encode("utf-16"), "text/html; charset=utf-16"),
+        (_ROOT_TEXT.encode("utf-16"), "application/octet-stream"),
+        (_ROOT_TEXT.encode("utf-16-le"), "application/octet-stream"),
+        (_ROOT_TEXT.encode("utf-32"), "application/problem+json"),
+        (_ROOT_TEXT.encode("latin-1"), "application/json; charset=iso-8859-1"),
+        (_ROOT_TEXT.encode("cp1252"), "application/json; charset=windows-1252"),
+        (_UTF7_RAW.encode("ascii"), "application/json; charset=utf-7"),
+    ],
+    ids=["utf16be", "utf32le", "utf32be", "html-utf16", "khong-khai-utf16-bom",
+         "khong-khai-utf16le", "problem-json-utf32", "latin1", "cp1252", "utf7-surrogate-tho"],
+)
+def test_luot2_surrogate_qua_moi_bang_ma_va_kieu_noi_dung(body, content_type):
+    """SL-T091-1 lượt 2: lọc sau khi giải mã nên mọi đường tới surrogate lẻ đều sạch, kể cả
+    UTF-7 «+2AA-» (giải mã ra surrogate thô, không qua mã thoát JSON)."""
+    routes = connection_routes(good_root(), good_me())
+    routes[("GET", ROOT)] = (200, body, {"Content-Type": content_type})
+    client, _site = raw_client(routes)
+    info = client.check_connection()
+    assert_clean(info)
+    assert FFFD in info.site_name
+
+
+def published_raw(post_id, number: int) -> dict:
+    return {"id": post_id, "status": "publish", "link": f"{BASE_URL}/bai-{number}/",
+            "slug": f"bai-{number}", "title": {"rendered": f"Bài {number}"},
+            "modified_gmt": "2026-10-01T00:00:00"}
+
+
+@pytest.mark.parametrize("path", [POSTS, PAGES], ids=["bai", "trang"])
+@pytest.mark.parametrize(
+    "bad_id",
+    [MAX_ID + 1, 2**64, 10**30, 0, -1, True, "7", 7.0, None, [7]],
+    ids=["max+1", "2^64", "10^30", "0", "am", "bool", "chu", "so-thuc", "null", "danh-sach"],
+)
+def test_luot2_bai_trang_da_dang_ma_la_bi_bo_luu_tam_duoc(tmp_path, path, bad_id):
+    """SL-T091-2 lượt 2: mục có mã lạ bị bỏ, mục khác vẫn lưu tạm, không lỗi trang."""
+    other = POSTS if path == PAGES else PAGES
+    routes = {
+        **list_routes(path, [published_raw(bad_id, 1), published_raw(MAX_ID, 2)]),
+        **list_routes(other, []),
+    }
+    client, _site = raw_client(routes)
+    listing = site_listing(SiteIndexStore(tmp_path / "s.sqlite"), client, refresh=True)
+    assert listing.index is not None and listing.notice == ""
+    assert [item.id for item in listing.index.items] == [MAX_ID]
+    again = SiteIndexStore(tmp_path / "s.sqlite").load(BASE_URL)  # đọc lại từ cache
+    assert again is not None and [item.id for item in again.items] == [MAX_ID]
+
+
+@pytest.mark.parametrize("bad_id", [MAX_ID + 1, 0, True, 1.0])
+def test_luot2_published_item_tu_choi_ma_la(bad_id):
+    from seo_app.wordpress.client import PublishedItem
+
+    with pytest.raises(ValueError):
+        PublishedItem(id=bad_id, type="post", slug="a", link=f"{BASE_URL}/a/", title="A")
+    assert PublishedItem(id=MAX_ID, type="post", slug="a", link=f"{BASE_URL}/a/", title="A")

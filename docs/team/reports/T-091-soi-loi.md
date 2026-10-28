@@ -157,3 +157,90 @@ Xfail đều là dấu có sẵn (8 của tôi; còn lại có từ trước tr�
   - Gỡ 8 dấu `xfail` khi sửa.
 - **T-102 (Họa Sĩ):** khi nối chuyên mục thật, xét Ghi nhận 2.
 - **Lá Chắn (rút gọn W2, W3):** xét SL-T091-1 cùng mức SL-T088-1.
+
+---
+
+## Lượt 2 (2026-10-28 · kiểm lại sau Thợ Máy lượt 2)
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `team/T-091`, kiểm trên đầu nhánh `af26c8a` (Thợ Máy lượt 2, trên Lá Chắn `ed5d86b`); thử gộp với `main` `b241e79` |
+| Kết quả | **Kết luận: ĐẠT.** SL-T091-1, -2, -3 đóng thật (kể cả biến thể gần và 18 ca của Lá Chắn); LC-T091-1 đổi đúng mẫu phương án A. **0 lỗi mới**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp. Gộp `main` được |
+
+### Tóm tắt (cho chủ dự án)
+
+- Ba lỗi nhỏ tôi báo ở lượt 1 đã được sửa đúng:
+  - chữ hỏng từ website bị thay bằng «�» ở mọi bảng mã website có thể gửi;
+  - bài đã đăng có mã lạ bị bỏ qua, bước SEO không còn lỗi;
+  - test đổi lúc trước đã có lại đủ phần kiểm «câu báo không chép lời máy chủ».
+- Hai test cũ Lá Chắn phát hiện bị hỏng đã được đổi đúng cách được duyệt: vẫn kiểm chỉ 1 bài trên website, nút «Gửi nháp» khóa, nháp giữ «đang gửi», câu «bài nháp có thể đã có trên website».
+- Lượt 1 tôi bỏ sót file test có hai ca đó, vì chỉ tìm test theo tên phần mềm chúng dùng. Lượt này tôi tìm thêm theo số biên và câu báo cũ, chạy 91 file trên bản gộp với `main` mới nhất.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t091.py` | Thêm 34 ca lượt 2 (đều qua); đổi docstring đầu file (ghi lỗi lượt 1 đã sửa); bỏ 2 dòng trống thừa Thợ Máy để lại khi gỡ dấu `_SL1`. Không đổi ca cũ nào |
+| `docs/team/reports/T-091-soi-loi.md` | Mục này |
+
+### Xác nhận lỗi lượt 1 đã đóng (kèm biến thể gần)
+
+| Lỗi | Biến thể đã thử | Kết quả | Test |
+|---|---|---|---|
+| **SL-T091-1** | 5 ca cũ của tôi (nay qua); **18 ca của Lá Chắn** (website không khai bảng mã, trả UTF-16/32 có hay không BOM; nay qua, cùng 6 ca đối chứng); 10 biến thể mới: `utf-16-be`, `utf-32-le`, `utf-32-be`, `text/html; charset=utf-16`, `application/octet-stream` với UTF-16 có BOM và UTF-16-LE không BOM, `application/problem+json` UTF-32, `iso-8859-1`, `windows-1252`, và `utf-7` với `+2AA-` (giải mã ra surrogate **thô**, không qua mã thoát JSON; cách lọc theo byte của lượt 1 không bao giờ bắt được) | **Đóng.** `_json` lọc sau khi giải mã (`client.py:1551`), nên mọi đường đều sạch: chữ thay bằng «�», `encode("utf-8")` được. `_SURROGATE_ESCAPE` đã bỏ hẳn (grep `seo_app`, `app`, `tests`: 0) | `test_sl_t091_1_…` (5), `tests/test_la_chan_t091.py` (24), `test_luot2_surrogate_qua_moi_bang_ma_va_kieu_noi_dung` (10) |
+| **SL-T091-2** | 3 ca cũ (nay qua); bài **và** trang đã đăng với mã `MAX_ID+1`, 2⁶⁴, 10³⁰, 0, −1, `true`, `"7"`, `7.0`, `null`, `[7]`, cạnh một mục mã `MAX_ID`; tạo `PublishedItem` trực tiếp với mã lạ | **Đóng.** Mục mã lạ bị bỏ, mục `MAX_ID` vẫn lưu tạm và đọc lại từ cache được, không câu báo lỗi; `PublishedItem` tự từ chối mã quá biên (`client.py:546`) | `test_sl_t091_2_…` (3), `test_luot2_bai_trang_da_dang_ma_la_bi_bo_luu_tam_duoc` (20), `test_luot2_published_item_tu_choi_ma_la` (4) |
+| **SL-T091-3** | Đối chiếu dòng với `assert_says_in_media_library` | **Đóng.** Ca `test_ma_anh_qua_dai_lenh_ghi_de_bi_chan_van_bao_anh_da_o_thu_vien` có lại đủ 5 mẩu `0909`, `evil`, `quản trị</b>`, `example.com`, `anh-khac`, đúng như bản gốc (cùng thứ tự, cùng `assert piece not in message, piece`); cả 2 tham số 10²⁰, 2⁶³ qua | Ca đó + `test_anh_ma_qua_bien_chi_mot_lenh_va_cau_bao_khong_chep_gi` (2) |
+
+### Soát diff test (lượt 2)
+
+| Ca | Kết quả |
+|---|---|
+| **LC-T091-1:** `tests/test_t089_send_draft.py::test_huge_post_id_fixed_note_and_lock`, `::test_huge_post_id_when_run_interrupted` (chung hàm `assert_huge_id_reported_and_locked`) | **Đạt phương án A.** Chỉ đổi 2 dòng ghim câu, mã: `NOTE` trong cảnh báo thành `UNSURE` («bài nháp có thể đã có trên website») trong lỗi; «mã {HUGE_ID}» trong thông báo thành công thành «không thông báo thành công nào có mã đó». **Thêm** «không lệnh nào chứa mã đó». **Giữ nguyên từng dòng:** 1 bài trước và sau, `pending` («đang gửi»), nút khóa ngay và qua 2 lần chạy lại (`run_ok` = trang không lỗi), ca bị ngắt vẫn kiểm `_wp_sending` đã bỏ và `UNSURE` |
+| `tests/test_t091_don_client_wordpress.py::test_khong_co_ma_thoat_…` → `test_luon_loc_sau_khi_giai_ma_du_byte_khong_co_ma_thoat` | **Đạt:** ca cũ ghim một phép tắt tối ưu (không phải tính chất an toàn), đúng cách sửa Lá Chắn ghi; ca mới chặt hơn (đếm bộ lọc chạy ≥ 2 lần, chữ sạch giữ nguyên) |
+| SL-T091-3 (`test_wordpress_t085.py`) | **Đạt:** chỉ thêm 4 dòng (5 mẩu), không bớt dòng nào |
+| Gỡ dấu `xfail`: `tests/test_soi_loi_t091.py` (dấu `_SL1` cho 5 ca và dấu 3 ca SL-T091-2), `tests/test_la_chan_t091.py` (1 dấu cho 18 ca) | **Đạt R5:** chỉ xóa dòng dấu và dòng định nghĩa `_SL1`, thân test không đổi; cả 26 ca qua |
+
+### Grep thêm test ghim hành vi (bài học lượt 1)
+
+Lượt 1 tôi chỉ grep test theo tên module (`seo_app.wordpress`, `fake_wordpress`…), nên sót `tests/test_t089_send_draft.py` (dùng `HUGE_ID`, câu `NOTE`, đi qua `ui.*`). Lượt 2 grep thêm theo hành vi bị ghim: `2**63`, `2**64`, `10**19/20/25/30`, `9223372036854775807/808`, `HUGE_ID`, `MAX_ID`, «lớn bất thường», `MSG_POST_ID_OUT_OF_RANGE`, `_SURROGATE_ESCAPE`, `_without_lone_surrogates`, `surrogate`, `0xD800`, `PublishedItem(`, `_published_from`, `_positive_id`, `OverflowError`, «số nguyên dương», `unfiltered_html`, `_siteseo_saved_form`, `_ability_confirms`, `ConnectionInfo(`: 48 file. Hợp với danh sách file client WordPress, `_seo_text`/`normalize_meta`, `test_t089_send_draft.py`, `test_t086_send_state.py`, `test_la_chan_t091.py`, test T-090 thành **91 file** (chạy trên bản gộp, mục dưới).
+
+### Thử đột biến (lượt 2)
+
+Bản sao `af26c8a` + file của tôi, 6 file (`test_soi_loi_t091.py`, `test_la_chan_t091.py`, `test_t091_don_client_wordpress.py`, `test_soi_loi_t088.py`, `test_wordpress_published.py`, `test_site_index.py`); script `mutate091r2.py`:
+
+| Đột biến | Số test hỏng: Soi Lỗi / Lá Chắn / Thợ Máy |
+|---|---|
+| Q1 quay về lọc theo byte (cách lượt 1) | 13 / 18 / 1 |
+| Q2 `PublishedItem` bỏ trần `MAX_ID` | 1 / 0 / 0 |
+| Q3 `_published_from` đưa mã thô | 0 / 0 / 0: **đột biến tương đương**, `PublishedItem` tự từ chối nên hành vi không đổi (hai lớp chặn trùng nhau) |
+| Q4 bỏ cả hai lớp trần mã bài đã đăng | 10 / 0 / 0 |
+
+### Ghi nhận lượt 2 (không xếp lỗi)
+
+1. **Lớp thứ hai ở `app/views/write.py` không còn test nào chạm tới.** Đó là `MSG_POST_ID_OUT_OF_RANGE` (`:196`, `:2814`), «website trả mã bài nháp lớn bất thường». Client nay không bao giờ trả mã bài > `MAX_ID`, và mọi ca từng đi tới nhánh này đã đổi sang `UNSURE` theo phương án A. Chỉ còn `test_soi_loi_t089.py::test_largest_post_id_still_recorded` kiểm **không** hiện câu đó. Nhánh này nay gần như là code chết. Muốn giữ làm lớp phòng thì nên có một ca giả client trả mã lớn (monkeypatch `create_draft_with_images`); không thì gỡ ở phiếu sau. Không ảnh hưởng an toàn.
+2. Lớp phòng `SiteIndexStore.save` đổi `OverflowError` thành `SiteIndexError` chưa làm (Thợ Máy ghi «Đề xuất», ngoài phạm vi file). Nay `PublishedItem` đã chặn mã quá biên ngay khi tạo, nên không còn đường tới `OverflowError` do mã bài; vẫn nên làm khi mở phạm vi `site_index.py`.
+
+### Test liên quan (lượt 2)
+
+Máy Windows của chủ dự án (máy bận: phiên khác chạy toàn bộ test cùng lúc).
+
+```
+# nhánh team/T-091 (af26c8a) + file của tôi (bản cuối)
+$ uv run pytest -q -p no:cacheprovider tests/test_soi_loi_t091.py tests/test_la_chan_t091.py \
+    tests/test_t091_don_client_wordpress.py
+208 passed in 6.76s
+
+# bản gộp tạm T-091 lượt 2 + main b241e79 (git merge-tree: không xung đột; commit tạm 620983d,
+# không đẩy), 91 file ở mục trên, 21:58–22:45
+13445 passed, 24 skipped, 33 xfailed in 2820.41s (0:47:00)          # 0 failed
+
+$ uv run ruff check .
+All checks passed!
+```
+
+Trong 91 file có `tests/test_t089_send_draft.py` (2 ca LC-T091-1 qua trên bản gộp), `tests/test_t086_send_state.py`, `tests/test_soi_loi_t089.py`, `tests/test_soi_loi_t037.py` (lần này không hỏng oan). 33 xfail đều là dấu có sẵn trên `main` (Lá Chắn T-090…), không dấu nào của T-091 (đã gỡ hết, không XPASS). Bản gộp dùng file của tôi trước khi thêm 34 ca lượt 2; 34 ca đó chỉ dùng code nhánh, chạy trên nhánh như trên.
+
+### Đề xuất (lượt 2)
+
+- **Chỉ Huy:** gộp `main` được (Lá Chắn đã nói không cần kiểm lại code).
+- **Phiếu dọn sau (không gấp):** Ghi nhận lượt 2 số 1 (thêm ca giả client cho `MSG_POST_ID_OUT_OF_RANGE`, hoặc gỡ nhánh) và số 2 (`SiteIndexStore.save` bắt `OverflowError`).
