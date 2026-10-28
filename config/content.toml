@@ -171,6 +171,28 @@ tot = "Minh họa cửa cuốn nhà phố đang mở một nửa"
 xau = "Cửa cuốn nhà chị Lan sau khi Pro-Metal sửa xong"
 vi_sao = "Ảnh AI không được gắn tên khách hay «sau khi sửa»"
 
+# LƯU Ý (T-103, 2026-10-28): mục [plan] dành cho trang Kế hoạch và bước Xuất bản (Giai đoạn 5).
+# Hôm nay phần mềm chưa dùng mục này: phiếu làm bước «Hẹn giờ» (T-102) sẽ đọc. Sửa ở đây lúc này
+# chưa đổi gì trên app.
+[plan]
+# default_time: giờ đăng mặc định, giờ Việt Nam, kiểu 24 giờ HH:MM (ví dụ "08:00", "19:30"). Dùng
+#   khi dòng kế hoạch để trống ô «Giờ đăng»: phần mềm điền sẵn giờ này vào ô giờ của «Hẹn giờ»,
+#   bạn vẫn sửa được trước khi gửi. Khi phần mềm đã dùng mục này: viết sai dạng (ví dụ
+#   "8 giờ sáng", "25:00") thì phần mềm bỏ qua và dùng "08:00".
+default_time = "08:00"
+#
+# Nhãn trong kế hoạch: cố định trong phần mềm (cũng là danh sách chọn trên Google Sheets), không
+# đổi ở file này. Gõ tay trên Sheet thì dùng đúng các nhãn sau:
+#   Ý định (người tìm muốn gì):
+#     «Tìm hiểu»: muốn biết nguyên nhân, cách làm, tự sửa được không (cửa kéo bị kẹt ray).
+#     «So sánh trước khi mua»: cân nhắc vật liệu, kiểu cửa, sửa hay thay (cửa cuốn hay cửa kéo).
+#     «Mua hàng»: đã muốn thuê thợ hay đặt làm (thợ sửa cửa cuốn tại nhà).
+#   Loại trang: «Hướng dẫn», «Dịch vụ», «Khu vực», «Công trình thực tế», «Cập nhật bài cũ» (phần
+#     mềm chưa sửa được bài đã đăng, nhãn này chỉ để nhớ).
+#   Ưu tiên: «Cao», «Trung bình», «Thấp».
+#   Trạng thái: «Chưa viết», «Đang viết», «Đã gửi nháp», «Đã hẹn giờ», «Đã đăng», «Bỏ». Ba trạng
+#     thái «Đã gửi nháp», «Đã hẹn giờ», «Đã đăng» do phần mềm ghi sau khi gửi bài lên website.
+
 # LƯU Ý (T-040, 2026-10-23; nối ở T-041, 2026-10-26): phần mềm đọc mục [meta] mỗi lần AI gợi ý
 # meta, nên sửa ở đây rồi bấm gợi ý lại là có hiệu lực. Lời dặn AI viết meta nằm trong code
 # (seo_app/content/prompts.py, hàm meta_prompt) và đã dặn đúng các điều ghi dưới đây.
