@@ -798,11 +798,6 @@ def test_keyword_in_instruction_line_stays_one_line_inside_its_guillemets(name, 
 # ============================================================ lỗi tìm thấy (xfail strict)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-1 (Trung bình): chữ AI có thẻ HTML bị ký tự vô hình chen sau «<» qua được bộ "
-    "kiểm has_html (kiểm chữ thô), rồi bộ làm sạch bỏ ký tự đó nên kế hoạch giữ thẻ HTML thật",
-)
 @pytest.mark.parametrize("field", ["keyword", "title_hint", "notes", "secondary", "reason"])
 @pytest.mark.parametrize("hidden", [ZWSP, SHY, chr(0x2060)], ids=["zwsp", "shy", "wj"])
 def test_sl_t098_1_ai_html_hidden_by_invisible_character_is_dropped(field, hidden):
@@ -817,11 +812,6 @@ def test_sl_t098_1_ai_html_hidden_by_invisible_character_is_dropped(field, hidde
     assert not any(has_html(text) for text in texts)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-2 (Trung bình): file/chữ dán Markdown nhiều bảng chỉ đọc bảng đầu có cột từ "
-    "khóa, các bảng sau bị bỏ không báo (kế hoạch 6 tháng thật: 112 dòng, đọc 8)",
-)
 def test_sl_t098_2_every_markdown_table_is_read_or_reported():
     text = (
         "## Tháng 11\n| Từ khóa | Ngày |\n|---|---|\n| sửa cửa cuốn | 12/11/2026 |\n\n"
@@ -833,7 +823,6 @@ def test_sl_t098_2_every_markdown_table_is_read_or_reported():
         assert len(result.rows) == 3 or any("bảng" in w for w in others)
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T098-2 (Trung bình): như trên, với file thật")
 def test_sl_t098_2_owner_six_month_plan_reads_every_table():
     path = PLAN_DIR / "ke_hoach_6_thang_chi_tiet.md"
     result = parse.read_file(path.read_bytes(), path.name)
@@ -842,11 +831,6 @@ def test_sl_t098_2_owner_six_month_plan_reads_every_table():
     assert len(result.rows) + result.skipped == expected or any("bảng" in w for w in others)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-3 (Thấp): CSV có dấu ngoặc kép không đóng nuốt mọi dòng sau vào một ô, "
-    "không báo (câu BAD_TABLE nói có kiểm nhưng csv chạy strict=False)",
-)
 def test_sl_t098_3_unclosed_quote_is_reported():
     text = 'Từ khóa,Ghi chú\nsửa cửa,"ghi chú chưa đóng\ncửa cuốn,abc\ncửa kéo,def\n'
     try:
@@ -857,11 +841,6 @@ def test_sl_t098_3_unclosed_quote_is_reported():
     assert len(result.rows) == 3 or result.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-4 (Thấp): ô Markdown có «\\|» (dấu | đã escape) hay dòng mở đầu «||» (ô đầu "
-    "trống) làm lệch cột: dữ liệu vào sai cột, có ca từ khóa thành ngày mà không báo",
-)
 @pytest.mark.parametrize("case", ["escaped_pipe", "empty_first_cell"])
 def test_sl_t098_4_markdown_cells_do_not_shift(case):
     if case == "escaped_pipe":
@@ -880,10 +859,6 @@ def test_sl_t098_4_markdown_cells_do_not_shift(case):
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-5 (Thấp): dò số điện thoại sót dạng hay gặp có ngoặc hay gạch có dấu cách",
-)
 @pytest.mark.parametrize(
     "text", ["(+84) 909 123 456", "+84 (0) 909 123 456", "(028) 3812 3456", "0909 - 123 - 456"]
 )
@@ -893,11 +868,6 @@ def test_sl_t098_5_common_phone_formats_are_found(text):
     assert "123" not in model.mask_personal_info(text)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-6 (Thấp): dò dữ liệu cá nhân trên chữ NFC, nhưng lời dặn gửi AI chữ đã NFKC: "
-    "số, «@» toàn chiều rộng qua bộ dò rồi tới AI thành số, «@» thường",
-)
 @pytest.mark.parametrize(
     "text",
     [
@@ -921,11 +891,6 @@ def fastest(small, big, rounds: int = 3) -> tuple[float, float]:
     return best[0], best[1]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-7 (Thấp): biểu thức dò email chạy theo bình phương độ dài: một chuỗi 20.000 "
-    "ký tự liền (chữ dán tối đa) mất vài giây mỗi lần dò",
-)
 def test_sl_t098_7_personal_info_time_grows_linearly():
     # Chuỗi dài gấp 8: thời gian tuyến tính gấp ~8, bình phương gấp ~64.
     small, big = fastest(lambda: model.personal_info("a" * 1_000),
@@ -933,11 +898,6 @@ def test_sl_t098_7_personal_info_time_grows_linearly():
     assert big < 16 * small + 0.05
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-8 (Thấp): bộ nhận địa danh coi mọi từ bắt đầu bằng p, q, xa (kèm từ sau) là "
-    "phường, quận, xã: ba từ khóa không có địa danh nào bị cảnh báo «trang cửa ngõ»",
-)
 @pytest.mark.parametrize(
     "keywords",
     [
@@ -952,11 +912,6 @@ def test_sl_t098_8_doorway_needs_real_place_names(keywords):
     assert propose.WARN_DOORWAY not in proposal.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-9 (Thấp): kế hoạch có dòng chưa có Mã bài: khi một dòng như thế được cập "
-    "nhật, mọi dòng chưa có mã bị loại khỏi bộ so trùng, mất cảnh báo trùng từ khóa",
-)
 def test_sl_t098_9_duplicate_of_a_keyless_row_is_still_warned():
     current = (PlanRow(keyword="sửa cửa cuốn"), PlanRow(keyword="cửa kéo đài loan"))
     incoming = (
@@ -968,11 +923,6 @@ def test_sl_t098_9_duplicate_of_a_keyless_row_is_still_warned():
     assert any(w.startswith("Từ khóa trùng dòng") for w in added.warnings)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-10 (Thấp): bảng chép từ Google Sheets/Excel có ô nhiều dòng (ghi chú) bị coi "
-    "là chữ tự do (đếm dấu tab theo dòng vật lý) nên phải gửi AI thay vì đọc thẳng",
-)
 def test_sl_t098_10_pasted_table_with_multiline_cells_is_a_table():
     text = 'Từ khóa\tGhi chú\nsửa cửa\t"dòng 1\ndòng 2\ndòng 3\ndòng 4"\ncửa kéo\tx\n'
     result = parse.read_paste(text)
@@ -983,11 +933,6 @@ def test_sl_t098_10_pasted_table_with_multiline_cells_is_a_table():
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-11 (Thấp): bộ kiểm trùng của đề xuất tính lại khóa từ khóa cho từng cặp dòng "
-    "(bình phương số dòng): bảng 1.000 dòng so với kế hoạch 1.000 dòng mất 30-60 giây",
-)
 def test_sl_t098_11_compare_rows_time_grows_linearly():
     def plan(size: int) -> tuple[list[PlanRow], list[PlanRow]]:
         current = [PlanRow(key=f"B-{i:03d}", keyword=f"sửa cửa cuốn loại {i} tại nhà")

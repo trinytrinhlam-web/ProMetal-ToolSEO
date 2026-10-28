@@ -116,7 +116,7 @@ def test_rows_without_keyword_or_with_bad_keyword_are_skipped():
         "B-4,cửa cuốn,,,,,,",
     )
     result = read_file(data, "a.csv")
-    assert [row.key for row in result.rows] == ["B-4"]
+    assert [row.key for row in result.rows] == ["B-004"]
     assert result.skipped == 3
     assert "không có từ khóa chính" in all_warnings(result)
 
@@ -340,3 +340,58 @@ def test_warnings_are_grouped_and_capped():
     (warning,) = result.warnings
     assert "40 dòng" in warning and "dòng 2, 3, 4, 5, 6, …" in warning
     assert MARK not in warning
+
+
+# ------------------------------------------------------------------- lượt 2 (Soi Lỗi T-098)
+
+
+def test_unknown_columns_are_counted_not_named():
+    data = csv_bytes("cửa cuốn,x,y", header=f"Từ khóa chính,{MARK} A,{MARK} B")
+    result = read_file(data, "a.csv")
+    assert parse.UNKNOWN_COLUMNS.format(count=2) in result.warnings
+    assert MARK not in all_warnings(result)
+
+
+@pytest.mark.parametrize(
+    "header", ["Ngày đăng dự kiến", "Ngày xuất bản", "Ngày đăng bài", "Publish", "Deadline"]
+)
+def test_more_date_column_names(header):
+    data = csv_bytes("cửa cuốn,20/11/2026", header=f"Từ khóa SEO,{header}")
+    assert read_file(data, "a.csv").rows[0].planned_date == date(2026, 11, 20)
+
+
+def test_header_row_below_a_title_row():
+    data = csv_bytes("Từ khóa chính,Ưu tiên", "cửa cuốn,Cao", header="Kế hoạch tháng 11,")
+    (row,) = read_file(data, "a.csv").rows
+    assert (row.keyword, row.priority) == ("cửa cuốn", "Cao")
+
+
+def test_csv_delimiter_ignores_commas_inside_quoted_header():
+    data = '"Từ khóa phụ, ý cần có";Từ khóa chính\nray, lá;cửa cuốn\n'.encode()
+    (row,) = read_file(data, "a.csv").rows
+    assert (row.keyword, row.secondary) == ("cửa cuốn", "ray, lá")
+
+
+def test_markdown_bold_and_code_cells_are_unwrapped():
+    text = "| Mã bài | Từ khóa |\n|---|---|\n| `B-7` | **sửa cửa cuốn** |\n"
+    (row,) = read_paste(text).rows
+    assert (row.key, row.keyword) == ("B-007", "sửa cửa cuốn")
+
+
+def test_several_markdown_tables_are_labelled_and_unread_ones_counted():
+    text = (
+        "| Từ khóa | Ưu tiên |\n|---|---|\n| cửa cuốn | Rất cao |\n\n"
+        "| Tháng | Số bài |\n|---|---|\n| T10 | 20 |\n\n"
+        "| Từ khóa |\n|---|\n| cửa kéo |\n"
+    )
+    result = read_paste(text)
+    assert [row.keyword for row in result.rows] == ["cửa cuốn", "cửa kéo"]
+    assert any(w.startswith("Bảng 1: Ô «Ưu tiên»") for w in result.warnings)
+    assert parse.UNREAD_TABLES.format(count=1) in result.warnings
+
+
+def test_key_shared_between_tables_keeps_first():
+    head = "| Mã bài | Từ khóa |\n|---|---|\n"
+    text = f"{head}| B-1 | cửa cuốn |\n\n{head}| B-001 | cửa kéo |\n"
+    result = read_paste(text)
+    assert [row.keyword for row in result.rows] == ["cửa cuốn"] and result.skipped == 1

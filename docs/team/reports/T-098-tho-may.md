@@ -131,3 +131,71 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-28 13:16 +07:00) · Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`84f32ec`)
+
+Chỉ Huy B giao: sửa SL-T098-1 (bắt buộc), SL-T098-2, các lỗi Thấp và góp ý nhỏ, an toàn, trong phạm vi phiếu; cái nào không sửa thì ghi lý do.
+
+### Tóm tắt (cho chủ dự án)
+
+- AI không còn lách được thẻ HTML vào kế hoạch bằng ký tự vô hình hay chữ toàn chiều rộng.
+- File kế hoạch nhiều bảng (như kế hoạch 6 tháng) nay đọc **mọi bảng**, không chỉ bảng đầu; bảng không có cột từ khóa thì báo số bảng bỏ qua.
+- Dò số điện thoại nhận thêm `(+84) 909…`, `+84 (0) 909…`, `(028) 3812 3456`, `0909 - 123 - 456`; chữ toàn chiều rộng không lọt; dò nhanh với chữ dài.
+- Cảnh báo «trang cửa ngõ» không còn bắt nhầm «phụ kiện», «quay chậm», «xài lâu».
+- Kế hoạch 1.000 dòng so trong vài giây thay vì gần một phút.
+- Đọc thêm: giờ có giây (`08:00:00`, như Google Sheets hiện), `SA/CH/AM/PM`, ngày giờ trong một ô số; tên cột «Ngày xuất bản», «Deadline», «Từ khóa SEO»…; dòng tên bảng phía trên dòng tiêu đề; «B-1» và «B-001» là một mã.
+
+### Đã sửa
+
+| Mã | Sửa | Chỗ |
+|---|---|---|
+| **SL-T098-1** (Trung bình) | Đường AI kiểm thẻ HTML trên **chữ đã làm sạch** (bỏ ký tự vô hình trước) và cả bản NFKC (`＜script＞`), như bài học T-041; áp cho từ khóa, từ khóa phụ, tiêu đề dự kiến, ghi chú và lý do | `propose.py` `_has_html_text`, dùng ở `_ai_values`, `_ai_item` |
+| **SL-T098-2** (Trung bình) | Đọc **mọi** bảng Markdown có cột từ khóa (`_tables_to_plan`), gộp dòng, Mã bài trùng giữa các bảng giữ dòng đầu, câu báo mỗi bảng mở đầu «Bảng N:», bảng không có cột từ khóa báo số bảng (`UNREAD_TABLES`); giới hạn 1.000 dòng tính chung | `parse.py` `_tables_to_plan`, `_rows_to_plan` |
+| SL-T098-3 | `csv.reader(..., strict=True)`: dấu ngoặc kép không đóng ra câu cố định `BAD_TABLE` | `parse.py` `_read_table` |
+| SL-T098-4 | Ô Markdown: chỉ chia ở dấu gạch đứng chưa escape; dấu gạch đứng đã escape (gạch chéo ngược rồi gạch đứng, ví dụ tiêu đề «Sửa cửa cuốn \| Pro-Metal») thành một gạch đứng trong ô; chỉ bỏ đúng một gạch đứng ở đầu và một ở cuối dòng (dòng mở đầu bằng hai gạch đứng liền nhau giữ ô đầu trống) | `parse.py` `_md_cells` |
+| SL-T098-5 | Biểu thức số điện thoại: đầu số `0`, `84`, `+84`, `(+84)`, `+84 (0)`, `(028)`; tới 3 ký tự cách (dấu cách, chấm, gạch, ngoặc) giữa các chữ số. Dạng dính chữ «sđt0909…» vẫn không dò (Soi Lỗi khuyên không, dễ nhầm mã hàng) | `model.py` `_PHONE_RE` |
+| SL-T098-6 | Dò và che trên chữ đã NFKC, đúng chữ AI nhận | `model.py` `_visible_for_ai` |
+| SL-T098-7 | Email: neo đầu, giới hạn độ dài từng phần → tuyến tính (20.000 ký tự liền: 7 ms, trước 4–5 s) | `model.py` `_EMAIL_RE` |
+| SL-T098-8 | Viết tắt «q», «p» chỉ là địa danh khi theo sau là số hay dấu chấm; «quận/phường/huyện/xã» + tên phải có dấu cách | `propose.py` `_LOCATION` |
+| SL-T098-9 | So trùng theo **đúng dòng** (`id`), không theo mã (dòng chưa mã không bị loại hết); dòng cũ chưa có mã được đề xuất đổi thì được **cấp mã** (T-100 ghi Sheet theo mã), lý do ghi «Cấp mã bài B-00N…», `Proposal.changes` có `key` | `propose.py` `check_proposals`, `_table_change` |
+| SL-T098-11 | Khóa từ khóa, khuôn địa danh, tập từ bài đã đăng tính một lần mỗi dòng; cấp mã bằng `_Keys` (không quét lại danh sách mỗi dòng mới) → tuyến tính | `propose.py` `check_proposals`, `_post_index`, `_Keys` |
+| SL-T098-10 | Nhận bảng chép từ Excel/Google Sheets theo **dòng của bảng** (`csv`, tính cả ô nhiều dòng trong ngoặc kép), không theo dòng vật lý | `parse.py` `_looks_tabbed` |
+| G1 | Thêm tên cột «Ngày đăng dự kiến», «Ngày xuất bản», «Ngày đăng bài», «Publish», «Deadline», «Từ khóa SEO», «Keyword chính», «Từ khóa mục tiêu», «Target keyword»; báo «N cột không nhận ra tên nên không đọc» (chỉ số đếm, LC-T094-2) | `parse.py` `_HEADER_NAMES`, `_header_map` |
+| G2 | Giờ có giây (`08:00:00`, bỏ giây), giờ có buổi viết tắt `SA/CH/AM/PM`; ô ngày giờ ISO `2026-06-12T08:00:00`, `12/06/2026 08:00:00`; số ngày có phần lẻ `46337.5` = ngày + 12:00. Chữ buổi viết đủ «sáng/chiều» **không** nhận: test của Soi Lỗi `test_hostile_ai_items_are_dropped_or_kept_as_designed` đòi «8:00 sáng» bị từ chối | `model.py` `_TIME_RE`, `parse_plan_time`, `split_date_time` |
+| G3 | «Ngày dự kiến đã qua» chỉ khi «Thêm» hay khi đề xuất **đổi** ngày | `propose.py` `check_proposals` |
+| G4 | Mọi thay đổi ở dòng «Đã hẹn giờ»/«Đã đăng» đều có `WARN_RELEASED` (không tick sẵn) | `propose.py` `check_proposals` |
+| G5 | Chữ AI (từ khóa, từ khóa phụ, tiêu đề, ghi chú, lý do) có số điện thoại, email → cảnh báo `WARN_PERSONAL` | `propose.py` `from_ai`, `_has_personal` |
+| G7 | Dòng tiêu đề tìm trong 5 dòng đầu (bỏ dòng tên bảng phía trên); ô Markdown in đậm/nghiêng/mã bỏ dấu bọc; Mã bài viết lại ít nhất 3 chữ số («B-1» = «B-001» = «B-0001»); đoán dấu phân cách CSV không tính chữ trong ngoặc kép | `parse.py` `_find_header`, `_md_cells`, `_csv_delimiter`; `model.py` `parse_key` |
+| G8 (phần trong phạm vi) | AI đề xuất hơn 20 thay đổi một lần thì mọi đề xuất AI có cảnh báo `WARN_MANY_AI` (không tick sẵn) | `propose.py` `AI_MANY`, `from_ai` |
+
+### Để lại (lý do)
+
+| Mục | Lý do |
+|---|---|
+| G6 `DATA_RULES` chưa nêu 2 khung mới | Việc của T-103 (Ngòi Bút): LC-T094-42 giao giữ và viết lại `DATA_RULES`; lời dặn `plan` đã tự nói hai khung là dữ liệu |
+| G8 phần còn lại | Của phiếu sau: T-100 trung hòa chữ bắt đầu `=` `+` `-` `@` khi ghi Sheet (LC-T094-28); T-101 hiện chữ thuần; T-101/T-102 gọi `personal_info` khi điền ghi chú vào Soạn bài |
+| G2 chữ «sáng», «chiều» viết đủ | Test (không `xfail`) của Soi Lỗi đòi từ chối «8:00 sáng»; giữ như vậy, chỉ nhận dạng viết tắt mà Sheets/Excel hiện |
+| SL-T098-5 dạng dính chữ «sđt0909123456» | Soi Lỗi không xếp lỗi (dễ nhầm mã hàng) |
+
+### Test
+
+- Gỡ 12 dấu `xfail` trong `tests/test_soi_loi_t098.py` (SL-T098-1 → -11) sau khi chạy `--runxfail`: **55 dòng xóa, 0 dòng thêm**, mọi dòng xóa là dấu `@pytest.mark.xfail(...)` (đã soát bằng `git diff`).
+- Test của tôi đổi theo hành vi mới có chủ đích: `tests/test_plan_model.py` (`test_key_format`: «b-1» → «B-001», «kv-00012» → «KV-012»; `test_times`: thêm giây, SA/CH/AM/PM; `test_times_rejected`: bỏ `08:00:00`, thêm «13 PM», «0 AM», «8:00 sáng»…; thêm `test_split_date_time`), `tests/test_plan_parse.py` (mã `B-004`; thêm 6 test lượt 2), `tests/test_plan_propose.py` (thêm 7 test lượt 2). 4 file test của tôi: 251 ca.
+- Nơi gọi `seo_app/plan` (grep): chỉ `seo_app/content/prompts.py` (`plan_prompt`), `seo_app/content/workflow.py` (`plan_changes`); có test ở `tests/test_plan_ai.py`, `tests/test_soi_loi_t098.py`.
+
+```
+$ uv run pytest -q -p no:cacheprovider -rfEX tests/test_plan_model.py tests/test_plan_parse.py \
+    tests/test_plan_propose.py tests/test_plan_ai.py tests/test_soi_loi_t098.py \
+    tests/test_soi_loi_t003_t009.py tests/test_t040_prompts.py tests/test_content_workflow.py \
+    tests/test_prompt_data_frames.py tests/test_content_edge_cases.py
+(2026-10-28 13:15:12 → 13:16:03 +0700)
+625 passed in 47.84s
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- Trước khi gỡ dấu: `uv run pytest --runxfail tests/test_soi_loi_t098.py tests/test_plan_model.py` → `303 passed`.
+- Lượt 2 chỉ sửa 3 file trong `seo_app/plan/` và test; không đụng `seo_app/content/`, `app/`, `seo_app/wordpress/`, `seo_app/storage/`, `config/`.

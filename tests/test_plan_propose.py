@@ -314,3 +314,56 @@ def test_ai_suggestions_get_the_same_warnings():
 def test_from_ai_requires_the_schema():
     with pytest.raises(TypeError):
         from_ai({"items": []}, CURRENT)
+
+
+# ------------------------------------------------------------------- lượt 2 (Soi Lỗi T-098)
+
+
+def test_keyless_row_gets_a_key_when_changed():
+    current = (PlanRow(key="B-007", keyword="cửa kéo"), PlanRow(keyword="sửa cửa cuốn"))
+    (update,) = compare_rows(current, [PlanRow(keyword="sửa cửa cuốn", priority="Cao")]).items
+    assert update.key == update.after.key == "B-008" and update.before.key == ""
+    assert "key" in update.changes and update.reason.startswith("Cấp mã bài B-008")
+
+
+def test_short_and_long_keys_are_the_same_row():
+    (update,) = compare_rows(CURRENT, [PlanRow(key="B-1", keyword="x y", priority="Cao")]).items
+    assert update.key == "B-001"
+
+
+def test_past_date_warns_only_when_added_or_moved():
+    current = [PlanRow(key="B-001", keyword="cửa cuốn", planned_date="01/09/2026")]
+    notes = PlanRow(key="B-001", keyword="cửa cuốn", notes="mới")
+    (notes_only,) = compare_rows(current, [notes], today=TODAY).items
+    assert propose.WARN_PAST not in notes_only.warnings
+    later = PlanRow(key="B-001", keyword="cửa cuốn", planned_date="02/09/2026")
+    (moved,) = compare_rows(current, [later], today=TODAY).items
+    assert propose.WARN_PAST in moved.warnings
+
+
+def test_any_change_on_published_row_warns():
+    title = PlanRow(key="B-004", keyword="cửa cuốn khe thoáng", title_hint="Tiêu đề mới")
+    (update,) = compare_rows(CURRENT, [title], today=TODAY).items
+    assert propose.WARN_RELEASED in update.warnings and not update.preselected
+
+
+@pytest.mark.parametrize("field", ["notes", "title_hint", "reason"])
+def test_ai_text_with_phone_or_email_warns(field):
+    fields = {"action": "them", "keyword": "cửa nhôm", field: "Gọi 0909 123 456"}
+    (add,) = ai(suggestion(**fields)).items
+    assert propose.WARN_PERSONAL in add.warnings and not add.preselected
+
+
+def test_many_ai_proposals_are_not_preselected():
+    few = ai(*[suggestion(action="them", keyword=f"cửa cuốn mẫu {i}") for i in range(20)])
+    assert all(p.preselected for p in few.items)
+    many = ai(*[suggestion(action="them", keyword=f"cửa cuốn mẫu {i}") for i in range(21)])
+    assert all(propose.WARN_MANY_AI.format(count=21) in p.warnings for p in many.items)
+
+
+@pytest.mark.parametrize("field", ["keyword", "notes", "reason"])
+def test_ai_fullwidth_html_is_dropped(field):
+    fullwidth = chr(0xFF1C) + "script" + chr(0xFF1E)
+    fields = {"action": "them", "keyword": "cửa nhôm", field: f"{fullwidth} cửa"}
+    result = ai(suggestion(**fields))
+    assert result.items == () and result.dropped == 1

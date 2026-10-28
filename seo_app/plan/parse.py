@@ -92,7 +92,10 @@ class ParsedPlan:
 # tên, không so một phần: «Ngày đăng» là ngày dự kiến, «Ngày đăng thực tế» là cột app ghi.
 _HEADER_NAMES = {
     "key": ("ma bai", "ma"),
-    "keyword": ("tu khoa chinh", "tu khoa", "keyword", "main keyword", "focus keyword"),
+    "keyword": (
+        "tu khoa chinh", "tu khoa", "keyword", "main keyword", "focus keyword", "tu khoa seo",
+        "keyword chinh", "tu khoa muc tieu", "target keyword",
+    ),
     "secondary": (
         "tu khoa phu y can co", "tu khoa phu", "y can co", "secondary keywords",
         "secondary keyword",
@@ -102,7 +105,8 @@ _HEADER_NAMES = {
     "priority": ("uu tien", "do uu tien", "priority"),
     "planned_date": (
         "ngay du kien", "ngay", "ngay dang", "ngay gio dang", "ngay phat hanh", "phat hanh",
-        "publish date",
+        "publish date", "ngay dang du kien", "ngay xuat ban", "ngay dang bai", "publish",
+        "deadline",
     ),
     "planned_time": ("gio dang", "gio"),
     "status": ("trang thai", "tinh trang", "status"),
@@ -117,7 +121,20 @@ _HEADER_NAMES = {
 _HEADERS = {name: field_name for field_name, names in _HEADER_NAMES.items() for name in names}
 # Dòng phân cách của bảng Markdown: «|---|:---:|».
 _MD_SEPARATOR = re.compile(r"\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?")
+# Dấu «|» chia ô Markdown: không tính dấu đã escape (gạch chéo ngược rồi «|», cách GFM ghi «|»
+# trong ô, ví dụ tiêu đề «Sửa cửa cuốn | Pro-Metal»; Soi Lỗi SL-T098-4).
+_BACKSLASH = chr(92)
+_MD_PIPE = re.compile(r"(?<!\\)\|")
+# Ô Markdown in đậm, nghiêng, mã («**sửa cửa**», «`B-001`»): bỏ dấu bọc (góp ý G7).
+_MD_WRAPPED = re.compile(r"(\*\*|__|\*|_|`)(.+)\1", re.DOTALL)
+# Dòng tiêu đề có thể không nằm ở dòng đầu (file có dòng tên bảng phía trên, góp ý G7): tìm dòng
+# có cột từ khóa trong số dòng đầu này.
+_HEADER_SCAN = 5
 _DIGITS = re.compile(r"\d{1,10}")
+_QUOTED = re.compile(r'"[^"]*"')
+UNKNOWN_COLUMNS = "{count} cột không nhận ra tên nên không đọc."
+UNREAD_TABLES = "{count} bảng không có cột «Từ khóa chính» nên không đọc."
+TABLE_LABEL = "Bảng {number}: "
 
 
 # ------------------------------------------------------------------------------- vào
@@ -166,27 +183,41 @@ def _newlines(text: str) -> str:
 
 
 def _csv_delimiter(text: str) -> str:
-    """Dấu phân cách CSV theo dòng đầu: «,» (mặc định), «;» (Excel máy đặt vùng châu Âu), tab."""
-    first = text.split("\n", 1)[0]
+    """Dấu phân cách CSV theo dòng đầu (không tính chữ trong ngoặc kép, ví dụ tiêu đề cột
+    «"Từ khóa phụ, ý cần có"»): «,» (mặc định), «;» (Excel máy đặt vùng châu Âu), tab."""
+    first = _QUOTED.sub("", text.split("\n", 1)[0])
     counts = {sep: first.count(sep) for sep in (",", ";", "\t")}
     best = max(counts, key=lambda sep: counts[sep])
     return best if counts[best] else ","
 
 
+def _looks_tabbed(text: str) -> bool:
+    """Bảng chép từ Excel/Google Sheets: có dấu tab ở đa số **dòng của bảng** (≥ 2 dòng, ≥ 60%).
+    Đếm theo dòng của bảng (``csv``), không theo dòng vật lý: ô nhiều dòng được chép trong ngoặc
+    kép (Soi Lỗi SL-T098-10). ``csv`` không đọc được thì đếm theo dòng vật lý."""
+    try:
+        records = [
+            record
+            for record in csv.reader(io.StringIO(text, newline=""), delimiter="\t", strict=True)
+            if any(cell.strip() for cell in record)
+        ]
+        tabbed = sum(len(record) > 1 for record in records)
+        total = len(records)
+    except csv.Error:
+        lines = [line for line in text.split("\n") if line.strip()]
+        tabbed, total = sum("\t" in line for line in lines), len(lines)
+    return total >= 2 and tabbed >= max(2, 0.6 * total)
+
+
 def _read_text(text: str, index: SiteIndex | None) -> ParsedPlan:
-    lines = [line for line in text.split("\n") if line.strip()]
-    tabbed = sum("\t" in line for line in lines)
-    if len(lines) >= 2 and tabbed >= max(2, 0.6 * len(lines)):
+    if _looks_tabbed(text):
         return _read_table(text, "\t", index, free_if_unknown=True)
-    tables = _markdown_tables(text)
-    for table in tables:
-        result = _rows_to_plan(table, index)
-        if result is not None:
-            if _outside_tables(text):
-                warnings = (*result.warnings, OUTSIDE_TABLE)
-                return ParsedPlan(result.rows, "", warnings, result.skipped)
-            return result
-    return _free_text(text)
+    result = _tables_to_plan(_markdown_tables(text), index)
+    if result is None:
+        return _free_text(text)
+    if _outside_tables(text):
+        return ParsedPlan(result.rows, "", (*result.warnings, OUTSIDE_TABLE), result.skipped)
+    return result
 
 
 def _free_text(text: str) -> ParsedPlan:
@@ -205,7 +236,10 @@ def _read_table(
     text: str, delimiter: str, index: SiteIndex | None, *, free_if_unknown: bool
 ) -> ParsedPlan:
     try:
-        table = _limited_rows(csv.reader(io.StringIO(text, newline=""), delimiter=delimiter))
+        # strict: dấu ngoặc kép không đóng là lỗi (mặc định ``csv`` gộp mọi dòng sau vào một ô mà
+        # không báo, Soi Lỗi SL-T098-3). CSV chuẩn của Excel, Google Sheets vẫn đọc được.
+        reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter, strict=True)
+        table = _limited_rows(reader)
     except csv.Error:
         raise PlanSourceError(BAD_TABLE) from None
     result = _rows_to_plan(table, index)
@@ -241,10 +275,10 @@ def _markdown_tables(text: str) -> list[list[list[str]]]:
         stripped = line.strip()
         if stripped.startswith("|"):
             if not _MD_SEPARATOR.fullmatch(stripped):
-                cells = stripped.strip("|").split("|")
+                cells = _md_cells(stripped)
                 if len(cells) > MAX_COLUMNS:
                     raise PlanSourceError(TOO_MANY_COLUMNS)
-                current.append([cell.strip() for cell in cells])
+                current.append(cells)
                 if len(current) > MAX_ROWS + 1:
                     raise PlanSourceError(TOO_MANY_ROWS)
         elif current:
@@ -255,6 +289,24 @@ def _markdown_tables(text: str) -> list[list[list[str]]]:
     return tables
 
 
+def _md_cells(line: str) -> list[str]:
+    """Các ô của một dòng bảng Markdown: bỏ đúng một «|» ở đầu và cuối (dòng «|| a |» có ô đầu
+    trống), chia ở «|» chưa escape, «|» đã escape thành «|», bỏ dấu in đậm/nghiêng/mã bọc ô."""
+    body = line[1:] if line.startswith("|") else line
+    if body.endswith("|") and not body.endswith(_BACKSLASH + "|"):
+        body = body[:-1]
+    cells = []
+    for cell in _MD_PIPE.split(body):
+        cell = cell.replace(_BACKSLASH + "|", "|").strip()
+        for _ in range(3):
+            found = _MD_WRAPPED.fullmatch(cell)
+            if not found:
+                break
+            cell = found.group(2).strip()
+        cells.append(cell)
+    return cells
+
+
 def _outside_tables(text: str) -> bool:
     """Có chữ (ngoài tiêu đề Markdown «#…») nằm ngoài bảng không."""
     return any(
@@ -263,17 +315,23 @@ def _outside_tables(text: str) -> bool:
 
 
 def _header_map(header: Sequence[str]) -> tuple[dict[str, int], list[str]]:
-    """Cột → chỉ số, theo tên cột đồng nghĩa. Cột trùng nghĩa: lấy cột đầu, báo."""
+    """Cột → chỉ số, theo tên cột đồng nghĩa. Cột trùng nghĩa: lấy cột đầu, báo. Cột có tên mà
+    không nhận ra: báo số cột (không chép tên cột, góp ý G1)."""
     columns: dict[str, int] = {}
     warnings: list[str] = []
+    unknown = 0
     for position, title in enumerate(header):
-        field_name = _HEADERS.get(fold_key(title[:MAX_CELL_CHARS]))
+        folded = fold_key(title[:MAX_CELL_CHARS])
+        field_name = _HEADERS.get(folded)
         if field_name is None:
+            unknown += bool(folded)
             continue
         if field_name in columns:
             warnings.append(f"Có hơn một cột «{FIELD_LABELS[field_name]}»: chỉ đọc cột đầu tiên.")
             continue
         columns[field_name] = position
+    if unknown and "keyword" in columns:
+        warnings.append(UNKNOWN_COLUMNS.format(count=unknown))
     return columns, warnings
 
 
@@ -294,20 +352,64 @@ class _Notes:
         return out
 
 
-def _rows_to_plan(table: list[list[str]], index: SiteIndex | None) -> ParsedPlan | None:
-    """Bảng (dòng đầu là tiêu đề) thành ``ParsedPlan``; ``None`` nếu không có cột từ khóa."""
-    if not table:
+def _tables_to_plan(tables: list[list[list[str]]], index: SiteIndex | None) -> ParsedPlan | None:
+    """Mọi bảng Markdown có cột từ khóa, gộp lại (kế hoạch nhiều tháng là nhiều bảng: Soi Lỗi
+    SL-T098-2); ``None`` nếu không bảng nào có cột từ khóa. Bảng không có cột từ khóa: báo số bảng.
+    Câu báo của từng bảng mở đầu «Bảng N:» khi có hơn một bảng. Mã bài trùng giữa các bảng: giữ
+    dòng đầu."""
+    results = []
+    seen_keys: set[str] = set()
+    total = 0
+    for table in tables:
+        result = _rows_to_plan(table, index, seen_keys, row_budget=MAX_ROWS - total)
+        if result is not None:
+            results.append(result)
+            total += len(result.rows) + result.skipped
+    if not results:
         return None
-    columns, warnings = _header_map(table[0])
-    if "keyword" not in columns:
+    rows: list[PlanRow] = []
+    warnings: list[str] = []
+    for number, result in enumerate(results, start=1):
+        rows.extend(result.rows)
+        label = TABLE_LABEL.format(number=number) if len(results) > 1 else ""
+        warnings.extend(label + warning for warning in result.warnings)
+    if len(tables) > len(results):
+        warnings.append(UNREAD_TABLES.format(count=len(tables) - len(results)))
+    return ParsedPlan(tuple(rows), "", tuple(warnings), sum(r.skipped for r in results))
+
+
+def _find_header(table: list[list[str]]) -> tuple[int, dict[str, int], list[str]] | None:
+    """(Chỉ số dòng tiêu đề, cột, câu báo) của dòng đầu tiên trong ``_HEADER_SCAN`` dòng đầu có cột
+    từ khóa; ``None`` nếu không có."""
+    for start, header in enumerate(table[:_HEADER_SCAN]):
+        columns, warnings = _header_map(header)
+        if "keyword" in columns:
+            return start, columns, warnings
+    return None
+
+
+def _rows_to_plan(
+    table: list[list[str]],
+    index: SiteIndex | None,
+    seen_keys: set[str] | None = None,
+    *,
+    row_budget: int = MAX_ROWS,
+) -> ParsedPlan | None:
+    """Bảng thành ``ParsedPlan``; ``None`` nếu không có cột từ khóa. Dòng tiêu đề là dòng đầu tiên
+    trong ``_HEADER_SCAN`` dòng đầu có cột từ khóa (dòng tên bảng phía trên bị bỏ qua). Số dòng
+    trong câu báo là thứ tự dòng trong bảng (dòng đầu bảng là 1). ``seen_keys``: Mã bài đã gặp
+    (dùng chung giữa các bảng); ``row_budget``: số dòng dữ liệu còn được đọc."""
+    found = _find_header(table)
+    if found is None:
         return None
-    if len(table) - 1 > MAX_ROWS:
+    start, columns, warnings = found
+    if len(table) - start - 1 > row_budget:
         raise PlanSourceError(TOO_MANY_ROWS)
     notes = _Notes()
     rows: list[PlanRow] = []
-    seen_keys: set[str] = set()
+    seen_keys = set() if seen_keys is None else seen_keys
     skipped = 0
-    for line, cells in enumerate(table[1:], start=2):
+    for line, cells in enumerate(table[start + 1 :], start=start + 2):
         row = _row(cells, columns, line, index, notes)
         if row is None:
             skipped += 1

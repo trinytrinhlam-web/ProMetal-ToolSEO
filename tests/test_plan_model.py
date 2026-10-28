@@ -76,7 +76,15 @@ def test_plan_row_rejects_too_long_text_instead_of_cutting(field, limit):
 
 
 @pytest.mark.parametrize(
-    ("raw", "expected"), [("b-1", "B-1"), (" kv-00012 ", "KV-00012"), ("", ""), ("B-024", "B-024")]
+    ("raw", "expected"),
+    [
+        ("b-1", "B-001"),
+        (" kv-00012 ", "KV-012"),
+        ("B-0001", "B-001"),
+        ("B-1000", "B-1000"),
+        ("", ""),
+        ("B-024", "B-024"),
+    ],
 )
 def test_key_format(raw, expected):
     assert PlanRow(key=raw, keyword="cửa cuốn").key == expected
@@ -160,16 +168,47 @@ def test_dates_rejected(raw):
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [("8:00", "08:00"), ("08:30", "08:30"), ("8h", "08:00"), ("8h30", "08:30"), ("8 giờ", "08:00")],
+    [
+        ("8:00", "08:00"),
+        ("08:30", "08:30"),
+        ("8h", "08:00"),
+        ("8h30", "08:30"),
+        ("8 giờ", "08:00"),
+        ("08:30:00", "08:30"),  # Google Sheets tiếng Việt hiện cả giây (góp ý G2)
+        ("8:00 SA", "08:00"),
+        ("2:30 CH", "14:30"),
+        ("8 PM", "20:00"),
+        ("12:00 AM", "00:00"),
+        ("12 PM", "12:00"),
+        ("11:59 pm", "23:59"),
+    ],
 )
 def test_times(raw, expected):
     assert model.parse_plan_time(raw) == expected
 
 
-@pytest.mark.parametrize("raw", ["25:00", "8:61", "sáng", "8", "08:00:00"])
+@pytest.mark.parametrize(
+    "raw", ["25:00", "8:61", "sáng", "8", "08:00:61", "13 PM", "0 AM", "8:00 sáng", "8 chiều"]
+)
 def test_times_rejected(raw):
     with pytest.raises(ValueError):
         model.parse_plan_time(raw)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("20/11/2026 08:00", ("20/11/2026", "08:00")),
+        ("12/06/2026 08:00:00", ("12/06/2026", "08:00:00")),
+        ("2026-06-12T08:00:00", ("2026-06-12", "08:00:00")),
+        ("46337.5", ("46337", "12:00")),  # số ngày có phần lẻ: 12 giờ trưa
+        ("46337.25", ("46337", "06:00")),
+        ("46337.99999", ("46337", "23:59")),  # làm tròn không nhảy sang ngày sau
+        ("20/11/2026", ("20/11/2026", "")),
+    ],
+)
+def test_split_date_time(raw, expected):
+    assert model.split_date_time(raw) == expected
 
 
 def test_datetimes_always_have_timezone():

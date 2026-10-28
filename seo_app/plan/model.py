@@ -135,9 +135,20 @@ _FOLD_DROP = re.compile(r"[^0-9a-z]+")
 # Số ngày kiểu Google Sheets / Excel: ngày 0 là 30/12/1899.
 _SHEETS_EPOCH = date(1899, 12, 30)
 _SERIAL_RE = re.compile(r"\d{5}(?:\.0+)?")
+# Số ngày có phần lẻ là ngày và giờ (Google Sheets, Excel: 46337.5 là 12 giờ trưa).
+_SERIAL_TIME_RE = re.compile(r"(\d{5})\.(\d+)")
 _DMY_RE = re.compile(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})")
 _YMD_RE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
-_TIME_RE = re.compile(r"(\d{1,2})\s*(?::|h|g|giờ)\s*(\d{2})?\s*(?:phút)?", re.IGNORECASE)
+# Giờ: «8:00», «08:30:00» (Google Sheets tiếng Việt hiện cả giây), «8h30», «8 giờ», «8:00 SA»,
+# «8 PM» (chữ buổi viết tắt SA/CH/AM/PM như Google Sheets, Excel hiện; chữ «sáng», «chiều» viết đủ
+# không nhận). Phải có dấu giờ («:», «h», «g», «giờ») hoặc chữ buổi; «8» trần là chữ số.
+_TIME_RE = re.compile(
+    r"(?P<hour>\d{1,2})"
+    r"(?:\s*(?P<mark>:|h|g|giờ)\s*(?P<minute>\d{2})?(?::(?P<second>\d{2}))?\s*(?:phút)?)?"
+    r"\s*(?P<half>am|pm|sa|ch)?",
+    re.IGNORECASE,
+)
+_AFTERNOON = ("pm", "ch")
 _DATE_TIME_RE = re.compile(r"(.+?)(?:\s+|T)(\d{1,2}\s*(?::|h|g).*)$", re.IGNORECASE)
 
 
@@ -244,23 +255,37 @@ def _serial_date(serial: int) -> date:
 
 
 def parse_plan_time(value: object) -> str:
-    """Giờ đăng ``HH:MM`` (giờ Việt Nam). Nhận ``8:00``, ``08:30``, ``8h``, ``8h30``, ``8 giờ``. Ô
-    trống là ``""``; sai (giờ 25, phút 61, chữ lạ) là ``ValueError``."""
+    """Giờ đăng ``HH:MM`` (giờ Việt Nam). Nhận ``8:00``, ``08:30``, ``08:30:00`` (bỏ giây), ``8h``,
+    ``8h30``, ``8 giờ``, giờ có buổi ``8:00 SA``/``AM``, ``2:30 CH``/``PM``, ``8 PM``. Ô trống là
+    ``""``; sai (giờ 25, phút 61, giây 61, «13 PM», chữ lạ, «8» trần) là ``ValueError``."""
     text = clean_text(value)
     if not text:
         return ""
     found = _TIME_RE.fullmatch(text)
-    if not found:
+    if not found or not (found.group("mark") or found.group("half")):
         raise ValueError("không đọc được giờ")
-    hour, minute = int(found.group(1)), int(found.group(2) or 0)
-    if hour > 23 or minute > 59:
+    hour, minute = int(found.group("hour")), int(found.group("minute") or 0)
+    if minute > 59 or int(found.group("second") or 0) > 59:
+        raise ValueError("giờ không có thật")
+    half = (found.group("half") or "").lower()
+    if half:
+        if not 1 <= hour <= 12:
+            raise ValueError("giờ có buổi phải từ 1 tới 12")
+        hour = hour % 12 + (12 if half in _AFTERNOON else 0)
+    if hour > 23:
         raise ValueError("giờ không có thật")
     return f"{hour:02d}:{minute:02d}"
 
 
 def split_date_time(value: object) -> tuple[str, str]:
-    """Ô «ngày giờ» (``20/11/2026 08:00``, ``2026-11-20T08:00``) thành (phần ngày, phần giờ)."""
+    """Ô «ngày giờ» (``20/11/2026 08:00``, ``2026-11-20T08:00:00``, số ngày có phần lẻ
+    ``46337.5``) thành (phần ngày, phần giờ ``HH:MM`` hay chữ giờ)."""
     text = clean_text(value)
+    if found := _SERIAL_TIME_RE.fullmatch(text):
+        minutes = round(float("0." + found.group(2)) * 24 * 60)
+        if minutes >= 24 * 60:  # làm tròn tới nửa đêm: giữ 23:59, không nhảy sang ngày sau
+            minutes = 24 * 60 - 1
+        return found.group(1), f"{minutes // 60:02d}:{minutes % 60:02d}"
     found = _DATE_TIME_RE.fullmatch(text)
     return (found.group(1), found.group(2)) if found else (text, "")
 
@@ -298,12 +323,16 @@ def today_vn() -> date:
 
 
 def parse_key(value: object) -> str:
-    """Mã bài (``B-001``, ``KV-12``): chữ hoa, đúng dạng ``[A-Z]{1,3}-[0-9]{1,5}``. Ô trống là
+    """Mã bài (``B-001``, ``KV-012``): chữ hoa, đúng dạng ``[A-Z]{1,3}-[0-9]{1,5}``, phần số viết
+    lại ít nhất 3 chữ số (``B-1``, ``B-001``, ``B-0001`` là cùng một mã ``B-001``). Ô trống là
     ``""``; sai dạng là ``ValueError``."""
     key = clean_text(value).upper()
-    if key and not _KEY_RE.fullmatch(key):
+    if not key:
+        return ""
+    found = _KEY_RE.fullmatch(key)
+    if not found:
         raise ValueError("mã bài phải có dạng B-001")
-    return key
+    return f"{found.group(1)}-{int(found.group(2)):03d}"
 
 
 def next_key(existing: Iterable[str], prefix: str = "B") -> str:
@@ -336,21 +365,34 @@ def article_kind(kind: str) -> ArticleKind | None:
 # --------------------------------------------------- dữ liệu cá nhân của khách (A3, LC-T094-21)
 
 MASK = "[đã ẩn]"
-# Số điện thoại Việt Nam: 0 hay +84/84 rồi 9-10 chữ số, cho phép dấu cách, chấm, gạch xen giữa.
-_PHONE_RE = re.compile(r"(?<![\w+])(?:\+84|84|0)(?:[ .\-]?\d){9,10}(?![\w])")
-_EMAIL_RE = re.compile(r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+")
+# Số điện thoại Việt Nam: đầu số «0», «84», «+84», «(+84)», «+84 (0)», «(028)»…, rồi đủ 9-10 chữ
+# số; giữa các chữ số được có tới 3 ký tự cách (dấu cách, chấm, gạch, ngoặc: «0909 - 123 - 456»,
+# «(028) 3812 3456»). Không dính chữ cái ở hai đầu (mã hàng «SP0909123456» không tính).
+_PHONE_RE = re.compile(
+    r"(?<![\w+(])(?:\(\s*\+?84\s*\)|\+?84(?:\s*\(\s*0\s*\))?|\(\s*0|0)(?:[\s.\-()]{0,3}\d){9,10}"
+    r"(?![\w])"
+)
+# Email: neo đầu (không bắt đầu giữa một chuỗi chữ liền) và giới hạn độ dài từng phần, để dò chạy
+# tuyến tính cả với chuỗi 20.000 ký tự liền (Soi Lỗi SL-T098-7).
+_EMAIL_RE = re.compile(r"(?<![\w.+\-])[\w.+\-]{1,64}@[\w\-]{1,63}(?:\.[\w\-]{1,63}){1,8}")
+
+
+def _visible_for_ai(text: object) -> str:
+    """Chữ như AI sẽ nhận: đã làm sạch rồi NFKC (lời dặn chạy NFKC, ``prompts._neutralize``), để số,
+    «@» toàn chiều rộng không lọt bộ dò (Soi Lỗi SL-T098-6)."""
+    return unicodedata.normalize("NFKC", clean_text(text, multiline=True))
 
 
 def personal_info(text: object) -> tuple[int, int]:
     """Số (số điện thoại, email) tìm thấy trong ``text`` (đã làm sạch: ký tự vô hình chen giữa
-    không che được số). Chỉ đếm, không trả lại chữ tìm thấy."""
-    visible = clean_text(text, multiline=True)
+    không che được số; NFKC như chữ gửi AI). Chỉ đếm, không trả lại chữ tìm thấy."""
+    visible = _visible_for_ai(text)
     return len(_PHONE_RE.findall(visible)), len(_EMAIL_RE.findall(visible))
 
 
 def mask_personal_info(text: object) -> str:
-    """``text`` đã làm sạch, số điện thoại và email thay bằng ``MASK``."""
-    visible = clean_text(text, multiline=True)
+    """``text`` đã làm sạch (NFKC như chữ gửi AI), số điện thoại và email thay bằng ``MASK``."""
+    visible = _visible_for_ai(text)
     return _PHONE_RE.sub(MASK, _EMAIL_RE.sub(MASK, visible))
 
 
