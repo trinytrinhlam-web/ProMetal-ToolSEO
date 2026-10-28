@@ -363,7 +363,7 @@ def test_v2_draft_as_saved_by_main_opens_with_image_and_empty_seo(store):
     saved = store.save(_snapshot(image=_image()))
     data = _read_json(store, saved.id)
     del data["seo"]
-    assert data["schema_version"] == 2
+    data["schema_version"] = 2
     _write_json(store, saved.id, data)
     loaded = store.load(saved.id)
     assert loaded.seo == DraftSeo() and loaded.dropped_images == 0
@@ -384,6 +384,22 @@ def test_v1_draft_opens_with_empty_seo(store):
     })  # fmt: skip
     loaded = store.load(draft_id)
     assert loaded.seo == DraftSeo() and loaded.parts[0].text == "Cổng kêu."
+
+
+def test_t100_new_save_writes_v3_and_v4_is_unknown(store):
+    """T-100 (khuôn nháp 3; Chỉ Huy duyệt A 28/10): ca «nháp khuôn 2 như main» ở trên dựng nháp
+    khuôn 2 cũ bằng tay, nên kiểm riêng ở đây: nháp lưu mới ghi khuôn 3 và mở được, giữ ảnh; khuôn
+    4 trở lên là khuôn lạ."""
+    from seo_app.storage.drafts import DraftError
+
+    saved = store.save(_snapshot(image=_image()))
+    data = _read_json(store, saved.id)
+    assert data["schema_version"] == 3
+    assert store.load(saved.id).parts[1].chosen_image == _image()
+    for version in (4, 99):
+        _write_json(store, saved.id, {**data, "schema_version": version})
+        with pytest.raises(DraftError):
+            store.load(saved.id)
 
 
 def test_broken_seo_and_broken_image_are_dropped_separately(store):

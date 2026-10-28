@@ -6,7 +6,7 @@
 | Phiếu | [T-100](../tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) · thiết kế [T-094 mục 1.5–1.7, 2.4–2.6, 6](T-094-tho-may.md) · điều kiện [Lá Chắn T-094](T-094-la-chan.md) («Chung», «T-100») |
 | Nhánh | `team/T-100` (worktree `D:\ProMetal-ToolSEO\wt-T-100`), gốc `main` `b241e79` |
 | Ngày nộp | 2026-10-28 23:52 (+07:00, theo lệnh `date`) |
-| Kết quả | Hoàn thành yêu cầu 1–6, trừ 9 dòng test cũ chờ Chỉ Huy duyệt (mục «Test cũ chờ duyệt»). Đáp ứng LC-T094-1, -2, -3 (phần dữ liệu), -5 (phần T-100), -28, -29, -30, -31. Thêm (Chỉ Huy duyệt): SL-T097-5 (gỡ 3 `xfail`), G2 / LC-T103-1 |
+| Kết quả | Hoàn thành (yêu cầu 1–6). 9 dòng test cũ đổi theo phương án A Chỉ Huy duyệt (mục «Test cũ đã đổi»). Đáp ứng LC-T094-1, -2, -3 (phần dữ liệu), -5 (phần T-100), -28, -29, -30, -31. Thêm (Chỉ Huy duyệt): SL-T097-5 (gỡ 3 `xfail`), G2 / LC-T103-1 |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -31,34 +31,53 @@
 | `seo_app/plan/propose.py` | G2 / LC-T103-1: `WARN_PRICE` (`:81`), `_has_price` (`:398`, dò bằng `mentions_price` của bước SEO, theo khúc gối nhau cho ghi chú dài), `_ai_texts` (`:388`, dùng chung với cảnh báo số điện thoại) |
 | `seo_app/google/service_account.py` | SL-T097-5: `_inside_by_identity` (`:239`) đi ngược theo đường **thật** (`resolve`), không theo chữ của đường gõ; `_other_drive_letter` (`:269`): hai đường thật ở hai ổ khác chữ thì không tin danh tính (ổ Google Drive for Desktop) |
 | `tests/test_soi_loi_t097.py` | Gỡ 3 dấu `xfail` của SL-T097-5: **6 dòng xóa, 0 dòng thêm** (R5) |
-| `tests/test_drafts_images.py`, `test_soi_loi_t016_t020.py`, `test_soi_loi_t041.py`, `test_soi_loi_t055.py` | **Chưa sửa.** 9 dòng ghim khuôn nháp 2 hỏng vì khuôn lên 3 (LC-T094-30); chờ Chỉ Huy duyệt (mục «Test cũ chờ duyệt») |
+| `tests/test_drafts_images.py`, `test_soi_loi_t016_t020.py`, `test_soi_loi_t041.py`, `test_soi_loi_t055.py` | Đổi đúng 9 dòng ghim khuôn nháp 2 (Chỉ Huy duyệt A 28/10); `test_soi_loi_t041.py` thêm 1 ca `test_t100_new_save_writes_v3_and_v4_is_unknown` (điều kiện 1, 2). Mục «Test cũ đã đổi» |
 | `tests/fake_plan_sheet.py` | Mới. Google Sheet giả **có trạng thái** gắn vào `FakeGoogle` (T-097): test đi qua đúng `SheetsClient` thật |
-| `tests/test_plan_sync.py`, `test_plan_cache.py`, `test_t100_drafts_plan.py`, `test_t100_google_identity.py` | Mới: 150 ca |
+| `tests/test_plan_sync.py`, `test_plan_cache.py`, `test_t100_drafts_plan.py`, `test_t100_google_identity.py` | Mới: 152 ca |
 | `tests/test_plan_propose.py` | Thêm 8 ca giá (5 ca của Lá Chắn T-103 viết lại, ghi chú dài, giá trong từ khóa, giá cũ AI không đổi) |
 | `docs/team/reports/T-100-tho-may.md` | Báo cáo này |
 
 Không sửa `seo_app/wordpress/**`, `app/**`, `config/**`, `seo_app/plan/parse.py`, `seo_app/plan/model.py`.
 
-## Test cũ chờ duyệt (R5)
+## Test cũ đã đổi (R5)
 
-LC-T094-30 bắt tăng phiên bản cấu trúc nháp, nên khuôn nháp lên **3**. 9 dòng test cũ của người khác ghim «khuôn hiện tại là 2» hay «3 là khuôn lạ», làm hỏng 8 ca. Không ca nào khác hỏng.
+LC-T094-30 bắt tăng phiên bản cấu trúc nháp, nên khuôn nháp lên **3**. 9 dòng test cũ của người khác ghim «khuôn hiện tại là 2» hay «3 là khuôn lạ», làm hỏng 8 ca (lượt chạy 23:25–23:51: `2902 passed, 8 failed`, không ca nào khác hỏng).
 
-| File, dòng | Đang ghim | Phương án A (đề xuất) |
+**Chỉ Huy duyệt A 28/10** (Chỉ Huy B, hai tin: duyệt A, rồi xác nhận gồm cả dòng thứ 9). Đổi đúng 9 dòng:
+
+| File, dòng | Cũ | Mới |
 |---|---|---|
-| `tests/test_drafts_images.py:197`, `:219` | `== 2` | `== 3` |
-| `tests/test_drafts_images.py:473` | `3` trong danh sách khuôn lạ | `4` |
-| `tests/test_drafts_images.py:485` | `DraftSnapshot(schema_version=3)` phải lỗi | `schema_version=4` |
-| `tests/test_soi_loi_t016_t020.py:744` | `{"schema_version": 3}` là khuôn lạ | `4` |
-| `tests/test_soi_loi_t041.py:366` | `assert data["schema_version"] == 2` trên nháp vừa lưu | `data["schema_version"] = 2` (ca vẫn đúng là «nháp khuôn 2 của main») |
-| `tests/test_soi_loi_t055.py:654`, `:669` | `== 2` | `== 3` |
-| `tests/test_soi_loi_t055.py:687` (test canh dòng t016_t020:744) | `SCHEMA_VERSION + 1 == 3` | `== 4` |
+| `tests/test_drafts_images.py:197` | `assert loaded.schema_version == SCHEMA_VERSION == 2` | `… == 3` |
+| `tests/test_drafts_images.py:219` | `assert stored["schema_version"] == 2` | `… == 3` |
+| `tests/test_drafts_images.py:473` | `parametrize("version", [0, 3, 999, -1, "abc", None, [2]])` | `[0, 4, 999, …]` |
+| `tests/test_drafts_images.py:485` | `DraftSnapshot(schema_version=3)` (phải lỗi) | `schema_version=4` |
+| `tests/test_soi_loi_t016_t020.py:744` | `{"schema_version": 3},` (khuôn lạ) | `{"schema_version": 4},` |
+| `tests/test_soi_loi_t041.py:366` | `assert data["schema_version"] == 2` | `data["schema_version"] = 2` |
+| `tests/test_soi_loi_t055.py:654` | `assert loaded.schema_version == SCHEMA_VERSION == 2` | `… == 3` |
+| `tests/test_soi_loi_t055.py:669` | `assert stored["schema_version"] == 2` | `… == 3` |
+| `tests/test_soi_loi_t055.py:687` (test canh dòng t016_t020:744) | `assert SCHEMA_VERSION + 1 == 3` | `… == 4` |
 
-- Đã hỏi Chỉ Huy B (28/10, lúc bắt đầu phiếu; bổ sung lúc 23:51): **A** sửa đúng 9 dòng trên; **B** không tăng khuôn (`plan` và trường mới của `SendState` đều tùy chọn, nháp cũ vẫn mở, nhưng lệch chữ của LC-T094-30).
-- **Chưa đụng** các dòng đó khi chưa có câu trả lời. Nhánh hiện có đúng 8 ca hỏng này.
-- Ý của các ca đó giữ nguyên ở khuôn 3, có test riêng của tôi:
-  - nháp khuôn 1 mở được, chỉ bỏ ảnh: `test_v1_draft_still_drops_only_image_data`;
-  - nháp khuôn 2 có ảnh mở được, giữ ảnh, lưu lại thành khuôn 3: `test_v2_draft_keeps_its_image_and_has_no_plan`;
-  - khuôn lạ (4) bị từ chối: `test_unknown_newer_version_is_rejected`.
+`git diff --numstat`: `test_drafts_images.py` 4/4, `test_soi_loi_t016_t020.py` 1/1, `test_soi_loi_t055.py` 3/3. `test_soi_loi_t041.py` 17/1: 1 dòng đổi, cộng 16 dòng của ca mới (điều kiện 1, 2).
+
+**Điều kiện 2, `test_soi_loi_t041.py:366`: chọn gán `= 2`.**
+- Ý của ca (`test_v2_draft_as_saved_by_main_opens_with_image_and_empty_seo`) không phải «nháp vừa lưu» mà là «nháp khuôn 2 như `main` lưu trước T-041». Ca dựng nháp đó bằng tay từ một nháp vừa lưu (xóa khóa `seo`).
+- Với khuôn 3, nháp vừa lưu là khuôn 3, nên phải **gán** `2` để đúng là nháp khuôn 2 cũ. Đổi assert thành `== 3` sẽ làm ca thành «nháp khuôn 3 thiếu SEO», sai ý.
+- Kiểm «nháp lưu mới ghi khuôn 3» nằm ở ca mới cùng file `test_t100_new_save_writes_v3_and_v4_is_unknown`: lưu mới ghi `3`, mở được, giữ ảnh; khuôn 4, 99 bị từ chối.
+
+**Điều kiện 1: mỗi file đổi có ca chứng minh khuôn 3 mở được và khuôn 4 trở lên là lạ.**
+
+| File | Khuôn 3 mở được | Khuôn 4 trở lên là lạ |
+|---|---|---|
+| `test_drafts_images.py` | `test_round_trip_keeps_every_image_field` (`== 3`) | `test_unknown_schema_versions_are_rejected[4]`, `[999]`; `test_constructing_old_version_upgrades` (`schema_version=4`) |
+| `test_soi_loi_t016_t020.py` | `test_round_trip_tricky_text_every_version` (`:516`, lưu rồi mở nháp khuôn 3, giữ nguyên) | `test_wrong_shape_rows_give_draft_error` (`{"schema_version": 4}`) |
+| `test_soi_loi_t041.py` | `test_t100_new_save_writes_v3_and_v4_is_unknown` (mới) | cùng ca (4 và 99) |
+| `test_soi_loi_t055.py` | `test_real_v1_draft_from_main_opens_and_resaves_as_v2` (nháp khuôn 1 lưu lại thành khuôn 3, mở lại giữ lựa chọn ảnh) | `test_schema_version_guard_for_old_test_line` (`DraftSnapshot(schema_version=SCHEMA_VERSION + 1)` lỗi) |
+
+**Điều kiện 3:** `tests/test_t100_drafts_plan.py::test_old_draft_on_users_machine_opens_and_resaves_as_v3` (khuôn 1 và khuôn 2).
+- Dựng file nháp như trước T-100: chưa có bảng `plan_writes`; nháp khuôn 1 (không ảnh, không SEO) hay khuôn 2 (có ảnh đã chọn), đã gửi nháp (có trạng thái gửi, mã bài 501).
+- Mở bằng kho mới: mở được, không cất file sang bên, ảnh giữ nguyên, không ảnh nào hỏng, trạng thái gửi giữ nguyên.
+- Lưu lại: JSON ghi khuôn 3, **mọi khóa, giá trị cũ còn nguyên** (so từng khóa lồng nhau), trạng thái gửi vẫn đúng, mở lại vẫn đủ ảnh.
+- Thêm các ca cũ của tôi: `test_v2_draft_keeps_its_image_and_has_no_plan`, `test_v1_draft_still_drops_only_image_data`, `test_old_send_state_row_reads_with_defaults`.
 
 ## Cách dùng cho T-101, T-102
 
@@ -84,7 +103,7 @@ LC-T094-30 bắt tăng phiên bản cấu trúc nháp, nên khuôn nháp lên **
 | LC-T094-5 (phần T-100: mọi dòng từ Sheets / cache qua `PlanRow`) | `parse_sheet` là đường duy nhất đổi ô Sheet hay ô cache thành kế hoạch | như trên |
 | LC-T094-28 (ghi Sheet) | Chỉ các cột của `SHEET_COLUMNS` (tìm theo tên), chỉ ô đổi + «Cập nhật lúc», dòng tìm theo Mã bài; so ô sắp ghi, ô Mã bài, Từ khóa với bản gốc (`_update`); Mã bài trùng → không ghi (`_fresh_row`, `write_status`); không có lệnh xóa dòng, cột nào; mọi ô `RAW` (client T-097 chặn ở lớp kiểm); `safe_text` thêm dấu cách đầu cho chữ bắt đầu `=`, `+`, `-`, `@`, tab, CR; giờ ghi `_moment_text`: giờ Việt Nam, chữ có `+07:00`, từ `datetime.now(model.TIMEZONE)` | `test_update_writes_only_changed_cells_raw_with_time`, `test_cell_changed_elsewhere_is_not_written`, `test_two_machines_editing_different_columns_do_not_block`, `test_duplicate_or_missing_key_is_not_written`, `test_foreign_columns_are_never_written`, `test_drop_only_sets_status_and_never_deletes_rows`, `test_add_appends_row_by_column_name`, `test_safe_text_defuses_formula_start`, `test_time_written_is_vietnam_time_even_from_utc_clock` |
 | LC-T094-29 (cache) | SQL chỉ tham số `?`; kiểm `sqlite_master` (đúng 2 bảng, không trigger, khung nhìn, chỉ mục, bảng lạ) **trong cùng giao dịch** trước mọi truy vấn; giới hạn số bước, độ dài giá trị; mỗi ô kiểm kiểu, mã băm toàn bộ ô phải khớp; sai một dòng, sai phiên bản, khác mã băm Sheet → bỏ cả cache; chỉ lưu mã băm SHA-256 của mã Sheet; mọi dòng đọc lại qua `PlanRow`; `apply_proposals`, `write_status`, `open_row`, `prepare_sheet` luôn đọc lại Sheet trước khi ghi / mở Soạn bài | `test_plan_cache.py` (17 cách sửa tay, file không phải SQLite, trigger không chạy khi ghi, không có mã Sheet trong file, SQL tham số), `test_open_row_reads_the_sheet_again`, `test_reading_again_fails_before_anything_is_written` |
-| LC-T094-30 (kho nháp) | Khuôn 3 với `DraftSnapshot.plan`, `SendState` mở rộng; nháp khuôn 1, 2 và dòng trạng thái gửi cũ vẫn mở; so rồi đặt của T-089 giữ nguyên (so cả trường mới); việc ghi Sheet còn nợ ở bảng `plan_writes` của `drafts.sqlite`; `retry_pending` chỉ gọi `write_status` (không nhập gì của WordPress), vẫn kiểm xung đột; bỏ việc bằng so rồi xóa (tab khác vừa ghi việc mới thì giữ) | `test_t100_drafts_plan.py` (46 ca), `test_record_status_keeps_write_until_sheet_has_it`, `test_retry_skips_other_sheet_and_stops_on_error`, `test_retry_does_not_remove_a_newer_write_from_another_tab` |
+| LC-T094-30 (kho nháp) | Khuôn 3 với `DraftSnapshot.plan`, `SendState` mở rộng; nháp khuôn 1, 2 và dòng trạng thái gửi cũ vẫn mở; so rồi đặt của T-089 giữ nguyên (so cả trường mới); việc ghi Sheet còn nợ ở bảng `plan_writes` của `drafts.sqlite`; `retry_pending` chỉ gọi `write_status` (không nhập gì của WordPress), vẫn kiểm xung đột; bỏ việc bằng so rồi xóa (tab khác vừa ghi việc mới thì giữ) | `test_t100_drafts_plan.py` (48 ca), `test_record_status_keeps_write_until_sheet_has_it`, `test_retry_skips_other_sheet_and_stops_on_error`, `test_retry_does_not_remove_a_newer_write_from_another_tab` |
 | LC-T094-31 («Chuẩn bị trang tính») | Chỉ khi gọi `prepare_sheet` (nút); chỉ 4 loại yêu cầu (`addSheet`, `updateSheetProperties`, `repeatCell`, `setDataValidation`) trên đúng `sheetId` tab «KeHoach» vừa đọc (client kiểm lại); tiêu đề thiếu ghi vào cuối dòng 1 sau ô có chữ cuối cùng; danh sách chọn là `model.INTENTS`, `KINDS`, `PRIORITIES`, `STATUSES` | `test_prepare_creates_tab_and_header` (có tab «Kehoach», «KeHoach␠» không bị đụng), `test_prepare_reports_missing_columns_without_writing`, `test_prepare_adds_missing_columns_at_the_end`, `test_prepare_refuses_when_no_room_left`, `test_prepare_formats_only_the_plan_tab` |
 
 ## Hai việc Chỉ Huy duyệt thêm
@@ -96,7 +115,8 @@ LC-T094-30 bắt tăng phiên bản cấu trúc nháp, nên khuôn nháp lên **
 - **G2 / LC-T103-1** (Soi Lỗi, Lá Chắn T-103): chữ AI **đưa vào dòng** có giá thì có `WARN_PRICE`, nên không tick sẵn.
   - Với «Thêm»: mọi trường chữ; với «Cập nhật»: chỉ trường AI đổi. Giá có sẵn trong ghi chú cũ không tính; chỗ nằm trong từ khóa chính không tính.
   - **Lưu ý khi gộp:** 5 ca `xfail(strict=True)` LC-T103-1 trong `tests/test_la_chan_t103.py` nằm ở nhánh `team/T-103`, chưa có trên nhánh này. Tôi chạy file đó (lấy từ nhánh `team/T-103`) trên code T-100 với `--runxfail`: 5 ca LC-T103-1 và ca «giá cũ AI không đổi» đều qua.
-  - Vậy gộp cả T-100 lẫn T-103 thì 5 ca đó thành XPASS (strict): phải gỡ 5 dấu đó (chỉ xóa dấu, R5) ở lần gộp sau cùng.
+  - Vậy gộp cả T-100 lẫn T-103 thì 5 ca đó thành XPASS (strict).
+  - **Chờ bước gỡ dấu** (Chỉ Huy giao 28/10): khi Chỉ Huy báo T-103 đã gộp `main`, tôi gộp `main` vào `team/T-100` rồi gỡ 5 dấu đó (chỉ xóa dấu, R5).
 
 ## Bằng chứng
 
@@ -115,7 +135,15 @@ $ uv run pytest -q tests/test_plan_sync.py tests/test_plan_cache.py tests/test_t
 $ uv run pytest -q tests/test_app_drafts.py tests/test_app_images.py tests/test_drafts_images.py … (27 file)
 (2026-10-28 23:25:39 → 23:51 +0700, máy đang chạy song song test của phiên khác)
 8 failed, 2902 passed, 18 skipped in 1516.46s
-# 8 ca hỏng = đúng 8 ca ghim khuôn nháp 2 ở mục «Test cũ chờ duyệt»; không ca nào khác
+# 8 ca hỏng = đúng 8 ca ghim khuôn nháp 2 (mục «Test cũ đã đổi»), trước khi đổi; không ca nào khác
+
+# Sau khi Chỉ Huy duyệt A: 4 file test cũ đã đổi + file kho nháp của tôi
+$ uv run pytest -q tests/test_drafts_images.py tests/test_soi_loi_t016_t020.py \
+    tests/test_soi_loi_t041.py tests/test_soi_loi_t055.py tests/test_t100_drafts_plan.py
+(2026-10-28 23:55:18 → 23:57:14 +0700)
+615 passed, 7 skipped in 112.21s
+# 23 file còn lại của lượt 27 file đã qua hết ở lượt 23:25–23:51; code không đổi sau lượt đó
+# (chỉ đổi 9 dòng test cũ và thêm test)
 
 $ uv run pytest -q tests/test_app_pages.py
 (23:38:38 → 23:39:16) 18 passed
@@ -153,4 +181,4 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <11 file đổi>
 ## Đề xuất
 
 - T-101, T-102: dùng đúng các hàm ở mục «Cách dùng»; giữ `listing.plan` (bản gốc) trong `session_state` tới lúc «Áp dụng».
-- Lần gộp T-100 cùng T-103: gỡ 5 dấu `xfail` LC-T103-1 (mục trên).
+- Khi T-103 đã gộp `main`: Chỉ Huy báo, tôi gộp `main` vào `team/T-100` và gỡ 5 dấu `xfail` LC-T103-1 (mục trên).

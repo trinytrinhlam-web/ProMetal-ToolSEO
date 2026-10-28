@@ -651,7 +651,7 @@ def put_raw(store: DraftStore, draft_id: str, raw: str) -> None:
 def test_real_v1_draft_from_main_opens_and_resaves_as_v2(store, library):
     put_raw(store, REAL_V1_ID, REAL_V1_DRAFT)
     loaded = store.load(REAL_V1_ID)
-    assert loaded.schema_version == SCHEMA_VERSION == 2
+    assert loaded.schema_version == SCHEMA_VERSION == 3
     assert loaded.dropped_images == 0
     assert loaded.step == 3 and loaded.auto_fixed == 1
     assert loaded.keyword == "sửa cổng inox Tân Phú"
@@ -666,7 +666,7 @@ def test_real_v1_draft_from_main_opens_and_resaves_as_v2(store, library):
     loaded.parts[1].chosen_image = real_image()
     resaved = store.save(loaded)
     stored = json.loads(read_row(store, REAL_V1_ID))
-    assert stored["schema_version"] == 2
+    assert stored["schema_version"] == 3
     again = store.load(REAL_V1_ID)
     assert again.parts[1].chosen_image == real_image()
     assert text_of(again) == text_of(resaved)
@@ -685,7 +685,7 @@ def test_v1_keeps_every_text_field_like_v2(store):
 def test_schema_version_guard_for_old_test_line():
     """Canh dòng ``tests/test_soi_loi_t016_t020.py:744`` (Thợ Máy sửa 2 → 3, Chỉ Huy B duyệt): ca
     đó cần "phiên bản kế tiếp chưa biết". Khi khuôn lên 3, test này đỏ để nhắc sửa cả dòng đó."""
-    assert SCHEMA_VERSION + 1 == 3
+    assert SCHEMA_VERSION + 1 == 4
     with pytest.raises(ValidationError):
         DraftSnapshot(schema_version=SCHEMA_VERSION + 1)
     assert DraftSnapshot(schema_version=1).schema_version == SCHEMA_VERSION

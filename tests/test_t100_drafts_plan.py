@@ -84,6 +84,51 @@ def test_v2_draft_keeps_its_image_and_has_no_plan(store):
     assert json.loads(read_row(store, saved.id))["schema_version"] == 3
 
 
+def _kept(old: object, new: object) -> bool:
+    """Mọi khóa, giá trị của ``old`` còn nguyên trong ``new`` (``new`` được có thêm khóa mới)."""
+    if isinstance(old, dict):
+        return isinstance(new, dict) and all(k in new and _kept(v, new[k]) for k, v in old.items())
+    if isinstance(old, list):
+        return isinstance(new, list) and len(old) == len(new) and all(map(_kept, old, new))
+    return old == new
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_old_draft_on_users_machine_opens_and_resaves_as_v3(tmp_path, version):
+    """Chỉ Huy duyệt A 28/10, điều kiện 3: file nháp tạo trước T-100 (chưa có bảng ``plan_writes``),
+    nháp khuôn 1 hay 2 (khuôn 2 có ảnh đã chọn) đã gửi nháp (có trạng thái gửi): mở được, giữ ảnh,
+    giữ trạng thái gửi; lưu lại thì lên khuôn 3 mà mọi trường cũ còn nguyên."""
+    path = tmp_path / "drafts.sqlite"
+    store = DraftStore(path=path)
+    image = real_image() if version == 2 else None
+    saved = store.save(snapshot_with(image))
+    sent = SendState(pending=False, post_id=501, updated_at="2026-10-26T10:00:00+07:00")
+    store.save_send_state(saved.id, sent)
+    data = json.loads(read_row(store, saved.id))
+    data["schema_version"] = version
+    del data["plan"]
+    if version == 1:  # khuôn 1: chưa có ảnh đã chọn, chưa có phần SEO
+        del data["seo"]
+        for part in data["parts"]:
+            part.pop("chosen_image")
+    write_row(store, saved.id, data)
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute("DROP TABLE plan_writes")
+
+    store = DraftStore(path=path)  # app mới mở lại file cũ
+    loaded = store.load(saved.id)
+    assert store.recovered_from is None and loaded.dropped_images == 0 and loaded.plan is None
+    assert loaded.parts[1].chosen_image == image
+    assert store.load_send_state(saved.id) == sent
+    store.save(loaded)
+    stored = json.loads(read_row(store, saved.id))
+    assert stored["schema_version"] == 3
+    old = {key: value for key, value in data.items() if key not in ("schema_version", "saved_at")}
+    assert _kept(old, stored)
+    assert store.load_send_state(saved.id) == sent
+    assert store.load(saved.id).parts[1].chosen_image == image
+
+
 def test_v1_draft_still_drops_only_image_data(store):
     saved = store.save(snapshot_with(real_image()))
     data = json.loads(read_row(store, saved.id))

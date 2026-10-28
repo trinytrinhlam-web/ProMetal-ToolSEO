@@ -194,7 +194,7 @@ def test_round_trip_keeps_every_image_field(store):
     snap = snapshot_with(real_image(), generated_image(), None)
     saved = store.save(snap)
     loaded = store.load(saved.id)
-    assert loaded.schema_version == SCHEMA_VERSION == 2
+    assert loaded.schema_version == SCHEMA_VERSION == 3
     assert loaded.dropped_images == 0
     assert loaded.parts[0].chosen_image is None
     assert loaded.parts[1].chosen_image == real_image()
@@ -216,7 +216,7 @@ def test_saved_json_has_only_index_and_relative_path(store, roots, tmp_path):
         (0, REAL_PATH),
         (1, USB_PATH),
     ]
-    assert stored["schema_version"] == 2
+    assert stored["schema_version"] == 3
 
 
 NASTY_TEXT = (
@@ -469,7 +469,7 @@ def test_v1_draft_counts_only_real_image_data_as_dropped(store):
     assert all(part.chosen_image is None for part in loaded.parts)
 
 
-@pytest.mark.parametrize("version", [0, 3, 999, -1, "abc", None, [2]])
+@pytest.mark.parametrize("version", [0, 4, 999, -1, "abc", None, [2]])
 def test_unknown_schema_versions_are_rejected(store, version):
     saved = store.save(snapshot_with(real_image()))
     obj = json.loads(read_row(store, saved.id))
@@ -482,7 +482,7 @@ def test_unknown_schema_versions_are_rejected(store, version):
 def test_constructing_old_version_upgrades():
     assert DraftSnapshot(schema_version=1).schema_version == SCHEMA_VERSION
     with pytest.raises(ValidationError):
-        DraftSnapshot(schema_version=3)
+        DraftSnapshot(schema_version=4)
 
 
 # ----- kiểm lại trên máy: ImageRef dựng lại + stat_image -------------------------------------
