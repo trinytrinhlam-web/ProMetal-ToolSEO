@@ -104,7 +104,7 @@ HOSTILE = [
     "<https://evil.example>",
     "<mailto:a@evil.example>",
     "https://evil.example/x www.evil.example a@evil.example",
-    "https:​//evil.example www​.evil.example a​@evil.example",
+    "https:\u200b//evil.example www\u200b.evil.example a\u200b@evil.example",
     "\\[x\\](https://evil.example) \\<script\\>",
     "<script>alert(1)</script>",
     '<img src=x onerror="alert(1)">',
@@ -161,8 +161,8 @@ def test_backslash_escapes_follow_commonmark():
 
 def test_dropped_characters():
     # Ký tự điều khiển, điều khiển hướng chữ, nửa cặp UTF-16 lẻ bị bỏ; dấu cách rộng 0 khác giữ.
-    out = markdown_to_html("a\x00b\x07c‮d⁦e\ud800f‍g")
-    assert out == "<p>abcdef‍g</p>"
+    out = markdown_to_html("a\x00b\x07c\u202ed\u2066e\ud800f\u200dg")
+    assert out == "<p>abcdef\u200dg</p>"
 
 
 # ------------------------------------------------------------------ khối
@@ -224,7 +224,7 @@ def test_list_ends_at_other_blocks():
     )
 
 
-@pytest.mark.parametrize("space", ["　", "\xa0", " "])
+@pytest.mark.parametrize("space", ["\u3000", "\xa0", "\u2003"])
 def test_list_line_after_unicode_space_does_not_crash(space):
     # ``_is_list_item`` xét ``line.strip()`` (bỏ cả khoảng trắng Unicode): dấu mục phải đọc đúng.
     assert markdown_to_html(f"{space}- một\n{space}- hai") == (
@@ -305,7 +305,7 @@ def test_blocks_fuzz_stay_safe():
     lines = [
         "# h", "## h2", "- a", "  - b", "1. c", "2) d", "| x | y |", "|---|---|", "> q", "```",
         "~~~", "---", "===", "", "chữ **đậm**", "[x](javascript:1)", "<b>", "https://x.vn",
-        "    thụt", "\t- tab", "* * *", "&#91;", "\\", "`", "　- rộng", "\xa01. nbsp",
+        "    thụt", "\t- tab", "* * *", "&#91;", "\\", "`", "\u3000- rộng", "\xa01. nbsp",
     ]  # fmt: skip
     for _ in range(2000):
         text = "\n".join(rng.choice(lines) for _ in range(rng.randint(1, 15)))

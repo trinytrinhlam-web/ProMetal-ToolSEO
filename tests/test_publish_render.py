@@ -19,6 +19,7 @@ import pytest
 
 import seo_app.publish.render as render
 from seo_app.images.process import WebImage
+from seo_app.images.tags import ImageTags
 from seo_app.onpage.links import InternalLink, LinkKind, check_links
 from seo_app.onpage.meta import Level
 from seo_app.publish.render import (
@@ -47,6 +48,7 @@ from seo_app.sanitize import AUTOLINK_BREAK, clean_ai_text
 from seo_app.storage.site_index import SiteIndex
 from seo_app.wordpress import PublishedItem
 from seo_app.wordpress.client import DraftImage
+from tests.timing import assert_scales_linearly
 
 SITE = "https://suachuacuasat.com"
 SERVICE = PublishedItem(
@@ -535,3 +537,80 @@ def test_dataclasses_are_frozen():
     built = build()
     with pytest.raises(dataclasses.FrozenInstanceError):
         built.sections = ()  # type: ignore[misc]
+
+
+# ------------------------------------------------------------------ lượt 3
+
+
+AI_TAGS = ImageTags(source="ai", category="Cổng inox")
+REAL_TAGS = ImageTags(project_code="CT012", category="Cổng inox", area="Tân Phú", phase="sau")
+
+
+def test_image_tags_round_trip_and_bound_to_confirmation():
+    """LC-T096-2: thẻ ảnh vào mã băm, ``content_parts`` so thẻ, dữ liệu xác nhận hiện thẻ."""
+    data = b"anh-cong"
+    image = ArticleImage.of(
+        section=0, sha256=hashlib.sha256(data).hexdigest(), alt="Cổng inox", tags=REAL_TAGS
+    )
+    assert image.tags == REAL_TAGS
+    built = build(images=[image])
+    row = built.review.images[0]
+    assert (row.ai, row.project_code, row.area, row.category) == (
+        False,
+        "CT012",
+        "Tân Phú",
+        "Cổng inox",
+    )
+    draft = DraftImage(
+        image=WebImage(data=data, width=1, height=1, gps=None), alt="Cổng inox", tags=REAL_TAGS
+    )
+    assert built.content_parts({0: draft})[1] is draft
+    for tags in (ImageTags(), AI_TAGS, ImageTags(project_code="CT013", area="Tân Phú")):
+        with pytest.raises(BuildError):
+            built.content_parts({0: dataclasses.replace(draft, tags=tags)})
+    ai_image = dataclasses.replace(image, source="ai", project_code="", area="", phase="")
+    ai = build(images=[ai_image])
+    assert ai.digest != built.digest and ai.review.images[0].ai
+
+
+def test_invalid_tags_are_rejected():
+    with pytest.raises(BuildError):
+        build(images=[ArticleImage(section=0, sha256=SHA, alt="x", area="Hà Nội")])
+    with pytest.raises(BuildError):
+        ArticleImage.of(section=0, sha256=SHA, alt="x", tags="ai")  # type: ignore[arg-type]
+
+
+def test_default_featured_image_is_shown_like_client():
+    """SL-T096-9: không ảnh nào được chọn thì client lấy ảnh đầu (theo thứ tự phần)."""
+    images = [
+        ArticleImage(section=2, sha256=SHA, alt="Ảnh hai"),
+        ArticleImage(section=1, sha256=SHA, alt="Ảnh một"),
+    ]
+    rows = build(images=images).review.images
+    assert [(r.section, r.featured, r.featured_auto) for r in rows] == [
+        (1, True, True),
+        (2, False, False),
+    ]
+    chosen = [images[0], dataclasses.replace(images[1], featured=False)]
+    chosen[0] = dataclasses.replace(chosen[0], featured=True)
+    rows = build(images=chosen).review.images
+    assert [(r.section, r.featured, r.featured_auto) for r in rows] == [
+        (1, False, False),
+        (2, True, False),
+    ]
+
+
+def test_matches_never_raises_on_odd_text():
+    built = build()
+    assert not built.matches("ữ" * 64)
+    assert not built.matches(b"x")
+    assert built.matches(built.digest)
+
+
+def test_heading_with_long_whitespace_is_linear():
+    """LC-T096-1: bỏ dấu «#» đóng tiêu đề không dùng biểu thức quay lui."""
+    assert_scales_linearly(
+        lambda body: build(parts=[ArticlePart("", body)], images=[], links=[], required_ids=[]),
+        lambda k: "### a" + " \t" * (1500 * k) + "x#y",
+        label="tiêu đề nhiều khoảng trắng",
+    )

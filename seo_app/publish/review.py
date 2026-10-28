@@ -62,6 +62,17 @@ _EMBED_PARAGRAPH = re.compile(
 _IN_TAG = re.compile(r"<[^>]*>")  # thẻ, chú thích (gần đúng ``wp_html_split``)
 _LINE_BREAK_MARK = "<!-- wp-line-break -->"
 _ONLY_URL = re.compile(r"https?://\S+", re.IGNORECASE)
+# ``String.prototype.trim`` của JavaScript (khoảng trắng và xuống dòng theo ECMAScript): trình soạn
+# khối (Gutenberg, khối Embed, «Chuyển thành khối») bỏ các ký tự này ở hai đầu đoạn rồi xét đoạn
+# có phải đúng một địa chỉ không. Gồm cả dấu cách không ngắt, BOM, khoảng trắng Unicode;
+# không gồm ký tự rộng 0 (U+200B) (LC-T096-4).
+_JS_TRIM = "".join(
+    map(
+        chr,
+        [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0xA0, 0x1680, *range(0x2000, 0x200B), 0x2028,
+         0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF],
+    )
+)  # fmt: skip
 
 # Địa chỉ trần trong chữ (đã giải mã). Dừng ở khoảng trắng, "<", ">", dấu nháy kép. Phần tên
 # email chỉ bắt đầu ở đầu một dãy (nhìn lùi) và mọi lượng từ chiếm hữu: tuyến tính (SL-T096-1).
@@ -283,7 +294,8 @@ def embedded_urls(html_text: str) -> tuple[str, ...]:
 
     Hai biểu thức của ``WP_Embed::autoembed`` áp trên ``html_text`` sau khi đổi ``\\n`` nằm trong
     thẻ thành dấu giữ chỗ (như ``wp_replace_in_html_tags``), cộng một lớp chặt hơn: khối có chữ
-    chỉ là một địa chỉ (``<li>https://…</li>``…), phòng trình soạn khối hay giao diện khác của
+    chỉ là một địa chỉ (``<li>https://…</li>``…), bỏ khoảng trắng hai đầu như ``trim()`` của
+    JavaScript (cả ``&nbsp;``, BOM: LC-T096-4), phòng trình soạn khối hay giao diện khác của
     WordPress nhúng tiếp."""
     content = _IN_TAG.sub(lambda m: m.group().replace("\n", _LINE_BREAK_MARK), html_text)
     urls: list[str] = []  # chữ thô (đã giải mã ``&amp;``): một địa chỉ chỉ một mục (SL-T096-3)
@@ -293,7 +305,7 @@ def embedded_urls(html_text: str) -> tuple[str, ...]:
             urls.append(html.unescape(stripped))
     urls.extend(html.unescape(m.group(2)) for m in _EMBED_PARAGRAPH.finditer(content))
     for text in block_texts(html_text):
-        stripped = text.strip(_PCRE_SPACE)
+        stripped = text.strip(_JS_TRIM)  # như ``textContent.trim()`` của trình soạn khối
         if _ONLY_URL.fullmatch(stripped):
             urls.append(stripped)
     return tuple(dict.fromkeys(urls))[:MAX_LISTED]

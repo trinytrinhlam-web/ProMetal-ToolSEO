@@ -683,11 +683,46 @@ def markdown_blocks(body: str) -> list[str]:
                         row = "| " + " | ".join(kept) + " |"
                 blocks.append(_visible_markdown(row))
         else:
+            # Tiêu đề, kẻ ngang nằm trong trích dẫn hay mục danh sách («> ### …», «- ### …»,
+            # «> ---» dưới một dòng trích dẫn): bộ chuyển dựng thành <h3>, <hr> nên không phải
+            # chữ chèn link được (SL-T096-8).
+            inner = _quote_or_item_text(stripped)
+            quoted = stripped.startswith(">")
+            if inner is not None and _is_atx_heading(inner, 0):
+                flush()
+                continue
+            if (
+                quoted
+                and current
+                and current[-1].strip().startswith(">")
+                and _is_rule(inner or "", "=-")
+            ):
+                current.clear()  # dòng gạch dưới trong trích dẫn: dòng trên là tiêu đề
+                continue
+            if quoted and _is_thematic_break(inner or ""):
+                flush()
+                continue
             if _is_list_item(stripped):
                 flush()
             current.append(line)
     flush()
     return blocks
+
+
+def _quote_or_item_text(stripped: str) -> str | None:
+    """Chữ sau các dấu «>» của dòng trích dẫn (kể cả lồng), hay sau dấu mục danh sách; dòng
+    khác: None."""
+    if stripped.startswith(">"):
+        i, n = 0, len(stripped)
+        while i < n and stripped[i] == ">":  # duyệt theo chỉ số: tuyến tính cả «> > > …» dài
+            i += 1
+            while i < n and stripped[i] in " \t":
+                i += 1
+        return stripped[i:]
+    if _is_list_item(stripped):
+        parts = stripped.split(None, 1)
+        return parts[1] if len(parts) == 2 else ""
+    return None
 
 
 # ------------------------------------------------------------------ kiểm gợi ý của AI (A2)

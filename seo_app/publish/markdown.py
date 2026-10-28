@@ -54,10 +54,11 @@ MAX_LOOKBACK = 100  # số dấu mở đậm/nghiêng xét lại cho một dấu
 MAX_COLUMNS = MAX_TABLE_COLUMNS  # số cột tối đa của bảng (dùng chung với ``markdown_blocks``)
 
 # Ký tự bỏ khỏi chữ: điều khiển C0/C1 (trừ tab, xuống dòng), điều khiển hướng chữ, nửa cặp lẻ.
-_DROPPED = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f‪-‮⁦-⁩\ud800-\udfff]")
+_DROPPED = re.compile(
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\ud800-\udfff]"
+)
 _LINES = re.compile(r"\r\n|\r|\n")
 _PLAIN = re.compile(r"[^\\\n`&*_]+")
-_CLOSING_HASHES = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
 _ORDERED = re.compile(r"([0-9]{1,9})[.)]")
 
 
@@ -263,6 +264,20 @@ def _dedent(line: str, columns: int) -> str:
     return line[i:]
 
 
+def _strip_closing_hashes(content: str) -> str:
+    """Bỏ dãy "#" đóng tiêu đề (CommonMark 4.2): dãy "#" ở cuối, đứng sau dấu cách/tab hay là cả
+    chữ, cùng khoảng trắng hai bên. Không dùng biểu thức chính quy: tuyến tính cả khi chữ có dãy
+    khoảng trắng rất dài (LC-T096-1)."""
+    body = content.rstrip(" \t")
+    hashes = len(body) - len(body.rstrip("#"))
+    if not hashes:
+        return body
+    rest = body[:-hashes]
+    if not rest:
+        return ""
+    return rest.rstrip(" \t") if rest[-1] in " \t" else body
+
+
 def _heading_tag(level: int) -> str:
     """``#``, ``##``, ``###`` trong thân một phần đều là ``<h3>`` (``<h2>`` là tiêu đề phần)."""
     return f"h{max(3, level)}"
@@ -440,7 +455,7 @@ def _blocks(lines: list[str], depth: int) -> list[tuple[str, str, str]]:
         elif _is_atx_heading(stripped, _spaces(line)):
             flush()
             level = len(stripped) - len(stripped.lstrip("#"))
-            content = _CLOSING_HASHES.sub("", stripped[level:].strip())
+            content = _strip_closing_hashes(stripped[level:].strip())
             tag = _heading_tag(level)
             body = inline_html(content)
             if body:

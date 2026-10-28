@@ -834,10 +834,6 @@ def test_sl7_backtick_line_with_backticks_after_is_not_a_fence(first_line):
 # ================================================================== lỗi lượt 2 (xfail)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T096-8: tiêu đề trong trích dẫn, mục danh sách: bước SEO nhận, bộ dựng bỏ link",
-)
 @pytest.mark.parametrize(
     "body, anchor",
     [
@@ -862,11 +858,6 @@ def test_sl8_heading_inside_quote_or_list_is_not_accepted_then_dropped(body, anc
     assert not review.links or built.review.skipped_links == ()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T096-9: không ảnh nào đánh dấu ảnh đại diện: client lấy ảnh đầu, dữ liệu xác "
-    "nhận báo không có",
-)
 def test_sl9_review_says_which_image_becomes_featured():
     """``create_draft_with_images`` lấy ảnh đầu tiên trong bài làm ảnh đại diện khi không ảnh nào
     ``featured`` (``wordpress/client.py:1410``). Bộ dựng giữ ``featured=False`` cho mọi ảnh: màn

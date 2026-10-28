@@ -227,3 +227,69 @@ Test mới của lượt 2 (`tests/test_publish_markdown.py`): chữ khối `mar
 - `_anchor_words` nay bỏ **một** dấu mục danh sách ở đầu cụm từ. Cụm từ đúng là bắt đầu bằng «1.» có nghĩa riêng (hiếm) thì link lấy phần chữ sau nó; vẫn chỉ trỏ bài đã đăng.
 - `markdown_blocks` đổi chữ của khối (giải mã `&…;`, bỏ `\`, che xuống dòng cứng). Gợi ý link đã lưu trong nháp cũ không bị ảnh hưởng: `place_links` kiểm lại từ đầu trên HTML; gợi ý nào không còn khớp thì bị bỏ kèm câu báo, như trước.
 - Dùng thêm tên riêng (`_ENTITY`, `_entity_value`, `_ESCAPABLE`) của `sanitize.py` để `links.py` và bộ chuyển giải mã y như nhau. Sửa các hàm đó thì chạy lại test của `seo_app/publish/` và `tests/test_onpage_links.py`.
+
+---
+
+## Lượt 3 (2026-10-28 08:38 +07:00, theo lệnh `date`)
+
+Sửa đủ điều kiện của [Lá Chắn rút gọn](T-096-la-chan.md) (LC-T096-1 Trung bình; LC-T096-2, -3, -4 Thấp) và 2 lỗi Thấp lượt 2 của [Soi Lỗi](T-096-soi-loi.md) (SL-T096-8, -9), theo dặn «có đề xuất thì làm theo đề xuất». Cả 14 ca `xfail(strict=True)` (10 của `tests/test_la_chan_t096.py`, 4 của `tests/test_soi_loi_t096.py`) chuyển XPASS; đã gỡ 6 dấu `xfail` (chỉ xóa dấu, không đổi `assert`).
+
+### Tóm tắt (cho chủ dự án)
+
+- Bài có dòng tiêu đề chứa hàng chục nghìn dấu cách không còn làm app chậm khi dựng.
+- Màn hình xác nhận nay ghi rõ **ảnh nào sẽ là ảnh đại diện** (kể cả khi không chọn: website lấy ảnh đầu tiên), và ảnh đó là **ảnh thật hay ảnh AI**, mã công trình, khu vực. Thẻ ảnh đổi sau khi xác nhận thì app dừng, không gửi.
+- Đoạn chỉ có một địa chỉ web đứng sau dấu cách đặc biệt (`&nbsp;`…) cũng bị Chặn, vì trình soạn khối của WordPress vẫn nhúng trang đó khi bấm «Chuyển thành khối».
+- Tiêu đề nằm trong trích dẫn hay mục danh sách không còn được bước SEO nhận làm chỗ đặt link (bài gửi đi là tiêu đề, không đặt link được).
+
+### Đã sửa
+
+| Mã | Mức | Sửa ở đâu |
+|---|---|---|
+| LC-T096-1 | Trung bình | `markdown.py`: bỏ biểu thức `_CLOSING_HASHES`; `_strip_closing_hashes` cắt dãy «#» đóng bằng `rstrip` (tuyến tính), cùng kết quả CommonMark 4.2 (7 ca canh của Lá Chắn qua) |
+| LC-T096-2 | Thấp | `render.py`: `ArticleImage` có thêm `source`, `project_code`, `category`, `area`, `phase` (thẻ `ImageTags` lưu thành chữ, để gói dựng ra chỉ gồm chữ, số, như test mã băm của Soi Lỗi cần); `ArticleImage.of(…, tags=ImageTags)` để dựng, `.tags` để đọc lại (kiểm theo danh sách cố định; sai là `BuildError`). Thẻ vào mã băm (đủ 5 trường); `content_parts` so `draft.tags == image.tags`; `ImageRow` có `ai`, `project_code`, `category`, `area` |
+| LC-T096-3 | Thấp | `markdown.py:57` viết `\u202a-\u202e\u2066-\u2069` (dạng mã) thay ký tự trần. Nguyên nhân: công cụ ghi file của phiên đổi chuỗi `\uXXXX` tôi gõ thành ký tự thật; đã sửa bằng script dựng dấu «\» bằng `chr(92)`. Theo Quan sát 3, cũng đổi 5 dòng test của tôi (`tests/test_publish_markdown.py`) có ký tự vô hình viết trần sang dạng `\u…`. Quét lại 4 file code và 2 file test của phiếu: không còn ký tự Cf, Zs trần (trừ một dấu cách không ngắt trong chú thích có từ T-039 ở `links.py`, không phải ký tự hướng chữ) |
+| LC-T096-4 | Thấp | `review.py`: lớp chặn nhúng chặt hơn (khối chỉ có một địa chỉ) bỏ khoảng trắng hai đầu theo đúng tập của `String.prototype.trim` JavaScript (`_JS_TRIM`: tab, xuống dòng, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, U+FEFF; không gồm U+200B). Hai biểu thức của WordPress giữ khoảng trắng kiểu PCRE như cũ |
+| SL-T096-8 | Thấp | `links.py` `markdown_blocks`: dòng trích dẫn hay mục danh sách mà phần sau dấu «>» / dấu mục là tiêu đề `#` thì không phải khối (như bộ chuyển dựng `<h3>`); «> ---» ngay dưới dòng trích dẫn là dòng gạch dưới (dòng trên là tiêu đề); «> ***» là kẻ ngang. Bước SEO bỏ cụm từ ở đó ngay |
+| SL-T096-9 | Thấp | `render.py`: bộ dựng tính ảnh đại diện **thật sự** theo đúng quy tắc client (`_plan_draft_images`: ảnh được chọn, không có thì ảnh đầu tiên theo thứ tự phần). `ImageRow.featured` là ảnh website sẽ dùng, `featured_auto` cho biết ảnh đó do tự chọn; mã băm có cả lựa chọn của người dùng (`featured`) lẫn ảnh thật sự dùng (`featured_effective`). `content_parts` vẫn so lựa chọn của người dùng (test SL-T096-5 «featured» của Soi Lỗi giữ nguyên) |
+
+Thêm theo Quan sát 2 của Lá Chắn: `BuiltArticle.matches` trả `False` (không ném `TypeError`) với chữ không phải ASCII hay không phải chữ.
+
+`DIGEST_VERSION` đổi `t096-1` → `t096-2` (nội dung băm thêm thẻ ảnh, ảnh đại diện thật sự): mã băm cũ không khớp gói mới.
+
+### Test mới lượt 3 (`tests/test_publish_render.py`)
+
+`test_image_tags_round_trip_and_bound_to_confirmation` (thẻ vào `ImageRow`, `content_parts` từ chối thẻ khác: bỏ thẻ, thành ảnh AI, mã công trình khác; ảnh AI đổi mã băm), `test_invalid_tags_are_rejected`, `test_default_featured_image_is_shown_like_client` (ảnh đầu theo thứ tự phần, không theo thứ tự danh sách đưa vào), `test_matches_never_raises_on_odd_text`, `test_heading_with_long_whitespace_is_linear` (qua cả `build_article`).
+
+### Bằng chứng lượt 3
+
+```
+$ uv run pytest tests/test_la_chan_t096.py tests/test_soi_loi_t096.py   # trước khi gỡ dấu, đã sửa code
+14 XPASS(strict) (10 LC-T096-1..4, 4 SL-T096-8, -9), không ca nào đỏ thật
+
+$ uv run pytest tests/test_la_chan_t096.py tests/test_soi_loi_t096.py tests/test_publish_markdown.py \
+    tests/test_publish_render.py tests/test_la_chan_t039.py
+388 passed in 29.28s
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check seo_app/publish seo_app/onpage/links.py tests/test_publish_markdown.py tests/test_publish_render.py
+7 files already formatted
+```
+
+Lượt chạy lớn đầu tiên (14 file: mọi file test gọi `links.py` hay gói `publish`, bước SEO T-041, T-039, T-040, trang app) bắt được **một lỗi do chính lượt này gây ra**: `test_check_suggestions_linear_on_hostile_body[quotes]` của Soi Lỗi T-039 (dòng `"> " * n`) chậm gấp 9,1 lần khi dài gấp 4. Nguyên nhân: hàm mới `_quote_or_item_text` bỏ dấu «>» bằng `inner[1:].lstrip()` trong vòng lặp, mỗi vòng chép lại chuỗi. Đã sửa: duyệt theo chỉ số (tuyến tính); test tốc độ T-039 chạy lại 3 lần đều qua (14 passed mỗi lần).
+
+```
+$ uv run pytest tests/test_la_chan_t039.py tests/test_la_chan_t096.py tests/test_onpage_links.py \
+    tests/test_publish_markdown.py tests/test_publish_render.py tests/test_soi_loi_t039.py \
+    tests/test_soi_loi_t041.py tests/test_soi_loi_t096.py tests/test_t040_prompts.py \
+    tests/test_t041_drafts_seo.py tests/test_t041_links_ai.py tests/test_t041_seo_ui.py \
+    tests/test_la_chan_t041.py tests/test_app_pages.py          # sau khi sửa
+1167 passed, 3 xfailed in 426.31s (0:07:06)
+# 3 xfail có từ trước, cùng lỗi SL-T041-8 (emoji mới, phiếu T-090)
+```
+
+### Rủi ro lượt 3
+
+- `ArticleImage` lưu thẻ thành 5 trường chữ thay vì một trường `ImageTags` (Lá Chắn gợi ý `tags: ImageTags`): để `vars(image)` của gói dựng ra ghi được JSON (test mã băm `test_digest_changes_exactly_when_sent_content_changes` của Soi Lỗi dùng cách đó, không sửa test của người khác). T-102 dựng bằng `ArticleImage.of(…, tags=draft.tags)`; `.tags` trả `ImageTags` đã kiểm.
+- Mã băm có cả `featured` (lựa chọn của người dùng) lẫn `featured_effective` (ảnh website dùng): đổi lựa chọn mà kết quả như nhau (một ảnh, chọn hay không) vẫn đổi mã băm, theo hướng chặt (phải xác nhận lại).
+- Bài học công cụ: lệnh sửa file của phiên đổi chuỗi `\uXXXX` gõ trong lệnh thành ký tự thật. Đã quét lại mọi file đụng tới ở lượt này (code, test, báo cáo) bằng script, không còn ký tự hướng chữ hay ký tự vô hình trần.

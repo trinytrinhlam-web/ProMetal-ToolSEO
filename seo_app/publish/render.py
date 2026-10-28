@@ -34,6 +34,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from seo_app.images.html import plain_image_text
+from seo_app.images.tags import SOURCE_AI, SOURCE_REAL, ImageTags, TagError
 from seo_app.onpage.links import (
     InternalLink,
     LinkKind,
@@ -57,7 +58,7 @@ from seo_app.storage.site_index import SiteIndex
 from seo_app.wordpress.client import DraftImage
 from seo_app.wordpress.shortcodes import find_shortcodes
 
-DIGEST_VERSION = "t096-1"  # đổi khi đổi cách chuẩn hóa: mã băm cũ không còn khớp
+DIGEST_VERSION = "t096-2"  # đổi khi đổi cách chuẩn hóa: mã băm cũ không còn khớp
 MODES = ("draft", "future", "publish")
 MAX_PARTS = 100
 MAX_SLUG_CHARS = 200
@@ -86,7 +87,12 @@ class ArticlePart:
 @dataclass(frozen=True)
 class ArticleImage:
     """Ảnh sẽ chèn sau thân phần ``section``. ``sha256``: băm byte sẽ tải (như ``altsha-``);
-    ``alt``, ``caption``: chữ đã duyệt (bộ dựng tự đổi về chữ thường như ``figure_html``)."""
+    ``alt``, ``caption``: chữ đã duyệt (bộ dựng tự đổi về chữ thường như ``figure_html``).
+    ``featured``: người dùng chọn làm ảnh đại diện. ``source``, ``project_code``, ``category``,
+    ``area``, ``phase``: thẻ của ảnh (``ImageTags``: ảnh thật/AI, mã công trình, hạng mục, khu vực,
+    trước/sau), đúng ``DraftImage.tags`` sẽ gửi: client dùng để đặt tên file công khai và tiêu đề
+    Media (LC-T096-2). Lưu thành chữ để gói dựng ra chỉ gồm chữ, số; dựng từ ``ImageTags`` bằng
+    ``ArticleImage.of(…, tags=…)``, đọc lại bằng ``.tags``."""
 
     section: int
     sha256: str
@@ -94,6 +100,52 @@ class ArticleImage:
     caption: str = ""
     featured: bool = False
     has_gps: bool = False
+    source: str = SOURCE_REAL
+    project_code: str = ""
+    category: str = ""
+    area: str = ""
+    phase: str = ""
+
+    @classmethod
+    def of(
+        cls,
+        *,
+        section: int,
+        sha256: str,
+        alt: str,
+        caption: str = "",
+        featured: bool = False,
+        has_gps: bool = False,
+        tags: ImageTags | None = None,
+    ) -> ArticleImage:
+        """Ảnh kèm thẻ ``ImageTags`` (như ``DraftImage.tags``; không có: ảnh thật, chưa thẻ)."""
+        tags = ImageTags() if tags is None else tags
+        if not isinstance(tags, ImageTags):
+            raise BuildError(_MSG_BAD_INPUT.format(what="thẻ ảnh"))
+        return cls(
+            section=section,
+            sha256=sha256,
+            alt=alt,
+            caption=caption,
+            featured=featured,
+            has_gps=has_gps,
+            source=tags.source,
+            project_code=tags.project_code,
+            category=tags.category,
+            area=tags.area,
+            phase=tags.phase,
+        )
+
+    @property
+    def tags(self) -> ImageTags:
+        """Thẻ dạng ``ImageTags`` (kiểm lại theo danh sách cố định; sai thì ``TagError``)."""
+        return ImageTags(
+            source=self.source,
+            project_code=self.project_code,
+            category=self.category,
+            area=self.area,
+            phase=self.phase,
+        )
 
 
 @dataclass(frozen=True)
@@ -108,12 +160,21 @@ class SeoFields:
 
 @dataclass(frozen=True)
 class ImageRow:
+    """Một ảnh trên màn hình xác nhận. ``featured``: ảnh website sẽ dùng làm ảnh đại diện;
+    ``featured_auto``: không ảnh nào được chọn nên client lấy ảnh đầu tiên (SL-T096-9).
+    ``ai``, ``project_code``, ``category``, ``area``: thẻ ảnh (LC-T096-2)."""
+
     section: int
     section_name: str
     alt: str
     caption: str
     featured: bool
     has_gps: bool
+    featured_auto: bool = False
+    ai: bool = False
+    project_code: str = ""
+    category: str = ""
+    area: str = ""
 
 
 @dataclass(frozen=True)
@@ -162,15 +223,21 @@ class BuiltArticle:
         return "\n".join(self.sections)
 
     def matches(self, digest: object) -> bool:
-        """Mã băm người dùng đã xác nhận có đúng gói này không."""
-        return isinstance(digest, str) and hmac.compare_digest(digest, self.digest)
+        """Mã băm người dùng đã xác nhận có đúng gói này không. Chữ lạ (không phải ASCII, không
+        phải chữ) là không khớp, không ném lỗi (Quan sát 2 của Lá Chắn T-096)."""
+        return (
+            isinstance(digest, str)
+            and digest.isascii()
+            and hmac.compare_digest(digest, self.digest)
+        )
 
     def content_parts(self, images: Mapping[int, DraftImage]) -> list[str | DraftImage]:
         """Nội dung theo thứ tự cho ``create_draft_with_images``: HTML phần 0, ảnh phần 0, HTML
         phần 1… ``images``: ``DraftImage`` theo số phần, **đúng** các ảnh đã khai trong
         ``build_article`` (đã băm, đã liệt kê ở màn hình xác nhận): cùng phần, cùng băm byte
-        ``image.data``, cùng alt, chú thích (chữ thường như ``figure_html``), ảnh đại diện, GPS.
-        Khác (ảnh bị thay sau khi xác nhận…) thì ``BuildError``, chưa gửi gì (SL-T096-5)."""
+        ``image.data``, cùng alt, chú thích (chữ thường như ``figure_html``), ảnh đại diện, GPS,
+        thẻ ảnh. Khác (ảnh, thẻ bị thay sau khi xác nhận…) thì ``BuildError``, chưa gửi gì
+        (SL-T096-5, LC-T096-2)."""
         expected = {image.section: image for image in self.images}
         if set(images) != set(expected):
             raise BuildError(_MSG_BAD_INPUT.format(what="ảnh không khớp bài đã dựng"))
@@ -199,6 +266,8 @@ def _same_image(draft: object, image: ArticleImage) -> bool:
         and plain_image_text(draft.caption) == image.caption
         and draft.featured is image.featured
         and draft.image.has_gps is image.has_gps
+        and isinstance(draft.tags, ImageTags)
+        and draft.tags == image.tags
     )
 
 
@@ -276,6 +345,7 @@ def _check_inputs(
             or not isinstance(image.caption, str)
             or type(image.featured) is not bool
             or type(image.has_gps) is not bool
+            or not _valid_tags(image)
         ):
             raise BuildError(_MSG_BAD_INPUT.format(what="ảnh"))
         sections.add(image.section)
@@ -294,6 +364,15 @@ def _check_inputs(
     ):
         raise BuildError(_MSG_BAD_INPUT.format(what="giờ hẹn"))
     return items, pictures
+
+
+def _valid_tags(image: ArticleImage) -> bool:
+    """Thẻ của ảnh đúng khuôn ``ImageTags`` (danh sách cố định)."""
+    try:
+        image.tags  # noqa: B018 - dựng để kiểm
+    except TagError:
+        return False
+    return True
 
 
 def digest_of(payload: Mapping[str, object]) -> str:
@@ -352,9 +431,18 @@ def build_article(
             caption=plain_image_text(image.caption),
             featured=image.featured,
             has_gps=image.has_gps,
+            source=image.source,
+            project_code=image.project_code,
+            category=image.category,
+            area=image.area,
+            phase=image.phase,
         )
         for image in sorted(pictures, key=lambda image: image.section)
     )
+    # Ảnh website sẽ dùng làm ảnh đại diện, đúng quy tắc của client (``_plan_draft_images``:
+    # ảnh được chọn, không có thì ảnh đầu tiên theo thứ tự trong bài; SL-T096-9).
+    chosen = [image.section for image in final_images if image.featured]
+    featured_section = chosen[0] if chosen else (final_images[0].section if final_images else None)
     names = [plain_line(part.heading) for part in items]
     review = _review(
         final=final,
@@ -365,6 +453,7 @@ def build_article(
         title=final_title,
         excerpt=plain_excerpt,
         images=final_images,
+        featured_section=featured_section,
         index=index,
         slug=slug,
         seo=seo,
@@ -388,7 +477,15 @@ def build_article(
                 "alt": image.alt,
                 "caption": image.caption,
                 "featured": image.featured,
+                "featured_effective": image.section == featured_section,
                 "has_gps": image.has_gps,
+                "tags": {
+                    "source": image.source,
+                    "project_code": image.project_code,
+                    "category": image.category,
+                    "area": image.area,
+                    "phase": image.phase,
+                },
             }
             for image in final_images
         ],
@@ -431,6 +528,7 @@ def _review(
     title: str,
     excerpt: str,
     images: tuple[ArticleImage, ...],
+    featured_section: int | None,
     index: SiteIndex,
     slug: str,
     seo: SeoFields,
@@ -504,8 +602,13 @@ def _review(
             section_name=_section_label(image.section, names[image.section]),
             alt=image.alt,
             caption=image.caption,
-            featured=image.featured,
+            featured=image.section == featured_section,
             has_gps=image.has_gps,
+            featured_auto=image.section == featured_section and not image.featured,
+            ai=image.source == SOURCE_AI,
+            project_code=image.project_code,
+            category=image.category,
+            area=image.area,
         )
         for image in images
     )

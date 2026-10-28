@@ -51,9 +51,6 @@ INDEX = SiteIndex(
 # ------------------------------------------------------------------ LC-T096-1
 
 
-@pytest.mark.xfail(
-    strict=True, reason="LC-T096-1: tiêu đề có dãy khoảng trắng dài làm bộ chuyển chạy bậc hai"
-)
 @pytest.mark.parametrize(
     "make",
     [
@@ -108,10 +105,6 @@ def test_lc2_same_image_as_confirmed_is_accepted():
     assert parts[0] == built.sections[0] and isinstance(parts[1], DraftImage)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T096-2: thẻ ảnh (thật/AI, nơi chụp) không được ràng vào ảnh đã xác nhận",
-)
 @pytest.mark.parametrize(
     "tags",
     [ImageTags(source="ai"), ImageTags(project_code="CT012", area="Tân Phú")],
@@ -132,10 +125,6 @@ _BIDI = frozenset(
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T096-3: markdown.py:57 viết trần ký tự điều khiển hướng chữ (Trojan Source)",
-)
 def test_lc3_no_raw_bidi_control_characters_in_app_source():
     found = []
     for folder in ("seo_app", "app", "scripts"):
@@ -169,11 +158,6 @@ def _review(body: str):
     return build_article(title="T", parts=[ArticlePart("", body)], index=INDEX).review
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T096-4: lớp chặn nhúng chặt hơn chỉ bỏ khoảng trắng ASCII, trình soạn khối bỏ cả "
-    "khoảng trắng Unicode (trim của JavaScript)",
-)
 @pytest.mark.parametrize(
     "pad", ["&nbsp;", "&#160;", "﻿", "&emsp;", "&#x3000;"], ids=lambda pad: repr(pad)
 )
