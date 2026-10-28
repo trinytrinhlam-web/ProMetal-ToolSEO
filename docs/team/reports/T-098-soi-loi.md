@@ -8,6 +8,7 @@
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, **2 Trung bình** (SL-T098-1, -2), **9 Thấp** (SL-T098-3 → -11), 8 góp ý. Test `xfail(strict=True)` cho cả 11 lỗi |
 | **Phải sửa trước Lá Chắn** | **SL-T098-1** (bộ kiểm «AI không đưa HTML vào kế hoạch» bị lách bằng một ký tự vô hình; sửa 2–3 dòng). **Nên sửa cùng lượt**: SL-T098-2 (file kế hoạch nhiều bảng chỉ đọc bảng đầu: kế hoạch 6 tháng thật mất 104/112 dòng, không báo). Các lỗi Thấp không chặn; rẻ nên sửa trước khi gộp: SL-T098-3, -7, -11 |
 | **Kết luận lượt 2** (đầu nhánh `d52f162`, 2026-10-28) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-1 → -11 **đóng cả 11** (thử lại cả biến thể gần); 12 dấu `xfail` gỡ đúng R5; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **6 Thấp mới** (SL-T098-12 → -17, đều do phần sửa lượt 2, có `xfail(strict=True)`). **Không lỗi nào phải sửa trước Lá Chắn.** Không lùi `main`: bản gộp thử với `main` `1b45f5d` (có T-096) sạch, 3.797 test qua. Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-28-1358-0700--soát-lượt-sửa-của-thợ-máy-d52f162) |
+| **Kết luận lượt 3** (đầu nhánh `34302fa`, 2026-10-28) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-12 → -17 **đóng cả 6** (thử cả biến thể gần); 6 dấu `xfail` gỡ đúng R5; 11 lỗi lượt 1 không lùi; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp mới** (SL-T098-18 do lượt 3, -19 biến thể của -13, -20 có từ lượt 1; có `xfail(strict=True)`). **Không lỗi nào chặn gộp**, lượt 3 không đụng chỗ bảo mật. Chạy được với `main` mới nhất `d1506cb` (T-096, T-090, T-097): bản gộp thử 26 file test, 4.586 qua, 0 hỏng. Chi tiết: mục [«Lượt 3»](#lượt-3-2026-10-28-1733-0700--soát-lượt-sửa-của-thợ-máy-34302fa) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -254,3 +255,69 @@ Góp ý lượt 2 (không xếp lỗi, không test `xfail`):
 
 1. Chuyển Lá Chắn rút gọn được ngay (không lỗi Trung bình trở lên).
 2. Thợ Máy sửa trong một lượt nhỏ trước khi gộp: SL-T098-13, -17, -12 (mỗi lỗi vài dòng); -14, -15, -16 sửa cùng lúc nếu tiện (đều nhỏ). Gỡ dấu `xfail` khi XPASS (R5).
+
+---
+
+## Lượt 3 (2026-10-28 17:33 +07:00) · soát lượt sửa của Thợ Máy (`34302fa`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 28/10 16:00 (làm tiếp 17:30): xác nhận SL-T098-12 → -17 đóng (thêm biến thể gần, nhất là -13, -17, -12), soát R5, tìm lỗi mới do lượt 3, không lùi 11 lỗi lượt 1, chạy được với `main` mới nhất `d1506cb` (có T-096, T-090, T-097) |
+| Đầu nhánh soát | `34302fa` (Thợ Máy lượt 3; Lá Chắn rút gọn `b520623` ĐẠT CÓ ĐIỀU KIỆN) |
+| **Kết luận lượt 3** | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T098-12 → -17 **đóng cả 6** (SL-T098-13 đóng đủ các ca đã nêu; một biến thể gần còn lỗi, ghi thành SL-T098-19); 11 lỗi lượt 1 **không lùi**; 0 Nghiêm trọng, 0 Cao, 0 Trung bình; **3 Thấp mới**: SL-T098-18 (do lượt 3), -19 (biến thể của -13, do G7 lượt 2), -20 (có từ lượt 1). **Không lỗi nào chặn gộp**; nên sửa trước T-100, T-101 (đều nhỏ) |
+| Bảo mật | Lượt 3 **không** đụng bộ kiểm thẻ HTML, bộ làm sạch ký tự vô hình, biểu thức dò số điện thoại, email. Chỗ gần bảo mật: (1) cảnh báo «AI có số điện thoại hoặc email» nay chỉ xét chữ do AI đưa: đúng ý, không bỏ sót chữ mới nào của AI (đã thử «Thêm», «Cập nhật», «Bỏ», lý do); (2) biểu thức mới (`_SERIAL_TIME_RE`, nhánh «p/q đứng riêng» của `_LOCATION`) và đọc CSV hai lượt chạy tuyến tính (chuỗi độc 20.000 ký tự ≤ 3 ms; CSV 1.000 dòng đọc hai lượt 0,09 s; giới hạn 1.000 dòng, 26 cột vẫn dừng ngay); (3) lượt đọc lại không `strict` ảnh hưởng **toàn vẹn dữ liệu** (SL-T098-18), không phải bảo mật. Theo tôi không cần Lá Chắn xem lại |
+
+### Tóm tắt (cho chủ dự án)
+
+- 6 lỗi nhỏ lần trước đã sửa thật: ô bắt đầu bằng ngoặc kép không còn làm hỏng cả bảng; bảng dạng «mục – nội dung» (cả file yêu cầu phần mềm) không còn ra bài giả; «P. Tân Định» lại có cảnh báo trang cửa ngõ; cảnh báo «AI có số điện thoại» chỉ hiện khi chính AI viết số; ô ngày `46337.0` là ngày, không thành 0 giờ đêm; kế hoạch có mã «B-99999» chạy bình thường.
+- Còn 3 lỗi nhỏ, không nguy hiểm, không chặn:
+  1. File CSV có một dấu ngoặc kép quên đóng, mà phía dưới còn ô có ngoặc kép, thì các dòng ở giữa bị gộp vào một ô, không báo (lần 2 đã chặn đúng; lần sửa này làm lộ lại).
+  2. Bảng «brief» xuất CSV có dòng tên phía trên rồi các dòng «Từ khóa, …», «Ngày, …» vẫn ra bài giả.
+  3. Bảng có dòng mới tự ghi Mã bài (ví dụ «B-004») đứng sau một dòng mới chưa có mã thì mã bị đổi sang số khác, không báo (có từ lần đầu).
+- Không có gì phải anh/chị quyết.
+
+### R5
+
+| Test | Thay đổi | Kết luận |
+|---|---|---|
+| `tests/test_soi_loi_t098.py` (của tôi) | 35 dòng xóa, 0 dòng thêm: đúng 6 dấu `@pytest.mark.xfail(...)` của SL-T098-12 → -17; thân test, điều kiện khẳng định không đổi | **Đúng R5** |
+| `tests/test_plan_ai.py`, `test_plan_parse.py`, `test_plan_propose.py` (của Thợ Máy) | Chỉ thêm 6 test lượt 3; không xóa, không sửa dòng cũ | **Đúng R5** |
+
+### Từng lỗi lượt 2
+
+| Lỗi | Ca cũ | Biến thể gần (mới, đều qua) | Kết quả |
+|---|---|---|---|
+| SL-T098-12 | 2 ca qua | Dán và CSV ô «"Đức" là hãng tốt» đọc đủ 2 dòng; ngoặc giữa chữ («anh nói "gấp"») giữ nguyên; ô ngoặc rỗng; CSV chuẩn Excel (`"""Đức"" là hãng, tốt"`) đúng chữ; ngoặc không đóng tới hết file vẫn `BAD_TABLE` | **Đóng**; xem SL-T098-18 |
+| SL-T098-13 | 3 ca qua | Markdown «Mục – Nội dung» có và không có dòng phân cách, tiêu đề gần giống («Từ khóa phụ – Ghi chú») → chữ tự do; tiêu đề ở dòng 2 của bảng (dòng tên phía trên), dòng phân cách đứng đầu → đọc đúng; file thật `yeu_cau_phan_mem_ProMetal_ToolSEO.md` lại là chữ tự do; CSV có dòng tên hai ô → chữ tự do (thận trọng) | **Đóng** các ca đã nêu; biến thể «dòng tên một ô + bảng khóa–giá trị không tiêu đề» còn lỗi: SL-T098-19 |
+| SL-T098-14 | 1 ca qua | «P. Tân Định / P. Đa Kao / P. Bến Nghé», «Q. Bình Thạnh / Q. Gò Vấp / Q. Tân Phú», «p tân định / p đa kao / q bình thạnh» → cảnh báo cửa ngõ; «loại P / Q / X», «phụ kiện / phụ tùng / phí lắp» → không | **Đóng** |
+| SL-T098-15 | 2 ca qua | 5 đề xuất một lượt: AI đổi ưu tiên dòng có số khách cũ → không cảnh báo, tick sẵn; «Bỏ» dòng có số trong tiêu đề cũ → không; AI đổi ghi chú thành chữ có số → có; «Thêm» có số trong tiêu đề → có; lý do có email → có | **Đóng** |
+| SL-T098-16 | 2 ca qua | `46337.000` → ngày trần; `.5` → 12:00; `.25` → 06:00; 1.900 chữ số 0 → ngày trần; 1.500 số 0 rồi «1» → 00:00 (phần lẻ thật, đúng); ≤ 2 ms | **Đóng** |
+| SL-T098-17 | 1 ca qua | Sau «B-99999»: so bảng cấp B-003, B-004 (số trống), AI «Thêm» B-003; 1.000 mã liền + «B-99999» → B-1001, B-1002 (0,02 s); `next_key` hết mã ra câu cố định; `plan_changes` đổi `PlanKeyError` thành `AIError` câu cố định (test Thợ Máy) | **Đóng** |
+| 11 lỗi lượt 1 | 307 ca của lượt 1 và lượt 2 (gồm 44 ca từng là `xfail`) vẫn qua | — | **Không lùi** |
+
+### Lỗi mới (lượt 3)
+
+| # | Mức | Mô tả | Vị trí | Do | Test |
+|---|---|---|---|---|---|
+| SL-T098-18 | Thấp | Lượt đọc lại không `strict` (sửa SL-T098-12) làm SL-T098-3 sống lại ở dạng gần: ngoặc kép **không đóng** mà phía dưới còn một ô có ngoặc kép (ô chuẩn `"có, phẩy"` hay `"Đức" là hãng`) thì `csv` «đóng» ngoặc ở đó; lỗi `strict` không phải «hết file» nên đọc lại không `strict`: mọi dòng ở giữa bị gộp vào ô ghi chú, **không báo** (CSV và bảng dán). Lượt 2 chặn đúng (`BAD_TABLE`). Gợi ý: sau lượt không `strict`, ô nào có xuống dòng thì coi là lỗi (`BAD_TABLE`) hay báo; hoặc trước khi đọc chỉ bọc lại đúng dạng ô mở đầu bằng chữ trong ngoặc rồi có chữ sau trên **cùng một dòng**, rồi đọc `strict` | `seo_app/plan/parse.py:250` (`_csv_rows`) | SL-T098-12 (lượt 3) | `test_sl_t098_18_…` (CSV ×2, dán) |
+| SL-T098-19 | Thấp | Biến thể gần của SL-T098-13 chưa đóng: CSV có **dòng tên một ô** phía trên một bảng «Mục – Nội dung» **không có dòng tiêu đề** (kiểu brief bài viết xuất từ Sheet: «BRIEF BÀI VIẾT», rồi «Từ khóa, sửa cửa cuốn», «Ngày, 12/11/2026»…): `_find_header` bỏ dòng tên rồi lấy dòng dữ liệu «Từ khóa, …» làm tiêu đề → «Ngày», «Ghi chú» thành bài giả, tick sẵn. Lượt 1 là chữ tự do. Gợi ý: đã bỏ qua dòng tên thì dòng tiêu đề phải nhận ra ít nhất hai cột | `parse.py:404` (`_find_header`) | G7 (lượt 2) | `test_sl_t098_19_…` |
+| SL-T098-20 | Thấp (có từ lượt 1) | Bảng đưa vào có dòng mới **tự ghi Mã bài** (ví dụ «B-004», nối số kế tiếp) đứng **sau** một dòng mới chưa có mã: dòng chưa mã được cấp B-004 trước, dòng ghi B-004 bị đổi sang B-005, không báo. Đưa lại file đó: cùng thứ tự thì dòng «B-004» bị bỏ vì «trùng»; đổi thứ tự thì đề xuất đổi từ khóa của bài B-004 (bài khác) thành từ khóa dòng đó (có cảnh báo trùng, không tick sẵn). Gợi ý: giữ trước mọi mã mới ghi trong bảng (`take`), rồi mới cấp mã cho dòng chưa có mã | `propose.py:192` (`compare_rows`) | lượt 1 | `test_sl_t098_20_…` |
+
+Ghi cho phiếu sau (không xếp lỗi): `compare_rows` có thể báo `PlanKeyError` (chỉ khi hết thật 99.999 mã): đường AI đã đổi thành `AIError`; đường bảng (T-101 gọi `compare_rows`) cần bắt `PlanKeyError` và hiện câu cố định của nó.
+
+### Chạy được với `main` mới nhất
+
+- `main` cục bộ `d1506cb` (T-096, T-090, T-097) và nhánh không sửa chung file nào (gốc chung `15bfaca`). T-097 có `PLAN_TAB = "KeHoach"` trùng tên với `model.SHEET_TAB`; chưa gọi `seo_app.plan` (T-100 nối).
+- Bản gộp thử trong `git worktree` tạm (không nhánh, không push, đã gỡ), kèm file test lượt 3 của tôi: gộp không xung đột; 26 file test (kế hoạch, lời dặn, nội dung, liên kết nội bộ, T-096, T-083, T-062, T-097 Google Sheets, cấu hình, `.env`, trang app): **4586 passed, 4 skipped, 25 xfailed, 0 failed** (5 xfail là SL-T098-18 → -20 của tôi, còn lại của phiếu khác).
+- 10 file test liên quan trên nhánh (4 file kế hoạch, file của tôi, `test_soi_loi_t003_t009.py`, `test_t040_prompts.py`, `test_content_workflow.py`, `test_prompt_data_frames.py`, `test_content_edge_cases.py`): **766 passed, 5 xfailed**.
+
+### Bằng chứng (lượt 3)
+
+- `uv run pytest tests/test_soi_loi_t098.py`: **328 passed, 5 xfailed**; `--runxfail` với SL-T098-18 → -20: 5 hỏng, đúng câu khẳng định (dòng bị gộp, bài giả, `B-005` thay vì `B-004`).
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn và `PYTHONUTF8=1 uvx detect-secrets scan` (file test + mồi thử): sạch.
+- Script thử lượt 3: `T-098-soi-loi-scripts/round3.py`, `round3_speed.py` (thư mục ghi chú chung).
+
+### Đề xuất (lượt 3)
+
+1. Gộp `main` được (không lỗi Trung bình trở lên, không đụng chỗ bảo mật).
+2. Sửa SL-T098-18, -19, -20 trong một phiếu dọn nhỏ trước T-100 (T-100 dùng `compare_rows` và đọc bảng từ Sheet khác); gỡ dấu `xfail` khi XPASS (R5).

@@ -1137,3 +1137,173 @@ def test_sl_t098_17_largest_key_does_not_break_updates():
     item = suggestion(action="cap_nhat", key="B-001", priority="Cao", reason="x")
     ai = propose.from_ai(PlanSuggestions(items=[item]), current, today=TODAY)
     assert [p.action for p in table.items] == [p.action for p in ai.items] == [Action.UPDATE]
+
+
+# ============================================================ lượt 3 (2026-10-28)
+# Biến thể gần của SL-T098-12 → -17 (phải qua) và lỗi còn lại sau lượt 3 (xfail strict).
+
+
+@pytest.mark.parametrize(
+    ("source", "text", "notes"),
+    [
+        ("paste", 'Từ khóa\tGhi chú\nsửa cửa\t"Đức" là hãng tốt\ncửa kéo\tx\n', "Đức là hãng tốt"),
+        ("csv", 'Từ khóa,Ghi chú\nsửa cửa,"Đức" là hãng tốt\ncửa kéo,x\n', "Đức là hãng tốt"),
+        ("csv", 'Từ khóa,Ghi chú\nsửa cửa,anh nói "gấp"\ncửa kéo,x\n', 'anh nói "gấp"'),
+        ("csv", 'Từ khóa,Ghi chú\nsửa cửa,""\ncửa kéo,x\n', ""),
+        (
+            "csv",
+            'Từ khóa,Ghi chú\nsửa cửa,"""Đức"" là hãng, tốt"\ncửa kéo,x\n',
+            '"Đức" là hãng, tốt',
+        ),
+    ],
+    ids=["dan-ngoac-dau", "csv-ngoac-dau", "ngoac-giua", "ngoac-rong", "excel-chuan"],
+)
+def test_round3_sl_t098_12_quote_variants_read_every_row(source, text, notes):
+    result = parse.read_paste(text) if source == "paste" else csv_file(text)
+    assert [(r.keyword, r.notes) for r in result.rows] == [("sửa cửa", notes), ("cửa kéo", "x")]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "| Mục | Nội dung |\n|---|---|\n| Từ khóa | sửa cửa cuốn |\n| Ngày | 12/11/2026 |\n",
+        "| Mục | Nội dung |\n| Từ khóa | sửa cửa cuốn |\n| Ngày | 12/11/2026 |\n",
+        "| Từ khóa phụ | Ghi chú |\n|---|---|\n| Từ khóa chính | sửa cửa |\n| Ngày | 12/11 |\n",
+    ],
+    ids=["md-co-phan-cach", "md-khong-phan-cach", "md-tieu-de-gan-giong"],
+)
+def test_round3_sl_t098_13_markdown_key_value_tables_are_not_plans(text):
+    result = parse.read_paste(text)
+    assert not result.rows and result.free_text
+
+
+def test_round3_sl_t098_13_markdown_header_is_the_row_before_the_separator():
+    title_inside = "| Tháng 11 | |\n| Từ khóa | Ngày |\n|---|---|\n| cửa cuốn | 12/11/2026 |\n"
+    separator_first = "|---|---|\n| Từ khóa | Ngày |\n| cửa cuốn | 12/11/2026 |\n"
+    for text in (title_inside, separator_first):
+        (row,) = parse.read_paste(text).rows
+        assert (row.keyword, row.planned_date) == ("cửa cuốn", date(2026, 11, 12))
+    path = PLAN_DIR / "yeu_cau_phan_mem_ProMetal_ToolSEO.md"
+    result = parse.read_file(path.read_bytes(), path.name)
+    assert not result.rows and result.free_text
+
+
+@pytest.mark.parametrize(
+    ("keywords", "doorway"),
+    [
+        (("sửa cửa P. Tân Định", "sửa cửa P. Đa Kao", "sửa cửa P. Bến Nghé"), True),
+        (("sửa cửa Q. Bình Thạnh", "sửa cửa Q. Gò Vấp", "sửa cửa Q. Tân Phú"), True),
+        (("sửa cửa p tân định", "sửa cửa p đa kao", "sửa cửa q bình thạnh"), True),
+        (("cửa cuốn loại P", "cửa cuốn loại Q", "cửa cuốn loại X"), False),
+        (("phụ kiện cửa cuốn", "phụ tùng cửa cuốn", "phí lắp cửa cuốn"), False),
+    ],
+)
+def test_round3_sl_t098_14_standalone_p_q_abbreviations(keywords, doorway):
+    current = [PlanRow(key=f"B-00{i}", keyword=k) for i, k in enumerate(keywords[:2], 1)]
+    (proposal,) = propose.compare_rows(current, [PlanRow(keyword=keywords[2])], today=TODAY).items
+    assert (propose.WARN_DOORWAY in proposal.warnings) is doorway
+
+
+def test_round3_sl_t098_15_personal_warning_follows_text_from_the_ai():
+    current = [
+        PlanRow(key="B-001", keyword="cửa cuốn austdoor", notes="Anh Ba 0909 123 456"),
+        PlanRow(key="B-002", keyword="cửa kéo", title_hint="Gọi 0912 345 678"),
+        PlanRow(key="B-003", keyword="cổng inox"),
+    ]
+    items = [
+        suggestion(action="cap_nhat", key="B-001", priority="Cao", reason="ghi chú nói"),
+        suggestion(action="bo", key="B-002", reason="ghi chú nói bỏ"),
+        suggestion(action="cap_nhat", key="B-003", notes="Gọi chị Lan 0912 345 678", reason="x"),
+        suggestion(action="them", keyword="cửa nhôm", title_hint="Gọi 0909 123 456", reason="x"),
+        suggestion(action="them", keyword="cửa sắt", reason="khách lan@mail.vn muốn thêm"),
+    ]
+    result = propose.from_ai(PlanSuggestions(items=items), current, today=TODAY)
+    warned = [propose.WARN_PERSONAL in p.warnings for p in result.items]
+    assert warned == [False, False, True, True, True]
+    assert result.items[0].preselected
+
+
+@pytest.mark.parametrize(
+    ("raw", "planned_time"),
+    [
+        ("46337.000", ""),
+        ("46337.5", "12:00"),
+        ("46337.25", "06:00"),
+        ("46337." + "0" * 1900, ""),
+        ("46337." + "0" * 1500 + "1", "00:00"),
+    ],
+    ids=["ba-so-0", "nua-ngay", "6-gio", "rat-nhieu-so-0", "le-rat-nho"],
+)
+def test_round3_sl_t098_16_serial_fraction(raw, planned_time):
+    (row,) = csv_file(f"Từ khóa,Ngày\nsửa cửa,{raw}\n").rows
+    assert (row.planned_date, row.planned_time) == (date(2026, 11, 11), planned_time)
+
+
+def test_round3_sl_t098_17_new_keys_after_the_largest_fill_free_numbers():
+    current = [
+        PlanRow(key="B-99999", keyword="cửa cuốn"),
+        PlanRow(key="B-001", keyword="cửa kéo"),
+        PlanRow(key="B-002", keyword="cổng"),
+    ]
+    incoming = [PlanRow(keyword="cửa nhôm"), PlanRow(keyword="cửa sắt")]
+    table = propose.compare_rows(current, incoming, today=TODAY)
+    assert [p.key for p in table.items] == ["B-003", "B-004"]
+    items = [suggestion(action="them", keyword="cửa nhôm", reason="x")]
+    (added,) = propose.from_ai(PlanSuggestions(items=items), current, today=TODAY).items
+    assert added.key == "B-003"
+    many = [PlanRow(key=f"B-{n:03d}", keyword=f"từ khóa {n}") for n in range(1, 1001)]
+    many.append(PlanRow(key="B-99999", keyword="cuối"))
+    result = propose.compare_rows(many, [PlanRow(keyword="mới 1"), PlanRow(keyword="mới 2")])
+    assert [p.key for p in result.items] == ["B-1001", "B-1002"]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-18 (Thấp): lượt đọc lại không strict (sửa SL-T098-12) làm sống lại SL-T098-3: "
+    "ngoặc kép không đóng mà phía sau còn một ô có ngoặc kép thì csv «đóng» ngoặc ở đó, lỗi strict "
+    "không phải «hết file», đọc lại không strict nên mọi dòng ở giữa bị gộp vào một ô, không báo",
+)
+@pytest.mark.parametrize(
+    "case", ["csv-o-ngoac-phay", "csv-ngoac-dau", "dan-ngoac-dau"], ids=lambda case: case
+)
+def test_sl_t098_18_unclosed_quote_before_a_later_quote_is_reported(case):
+    later = {
+        "csv-o-ngoac-phay": 'cửa kéo,"có, phẩy"',
+        "csv-ngoac-dau": 'cửa kéo,"Đức" là hãng',
+        "dan-ngoac-dau": 'cửa kéo\t"Đức" là hãng',
+    }[case]
+    sep = "\t" if case.startswith("dan") else ","
+    text = f'Từ khóa{sep}Ghi chú\nsửa{sep}"chưa đóng\ncửa cuốn{sep}abc\n{later}\ncổng inox{sep}y\n'
+    try:
+        result = parse.read_paste(text) if sep == "\t" else csv_file(text)
+    except parse.PlanSourceError as err:
+        assert str(err) == parse.BAD_TABLE
+        return
+    keywords = [row.keyword for row in result.rows]
+    assert keywords == ["sửa", "cửa cuốn", "cửa kéo", "cổng inox"] or result.warnings
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-19 (Thấp): CSV có dòng tên một ô phía trên bảng «Mục – Nội dung» không có "
+    "dòng tiêu đề (kiểu bảng brief bài viết) vẫn lấy dòng dữ liệu «Từ khóa, …» làm tiêu đề: "
+    "«Ngày», «Ghi chú»… thành bài giả, tick sẵn (lượt 1: chữ tự do). Biến thể gần của SL-T098-13",
+)
+def test_sl_t098_19_title_row_above_a_key_value_csv_is_not_a_plan():
+    text = "BRIEF BÀI VIẾT,,\nTừ khóa,sửa cửa cuốn,\nNgày,12/11/2026,\nGhi chú,gọi khách trước,\n"
+    result = csv_file(text)
+    assert not {"Ngày", "Ghi chú"} & {row.keyword for row in result.rows}
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T098-20 (Thấp, có từ lượt 1): bảng đưa vào có dòng mới tự ghi Mã bài (B-004) đứng "
+    "sau một dòng mới chưa có mã: dòng chưa mã được cấp B-004 trước, dòng ghi B-004 bị đổi sang "
+    "B-005 không báo; đưa lại đúng file đó thì B-004 khớp theo mã, đề xuất đổi từ khóa bài khác",
+)
+def test_sl_t098_20_key_written_in_the_table_is_kept_for_a_new_row():
+    current = [PlanRow(key=f"B-00{n}", keyword=f"bài cũ {n}") for n in (1, 2, 3)]
+    incoming = [PlanRow(keyword="cửa sắt mỹ thuật"), PlanRow(key="B-004", keyword="lan can kính")]
+    result = propose.compare_rows(current, incoming, today=TODAY)
+    keys = {p.after.keyword: p.key for p in result.items}
+    assert keys["lan can kính"] == "B-004" and keys["cửa sắt mỹ thuật"] != "B-004"
