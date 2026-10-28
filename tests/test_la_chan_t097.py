@@ -127,15 +127,8 @@ def _went_elsewhere(fake: FakeGoogle) -> list[str]:
     return [r.url for r in fake.requests if "evil.example" in r.url]
 
 
-_LC1 = pytest.mark.xfail(
-    strict=True,
-    reason="LC-T097-1: requests đọc hết thân câu trả lời 3xx có Location (resolve_redirects đọc "
-    "resp.content cả khi allow_redirects=False) trước khi client kiểm cỡ; giới hạn 2 MB / 64 KB "
-    "không áp dụng",
-)
 
 
-@_LC1
 @pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
 def test_lc_t097_1_chuyen_huong_sheets_khong_doc_qua_gioi_han(account, status):
     fake = _Google()
@@ -146,7 +139,6 @@ def test_lc_t097_1_chuyen_huong_sheets_khong_doc_qua_gioi_han(account, status):
     assert fake.bodies[0].read_bytes <= sheets.MAX_RESPONSE_BYTES
 
 
-@_LC1
 def test_lc_t097_1_lenh_ghi_chuyen_huong_khong_doc_qua_gioi_han_va_la_khong_chac(account):
     fake = _Google()
     fake.big[("POST", APPEND_URL)] = (307, LOCATION)
@@ -157,7 +149,6 @@ def test_lc_t097_1_lenh_ghi_chuyen_huong_khong_doc_qua_gioi_han_va_la_khong_chac
     assert fake.bodies[0].read_bytes <= sheets.MAX_RESPONSE_BYTES
 
 
-@_LC1
 def test_lc_t097_1_lenh_xin_ma_chuyen_huong_khong_doc_qua_64_kb(account):
     fake = _Google()
     fake.big[("POST", TOKEN_URL)] = (302, LOCATION)
@@ -197,12 +188,6 @@ def test_lc_t097_1_doi_chung_3xx_khong_location_khong_doc_than(account, status):
 # ================================================================ SL-T097-3, dạng Lá Chắn thêm
 
 _WINDOWS_ONLY = pytest.mark.skipif(os.name != "nt", reason="dạng đường dẫn chỉ có trên Windows")
-_SL3_MORE = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-3 (Lá Chắn thêm dạng): _is_within so chuỗi; \\\\?\\Volume{…}\\ và "
-    "\\\\?\\GLOBALROOT\\??\\ trỏ vào dự án/thư mục ảnh vẫn được nhận; phải so danh tính thư mục, "
-    "không chỉ bỏ tiền tố",
-)
 
 
 def _volume_form(path: Path) -> str | None:
@@ -227,7 +212,6 @@ def _typed(form: str, path: Path) -> str:
 
 
 @_WINDOWS_ONLY
-@_SL3_MORE
 @pytest.mark.parametrize("form", ["volume", "globalroot"])
 @pytest.mark.parametrize("where", ["dự án", "thư mục ảnh"])
 def test_sl_t097_3_dang_volume_va_globalroot_vao_du_an_hay_thu_muc_anh_bi_tu_choi(

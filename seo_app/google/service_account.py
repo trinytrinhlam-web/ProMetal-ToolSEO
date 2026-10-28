@@ -33,6 +33,7 @@ import json
 import os
 import re
 import stat
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,13 +55,20 @@ _KEY_ID = re.compile(r"[A-Za-z0-9_-]{1,100}")
 # Dấu đầu/cuối khối PEM, ghép từ hai nửa để bộ quét bí mật không nhận nhầm code là khóa thật.
 _PEM_BEGIN = "-----BEGIN " + "PRIVATE KEY-----"
 _PEM_END = "-----END " + "PRIVATE KEY-----"
-# Đoạn đường dẫn của thư mục đồng bộ lên mây (so chữ thường). "drive của tôi": Google Drive for
-# Desktop trên Windows tiếng Việt.
+# Đoạn đường dẫn của thư mục đồng bộ lên mây (so chữ thường, NFC). Google Drive for Desktop gắn
+# ổ ảo có «My Drive», «Shared drives», «Other computers» (tiếng Việt: «Drive của tôi», «Bộ nhớ
+# dùng chung», «Máy tính khác»; tên tiếng Việt của hai thư mục sau chưa xác minh trên máy chủ dự
+# án, SL-T097-4).
 _SYNC_MARKERS = (
     "google drive",
     "googledrive",
     "my drive",
     "drive của tôi",
+    "shared drives",
+    "other computers",
+    "bộ nhớ dùng chung",
+    "drive dùng chung",
+    "máy tính khác",
     "onedrive",
     "dropbox",
     "icloud",
@@ -125,12 +133,14 @@ class ServiceAccountError(ValueError):
 @dataclass(frozen=True, repr=False)
 class ServiceAccount:
     """Tài khoản dịch vụ đã kiểm. ``credentials``: đối tượng của ``google-auth`` (chỉ client Sheets
-    dùng, không in, không lưu)."""
+    dùng, không in, không lưu). ``in_sync_folder``: file khóa nằm trong thư mục đồng bộ lên mây
+    (dấu hiệu cho giao diện; câu Cảnh báo tương ứng có trong ``warnings``, SL-T097-4)."""
 
     email: str
     file_name: str
     warnings: tuple[str, ...]
     credentials: Any = field(compare=False)
+    in_sync_folder: bool = False
 
     def __repr__(self) -> str:
         # Không email, không đường dẫn, không khóa (LC-T094-12).
@@ -168,7 +178,8 @@ def load_service_account(
             raise ServiceAccountError(_MSG_IN_IMAGES)
 
     warnings: list[str] = []
-    if any(_in_sync_folder(candidate) for candidate in candidates):
+    synced = any(_in_sync_folder(candidate) for candidate in candidates)
+    if synced:
         warnings.append(_WARN_SYNC)
 
     data, mode = _read_key_file(real)
@@ -181,6 +192,7 @@ def load_service_account(
         file_name=real.name,
         warnings=tuple(warnings),
         credentials=credentials,
+        in_sync_folder=synced,
     )
 
 
@@ -190,7 +202,19 @@ def _norm(path: Path) -> str:
 
 
 def _is_within(candidate: Path, base: Path) -> bool:
-    """``candidate`` là ``base`` hay nằm trong ``base``; so cả ``base`` gõ và ``base`` thật."""
+    """``candidate`` là ``base`` hay nằm trong ``base``.
+
+    So hai cách, một cách khớp là đủ:
+
+    1. **Danh tính thư mục** (SL-T097-3): ``base`` hay một thư mục cha của ``candidate`` có cùng
+       ``(st_dev, st_ino)``. Bắt mọi cách viết cùng một thư mục: ``\\\\?\\D:\\…``,
+       ``\\\\?\\Volume{…}\\…``, ``\\\\?\\GLOBALROOT\\??\\D:\\…``, ``\\\\localhost\\D$\\…``,
+       symlink, junction, chữ hoa thường trên Mac.
+    2. Chuỗi đường dẫn chuẩn hóa (``normcase``), cả ``base`` gõ và ``base`` thật: khi hệ thống
+       không cho số file (``st_ino == 0``, ví dụ vài ổ FAT, ổ mạng) hay thư mục chưa có.
+    """
+    if _inside_by_identity(candidate, base):
+        return True
     bases = {_norm(base)}
     with contextlib.suppress(OSError, RuntimeError, ValueError):
         bases.add(_norm(base.resolve(strict=False)))
@@ -202,8 +226,37 @@ def _is_within(candidate: Path, base: Path) -> bool:
     return False
 
 
+def _identity(path: Path) -> tuple[int, int] | None:
+    """``(st_dev, st_ino)`` của ``path`` (đi theo symlink, junction); ``None`` khi không đọc được
+    hay hệ thống không cho số file (``st_ino == 0``, như ``seo_app/images/folders.py``)."""
+    try:
+        info = os.stat(path)
+    except (OSError, ValueError):
+        return None
+    return (info.st_dev, info.st_ino) if info.st_ino else None
+
+
+def _inside_by_identity(candidate: Path, base: Path) -> bool:
+    """Một trong các thư mục cha của ``candidate`` (kể cả chính nó) là đúng thư mục ``base``."""
+    target = _identity(base)
+    if target is None:
+        return False
+    current = candidate
+    for _ in range(512):  # đường dẫn sâu bất thường: dừng (phép so chuỗi vẫn chạy)
+        if _identity(current) == target:
+            return True
+        parent = current.parent
+        if parent == current:
+            return False
+        current = parent
+    return False
+
+
 def _in_sync_folder(path: Path) -> bool:
-    parts = [part.casefold() for part in Path(os.path.normpath(path)).parts]
+    parts = [
+        unicodedata.normalize("NFC", part).casefold()
+        for part in Path(os.path.normpath(path)).parts
+    ]
     return any(marker in part for part in parts for marker in _SYNC_MARKERS)
 
 

@@ -159,3 +159,51 @@ Bản sao nhánh (`git archive HEAD` + file test của tôi) trong thư mục nh
 5. **Lượt thử thật (LC-T094-44):** lệnh Google thật đầu tiên chỉ tới 2 máy chủ, khuôn câu trả lời đúng như client đọc.
 
 **Kết luận:** **ĐẠT CÓ ĐIỀU KIỆN.** 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 5 Thấp (LC-T097-1 mới; SL-T097-1 → -4 giữ Thấp). **Gộp `main` được ngay** (chủ dự án đã chốt câu 1A sáng 28/10; không lỗi nào phải sửa trước khi gộp). Điều kiện 1–2 vào phiếu dọn trước T-100, T-101; điều kiện 3 chép vào phiếu T-101.
+
+## Xem lại lượt 2 (rút gọn) · 2026-10-28
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Diff `24013b3..16b9f64`: Thợ Máy lượt 2 `8b98996` (`seo_app/google/sheets.py`: `_Redirected`, `_refuse_redirect`, móc `response` ở `_TokenRequest` và `_call`, bắt thêm `OverflowError`, `RecursionError`; `seo_app/google/service_account.py`: `_identity`, `_inside_by_identity`, `_SYNC_MARKERS`, `in_sync_folder`; gỡ 27 dấu `xfail`; 6 ca mới) và Soi Lỗi lượt 2 `16b9f64` (86 ca mới, SL-T097-5). Chỉ Huy giao 20:45; làm 20:44 → 21:04 +07 |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN**, **gộp `main` được ngay**. **LC-T097-1 đóng thật**; SL-T097-1 → -4 đóng, không mở lỗ mới. 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp còn mở: SL-T097-5** (Soi Lỗi, lùi do lượt 2: chặn oan đường có `..`, hướng an toàn; giữ Thấp). Lá Chắn không có lỗi mới. Không lỗi nào phải sửa trước khi gộp |
+
+### Tóm tắt (cho chủ dự án)
+
+- Điểm nhỏ tôi báo ở lượt 1 (Google trả lời «chuyển hướng» kèm dữ liệu nén rất lớn làm phần mềm tốn bộ nhớ) **đã sửa thật**: phần mềm đóng câu trả lời đó ngay, không đọc byte nào. Thử lại đúng ca cũ: bộ nhớ từ 200 MB xuống gần 0.
+- 4 điểm nhỏ của Soi Lỗi cũng đã sửa, không mở lỗ mới: lỗi lạ từ Google vẫn không làm lộ khóa hay mã truy cập; file khóa trong thư mục phần mềm, thư mục ảnh bị bắt với mọi cách viết đường dẫn đặc biệt của Windows.
+- Còn 1 điểm nhỏ mới (Soi Lỗi tìm ra): đường dẫn file khóa gõ kiểu có «..» đi ngang thư mục phần mềm bị từ chối nhầm. Không lộ gì; gõ đường dẫn bình thường thì không gặp. **Việc của bạn:** không có.
+
+### Việc 1: LC-T097-1 đóng thật
+
+- **Móc `_refuse_redirect`** (`sheets.py:292-300`) gắn vào **cả hai** lệnh (`hooks={"response": …}` ở `:376` và `:847`). `requests` chạy móc ngay sau khi có mã trả lời (`requests/sessions.py:791`), **trước** `resolve_redirects` (`:818`, chỗ đọc hết thân). Móc chặn mọi mã 300–399, có hay không `Location`: `response.close()` (thân chưa đọc thì đóng luồng urllib3, đóng luôn kết nối, không trả về hàng chờ), rồi ném `_Redirected`. `_call` đổi thành `SheetsError` câu «chuyển hướng», `unsure` theo loại lệnh (`:849-854`); `_TokenRequest` trả `_TokenResponse(mã, {}, b"")` (`:378-380`), google-auth báo lỗi xin mã thành câu cố định. Vẫn giữ `allow_redirects=False`, `max_redirects = 0`, nhánh `TooManyRedirects` và nhánh kiểm `300 <= status < 400` để phòng thêm.
+- **Script `probe_t097_l2.py`** (thư mục nháp, không commit), **715 ca, 0 hỏng**:
+  - `chuyen`: 10 mã (300, 301, 302, 303, 304, 305, 306, 307, 308, 399) × có/không `Location` (kèm `Content-Encoding: gzip`) × 6 lệnh (đọc thông tin, đọc kế hoạch, ghi ô, thêm dòng, sửa cấu trúc, xin mã). Thân là «bẫy» đếm byte: **0 byte bị đọc**, thân đã đóng, không lệnh nào tới địa chỉ chuyển hướng. `status_code` đúng; `unsure` là `True` ở lệnh ghi, `False` ở lệnh đọc; câu báo không chép `Location`.
+  - `tran`: mã 200, 201, 204, 400, 401, 403, 404, 429, 500, 503 × thân gzip, deflate (zlib), deflate trần (mỗi loại 200 MB khi giải nén), thân thường 5 MB × lệnh đọc kế hoạch (trần 2 MB), lệnh xin mã (trần 64 KB): mọi ca ra `SheetsError`, bộ nhớ đỉnh < 16 MB.
+  - `chunked`: thân `Transfer-Encoding: chunked` đi qua `http.client` thật (cặp socket nội bộ, không mạng). 200 gzip 200 MB: đỉnh 2,3 MB; 200 thường 5 MB: dừng ở 2 MB (đỉnh 5,1 MB gồm cả dữ liệu thử đã nạp sẵn); 500 gzip: 2,3 MB; xin mã 200 gzip: 0,4 MB; 302 chunked gzip kèm `Location`, xin mã 307 chunked: 0,2 MB, không đi theo.
+- Script lượt 1 `probe_t097.py` chạy lại trên code lượt 2: **40.137 ca, 0 hỏng**. Ca đo LC-T097-1 (302 + `Location` + gzip 100 MB, ở lệnh đọc và lệnh xin mã): bộ nhớ đỉnh **0,0 MB** (lượt 1: 201 MB); 302 không `Location`: 0,0 MB.
+
+### Việc 2: phần sửa SL-T097-1 → -4 không mở lỗ mới
+
+- **SL-T097-1:** `_access_token` bắt thêm đúng `OverflowError`, `RecursionError` (`sheets.py:790-801`), không bắt `Exception`. Script lượt 1: 4 ca từng lọt nay ra câu cố định («SL-T097-1 còn lọt: []»).
+- **Lỗi lạ không lộ khóa riêng, mã truy cập** (`probe_t097_l2.py loi`): 6 loại lỗi `requests` (`ConnectionError`, `ChunkedEncodingError`, `ContentDecodingError`, `InvalidHeader`, `ReadTimeout`, `SSLError`), lời lỗi gài thân lệnh xin mã (có JWT ký bằng khóa riêng), mã `Bearer` và một dòng của khối khóa PEM, ném ở lệnh xin mã và ở lệnh Sheets. `str`, `repr`, traceback, `marshall` của Streamlit: 0 lần có JWT, mã truy cập, dòng khóa (12/12). Phần `loi` của script lượt 1 (25 kiểu lỗi có mồi): vẫn 0 lọt.
+- **SL-T097-3, đường `\\?\…`:** `_is_within` (`service_account.py:204-226`) so **danh tính thư mục** trước (`_inside_by_identity`, `:239-252`: đi ngược thư mục cha, so `(st_dev, st_ino)`, bỏ qua `st_ino == 0`), không khớp thì vẫn so chuỗi như lượt 1. Phép so mới **chỉ thêm** lý do từ chối, không làm đường nào trước bị từ chối nay được nhận: không mở đường lọt mới. Thử lại (script lượt 1 phần `duong`, `probe_t097_l2.py duong`): trong dự án, thư mục ảnh với đường thường, `\\?\`, `\\.\`, `\\?\Volume{…}`, `\\.\Volume{…}`, `\\?\GLOBALROOT\??\`, `\\localhost\C$`, tên 8.3: **đều từ chối**, câu không chép đường dẫn. File ngoài hai thư mục gõ ở mọi dạng đó: **đều nhận** (không chặn oan), trừ dạng có `..` đi ngang hai thư mục: SL-T097-5.
+- **SL-T097-4:** thêm 5 tên thư mục đồng bộ, so sau NFC; `in_sync_folder` là cờ đúng/sai. Chỉ là Cảnh báo; `ServiceAccount.__repr__` vẫn không có đường dẫn, email.
+
+### Việc 3: SL-T097-5 giữ Thấp
+
+`_inside_by_identity` đi ngược thư mục cha theo **chữ** của đường gõ: `<dự án>\..\ngoai\k.json` có «cha» `<dự án>` nên bị từ chối «thư mục phần mềm». Tôi thử lại: `dự án\..\ngoai` và `anh\..\ngoai` bị từ chối nhầm; `ngoai\..\ngoai` nhận; `dự án\..\du-an\k` (thật trong dự án) bị từ chối đúng. Chỉ là chặn oan kèm câu sai lý do, hướng an toàn; phải tự gõ `..` đi ngang đúng thư mục dự án hay thư mục ảnh. **Thấp.** Sửa thử trên bản sao: đi ngược cha của `os.path.realpath(candidate)` thay vì của chữ gõ: 3/3 `xfail` SL-T097-5 thành XPASS, 685 ca khác của 4 file T-097 qua, mọi dạng đường thiết bị vẫn bị từ chối. Ghi nhận 1 lượt 2 của Soi Lỗi (ổ Google Drive G:, H:, I: trùng `st_dev`, `st_ino` nhỏ lặp lại) cũng chỉ làm **chặn oan** file khóa đặt trên Drive (vốn không nên); sửa cùng lúc bằng cách chỉ tin danh tính khi hai đường cùng gốc ổ (`anchor`) sau `realpath`.
+
+### Việc 4: dấu `xfail` gỡ đúng R5
+
+`git diff 24013b3..8b98996`: `tests/test_la_chan_t097.py` **chỉ xóa 16 dòng**, đều là dấu: 2 khối định nghĩa `_LC1`, `_SL3_MORE` (mỗi khối 6 dòng) và 4 dòng `@_LC1` (3), `@_SL3_MORE` (1); thân test không đổi. 11 ca của tôi (7 LC-T097-1, 4 SL-T097-3) nay chạy như ca thường và qua. `tests/test_soi_loi_t097.py`: chỉ xóa 25 dòng dấu (không dòng thêm ở `8b98996`); `16b9f64` chỉ thêm ca mới và xóa đúng 1 dòng docstring. `tests/test_google_service_account.py`: chỉ thêm ca. **Đạt.**
+
+### Việc 5: thử gộp với `main` trên máy
+
+`main` trên máy lúc 20:53 vẫn là `24013b3`, chính là gốc của lượt 2: gộp là tua thẳng, không xung đột; test trên nhánh chính là trạng thái sau gộp. 4 file T-097 (`test_google_sheets.py`, `test_google_service_account.py`, `test_soi_loi_t097.py`, `test_la_chan_t097.py`), 20:53–20:56: **685 passed, 3 skipped, 3 xfailed** (SL-T097-5), 0 hỏng. Lượt 2 chỉ sửa `seo_app/google/` (chưa nơi nào ngoài gói gọi tới); 81 file của Thợ Máy (6.952 passed) đã chạy rộng hơn. `ruff`: sạch. `detect-secrets` (`PYTHONUTF8=1`) trên 7 file lượt 2: 0. `bandit` `seo_app/google/`: đúng 3 báo nhầm như lượt 1 (B105 ở `service_account.py:45`, `:110`; B311 ở `sheets.py:822`).
+
+### Điều kiện lượt 2
+
+1. **SL-T097-5** (Thấp): phiếu dọn sau hay gom vào T-100 (Thợ Máy): so danh tính trên đường thật (`realpath`) thay vì chữ gõ; chỉ tin danh tính khi cùng gốc ổ (Ghi nhận 1 lượt 2 của Soi Lỗi); gỡ 3 dấu `xfail`. Nên xong trước khi T-101 hiện câu báo file khóa trên trang Cài đặt.
+2. Điều kiện 3 → 5 của lượt 1 giữ nguyên (T-101, `config.py`, lượt thử thật). Điều kiện 1, 2 của lượt 1: **đã xong**.
+
+**Kết luận lượt 2:** **ĐẠT CÓ ĐIỀU KIỆN.** 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 1 Thấp còn mở (SL-T097-5). LC-T097-1, SL-T097-1 → -4 đóng. **Gộp `main` được ngay.**

@@ -7,7 +7,8 @@ mục dự án, thư mục ảnh và
 ``.env`` đều nằm trong thư mục tạm. Không gọi Google thật; bộ chặn mạng của ``tests/conftest.py``
 vẫn bật (có test riêng: chặn được cả lớp chuyển của ``google-auth``).
 
-Lỗi tìm ra (``xfail(strict=True)``; sửa xong thì gỡ dấu):
+Lỗi tìm ra (``xfail(strict=True)``; sửa xong thì gỡ dấu). Lượt 1: SL-T097-1 → -4, đã sửa ở lượt 2
+(Thợ Máy gỡ dấu); lượt 2: SL-T097-5 (cuối file).
 
 - **SL-T097-1** (Thấp): lệnh xin mã trả lời lạ (``expires_in`` quá lớn, JSON lồng sâu) làm
   ``OverflowError``/``RecursionError`` lọt khỏi ``SheetsClient``, không thành ``SheetsError`` câu
@@ -20,6 +21,9 @@ Lỗi tìm ra (``xfail(strict=True)``; sửa xong thì gỡ dấu):
   (LC-T094-11: so đường dẫn thật).
 - **SL-T097-4** (Thấp): Cảnh báo «thư mục đồng bộ» thiếu hai thư mục của Google Drive for Desktop
   nằm cạnh «My Drive» trên cùng ổ ảo: ``Shared drives``, ``Other computers``.
+- **SL-T097-5** (Thấp, lượt 2): phép so danh tính thư mục (``_inside_by_identity``) đi ngược các
+  thư mục cha **theo chữ** của đường gõ: đường có ``..`` đi ngang thư mục dự án / thư mục ảnh rồi
+  ra ngoài bị từ chối oan («đang nằm trong thư mục phần mềm»).
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ import logging
 import os
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qs, quote, urlsplit
@@ -279,12 +284,6 @@ def assert_fixed(error: BaseException, *forbidden: str) -> None:
 
 
 # ================================================================ SL-T097-1 (xfail)
-_SL1 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-1: google-auth _parse_expiry ném OverflowError, json.loads ném RecursionError; "
-    "_access_token chỉ bắt RefreshError, TransportError, GoogleAuthError, ValueError, TypeError, "
-    "KeyError nên lỗi lọt khỏi SheetsClient (không thành câu cố định)",
-)
 TOKEN_ODD_LEAKS = {
     "expires_in vô cực (1e400)": (200, b'{"access_token":"ya29.x","expires_in":1e400}'),
     "expires_in 300 tỷ giây": (200, b'{"access_token":"ya29.x","expires_in":300000000000}'),
@@ -295,7 +294,6 @@ TOKEN_ODD_LEAKS = {
 }
 
 
-@_SL1
 @pytest.mark.parametrize("answer", TOKEN_ODD_LEAKS.values(), ids=TOKEN_ODD_LEAKS)
 def test_sl_t097_1_lenh_xin_ma_tra_loi_la_thanh_cau_co_dinh(fake, client, answer):
     fake.on("POST", TOKEN_URL, answer)
@@ -346,11 +344,6 @@ def test_lenh_xin_ma_5xx_thu_lai_cua_thu_vien_roi_cau_co_dinh(fake, client, monk
 
 
 # ================================================================ SL-T097-2 (xfail)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-2: _call ném SheetsError cho mã 3xx không Location mà không đặt unsure=writes "
-    "(nhánh TooManyRedirects khi có Location thì có)",
-)
 @pytest.mark.parametrize(
     "command, status",
     [("update", 302), ("append", 302), ("append", 307), ("structure", 302)],
@@ -916,11 +909,6 @@ def test_cac_dang_duong_dan_khac_van_bi_bat(dirs, rsa_pem, where, message):
 
 
 _WINDOWS_ONLY = pytest.mark.skipif(os.name != "nt", reason="dạng đường dẫn chỉ có trên Windows")
-_SL3 = pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-3: _is_within so chuỗi sau normcase; realpath giữ tiền tố \\\\?\\ khi đường gõ "
-    "có nó, và \\\\localhost\\X$ là UNC khác chuỗi ổ đĩa, nên file trong dự án/thư mục ảnh lọt",
-)
 
 
 def _admin_share(path: Path) -> str:
@@ -929,7 +917,6 @@ def _admin_share(path: Path) -> str:
 
 
 @_WINDOWS_ONLY
-@_SL3
 @pytest.mark.parametrize("where", ["dự án", "thư mục ảnh"])
 def test_sl_t097_3_tien_to_thiet_bi_vao_du_an_hay_thu_muc_anh_bi_tu_choi(dirs, rsa_pem, where):
     folder = dirs.project if where == "dự án" else dirs.images
@@ -939,7 +926,6 @@ def test_sl_t097_3_tien_to_thiet_bi_vao_du_an_hay_thu_muc_anh_bi_tu_choi(dirs, r
 
 
 @_WINDOWS_ONLY
-@_SL3
 def test_sl_t097_3_thu_muc_anh_khai_tien_to_thiet_bi(dirs, rsa_pem):
     inside = write_key(dirs.images, rsa_pem)
     with pytest.raises(ServiceAccountError, match="thư mục ảnh"):
@@ -947,7 +933,6 @@ def test_sl_t097_3_thu_muc_anh_khai_tien_to_thiet_bi(dirs, rsa_pem):
 
 
 @_WINDOWS_ONLY
-@_SL3
 def test_sl_t097_3_chia_se_quan_tri_localhost_vao_du_an(dirs, rsa_pem):
     inside = write_key(dirs.project, rsa_pem)
     shared = _admin_share(inside)
@@ -970,11 +955,6 @@ def test_thu_muc_dong_bo_co_canh_bao(dirs, rsa_pem, parts):
     assert any("đồng bộ" in warning for warning in account.warnings)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-4: _SYNC_MARKERS không có «shared drives», «other computers» (thư mục của "
-    "Google Drive for Desktop nằm cạnh «My Drive» trên cùng ổ ảo, ví dụ G:\\Other computers)",
-)
 @pytest.mark.parametrize("parts", [("Shared drives", "Nhom SEO"), ("Other computers", "May nha")])
 def test_sl_t097_4_thu_muc_google_drive_khac_cung_canh_bao(dirs, rsa_pem, parts):
     folder = dirs.outside.joinpath(*parts)
@@ -1147,3 +1127,176 @@ def test_code_google_khong_dung_tai_khoan_ngam_dinh_hay_lop_chuyen_cua_thu_vien(
                 assert not names & {"default", "compute_engine", "AuthorizedSession"}, names
             if isinstance(node, ast.Constant) and node.value == "GOOGLE_APPLICATION_CREDENTIALS":
                 pytest.fail("đọc GOOGLE_APPLICATION_CREDENTIALS")
+
+
+# ================================================================ Lượt 2 (2026-10-28)
+_BS = chr(92)
+
+
+class _Tripwire(io.RawIOBase):
+    """Thân câu trả lời đếm số lần bị đọc (LC-T097-1: thân 3xx không được đọc). Lần đọc đầu trả
+    1 byte, sau đó hết thân: code lỡ đọc thì test hỏng ngay, không treo."""
+
+    def __init__(self) -> None:
+        self.reads = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer) -> int:
+        self.reads += 1
+        if self.reads > 1:
+            return 0
+        buffer[:1] = b"x"
+        return 1
+
+
+@pytest.mark.parametrize("command", COMMANDS)
+@pytest.mark.parametrize("status", [301, 302, 304, 307, 308])
+@pytest.mark.parametrize("location", [True, False], ids=["co-location", "khong-location"])
+def test_luot2_3xx_khong_doc_than_khong_di_theo_unsure_theo_lenh(
+    fake, client, command, status, location
+):
+    wire = _Tripwire()
+    headers = {"Location": "https://evil.example/x", "Content-Encoding": "gzip"} if location else {}
+    fake.on(*COMMAND_URL[command], (status, wire, headers))
+    with pytest.raises(SheetsError, match="chuyển hướng") as error:
+        run(client, command)
+    assert_fixed(error.value, "evil.example")
+    assert error.value.unsure is (command in WRITES)
+    assert error.value.status_code == status
+    assert wire.reads == 0
+    assert "evil.example" not in fake.hosts()
+
+
+@pytest.mark.parametrize("status", [302, 307, 308])
+@pytest.mark.parametrize("location", [True, False], ids=["co-location", "khong-location"])
+def test_luot2_lenh_xin_ma_3xx_khong_doc_than(fake, client, status, location):
+    wire = _Tripwire()
+    headers = {"Location": "https://evil.example/token"} if location else {}
+    fake.on("POST", TOKEN_URL, (status, wire, headers))
+    with pytest.raises(SheetsError) as error:
+        client.get_info()
+    assert_fixed(error.value, "evil.example")
+    assert wire.reads == 0
+    assert fake.hosts() == {"oauth2.googleapis.com"}
+
+
+TOKEN_ODD_LUOT2 = {
+    "expires_in -1e400": (200, b'{"access_token":"ya29.x","expires_in":-1e400}'),
+    "expires_in chu 5000 so": (
+        200, b'{"access_token":"ya29.x","expires_in":"' + b"9" * 5000 + b'"}'),
+    "expires_in so 5000 chu so": (
+        200, b'{"access_token":"ya29.x","expires_in":' + b"9" * 5000 + b"}"),
+    "truong thua long sau": (
+        200,
+        b'{"access_token":"ya29.x","expires_in":3599,"x":' + b"[" * 30_000 + b"]" * 30_000 + b"}"),
+    "400 error long 990": (400, b'{"error":' + b"[" * 990 + b"]" * 990 + b"}"),
+    "400 khong error long 990": (400, b'{"x":' + b"[" * 990 + b"]" * 990 + b"}"),
+    "500 long sau": (500, b"[" * 60_000),
+}
+
+
+@pytest.mark.parametrize("answer", TOKEN_ODD_LUOT2.values(), ids=TOKEN_ODD_LUOT2)
+def test_luot2_lenh_xin_ma_tra_loi_la_them(fake, client, answer):
+    fake.on("POST", TOKEN_URL, answer)
+    with pytest.raises(SheetsError) as error:
+        client.get_info()
+    assert_fixed(error.value)
+    assert not fake.urls(INFO_URL)
+
+
+def _device_forms(path: Path) -> dict[str, str]:
+    """Cách viết khác của cùng đường ``path`` trên Windows (ổ đĩa của thư mục tạm)."""
+    import ctypes
+
+    k32 = ctypes.windll.kernel32
+    text = str(path)
+    drive, rest = text[:2], text[3:]
+    buffer = ctypes.create_unicode_buffer(1024)
+    prefix = _BS * 2 + "?" + _BS
+    forms = {
+        "globalroot-dos": prefix + "GLOBALROOT" + _BS + "??" + _BS + text,
+        "unc-localhost": prefix + "UNC" + _BS + "localhost" + _BS + drive[0] + "$" + _BS + rest,
+    }
+    if k32.GetVolumeNameForVolumeMountPointW(drive + _BS, buffer, 1024):
+        forms["volume-guid"] = buffer.value + rest
+    if k32.QueryDosDeviceW(drive, buffer, 1024):
+        forms["globalroot-device"] = prefix + "GLOBALROOT" + buffer.value + _BS + rest
+    return forms
+
+
+_FORMS = ["volume-guid", "globalroot-device", "globalroot-dos", "unc-localhost"]
+
+
+@_WINDOWS_ONLY
+@pytest.mark.parametrize("where", ["du-an", "anh"])
+@pytest.mark.parametrize("form", _FORMS)
+def test_luot2_dang_duong_thiet_bi_vao_du_an_hay_anh_bi_tu_choi(dirs, rsa_pem, where, form):
+    inside = write_key(dirs.project if where == "du-an" else dirs.images, rsa_pem)
+    path = _device_forms(inside).get(form)
+    if path is None or not os.path.exists(path):
+        pytest.skip("máy này không mở được dạng đường dẫn này")
+    with pytest.raises(ServiceAccountError, match="thư mục phần mềm|thư mục ảnh") as error:
+        load(path, dirs)
+    assert_fixed(error.value, str(inside), inside.name)
+
+
+@_WINDOWS_ONLY
+@pytest.mark.parametrize("form", _FORMS)
+def test_luot2_thu_muc_anh_khai_dang_thiet_bi_van_bat(dirs, rsa_pem, form):
+    inside = write_key(dirs.images, rsa_pem)
+    declared = _device_forms(dirs.images).get(form)
+    if declared is None or not os.path.exists(declared):
+        pytest.skip("máy này không mở được dạng đường dẫn này")
+    with pytest.raises(ServiceAccountError, match="thư mục ảnh"):
+        load(inside, dirs, image_folders=(declared,))
+
+
+@pytest.mark.parametrize(
+    "parts, synced",
+    [
+        (("Bộ nhớ dùng chung", "Nhom"), True),
+        (("Máy tính khác",), True),
+        (("Drive dùng chung",), True),
+        ((unicodedata.normalize("NFD", "Máy tính khác"),), True),
+        (("SHARED DRIVES",), True),
+        (("Other Computers", "May nha"), True),
+        (("thu-muc-rieng",), False),
+    ],
+    ids=["bo-nho-dung-chung", "may-tinh-khac", "drive-dung-chung", "nfd", "chu-hoa",
+         "other-computers", "thuong"],
+)
+def test_luot2_dau_hieu_thu_muc_dong_bo(dirs, rsa_pem, parts, synced):
+    folder = dirs.outside.joinpath(*parts)
+    folder.mkdir(parents=True)
+    account = load(write_key(folder, rsa_pem), dirs)
+    assert account.in_sync_folder is synced
+    assert any("đồng bộ" in warning for warning in account.warnings) is synced
+
+
+def test_luot2_khong_chan_oan_thu_muc_ten_giong_va_ngoai(dirs, rsa_pem, tmp_path):
+    """Đối chứng cho SL-T097-5: thư mục tên bắt đầu giống dự án / thư mục ảnh vẫn được nhận."""
+    for name in ("du-an-2", "anh-dong-bo-cu"):
+        folder = tmp_path / name
+        folder.mkdir()
+        assert load(write_key(folder, rsa_pem), dirs).email == EMAIL
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T097-5: _inside_by_identity đi ngược các thư mục cha THEO CHỮ của đường gõ (không "
+    "chuẩn hóa ..): «<dự án>/../ngoai/k.json» có một thư mục cha theo chữ là thư mục dự án nên bị "
+    "coi là nằm trong dự án (trước lượt 2, phép so chuỗi sau normpath nhận đúng)",
+)
+@pytest.mark.parametrize("via", ["du-an", "anh", "du-an-con"])
+def test_sl_t097_5_duong_co_cham_cham_di_ngang_roi_ra_ngoai_khong_bi_chan_oan(
+    dirs, rsa_pem, via
+):
+    key = write_key(dirs.outside, rsa_pem)  # <tạm>/ngoai/bi-mat/<tên>.json, ngoài cả hai thư mục
+    (dirs.project / "con").mkdir()
+    base = {"du-an": dirs.project, "anh": dirs.images, "du-an-con": dirs.project / "con"}[via]
+    ups = os.sep.join([".."] * (2 if via == "du-an-con" else 1))
+    path = os.sep.join([str(base), ups, "ngoai", "bi-mat", key.name])
+    assert Path(os.path.normpath(path)) == key  # đúng là file ở ngoài
+    assert load(path, dirs).email == EMAIL
