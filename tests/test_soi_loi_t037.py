@@ -462,7 +462,12 @@ def test_name_check_would_catch_new_publish_methods():
 
 
 def test_status_publish_or_future_only_in_list_published():
-    """Khóa ``status`` khác ``draft`` (publish, future…) chỉ được nằm trong hàm đọc."""
+    """Khóa ``status`` khác ``draft`` (publish, future…) chỉ ở đúng các chỗ đã duyệt.
+
+    Chỉ ``release_draft`` được **gửi** trạng thái khác nháp (``future``, ``publish``): đường duy
+    nhất theo thiết kế T-094 mục 3.3 (T-099, LC-T094-22). ``list_published`` và ``post_statuses``
+    chỉ **đọc** (tham số lọc của ``GET``). So bằng ``==``: hàm nào khác thêm ``status`` lạ thì đỏ.
+    """
     source = (PROJECT_ROOT / "seo_app" / "wordpress" / "client.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     offenders = []
@@ -488,7 +493,12 @@ def test_status_publish_or_future_only_in_list_published():
             for value in values:
                 if not (isinstance(value, ast.Constant) and value.value == "draft"):
                     offenders.append((func.name, ast.unparse(value)))
-    assert offenders == [("list_published", "'publish'")]
+    assert offenders == [
+        ("list_published", "'publish'"),
+        ("release_draft", "'future'"),
+        ("release_draft", "'publish'"),
+        ("post_statuses", "POST_STATUS_FILTER"),
+    ]
 
 
 # ================================================================ 6. tốc độ
