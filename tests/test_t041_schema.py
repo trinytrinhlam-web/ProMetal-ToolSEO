@@ -62,7 +62,9 @@ def test_odd_chars_blocked(odd, where):
     result = build_faq_page([(q, a)], article_text=_article(q, a), site_url=SITE)
     assert result.blocked and result.json_ld is None
     messages = " ".join(issue.message for issue in result.issues)
-    assert "ký tự lạ" in messages and odd not in messages
+    # Ký tự chưa gán (U+0378) có câu riêng «chưa nhận ra» (SL-T041-8, T-090 lượt 2).
+    expected = "chưa nhận ra" if odd == chr(0x0378) else "ký tự lạ"
+    assert expected in messages and odd not in messages
 
 
 def test_validate_blocks_odd_chars_in_data():

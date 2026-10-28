@@ -131,14 +131,13 @@ def _may_be_new_symbol(ch: str) -> bool:
     return not (code == 0x2065 or 0xFFF0 <= code <= 0xFFF8 or 0xE0000 <= code <= 0xE0FFF)
 
 
-def odd_char_messages(name: str, text: str) -> list[str]:
-    """Câu báo Chặn cho ký tự lạ trong chữ gốc (đúng các ký tự ``has_odd_chars`` thấy), mỗi loại
-    một câu; danh sách rỗng là không có.
+def odd_char_kinds(text: str) -> tuple[bool, bool]:
+    """Hai loại ký tự lạ trong chữ (đúng các ký tự ``has_odd_chars`` thấy): (có ký tự điều khiển
+    hay ký tự lạ không nhìn thấy, có ký tự phần mềm chưa nhận ra).
 
     Ký tự chưa gán có thể là emoji mới hơn bảng Unicode của Python (emoji Unicode 16 với Python
-    3.12): người dùng nhìn thấy nó, nên câu báo không nói «không nhìn thấy» (SL-T041-8). Vẫn Chặn
-    như mọi ký tự lạ: ``normalize_meta`` và client WordPress bỏ ký tự này, cho qua là lặng lẽ mất
-    ký tự khi ghi (Lá Chắn T-041 quyết giữ Chặn)."""
+    3.12): người dùng nhìn thấy nó, nên câu báo của loại thứ hai không được nói «không nhìn thấy»
+    (SL-T041-8). Dùng chung cho câu báo meta (``odd_char_messages``) và FAQ (``schema.py``)."""
     odd = unknown = False
     for ch in text:
         category = unicodedata.category(ch)
@@ -148,6 +147,14 @@ def odd_char_messages(name: str, text: str) -> list[str]:
             unknown = True
         else:
             odd = True
+    return odd, unknown
+
+
+def odd_char_messages(name: str, text: str) -> list[str]:
+    """Câu báo Chặn cho ký tự lạ trong chữ gốc (``odd_char_kinds``), mỗi loại một câu; danh sách
+    rỗng là không có. Vẫn Chặn cả ký tự chưa nhận ra: ``normalize_meta`` và client WordPress bỏ
+    ký tự này, cho qua là lặng lẽ mất ký tự khi ghi (Lá Chắn T-041 quyết giữ Chặn)."""
+    odd, unknown = odd_char_kinds(text)
     messages = []
     if odd:
         messages.append(

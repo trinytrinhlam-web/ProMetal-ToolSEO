@@ -7,6 +7,9 @@ ký tự lạ (không nhìn thấy…)», sai với emoji nhìn thấy rõ. Lá 
 sửa câu báo. Ký tự điều khiển, surrogate lẻ, ký tự riêng, «không phải ký tự» (U+FFFE, U+FDD0…: không
 bao giờ được gán) và mã để dành cho ký tự vô hình (U+FFF0, U+E0080…) giữ câu cũ.
 
+Lượt 2 (đề xuất 2): câu hỏi, trả lời của mục Hỏi đáp (schema FAQ) tách câu báo cùng cách, vẫn Chặn
+như điều kiện 1 của Lá Chắn T-038.
+
 Không gọi AI hay mạng; test giao diện dùng fixture của ``tests/test_t041_seo_ui.py``.
 """
 
@@ -29,6 +32,9 @@ from seo_app.onpage.meta import (
     odd_char_messages,
     siteseo_copy,
 )
+from seo_app.onpage.schema import _check_text as faq_check_text
+from seo_app.onpage.schema import build_faq_page, normalize_text
+from seo_app.storage import DraftPart
 from seo_app.text import escape_markdown
 
 # Fixture dùng chung: mật khẩu thử, cache ảnh xem trước tạm, cache danh sách bài tạm.
@@ -195,4 +201,98 @@ def test_seo_step_shows_accurate_message_for_new_emoji(project_root):
     assert any(b.startswith(":red-badge[Chặn") for b in seo_ui.badges(at))
     assert any(c.startswith("Tiêu đề SEO: chưa chép được.") for c in captions)
     assert not any(NEW_EMOJI[0] in c.value or CLEAN_TITLE in c.value for c in at.code)
+    assert not at.exception
+
+
+# ============================================================ lượt 2: mục Hỏi đáp (schema FAQ)
+
+SITE = "https://suachuacuasat.com"
+FAQ_Q = "Cổng inox bị xệ có sửa được không?"
+FAQ_A = "Được, thay bản lề và chỉnh lại cánh trong một buổi."
+# ``normalize_text`` của schema bỏ hẳn ký tự «mặc định bỏ qua» U+2065, U+FFF0–U+FFF8 như ký tự vô
+# hình loại Cf (thiết kế T-038), nên chúng không tới bộ kiểm ký tự lạ: bỏ khỏi danh sách FAQ.
+DROPPED_BY_FAQ = (chr(0x2065), chr(0xFFF0), chr(0xFFF8))
+FAQ_OLD_MESSAGE_CHARS = [c for c in OLD_MESSAGE_CHARS if c not in DROPPED_BY_FAQ]
+
+
+def faq_with(ch: str, where: str):
+    q = FAQ_Q.replace("bị xệ", f"bị {ch} xệ") if where == "q" else FAQ_Q
+    a = FAQ_A.replace("Được,", f"Được {ch},") if where == "a" else FAQ_A
+    article = f"# Bài\n\nMở bài.\n\n## Hỏi đáp\n\n### {q}\n\n{a}\n"
+    return build_faq_page([(q, a)], article_text=article, site_url=SITE)
+
+
+@python_without_new_emoji
+@pytest.mark.parametrize("where", ["q", "a"])
+@pytest.mark.parametrize("ch", NEW_EMOJI + UNASSIGNED, ids=ids(NEW_EMOJI + UNASSIGNED))
+def test_faq_unknown_char_stays_blocked_with_accurate_message(ch, where):
+    """Câu hỏi hay trả lời có ký tự chưa nhận ra: vẫn Chặn, không dựng JSON-LD (Lá Chắn T-038 đk
+    1); câu báo nói phần mềm chưa nhận ra ký tự, chỉ cách sửa trong bài, không nói «không nhìn
+    thấy», không chép lại ký tự."""
+    result = faq_with(ch, where)
+    assert result.blocked and result.json_ld is None
+    (issue,) = result.issues
+    label = "Câu hỏi 1" if where == "q" else "Trả lời 1"
+    assert issue.message.startswith(f"{label}: có ký tự phần mềm chưa nhận ra")
+    assert "biểu tượng cảm xúc" in issue.message and "Sửa trong bài" in issue.message
+    assert INVISIBLE not in issue.message and "điều khiển" not in issue.message
+    assert ch not in issue.message
+
+
+@pytest.mark.parametrize("where", ["q", "a"])
+@pytest.mark.parametrize("ch", FAQ_OLD_MESSAGE_CHARS, ids=ids(FAQ_OLD_MESSAGE_CHARS))
+def test_faq_control_invisible_and_noncharacters_keep_old_message(ch, where):
+    """Ký tự điều khiển, surrogate lẻ, ký tự riêng, «không phải ký tự», mã để dành cho ký tự vô
+    hình còn lại sau chuẩn hóa: Chặn với câu «ký tự điều khiển hoặc ký tự lạ (không nhìn thấy…)»."""
+    result = faq_with(ch, where)
+    assert result.blocked and result.json_ld is None
+    (issue,) = result.issues
+    assert OLD in issue.message and INVISIBLE in issue.message and "Sửa trong bài" in issue.message
+    assert NEW not in issue.message
+    assert ch not in issue.message
+
+
+@pytest.mark.parametrize("ch", DROPPED_BY_FAQ, ids=ids(DROPPED_BY_FAQ))
+def test_faq_drops_reserved_ignorable_chars_as_before(ch):
+    """Canh: ba mã «mặc định bỏ qua» chưa gán vẫn bị bỏ như trước (không Chặn), JSON-LD không có
+    chúng; lượt 2 chỉ đổi câu báo, không đổi chuẩn hóa."""
+    result = faq_with(ch, "a")
+    assert not result.blocked and result.json_ld is not None
+    assert ch not in result.json_ld
+
+
+def test_faq_blocks_exactly_the_same_chars_as_before():
+    """Canh: tách câu báo không đổi tập ký tự bị Chặn ở FAQ: Chặn đúng khi chữ đã chuẩn hóa còn ký
+    tự loại Cc, Cs, Co, Cn (Lá Chắn T-038 đk 1). Quét mỗi 11 mã một trên cả bảng mã."""
+    odd_categories = {"Cc", "Cs", "Co", "Cn"}
+    for code in range(0, 0x110000, 11):
+        text = f"Cửa{chr(code)}cuốn"
+        issues, _ = faq_check_text(text, label="Câu hỏi 1", max_length=300, article=None)
+        blocked = any(OLD in issue.message or NEW in issue.message for issue in issues)
+        expected = any(unicodedata.category(c) in odd_categories for c in normalize_text(text))
+        assert blocked is expected, f"U+{code:04X}"
+
+
+@python_without_new_emoji
+def test_faq_both_kinds_give_two_issues():
+    result = faq_with(f"{chr(0x1B)}{NEW_EMOJI[0]}", "a")
+    assert result.blocked and result.json_ld is None
+    messages = [issue.message for issue in result.issues]
+    assert len(messages) == 2
+    assert OLD in messages[0] and NEW in messages[1]
+
+
+@python_without_new_emoji
+def test_seo_step_faq_shows_accurate_message_for_new_emoji(project_root):
+    """Bước SEO: mục Hỏi đáp của bài có emoji mới trong câu trả lời: không có JSON-LD, câu báo dưới
+    phần Schema là câu mới (không có «không nhìn thấy»)."""
+    snap = seo_ui.ui.article()
+    answer = FAQ_A.replace("Được,", f"Được {NEW_EMOJI[0]},")
+    snap.parts.append(DraftPart(heading="Hỏi đáp", versions=[f"### {FAQ_Q}\n\n{answer}"]))
+    at = seo_ui.to_seo(project_root, snap)
+    faq = [c.value for c in at.caption if "Trả lời 1" in c.value]
+    assert len(faq) == 1
+    assert escape_markdown(faq_with(NEW_EMOJI[0], "a").issues[0].message) in faq[0]
+    assert NEW in faq[0] and INVISIBLE not in faq[0]
+    assert not [c for c in at.code if c.language == "json"]
     assert not at.exception

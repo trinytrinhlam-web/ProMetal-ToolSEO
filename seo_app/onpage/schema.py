@@ -35,6 +35,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from seo_app.content.models import Section
 from seo_app.content.rules import IGNORABLE_NOT_CF, MISSING_PATTERN
+from seo_app.onpage.meta import odd_char_kinds
 from seo_app.sanitize import strip_markdown_links, strip_tags, unescape_link_syntax
 from seo_app.text import remove_accents
 
@@ -139,17 +140,6 @@ def normalize_text(text: str) -> str:
     text = IGNORABLE_NOT_CF.sub("", text)
     text = _SPACES.sub(" ", text).strip()
     return unicodedata.normalize("NFC", text)
-
-
-# Ký tự không được có trong câu hỏi, trả lời (Lá Chắn T-038 điều kiện 1, SL-T038-1): điều khiển
-# (Cc: NUL, ESC, DEL, C1…), surrogate lẻ (Cs: JSON-LD không mã hóa được UTF-8), ký tự riêng (Co),
-# ký tự chưa gán (Cn).
-_ODD_CATEGORIES = frozenset({"Cc", "Cs", "Co", "Cn"})
-
-
-def _has_control(text: str) -> bool:
-    """Còn ký tự điều khiển hay ký tự lạ (``_ODD_CATEGORIES``) sau chuẩn hóa."""
-    return any(unicodedata.category(ch) in _ODD_CATEGORIES for ch in text)
 
 
 # ------------------------------------------------------------------ bỏ dấu Markdown
@@ -337,8 +327,27 @@ def _check_text(
     issues: list[Issue] = []
     if not text:
         return [Issue(Level.BLOCK, f"{label}: đang để trống.")], None
-    if _has_control(text):
-        issues.append(Issue(Level.BLOCK, f"{label}: có ký tự điều khiển hoặc ký tự lạ."))
+    # Ký tự không được có trong câu hỏi, trả lời (Lá Chắn T-038 điều kiện 1, SL-T038-1): điều khiển
+    # (Cc: NUL, ESC, DEL, C1…), surrogate lẻ (Cs: JSON-LD không mã hóa được UTF-8), ký tự riêng
+    # (Co), ký tự chưa gán (Cn). Câu báo tách hai loại như ô meta (SL-T041-8, T-090): ký tự chưa
+    # gán có thể là emoji rất mới, nhìn thấy được, nên không nói «không nhìn thấy».
+    odd, unknown = odd_char_kinds(text)
+    if odd:
+        issues.append(
+            Issue(
+                Level.BLOCK,
+                f"{label}: có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ "
+                "nơi khác). Sửa trong bài: gõ lại câu đó bằng chữ thường.",
+            )
+        )
+    if unknown:
+        issues.append(
+            Issue(
+                Level.BLOCK,
+                f"{label}: có ký tự phần mềm chưa nhận ra (có thể là biểu tượng cảm xúc rất mới). "
+                "Sửa trong bài: xóa ký tự đó hoặc thay bằng biểu tượng quen thuộc.",
+            )
+        )
     if _has_html(text):
         issues.append(Issue(Level.BLOCK, f"{label}: có thẻ HTML."))
     if len(text) > max_length:
