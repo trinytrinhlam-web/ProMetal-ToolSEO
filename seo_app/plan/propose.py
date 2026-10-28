@@ -149,35 +149,41 @@ class ProposalSet:
 
 
 class _Keys:
-    """Cấp Mã bài cho dòng mới: không trùng mã đã có, số lớn nhất cộng 1 (``next_key``), mỗi lần
-    không phải quét lại danh sách (Soi Lỗi SL-T098-11)."""
+    """Cấp Mã bài cho dòng mới: không trùng mã đã có, số lớn nhất cộng 1 (như ``next_key``), mỗi
+    lần không phải quét lại danh sách (Soi Lỗi SL-T098-11).
+
+    Dựng không bao giờ báo lỗi, kể cả khi kế hoạch có mã ``B-99999`` (gõ tay trên Sheet: dữ liệu
+    chưa tin cậy); chỉ khi cần cấp mã mới mà đã quá ``MAX_KEY_NUMBER`` thì tìm số trống từ đầu
+    (kế hoạch tối đa ``MAX_ROWS`` dòng nên luôn còn), hết thật mới báo ``PlanKeyError`` câu cố định
+    (Soi Lỗi SL-T098-17)."""
 
     def __init__(self, existing: Iterable[str], prefix: str = "B") -> None:
         self.used = {key for key in existing if key}
         self.prefix = prefix
-        self.number = int(model.next_key(self.used, prefix).rsplit("-", 1)[1]) - 1
+        numbers = (model.key_number(key, prefix) for key in self.used)
+        self.number = max((n for n in numbers if n is not None), default=0)
 
     def take(self, key: str) -> bool:
         """Giữ mã ``key`` (đúng dạng) cho một dòng mới; ``False`` nếu mã đã có."""
         if key in self.used:
             return False
         self.used.add(key)
-        prefix, _, number = key.rpartition("-")
-        if prefix == self.prefix:
-            self.number = max(self.number, int(number))
+        number = model.key_number(key, self.prefix)
+        if number is not None:
+            self.number = max(self.number, number)
         return True
 
     def new(self) -> str:
         """Mã kế tiếp chưa dùng (``B-001``…, ít nhất 3 chữ số)."""
-        while True:
-            self.number += 1
-            if self.number > 99_999:
-                raise ValueError("hết mã bài")
-            key = f"{self.prefix}-{self.number:03d}"
-            if key not in self.used:
-                break
-        self.used.add(key)
-        return key
+        for _ in range(2):  # lần hai: hết số phía trên thì tìm số trống từ 1
+            while self.number < model.MAX_KEY_NUMBER:
+                self.number += 1
+                key = f"{self.prefix}-{self.number:03d}"
+                if key not in self.used:
+                    self.used.add(key)
+                    return key
+            self.number = 0
+        raise model.PlanKeyError(model.KEYS_EXHAUSTED.format(prefix=self.prefix))
 
 
 # ------------------------------------------------------------------------------ so bảng
@@ -343,7 +349,14 @@ def _has_html_text(raw: str) -> bool:
 
 
 def _has_personal(proposal: Proposal) -> bool:
-    texts = [proposal.reason, *(getattr(proposal.after, name) for name in _AI_TEXT_FIELDS)]
+    """Chữ **do AI đưa** (lý do; với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường AI đổi) có số
+    điện thoại, email. Chữ cũ của dòng không tính: ghi chú có số khách là chuyện thường (Soi Lỗi
+    SL-T098-15)."""
+    if proposal.action is Action.ADD:
+        names: Iterable[str] = _AI_TEXT_FIELDS
+    else:
+        names = [name for name in _AI_TEXT_FIELDS if name in proposal.changes]
+    texts = [proposal.reason, *(getattr(proposal.after, name) for name in names)]
     return any(any(model.personal_info(text)) for text in texts if text)
 
 
@@ -501,8 +514,9 @@ def _duplicate_post(row: PlanRow, folded: str, posts: Sequence[_Post]) -> int | 
 
 # Địa danh TP.HCM trong từ khóa (chữ không dấu): «quận 7», «q7», «q.7», «phường 12», «p.12»,
 # «phường Tân Định», «huyện Nhà Bè», «xã …» và tên quận, huyện cũ không có chữ «quận» đứng trước.
-# Viết tắt «q», «p» chỉ nhận khi theo sau là số hay dấu chấm: «phụ kiện», «quay chậm», «xài lâu»
-# không phải địa danh (Soi Lỗi SL-T098-8).
+# Chạy trên chữ đã ``keyword_key`` (dấu chấm đã thành dấu cách: «P. Tân Định» là «p tan dinh»).
+# Viết tắt «q», «p» chỉ nhận khi **đứng riêng** (rồi số hay tên): «phụ kiện» («phu»), «quay chậm»,
+# «xài lâu» không phải địa danh (Soi Lỗi SL-T098-8, -14).
 _DISTRICTS = (
     "binh thanh", "tan binh", "tan phu", "go vap", "phu nhuan", "binh tan", "thu duc", "nha be",
     "can gio", "cu chi", "hoc mon", "binh chanh",
@@ -510,7 +524,7 @@ _DISTRICTS = (
 _LOCATION = re.compile(
     r"\b(?:quan|q|phuong|p|huyen|xa)\s*\.?\s*\d{1,2}\b"
     r"|\b(?:quan|phuong|huyen|xa|thi tran)\s+[a-z]+(?:\s+[a-z]+)?"
-    r"|\b(?:q|p)\.\s*[a-z]+(?:\s+[a-z]+)?"
+    r"|\b(?:q|p)\s+[a-z]+(?:\s+[a-z]+)?"
     r"|\b(?:" + "|".join(_DISTRICTS) + r")\b"
 )
 

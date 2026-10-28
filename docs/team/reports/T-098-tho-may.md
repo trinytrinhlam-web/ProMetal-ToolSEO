@@ -199,3 +199,45 @@ All checks passed!
 
 - Trước khi gỡ dấu: `uv run pytest --runxfail tests/test_soi_loi_t098.py tests/test_plan_model.py` → `303 passed`.
 - Lượt 2 chỉ sửa 3 file trong `seo_app/plan/` và test; không đụng `seo_app/content/`, `app/`, `seo_app/wordpress/`, `seo_app/storage/`, `config/`.
+
+---
+
+## Lượt 3 (2026-10-28 15:51 +07:00) · Soi Lỗi lượt 2 (`9e7cea6`), Lá Chắn (`b520623`): sửa 6 lỗi Thấp SL-T098-12 → -17
+
+Chỉ Huy B giao: sửa cả 6 lỗi Thấp trước khi gộp (Soi Lỗi và Lá Chắn đều khuyên, ưu tiên -13, -17, -12), theo gợi ý của Soi Lỗi; không lùi 11 lỗi đã đóng và các điều kiện LC-T094.
+
+### Đã sửa
+
+| Mã | Sửa | Chỗ |
+|---|---|---|
+| SL-T098-12 | Đọc CSV/TSV `strict` trước; **chỉ** «file hết mà ngoặc kép chưa đóng» (câu lỗi `unexpected end of data` của `csv`) là `BAD_TABLE` (giữ SL-T098-3); lỗi `strict` khác (ô mở đầu bằng chữ trong ngoặc kép rồi có chữ sau: «"Đức" là hãng tốt») thì đọc lại không `strict` như lượt 1. Bảng dán: `_looks_tabbed` vốn rơi về đếm dòng vật lý khi `csv` lỗi, nên nhận đúng là bảng | `parse.py` `_csv_rows` |
+| SL-T098-13 | Bảng Markdown: dòng tiêu đề là dòng **ngay trước dòng phân cách** «\|---\|» (không dò); CSV/TSV: chỉ bỏ qua dòng phía trên có tối đa **một ô có chữ** (dòng tên bảng), gặp dòng có từ hai ô mà không có cột từ khóa thì thôi. Bảng «Mục – Nội dung» và `docs/plan/yeu_cau_phan_mem_ProMetal_ToolSEO.md` không còn ra dòng giả | `parse.py` `_markdown_tables`, `_find_header`, `_rows_to_plan(header_at=…)` |
+| SL-T098-14 | Viết tắt «p», «q» **đứng riêng** rồi tên là địa danh (chữ đã `keyword_key` nên dấu chấm thành dấu cách: «P. Tân Định» là «p tan dinh»); «phụ kiện» («phu») vẫn không bị bắt | `propose.py` `_LOCATION` |
+| SL-T098-15 | Cảnh báo số điện thoại/email chỉ xét chữ **do AI đưa**: lý do; với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường AI đổi; «Bỏ» chỉ lý do. Ghi chú cũ có số khách không làm bỏ tick | `propose.py` `_has_personal` |
+| SL-T098-16 | Số ngày có phần lẻ **toàn chữ số 0** («46337.0») là ngày trần, không đặt giờ 00:00 | `model.py` `_SERIAL_TIME_RE` |
+| SL-T098-17 | `_Keys` tính số lớn nhất trực tiếp (`model.key_number`), dựng không bao giờ báo lỗi; chỉ khi cần cấp mã mới mới xét giới hạn. **Khác gợi ý một chút:** quá `B-99999` thì tìm số trống từ `B-001` (kế hoạch tối đa 1.000 dòng nên luôn còn), thay vì báo «hết mã» ngay; hết thật mới báo `PlanKeyError` câu cố định `KEYS_EXHAUSTED`. `PlanKeyError` là `ValueError` riêng; `ContentWriter.plan_changes` đổi nó thành `AIError` cùng câu (không lọt ra giao diện như lỗi lạ). `model.next_key` cũng báo `PlanKeyError` câu cố định | `propose.py` `_Keys`; `model.py` `key_number`, `next_key`, `PlanKeyError`; `workflow.py` `plan_changes` |
+
+### Không lùi
+
+- 11 lỗi đã đóng (SL-T098-1 → -11) và mọi test của Soi Lỗi vẫn qua: `--runxfail` trên `tests/test_soi_loi_t098.py` + 4 file kế hoạch: `558 passed` trước khi gỡ dấu.
+- Điều kiện LC-T094 không đổi: dữ liệu vẫn qua `PlanRow` (bộ làm sạch chung); kiểm thẻ HTML trên chữ đã làm sạch và NFKC; dò số điện thoại/email trên chữ NFKC; biểu thức mới không quay lui (`_SERIAL_TIME_RE` chỉ thêm một lớp ký tự; `_LOCATION` bớt nhánh dấu chấm; `_csv_rows` đọc tối đa hai lượt, mỗi lượt tuyến tính và vẫn dừng ngay khi quá 1.000 dòng / 26 cột).
+
+### Test
+
+- Gỡ 6 dấu `xfail` (SL-T098-12 → -17) trong `tests/test_soi_loi_t098.py`: **35 dòng xóa, 0 dòng thêm**, mọi dòng xóa là dòng dấu `@pytest.mark.xfail(...)` (soát bằng `git diff`). Không đổi điều kiện ca nào.
+- Thêm test của tôi: `tests/test_plan_propose.py` (cấp mã sau `B-99999` dùng số trống; hết mã thật ra câu cố định), `tests/test_plan_parse.py` (CSV gặp dòng hai ô thì thôi dò tiêu đề; ngoặc kép mở tới hết file vẫn `BAD_TABLE`; Markdown lấy dòng trước dòng phân cách), `tests/test_plan_ai.py` (`PlanKeyError` thành `AIError` câu cố định).
+
+```
+$ uv run pytest -q -p no:cacheprovider -rfEX tests/test_plan_model.py tests/test_plan_parse.py \
+    tests/test_plan_propose.py tests/test_plan_ai.py tests/test_soi_loi_t098.py \
+    tests/test_soi_loi_t003_t009.py tests/test_t040_prompts.py tests/test_content_workflow.py \
+    tests/test_prompt_data_frames.py tests/test_content_edge_cases.py
+(2026-10-28 15:50:13 → 15:51:27 +0700)
+745 passed in 70.26s (0:01:10)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- `tests/test_la_chan_t098.py` không có (Lá Chắn không thêm file test).
+- Lượt 3 sửa `seo_app/plan/model.py`, `parse.py`, `propose.py`, `seo_app/content/workflow.py` (chỉ `plan_changes`) và test; không đụng `app/`, `seo_app/wordpress/`, `seo_app/storage/`, `config/`.

@@ -278,3 +278,16 @@ def test_plan_changes_checks_every_ai_item(monkeypatch):
     (add,) = result.items
     assert add.action is Action.ADD and add.key == "B-003" and not add.preselected
     assert result.dropped == 2
+
+
+def test_plan_changes_turns_keys_exhausted_into_a_fixed_ai_error(monkeypatch):
+    from seo_app.plan import propose
+
+    def exhausted(*args, **kwargs):
+        raise model.PlanKeyError(model.KEYS_EXHAUSTED.format(prefix="B"))
+
+    monkeypatch.setattr(propose, "from_ai", exhausted)
+    plan_writer = writer(monkeypatch, {"outline": OUTLINE_TASK}, PlanProvider())
+    with pytest.raises(AIError) as raised:
+        plan_writer.plan_changes(CURRENT, PASTE, today=TODAY)
+    assert str(raised.value) == model.KEYS_EXHAUSTED.format(prefix="B")

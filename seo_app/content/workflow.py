@@ -412,7 +412,10 @@ class ContentWriter:
         raw = provider.generate(task, system=self.system, prompt=prompt, schema=PlanSuggestions)
         if not isinstance(raw, PlanSuggestions):
             raise AIError(PLAN_BAD_SHAPE)
-        return propose.from_ai(raw, current, posts=posts, today=today)
+        try:
+            return propose.from_ai(raw, current, posts=posts, today=today)
+        except plan_model.PlanKeyError as exc:  # hết Mã bài trống: câu cố định, như mọi lỗi AI
+            raise AIError(str(exc)) from None
 
     def _plan_task(self):
         """Provider và cấu hình cho việc ``plan``: mục ``[tasks.plan]`` nếu có, không thì cấu hình

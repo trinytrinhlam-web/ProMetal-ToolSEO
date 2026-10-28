@@ -367,3 +367,19 @@ def test_ai_fullwidth_html_is_dropped(field):
     fields = {"action": "them", "keyword": "cửa nhôm", field: f"{fullwidth} cửa"}
     result = ai(suggestion(**fields))
     assert result.items == () and result.dropped == 1
+
+
+# ------------------------------------------------------------------- lượt 3 (Soi Lỗi T-098)
+
+
+def test_new_key_after_the_largest_key_reuses_a_free_number():
+    current = [PlanRow(key="B-99999", keyword="cửa cuốn"), PlanRow(key="B-001", keyword="cửa kéo")]
+    (add,) = compare_rows(current, [PlanRow(keyword="cửa nhôm")], today=TODAY).items
+    assert add.key == "B-002"
+
+
+def test_keys_exhausted_is_a_fixed_error_only_when_a_new_key_is_needed():
+    keys = propose._Keys(f"B-{n:03d}" for n in range(1, model.MAX_KEY_NUMBER + 1))
+    with pytest.raises(model.PlanKeyError) as raised:
+        keys.new()
+    assert str(raised.value) == model.KEYS_EXHAUSTED.format(prefix="B")

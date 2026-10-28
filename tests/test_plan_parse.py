@@ -395,3 +395,24 @@ def test_key_shared_between_tables_keeps_first():
     text = f"{head}| B-1 | cửa cuốn |\n\n{head}| B-001 | cửa kéo |\n"
     result = read_paste(text)
     assert [row.keyword for row in result.rows] == ["cửa cuốn"] and result.skipped == 1
+
+
+# ------------------------------------------------------------------- lượt 3 (Soi Lỗi T-098)
+
+
+def test_csv_header_search_stops_at_a_row_with_two_cells():
+    data = csv_bytes("Từ khóa chính,Ưu tiên", "cửa cuốn,Cao", header="Tháng,11")
+    result = read_file(data, "a.csv")
+    assert not result.is_table and not result.rows
+
+
+def test_csv_quote_open_at_end_of_file_is_still_an_error():
+    with pytest.raises(PlanSourceError) as raised:
+        read_file('Từ khóa,Ghi chú\ncửa cuốn,"chưa đóng\ncửa kéo,x\n'.encode(), "a.csv")
+    assert str(raised.value) == parse.BAD_TABLE
+
+
+def test_markdown_header_is_the_row_before_the_separator():
+    text = "| Tháng 11 |\n| Từ khóa | Ngày |\n|---|---|\n| cửa cuốn | 12/11/2026 |\n"
+    (row,) = read_paste(text).rows
+    assert (row.keyword, row.planned_date) == ("cửa cuốn", date(2026, 11, 12))

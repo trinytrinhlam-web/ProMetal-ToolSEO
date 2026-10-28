@@ -1080,12 +1080,6 @@ def test_round2_g8_many_ai_proposals_are_not_preselected(count, preselected):
     assert all(p.preselected == preselected for p in result.items)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-12 (Thấp): csv strict=True (sửa SL-T098-3) làm hỏng cả bảng khi một ô mở đầu "
-    'bằng chữ trong ngoặc kép rồi có chữ sau («"Đức" là hãng»), kiểu Excel, Google Sheets chép '
-    "ra khi ô không xuống dòng; trước lượt 2 bảng vẫn đọc được",
-)
 @pytest.mark.parametrize("source", ["paste", "csv"])
 def test_sl_t098_12_cell_starting_with_a_quoted_word_does_not_break_the_table(source):
     if source == "paste":
@@ -1096,12 +1090,6 @@ def test_sl_t098_12_cell_starting_with_a_quoted_word_does_not_break_the_table(so
     assert "Đức" in result.rows[0].notes and "là hãng tốt" in result.rows[0].notes
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-13 (Thấp): tìm dòng tiêu đề trong 5 dòng đầu (góp ý G7) bắt nhầm một dòng dữ "
-    "liệu có ô «Từ khóa»: bảng khóa-giá trị thành dòng kế hoạch giả, tick sẵn (file thật "
-    "yeu_cau_phan_mem_ProMetal_ToolSEO.md: 10 dòng «Slug», «Tiêu đề dự kiến»…)",
-)
 @pytest.mark.parametrize("case", ["markdown", "csv", "real-file"])
 def test_sl_t098_13_key_value_table_is_not_a_plan(case):
     if case == "markdown":
@@ -1120,12 +1108,6 @@ def test_sl_t098_13_key_value_table_is_not_a_plan(case):
     assert not bogus & {row.keyword for row in result.rows}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-14 (Thấp): nhánh «p.»/«q.» + tên của bộ nhận địa danh (sửa SL-T098-8) không "
-    "bao giờ khớp vì từ khóa đã bỏ dấu chấm (fold_key): «sửa cửa P. Tân Định / P. Đa Kao / P. Bến "
-    "Nghé» mất cảnh báo trang cửa ngõ (lượt 1 có)",
-)
 def test_sl_t098_14_ward_abbreviation_with_a_name_is_a_place():
     keywords = ("sửa cửa P. Tân Định", "sửa cửa P. Đa Kao", "sửa cửa P. Bến Nghé")
     current = [PlanRow(key=f"B-00{i}", keyword=k) for i, k in enumerate(keywords[:2], 1)]
@@ -1133,12 +1115,6 @@ def test_sl_t098_14_ward_abbreviation_with_a_name_is_a_place():
     assert propose.WARN_DOORWAY in proposal.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-15 (Thấp): cảnh báo «Đề xuất của AI có số điện thoại hoặc email» (góp ý G5) "
-    "xét cả chữ cũ của dòng: AI chỉ đổi ưu tiên (hay «Bỏ») một dòng có sẵn số khách trong ghi chú "
-    "cũng bị cảnh báo, bỏ tick",
-)
 @pytest.mark.parametrize("action", ["cap_nhat", "bo"])
 def test_sl_t098_15_personal_warning_only_for_text_from_the_ai(action):
     current = [PlanRow(key="B-001", keyword="cửa cuốn austdoor", notes="Anh Ba 0909 123 456")]
@@ -1148,23 +1124,12 @@ def test_sl_t098_15_personal_warning_only_for_text_from_the_ai(action):
     assert propose.WARN_PERSONAL not in proposal.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-16 (Thấp): số ngày có phần lẻ toàn chữ số 0 («46337.0», trước lượt 2 là ngày "
-    "trần như «46337») nay thành giờ đăng 00:00 (nửa đêm), đè giờ đăng mặc định",
-)
 @pytest.mark.parametrize("raw", ["46337.0", "46337.00"])
 def test_sl_t098_16_serial_with_zero_fraction_is_a_plain_date(raw):
     (row,) = csv_file(f"Từ khóa,Ngày\nsửa cửa,{raw}\n").rows
     assert (row.planned_date, row.planned_time) == (date(2026, 11, 11), "")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T098-17 (Thấp): bộ cấp mã mới (_Keys, sửa SL-T098-11) gọi next_key ngay khi dựng: "
-    "kế hoạch có mã «B-99999» (gõ tay trên Sheet) làm mọi lần so bảng và đề xuất AI báo ValueError "
-    "«hết mã bài», kể cả khi chỉ cập nhật (lượt 1 chỉ lỗi khi cần cấp mã mới)",
-)
 def test_sl_t098_17_largest_key_does_not_break_updates():
     current = [PlanRow(key="B-99999", keyword="cửa cuốn"), PlanRow(key="B-001", keyword="cửa kéo")]
     changed = PlanRow(key="B-001", keyword="cửa kéo", priority="Cao")

@@ -135,8 +135,9 @@ _FOLD_DROP = re.compile(r"[^0-9a-z]+")
 # Số ngày kiểu Google Sheets / Excel: ngày 0 là 30/12/1899.
 _SHEETS_EPOCH = date(1899, 12, 30)
 _SERIAL_RE = re.compile(r"\d{5}(?:\.0+)?")
-# Số ngày có phần lẻ là ngày và giờ (Google Sheets, Excel: 46337.5 là 12 giờ trưa).
-_SERIAL_TIME_RE = re.compile(r"(\d{5})\.(\d+)")
+# Số ngày có phần lẻ là ngày và giờ (Google Sheets, Excel: 46337.5 là 12 giờ trưa). Phần lẻ toàn
+# chữ số 0 («46337.0») là ngày trần, không phải nửa đêm (Soi Lỗi SL-T098-16).
+_SERIAL_TIME_RE = re.compile(r"(\d{5})\.(\d*[1-9]\d*)")
 _DMY_RE = re.compile(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})")
 _YMD_RE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
 # Giờ: «8:00», «08:30:00» (Google Sheets tiếng Việt hiện cả giây), «8h30», «8 giờ», «8:00 SA»,
@@ -335,17 +336,32 @@ def parse_key(value: object) -> str:
     return f"{found.group(1)}-{int(found.group(2)):03d}"
 
 
+MAX_KEY_NUMBER = 99_999
+KEYS_EXHAUSTED = (
+    "Không còn Mã bài trống (đã dùng hết {prefix}-001 tới {prefix}-99999). Sửa lại các Mã bài "
+    "trong kế hoạch rồi thử lại."
+)
+
+
+class PlanKeyError(ValueError):
+    """Không còn Mã bài trống để cấp cho dòng mới. ``str(err)`` là câu cố định
+    ``KEYS_EXHAUSTED``."""
+
+
+def key_number(key: object, prefix: str = "B") -> int | None:
+    """Phần số của Mã bài đúng dạng có tiền tố ``prefix`` (``B-024`` → 24); khác thì ``None``."""
+    found = _KEY_RE.fullmatch(key) if isinstance(key, str) else None
+    return int(found.group(2)) if found and found.group(1) == prefix else None
+
+
 def next_key(existing: Iterable[str], prefix: str = "B") -> str:
     """Mã bài kế tiếp cho dòng mới: số lớn nhất của ``prefix`` cộng 1, ít nhất 3 chữ số
-    (``B-001``, ``B-024``)."""
-    numbers = [
-        int(found.group(2))
-        for key in existing
-        if isinstance(key, str) and (found := _KEY_RE.fullmatch(key)) and found.group(1) == prefix
-    ]
+    (``B-001``, ``B-024``). Số lớn nhất đã là ``MAX_KEY_NUMBER``: ``PlanKeyError`` (cấp nhiều mã
+    một lúc, có tìm số trống, thì dùng ``seo_app.plan.propose``)."""
+    numbers = [number for key in existing if (number := key_number(key, prefix)) is not None]
     number = max(numbers, default=0) + 1
-    if number > 99_999:
-        raise ValueError("hết mã bài")
+    if number > MAX_KEY_NUMBER:
+        raise PlanKeyError(KEYS_EXHAUSTED.format(prefix=prefix))
     return f"{prefix}-{number:03d}"
 
 
