@@ -59,6 +59,12 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-28 17:31 · Chỉ Huy B
+
+- Gộp **T-090** và **T-097** (đều qua Lá Chắn). Windows 18.870 test qua, 0 hỏng. T-097 thêm thư viện `google-auth` (chủ dự án chốt 28/10): máy khác chạy `uv sync`.
+- Đang chạy: Soi Lỗi T-091 (Chỉ Huy duyệt phương án A: mã quá 2⁶³−1 coi như sai khuôn, đổi 7 test cũ giữ ý), Soi Lỗi kiểm lại T-098 lượt 3 (đạt thì gộp), Lá Chắn xem lại T-096 lượt 4.
+- Hàng đợi (máy rảnh): T-097 lượt 2, T-104, T-093, T-092.
+
 ### 2026-10-28 15:47 · Chỉ Huy B
 
 - Chủ dự án trả lời sáng 28/10 (ghi ở `TIEN-DO.md` mục 4): việc website xong, chốt A cả 6 câu Giai đoạn 5, thêm 2 dòng sổ rủi ro. T-059 thử lại trên site đạt, phiếu đóng.

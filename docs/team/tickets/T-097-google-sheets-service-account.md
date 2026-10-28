@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1) |
 | Phụ thuộc | Câu hỏi 1: **chủ dự án chốt A sáng 28/10** (khai báo `google-auth`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-28); còn lượt 2 (5 Thấp) trước T-100 |
 
 ## Mục tiêu
 
@@ -46,3 +46,4 @@ Làm phần **T-097** đúng như thiết kế Giai đoạn 5: `docs/team/report
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
 - 2026-10-28 28/10 08:27 (Chỉ Huy B): chủ dự án chốt A cả 6 câu thiết kế (câu 1: khai báo `google-auth`). Nhánh `team/T-097` từ `main` `b513d67`, worktree `wt-T-097`; giao Thợ Máy (phiên Thợ Máy T-059).
+- 2026-10-28 17:31 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`82bf0c0`, 4 Thấp), Lá Chắn đầy đủ ĐẠT CÓ ĐIỀU KIỆN (`4f6a970`, 1 Thấp mới LC-T097-1). Gộp `main`, Windows 18.870 test qua, 0 hỏng. Lượt 2 (Thợ Máy) sửa SL-T097-1, -2, LC-T097-1 trước khi T-100 dùng client; SL-T097-3, -4 trước T-101.

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-041, T-084 đã gộp |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Xong (gộp `main` 2026-10-28) |
 
 ## Mục tiêu
 
@@ -47,3 +47,4 @@ U1, U2, S1.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 17:31 (Chỉ Huy B): Soi Lỗi ĐẠT (`0207c88`), Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`4af2d4b`). Gộp `main`, Windows 18.870 test qua, 0 hỏng. LC-T090-1, -2 (Thấp, có từ trước ở `set_password`) → T-104 theo đề xuất Lá Chắn. Đề xuất 1 (câu báo từ khóa chính) đã chuyển T-092.
