@@ -456,11 +456,6 @@ SURROGATE_SITES = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T088-1: chữ website trả có ký tự surrogate lẻ (JSON hợp lệ «\\ud800») đi qua client "
-    "nguyên vẹn; không mã hóa UTF-8 được nên trang hiện chữ đó vỡ, lưu SQLite lỗi",
-)
 @pytest.mark.parametrize("where", SURROGATE_SITES)
 def test_sl_t088_1_chu_website_co_surrogate_le_khong_lot_ra(where):
     call, method, route, answer = SURROGATE_SITES[where]
@@ -477,11 +472,6 @@ def test_sl_t088_1_chu_website_co_surrogate_le_khong_lot_ra(where):
         text.encode("utf-8")  # chữ trả cho trang, cho SQLite phải mã hóa được
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T088-1: tên site có surrogate lẻ làm vỡ trang Kết nối WordPress (UnicodeEncodeError "
-    "khi Streamlit gửi chữ ra trình duyệt)",
-)
 def test_sl_t088_1_trang_ket_noi_khong_vo_vi_surrogate(project_root, page_site):
     page_site.on("GET", "/wp-json/", {"name": SURROGATE, "home": BASE_URL,
                                       "namespaces": ["wp/v2"]})
@@ -492,11 +482,6 @@ def test_sl_t088_1_trang_ket_noi_khong_vo_vi_surrogate(project_root, page_site):
     assert not at.exception, at.exception
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T088-1: tiêu đề bài đã đăng có surrogate lẻ làm SiteIndexStore.refresh ném "
-    "UnicodeEncodeError (không phải SiteIndexError) khi lưu SQLite",
-)
 def test_sl_t088_1_luu_tam_danh_sach_bai_khong_vo_vi_surrogate(tmp_path):
     _call, _method, _route, answer = SURROGATE_SITES["bai-da-dang"]
     fake = FakeWordPress()

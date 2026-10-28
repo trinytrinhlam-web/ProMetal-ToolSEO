@@ -114,16 +114,22 @@ def reopen_at_write_step(project_root, draft: str):
 # ============================================================ LC-T086-1: mã bài lạ từ website
 
 
-@pytest.mark.parametrize("post_id", [2**64, 10**30], ids=["2^64", "10^30"])
+@pytest.mark.parametrize("post_id", [2**63, 2**64, 10**30], ids=["2^63", "2^64", "10^30"])
 def test_post_id_far_out_of_range_fixed_note(project_root, root, fake_ai, site, post_id):
     """Biến thể của 2⁶³: mã vượt cả BIGINT UNSIGNED (2⁶⁴) và mã 31 chữ số. Trang không lỗi, có câu
-    cố định, nháp giữ «đang gửi», nút khóa; các lần chạy sau không lỗi lại, không gửi thêm."""
+    cố định, nháp giữ «đang gửi», nút khóa; các lần chạy sau không lỗi lại, không gửi thêm.
+
+    T-091 (Chỉ Huy duyệt phương án A 28/10): client coi mã quá ``MAX_ID`` (2⁶³−1) như mã sai khuôn
+    (lớp phòng thêm của LC-T086-1), nên câu cố định là câu «bài nháp có thể đã có trên website»
+    (trước: câu ``NOTE`` «mã lớn bất thường» và «Đã tạo… mã {post_id}»). Không lệnh nào gọi tiếp
+    với mã đó. Biên 2⁶³−1: ``test_largest_post_id_still_recorded``."""
     post_returns(site, post_id)
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     ui.send(at)
-    assert any(NOTE in w.value for w in at.warning)
-    assert any(f"mã {post_id}" in s.value for s in at.success)
+    assert any(UNSURE in e for e in errors(at))
+    assert not any(str(post_id) in s.value for s in at.success)
+    assert all(str(post_id) not in r.url for r in site.fake.requests)
     for _ in range(2):
         run_ok(at.run())
         assert button(at, SEND).disabled
@@ -137,7 +143,10 @@ def test_post_id_out_of_range_interrupted_at_each_write(
 ):
     """Website trả mã 2⁶³; người dùng bấm gì đó đúng lúc app ghi khóa thứ ``n`` vào phiên sau khi
     website trả lời (``apply_send``): lần chạy sau ``finish_send`` ghi lại kết quả, lại gặp mã lạ,
-    ra câu cố định chứ không lỗi trang; vẫn khóa, một bài."""
+    ra câu cố định chứ không lỗi trang; vẫn khóa, một bài.
+
+    T-091 (Chỉ Huy duyệt phương án A 28/10): mã 2⁶³ nay là mã sai khuôn ngay trong client, câu cố
+    định là «bài nháp có thể đã có trên website» (trước: câu ``NOTE`` «mã lớn bất thường»)."""
     site.create_post = lambda _r: (
         201,
         {"id": 2**63, "status": "draft", "title": {"raw": "T"}},
@@ -151,7 +160,8 @@ def test_post_id_out_of_range_interrupted_at_each_write(
     for _ in range(2):
         run_ok(at.run())
         assert button(at, SEND).disabled
-    assert any(NOTE in w.value for w in at.warning)
+    assert any(UNSURE in e for e in errors(at))
+    assert all(str(2**63) not in r.url for r in site.fake.requests)
     assert ui.store().load_send_state(draft_id(at)).pending
     assert "_wp_sending" not in at.session_state
     assert len(site.posts()) == 1

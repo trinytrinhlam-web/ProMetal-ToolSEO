@@ -143,7 +143,9 @@ def test_chi_gui_mot_truong_thi_chi_so_truong_do(fake_wp, client):
         pytest.param({**real_answer(), "success": "true"}, id="success-chu"),
         pytest.param({**real_answer(), "code": "forbidden"}, id="co-ma-loi"),
         pytest.param(real_answer(title=TITLE.replace("%", "&#37;")), id="phan-tram-bi-doi"),
-        pytest.param(real_answer(title=TITLE.replace("<", "&lt;")), id="dau-nho-hon-bi-doi"),
+        # T-091 (SL-T059-1): «<» thành «&lt;» đúng như SiteSEO lưu nay là đã ghi
+        # (tests/test_t091_don_client_wordpress.py); mã hóa khác cách SiteSEO thì vẫn chưa ghi.
+        pytest.param(real_answer(title=TITLE.replace("<", "&amp;lt;")), id="dau-nho-hon-bi-doi"),
         pytest.param(real_answer(title=TITLE + " "), id="tieu-de-thua-cach"),
         pytest.param(real_answer(description=None), id="mo-ta-null"),
         pytest.param(real_answer(keyword=""), id="tu-khoa-rong"),

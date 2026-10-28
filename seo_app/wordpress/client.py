@@ -62,6 +62,7 @@ _ERROR_CODE = re.compile(r"[A-Za-z0-9_-]{1,100}")  # ``code`` lỗi WordPress (r
 # đường nhạy cảm (``/code-snippets/v1`` chạy mã PHP, ``/prometal/v1/deploy-files``,
 # ``/prometal/v1/purge``): không bao giờ được gọi. Muốn thêm đường phải sửa ở đây và qua Lá Chắn.
 _ID = r"[1-9][0-9]{0,18}"  # mã bài/ảnh: số nguyên dương, chỉ chữ số ASCII
+MAX_ID = 2**63 - 1  # mã bài/ảnh website trả lớn hơn là dữ liệu hỏng (``_positive_id``, T-091)
 # Ability ghi SEO của SiteSEO (T-033 mục 1.4), mở qua Abilities API của WordPress 6.9.
 SITESEO_ABILITY = "siteseo-posts/seo-data-update"
 SITESEO_ABILITY_PATH = f"/wp-abilities/v1/abilities/{SITESEO_ABILITY}"
@@ -340,6 +341,10 @@ _SEO_ERROR = (
     "SEO vào hộp SiteSEO của bài nháp, hoặc thử lại sau."
 )
 _SEO_WRITTEN = "Đã ghi SEO vào hộp SiteSEO của bài nháp."
+_SEO_WRITTEN_CHANGED = (
+    "Đã ghi SEO vào hộp SiteSEO của bài nháp, nhưng SiteSEO tự bỏ vài ký tự khi lưu (ví dụ «%» "
+    "liền hai chữ/số như «10%BE», hay dấu «\\»). Mở hộp SiteSEO của bài nháp để xem lại chữ đã lưu."
+)
 _SEO_WRITTEN_NO_KEYWORD = (
     "Đã ghi tiêu đề, mô tả SEO vào bài nháp. Từ khóa chính chưa ghi được bằng đường dự phòng: "
     "chép tay vào hộp SiteSEO."
@@ -450,6 +455,23 @@ class ConnectionInfo:
     # SiteSEO có cho phần mềm ghi SEO qua Abilities không (T-042): True ghi được; False chưa
     # bật (hoặc tài khoản không đủ quyền); None không dò được (lỗi mạng, máy chủ).
     siteseo_writable: bool | None = None
+    # Vai trò của tài khoản có quyền ``unfiltered_html`` không (T-091). Không có thì WordPress lọc
+    # bài khi lưu (kses) và bỏ ``srcset`` app ghi sẵn cho ảnh: điện thoại tải bản thu nhỏ đã mất
+    # GPS (T-059). Có (Biên tập viên trên site đơn) vẫn có thể bị tắt bằng
+    # ``DISALLOW_UNFILTERED_HTML`` hay khi site là multisite: REST không cho biết điều đó.
+    can_unfiltered_html: bool = False
+
+    @property
+    def unfiltered_html_status(self) -> str:
+        """Câu cảnh báo cho trang Kết nối WordPress khi tài khoản thiếu ``unfiltered_html``;
+        chuỗi rỗng khi có quyền."""
+        if self.can_unfiltered_html:
+            return ""
+        return (
+            "Tài khoản WordPress này không có quyền đăng HTML không lọc (unfiltered_html): khi lưu "
+            "bài, WordPress bỏ phần giữ ảnh 1600 px, nên điện thoại có thể tải bản thu nhỏ đã mất "
+            "vị trí GPS. Nhờ người quản trị website dùng vai trò Biên tập viên cho tài khoản này."
+        )
 
     @property
     def siteseo_status(self) -> str:
@@ -774,6 +796,7 @@ class WordPressClient:
             can_publish_posts=capabilities.get("publish_posts") is True,
             can_upload_files=capabilities.get("upload_files") is True,
             siteseo_writable=siteseo,
+            can_unfiltered_html=capabilities.get("unfiltered_html") is True,
         )
 
     def list_categories(self) -> list[Term]:
@@ -1034,7 +1057,8 @@ class WordPressClient:
             return _seo_error("abilities", exc.status_code)
         if not _ability_confirms(data, fields):
             return _seo_error("abilities", None)
-        return SeoWriteResult(True, "abilities", tuple(fields), message=_SEO_WRITTEN)
+        message = _SEO_WRITTEN_CHANGED if _siteseo_lost_text(data, fields) else _SEO_WRITTEN
+        return SeoWriteResult(True, "abilities", tuple(fields), message=message)
 
     def _seo_via_meta(
         self, post_id: int, fields: dict[str, str], draft: dict[str, Any]
@@ -1516,9 +1540,16 @@ class WordPressClient:
     @staticmethod
     def _json(response: requests.Response) -> Any:
         """Đọc JSON của câu trả lời. Mọi lỗi lúc giải mã (không phải JSON, chữ hỏng, JSON lồng
-        quá sâu làm ``RecursionError``…, SL-T085-2) thành câu cố định kèm mã HTTP."""
+        quá sâu làm ``RecursionError``…, SL-T085-2) thành câu cố định kèm mã HTTP.
+
+        Mọi chữ website trả (tên site, tên tài khoản, vai trò, tiêu đề bài, tên chuyên mục, địa
+        chỉ ảnh…) đi qua đây: ký tự surrogate lẻ được thay ở đây, một chỗ cho cả client
+        (``_without_lone_surrogates``, SL-T088-1)."""
         try:
-            return response.json()
+            data = response.json()
+            if _SURROGATE_ESCAPE.search(response.content):
+                data = _without_lone_surrogates(data)
+            return data
         except Exception as exc:  # chỉ bọc bước giải mã: lỗi nào cũng là "không đọc được"
             raise WordPressError(
                 f"WordPress không trả về dữ liệu JSON đọc được (mã {response.status_code}; có "
@@ -1843,8 +1874,46 @@ def _draft_images_error(
 
 
 def _positive_id(value: object) -> int | None:
-    """``value`` nếu là số nguyên dương thật (``int``, không phải ``bool``, chữ, số thực)."""
-    return value if type(value) is int and value > 0 else None
+    """``value`` nếu là số nguyên dương thật (``int``, không phải ``bool``, chữ, số thực) và không
+    quá ``MAX_ID`` (mã bài, ảnh WordPress là BIGINT không dấu, nhưng SQLite và PHP 64 bit chỉ tới
+    2⁶³−1; lớn hơn là dữ liệu hỏng: như mã sai khuôn, T-091)."""
+    return value if type(value) is int and 0 < value <= MAX_ID else None
+
+
+# Ký tự surrogate lẻ (U+D800–U+DFFF): JSON hợp lệ («\\ud800») nhưng không mã hóa UTF-8 được, làm
+# vỡ trang Streamlit, lưu SQLite lỗi (SL-T088-1). Thay bằng «�» (bỏ hẳn thì có thể ghép chữ, địa
+# chỉ ảnh thành một chữ, một file khác).
+_LONE_SURROGATE = re.compile(f"[{chr(0xD800)}-{chr(0xDFFF)}]")
+_REPLACEMENT = "\N{REPLACEMENT CHARACTER}"
+# JSON chỉ tạo được surrogate lẻ từ mã thoát «\\uD800»…«\\uDFFF» (UTF-8 hợp lệ không chứa chúng):
+# không có mã thoát dạng đó thì khỏi đi qua dữ liệu.
+_SURROGATE_ESCAPE = re.compile(re.escape(bytes([0x5C])) + rb"u[dD][89a-fA-F]")
+
+
+def _without_lone_surrogates(data: Any) -> Any:
+    """``data`` (JSON đã đọc) với mọi surrogate lẻ trong chữ, kể cả tên khóa, thay bằng «�».
+    Đi bằng ngăn xếp (không đệ quy): JSON lồng sâu không làm tràn."""
+    if isinstance(data, str):
+        return _LONE_SURROGATE.sub(_REPLACEMENT, data)
+    stack = [data] if isinstance(data, list | dict) else []
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            for index, item in enumerate(node):
+                if isinstance(item, str):
+                    node[index] = _LONE_SURROGATE.sub(_REPLACEMENT, item)
+                elif isinstance(item, list | dict):
+                    stack.append(item)
+            continue
+        items = list(node.items())
+        node.clear()
+        for key, value in items:
+            if isinstance(value, str):
+                value = _LONE_SURROGATE.sub(_REPLACEMENT, value)
+            elif isinstance(value, list | dict):
+                stack.append(value)
+            node[_LONE_SURROGATE.sub(_REPLACEMENT, key) if isinstance(key, str) else key] = value
+    return data
 
 
 def _non_negative(value: object) -> int:
@@ -1876,7 +1945,10 @@ def _ability_confirms(data: object, fields: dict[str, str]) -> bool:
       website lưu đúng chữ đã gửi (SiteSEO làm sạch chữ, ví dụ ``<`` thành ``&lt;``, thì giá trị
       khác). Thiếu ``post`` là câu trả lời không phải của SiteSEO 1.4.2 (ability khác, lớp đệm,
       plugin chen giữa): không xác nhận được, coi là chưa ghi (Lá Chắn T-042, việc 10).
-    - Mỗi trường đã gửi phải có trong ``post`` với giá trị **đúng từng chữ**.
+    - Mỗi trường đã gửi phải có trong ``post`` với giá trị **đúng từng chữ**, hoặc đúng từng chữ
+      với bản SiteSEO lưu khi nhận chữ đó (``_siteseo_saved_form``, SL-T059-1: «< » thành
+      ``&lt; ``, «%» liền hai chữ/số hex bị cắt, «\\» bị bỏ). Bản đó tính trên máy, nên máy chủ
+      không làm app tin một chữ tùy ý.
     - Thân lỗi WordPress (có ``code``), hay ``success`` khác ``True`` (SL-T042-8: một khóa nói rõ
       "chưa ghi" thì không tin khóa kia): chưa ghi.
 
@@ -1890,7 +1962,64 @@ def _ability_confirms(data: object, fields: dict[str, str]) -> bool:
     snapshot = data.get("post")
     if not fields or not isinstance(snapshot, dict):
         return False
-    return all(snapshot.get(_ABILITY_FIELDS[name]) == value for name, value in fields.items())
+    for name, value in fields.items():
+        saved = snapshot.get(_ABILITY_FIELDS[name])
+        if saved != value and (saved is None or saved != _siteseo_saved_form(value)):
+            return False
+    return True
+
+
+def _siteseo_lost_text(data: dict[str, Any], fields: dict[str, str]) -> bool:
+    """Sau ``_ability_confirms``: SiteSEO có bỏ mất ký tự nào không (khác chữ đã gửi cả khi đổi
+    mã ký tự HTML về chữ, ví dụ «10%BE» thành «10»). «< » thành ``&lt; `` thì hiện y như cũ."""
+    snapshot = data["post"]
+    return any(
+        html.unescape(snapshot[_ABILITY_FIELDS[name]]) != value for name, value in fields.items()
+    )
+
+
+# ``sanitize_text_field`` của WordPress (``_sanitize_text_fields``), phần chạy với chữ SEO app
+# gửi (một dòng, ``_seo_text`` đã chặn thẻ, mã ký tự HTML, «<» liền ký tự khác, ký tự điều khiển).
+# ``wp_pre_kses_less_than``: đoạn từ «<» tới «<» kế tiếp, «>» hay hết chữ; không có «>» thì
+# ``esc_html`` (``&``, ``<``, ``"``, ``'`` thành ``&amp;``, ``&lt;``, ``&quot;``, ``&#039;``).
+_LESS_THAN_RUN = re.compile(r"<[^>]*?((?=<)|>|$)")
+_PERCENT_HEX = re.compile(r"%[a-f0-9]{2}", re.IGNORECASE)
+_ESC_HTML = str.maketrans({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"})
+
+
+def _siteseo_saved_form(text: str) -> str | None:
+    """Chữ SiteSEO 1.4.2 lưu khi nhận ``text``: ``update_post_meta(…, sanitize_text_field(text))``
+    (``update_metadata`` còn ``wp_unslash``), đọc mã ở kho plugin wordpress.org (Soi Lỗi T-059).
+
+    ``None`` khi không đoán chắc được (có đoạn «< … >»: ``strip_tags`` của PHP có thể bỏ; «<»
+    không có khoảng trắng ngay sau): khi đó chỉ nhận chữ khớp từng chữ.
+    """
+    if "<" in text:
+        runs = [match.group(0) for match in _LESS_THAN_RUN.finditer(text)]
+        if any(run.endswith(">") or run[1:2] not in (" ", "\t") for run in runs):
+            return None
+        text = _LESS_THAN_RUN.sub(lambda match: match.group(0).translate(_ESC_HTML), text)
+    text = re.sub(r"[\r\n\t ]+", " ", text).strip()
+    found = False
+    while match := _PERCENT_HEX.search(text):
+        text, found = text.replace(match.group(0), ""), True
+    if found:
+        text = re.sub(" +", " ", text).strip()
+    return _php_stripslashes(text)
+
+
+def _php_stripslashes(text: str) -> str:
+    """``stripslashes`` của PHP: «\\x» thành «x», «\\0» thành NUL, «\\» cuối chữ bị bỏ."""
+    out: list[str] = []
+    chars = iter(text)
+    for char in chars:
+        if char != "\\":
+            out.append(char)
+            continue
+        following = next(chars, None)
+        if following is not None:
+            out.append("\x00" if following == "0" else following)
+    return "".join(out)
 
 
 def _plain(text: object) -> str:
