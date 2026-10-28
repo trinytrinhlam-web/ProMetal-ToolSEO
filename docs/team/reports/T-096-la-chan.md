@@ -9,6 +9,7 @@
 | Phạm vi | Rút gọn, soát kỹ phần chuyển Markdown và link. Diff `516fd36...team/T-096`, đầu nhánh lúc kiểm `088ebbe` (code lượt 2 `c961000`, sau đó chỉ có test, báo cáo Soi Lỗi): mới `seo_app/publish/markdown.py` (524 dòng), `render.py` (597), `review.py` (319); `seo_app/onpage/links.py` (`place_links` in lại theo từng ký tự, `markdown_blocks` đọc như bộ chuyển, hàm chia khối dùng chung, `_anchor_words` bỏ một dấu mục danh sách); test `tests/test_publish_markdown.py`, `tests/test_publish_render.py`, `tests/test_soi_loi_t096.py` (mới), `tests/test_la_chan_t039.py` (chỉ gỡ `xfail`). Đọc thêm code dùng chung: `seo_app/sanitize.py` (`_Sanitizer`, `escape_shortcodes`, `_ENTITY`, `_entity_value`, `_ESCAPABLE`), `seo_app/wordpress/client.py` (`create_draft`, `create_draft_with_images`, `_plan_draft_images`, `_describe_draft_media`, `DraftImage`), `seo_app/images/html.py` (`figure_html`, `plain_image_text`), `seo_app/images/tags.py` (`ImageTags`), `seo_app/wordpress/shortcodes.py`. Mã WordPress `class-wp-embed.php` (`autoembed`, theo biên bản T-094) và mã Gutenberg `packages/block-library/src/embed/transforms.js` (đọc 2026-10-28 qua `raw.githubusercontent.com`, không gọi website). Thử gộp với `origin/main` `0390a94` (đã có T-082, T-083, T-059 bước 7); `main` mới nhất lúc nộp `b513d67` chỉ đổi thêm `docs/team/board.md` |
 | Ngày | 2026-10-28 (02:20–03:00 và 07:32–07:50 +07, giờ máy đo bằng `date`; phiên bị ngắt giữa chừng vì hết lượt dùng) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, **1 Trung bình** (LC-T096-1), **3 Thấp mới** (LC-T096-2, -3, -4); giữ mức **Thấp** cho 2 lỗi mới của Soi Lỗi (SL-T096-8, -9). Mỗi lỗi của tôi có test `xfail(strict=True)` trong `tests/test_la_chan_t096.py`. **LC-T094-1 → -10 và LC-T039-2: đóng** (LC-T094-8 trừ phần thẻ ảnh = LC-T096-2; LC-T094-6 đúng hai biểu thức của WordPress, lớp chặt hơn còn LC-T096-4). Không lọt link, HTML, ảnh, chú thích `<!-- wp:… -->`, shortcode. **Gộp `main` được ngay** (bộ dựng chưa được app gọi tới, không có đường đi hôm nay); khuyên một lượt Thợ Máy ngắn sửa LC-T096-1, -3, -4 trước khi gộp (khoảng 10 dòng, đã thử cách sửa); **bắt buộc** xong trước khi T-102 nối bộ dựng vào màn hình xác nhận |
+| **Kết luận xem lại lượt 3** (2026-10-28, `7ea52e8`) | **ĐẠT CÓ ĐIỀU KIỆN**, **gộp `main` được ngay**: 6/6 lỗi đóng (LC-T096-1 → -4, SL-T096-8, -9), không lùi điều kiện đã đóng; còn **1 Thấp mới LC-T096-5** (trước khi T-102 nối bộ dựng). Xem mục [Xem lại lượt 3](#xem-lại-lượt-3-2026-10-28-đầu-nhánh-7ea52e8) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -146,3 +147,64 @@ Chạy trong worktree: `PYTHONUTF8=1 uv run python <thư mục nháp>/<script> �
 | 8 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
 
 Không có rủi ro nào cần chủ dự án quyết định chấp nhận; không thêm dòng vào sổ rủi ro (`security.md` mục 6).
+
+---
+
+## Xem lại lượt 3 (2026-10-28, đầu nhánh `7ea52e8`)
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Xem lại nhanh: diff `12b905e..7ea52e8` (Thợ Máy lượt 3): `seo_app/onpage/links.py` (+35), `seo_app/publish/markdown.py` (+18/−3), `render.py` (+110/−7), `review.py` (+14/−2); test `tests/test_la_chan_t096.py` (−16, chỉ gỡ dấu `xfail`), `tests/test_soi_loi_t096.py` (−9, chỉ gỡ dấu), `tests/test_publish_markdown.py` (5 dòng: ký tự trần sang dạng mã), `tests/test_publish_render.py` (+79, test mới) |
+| Ngày | 2026-10-28 (10:28–11:00 và 13:12–13:25 +07, giờ máy đo bằng `date`; phiên bị ngắt giữa chừng vì hết lượt dùng) |
+| **Kết luận lượt 3** | **ĐẠT CÓ ĐIỀU KIỆN**: **6/6 lỗi đóng** (LC-T096-1 Trung bình; LC-T096-2, -3, -4; SL-T096-8, -9), Quan sát 2 (`matches`) cũng đã sửa; gỡ `xfail` đúng R5; không lùi LC-T094-1 → -10, LC-T039-2. **1 lỗi Thấp mới: LC-T096-5** (đoạn «địa chỉ `https://` + chữ» vẫn thành khối nhúng khi «Chuyển thành khối»), 4 ca `xfail(strict=True)`. Không còn lỗi Trung bình. **Gộp `main` được ngay** (thử gộp với `main` mới nhất `5e1d831`: không xung đột, test qua); LC-T096-5 sửa trước khi T-102 nối bộ dựng |
+
+### Tóm tắt lượt 3 (cho chủ dự án)
+
+- Cả 6 điểm lần trước đã sửa đúng. Tiêu đề có dãy dấu cách dài nay dựng gần như tức thì (256.000 dấu cách dưới 0,02 giây; trước đây 16.000 dấu cách đã mất 2 giây). Thẻ ảnh (ảnh thật hay AI, mã công trình, khu vực) và ảnh đại diện nay nằm trong mã xác nhận: thẻ đổi sau khi bạn xác nhận thì app dừng, không gửi. Code không còn ký tự đảo chiều viết trần. Đoạn `&nbsp;` + một địa chỉ bị chặn.
+- Còn **1 điểm nhỏ mới (Thấp)**, cùng loại với điểm 4 lần trước: trình soạn khối của WordPress coi cả đoạn «địa chỉ web + chữ phía sau» (ví dụ `https://trang-la/… xem thêm`) là một địa chỉ, nên biến nó thành khối nhúng khi bạn bấm «Chuyển thành khối». Lần trước tôi tả điều kiện của trình soạn chưa đủ. Bộ dựng nên chặn cả dạng này. Hôm nay chưa có hại vì bộ dựng chưa nối vào giao diện.
+- Tôi cũng sửa chính file test của mình: công cụ ghi file đã đổi 3 chỗ mã ký tự thành ký tự thật (đúng lỗi kiểu LC-T096-3).
+
+### Kiểm từng lỗi
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| LC-T096-1 (Trung bình) | **Đóng** | Bỏ biểu thức; `_strip_closing_hashes` cắt dấu «#» đóng bằng `rstrip` (`markdown.py:267`). 2 ca của tôi qua. Đo lại: `markdown_to_html("# a" + " " * n + "b")` n = 16.000: dưới 16 ms (trước 1,98 s); n = 256.000: 15,6 ms; `assert_scales_linearly` qua ở cỡ 64.000/256.000 (dấu cách, và dấu cách xen tab). 7 ca canh cách bỏ «#» đóng (CommonMark 4.2) của tôi qua. Thợ Máy thêm `test_heading_with_long_whitespace_is_linear` (qua cả `build_article`) |
+| LC-T096-2 (Thấp) | **Đóng** | `ArticleImage` có 5 trường thẻ, dựng bằng `ArticleImage.of(…, tags=ImageTags)`, đọc lại `.tags` (kiểm theo danh sách cố định, sai là `BuildError`: `render.py:369`); `_same_image` so `draft.tags == image.tags` (`:270`); mã băm có `tags` (5 trường) và `featured_effective` (`:482`), `DIGEST_VERSION` lên `t096-2`; `ImageRow` có ảnh AI, mã công trình, hạng mục, khu vực. 2 ca của tôi qua. Ghi chú: thẻ lưu thành 5 trường chữ thay vì một trường `ImageTags` (đồng ý, để gói dựng ra ghi JSON được); T-102 phải dựng `ArticleImage.of(…, tags=draft.tags)` từ cùng trạng thái với `DraftImage` |
+| LC-T096-3 (Thấp) | **Đóng** | `_DROPPED` viết dạng mã (`markdown.py:57-59`). Ca quét mã nguồn của tôi qua (nay quét thêm 4 file test của phiếu); bandit trên 4 file code của phiếu: 0 cảnh báo (B613 hết). `tests/test_publish_markdown.py` đổi 5 dòng ký tự trần sang dạng mã: cây cú pháp (AST) bản cũ và mới **giống hệt**, điều kiện kiểm không đổi |
+| LC-T096-4 (Thấp) | **Đóng** | `_JS_TRIM` (`review.py:69`, dùng ở `:308`) trùng **đúng** tập ký tự `String.prototype.trim` bỏ: so với Node 24 trên mọi mã Unicode, 25/25 ký tự, không khác. 5 ca của tôi qua, 7 ca canh qua |
+| SL-T096-8 (Thấp) | **Đóng** | `markdown_blocks` bỏ dòng mà phần sau «>» hay sau dấu mục danh sách là tiêu đề, dòng gạch dưới, kẻ ngang (`links.py:689`, `_quote_or_item_text` `:712`): hướng chặt hơn, bước SEO bỏ ngay chỗ bộ dựng không chèn được. 3 ca Soi Lỗi qua. Hàm mới tuyến tính (chỗ bậc hai do chính lượt 3 gây ra đã bị test tốc độ T-039 bắt và được sửa trước khi nộp) |
+| SL-T096-9 (Thấp) | **Đóng** | Ảnh đại diện thật sự tính đúng quy tắc client (`render.py:445`, `client.py:1410`): `ImageRow.featured` là ảnh website dùng, `featured_auto` khi tự chọn; mã băm có `featured_effective`. Ca Soi Lỗi qua |
+| Quan sát 2 (`matches`) | **Đã sửa** | `digest.isascii()` trước `compare_digest` (`render.py:230`); test `test_matches_never_raises_on_odd_text` |
+
+**R5:** `git diff 12b905e..7ea52e8 -- tests/`: `test_la_chan_t096.py` chỉ xóa 4 dấu `xfail` (10 ca), `test_soi_loi_t096.py` chỉ xóa 2 dấu (4 ca), không `assert` nào đổi; `test_publish_render.py` chỉ thêm (+79/−0); `test_publish_markdown.py` cùng AST.
+
+**Không lùi điều kiện đã đóng:** LC-T094-4, -5, -6, -10, LC-T039-2: thử E1 (đúng hai biểu thức `autoembed`, có `<figure>`) 1.500 bài trên nhánh (WordPress nhúng 1.072, sót 0) và 1.500 bài trên cây gộp (nhúng 1.087, sót 0), lọc lại chuỗi gửi không đổi; thử E2 (chữ độc qua cả bộ dựng) 1.500 bài, 0 vi phạm. LC-T094-8: cách chuẩn hóa giữ nguyên, nội dung băm thêm thẻ ảnh và ảnh đại diện thật sự, đổi phiên bản. LC-T094-1, -2: test mới không gọi mạng; câu lỗi mới cố định («thẻ ảnh»).
+
+### Lỗi mới (lượt 3)
+
+| # | Mức | Mô tả | Vị trí | Đường đi thật (đầu vào → hậu quả) | Cách sửa đề xuất |
+|---|---|---|---|---|---|
+| LC-T096-5 | Thấp (cùng loại, cùng điều kiện với LC-T096-4) | **Lớp chặn nhúng «chặt hơn» vẫn chỉ Chặn đoạn mà cả chữ là một địa chỉ; trình soạn khối nhúng cả đoạn «địa chỉ `https://` + chữ».** Mã Gutenberg (`trunk`, đọc 2026-10-28): khối Embed, biến đổi `raw` (`packages/block-library/src/embed/transforms.js`): `<p>` có `textContent.trim()` qua `isURL` (`packages/url/src/is-url.ts`: chỉ là `new URL(chữ)` không ném lỗi), bắt đầu bằng `https://`, chỉ một `https://`, và tên file cuối (`getFilename`) không phải đuôi tệp (trừ `html`, `php`) thì thành khối Embed. `new URL` (WHATWG) nhận dấu cách trong đường dẫn, tham số (tự mã thành `%20`), nên cả đoạn `https://evil.example/trang nội dung bất kỳ` là «một địa chỉ». Mô tả điều kiện Gutenberg ở LC-T096-4 của tôi chưa đủ (chỉ nói khoảng trắng hai đầu). Thử (`p_gutenberg_compare.py`: chạy đúng `isMatch` bằng `URL` của Node 24 trên từng `<p>` của HTML cuối, code lượt 3): 12 mẫu cố định, Gutenberg nhúng 8, bộ dựng không Chặn 6 (`https://www.youtube.com/watch?v=abc xem thêm`, `https://evil.example/trang nội dung bất kỳ`, `https://evil.example/a.mp4 xem`, `https://evil.example/x, xem thêm.`, `**https://evil.example/x** xem`, `https://evil.example/x?y=1 z`); 3.000 mẫu ngẫu nhiên: Gutenberg nhúng 1.993, bộ dựng không Chặn 1.023. WordPress `autoembed` không nhúng các đoạn này (đúng LC-T094-6) | `seo_app/publish/review.py:306-310` (lớp chặt hơn: `_ONLY_URL.fullmatch`) | AI bị dụ (lệnh giấu trong trang đối thủ) viết đoạn `https://trang-ngoài/đường-dẫn vài chữ` (hoặc người dùng dán) → bộ dựng chỉ Cảnh báo «địa chỉ dạng chữ» → gửi nháp → mở nháp trong trang quản trị, bấm «Chuyển thành khối» → đoạn thành khối Embed (chữ phía sau thành một phần địa chỉ) → khi đăng, trang ngoài được nhúng vào bài (trang có oEmbed thì nhúng được với mọi đường dẫn). Cần tự bấm chuyển và trình soạn hiện ô nhúng trước khi lưu: Thấp | Lớp chặt hơn làm đúng điều kiện `isMatch`: sau `strip(_JS_TRIM)`, chữ bắt đầu bằng `https://` (không phân biệt hoa thường), đúng một `https://`, phần tên máy (trước `/`, `?`, `#` đầu tiên) không rỗng, không khoảng trắng, tên file cuối (dấu cách tính như `%20`) không khớp `\.(?!(html?\|php)$)[a-z0-9]+$` → Chặn. Đã thử bản giả lập ngoài repo (`fixsim5/lc965_fix_plugin.py`): 4 ca `xfail` XPASS; so lại Gutenberg: 1.993/1.993 đoạn bị Chặn; 5 file test T-096 với `--runxfail`: 394 qua, **1 ca phải đổi theo**: `test_embed_patterns_not_found` của Thợ Máy, mẫu `<p><a href="https://suachuacuasat.com/x/">https://suachuacuasat.com/x/</a> rồi</p>` (Gutenberg cũng nhúng đoạn này khi chuyển; bộ dựng không sinh được HTML này vì chữ link không được giống địa chỉ: `_anchor_words` → `has_link`), cần Chỉ Huy duyệt đổi điều kiện ca này cùng lượt sửa. 3 ca canh của tôi (`Xem https://…`, hai `https://`, chỉ `http://`) và 7 ca «không chặn oan» của Soi Lỗi giữ nguyên |
+
+### Tự sửa file test của tôi (`tests/test_la_chan_t096.py`)
+
+Công cụ ghi file đã đổi chuỗi mã thành ký tự thật ở 3 dòng của chính file test Lá Chắn: biểu thức «bản viết mã» trong ca canh LC-T096-3 có trần U+202A, U+202E, U+2066, U+2069; tham số LC-T096-4 có trần U+FEFF và U+00A0. Hệ quả: ca canh LC-T096-3 so hai biểu thức cùng dạng trần nên không chứng minh điều nó nói (kết quả vẫn đúng). Đã sửa: ca canh so `_DROPPED` với **tập mã số** (không chép ký tự); tham số dùng `\N{…}`; ca quét mã nguồn quét thêm 4 file test của phiếu. Quét lại: file không còn ký tự loại Cf, Zs (trừ dấu cách), Cc viết trần. Không đổi điều kiện ca nào khác; thêm 4 ca `xfail` LC-T096-5 và 3 ca canh.
+
+### Kết quả công cụ quét (lượt 3)
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pytest, nhánh | 15 file (14 file Thợ Máy đã chạy + `tests/test_la_chan_t096.py`): **1.170 passed, 7 xfailed in 249.74s**, 0 hỏng (7 xfail = LC-T096-5 × 4 mới, SL-T041-8 × 3 có từ trước). `tests/test_la_chan_t096.py`: 29 passed, 4 xfailed; `--runxfail`: 4 ca LC-T096-5 đỏ đúng lý do (`blocked` sai) | Có |
+| Thử gộp với `main` | `origin/main` `5e1d831` (từ `0390a94`, lần thử gộp trước, chỉ đổi tài liệu: `TIEN-DO.md`, `docs/team/board.md`, `docs/team/security.md`, 3 phiếu): `git merge-tree` cây `e15c343`, **không xung đột**. Commit tạm `4048ffa` (không nhánh, không push) trong worktree tạm, kèm test của tôi: 12 file (T-096, T-039, T-041 AI, test ảnh/client của `main`: `test_wordpress_images`, `test_t059_*`, `test_soi_loi_t059`, `test_t083_*`, `test_soi_loi_t083`): **2.997 passed, 9 xfailed in 113.44s**, 0 hỏng (9 xfail = LC-T096-5 × 4 và xfail có sẵn trong test T-059, T-083). `ruff check .` sạch; E1 hạt giống 6: 1.500 bài, sót 0. Đã gỡ worktree tạm | Có |
+| ruff | `uv run ruff check .`: `All checks passed!`; `ruff format` đã chạy cho file test của tôi | Có |
+| bandit 1.9.4 | 4 file code của phiếu: 0 cảnh báo (B613 lượt trước đã hết) | Có |
+| detect-secrets | **Đặt `PYTHONUTF8=1`**: 9 file đổi ở lượt 3, file test của tôi, bản vá `git log -p 12b905e..7ea52e8`, **file mồi có chữ tiếng Việt**: mồi bắt 2/2; còn lại 0. Soát lịch sử lượt 3 theo dạng khóa: 0 | Có. Đã xóa file mồi |
+
+### Điều kiện (lượt 3)
+
+Thay các điều kiện 1 → 6 của mục «Điều kiện» ở trên (đã xong). Còn:
+
+| # | Điều kiện | Phiếu nhận | Hạn |
+|---|---|---|---|
+| 1 | **LC-T096-5 (Thấp):** lớp chặn nhúng chặt hơn làm đúng điều kiện `isMatch` của Gutenberg (cách sửa ở bảng trên), gỡ 4 dấu `xfail`; đổi điều kiện ca `<p><a …>https://…</a> rồi</p>` của `test_embed_patterns_not_found` (Chỉ Huy duyệt) | Thợ Máy (T-096 lượt 4 ngắn, hoặc phần logic của T-102) | Trước khi T-102 nối bộ dựng |
+| 2 | Điều kiện 7 (T-102: giới hạn cỡ bài khi dựng; hiện `ascii_host`, thẻ ảnh, ảnh đại diện, chữ thô theo `needs_escape`; dựng `ArticleImage.of(…, tags=draft.tags)` cùng trạng thái với `DraftImage`) và điều kiện 8 (kiểm lại bằng Claude Fable sau 01/11) giữ nguyên | Như trên | Như trên |

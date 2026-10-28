@@ -1,4 +1,4 @@
-"""Lá Chắn T-096: test chứng minh lỗi, ``xfail(strict=True)`` tới khi sửa; kèm test canh hướng sửa.
+"""Lá Chắn T-096: test chứng minh lỗi (``xfail(strict=True)`` tới khi sửa), test canh hướng sửa.
 
 - LC-T096-1 (Trung bình): tiêu đề con Markdown có dãy dấu cách, tab dài ở giữa làm bộ chuyển
   (``markdown_to_html``, cả ``build_article`` mỗi lần hiện màn hình xác nhận) chạy **bậc hai**:
@@ -17,6 +17,14 @@
   (Gutenberg, khối Embed, biến đổi ``raw`` khi «Chuyển thành khối») dùng ``textContent.trim()``
   của JavaScript, bỏ cả ``&nbsp;``, U+FEFF, khoảng trắng Unicode: ``<p>&nbsp;https://…</p>`` thành
   khối nhúng, mà bộ dựng không Chặn.
+
+LC-T096-1 → -4 đã sửa ở lượt 3 (Thợ Máy gỡ dấu ``xfail``, không đổi điều kiện kiểm).
+
+- LC-T096-5 (Thấp, xem lại lượt 3): lớp chặn nhúng chặt hơn vẫn chỉ Chặn đoạn mà **cả** chữ là một
+  địa chỉ. Điều kiện của Gutenberg (``isMatch``: ``isURL`` là ``new URL(chữ)`` không lỗi, chữ bắt
+  đầu bằng ``https://``, chỉ một ``https://``, tên file cuối không phải đuôi tệp trừ ``html``,
+  ``php``) nhận cả đoạn «địa chỉ + chữ phía sau», vì ``new URL`` nhận dấu cách trong đường dẫn,
+  tham số: ``<p>https://evil.example/trang nội dung</p>`` thành khối nhúng khi «Chuyển thành khối».
 
 Không gọi mạng: danh sách bài dựng tay.
 """
@@ -120,6 +128,11 @@ def test_lc2_image_tags_bound_to_confirmation(tags):
 
 ROOT = Path(__file__).resolve().parents[1]
 # Ký tự điều khiển hướng chữ (Unicode bidi): nhúng, đè, cô lập, dấu trái/phải, dấu Ả Rập.
+# File test của phiếu (công cụ ghi file từng đổi chuỗi mã thành ký tự thật: xem lại lượt 3).
+T096_TESTS = (
+    "test_la_chan_t096.py", "test_publish_markdown.py", "test_publish_render.py",
+    "test_soi_loi_t096.py",
+)  # fmt: skip
 _BIDI = frozenset(
     map(chr, [*range(0x202A, 0x202F), *range(0x2066, 0x206A), 0x200E, 0x200F, 0x061C])
 )
@@ -127,26 +140,30 @@ _BIDI = frozenset(
 
 def test_lc3_no_raw_bidi_control_characters_in_app_source():
     found = []
-    for folder in ("seo_app", "app", "scripts"):
-        for path in sorted((ROOT / folder).rglob("*.py")):
-            text = path.read_text(encoding="utf-8")
-            for number, line in enumerate(text.splitlines(), start=1):
-                chars = sorted({f"U+{ord(ch):04X}" for ch in line if ch in _BIDI})
-                if chars:
-                    found.append(f"{path.relative_to(ROOT).as_posix()}:{number} {chars}")
+    paths = [p for folder in ("seo_app", "app", "scripts") for p in (ROOT / folder).rglob("*.py")]
+    paths += [ROOT / "tests" / name for name in T096_TESTS]
+    for path in sorted(paths):
+        text = path.read_text(encoding="utf-8")
+        for number, line in enumerate(text.splitlines(), start=1):
+            chars = sorted({f"U+{ord(ch):04X}" for ch in line if ch in _BIDI})
+            if chars:
+                found.append(f"{path.relative_to(ROOT).as_posix()}:{number} {chars}")
     assert found == []
 
 
 def test_lc3_escaped_pattern_drops_the_same_characters():
-    """Canh hướng sửa LC-T096-3: viết bằng mã ``\\uXXXX`` thì bỏ đúng các ký tự như cũ."""
-    import re
-
+    """Canh hướng sửa LC-T096-3: ``_DROPPED`` (nay viết dạng mã) bỏ đúng các ký tự như bản cũ:
+    C0 trừ tab, xuống dòng, về đầu dòng; DEL và C1; điều khiển hướng chữ U+202A–U+202E,
+    U+2066–U+2069; nửa cặp UTF-16. Tập ký tự ghi bằng số, không chép ký tự trần (xem lại lượt
+    3: công cụ ghi file từng đổi chuỗi mã thành ký tự thật ngay trong test này)."""
     from seo_app.publish.markdown import _DROPPED
 
-    escaped = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f‪-‮⁦-⁩\ud800-\udfff]")
+    intended = {
+        *range(0x00, 0x09), 0x0B, 0x0C, *range(0x0E, 0x20), *range(0x7F, 0xA0),
+        *range(0x202A, 0x202F), *range(0x2066, 0x206A), *range(0xD800, 0xE000),
+    }  # fmt: skip
     for code in range(0x110000):
-        ch = chr(code)
-        assert bool(_DROPPED.match(ch)) == bool(escaped.match(ch)), f"U+{code:04X}"
+        assert bool(_DROPPED.match(chr(code))) == (code in intended), f"U+{code:04X}"
 
 
 # ------------------------------------------------------------------ LC-T096-4
@@ -159,14 +176,16 @@ def _review(body: str):
 
 
 @pytest.mark.parametrize(
-    "pad", ["&nbsp;", "&#160;", "﻿", "&emsp;", "&#x3000;"], ids=lambda pad: repr(pad)
+    "pad",
+    ["&nbsp;", "&#160;", "\N{ZERO WIDTH NO-BREAK SPACE}", "&emsp;", "&#x3000;"],
+    ids=lambda pad: repr(pad),
 )
 def test_lc4_url_alone_after_unicode_space_is_blocked(pad):
     review = _review(f"{pad}{URL}{pad}")
     assert review.blocked and URL in review.embeds
 
 
-@pytest.mark.parametrize("body", [URL, f" {URL}", f"  {URL}\t", f"- {URL}"])
+@pytest.mark.parametrize("body", [URL, "\N{NO-BREAK SPACE}" + URL, f"  {URL}\t", f"- {URL}"])
 def test_lc4_ascii_or_raw_space_padding_already_blocked(body):
     """Canh: dạng đang Chặn đúng thì vẫn Chặn sau khi sửa LC-T096-4."""
     assert _review(body).blocked
@@ -175,4 +194,34 @@ def test_lc4_ascii_or_raw_space_padding_already_blocked(body):
 @pytest.mark.parametrize("body", [f"Xem&nbsp;{URL}", f"&nbsp;Xem {URL}", "&nbsp;http://x.vn/a b"])
 def test_lc4_url_with_other_text_is_not_blocked(body):
     """Canh: địa chỉ có chữ khác cùng đoạn thì không bị Chặn oan."""
+    assert not _review(body).blocked
+
+
+# ------------------------------------------------------------------ LC-T096-5
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="LC-T096-5: đoạn bắt đầu bằng một địa chỉ https:// rồi có chữ: trình soạn khối vẫn coi "
+    "là một địa chỉ (new URL nhận dấu cách) và nhúng khi «Chuyển thành khối»",
+)
+@pytest.mark.parametrize(
+    "body",
+    [
+        f"{URL} xem thêm",
+        "https://evil.example/trang nội dung bất kỳ",
+        "https://evil.example/x, xem thêm.",
+        "**https://evil.example/x** xem",
+    ],
+)
+def test_lc5_paragraph_starting_with_one_https_url_is_blocked(body):
+    assert _review(body).blocked
+
+
+@pytest.mark.parametrize(
+    "body", [f"Xem {URL}", "https://a.vn/x https://b.vn/y", "http://evil.example/x xem"]
+)
+def test_lc5_url_not_at_start_or_not_https_is_not_blocked(body):
+    """Canh: trình soạn khối không nhúng các đoạn này (không bắt đầu bằng https://, có hai
+    https://, hay chỉ http://), nên không Chặn oan."""
     assert not _review(body).blocked
