@@ -171,3 +171,114 @@ Gộp thử với `origin/main` `5e1d831` (`git merge-tree`): không xung đột
 - **Phiếu dọn sau (trước T-101 hiện cảnh báo file khóa):** SL-T097-3 (so theo danh tính file), SL-T097-4 (thêm thư mục Google Drive), cân nhắc Ghi nhận 3, 4, 5.
 - **Lá Chắn:** xét Ghi nhận 1, 2 (`load_settings`), 7.
 - **Thư Ký (README):** dặn không để file khóa trong thư mục được Google Drive sao lưu (Desktop, Documents…), ngoài «My Drive».
+
+---
+
+## Lượt 2 (2026-10-28 · kiểm lại sau Thợ Máy lượt 2)
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `team/T-097` (gốc `main` `24013b3`, kiểm trên đầu nhánh `8b98996`) |
+| Kết quả | **Kết luận: ĐẠT CÓ ĐIỀU KIỆN**, chuyển Lá Chắn xem lại được. **SL-T097-1 → -4 đóng thật** (cả biến thể gần), LC-T097-1 đúng như mô tả. **1 Thấp mới do lượt 2 gây ra: SL-T097-5** (chặn oan, hướng an toàn). 0 Nghiêm trọng, 0 Cao, 0 Trung bình. **Không lỗi nào bắt buộc sửa trước Lá Chắn** |
+
+### Tóm tắt (cho chủ dự án)
+
+- Bốn lỗi nhỏ tôi báo ở lượt 1 đã được sửa đúng:
+  - Google trả lời lạ ra câu tiếng Việt cố định;
+  - lệnh ghi gặp «chuyển hướng» được coi là «có thể đã ghi»;
+  - file khóa trong thư mục phần mềm hay thư mục ảnh bị bắt với mọi cách viết đường dẫn đặc biệt của Windows;
+  - có lời nhắc khi file khóa nằm trong «Shared drives», «Other computers» của Google Drive.
+- Đọc, ghi Google Sheet (luôn chữ thường) và phần kiểm file khóa không lùi: toàn bộ test cũ vẫn qua.
+- **1 lỗi nhỏ mới (Thấp):** cách kiểm vị trí mới chặn oan một kiểu đường dẫn hiếm. Ví dụ `…\ProMetal-ToolSEO\..\bi-mat\khoa.json`: file thật nằm ngoài, nhưng app báo «đang nằm trong thư mục phần mềm». Không lộ gì, chỉ chặn nhầm; gõ đường dẫn bình thường thì không gặp.
+- Thêm một điều đáng biết trên máy này: ba ổ Google Drive (G:, H:, I:) báo «số nhận dạng thư mục» trùng nhau. Nếu bạn để file khóa trên một ổ Google Drive (vốn không nên), app có thể báo nhầm lý do «nằm trong thư mục ảnh».
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t097.py` | Thêm 86 ca lượt 2 (83 qua, 3 `xfail(strict=True)` SL-T097-5); đổi docstring đầu file (ghi SL-T097-1 → -4 đã sửa, thêm SL-T097-5). Không đổi ca cũ nào |
+| `docs/team/reports/T-097-soi-loi.md` | Mục này |
+
+### Xác nhận lỗi lượt 1 đã đóng (kèm biến thể gần)
+
+| Lỗi | Biến thể đã thử | Kết quả | Test |
+|---|---|---|---|
+| **SL-T097-1** | 6 ca cũ (nay qua) và 7 biến thể mới: `expires_in` −1e400, chữ 5000 chữ số, số 5000 chữ số, trường thừa lồng sâu 30.000 tầng (60 KB, dưới giới hạn 64 KB), lỗi 400 lồng 990 tầng có và không có khóa `error`, 500 lồng sâu (thư viện tự thử lại). Script dò lượt 1 chạy lại: 0 lọt | **Đóng.** Mọi ca ra `SheetsError` câu cố định, không lệnh Sheets nào | `test_sl_t097_1_…` (6), `test_luot2_lenh_xin_ma_tra_loi_la_them` (7) |
+| **SL-T097-2** + **LC-T097-1** | 5 lệnh × mã 301, 302, 304, 307, 308 × có `Location` (kèm `Content-Encoding: gzip`) / không `Location`; thân 3xx là «bẫy» đếm số lần bị đọc. Lệnh xin mã: 302, 307, 308 × có/không `Location`. Script dò riêng thêm 303, 399 | **Đóng.** Không lần đọc thân nào (móc `_refuse_redirect` đóng trước `resolve_redirects`); `unsure` đúng loại lệnh (ghi: `True`, đọc: `False`); `status_code` đúng; không gọi địa chỉ chuyển hướng | `test_luot2_3xx_…` (50), `test_luot2_lenh_xin_ma_3xx_…` (6), `test_sl_t097_2_…` (4) |
+| **SL-T097-3** | Cả dự án và thư mục ảnh, cả đường file lẫn đường thư mục khai báo: `\\?\C:\…`, `\\.\C:\…`, `\\?\Volume{GUID}\…`, `\\?\GLOBALROOT\??\C:\…`, `\\?\GLOBALROOT\Device\HarddiskVolumeN\…`, `\\localhost\C$\…`, `\\127.0.0.1\C$\…`, `\\?\UNC\localhost\C$\…`, chữ hoa, tên 8.3; gốc dự án truyền theo từng dạng | **Đóng.** Mọi dạng bị từ chối, câu cố định không chép đường dẫn, tên file. Máy này mở được mọi dạng (không ca nào bỏ qua) | `test_sl_t097_3_…` (4), `test_luot2_dang_duong_thiet_bi_…` (8), `test_luot2_thu_muc_anh_khai_dang_thiet_bi_van_bat` (4) |
+| **SL-T097-4** | `Shared drives`, `Other computers`, «Bộ nhớ dùng chung», «Máy tính khác», «Drive dùng chung», «Máy tính khác» dạng NFD, «Drive của tôi» dạng NFD, `SHARED DRIVES`, `Other Computers`; thư mục thường | **Đóng.** Có Cảnh báo và `in_sync_folder is True`; thư mục thường `False`, không cảnh báo | `test_sl_t097_4_…` (2), `test_luot2_dau_hieu_thu_muc_dong_bo` (7) |
+
+### Lỗi mới do lượt 2
+
+#### SL-T097-5 · Thấp · So danh tính thư mục theo chữ của đường gõ làm chặn oan đường có `..`
+
+- **Chỗ:** `seo_app/google/service_account.py` `_inside_by_identity` (`:239-252`), gọi từ `_is_within` (`:216`) cho cả `given` (đường gõ, **chưa** chuẩn hóa) lẫn `real`. Hàm đi ngược `current.parent` theo chữ. Với `D:\du-an\..\bi-mat\khoa.json`, các thư mục cha theo chữ gồm `D:\du-an\..\bi-mat`, `D:\du-an\..`, rồi **`D:\du-an`**. `os.stat` của thư mục đó khớp danh tính thư mục dự án, nên bị coi là «nằm trong dự án».
+- **Thử:**
+  - `<dự án>\..\ngoai\bi-mat\k.json` bị từ chối «thư mục phần mềm»;
+  - `<thư mục ảnh>\..\ngoai\…` bị từ chối «thư mục ảnh»;
+  - `<dự án>\con\..\..\ngoai\…` cũng bị từ chối;
+  - file thật đều ở ngoài (`normpath` của đường đúng là file ngoài).
+- **Có từ lượt 2:** cùng 3 ca chạy trên bản `24013b3` (trước lượt 2, phép so chuỗi sau `normpath`) đều **qua**.
+- **Hậu quả:** chặn oan và câu báo sai lý do; không lộ gì, hướng an toàn. Phải gõ `..` đi ngang qua đúng thư mục dự án hay thư mục ảnh mới gặp.
+- **Test:** `test_sl_t097_5_duong_co_cham_cham_di_ngang_roi_ra_ngoai_khong_bi_chan_oan` (3 xfail). Đối chứng: thư mục tên bắt đầu giống (`du-an-2`, `anh-dong-bo-cu`) vẫn được nhận.
+- **Gợi ý:** chỉ đi ngược thư mục cha của `real` (đã `resolve`, không còn `..`), hoặc của `Path(os.path.normpath(os.path.abspath(given)))`. Phép so chuỗi vẫn giữ cho `given` như trước.
+
+### Ghi nhận lượt 2 (không xếp lỗi)
+
+1. **Ổ Google Drive for Desktop báo «số nhận dạng» trùng nhau giữa các ổ.** Đo chỉ đọc trên máy chủ dự án: `os.stat` vài thư mục gốc chuẩn, không liệt kê, không đọc hay ghi file trong Drive.
+   - Ba ổ G:, H:, I: (ba tài khoản) cùng `st_dev = 428019990`; `st_ino` là số nhỏ lặp lại giữa các ổ: gốc ổ đều là 1, `My Drive` đều là 18, `Other computers` đều là 7.
+   - Vì vậy `_inside_by_identity` cho kết quả sai: `I:\My Drive\…` «nằm trong» `H:\My Drive`, `H:\Other computers\…` «nằm trong» `G:\Other computers`, `I:\…` «nằm trong» `G:\`.
+   - Hậu quả chỉ với file khóa đặt **trên ổ Google Drive**, trong khi thư mục ảnh ở một ổ Google Drive khác. File đó lẽ ra chỉ có Cảnh báo «thư mục đồng bộ», nay bị **chặn** với câu «nằm trong thư mục ảnh» (sai lý do). Đặt khóa trên Drive vốn là điều không nên, nên chặn không hại.
+   - Thư mục dự án và file khóa trên ổ thường (NTFS, USB FAT32) không trùng.
+   - Gợi ý: chỉ tin danh tính khi hai đường cùng ổ đĩa sau chuẩn hóa, hoặc không dùng số file của ổ Google Drive. Không có test tự động vì phụ thuộc máy; script `probe_drive_identity.py` ở thư mục ghi chú chung.
+2. `_refuse_redirect` đóng câu trả lời 3xx mà không đọc thân, nên `requests` không trả kết nối về hàng chờ (mở kết nối mới cho lệnh sau). Đúng ý LC-T097-1, không ảnh hưởng tính đúng.
+
+### Soát R5 (lượt 2)
+
+`git diff 24013b3..8b98996 -- tests/test_soi_loi_t097.py tests/test_la_chan_t097.py`: **chỉ xóa dòng dấu**, gồm dòng định nghĩa biến dấu `_LC1`, `_SL3_MORE`, `_SL1`, `_SL3` và các dòng `@…`. Số dấu đã gỡ: 27, gồm 7 LC-T097-1 và 4 SL-T097-3 của Lá Chắn; 6 SL-T097-1, 4 SL-T097-2, 4 SL-T097-3, 2 SL-T097-4 của tôi. Không thân test nào đổi. Dấu `_WINDOWS_ONLY` của 3 ca SL-T097-3 vẫn giữ. **Đạt.** `tests/test_google_service_account.py`: chỉ thêm 6 ca và 1 dòng kiểm `in_sync_folder` vào ca cũ (chặt hơn).
+
+### Thử đột biến (lượt 2)
+
+Trên bản sao của `8b98996` (`git archive`, chép thêm file test của tôi), gỡ từng chỗ sửa của lượt 2 rồi chạy 4 file: `tests/test_soi_loi_t097.py`, `tests/test_la_chan_t097.py`, `tests/test_google_sheets.py`, `tests/test_google_service_account.py` (20:06–20:31). Lượt chạy đầu bị treo ở R1 vì «bẫy» thân trả lời của tôi không bao giờ báo hết thân (code lỡ đọc là đọc mãi). Đã sửa bẫy (lần đọc thứ hai báo hết thân) rồi chạy lại cả 11. Script `mutate097r2.py`.
+
+| Đột biến | Số test hỏng: Soi Lỗi / Lá Chắn / Thợ Máy |
+|---|---|
+| R1 lệnh Sheets bỏ móc chặn 3xx | 20 / 6 / 0 |
+| R2 lệnh xin mã bỏ móc chặn 3xx | 6 / 1 / 0 |
+| R3 móc đọc thân rồi mới đóng | 56 / 9 / 0 |
+| R4 3xx qua móc không `unsure` | 37 / 1 / 0 |
+| R5 bỏ bắt `OverflowError`, `RecursionError` | 9 / 0 / 0 |
+| R6 bỏ so danh tính thư mục | 19 / 4 / 0 (cùng lúc 3 ca SL-T097-5 thành XPASS: phép so chuỗi cũ nhận đúng đường có `..`) |
+| R7 danh tính luôn `None` | 19 / 4 / 0 (như R6) |
+| R8 bỏ chuẩn hóa NFC tên thư mục | 1 / 0 / 1 |
+| R9 bỏ dấu hiệu `shared drives` | 2 / 0 / 1 |
+| R10 `in_sync_folder` luôn `False` | 6 / 0 / 11 |
+| R11 móc bỏ sót mã 308 | 7 / 1 / 0 |
+
+**11/11 đột biến bị bắt**, đều bị test của tôi bắt.
+
+### Test liên quan (lượt 2)
+
+Máy Windows của chủ dự án (máy đang bận: phiên khác chạy test cùng lúc), worktree `wt-T-097`, đầu nhánh `8b98996` + file của tôi:
+
+```
+$ uv run pytest -q -p no:cacheprovider tests/test_soi_loi_t097.py tests/test_la_chan_t097.py \
+    tests/test_google_sheets.py tests/test_google_service_account.py      # 20:38–20:40
+685 passed, 3 skipped, 3 xfailed in 142.57s (0:02:22)
+
+# 3 ca SL-T097-5 trên bản trước lượt 2 (24013b3), chạy như ca thường (--runxfail)
+3 passed
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan tests/test_soi_loi_t097.py docs/team/reports/T-097-soi-loi.md
+(0 kết quả)
+```
+
+685 = 602 ca cũ của 4 file (sau khi gỡ 27 dấu, có 6 ca mới của Thợ Máy) + 83 ca lượt 2 của tôi; 3 xfail là SL-T097-5; 3 bỏ qua có từ trước (2 symlink, 1 `chmod`). Lượt 2 chỉ sửa `seo_app/google/` (chưa có nơi gọi trong `app/`, `seo_app/` ngoài gói này), nên 4 file này là test liên quan; 81 file của Thợ Máy (6.952 qua) đã chạy rộng hơn.
+
+### Đề xuất (lượt 2)
+
+- **Thợ Máy (lượt 3 ngắn hay gom vào T-100):** SL-T097-5. Đi ngược thư mục cha của `real` hoặc của đường gõ đã `normpath`; gỡ 3 dấu `xfail`. Xét thêm Ghi nhận lượt 2 số 1 (ổ Google Drive): chỉ tin danh tính khi cùng ổ đĩa.
+- **Lá Chắn:** xem lại LC-T097-1 như đã định. Bẫy thân trả lời của tôi xác nhận móc `_refuse_redirect` không đọc byte nào của thân 3xx, ở cả lệnh Sheets lẫn lệnh xin mã.
