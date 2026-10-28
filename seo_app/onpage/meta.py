@@ -120,6 +120,48 @@ def has_odd_chars(text: str) -> bool:
     return any(not ch.isspace() and unicodedata.category(ch) in _ODD_CATEGORIES for ch in text)
 
 
+def _may_be_new_symbol(ch: str) -> bool:
+    """Ký tự chưa gán (Cn) có thể là biểu tượng mới hơn bảng Unicode của Python. Trừ hai nhóm Python
+    cũng xếp Cn: «không phải ký tự» (U+FDD0–U+FDEF, hai mã cuối mỗi mặt phẳng như U+FFFE, U+FFFF),
+    không bao giờ được gán; mã để dành cho ký tự vô hình («mặc định bỏ qua»: U+2065, U+FFF0–U+FFF8,
+    U+E0000–U+E0FFF), hiện ra không nhìn thấy."""
+    code = ord(ch)
+    if 0xFDD0 <= code <= 0xFDEF or (code & 0xFFFE) == 0xFFFE:
+        return False
+    return not (code == 0x2065 or 0xFFF0 <= code <= 0xFFF8 or 0xE0000 <= code <= 0xE0FFF)
+
+
+def odd_char_messages(name: str, text: str) -> list[str]:
+    """Câu báo Chặn cho ký tự lạ trong chữ gốc (đúng các ký tự ``has_odd_chars`` thấy), mỗi loại
+    một câu; danh sách rỗng là không có.
+
+    Ký tự chưa gán có thể là emoji mới hơn bảng Unicode của Python (emoji Unicode 16 với Python
+    3.12): người dùng nhìn thấy nó, nên câu báo không nói «không nhìn thấy» (SL-T041-8). Vẫn Chặn
+    như mọi ký tự lạ: ``normalize_meta`` và client WordPress bỏ ký tự này, cho qua là lặng lẽ mất
+    ký tự khi ghi (Lá Chắn T-041 quyết giữ Chặn)."""
+    odd = unknown = False
+    for ch in text:
+        category = unicodedata.category(ch)
+        if ch.isspace() or category not in _ODD_CATEGORIES:
+            continue
+        if category == "Cn" and _may_be_new_symbol(ch):
+            unknown = True
+        else:
+            odd = True
+    messages = []
+    if odd:
+        messages.append(
+            f"{name} có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi "
+            "khác). Xóa ô rồi gõ lại chữ thường."
+        )
+    if unknown:
+        messages.append(
+            f"{name} có ký tự phần mềm chưa nhận ra nên không ghi được (có thể là biểu tượng cảm "
+            "xúc rất mới). Xóa ký tự đó hoặc thay bằng chữ thường, biểu tượng quen thuộc."
+        )
+    return messages
+
+
 def has_html(text: str) -> bool:
     """Có thẻ HTML (hay "<" ngay trước chữ cái, có thể thành thẻ)."""
     return strip_tags(text) != text
@@ -144,11 +186,7 @@ def _check_text(field: str, raw: str, limits: Limits) -> FieldCheck:
     # SAU khi bỏ ký tự vô hình, mà chữ gửi đi là ``value`` (SL-T036-1).
     if has_html(raw) or has_html(value):
         blocks.append(f"{name} có thẻ HTML (dấu < ngay trước chữ). Bỏ thẻ đi.")
-    if has_odd_chars(raw):  # chữ gốc: ``value`` đã bị bỏ các ký tự này
-        blocks.append(
-            f"{name} có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi "
-            "khác). Xóa ô rồi gõ lại chữ thường."
-        )
+    blocks.extend(odd_char_messages(name, raw))  # chữ gốc: ``value`` đã bị bỏ các ký tự này
     if "%%" in value:
         blocks.append(f"{name} có «%%»: plugin SiteSEO hiểu đó là biến. Bỏ «%%» đi.")
     if blocks:
