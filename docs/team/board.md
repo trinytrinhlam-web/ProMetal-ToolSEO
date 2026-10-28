@@ -6,7 +6,7 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 76% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 77% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
@@ -15,7 +15,7 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
 | 3 · Ảnh | **khoảng 99%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chặn shortcode, chèn ảnh vào nháp. **Màn hình chọn ảnh** trên trang Soạn bài (Ảnh thật/AI, GPS, duyệt alt) và nút **«Gửi nháp»** kèm ảnh lên WordPress, nhớ trạng thái gửi, chống gửi trùng kể cả hai tab. Còn: vài phiếu dọn lỗi nhỏ (T-082, T-083, T-084), Lá Chắn rà cả giai đoạn. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
 | 4 · SEO trên trang | **khoảng 97%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27–28/10** (ghi SEO, ảnh còn GPS cả trên điện thoại). Còn: dọn client WordPress (T-091 đang làm) |
-| 5 · Kế hoạch, lịch, đăng bài | **khoảng 25%** | Thiết kế xong (T-094: kế hoạch trên Google Sheets, AI đề xuất, hẹn giờ/đăng ngay qua một đường có xác nhận), chia 8 phiếu; **xong:** bộ dựng bài cuối (T-096), nối Google Sheets (T-097); đọc kế hoạch (T-098) đang sửa lỗi nhỏ trước khi gộp |
+| 5 · Kế hoạch, lịch, đăng bài | **khoảng 30%** | Thiết kế xong (T-094: kế hoạch trên Google Sheets, AI đề xuất, hẹn giờ/đăng ngay qua một đường có xác nhận), chia 8 phiếu; **xong:** bộ dựng bài cuối (T-096), nối Google Sheets (T-097), đọc kế hoạch (T-098); đang dọn lỗi nhỏ của ba phần này, kế tiếp: lời dặn AI đọc kế hoạch (T-103) |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
 Trên app hôm nay chủ dự án dùng thật được trang **Soạn bài bước 1–5**: viết bài bằng AI, chọn ảnh thật cho chỗ cần ảnh, bước SEO (meta, slug, liên kết nội bộ, schema), rồi **«Gửi nháp»** lên WordPress (cần khóa API và kết nối WordPress). Kế hoạch, lịch đăng (Giai đoạn 5) và theo dõi thứ hạng (Giai đoạn 6) chưa làm.
@@ -34,22 +34,22 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Soi Lỗi · T-040 kiểm nhanh lời dặn meta (T-098 kiểm lại lượt 3) | `team/T-098` | Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (6 Thấp); Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`b520623`: 0 lỗi mới); Thợ Máy lượt 3 sửa 6 Thấp (`34302fa`, 745 test qua). ⏳ **28/10 17:31 Soi Lỗi kiểm lại lượt 3**, đạt thì gộp | [Soi Lỗi](reports/T-098-soi-loi.md) · [Lá Chắn](reports/T-098-la-chan.md) |
-| [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ (SL-T088-1), giới hạn mã bài, SL-T059-1 (`sanitize_text_field`), báo quyền `unfiltered_html`. Thấp | Soi Lỗi · T-060 kiểm client WordPress (T-091) | `team/T-091` | Thợ Máy xong (`7965f2b`, 61 file 9.311 qua; Chỉ Huy duyệt A: mã quá 2⁶³−1 coi như sai khuôn, đổi 7 test cũ giữ ý). ⏳ **28/10 17:31 Soi Lỗi rút gọn** | [Thợ Máy](reports/T-091-tho-may.md) |
-| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) lượt 4 | LC-T096-5 (Thấp): lớp chặn nhúng làm đúng điều kiện `isMatch` của Gutenberg (đoạn «`https://…` + chữ»), gỡ 4 `xfail`; đổi điều kiện ca `<p><a …>https://…</a> rồi</p>` của `test_embed_patterns_not_found` (Chỉ Huy duyệt 28/10) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-096 xem lại lượt 4) | `team/T-096` | Thợ Máy lượt 4 xong (`7da465f`: `_block_editor_embeds` theo 4 điều kiện `isMatch`; 900 test T-096, T-039 qua). ⏳ **28/10 17:31 Lá Chắn xem lại** | |
+| [T-091](tickets/T-091-don-client-wordpress-sau-t059.md) | Client WordPress: surrogate lẻ (SL-T088-1), giới hạn mã bài, SL-T059-1 (`sanitize_text_field`), báo quyền `unfiltered_html`. Thấp | Thợ Máy · T-059 siết mã sau thử thật (T-091 lượt 2) | `team/T-091` | Thợ Máy xong (`7965f2b`; Chỉ Huy duyệt A); Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`2ff1425`: 3 Thấp); Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN, **chưa gộp được** (`ed5d86b`: LC-T091-1, 2 test cũ `test_t089_send_draft.py` hỏng, Chỉ Huy duyệt đổi theo mẫu A). ⏳ **28/10 21:09 Thợ Máy lượt 2** (LC-T091-1, SL-T091-1 → -3) | [Thợ Máy](reports/T-091-tho-may.md) · [Soi Lỗi](reports/T-091-soi-loi.md) · [Lá Chắn](reports/T-091-la-chan.md) |
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) lượt 4 | 3 Thấp của Soi Lỗi lượt 3: SL-T098-18 (ngoặc kép không đóng gộp dòng không báo), -19 (biến thể -13), -20 | Soi Lỗi · T-040 kiểm nhanh lời dặn meta (T-098 lượt 4) | `team/T-098` | Thợ Máy lượt 4 (`acf982b`); Soi Lỗi kiểm lại **ĐẠT** (`b2d717f`: 3/3 đóng, 0 lỗi mới; cả 20 lỗi T-098 đã đóng). ⏳ **Chỉ Huy gộp** | |
+| [T-097](tickets/T-097-google-sheets-service-account.md) lượt 2 | 5 Thấp: LC-T097-1 (thân câu trả lời chuyển hướng bị đọc hết), SL-T097-1, -2 trước T-100; SL-T097-3, -4 trước T-101 | Lá Chắn · T-060 kiểm client WordPress (T-097 xem lại lượt 2) | `team/T-097` | Thợ Máy lượt 2 (`8b98996`); Soi Lỗi kiểm lại ĐẠT CÓ ĐIỀU KIỆN (`16b9f64`: 4/4 đóng, 1 Thấp mới SL-T097-5). ⏳ **28/10 21:09 Lá Chắn xem lại** LC-T097-1 | |
+| [T-103](tickets/T-103-loi-dan-ai-doc-ke-hoach.md) | GĐ5: lời dặn AI đọc kế hoạch, `[tasks.plan]`, `[plan]` | Ngòi Bút · T-040 lời dặn meta, anchor (T-103) | `team/T-103` | ⏳ **28/10 21:09 Ngòi Bút làm** (nhánh từ `main` `24013b3`) | |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
 | [T-099](tickets/T-099-client-hen-gio-dang-ngay.md) | GĐ5: client hẹn giờ, đăng ngay (`release_draft`) | Thợ Máy | T-091 gộp |
-| [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-098 gộp; T-097 lượt 2 (SL-T097-1, -2, LC-T097-1). T-097 đã gộp 28/10 |
+| [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097 lượt 2, T-098 lượt 4. T-097, T-098 đã gộp 28/10 |
 | [T-101](tickets/T-101-giao-dien-ke-hoach-cai-dat-google.md) | GĐ5: giao diện Kế hoạch, Cài đặt Google, Bài viết | Họa Sĩ | T-100, T-103 gộp |
-| [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-099, T-100 gộp; T-096 lượt 4 (LC-T096-5). T-096 đã gộp 28/10 |
-| [T-103](tickets/T-103-loi-dan-ai-doc-ke-hoach.md) | GĐ5: lời dặn AI đọc kế hoạch | Ngòi Bút | T-098 gộp |
+| [T-102](tickets/T-102-buoc-xuat-ban-that.md) | GĐ5: bước Xuất bản thật, màn hình xác nhận | Họa Sĩ | T-099, T-100 gộp; T-096 lượt 5 (LC-T096-6) |
 | [T-104](tickets/T-104-set-password-ghi-env-an-toan.md) | `set_password` ghi `.env` an toàn: thay đúng dòng app đọc, ghi nguyên tử (LC-T090-1, -2, có từ trước). Thấp | Thợ Máy | **Máy rảnh** (T-090 đã gộp 28/10) |
 | [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Họa Sĩ | Máy rảnh |
-| [T-097](tickets/T-097-google-sheets-service-account.md) lượt 2 | 5 Thấp của Soi Lỗi, Lá Chắn: SL-T097-1, -2, LC-T097-1 (thân câu trả lời chuyển hướng bị đọc hết) trước khi T-100 dùng client; SL-T097-3, -4 trước khi T-101 làm trang Cài đặt → Google | Thợ Máy | **Máy rảnh** (T-097 đã gộp 28/10) |
+| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) lượt 5 | LC-T096-6 (Thấp, phần còn lại của LC-T096-5): tab trong/sau tên máy, «\» sau tên máy, thừa «/» sau `https://`, tên đăng nhập có dấu cách: `new URL` vẫn nhận nên khối Embed vẫn nhúng; Lá Chắn đã giả lập cách sửa (sót 0) | Thợ Máy | **Máy rảnh**; bắt buộc trước khi T-102 nối bộ dựng |
 | [T-093](tickets/T-093-la-chan-ra-soat-giai-doan-3.md) | Lá Chắn rà soát toàn bộ Giai đoạn 3 trước khi đóng giai đoạn | Lá Chắn | **Máy rảnh** (T-082, T-083 đã gộp) |
 | [T-078](tickets/T-078-nang-uv.md) | **Cao:** nâng công cụ `uv` lên 0.13.4 trở lên trên cả 2 máy (LC-T075-1), thêm `required-version`, README | Chủ dự án (máy Mac); Thợ Máy, Thư Ký (chưa giao) | Máy Windows **xong** 21/10 (0.12.23 → 0.13.4); chủ dự án chưa có máy Mac (22/10): bỏ phần Mac; `required-version`, README chưa giao |
 | [T-057](tickets/T-057-loc-ho-so-nhan-tieu-de-vat-dong.md) | Bộ lọc hồ sơ: nhãn tiêu đề vắt nhiều dòng (SL-T045-1/2, có từ trước) | Thợ Máy | **Hoãn** (chủ dự án chốt 20/10: rút gọn, lỗi nhỏ không chặn) |
@@ -73,6 +73,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/Markdown/chữ dán, đề xuất có AI (dữ liệu chưa tin cậy, SL-7); chưa nối vào app (T-100, T-101 nối) | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-098-tho-may.md) 3 lượt · [Soi Lỗi](reports/T-098-soi-loi.md) 3 lượt: ĐẠT CÓ ĐIỀU KIỆN · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-098-la-chan.md) (0 lỗi mới); 3 Thấp mới → lượt 4. Gộp `main` (cùng T-096 lượt 4: LC-T096-5 đóng), Windows 19.496 test qua, 0 hỏng |
 | [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets (đọc, ghi `RAW`), kiểm file khóa tài khoản dịch vụ, khai báo `google-auth`; chưa nối vào app (T-100 nối) | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-097-tho-may.md) · [Soi Lỗi](reports/T-097-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (4 Thấp) · Lá Chắn đầy đủ: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-097-la-chan.md) (1 Thấp mới LC-T097-1); 5 Thấp → T-097 lượt 2 trước T-100, T-101. Gộp `main`, Windows 18.870 test qua, 0 hỏng |
 | [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO đúng nghĩa (vẫn Chặn), `.env` không phải UTF-8 báo câu tiếng Việt, câu báo FAQ, `set_password` không traceback | Thợ Máy | 2026-10-28 | [Soi Lỗi](reports/T-090-soi-loi.md): ĐẠT · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-090-la-chan.md) (2 Thấp có từ trước ở `set_password` → T-104). Gộp `main`, Windows 18.870 test qua, 0 hỏng |
 | [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML an toàn, kiểm link, chặn nhúng, dữ liệu cho màn hình xác nhận); chưa nối vào app (T-102 nối) | Thợ Máy | 2026-10-28 | [Thợ Máy](reports/T-096-tho-may.md) 3 lượt · [Soi Lỗi](reports/T-096-soi-loi.md) 2 lượt · Lá Chắn: [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-096-la-chan.md) (xem lại lượt 3: 6/6 lỗi đóng); 1 Thấp mới LC-T096-5 → lượt 4 ngắn trước T-102. Gộp `main`, Windows 17.950 test qua, 0 hỏng |

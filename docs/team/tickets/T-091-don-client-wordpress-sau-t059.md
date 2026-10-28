@@ -50,3 +50,4 @@ W2, W3.
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
 - 2026-10-28 15:47 (Chỉ Huy B): T-059 bước 7 đã gộp. Nhánh `team/T-091` từ `main` `1b45f5d`, worktree `wt-T-091`; giao Thợ Máy (phiên Thợ Máy T-059).
+- 2026-10-28 21:09 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`2ff1425`), Lá Chắn ĐẠT CÓ ĐIỀU KIỆN nhưng chưa gộp được (`ed5d86b`: LC-T091-1). Chỉ Huy duyệt (R5) đổi kỳ vọng 2 ca `tests/test_t089_send_draft.py` theo mẫu phương án A; lượt 2 Thợ Máy sửa thêm SL-T091-1 → -3 (theo đề xuất).

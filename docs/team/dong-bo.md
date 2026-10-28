@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-28 21:09 · Chỉ Huy B
+
+- Gộp **T-098** (đọc kế hoạch) và **T-096 lượt 4**. Windows 19.496 test qua, 0 hỏng. Hạn mức hết lúc 16:30, mở lại 17:30: 3 phiên đã chạy lại.
+- Đang chạy: Thợ Máy T-091 lượt 2 (LC-T091-1 chặn gộp: 2 test cũ `test_t089_send_draft.py` hỏng, Chỉ Huy duyệt đổi theo mẫu A; kèm SL-T091-1 → -3); Lá Chắn xem lại T-097 lượt 2; Ngòi Bút T-103.
+- T-098 lượt 4: Soi Lỗi ĐẠT (`b2d717f`), chờ Chỉ Huy gộp sau lượt test toàn bộ đang chạy.
+- Hàng đợi (máy rảnh): T-096 lượt 5 (LC-T096-6), T-104, T-093, T-092. T-100 sau T-097 lượt 2 + T-098 lượt 4; T-099 sau T-091.
+
 ### 2026-10-28 17:31 · Chỉ Huy B
 
 - Gộp **T-090** và **T-097** (đều qua Lá Chắn). Windows 18.870 test qua, 0 hỏng. T-097 thêm thư viện `google-auth` (chủ dự án chốt 28/10): máy khác chạy `uv sync`.

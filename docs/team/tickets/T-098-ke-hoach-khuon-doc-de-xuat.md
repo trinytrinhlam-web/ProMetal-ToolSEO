@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1) |
 | Phụ thuộc | Không |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Xong (gộp `main` 2026-10-28); lượt 4 (3 Thấp) đang làm, trước T-100 |
 
 ## Mục tiêu
 
@@ -45,3 +45,4 @@ Làm phần **T-098** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 21:09 (Chỉ Huy B): Soi Lỗi lượt 3 ĐẠT CÓ ĐIỀU KIỆN (`2e0d29b`: SL-T098-12 → -17 đóng; 3 Thấp mới SL-T098-18 → -20, không chặn gộp); Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`b520623`, 0 lỗi mới). Gộp `main`, Windows 19.496 test qua, 0 hỏng. Lượt 4 (Thợ Máy) sửa 3 Thấp trước T-100, T-101.
