@@ -34,15 +34,15 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML, kiểm link, dữ liệu xác nhận) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-096) | `team/T-096` | Thợ Máy 2 lượt (`c961000`); Soi Lỗi lượt 2 ĐẠT CÓ ĐIỀU KIỆN (`088ebbe`: 7 lỗi đóng, 2 Thấp mới). ⏳ **28/10 02:20 Lá Chắn rút gọn** | [Thợ Máy](reports/T-096-tho-may.md) · [Soi Lỗi](reports/T-096-soi-loi.md) |
-| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Thợ Máy · T-083 lỗi chữ alt ảnh AI (T-098) | `team/T-098` | ⏳ **28/10 02:21 Thợ Máy đang làm** | |
-| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1) | Thợ Máy · T-041 Lưu SEO vào nháp (T-090) | `team/T-090` | ⏳ **28/10 02:44 Thợ Máy đang làm** | |
+| [T-096](tickets/T-096-bo-dung-bai-cuoi.md) | GĐ5: bộ dựng bài cuối (Markdown → HTML, kiểm link, dữ liệu xác nhận) | Lá Chắn · T-039 kiểm liên kết nội bộ (T-096 xem lại) | `team/T-096` | Thợ Máy 3 lượt (`7ea52e8`: LC-T096-1 → -4, SL-T096-8, -9). ⏳ **28/10 10:28 Lá Chắn xem lại lượt 3** | [Thợ Máy](reports/T-096-tho-may.md) · [Soi Lỗi](reports/T-096-soi-loi.md) |
+| [T-098](tickets/T-098-ke-hoach-khuon-doc-de-xuat.md) | GĐ5: kế hoạch: khuôn, đọc CSV/TSV/chữ dán, đề xuất có AI, SL-7 | Thợ Máy · T-083 lỗi chữ alt ảnh AI (T-098 lượt 2) | `team/T-098` | Thợ Máy xong (`ff8f542`); Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`84f32ec`: 2 Trung bình, 9 Thấp). ⏳ **28/10 10:28 Thợ Máy lượt 2** | |
+| [T-090](tickets/T-090-don-loi-thap-chu-seo-va-env.md) | Câu báo emoji mới trong chữ SEO (SL-T041-8, giữ Chặn), `.env` không phải UTF-8 (SL-T084-1) | Soi Lỗi · T-056 kiểm màn hình chọn ảnh (T-090) | `team/T-090` | Thợ Máy 2 lượt (`97fc800`: câu báo emoji mới, `.env` sai bảng mã, câu FAQ, `set_password`). ⏳ **28/10 10:28 Soi Lỗi rút gọn** | |
+| [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa, khai báo `google-auth` (chủ dự án chốt 28/10) | Soi Lỗi · T-060 kiểm client WordPress (T-097) | `team/T-097` | Thợ Máy xong (`c260116`; 250 test mới, 24 file 2.277 qua, `pip-audit` sạch). ⏳ **28/10 10:28 Soi Lỗi rút gọn** | [Thợ Máy](reports/T-097-tho-may.md) |
 
 ## Chờ
 
 | Phiếu | Việc | Agent | Chờ gì |
 |---|---|---|---|
-| [T-097](tickets/T-097-google-sheets-service-account.md) | GĐ5: client Google Sheets, kiểm file khóa | Thợ Máy | Máy rảnh; gộp sau khi chủ dự án xem câu 1 |
 | [T-099](tickets/T-099-client-hen-gio-dang-ngay.md) | GĐ5: client hẹn giờ, đăng ngay (`release_draft`) | Thợ Máy | T-091 gộp |
 | [T-100](tickets/T-100-dong-bo-ke-hoach-cache-nhap.md) | GĐ5: đồng bộ kế hoạch, cache, nối nháp | Thợ Máy | T-097, T-098 gộp |
 | [T-101](tickets/T-101-giao-dien-ke-hoach-cai-dat-google.md) | GĐ5: giao diện Kế hoạch, Cài đặt Google, Bài viết | Họa Sĩ | T-100, T-103 gộp |
