@@ -6,7 +6,7 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 70% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 74% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
@@ -14,8 +14,8 @@ _Cập nhật: 2026-10-26 18:55 (Chỉ Huy B)._
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
 | 3 · Ảnh | **khoảng 99%** | Đọc thư mục ảnh an toàn, HEIC iPhone, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chặn shortcode, chèn ảnh vào nháp. **Màn hình chọn ảnh** trên trang Soạn bài (Ảnh thật/AI, GPS, duyệt alt) và nút **«Gửi nháp»** kèm ảnh lên WordPress, nhớ trạng thái gửi, chống gửi trùng kể cả hai tab. Còn: vài phiếu dọn lỗi nhỏ (T-082, T-083, T-084), Lá Chắn rà cả giai đoạn. Tạo ảnh AI: hoãn (chủ dự án chốt 20/10) |
-| 4 · SEO trên trang | **khoảng 85%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, lời dặn AI cho meta và anchor, ghi SEO vào nháp qua SiteSEO. **Màn hình bước 4 «SEO»** trên trang Soạn bài chạy thật. Còn: thử thật trên website (T-059, cần chủ dự án chuẩn bị tài khoản và plugin), một phiếu dọn lỗi nhỏ |
-| 5 · Kế hoạch, lịch, đăng bài | 0% | Chưa làm |
+| 4 · SEO trên trang | **khoảng 95%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27/10** (ghi SEO, ảnh còn GPS). Còn: 2 phiếu dọn lỗi nhỏ (T-090, T-091), thử lại một nháp có ảnh |
+| 5 · Kế hoạch, lịch, đăng bài | **khoảng 15%** | Thiết kế xong (T-094: kế hoạch trên Google Sheets, AI đề xuất, hẹn giờ/đăng ngay qua một đường có xác nhận), chia 8 phiếu; bộ dựng bài cuối (T-096) đang kiểm bảo mật, phần đọc kế hoạch (T-098) đang làm |
 | 6 · Theo dõi thứ hạng Google | 0% | Chưa làm |
 
 Trên app hôm nay chủ dự án dùng thật được trang **Soạn bài bước 1–5**: viết bài bằng AI, chọn ảnh thật cho chỗ cần ảnh, bước SEO (meta, slug, liên kết nội bộ, schema), rồi **«Gửi nháp»** lên WordPress (cần khóa API và kết nối WordPress). Kế hoạch, lịch đăng (Giai đoạn 5) và theo dõi thứ hạng (Giai đoạn 6) chưa làm.
