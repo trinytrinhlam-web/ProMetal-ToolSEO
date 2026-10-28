@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1, sau T-091) |
 | Phụ thuộc | T-091 đã gộp (cùng `client.py`) |
-| Trạng thái | Chờ (sau T-091) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -45,3 +45,4 @@ Làm phần **T-099** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 23:14 (Chỉ Huy B): T-091 đã qua Soi Lỗi lượt 2 (ĐẠT). Nhánh `team/T-099` từ `main` `b241e79` + đưa T-091 vào trước (`9e0115e`), worktree `wt-T-099`; giao Thợ Máy (phiên Thợ Máy T-059).

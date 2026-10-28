@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-28 23:14 · Chỉ Huy B
+
+- Gộp **T-097 lượt 2**, **T-098 lượt 4**. Windows 19.645 test qua, 0 hỏng. T-097, T-098 xong hẳn; SL-T097-5 gom vào T-100.
+- Chờ gộp (đã đạt): T-091 lượt 2 (Soi Lỗi ĐẠT `28a4576`), T-096 lượt 5 (Lá Chắn ĐẠT `d0db341`); gộp sau lượt test toàn bộ đang chạy.
+- Đang chạy: Ngòi Bút T-103 lượt 2 (G1; Soi Lỗi ĐẠT, Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; G2 = LC-T103-1 → T-100, G3 thử AI thật, G4 → T-101); Thợ Máy T-100 (từ `b241e79`); Thợ Máy T-099 (từ `b241e79` + T-091 đưa vào trước, `9e0115e`).
+- Hàng đợi (máy rảnh): T-104, T-093, T-092. T-101 sau T-100 + T-103; T-102 sau T-099 + T-100.
+
 ### 2026-10-28 21:09 · Chỉ Huy B
 
 - Gộp **T-098** (đọc kế hoạch) và **T-096 lượt 4**. Windows 19.496 test qua, 0 hỏng. Hạn mức hết lúc 16:30, mở lại 17:30: 3 phiên đã chạy lại.
