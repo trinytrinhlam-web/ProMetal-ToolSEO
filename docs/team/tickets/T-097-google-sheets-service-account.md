@@ -7,8 +7,8 @@
 | Ngày giao | 2026-10-27 |
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1) |
-| Phụ thuộc | Câu hỏi 1 (Chỉ Huy chọn A theo dặn 27/10; **chỉ gộp `main` sau khi chủ dự án xem câu 1**) |
-| Trạng thái | Chờ |
+| Phụ thuộc | Câu hỏi 1: **chủ dự án chốt A sáng 28/10** (khai báo `google-auth`) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -45,3 +45,4 @@ Làm phần **T-097** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 28/10 08:27 (Chỉ Huy B): chủ dự án chốt A cả 6 câu thiết kế (câu 1: khai báo `google-auth`). Nhánh `team/T-097` từ `main` `b513d67`, worktree `wt-T-097`; giao Thợ Máy (phiên Thợ Máy T-059).

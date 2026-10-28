@@ -65,6 +65,8 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ### Việc anh xử lý sáng 28/10 (Chỉ Huy B ghi tối 27/10)
 
+**Anh đã trả lời 28/10 08:27:** 1 xong (đã tắt «Enable File-Based Execution»); 2 đã gỡ, còn 2 mật khẩu ứng dụng cũ để nguyên; 3 snippet tạm để nguyên; 4 Chỉ Huy đã gửi file `.htaccess` cũ, anh tự xử lý khi rảnh; 5 đồng ý; 6 (Giai đoạn 5) đồng ý A cả 6 câu; 7 (thử lại nháp có ảnh) OK; 8 và 10 (sổ rủi ro) đồng ý, đã ghi `docs/team/security.md` mục 6.
+
 Anh dặn: vấn đề nào chưa giải quyết được thì ghi lại để sáng mai anh xử lý. Đều là việc trên website, phần mềm không tự làm:
 
 1. **Tắt «Enable File-Based Execution» trong Code Snippets** (Snippets → Settings, mục Execution): hiện vẫn đang BẬT. Đây là đề xuất bảo mật từ 20/10 (Lá Chắn T-054). Tắt xong bấm Save, mở vài trang website xem còn bình thường.
