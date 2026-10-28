@@ -24,7 +24,7 @@ import pytest
 from fake_ai import OUTLINE, RESEARCH
 from google.genai import types as gemini_types
 
-from seo_app.ai import AIRouter, TaskConfig
+from seo_app.ai import AIError, AIRouter, TaskConfig
 from seo_app.ai import registry as ai_registry
 from seo_app.ai.anthropic_provider import AnthropicProvider
 from seo_app.ai.gemini_provider import GeminiProvider
@@ -630,8 +630,13 @@ def test_personal_info_in_a_current_keyword_also_blocks(monkeypatch):
 # ------------------------------------------------- không tìm web: tới tận lệnh gửi thư viện AI
 
 
+def answer_text(answer: PlanSuggestions | str) -> str:
+    """Chữ máy chủ AI trả về: khuôn đúng, hay chữ hỏng soạn sẵn."""
+    return answer if isinstance(answer, str) else answer.model_dump_json()
+
+
 class _AnthropicClient:
-    def __init__(self, answer: PlanSuggestions) -> None:
+    def __init__(self, answer: PlanSuggestions | None) -> None:
         self.calls: list[dict] = []
         self.answer = answer
         self.beta = SimpleNamespace(messages=SimpleNamespace(stream=self.stream))
@@ -646,14 +651,14 @@ class _AnthropicClient:
 
 
 class _OpenAIClient:
-    def __init__(self, answer: PlanSuggestions) -> None:
+    def __init__(self, answer: PlanSuggestions | str) -> None:
         self.calls: list[dict] = []
         self.answer = answer
         self.responses = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        content = [SimpleNamespace(type="output_text", text=self.answer.model_dump_json())]
+        content = [SimpleNamespace(type="output_text", text=answer_text(self.answer))]
         return SimpleNamespace(
             status="completed",
             incomplete_details=None,
@@ -665,14 +670,14 @@ class _OpenAIClient:
 
 
 class _GeminiClient:
-    def __init__(self, answer: PlanSuggestions) -> None:
+    def __init__(self, answer: PlanSuggestions | str) -> None:
         self.calls: list = []
         self.answer = answer
         self.models = SimpleNamespace(generate_content=self.generate_content)
 
     def generate_content(self, *, model, contents, config):
         self.calls.append(config)
-        part = gemini_types.Part(text=self.answer.model_dump_json())
+        part = gemini_types.Part(text=answer_text(self.answer))
         return gemini_types.GenerateContentResponse(
             candidates=[
                 gemini_types.Candidate(
@@ -713,6 +718,28 @@ def test_plan_request_never_carries_a_search_tool(monkeypatch, vendor, configure
     assert [p.action for p in result.items] == [Action.UPDATE]
     assert len(client.calls) == 1
     assert client.tools() == [None]
+
+
+@pytest.mark.parametrize(
+    ("vendor", "answer"),
+    [
+        ("anthropic", None),  # thư viện không dựng được khuôn
+        ("openai", 'MOI_TRA_LOI {"items"'),
+        ("openai", '{"items": [{"action": 1, "MOI_TRA_LOI": 2}]}'),
+        ("openai", '{"items": [{"action": "them", "keyword": "MOI_TRA_LOI"}]}'),  # thiếu trường
+        ("gemini", "MOI_TRA_LOI {"),
+        ("gemini", '{"items": "MOI_TRA_LOI"}'),
+    ],
+)
+def test_broken_ai_answers_become_one_fixed_error(monkeypatch, vendor, answer):
+    make, client_class, model_name = PROVIDERS[vendor]
+    client = client_class(answer)
+    task = TaskConfig(name="plan", provider=vendor, model=model_name, effort="high",
+                      max_tokens=4000)  # fmt: skip
+    writer = plan_writer(monkeypatch, make(client), {"plan": task})
+    with pytest.raises(AIError) as raised:
+        writer.plan_changes(CURRENT, "Đẩy lan can lên ưu tiên cao.", today=TODAY)
+    assert "MOI_TRA_LOI" not in str(raised.value) and str(raised.value).endswith("Bấm thử lại.")
 
 
 # ============================================================ SL-7: mọi lời dặn có từ khóa
