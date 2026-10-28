@@ -67,6 +67,36 @@ class Review(BaseModel):
     summary: str = Field(description="Nhận xét chung một câu")
 
 
+class PlanSuggestion(BaseModel):
+    """Một đề xuất thay đổi kế hoạch AI trả về (T-098). Code kiểm từng mục (``seo_app.plan.propose
+    .from_ai``), mục sai bị bỏ. Không có trường slug, trang đích, địa chỉ web: AI không đưa được
+    địa chỉ nào vào kế hoạch (LC-T094-20). Mọi trường là chữ (kể cả ngày) để một mục viết sai
+    không làm hỏng cả câu trả lời; trường không đổi là chuỗi rỗng. Không đặt giá trị mặc định
+    (như các khuôn AI khác): khuôn «strict» của OpenAI đòi đủ mọi trường."""
+
+    action: str = Field(description='"them" (bài mới), "cap_nhat" (sửa bài có sẵn) hoặc "bo"')
+    key: str = Field(
+        description="Mã bài có sẵn trong kế hoạch hiện tại (bắt buộc khi cap_nhat, bo); "
+        "chuỗi rỗng khi them"
+    )
+    keyword: str = Field(description="Từ khóa chính (bắt buộc khi them); rỗng nếu không đổi")
+    secondary: str = Field(description="Từ khóa phụ, ý cần có; rỗng nếu không đổi")
+    intent: str = Field(description="Ý định; rỗng nếu không đổi")
+    kind: str = Field(description="Loại trang; rỗng nếu không đổi")
+    priority: str = Field(description="Cao, Trung bình hoặc Thấp; rỗng nếu không đổi")
+    planned_date: str = Field(description="Ngày dự kiến dd/mm/yyyy; rỗng nếu không đổi")
+    planned_time: str = Field(description="Giờ đăng HH:MM; rỗng nếu không đổi")
+    title_hint: str = Field(description="Tiêu đề dự kiến; rỗng nếu không đổi")
+    notes: str = Field(description="Ghi chú; rỗng nếu không đổi")
+    reason: str = Field(description="Lý do ngắn, một câu, bằng lời của người dùng đọc được")
+
+
+class PlanSuggestions(BaseModel):
+    """Khuôn AI trả về khi đọc kế hoạch dạng chữ tự do (T-098)."""
+
+    items: list[PlanSuggestion] = Field(description="Các thay đổi đề xuất, tối đa 100 mục")
+
+
 SCORE_LABELS = {
     "friendly": "Thân thiện",
     "natural": "Tự nhiên, không máy móc",
