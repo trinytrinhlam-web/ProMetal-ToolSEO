@@ -95,10 +95,6 @@ def test_odd_char_is_never_judged_good_then_silently_dropped(ch):
     any(unicodedata.category(c) != "Cn" for c in NEW_EMOJI),
     reason="Python này đã biết emoji Unicode 16 (không còn là ký tự chưa gán)",
 )
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-8 (Lá Chắn quyết giữ Chặn): câu báo emoji mới nói «không nhìn thấy»",
-)
 @pytest.mark.parametrize("emoji", NEW_EMOJI, ids=[f"U+{ord(c):04X}" for c in NEW_EMOJI])
 def test_sl8_new_emoji_stays_blocked_with_accurate_message(emoji):
     """Cách sửa SL-T041-8 theo quyết định Lá Chắn: vẫn Chặn, câu báo không được nói ký tự «không

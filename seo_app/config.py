@@ -40,6 +40,19 @@ class ConfigError(ValueError):
     """Cấu hình sai (ví dụ múi giờ không tồn tại)."""
 
 
+# Câu cố định (SL-T084-1): không chép đường dẫn, không chép nội dung ``.env`` hay câu lỗi gốc.
+# Phần đầu dùng chung với ``scripts/hash_password.py`` (bước cuối ở đó là chạy lại script).
+ENV_RESAVE_UTF8 = (
+    "File .env không đọc được dạng UTF-8 (thường do Notepad lưu kiểu «ANSI»). Mở file .env, chọn "
+    "Lưu thành (Save As), ở ô Mã hóa (Encoding) chọn UTF-8, lưu đè"
+)
+MSG_ENV_NOT_UTF8 = f"{ENV_RESAVE_UTF8} rồi mở lại app."
+MSG_ENV_UNREADABLE = (
+    "Không đọc được file .env ({error}). Đóng chương trình đang mở file (nếu có), kiểm tra quyền "
+    "đọc file rồi mở lại app."
+)
+
+
 @dataclass(frozen=True)
 class Settings:
     password_hash: str = field(default="", repr=False)
@@ -107,10 +120,7 @@ def load_settings(
     """
     if isinstance(env_file, _DefaultEnvFile):
         env_file = DEFAULT_ENV_FILE
-    values: dict[str, str] = {}
-    if env_file is not None and env_file.is_file():
-        file_values = dotenv_values(env_file, encoding="utf-8")
-        values.update({k: v for k, v in file_values.items() if v is not None})
+    values = {} if env_file is None else _read_env_file(env_file)
     env = os.environ if environ is None else environ
     values.update({name: env[name] for name in ENV_VARS if name in env})
 
@@ -141,6 +151,24 @@ def load_settings(
         gsc_site_url=get("GSC_SITE_URL"),
         image_folders=_parse_folders(get("IMAGE_FOLDERS")),
     )
+
+
+def _read_env_file(env_file: Path) -> dict[str, str]:
+    """Các biến trong ``.env`` (rỗng nếu chưa có file).
+
+    File lưu sai bảng mã (Notepad «ANSI», UTF-16) hay không đọc được thì ném ``ConfigError`` câu
+    cố định, để ``app/main.py`` hiện trang báo lỗi thay vì traceback tiếng Anh có đường dẫn thư mục
+    cài app (SL-T084-1). UTF-8 có BOM (Notepad «UTF-8 with BOM») vẫn đọc đúng: python-dotenv bỏ BOM.
+    """
+    try:
+        if not env_file.is_file():
+            return {}
+        file_values = dotenv_values(env_file, encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ConfigError(MSG_ENV_NOT_UTF8) from exc
+    except OSError as exc:
+        raise ConfigError(MSG_ENV_UNREADABLE.format(error=type(exc).__name__)) from exc
+    return {k: v for k, v in file_values.items() if v is not None}
 
 
 def _parse_folders(raw: str) -> tuple[Path, ...]:

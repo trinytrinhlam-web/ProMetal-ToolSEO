@@ -317,10 +317,6 @@ def test_whole_settings_page_never_shows_env_values_or_paths(project_root, tmp_p
 # ============================================== lỗi có từ trước: .env không đọc được (SL-T084-1)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T084-1: .env không phải UTF-8 làm app sập, hiện traceback có đường dẫn thư mục app",
-)
 @pytest.mark.parametrize(
     "content",
     [

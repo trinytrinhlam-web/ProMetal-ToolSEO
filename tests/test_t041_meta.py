@@ -75,9 +75,11 @@ def test_user_text_with_odd_chars_is_blocked(odd):
     bỏ ký tự rồi chép, ghi); ``value`` vẫn là chữ đã chuẩn hóa, không còn ký tự đó."""
     raw = TITLE.replace("bị", f"b{odd}ị")
     assert normalize_meta(raw) == TITLE and has_odd_chars(raw)
+    # Ký tự chưa gán (U+0378) có câu riêng «chưa nhận ra» (SL-T041-8, T-090).
+    expected = "chưa nhận ra" if odd == chr(0x0378) else "ký tự điều khiển hoặc ký tự lạ"
     for check in (check_title(raw), check_title(raw, ""), check_description(DESC + odd)):
         assert check.level is Level.BLOCK
-        assert "ký tự điều khiển hoặc ký tự lạ" in " ".join(check.messages)
+        assert expected in " ".join(check.messages)
         assert odd not in check.value and check.value.encode("utf-8")
         assert odd not in " ".join(check.messages)
     copy = siteseo_copy(raw, DESC + odd, "cua-sat-bi-xe")

@@ -731,17 +731,19 @@ python_without_new_emoji = pytest.mark.skipif(
 
 
 @python_without_new_emoji
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T041-8: emoji mới hơn bảng Unicode của Python 3.12 (15.0) là ký tự «chưa gán» (Cn): "
-    "tiêu đề, mô tả có emoji Unicode 16 bị Chặn với câu «ký tự điều khiển hoặc ký tự lạ (không "
-    "nhìn thấy…)», gợi ý AI có nó bị bỏ, dù client WordPress ghi được.",
-)
-def test_sl_t041_8_new_emoji_is_not_blocked():
+def test_sl_t041_8_new_emoji_is_blocked_with_accurate_message():
+    """SL-T041-8 theo quyết định Lá Chắn T-041 (giữ Chặn, chỉ sửa câu báo); Chỉ Huy duyệt đổi test
+    này ở T-090 (R5). Client WordPress không từ chối chữ có emoji mới nhưng bỏ mất emoji khi chuẩn
+    hóa, nên cho qua là lặng lẽ mất emoji: ô title, description vẫn Chặn, câu báo nói phần mềm chưa
+    nhận ra ký tự, không nói «không nhìn thấy»."""
     title = f"Cửa sắt bị xệ {NEW_EMOJI} tự kiểm tra hay nên gọi thợ?"
     assert not wp_client_problem(title)  # client WordPress ghi được chữ này
-    assert check_title(title).level is not Level.BLOCK
-    assert check_description(f"{DESC} {NEW_EMOJI}").level is not Level.BLOCK
+    assert NEW_EMOJI not in normalize_meta(title)  # … nhưng chữ ghi đi mất emoji
+    for check in (check_title(title), check_description(f"{DESC} {NEW_EMOJI}")):
+        assert check.level is Level.BLOCK
+        message = " ".join(check.messages)
+        assert "chưa nhận ra" in message
+        assert "không nhìn thấy" not in message
 
 
 def wp_client_problem(text: str) -> str:
