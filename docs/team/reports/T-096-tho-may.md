@@ -293,3 +293,42 @@ $ uv run pytest tests/test_la_chan_t039.py tests/test_la_chan_t096.py tests/test
 - `ArticleImage` lưu thẻ thành 5 trường chữ thay vì một trường `ImageTags` (Lá Chắn gợi ý `tags: ImageTags`): để `vars(image)` của gói dựng ra ghi được JSON (test mã băm `test_digest_changes_exactly_when_sent_content_changes` của Soi Lỗi dùng cách đó, không sửa test của người khác). T-102 dựng bằng `ArticleImage.of(…, tags=draft.tags)`; `.tags` trả `ImageTags` đã kiểm.
 - Mã băm có cả `featured` (lựa chọn của người dùng) lẫn `featured_effective` (ảnh website dùng): đổi lựa chọn mà kết quả như nhau (một ảnh, chọn hay không) vẫn đổi mã băm, theo hướng chặt (phải xác nhận lại).
 - Bài học công cụ: lệnh sửa file của phiên đổi chuỗi `\uXXXX` gõ trong lệnh thành ký tự thật. Đã quét lại mọi file đụng tới ở lượt này (code, test, báo cáo) bằng script, không còn ký tự hướng chữ hay ký tự vô hình trần.
+
+---
+
+## Lượt 4 (2026-10-28 15:49 +07:00, theo lệnh `date`)
+
+Sửa **LC-T096-5** (Thấp) của [Lá Chắn xem lại lượt 3](T-096-la-chan.md), trước khi T-102 nối bộ dựng vào màn hình xác nhận. Nhánh đã được Chỉ Huy tua tới commit gộp `1b45f5d`.
+
+### Tóm tắt (cho chủ dự án)
+
+Đoạn văn **mở đầu bằng một địa chỉ `https://` rồi tới chữ** (ví dụ «https://trang-ngoài/đường-dẫn vài chữ») nay cũng bị Chặn. Lý do: khi mở nháp trong trang quản trị và bấm «Chuyển thành khối», WordPress coi cả đoạn đó là một địa chỉ và nhúng trang ngoài vào bài.
+
+### Đã sửa
+
+| Chỗ | Thay đổi |
+|---|---|
+| `seo_app/publish/review.py` | Hàm mới `_block_editor_embeds`: làm đúng điều kiện `isMatch` của khối Embed (Gutenberg), sau khi bỏ khoảng trắng hai đầu như `trim()` của JavaScript. Chặn khi đủ cả 4: bắt đầu bằng `https://` (không phân biệt hoa thường); có đúng một `https://`; tên máy (trước «/», «?», «#» đầu tiên) không rỗng, không khoảng trắng; tên file cuối (dấu cách tính như `%20`) không khớp `\.(?!(html?|php)$)[a-z0-9]++$` (đúng biểu thức Gutenberg, phân biệt hoa thường, nên «.MP4» vẫn bị Chặn). Lớp này chạy thêm bên cạnh hai biểu thức của WordPress và lớp «khối chỉ có một địa chỉ» (giữ nguyên) |
+| `seo_app/publish/render.py` | Câu báo Chặn nói thêm trường hợp «mở đầu bằng một địa chỉ https:// rồi tới chữ», vẫn bắt đầu «Có N đoạn…» |
+| `tests/test_la_chan_t096.py` | Gỡ 1 dấu `xfail` (4 ca LC-T096-5, đã XPASS), không đổi `assert` |
+| `tests/test_publish_render.py` | **Đổi điều kiện đúng một ca theo duyệt của Chỉ Huy B:** mẫu `<p><a href="https://suachuacuasat.com/x/">https://suachuacuasat.com/x/</a> rồi</p>` chuyển từ `test_embed_patterns_not_found` sang ca mới `test_paragraph_starting_with_one_https_url_then_text_is_found`, nay phải bị bắt (Gutenberg cũng nhúng đoạn này; bộ dựng không sinh được HTML này vì chữ link không được giống địa chỉ). Thêm `test_block_editor_embed_conditions` (13 ca: hoa thường, chỉ tên máy, tham số, đuôi `html`/`php`, đuôi tệp, «.MP4», tên máy rỗng hay có khoảng trắng, hai `https://`, không mở đầu, `http://`) |
+
+Giữ nguyên, vẫn qua: 3 ca canh của Lá Chắn (`Xem https://…`, hai `https://`, chỉ `http://`) và 7 ca «không chặn oan» của Soi Lỗi (giữa câu, hai địa chỉ, `<…>`, link và ảnh Markdown, ký tự rộng 0 đứng đầu, xuống dòng mềm).
+
+### Bằng chứng lượt 4
+
+```
+$ uv run pytest tests/test_la_chan_t096.py tests/test_publish_render.py   # trước khi gỡ dấu
+4 XPASS(strict) (LC-T096-5)
+
+$ uv run pytest tests/test_la_chan_t096.py tests/test_soi_loi_t096.py tests/test_publish_markdown.py \
+    tests/test_publish_render.py tests/test_la_chan_t039.py tests/test_onpage_links.py tests/test_soi_loi_t039.py
+900 passed in 105.24s (0:01:45)
+
+$ uv run ruff check .
+All checks passed!
+```
+
+### Rủi ro lượt 4
+
+- Lớp này xét mọi khối chữ (đoạn, mục danh sách, ô bảng, tiêu đề), còn Gutenberg chỉ xét đoạn `<p>`. Một mục danh sách mở đầu bằng một địa chỉ `https://` rồi tới chữ cũng bị Chặn (chặt hơn, theo cùng hướng với lớp «khối chỉ có một địa chỉ» đã duyệt ở LC-T096-4). Người dùng viết chữ trước địa chỉ là qua.
