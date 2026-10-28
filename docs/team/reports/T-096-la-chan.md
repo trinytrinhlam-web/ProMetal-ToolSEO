@@ -10,6 +10,7 @@
 | Ngày | 2026-10-28 (02:20–03:00 và 07:32–07:50 +07, giờ máy đo bằng `date`; phiên bị ngắt giữa chừng vì hết lượt dùng) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, **1 Trung bình** (LC-T096-1), **3 Thấp mới** (LC-T096-2, -3, -4); giữ mức **Thấp** cho 2 lỗi mới của Soi Lỗi (SL-T096-8, -9). Mỗi lỗi của tôi có test `xfail(strict=True)` trong `tests/test_la_chan_t096.py`. **LC-T094-1 → -10 và LC-T039-2: đóng** (LC-T094-8 trừ phần thẻ ảnh = LC-T096-2; LC-T094-6 đúng hai biểu thức của WordPress, lớp chặt hơn còn LC-T096-4). Không lọt link, HTML, ảnh, chú thích `<!-- wp:… -->`, shortcode. **Gộp `main` được ngay** (bộ dựng chưa được app gọi tới, không có đường đi hôm nay); khuyên một lượt Thợ Máy ngắn sửa LC-T096-1, -3, -4 trước khi gộp (khoảng 10 dòng, đã thử cách sửa); **bắt buộc** xong trước khi T-102 nối bộ dựng vào màn hình xác nhận |
 | **Kết luận xem lại lượt 3** (2026-10-28, `7ea52e8`) | **ĐẠT CÓ ĐIỀU KIỆN**, **gộp `main` được ngay**: 6/6 lỗi đóng (LC-T096-1 → -4, SL-T096-8, -9), không lùi điều kiện đã đóng; còn **1 Thấp mới LC-T096-5** (trước khi T-102 nối bộ dựng). Xem mục [Xem lại lượt 3](#xem-lại-lượt-3-2026-10-28-đầu-nhánh-7ea52e8) |
+| **Kết luận xem lại lượt 4** (2026-10-28, `7da465f`) | **ĐẠT CÓ ĐIỀU KIỆN**, **gộp `main` được**: **LC-T096-5 đóng** (1.993 đoạn Gutenberg nhúng, sót 0; lượt 3 sót 1.023), không chặn oan, R5 đúng, không lùi điều kiện đã đóng, không biểu thức chạy lâu; còn **1 Thấp mới LC-T096-6** (các dạng địa chỉ lạ mà `new URL` vẫn nhận; trước khi T-102 nối bộ dựng). Xem mục [Xem lại lượt 4](#xem-lại-lượt-4-2026-10-28-đầu-nhánh-7da465f) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -208,3 +209,66 @@ Thay các điều kiện 1 → 6 của mục «Điều kiện» ở trên (đã 
 |---|---|---|---|
 | 1 | **LC-T096-5 (Thấp):** lớp chặn nhúng chặt hơn làm đúng điều kiện `isMatch` của Gutenberg (cách sửa ở bảng trên), gỡ 4 dấu `xfail`; đổi điều kiện ca `<p><a …>https://…</a> rồi</p>` của `test_embed_patterns_not_found` (Chỉ Huy duyệt) | Thợ Máy (T-096 lượt 4 ngắn, hoặc phần logic của T-102) | Trước khi T-102 nối bộ dựng |
 | 2 | Điều kiện 7 (T-102: giới hạn cỡ bài khi dựng; hiện `ascii_host`, thẻ ảnh, ảnh đại diện, chữ thô theo `needs_escape`; dựng `ArticleImage.of(…, tags=draft.tags)` cùng trạng thái với `DraftImage`) và điều kiện 8 (kiểm lại bằng Claude Fable sau 01/11) giữ nguyên | Như trên | Như trên |
+
+---
+
+## Xem lại lượt 4 (2026-10-28, đầu nhánh `7da465f`)
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Xem lại rút gọn: diff `1b45f5d..7da465f` (Thợ Máy lượt 4, sửa LC-T096-5; nhánh đã tua tới commit gộp `1b45f5d`): `seo_app/publish/review.py` (+36/−5: `_block_editor_embeds`, `_FILE_EXTENSION`, `_HTTPS`), `render.py` (câu báo Chặn), `tests/test_la_chan_t096.py` (−5, gỡ dấu `xfail`), `tests/test_publish_render.py` (+34/−1). Đọc lại mã Gutenberg `trunk` qua `raw.githubusercontent.com` (không gọi website): `packages/block-library/src/embed/transforms.js` (ba biểu thức `/^https:\/\//i`, `/https:\/\//gi`, `/\.(?!(html?\|php)$)[a-z0-9]+$/i`), `packages/url/src/is-url.ts` (chỉ `new URL(url)` trong `try`), `get-filename.ts` (`new URL(url, 'http://example.com').pathname`, lấy phần sau «/» cuối): bộ so `p_gutenberg_ismatch.js` của tôi khớp |
+| Ngày | 2026-10-28 (16:00–16:30 và 17:30–17:46 +07, giờ máy đo bằng `date`; phiên bị ngắt giữa chừng vì hết lượt dùng) |
+| **Kết luận lượt 4** | **ĐẠT CÓ ĐIỀU KIỆN**, **gộp `main` được**: **LC-T096-5 đóng**; 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp mới: LC-T096-6** (phần còn lại của LC-T096-5: tab trong tên máy, «\», thừa «/», tên đăng nhập có dấu cách), 5 ca `xfail(strict=True)` trong `tests/test_la_chan_t096.py`; sửa vài dòng trước khi T-102 nối bộ dựng (đã giả lập: sót 0, không ca nào khác đổi) |
+
+### Tóm tắt lượt 4 (cho chủ dự án)
+
+- Điểm nhỏ lần trước (đoạn «địa chỉ web + chữ phía sau» bị trình soạn của WordPress biến thành khối nhúng) **đã sửa đúng**: tôi cho bộ dựng chạy với 3.000 đoạn mẫu; cả 1.993 đoạn mà trình soạn sẽ nhúng đều bị chặn (trước khi sửa lọt 1.023). Đoạn có chữ đứng trước địa chỉ, có hai địa chỉ, hay chỉ `http://` vẫn qua bình thường.
+- Còn **1 điểm nhỏ mới (Thấp)**: vài cách viết địa chỉ rất lạ (dấu tab chen trong tên trang, dấu «\», ba dấu «/», tên đăng nhập có dấu cách) trình soạn của WordPress vẫn hiểu là địa chỉ, bộ dựng chưa nhận ra. Người viết hay AI bình thường gần như không viết kiểu này, và theo mã WordPress thì máy chủ từ chối tải phần lớn các dạng đó. Sửa vài dòng (tôi đã thử: hết lọt), làm trước khi nối bộ dựng vào màn hình xác nhận (T-102). Hôm nay chưa có hại vì bộ dựng chưa nối vào giao diện.
+
+### Kiểm từng việc
+
+| Việc | Kết quả | Bằng chứng |
+|---|---|---|
+| 1. LC-T096-5 đóng thật | **Đóng** | `p_gutenberg_compare.py 2 3000` (12 mẫu cố định + 3.000 mẫu ngẫu nhiên, như lượt 3): 2.959 đoạn, Gutenberg nhúng 1.993, **bộ dựng không Chặn 0** (lượt 3: 1.023). 4 ca của tôi qua sau khi gỡ dấu `xfail` |
+| 2. Không chặn oan | **Đạt** | 3 ca canh của tôi (`test_lc5_url_not_at_start_or_not_https_is_not_blocked`) và 7 ca của Soi Lỗi (`test_url_with_other_text_is_not_an_embed`: giữa câu, hai địa chỉ, `<…>`, link và ảnh Markdown, ký tự rộng 0 đứng đầu, xuống dòng mềm) qua; trong bộ so biên, mọi đoạn Gutenberg không nhúng mà bộ dựng Chặn chỉ có dạng đuôi tệp viết hoa (Quan sát lượt 4) |
+| 3. R5 | **Đúng** | `git diff 1b45f5d..7da465f -- tests/`: `test_la_chan_t096.py` chỉ xóa 1 dấu `xfail` (4 ca), không `assert` nào đổi; `test_publish_render.py`: đúng một ca được duyệt (`<p><a …>https://…</a> rồi</p>`) chuyển khỏi `test_embed_patterns_not_found` sang test mới mong được bắt, đúng chữ `"https://suachuacuasat.com/x/ rồi"`; hai ca còn lại của test cũ giữ nguyên; thêm `test_block_editor_embed_conditions` (13 ca) |
+| 4. Không lùi, không chạy lâu | **Đạt** | 7 file test T-096 (đúng bộ Thợ Máy chạy, gồm ca LC-T096-1 → -4, LC-T039-2, SL-T096): **900 passed**. E1 (`p_embed_oracle.py 41 3000`, đúng hai biểu thức `autoembed`, chuỗi gửi kèm `<figure>`): WordPress nhúng 2.193 bài, **sót 0** (chặn thêm 700 do lớp chặt hơn). E2 (`p_markup_fuzz.py 41 1500`, chữ độc qua cả bộ dựng): **0 vi phạm**. Tốc độ (`p_speed96_l4.py`): `_block_editor_embeds`, `embedded_urls`, `build_article` với 10 dạng chữ độc dài (nhiều dấu chấm, chấm và chữ xen kẽ, một đuôi dài, nhiều «/», nhiều «@», tên máy dài, dãy dấu cách, «?#» lặp, «\» lặp, «https:/» lặp), cỡ 200.000 → 800.000 ký tự: tỉ lệ 2,6–6,4 (tuyến tính khoảng 4, ngưỡng dự án 9), lâu nhất 0,19 giây; `_FILE_EXTENSION` dùng lượng từ chiếm hữu `++` nên không quay lui. Ca quét ký tự trần (LC-T096-3) qua |
+| 5. Gộp thử `main` `d1506cb` (T-090, T-097) | **Đạt** | Gốc chung `1b45f5d`; hai bên không chung file nào; `git merge-tree` cây `997ef9b`, **không xung đột**. Commit tạm `dd957c0` (không nhánh, không push), worktree nháp: 21 file (7 file T-096; 8 file T-090: `test_t090_env_bang_ma.py`, `test_t090_meta_emoji_moi.py`, `test_soi_loi_t090.py`, `test_la_chan_t090.py`, `test_onpage_meta.py`, `test_onpage_schema.py`, `test_t041_meta.py`, `test_t041_schema.py`; 4 file T-097: `test_google_service_account.py`, `test_google_sheets.py`, `test_la_chan_t097.py`, `test_soi_loi_t097.py`; `test_config.py`, `test_env_file.py`), 17:36:26 → 17:42:38: **2.378 passed, 7 skipped, 44 xfailed, 0 hỏng**. 44 `xfail` đều là lỗi đã biết có sẵn trên `main` (chạy lại riêng 6 file có dấu `xfail`: 768 passed, 44 xfailed): `test_la_chan_t090.py` 17 (LC-T090-1, -2), `test_la_chan_t097.py` 11, `test_soi_loi_t097.py` 16; không ca nào của T-096. 7 bỏ qua là điều kiện bỏ qua có sẵn |
+
+### Lỗi mới (lượt 4)
+
+| # | Mức | Mô tả | Vị trí | Đường đi thật (đầu vào → hậu quả) | Cách sửa đề xuất |
+|---|---|---|---|---|---|
+| LC-T096-6 | Thấp (phần còn lại của LC-T096-5, cùng điều kiện) | **`_block_editor_embeds` tách tên máy đơn giản hơn bộ phân tích URL của trình duyệt (WHATWG, `new URL`).** Các dạng `new URL` vẫn nhận nên khối Embed vẫn nhúng, mà bộ dựng không Chặn: (a) tab (U+0009) trong hay ngay sau tên máy (WHATWG bỏ tab, xuống dòng ở mọi chỗ); (b) «\» sau tên máy (với `https`, WHATWG coi «\» như «/»); (c) thừa «/» sau `https://` (`https:///evil.example/…`: WHATWG bỏ qua); (d) tên đăng nhập, mật khẩu có dấu cách (`https://a b@evil.example/x`: WHATWG mã hóa thành `%20`, tên máy là phần sau «@») | `seo_app/publish/review.py:334-341` (cắt tên máy chỉ ở «/», «?», «#»; không bỏ tab, không bỏ «/» thừa, không bỏ phần trước «@») | Bộ so biên mới (`p_gutenberg_edge.py`): 36 ca dựng tay, **7 sót** (2 tab, 1 «\», 2 thừa «/», 2 tên đăng nhập); 3.027 đoạn ghép ngẫu nhiên từ các mảnh biên: Gutenberg nhúng 1.272, bộ dựng **sót 752** (tên đăng nhập 272, tab 224, «\» 158, thừa «/» 98). Đường đi: chữ AI hay chữ dán có đoạn mở đầu bằng dạng trên rồi tới chữ → bộ dựng không Chặn → nháp lên WordPress → mở nháp, bấm «Chuyển thành khối» → khối Embed. Hậu quả có lẽ nhỏ hơn LC-T096-5 (đọc mã WordPress, chưa thử trên site): proxy oEmbed làm sạch URL bằng `sanitize_url` (bỏ tab, «\») và `wp_http_validate_url` từ chối URL có tên đăng nhập hay hỏng («///»), nên chỉ dạng tab thành URL hợp lệ, có thể tải trang ngoài vào khung xem trước của trình soạn. Xuống dòng mềm không lọt: bộ chuyển đổi nó thành dấu cách | Trong `_block_editor_embeds`, trước khi tách tên máy làm như WHATWG: bỏ U+0009, U+000A, U+000D; bỏ «/», «\» thừa ngay sau `https://`; «\» cũng là dấu chia (cả khi lấy tên file); tên máy là phần sau «@» cuối cùng. Giả lập (`fixsim6/lc966_fix.py`, khoảng 6 dòng): bộ so cũ 1.993 nhúng, sót 0; bộ so biên 36 ca và 3.027 đoạn, sót 0; 7 file test T-096 cộng test mới: 903 qua, chỉ 5 ca `xfail` LC-T096-6 thành XPASS, không ca nào khác đổi (cả 13 ca của Thợ Máy, 3 ca canh mới của tôi) |
+
+### Quan sát lượt 4 (không tính là lỗi)
+
+- **Đuôi tệp viết hoa:** chú thích của `_FILE_EXTENSION` (`review.py:66-68`) và ca `("https://x.vn/xem video.MP4", True)` của `test_block_editor_embed_conditions` cho rằng biểu thức của Gutenberg phân biệt hoa thường. Mã Gutenberg có cờ `i` (`/\.(?!(html?|php)$)[a-z0-9]+$/i`), nên Gutenberg **không** nhúng `https://x.vn/xem video.MP4`; bộ dựng Chặn: chặt hơn, chỉ chặn oan đoạn mở đầu bằng địa chỉ tệp viết hoa (rất hiếm). Không bắt buộc sửa; nếu muốn khớp thì thêm `re.IGNORECASE` và đổi ca «.MP4» (R5, Chỉ Huy duyệt), hoặc chỉ sửa chú thích.
+- **T-102:** `review.embeds` nay có thể là cả một đoạn chữ của người viết hay AI (ví dụ `"https://suachuacuasat.com/x/ rồi"`), không chỉ một địa chỉ. Màn hình xác nhận phải hiện mục này như chữ thường đã escape (U1) và cắt ngắn khi dài; gộp vào điều kiện 7.
+- Lớp mới xét mọi khối chữ (mục danh sách, ô bảng, tiêu đề), Gutenberg chỉ xét `<p>`: chặt hơn, cùng hướng với LC-T096-4 đã duyệt (Thợ Máy đã ghi).
+
+### Tự sửa file test của tôi (`tests/test_la_chan_t096.py`, lượt 4)
+
+Thêm mục LC-T096-6 ở lời mô tả và cuối file: `test_lc6_url_forms_new_url_accepts_are_blocked` (5 ca `xfail(strict=True)`: tab trong tên máy, tab sau tên máy, «\», thừa «/», tên đăng nhập có dấu cách) và `test_lc6_invalid_url_with_text_is_not_blocked` (3 ca canh: dấu cách ngay sau tên máy, cổng có dấu cách, dấu cách không ngắt trong tên máy: `new URL` từ chối nên không được Chặn). Ký tự lạ viết bằng `chr(…)`; quét lại: không ký tự trần. Không đổi ca cũ nào.
+
+### Kết quả công cụ quét (lượt 4)
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pytest, nhánh | 7 file test T-096 (bộ Thợ Máy chạy): **900 passed in 116.37s**. `tests/test_la_chan_t096.py` sau khi thêm LC-T096-6: **36 passed, 5 xfailed** | Có |
+| pytest, giả lập sửa LC-T096-6 | `PYTHONPATH=<fixsim6> uv run pytest -p lc966_fix` 7 file + test mới: 903 passed, 5 failed (đúng 5 ca `XPASS(strict)` LC-T096-6) | Có |
+| Thử gộp với `main` | Xem việc 5 | Có |
+| ruff | `uv run ruff check .`: `All checks passed!`; `ruff format --check tests/test_la_chan_t096.py`: đã định dạng | Có |
+| bandit | `review.py`, `render.py` (916 dòng): **No issues identified** | Có |
+| detect-secrets | **Đặt `PYTHONUTF8=1`**, `--all-files` trong thư mục nháp: 5 file đổi ở lượt 4 (kèm file test của tôi), bản vá `git log -p 1b45f5d..7da465f`, **file mồi có chữ tiếng Việt**: mồi bắt 2/2; còn lại 0. Soát bản vá theo dạng khóa: 0 | Có. Đã xóa file mồi |
+
+### Điều kiện (lượt 4)
+
+Thay điều kiện 1 của mục «Điều kiện (lượt 3)» (LC-T096-5: đã xong). Còn:
+
+| # | Điều kiện | Phiếu nhận | Hạn |
+|---|---|---|---|
+| 1 | **LC-T096-6 (Thấp):** `_block_editor_embeds` tách tên máy như WHATWG (cách sửa ở bảng trên), gỡ 5 dấu `xfail` (R5) | Thợ Máy (T-096 lượt 5 ngắn, hoặc phần logic của T-102) | Trước khi T-102 nối bộ dựng |
+| 2 | Điều kiện 7 (T-102), thêm: hiện `review.embeds` như chữ thường đã escape, cắt ngắn (Quan sát lượt 4); điều kiện 8 (kiểm lại bằng Claude Fable sau 01/11) giữ nguyên | Như trên | Như trên |
+
+Script thử của lượt này (thư mục ghi chú chung `T-096-la-chan-scripts/`, chạy trong worktree `PYTHONUTF8=1 uv run python <script>`): `p_gutenberg_edge.py [hạt giống] [số mẫu]` (ca biên WHATWG), `p_run_fixed.py <tên script> …` (chạy bộ so với bản vá giả lập `fixsim6/lc966_fix.py`), `p_speed96_l4.py` (tốc độ lớp mới).

@@ -26,6 +26,13 @@ LC-T096-1 → -4 đã sửa ở lượt 3 (Thợ Máy gỡ dấu ``xfail``, khô
   ``php``) nhận cả đoạn «địa chỉ + chữ phía sau», vì ``new URL`` nhận dấu cách trong đường dẫn,
   tham số: ``<p>https://evil.example/trang nội dung</p>`` thành khối nhúng khi «Chuyển thành khối».
 
+LC-T096-5 đã sửa ở lượt 4 (``review._block_editor_embeds``; Thợ Máy gỡ dấu ``xfail``).
+
+- LC-T096-6 (Thấp, xem lại lượt 4): ``_block_editor_embeds`` tách tên máy đơn giản hơn bộ phân tích
+  URL của trình duyệt (WHATWG, ``new URL``): WHATWG bỏ tab, xuống dòng ở mọi chỗ, coi «\\» như «/»,
+  bỏ qua «/» thừa sau ``https://``, tên máy là phần sau «@». Đoạn mở đầu bằng các dạng đó rồi tới
+  chữ vẫn thành khối nhúng khi «Chuyển thành khối» mà bộ dựng không Chặn.
+
 Không gọi mạng: danh sách bài dựng tay.
 """
 
@@ -219,4 +226,44 @@ def test_lc5_paragraph_starting_with_one_https_url_is_blocked(body):
 def test_lc5_url_not_at_start_or_not_https_is_not_blocked(body):
     """Canh: trình soạn khối không nhúng các đoạn này (không bắt đầu bằng https://, có hai
     https://, hay chỉ http://), nên không Chặn oan."""
+    assert not _review(body).blocked
+
+
+# ------------------------------------------------------------------ LC-T096-6
+
+TAB, BS, NBSP = chr(9), chr(92), chr(0xA0)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="LC-T096-6: new URL (WHATWG) bỏ tab, coi «\\» như «/», bỏ qua «/» thừa, bỏ tên đăng "
+    "nhập; _block_editor_embeds không làm vậy nên đoạn vẫn thành khối nhúng mà không bị Chặn",
+)
+@pytest.mark.parametrize(
+    "body",
+    [
+        f"https://evil.ex{TAB}ample/trang nội dung",
+        f"https://evil.example{TAB}/trang nội dung",
+        f"https://evil.example{BS}{BS}trang nội dung",  # Markdown «\\» → một dấu «\»
+        "https:///evil.example/trang nội dung",
+        "https://tên đăng nhập@evil.example/trang",
+    ],
+    ids=["tab-trong-ten-may", "tab-sau-ten-may", "gach-nguoc", "thua-gach", "ten-dang-nhap"],
+)
+def test_lc6_url_forms_new_url_accepts_are_blocked(body):
+    assert _review(body).blocked
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "https://evil.example xem thêm",
+        "https://evil.example: 443/trang xem",
+        f"https://evil.example{NBSP}/trang xem",
+    ],
+    ids=["dau-cach-sau-ten-may", "cong-co-dau-cach", "nbsp-trong-ten-may"],
+)
+def test_lc6_invalid_url_with_text_is_not_blocked(body):
+    """Canh hướng sửa LC-T096-6: ``new URL`` từ chối các đoạn này (tên máy có khoảng trắng: dấu
+    cách, cổng có dấu cách, dấu cách không ngắt), trình soạn khối không nhúng: không Chặn oan."""
     assert not _review(body).blocked
