@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-29 00:41 · Chỉ Huy B
+
+- Gộp **T-091** và **T-096 lượt 5**. Windows 19.888 test qua, 0 hỏng. T-096 xong hẳn; T-102 chỉ còn chờ T-099, T-100.
+- T-103 đạt đủ (Soi Lỗi 2 lượt ĐẠT, Lá Chắn ĐẠT CÓ ĐIỀU KIỆN): gộp ở lượt test toàn bộ kế tiếp; sau đó báo T-100 gộp `main` vào nhánh để gỡ `xfail` LC-T103-1.
+- Đang chạy: Soi Lỗi T-100 (Chỉ Huy duyệt A: khuôn nháp 3, đổi 9 dòng test cũ), Thợ Máy T-099 (nhánh đã có T-091; duyệt đổi 1 test canh status `test_soi_loi_t037.py`), Thợ Máy T-104.
+- Hàng đợi (máy rảnh): T-093, T-092; việc giao diện cảnh báo `unfiltered_html` trên trang Kết nối (Họa Sĩ, chưa lập phiếu).
+
 ### 2026-10-28 23:14 · Chỉ Huy B
 
 - Gộp **T-097 lượt 2**, **T-098 lượt 4**. Windows 19.645 test qua, 0 hỏng. T-097, T-098 xong hẳn; SL-T097-5 gom vào T-100.
