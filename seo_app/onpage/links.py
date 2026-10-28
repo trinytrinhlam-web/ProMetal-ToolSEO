@@ -30,6 +30,7 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
+from bisect import bisect_right
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from encodings.idna import ToASCII, nameprep
@@ -43,7 +44,13 @@ from pydantic import BaseModel, Field
 from seo_app.content.models import Section
 from seo_app.content.rules import IGNORABLE_NOT_CF
 from seo_app.onpage.meta import SLUG_TRAILING_STOPWORDS, Level, has_link, worst
-from seo_app.sanitize import DANGEROUS_TAGS, is_safe_url
+from seo_app.sanitize import (
+    _ENTITY,
+    _ESCAPABLE,
+    DANGEROUS_TAGS,
+    _entity_value,
+    is_safe_url,
+)
 from seo_app.storage.site_index import SiteIndex
 from seo_app.text import remove_accents
 from seo_app.wordpress.client import PublishedItem, is_site_link
@@ -392,6 +399,7 @@ def _related(
 # Ký tự Markdown/HTML: cụm từ có chúng thì chữ trong bài và chữ hiện ra khác nhau (``**``, ``[``,
 # ``<``…), hoặc là chỗ "[cần bổ sung: …]". Gợi ý có chúng bị bỏ.
 _MARKUP_CHARS = frozenset("*_`\\[]<>|~")
+_LIST_MARKER_WORD = re.compile(r"[-+*]|[0-9]{1,9}[.)]")  # dấu mục danh sách (``_is_list_item``)
 _HIDDEN_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Co", "Cn"})
 
 
@@ -404,6 +412,10 @@ def _anchor_words(anchor: object) -> tuple[list[str], str]:
         return [], "cụm từ dài quá"
     # NFC: chữ có dấu dựng sẵn và chữ tổ hợp (dán từ máy Mac) nhìn y hệt nhau là một (SL-T039-1).
     words = unicodedata.normalize("NFC", anchor).split()
+    if len(words) > 1 and _LIST_MARKER_WORD.fullmatch(words[0]):
+        # AI chép cả dấu mục danh sách («- Kéo cửa…», «1. Tháo…»): HTML có «<li>» thay cho dấu
+        # đó, nên bỏ dấu, giữ phần chữ (SL-T096-2).
+        words = words[1:]
     text = " ".join(words)
     if not text:
         return [], "cụm từ trống"
@@ -464,15 +476,133 @@ def _mask_brackets(text: str) -> str:
 
 
 # ------------------------------------------------------------------ đoạn văn trong Markdown
+#
+# Các hàm dưới đây dùng chung với bộ chuyển Markdown → HTML (``seo_app/publish/markdown.py``,
+# T-096): bước SEO (``markdown_blocks``) và bài gửi đi đọc Markdown cùng một cách, nên cụm từ bước
+# SEO nhận thì bộ dựng chèn được, đúng đoạn (SL-T096-2, SL-T096-7).
+
+_BACKTICK_RUN = re.compile(r"`+")
+_BACKSLASH_OR_BACKTICK = re.compile(r"[\\`]")
+MAX_TABLE_COLUMNS = 30  # bảng nhiều cột hơn thì mỗi dòng là một đoạn văn
+_TABLE_DELIMITER = re.compile(r"^\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$")
 
 
-def _mask_code(line: str) -> str:
-    """Che chữ từ dấu "`" đầu tới dấu "`" cuối của dòng (đoạn `mã`; che rộng cho chắc)."""
-    first = line.find("`")
-    last = line.rfind("`")
-    if first == last:
-        return line
-    return line[:first] + "\x00" * (last + 1 - first) + line[last + 1 :]
+def _code_spans(text: str) -> dict[int, tuple[int, int]]:
+    """Đoạn `mã` trong chữ một khối, như CommonMark: {đầu: (cuối, số dấu huyền)}.
+
+    Dãy dấu huyền mở đoạn mã, đóng ở dãy gần nhất phía sau có **đúng** cùng số dấu; không có thì
+    là chữ thường. Dấu huyền sau "\\" là chữ (không mở). Tuyến tính: vị trí các dãy tính sẵn,
+    tìm dãy đóng bằng ``bisect``."""
+    runs: dict[int, list[int]] = {}
+    for match in _BACKTICK_RUN.finditer(text):
+        runs.setdefault(len(match.group()), []).append(match.start())
+    spans: dict[int, tuple[int, int]] = {}
+    i, n = 0, len(text)
+    while (match := _BACKSLASH_OR_BACKTICK.search(text, i)) is not None:
+        i = match.start()
+        if text[i] == "\\":
+            i += 2 if i + 1 < n and text[i + 1] in _ESCAPABLE else 1
+            continue
+        end = i
+        while end < n and text[end] == "`":
+            end += 1
+        size = end - i
+        starts = runs.get(size, [])
+        k = bisect_right(starts, i)
+        if k == len(starts):
+            i = end
+            continue
+        spans[i] = (starts[k] + size, size)
+        i = starts[k] + size
+    return spans
+
+
+def _fence_open(stripped: str) -> str:
+    """Rào mở khối mã: «```» hay «~~~»; không phải rào thì "". Rào bằng dấu huyền mà phía sau
+    còn dấu «`» thì không phải rào (CommonMark 4.5): dòng đó là đoạn văn có `mã` (SL-T096-7)."""
+    if stripped.startswith("~~~"):
+        return "~~~"
+    if stripped.startswith("```") and "`" not in stripped.lstrip("`"):
+        return "```"
+    return ""
+
+
+def _is_thematic_break(stripped: str) -> bool:
+    return _is_rule(stripped, "-*_") and len(stripped.replace(" ", "")) >= 3
+
+
+def _table_cells(row: str) -> list[str]:
+    """Ô của một dòng bảng: tách ở "|" không có "\\" đứng trước, bỏ "|" ở hai đầu."""
+    body = row.strip()
+    if body.startswith("|"):
+        body = body[1:]
+    if body.endswith("|") and not body.endswith("\\|"):
+        body = body[:-1]
+    cells: list[str] = []
+    current: list[str] = []
+    i = 0
+    while i < len(body):
+        if body[i] == "\\" and body[i + 1 : i + 2] == "|":
+            current.append("|")
+            i += 2
+            continue
+        if body[i] == "|":
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(body[i])
+        i += 1
+    cells.append("".join(current).strip())
+    return cells
+
+
+def _table_width(rows: Sequence[str]) -> int | None:
+    """Số cột nếu các dòng «|…» liền nhau là bảng GFM (dòng 2 là dòng kẻ cùng số cột với dòng 1,
+    không quá ``MAX_TABLE_COLUMNS``); không thì None (mỗi dòng là một đoạn văn)."""
+    if len(rows) < 2 or not _TABLE_DELIMITER.match(rows[1].strip()):
+        return None
+    width = len(_table_cells(rows[0]))
+    if len(_table_cells(rows[1])) != width or width > MAX_TABLE_COLUMNS:
+        return None
+    return width
+
+
+def _visible_markdown(text: str) -> str:
+    """Chữ một khối Markdown như người đọc thấy, giữ để tìm cụm từ (bước SEO, SL-T096-2):
+
+    - đoạn `mã` thành "\\x00" (không chèn link vào mã);
+    - xuống dòng cứng (hai dấu cách hay "\\" cuối dòng) thành "\\x00": HTML có ``<br>`` ở đó nên
+      cụm từ không được vắt qua;
+    - "\\" trước dấu câu ASCII bỏ đi, mã ký tự ``&…;`` hợp lệ giải mã (như bộ chuyển);
+    - rồi che chỗ "[…]" (``_mask_brackets``).
+    """
+    spans = _code_spans(text)
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if i in spans:
+            end = spans[i][0]
+            out.append("\x00" * (end - i))
+            i = end
+        elif char == "\\" and i + 1 < n and text[i + 1] in _ESCAPABLE:
+            out.append(text[i + 1])
+            i += 2
+        elif char == "\\" and i + 1 < n and text[i + 1] == "\n":
+            out.append("\x00")
+            i += 2
+        elif char == "\n":
+            hard = i >= 2 and text[i - 2 : i] == "  "
+            out.append("\x00" if hard else "\n")
+            i += 1
+        elif char == "&" and (match := _ENTITY.match(text, i)) is not None:
+            value = _entity_value(match)
+            out.append(value if value is not None else match.group())
+            i = match.end()
+        else:
+            out.append(char)
+            i += 1
+    return _mask_brackets("".join(out))
 
 
 def _is_atx_heading(stripped: str, indent: int) -> bool:
@@ -503,9 +633,11 @@ def markdown_blocks(body: str) -> list[str]:
     """Các đoạn văn (khối) chèn link được trong thân một phần, theo thứ tự.
 
     Mỗi đoạn văn, mỗi mục danh sách, mỗi dòng bảng là một khối. Bỏ hẳn: tiêu đề con (``###``,
-    dòng gạch dưới ``===``/``---``), khối mã (```` ``` ````, ``~~~``). Đoạn `mã` và chỗ "[…]" bị
-    che. Đọc gần đúng như bộ chuyển Markdown; chỗ đọc khác thì ``apply_links`` không tìm thấy cụm
-    từ và báo bỏ qua (không bao giờ chèn sai chỗ).
+    dòng gạch dưới ``===``/``---``), khối mã (```` ``` ````, ``~~~``; dòng «```chữ```» không mở
+    khối mã). Chữ của khối là chữ người đọc thấy (``_visible_markdown``: `mã`, xuống dòng cứng,
+    chỗ "[…]" bị che; "\\" escape, ``&…;`` giải mã); ô thừa cột của bảng bị bỏ như bảng GFM. Đọc
+    cùng cách với bộ chuyển Markdown (``seo_app/publish/markdown.py``); chỗ còn đọc khác thì
+    ``apply_links`` không tìm thấy cụm từ và báo bỏ qua (không bao giờ chèn sai chỗ).
     """
     blocks: list[str] = []
     current: list[str] = []
@@ -513,34 +645,84 @@ def markdown_blocks(body: str) -> list[str]:
 
     def flush() -> None:
         if current:
-            blocks.append(_mask_brackets("\n".join(current)))
+            blocks.append(_visible_markdown("\n".join(current)))
             current.clear()
 
-    for line in body.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    lines = body.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.strip()
         indent = len(line) - len(line.lstrip(" "))
+        i += 1
         if fence:
             if stripped.startswith(fence):
                 fence = ""
             continue
-        if stripped.startswith(("```", "~~~")):
+        if opened := _fence_open(stripped):
             flush()
-            fence = stripped[:3]
+            fence = opened
         elif not stripped or _is_atx_heading(stripped, indent):
             flush()
         elif current and _is_rule(stripped, "=-"):
             current.clear()  # dòng gạch dưới: cả khối phía trên là tiêu đề
-        elif _is_rule(stripped, "-*_") and len(stripped.replace(" ", "")) >= 3:
+        elif _is_thematic_break(stripped):
             flush()  # đường kẻ ngang
+        elif stripped.startswith("|"):
+            flush()
+            rows = [line]
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                rows.append(lines[i])
+                i += 1
+            width = _table_width(rows)
+            for number, row in enumerate(rows):
+                if width is not None and number >= 2:
+                    cells = _table_cells(row)
+                    if len(cells) > width:  # ô thừa cột: bảng GFM bỏ, HTML không có
+                        kept = (cell.replace("|", "\\|") for cell in cells[:width])
+                        row = "| " + " | ".join(kept) + " |"
+                blocks.append(_visible_markdown(row))
         else:
-            table_row = stripped.startswith("|")
-            if table_row or _is_list_item(stripped):
+            # Tiêu đề, kẻ ngang nằm trong trích dẫn hay mục danh sách («> ### …», «- ### …»,
+            # «> ---» dưới một dòng trích dẫn): bộ chuyển dựng thành <h3>, <hr> nên không phải
+            # chữ chèn link được (SL-T096-8).
+            inner = _quote_or_item_text(stripped)
+            quoted = stripped.startswith(">")
+            if inner is not None and _is_atx_heading(inner, 0):
                 flush()
-            current.append(_mask_code(line))
-            if table_row:
+                continue
+            if (
+                quoted
+                and current
+                and current[-1].strip().startswith(">")
+                and _is_rule(inner or "", "=-")
+            ):
+                current.clear()  # dòng gạch dưới trong trích dẫn: dòng trên là tiêu đề
+                continue
+            if quoted and _is_thematic_break(inner or ""):
                 flush()
+                continue
+            if _is_list_item(stripped):
+                flush()
+            current.append(line)
     flush()
     return blocks
+
+
+def _quote_or_item_text(stripped: str) -> str | None:
+    """Chữ sau các dấu «>» của dòng trích dẫn (kể cả lồng), hay sau dấu mục danh sách; dòng
+    khác: None."""
+    if stripped.startswith(">"):
+        i, n = 0, len(stripped)
+        while i < n and stripped[i] == ">":  # duyệt theo chỉ số: tuyến tính cả «> > > …» dài
+            i += 1
+            while i < n and stripped[i] in " \t":
+                i += 1
+        return stripped[i:]
+    if _is_list_item(stripped):
+        parts = stripped.split(None, 1)
+        return parts[1] if len(parts) == 2 else ""
+    return None
 
 
 # ------------------------------------------------------------------ kiểm gợi ý của AI (A2)
@@ -794,7 +976,7 @@ def _masked_runs(runs: Sequence[_Run]) -> list[str]:
     """Chữ của từng nút chữ, che chỗ "[…]" theo **đoạn văn** chứ không theo nút chữ: "[cần bổ
     sung: <strong>giá</strong> thay ray mới]" bị thẻ cắt thành nhiều nút chữ vẫn bị che hết
     (SL-T039-2). Như ``markdown_blocks``: "[" không có "]" thì che tới hết đoạn, và dấu ngoặc
-    trong ``<code>`` không tính (``_mask_code`` che `mã` trước khi che "[…]": SL-T039-8). Dấu
+    trong ``<code>`` không tính (``markdown_blocks`` che `mã` trước khi che "[…]": SL-T039-8). Dấu
     ngoặc ở mọi nút chữ khác người đọc thấy đều tính, cả nút không chèn được (link có sẵn…)."""
     unclosed: set[tuple[str, int]] = set()  # đoạn văn còn "[" chưa đóng
     masked: list[str] = []
@@ -926,15 +1108,47 @@ def place_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex)
     for r in sorted(inserts):
         run = runs[r]
         start, end, href = inserts[r]
+        # LC-T039-2, SL-T096-6: "[" "]" vốn đã vô hiệu trong HTML gốc (``&#91;``, T-061) thì in lại
+        # vẫn vô hiệu; chỉ "[" "]" vốn trần (HTML chưa lọc) mới giữ trần, không đổi chữ gốc.
+        literal = _literal_chars(html_text[run.start : run.end], run.text)
         out.append(html_text[previous : run.start])
-        out.append(html.escape(run.text[:start], quote=False))
+        out.append(_reprint(run.text, 0, start, literal))
         out.append(f'<a href="{html.escape(href, quote=True)}">')
-        out.append(html.escape(run.text[start:end], quote=False))
+        out.append(_reprint(run.text, start, end, literal))
         out.append("</a>")
-        out.append(html.escape(run.text[end:], quote=False))
+        out.append(_reprint(run.text, end, len(run.text), literal))
         previous = run.end
     out.append(html_text[previous:])
     return LinkPlacement("".join(out), tuple(applied), tuple(skipped))
+
+
+# Mã ký tự đúng như ``html.unescape`` của thư viện chuẩn đọc (có hoặc không ";").
+_CHARREF = re.compile(r"&(#[0-9]+;?|#[xX][0-9a-fA-F]+;?|[^\t\n\f <&#;]{1,32};?)")
+_TEXT_ESCAPES = {"&": "&amp;", "<": "&lt;", ">": "&gt;", "[": "&#91;", "]": "&#93;"}
+
+
+def _literal_chars(source: str, text: str) -> list[bool] | None:
+    """Với mỗi ký tự của ``text`` (= ``html.unescape(source)``, chữ của một nút chữ): đúng nếu
+    ký tự đó có nguyên văn trong ``source``, sai nếu giải mã từ ``&…;``. Lệch độ dài: None."""
+    flags: list[bool] = []
+    position = 0
+    for match in _CHARREF.finditer(source):
+        flags.extend([True] * (match.start() - position))
+        flags.extend([False] * len(html.unescape(match.group())))
+        position = match.end()
+    flags.extend([True] * (len(source) - position))
+    return flags if len(flags) == len(text) else None
+
+
+def _reprint(text: str, start: int, end: int, literal: list[bool] | None) -> str:
+    """In lại ``text[start:end]`` thành chữ HTML: escape ``&``, ``<``, ``>``; "[" "]" vô hiệu
+    (``&#91;`` ``&#93;``) trừ khi vốn trần trong HTML gốc (``literal``); không rõ thì vô hiệu."""
+    return "".join(
+        char
+        if char in "[]" and literal is not None and literal[k]
+        else _TEXT_ESCAPES.get(char, char)
+        for k, char in enumerate(text[start:end], start)
+    )
 
 
 def apply_links(html_text: str, links: Iterable[InternalLink], index: SiteIndex) -> str:

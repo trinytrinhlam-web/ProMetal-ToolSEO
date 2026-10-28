@@ -1,4 +1,4 @@
-"""Lá Chắn T-039: test chứng minh LC-T039-2 (Thấp), ``xfail(strict=True)`` tới khi sửa.
+"""Lá Chắn T-039: test chứng minh LC-T039-2 (Thấp); đã sửa ở T-096, bỏ ``xfail``.
 
 ``place_links`` in lại chữ của nút chữ được chèn link bằng ``html.escape``, không vô hiệu "[" "]"
 (T-061): chạy trên HTML đã qua ``sanitize_html`` (thứ tự khuyên dùng) thì "&#91;…&#93;" ở nút
@@ -40,12 +40,9 @@ SHORTCODE_HTML = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T039-2: place_links in lại '[' ']' trần ở nút chữ được chèn link",
-)
 @pytest.mark.parametrize("raw", SHORTCODE_HTML)
 def test_lc2_applied_text_keeps_shortcodes_neutralized(raw):
+    # LC-T039-2 đã sửa ở T-096 (``place_links`` vô hiệu lại "[" "]" ở nút chữ đã lọc): bỏ xfail.
     clean = sanitize_html(raw)
     assert "[" not in clean and "]" not in clean  # điều kiện đầu: T-061 đã vô hiệu
     placed = place_links(clean, [LINK], INDEX)
