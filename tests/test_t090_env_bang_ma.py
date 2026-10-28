@@ -6,6 +6,10 @@ traceback tiếng Anh có đường dẫn thư mục cài app. Nay: ``ConfigErro
 đường dẫn, không nội dung ``.env``, không câu lỗi gốc), app hiện trang báo lỗi; lưu lại ``.env``
 bằng UTF-8 rồi tải lại trang là ra màn đăng nhập.
 
+Lượt 2 (đề xuất 3): ``scripts/hash_password.py`` (bấm đúp ``set_password``) cũng báo câu tiếng Việt
+cố định thay cho traceback: ``.env`` sai bảng mã thì báo ngay, chưa bắt gõ mật khẩu; không đọc hay
+ghi được ``.env`` thì báo kèm tên loại lỗi; file giữ nguyên.
+
 Chỉ dùng ``.env`` giả trong thư mục tạm (không đọc ``.env`` thật, khóa trong test là chữ giả).
 """
 
@@ -17,9 +21,10 @@ from pathlib import Path
 import pytest
 import test_settings_images as si
 from streamlit.testing.v1 import AppTest
+from test_hash_password_script import load_script
 
 import seo_app.config as config
-from seo_app.auth import hash_password
+from seo_app.auth import hash_password, verify_password
 from seo_app.config import MSG_ENV_NOT_UTF8, ConfigError, load_settings
 
 PASSWORD = "mat-khau-thu-t090"
@@ -149,3 +154,116 @@ def test_app_shows_clear_error_page_then_login_after_fix(project_root, tmp_path,
     at.button[0].click().run()
     assert not at.exception, [e.value for e in at.exception]
     assert at.session_state["authenticated"]
+
+
+# ============================================================ lượt 2: set_password
+
+
+def never_asked(prompt=""):
+    raise AssertionError("không được bắt gõ mật khẩu khi .env hỏng")
+
+
+def typed(prompt=""):
+    return PASSWORD
+
+
+def run_set_password(project_root, monkeypatch, env_path: Path, getpass, argv=()):
+    """Chạy ``main`` của ``scripts/hash_password.py`` với ``.env`` giả, trả (mã thoát, module)."""
+    script = load_script(project_root)
+    monkeypatch.setattr(script, "DEFAULT_ENV_FILE", env_path)
+    monkeypatch.setattr(script.getpass, "getpass", getpass)
+    return script.main(list(argv)), script
+
+
+@pytest.mark.parametrize("content", BAD_FILES.values(), ids=BAD_FILES.keys())
+def test_set_password_with_env_in_other_encoding_stops_before_asking(
+    project_root, tmp_path, monkeypatch, capsys, content
+):
+    """Bấm set_password khi ``.env`` lưu sai bảng mã: báo ngay câu cố định (lưu lại bằng UTF-8 rồi
+    chạy lại set_password), chưa bắt gõ mật khẩu, không traceback, không đường dẫn, không nội dung
+    ``.env``; file giữ nguyên từng byte."""
+    env_path = tmp_path / ".env"
+    env_path.write_bytes(content)
+    code, script = run_set_password(project_root, monkeypatch, env_path, never_asked)
+    assert code == 1
+    shown = capsys.readouterr()
+    assert shown.out.strip() == f"Chưa đặt được mật khẩu. {script.MSG_ENV_NOT_UTF8}"
+    assert script.MSG_ENV_NOT_UTF8.endswith("lưu đè rồi chạy lại set_password.")
+    assert_no_leak(shown.out + shown.err, project_root, env_path, tmp_path)
+    assert env_path.read_bytes() == content
+
+
+@pytest.mark.parametrize("bom", [b"", b"\xef\xbb\xbf"], ids=["utf8", "utf8-bom"])
+def test_set_password_after_resave_as_utf8_works(project_root, tmp_path, monkeypatch, bom):
+    """Làm theo câu báo (lưu lại UTF-8, có hay không BOM) rồi chạy lại: mật khẩu mới được lưu, app
+    đọc được, các dòng khác giữ nguyên."""
+    env_path = tmp_path / ".env"
+    env_path.write_bytes(bom + TEXT.encode("utf-8"))
+    code, _ = run_set_password(project_root, monkeypatch, env_path, typed)
+    assert code == 0
+    settings = load_settings(env_path, environ={})
+    assert verify_password(PASSWORD, settings.password_hash)
+    assert settings.image_folders == (Path(FOLDER),) and settings.anthropic_api_key == FAKE_KEY
+
+
+def test_set_password_cannot_write_env(project_root, tmp_path, monkeypatch, capsys):
+    """Đọc được mà không ghi được ``.env`` (chỉ đọc, đang bị khóa): sau khi gõ mật khẩu thì báo câu
+    cố định kèm tên loại lỗi, không traceback, không đường dẫn; file giữ nguyên."""
+
+    class Unwritable(type(tmp_path)):
+        def write_text(self, *args, **kwargs):
+            raise PermissionError(13, "Permission denied", str(self))
+
+    env_path = Unwritable(tmp_path / ".env")
+    env_path.write_bytes(TEXT.encode("utf-8"))
+    code, _ = run_set_password(project_root, monkeypatch, env_path, typed)
+    assert code == 1
+    shown = capsys.readouterr()
+    assert "Chưa lưu mật khẩu mới. Không ghi được file .env (PermissionError)." in shown.out
+    assert_no_leak(shown.out + shown.err, project_root, env_path, tmp_path)
+    assert env_path.read_text(encoding="utf-8") == TEXT
+
+
+def test_set_password_env_unreadable_gives_fixed_message(project_root, tmp_path):
+    """``.env`` có mà không mở được để đọc: câu cố định kèm tên loại lỗi, không đường dẫn."""
+    script = load_script(project_root)
+
+    class Unreadable(type(tmp_path)):
+        def read_text(self, *args, **kwargs):
+            raise PermissionError(13, "Permission denied", str(self))
+
+    env_path = Unreadable(tmp_path / ".env")
+    env_path.write_bytes(TEXT.encode("utf-8"))
+    with pytest.raises(ConfigError) as given:
+        script.read_env_lines(env_path)
+    assert str(given.value).startswith("Không đọc được file .env (PermissionError).")
+    assert_no_leak(str(given.value), env_path, tmp_path)
+
+
+def test_set_password_cannot_create_env_from_template(project_root, tmp_path, monkeypatch):
+    """Chưa có ``.env`` mà chép ``.env.example`` sang không được: câu cố định, không đường dẫn."""
+    script = load_script(project_root)
+    template = tmp_path / ".env.example"
+    template.write_text("APP_PASSWORD_HASH=\n", encoding="utf-8")
+    env_path = tmp_path / ".env"
+
+    def no_copy(*args, **kwargs):
+        raise PermissionError(13, "Permission denied", str(env_path))
+
+    monkeypatch.setattr(script.shutil, "copyfile", no_copy)
+    with pytest.raises(ConfigError) as given:
+        script.set_env_value(env_path, script.KEY, "moi", template)
+    assert str(given.value).startswith("Không ghi được file .env (PermissionError).")
+    assert_no_leak(str(given.value), env_path, tmp_path)
+    assert not env_path.exists()
+
+
+def test_print_mode_does_not_need_env(project_root, tmp_path, monkeypatch, capsys):
+    """Canh: ``--print`` (chỉ in mã băm, không ghi file) vẫn chạy khi ``.env`` hỏng, không đụng
+    file."""
+    env_path = tmp_path / ".env"
+    env_path.write_bytes(BAD_FILES["ansi-cp1252"])
+    code, script = run_set_password(project_root, monkeypatch, env_path, typed, ["--print"])
+    assert code == 0
+    assert f"{script.KEY}=" in capsys.readouterr().out
+    assert env_path.read_bytes() == BAD_FILES["ansi-cp1252"]

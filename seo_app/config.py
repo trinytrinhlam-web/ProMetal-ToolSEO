@@ -41,10 +41,12 @@ class ConfigError(ValueError):
 
 
 # Câu cố định (SL-T084-1): không chép đường dẫn, không chép nội dung ``.env`` hay câu lỗi gốc.
-MSG_ENV_NOT_UTF8 = (
+# Phần đầu dùng chung với ``scripts/hash_password.py`` (bước cuối ở đó là chạy lại script).
+ENV_RESAVE_UTF8 = (
     "File .env không đọc được dạng UTF-8 (thường do Notepad lưu kiểu «ANSI»). Mở file .env, chọn "
-    "Lưu thành (Save As), ở ô Mã hóa (Encoding) chọn UTF-8, lưu đè rồi mở lại app."
+    "Lưu thành (Save As), ở ô Mã hóa (Encoding) chọn UTF-8, lưu đè"
 )
+MSG_ENV_NOT_UTF8 = f"{ENV_RESAVE_UTF8} rồi mở lại app."
 MSG_ENV_UNREADABLE = (
     "Không đọc được file .env ({error}). Đóng chương trình đang mở file (nếu có), kiểm tra quyền "
     "đọc file rồi mở lại app."
