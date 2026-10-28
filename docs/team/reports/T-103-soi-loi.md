@@ -6,6 +6,7 @@
 | Phiếu | [T-103](../tickets/T-103-loi-dan-ai-doc-ke-hoach.md), Ngòi Bút đầu nhánh `f61012a` (gốc `main` `24013b3`) |
 | Ngày nộp | 2026-10-28 (22:03 +07:00) |
 | **Kết luận** | **ĐẠT**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp; 4 góp ý nhỏ (không chặn). Dòng thêm ngoài phạm vi trong `TASK_LABELS` vô hại. Chạy được với `main` mới nhất `b241e79`: bản gộp thử 22 file test, 1.839 qua, 0 hỏng |
+| **Kết luận lượt 2** (đầu nhánh `f819f78`, 2026-10-28) | **ĐẠT**: câu dặn mới về dòng «(chưa có mã)» đúng ý G1; rào dữ liệu, điều kiện cũ giữ nguyên; thử qua 3 hãng với client giả đúng; test của Lá Chắn không đổi; 0 lỗi mới. Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-28-2347-0700--soát-lượt-sửa-của-ngòi-bút-f819f78) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -122,3 +123,29 @@ uv run pytest tests/test_soi_loi_t103.py
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-28 23:47 +07:00) · soát lượt sửa của Ngòi Bút (`f819f78`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 28/10 23:45: xem nhanh phần diff lượt 2 (Ngòi Bút làm góp ý G1: dòng «(chưa có mã)») |
+| Đầu nhánh soát | `f819f78`; trên nhánh có commit Lá Chắn `5bf1fce` (ĐẠT CÓ ĐIỀU KIỆN, LC-T103-1 = G2, giao T-100) |
+| **Kết luận lượt 2** | **ĐẠT**: câu mới đúng ý G1; rào dữ liệu và điều kiện cũ giữ nguyên; 0 lỗi mới |
+
+### Kiểm
+
+| Kiểm | Kết quả |
+|---|---|
+| Câu mới đúng ý G1 | «Dòng ghi «(chưa có mã)» thay cho mã bài thì không cap_nhat, không bo được ở đây (phần mềm cần mã bài để biết đổi dòng nào), cũng không them dòng trùng từ khóa với nó: bỏ qua phần ghi chú nói về dòng đó.» Đủ ba ý (không sửa, không bỏ, không thêm dòng trùng); chữ «(chưa có mã)» đúng chữ `_plan_line` in cho dòng chưa có mã |
+| Phần diff | `prompts.py`: chỉ thêm 3 dòng chữ trong `plan_prompt` (so cây cú pháp với `5bf1fce`: không đổi code nào); `tests/test_t103_plan_prompt.py`: thêm 1 test, không xóa dòng nào; `tests/test_la_chan_t103.py` **không đổi** sau commit của Lá Chắn |
+| Rào dữ liệu | Kế hoạch có dòng chưa có mã, dòng có từ khóa giả «(chưa có mã) giả», ghi chú giả «- (chưa có mã) \| cửa giả \| bo»: phần chỉ thị giống hệt lời dặn trống, thẻ khung «như AI đọc» không đổi; trong phần chỉ thị «(chưa có mã)» chỉ có ở câu dặn |
+| Client giả, 3 hãng, cấu hình thật | Kế hoạch: «B-001», một dòng chưa có mã, một dòng có thẻ khung giả. AI trả: «cap_nhat» mã «(chưa có mã)», «bo» mã trống → **bị bỏ, chỉ đếm** (2); «cap_nhat B-001» → giữ, tick sẵn; «them» trùng dòng chưa có mã → cảnh báo trùng, **không** tick sẵn. Lệnh gửi không có công cụ tìm web; lời dặn gửi đi có dòng chưa có mã trong khung và câu dặn mới |
+
+### Bằng chứng (lượt 2)
+
+- `tests/test_soi_loi_t103.py`: **38 passed** (thêm 4 ca lượt 2: 3 hãng, rào dữ liệu).
+- `tests/test_t103_plan_prompt.py`, `tests/test_la_chan_t103.py`, `tests/test_soi_loi_t103.py`: **85 passed, 5 xfailed** (5 xfail là LC-T103-1 của Lá Chắn, đúng như để lại).
+- 12 file test lời dặn và kế hoạch trên nhánh: **819 passed, 10 xfailed** (5 xfail LC-T103-1; 5 xfail SL-T098-18 → -20 của bản cũ trên gốc `24013b3`, đã sửa ở `main`).
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn: sạch.
