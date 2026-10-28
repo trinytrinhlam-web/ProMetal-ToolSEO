@@ -558,6 +558,9 @@ Cách đọc ghi chú:
   từng dấu) và dùng mã bài của dòng đó; không chắc là dòng nào thì bỏ qua câu đó.
 - Bài ghi chú muốn thêm mà từ khóa đã có trong kế hoạch (kể cả viết khác chút) thì cap_nhat dòng
   đó, không them dòng trùng: hai bài cùng một từ khóa tranh nhau trên Google.
+- Dòng ghi «(chưa có mã)» thay cho mã bài thì không cap_nhat, không bo được ở đây (phần mềm cần mã
+  bài để biết đổi dòng nào), cũng không them dòng trùng từ khóa với nó: bỏ qua phần ghi chú nói
+  về dòng đó.
 - bo chỉ khi ghi chú nói rõ bỏ, hủy, không làm bài đó. «Để sau», «chưa gấp» là hạ ưu tiên hay dời
   ngày, không phải bỏ.
 - Trạng thái bài do phần mềm ghi: ghi chú kể bài đã viết, đã đăng thì không cần đề xuất gì. Bài

@@ -180,6 +180,35 @@ def test_limits_in_prompt_match_the_checker():
     assert reason <= propose.REASON_MAX
 
 
+def _suggestion(**fields) -> PlanSuggestion:
+    fields.setdefault("reason", "Ghi chú yêu cầu.")
+    empty = {name: "" for name in PlanSuggestion.model_fields}
+    return PlanSuggestion.model_validate(empty | fields)
+
+
+def test_row_without_key_is_not_changed_dropped_or_duplicated():
+    """G1 (Soi Lỗi T-103), lượt 2: dòng kế hoạch chưa có mã hiện «(chưa có mã)» ở chỗ mã bài; lời
+    dặn nhắc đúng chữ đó: không cap_nhat, không bo dòng đó, không them dòng trùng. Khớp bộ kiểm:
+    cap_nhat, bo không có mã thật bị bỏ; them trùng từ khóa có cảnh báo trùng nên không tick sẵn."""
+    keyless = PlanRow(keyword="cửa sắt bị rỉ sét")
+    text = _prompt((*CURRENT, keyless))
+    line = next(line for line in text.splitlines() if "| cửa sắt bị rỉ sét |" in line)
+    shown = line.removeprefix("- ").split(" | ")[0]
+    assert shown == "(chưa có mã)"
+    flat = _flat(_instructions(text))
+    assert f"Dòng ghi «{shown}» thay cho mã bài thì không cap_nhat, không bo được ở đây" in flat
+    assert "cũng không them dòng trùng từ khóa với nó: bỏ qua phần ghi chú nói về dòng đó" in flat
+    for action in ("cap_nhat", "bo"):
+        for key in ("", shown):
+            item = _suggestion(action=action, key=key, priority="Cao")
+            result = propose.from_ai(PlanSuggestions(items=[item]), [keyless], today=TODAY)
+            assert (result.items, result.dropped) == ((), 1), (action, key)
+    item = _suggestion(action="them", keyword="cửa sắt bị rỉ sét")
+    (twin,) = propose.from_ai(PlanSuggestions(items=[item]), [keyless], today=TODAY).items
+    prefix = propose.WARN_DUPLICATE_ROW.partition("{key}")[0]
+    assert any(w.startswith(prefix) for w in twin.warnings) and not twin.preselected
+
+
 def test_prompt_has_doorway_warning_and_no_mass_drop():
     flat = _flat(_prompt())
     assert "Trang cửa ngõ: không tự thêm hàng loạt bài chỉ khác tên quận, phường" in flat

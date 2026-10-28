@@ -5,7 +5,7 @@
 | Agent | Ngòi Bút (`ngoi-but`) · model: Claude Opus 5.5 |
 | Phiếu | [T-103](../tickets/T-103-loi-dan-ai-doc-ke-hoach.md) |
 | Ngày nộp | 2026-10-28 |
-| Kết quả | Hoàn thành (mục `[plan]` chờ phiếu Hẹn giờ T-102 đọc, xem Đề xuất 2) |
+| Kết quả | Hoàn thành, kể cả [lượt 2](#lượt-2-2026-10-28-góp-ý-g1-của-soi-lỗi) (góp ý G1). Mục `[plan]` chờ phiếu Hẹn giờ T-102 đọc, xem Đề xuất 2 |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -20,6 +20,7 @@
 - **Giờ đăng mặc định 08:00** và bảng giải thích các nhãn trong `config/content.toml` (mục `[plan]`). Phần mềm **chưa dùng** mục này; bước Hẹn giờ (T-102) sẽ đọc. Trong file đã ghi rõ điều đó.
 - **Quy tắc dữ liệu chung** gửi kèm mọi lần gọi AI nay nêu đủ mọi khung dữ liệu, gồm hai khung kế hoạch (góp ý của Soi Lỗi T-098).
 - Anh/chị chưa thấy gì khác trên giao diện: trang Kế hoạch thật làm ở T-101. Muốn thử ngay bằng khóa AI của mình: mục [Cách tự thử](#cách-chủ-dự-án-tự-thử-trên-máy).
+- **Lượt 2 (2026-10-28):** thêm một câu cho dòng kế hoạch chưa có mã bài (góp ý G1 của Soi Lỗi), xem mục [Lượt 2](#lượt-2-2026-10-28-góp-ý-g1-của-soi-lỗi) cuối báo cáo. Bảng «trước / sau», số test, độ dài ở các mục bên dưới là của lượt 1.
 
 ## Đã thay đổi
 
@@ -301,5 +302,110 @@ Test mới (`tests/test_t103_plan_prompt.py`, 44 ca):
 3. **Nếu muốn nhãn hay câu giải thích nhãn đọc từ cấu hình** (chú giải ở trang Kế hoạch): phiếu Thợ Máy riêng; khóa nhãn phải thuộc danh sách của code (LC-T094-42).
 
 ## Câu hỏi cho chủ dự án
+
+Không có.
+
+## Lượt 2 (2026-10-28): góp ý G1 của Soi Lỗi
+
+| Mục | Nội dung |
+|---|---|
+| Lệnh | Chỉ Huy B (28/10 23:20): làm góp ý G1 của [Soi Lỗi](T-103-soi-loi.md), không đổi gì khác trong lời dặn |
+| Gốc | `5bf1fce` (commit Lá Chắn) |
+| Kết quả | Hoàn thành |
+
+### Tóm tắt lượt 2 (cho chủ dự án)
+
+- Kế hoạch có thể có dòng chưa có mã bài, ví dụ dòng anh/chị gõ tay trên Sheet mà bỏ trống cột Mã bài. Phần mềm cần mã để biết sửa dòng nào, nên đề xuất «sửa» hay «bỏ» dòng đó luôn bị loại.
+- Trước: lời dặn không nói gì về dòng này. AI có thể đề xuất sửa dòng đó (phần mềm bỏ, chỉ báo «… đề xuất của AI không hợp lệ nên đã bỏ»), hay thêm một bài trùng từ khóa với nó (có cảnh báo trùng, không tick sẵn).
+- Nay lời dặn có thêm một câu: dòng «(chưa có mã)» không sửa, không bỏ được bằng ghi chú, cũng không thêm bài trùng với nó; AI bỏ qua phần ghi chú nói về dòng đó.
+
+### Câu đã thêm
+
+Ở mục «Cách đọc ghi chú», ngay sau ý «từ khóa đã có thì cap_nhat dòng đó, không them dòng trùng» (câu mới là ngoại lệ của ý đó):
+
+```
+- Dòng ghi «(chưa có mã)» thay cho mã bài thì không cap_nhat, không bo được ở đây (phần mềm cần mã
+  bài để biết đổi dòng nào), cũng không them dòng trùng từ khóa với nó: bỏ qua phần ghi chú nói
+  về dòng đó.
+```
+
+Không đổi gì khác:
+- So cây cú pháp với `5bf1fce` (script `logic_only.py` của lượt 1): chỉ chữ của `plan_prompt` khác, không khác ngoài chữ.
+- So lời dặn dựng ra (kế hoạch trống, ghi chú «ghi chú»): chỉ thêm đúng 3 dòng trên, không dòng nào bớt hay đổi. 5.788 → 5.997 ký tự (+209).
+- `DATA_RULES`, `_block`, `_plan_line`, `[tasks.plan]`, `[plan]` không đổi.
+
+### Vì sao viết như vậy
+
+- **Đúng chữ phần mềm ghi trong khung.** «(chưa có mã)» là chữ `_plan_line` ghi thay mã bài. Test lấy chữ này từ dòng trong khung `<ke_hoach_hien_tai>` rồi so với câu dặn: đổi chữ ở một bên mà quên bên kia thì test hỏng.
+- **Rào dữ liệu như cũ.**
+  - Câu nằm ở phần chỉ thị, sau hai khung, không nhắc tên khung nào: mỗi khung vẫn chỉ được nhắc một lần, test T-098 đếm số này.
+  - «(chưa có mã)» là chữ code viết, không phải chữ người dùng. Chữ người dùng vẫn chỉ nằm trong khung, qua `_block`.
+- **Có lý do trong ngoặc**, như ý «hai bài cùng một từ khóa tranh nhau trên Google»: AI biết vì sao thì ít làm sai hơn với ca lạ.
+- **«bỏ qua phần ghi chú nói về dòng đó»**, không phải «bỏ qua câu đó»: một câu ghi chú có thể nhắc cả dòng có mã lẫn dòng chưa có mã, và phần về dòng có mã vẫn phải được đề xuất.
+- **Khớp bộ kiểm** (`seo_app/plan/propose.py`, không đổi):
+  - `cap_nhat`, `bo` với mã trống hay «(chưa có mã)» bị bỏ và đếm vào số «không hợp lệ»;
+  - `them` trùng từ khóa có cảnh báo `WARN_DUPLICATE_ROW` nên không tick sẵn.
+
+  Test mới kiểm cả hai. Sau này bộ kiểm đổi (ví dụ cho sửa dòng chưa có mã) thì test báo câu dặn đã cũ.
+
+### Bằng chứng lượt 2
+
+```
+$ uv run pytest tests/test_t103_plan_prompt.py tests/test_plan_ai.py tests/test_plan_model.py \
+    tests/test_plan_parse.py tests/test_plan_propose.py tests/test_soi_loi_t098.py \
+    tests/test_soi_loi_t103.py tests/test_la_chan_t103.py tests/test_app_pages.py
+684 passed, 10 xfailed in 109.30s (0:01:49)
+# 10 xfail không do lượt này: 5 của SL-T098-18 → -20 (đã sửa trên main ở T-098 lượt 4, nhánh này
+# cắt từ trước đó) và 5 của LC-T103-1 (lỗi ở code T-098, đã giao Thợ Máy)
+
+$ uv run pytest tests/test_t103_plan_prompt.py
+45 passed                      # 44 của lượt 1 + 1 mới
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan seo_app/content/prompts.py tests/test_t103_plan_prompt.py docs/team/reports/T-103-ngoi-but.md
+"results": {}
+# File mồi (chữ Việt + mật khẩu, khóa giả) đặt trong worktree: bắt được 4 mục. Mồi nằm ngoài
+# thư mục đang chạy lệnh thì detect-secrets bỏ qua, ra 0 giả, nên phải đặt mồi trong worktree.
+```
+
+Đây là mọi file gọi tới lời dặn kế hoạch (`plan_prompt` chỉ có `ContentWriter.plan_changes` gọi), mọi file test kế hoạch, test Soi Lỗi, Lá Chắn của T-098, T-103 và file mở mọi trang.
+
+Test mới `test_row_without_key_is_not_changed_dropped_or_duplicated`:
+- dòng kế hoạch chưa có mã hiện «(chưa có mã)» ở chỗ mã bài trong khung;
+- câu dặn có đúng chữ đó và đủ ba ý: không `cap_nhat`, không `bo`, không `them` dòng trùng;
+- bộ kiểm bỏ `cap_nhat`, `bo` với mã trống và với mã «(chưa có mã)»; `them` trùng có cảnh báo trùng, không tick sẵn.
+
+Đối chứng (làm hỏng trong bộ nhớ, không sửa repo):
+
+| Làm hỏng | Test mới |
+|---|---|
+| Không đổi gì | Qua |
+| Bỏ câu mới | Bắt được |
+| Khung ghi chữ khác «(chưa có mã)» | Bắt được |
+| Câu chỉ cấm `bo`, quên `cap_nhat` | Bắt được |
+
+### Đối chiếu lượt 2
+
+- Mọi điều kiện ở bảng [Đối chiếu điều kiện Lá Chắn](#đối-chiếu-điều-kiện-lá-chắn) giữ nguyên:
+  - khung, `DATA_RULES`, `_neutralize`, `_plan_line` không đổi; 26 ca chữ độc vẫn qua (LC-T094-42, LC-T094-19, SL-7);
+  - lời dặn vẫn khớp bộ kiểm, thêm một ca kiểm (LC-T094-20);
+  - câu mới không có số, link, thông tin khách (LC-T094-21, LC-T094-42);
+  - test không gọi AI, Google, WordPress (LC-T094-1); không thêm câu báo, không đổi giao diện (LC-T094-2, LC-T094-3).
+- Góp ý G1: xong. Soi Lỗi ghi G1 «không xếp lỗi, không test `xfail`», Lá Chắn ghi «không phải lỗi bảo mật», nên không có `xfail` nào để gỡ.
+- **Còn mở, không thuộc lượt này:** điều kiện 3 của [Lá Chắn T-103](T-103-la-chan.md) (G3). Trước lần thử AI thật phải:
+  - sửa `thu_t103.py` để kế hoạch và ghi chú thử khác ví dụ trong lời dặn;
+  - thêm ca đối chứng;
+  - cân nhắc đổi từ khóa của ví dụ.
+
+  Lệnh lượt 2 chỉ giao G1 và dặn không đổi gì khác trong lời dặn, nên tôi chưa làm.
+
+### Đề xuất lượt 2
+
+4. **Thợ Máy (nhỏ, gom vào phiếu dọn T-098 hay T-101):** khi dòng trùng là dòng cũ chưa có mã, cảnh báo ghi «Từ khóa trùng dòng mới trong kế hoạch.» (`twin.key or "mới"` trong `check_proposals`). Dòng đó là dòng cũ, chữ «mới» dễ làm hiểu nhầm; nên ghi kiểu «trùng một dòng chưa có mã». Đã thử bằng script: AI `them` «cửa sắt bị rỉ sét» khi kế hoạch có dòng đó chưa có mã thì ra đúng cảnh báo trên.
+5. **T-101 (trang Kế hoạch):** kế hoạch có dòng chưa có mã thì nên báo một câu cố định trước khi đọc ghi chú (AI không đề xuất sửa, bỏ các dòng này). Như vậy anh/chị biết vì sao ghi chú nhắc dòng đó mà không ra đề xuất nào.
+
+### Câu hỏi cho chủ dự án (lượt 2)
 
 Không có.
