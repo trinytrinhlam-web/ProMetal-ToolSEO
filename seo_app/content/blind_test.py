@@ -101,6 +101,7 @@ TASK_LABELS = {
     "review": "Kiểm tra văn phong",
     "meta": "Gợi ý meta",
     "links": "Gợi ý liên kết nội bộ",
+    "plan": "Đề xuất thay đổi kế hoạch",
     "alt": "Viết alt ảnh",
     "image": "Tạo ảnh AI",
 }
