@@ -3080,24 +3080,32 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
     """Bảng mọi link của HTML cuối, địa chỉ trần, chỗ bị nhúng (cả Nháp: nháp có thể được đăng
     sau trong trang quản trị mà không qua app, LC-T094-37); với Hẹn giờ, Đăng ngay thêm ảnh và
     đoạn shortcode. Ô bảng là chữ thường, link không bấm được (LC-T094-3, -37; LC-T039-1: tên máy
-    dạng ASCII ``xn--…``, cờ cho tên máy lạ)."""
+    dạng ASCII ``xn--…``, cờ cho tên máy lạ). Cột cờ và tên máy dạng ASCII đứng trước địa chỉ:
+    khung hẹp vẫn thấy ngay (địa chỉ chữ Kirin trông y hệt tên website)."""
     review = built.review
+    widths = {  # cột cờ, tên máy không chiếm hết bảng: vẫn thấy địa chỉ ở khung hẹp
+        "Mức": st.column_config.TextColumn(width="small"),
+        "Dấu hiệu lạ": st.column_config.TextColumn(width="medium"),
+        "Tên máy (dạng ASCII)": st.column_config.TextColumn(width="medium"),
+        "Địa chỉ": st.column_config.TextColumn(width="medium"),
+    }
     if review.links:
         st.markdown("**Mọi link trong bài**")
         st.dataframe(
             [
                 {
+                    "Mức": LEVEL_BADGES[row.level][1],
+                    "Dấu hiệu lạ": "; ".join(row.flags),
+                    "Tên máy (dạng ASCII)": shown_text(row.ascii_host),
                     "Chữ neo": shown_text(row.text),
                     "Địa chỉ": shown_text(row.href),
-                    "Tên máy (dạng ASCII)": shown_text(row.ascii_host),
                     "Loại": LINK_KINDS.get(row.kind, "Khác"),
-                    "Mức": LEVEL_BADGES[row.level][1],
                     "Lý do": shown_text(row.message),
-                    "Dấu hiệu lạ": "; ".join(row.flags),
                 }
                 for row in review.links
             ],
             hide_index=True,
+            column_config=widths,
         )
     else:
         st.caption("Bài không có link nào.")
@@ -3106,14 +3114,15 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
         st.dataframe(
             [
                 {
+                    "Dấu hiệu lạ": "; ".join(bare.flags),
+                    "Tên máy (dạng ASCII)": shown_text(bare.ascii_host),
                     "Địa chỉ": shown_text(bare.text),
                     "Loại": BARE_KINDS.get(bare.kind, "Khác"),
-                    "Tên máy (dạng ASCII)": shown_text(bare.ascii_host),
-                    "Dấu hiệu lạ": "; ".join(bare.flags),
                 }
                 for bare in review.bare
             ],
             hide_index=True,
+            column_config=widths,
         )
     if review.embeds:
         st.markdown("**Đoạn WordPress sẽ nhúng cả trang khác vào bài** (phải sửa trước khi gửi)")
@@ -4052,7 +4061,13 @@ def publish_panel(mode: str) -> None:
         expected = S.get("_wp_confirmed") if mode != "draft" else S.get("_wp_shown")
         S._wp_reset_guards = True
         order = PublishOrder(mode, when_utc, categories, expected, timezone)
-        send_draft(client, ready, post_id, seen, order)
+        # Client mới cho đúng lần bấm này (Lá Chắn T-099 L2-2): không dùng lại client đã hỏi
+        # website lúc vẽ; tạo nháp, ảnh đại diện, SEO, rồi lệnh chuyển đều trên client này.
+        sender, send_problem = wordpress_client(write_seo=bool(S.get("seo_write")))
+        if sender is None:
+            S._wp_result = {"ok": False, "message": f"{send_problem} Chưa gửi gì lên website."}
+        else:
+            send_draft(sender, ready, post_id, seen, order)
         st.rerun()
     send_result()
 
@@ -4067,7 +4082,8 @@ def step_publish() -> None:
     score = overall_score()
     spots = image_spots()
     ready = sum(1 for pid in spots if slot_problem(pid) == "")
-    left, right = st.columns([1, 1], gap="large")
+    # Khung gửi rộng hơn (T-102): màn hình xác nhận có các bảng link, địa chỉ, ảnh.
+    left, right = st.columns([2, 3], gap="large")
     with left, st.container(border=True):
         st.markdown("#### Kiểm tra trước khi gửi")
         checks = [

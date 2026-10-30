@@ -36,6 +36,7 @@ from seo_app.onpage import links as onpage_links
 from seo_app.plan import model as plan_model
 from seo_app.publish.render import ArticlePart, build_article
 from seo_app.publish.schedule import date_gmt_text, local_to_utc, schedule_label
+from seo_app.sanitize import break_autolinks
 from seo_app.storage import DraftPart, DraftSnapshot, plan_cache
 from seo_app.storage.drafts import DraftLink, DraftPlanRef, DraftSeo
 from seo_app.storage.plan_cache import sheet_hash
@@ -217,6 +218,36 @@ def test_draft_review_lists_every_link_and_bare_address(project_root, site):
     assert any("Bài không có link nào" in c.value for c in at.caption)
 
 
+def test_review_flags_odd_hosts_and_sends_no_zero_width(project_root, site, sent):
+    """Thiết kế mục 7 dòng 3, 7, 11 (LC-T039-1, T-031): địa chỉ trong bài hiện ở bảng với tên máy
+    dạng ASCII (``xn--…``), cờ cho tên máy ngoài ASCII và «@» trong phần tên máy; HTML gửi đi
+    không còn ký tự rộng 0 mà T-031 chèn vào địa chỉ trần."""
+    kirin = "https://suachuacuas" + chr(0x0430) + "t.com/gia"
+    body = break_autolinks(
+        f"Xem bảng giá {kirin} hay https://suachuacuasat.com@evil.example/x. Gọi www.vi-du.com nhé."
+    )
+    assert chr(0x200B) in body
+    snap = MARKDOWN_ARTICLE.model_copy(
+        update={"id": "7" * 32, "parts": [DraftPart(heading="Mở bài", versions=[body])]}
+    )
+    at = open_snap(project_root, snap)
+    ui.to_publish(at)
+    (bare,) = [
+        t.value.to_dict("records")
+        for t in at.dataframe
+        if "Địa chỉ" in t.value.columns and "Chữ neo" not in t.value.columns
+    ]
+    hosts = {row["Tên máy (dạng ASCII)"]: row["Dấu hiệu lạ"] for row in bare}
+    (puny,) = [host for host in hosts if host.startswith("xn--")]
+    assert "ngoài ASCII" in hosts[puny]
+    assert "«@»" in hosts["evil.example"]
+    run_ok(button(at, SEND_DRAFT).click().run())
+    ((_title, parts),) = sent.calls
+    assert not any(chr(0x200B) in part for part in parts)
+    (post,) = site.posts()
+    assert chr(0x200B) not in post["content"] and "www.vi-du.com" in post["content"]
+
+
 def published_item() -> PublishedItem:
     return PublishedItem(
         id=11,
@@ -331,6 +362,33 @@ def test_schedule_flow_confirms_then_releases_last(project_root, root, fake_ai, 
     assert send_button(at).disabled  # đã gửi: phải xác nhận tạo thêm bài mới
 
 
+def test_send_uses_a_fresh_client_made_in_the_click(project_root, root, fake_ai, live, monkeypatch):
+    """Lá Chắn T-099 L2-1, L2-2: lần bấm tạo client mới; tạo nháp và lệnh hẹn giờ chạy trên cùng
+    client đó, không phải client lúc vẽ trang (hỏi quyền đăng bài)."""
+    used: dict[str, object] = {}
+    originals = {
+        name: getattr(WordPressClient, name)
+        for name in ("check_connection", "create_draft_with_images", "release_draft")
+    }
+
+    def spy(name):
+        def call(self, *args, **kwargs):
+            used[name] = self
+            return originals[name](self, *args, **kwargs)
+
+        return call
+
+    for name in originals:
+        monkeypatch.setattr(WordPressClient, name, spy(name))
+    at, _pid = ui.ready_image(project_root)
+    to_mode(at, "Hẹn giờ")
+    confirm(at)
+    run_ok(send_button(at).click().run())
+    assert used["create_draft_with_images"] is used["release_draft"]
+    assert used["release_draft"] is not used["check_connection"]
+    assert len(release_bodies(live.site)) == 1
+
+
 def test_untick_when_schedule_changes_after_confirming(project_root, root, fake_ai, live):
     """LC-T094-38: tick rồi đổi giờ hẹn: mã băm khác, ô tick bị bỏ, phải xem lại rồi tick lại."""
     at, _pid = ui.ready_image(project_root)
@@ -342,6 +400,30 @@ def test_untick_when_schedule_changes_after_confirming(project_root, root, fake_
     assert any("app đã bỏ tick" in w.value for w in at.warning)
     assert send_button(at).disabled
     assert live.site.fake.requests == []
+
+
+@pytest.mark.parametrize("change", ["chữ bài", "alt ảnh", "công tắc SEO"])
+def test_untick_when_article_image_or_seo_switch_changes(project_root, root, fake_ai, live, change):
+    """LC-T094-38: tick rồi sửa chữ bài, alt ảnh hay bật «Ghi SEO lên website»: mã băm khác, ô
+    tick bị bỏ, nút khóa, không gửi gì."""
+    at, pid = ui.ready_image(project_root)
+    to_mode(at, "Hẹn giờ")
+    confirm(at)
+    assert not send_button(at).disabled
+    if change == "chữ bài":
+        first = at.session_state["part_ids"][0]
+        at.session_state[f"texts-{first}"] = ["Mở bài đã sửa sau khi xác nhận."]
+        at.session_state[f"ver-{first}"] = 0
+        run_ok(at.run())
+    elif change == "alt ảnh":
+        at.session_state[f"alt-{pid}"] = "Bản lề cổng inox đã thay, chụp gần"
+        run_ok(at.run())
+    else:
+        run_ok(at.toggle(key="seo_write").set_value(True).run())
+    assert at.checkbox(key="_wp_confirm").value is False
+    assert send_button(at).disabled
+    # Bật «Ghi SEO» thì tải danh sách bài để kiểm trùng (chỉ đọc, T-041); không lệnh ghi nào.
+    assert [r for r in live.site.fake.requests if r.method != "GET"] == []
 
 
 def test_schedule_too_soon_is_blocked(project_root, root, fake_ai, live):
@@ -658,7 +740,7 @@ def test_date_label_has_weekday(project_root, root, fake_ai, live):
 # ============================================================ kế hoạch (T-100, T-103)
 
 KEY = "B-001"
-OTHER_SHEET = "1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210_-abc"  # Sheet khác Sheet đang kết nối
+OTHER_SHEET = "1" + "KhacSheet" * 4  # mã Sheet giả khác Sheet đang kết nối (chỉ để băm)
 COL = {name: position for position, (name, _label) in enumerate(plan_model.SHEET_COLUMNS)}
 TARGET = PublishedItem(
     id=12, type="page", slug="sua-cong-inox", link=f"{BASE_URL}/sua-cong-inox/", title="Sửa cổng"
@@ -784,7 +866,8 @@ def test_planned_title_is_only_a_hint(project_root, plan, fake_ai):
     at.session_state["step"] = 1
     run_ok(at.run())
     run_ok(button(at, "🧠 Tạo dàn ý").click().run())
-    assert any(t.value.startswith("Tiêu đề dự kiến trong kế hoạch: ") for t in at.text)
+    (shown,) = [t.value for t in at.text if t.value.startswith("Tiêu đề dự kiến trong kế hoạch: ")]
+    assert chr(0x202E) not in shown and "<b>dự kiến</b>" in shown  # chữ thường, không thẻ
     assert not any("dự kiến</b>" in m.value for m in at.markdown)
     assert not any("dự kiến</b>" in str(call) for call in fake_ai.calls)
 
