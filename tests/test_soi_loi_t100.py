@@ -5,18 +5,35 @@ Kiểm độc lập với test của Thợ Máy: Sheet giả có trạng thái (
 ``SheetsClient`` thật; cache, kho nháp là file SQLite thật trong thư mục tạm. Không gọi Google,
 WordPress hay AI thật (bộ chặn mạng của ``tests/conftest.py`` vẫn bật).
 
-Lỗi tìm ra (``xfail(strict=True)``; sửa xong thì gỡ dấu):
+Lỗi lượt 1, **đã sửa ở lượt 2** (Thợ Máy ``57bac59``, đã gỡ dấu): SL-T100-1 (số nhà viết tắt «Đ.»,
+«K.» bị coi là giá), SL-T100-2 (số đếm có «nghìn», «triệu» bị coi là giá), SL-T100-3 (ghi chú dài
+cắt khúc làm mất phần loại trừ).
 
-- **SL-T100-1** (Thấp): số nhà viết tắt tên đường kiểu Google Maps («45 Đ. Số 7», «123 Đ.Nguyễn Văn
-  Linh») hay kiệt ở Đà Nẵng («12 K. Lê Duẩn») bị coi là giá: «Đ.», «K.» sau số khớp đơn vị tiền
-  «đ», «k» của ``mentions_price``. Đề xuất AI có địa chỉ công trình bị cảnh báo giá oan và không
-  được tick sẵn.
-- **SL-T100-2** (Thấp): số đếm có «nghìn», «ngàn», «triệu» («hơn 2 nghìn công trình», «1 nghìn
-  lượt tìm mỗi tháng», «3 triệu lượt xem») bị coi là giá: cảnh báo oan, không tick sẵn.
-- **SL-T100-3** (Thấp): ghi chú dài hơn 900 ký tự dò giá theo từng khúc 900 ký tự: chỗ cắt khúc
-  làm mất phần chữ loại trừ. Từ khóa chính «cửa sắt giá rẻ» vắt qua đầu khúc thành «rẻ», «giá rẻ»
-  không còn nằm trong từ khóa; «2 đồng hồ» vắt qua cuối khúc thành «2 đồng». Cùng chữ đó trong
-  ghi chú ngắn thì không cảnh báo.
+Lỗi tìm ra ở lượt 2 (``xfail(strict=True)``; sửa xong thì gỡ dấu), đều Thấp:
+
+- **SL-T100-4**: LC-T100-3 đóng chưa trọn. ``write_status`` / ``record_status`` /
+  ``retry_pending`` so mã băm Sheet của việc với ``sheet_id`` nơi gọi đưa, **không** với Sheet
+  thật của client: client nối Sheet A mà nơi gọi đưa mã Sheet B (client cũ còn giữ sau khi đổi
+  ``GOOGLE_SHEET_ID``…) thì trạng thái của nháp mở từ Sheet B vẫn ghi vào dòng cùng mã của Sheet A.
+- **SL-T100-5** (hồi quy so với lượt 1): phần bỏ qua tên đường viết tắt dựa vào chữ hoa và dấu
+  chấm: giá thật «150.000 Đ.» không còn được cảnh báo; địa chỉ gõ chữ thường «45 đ. số 7» vẫn bị
+  cảnh báo oan.
+- **SL-T100-6** (hồi quy): danh sách danh từ đếm quá rộng: giá rồi «lần», «nhà», «căn» («300 nghìn
+  lần đầu», «15 triệu nhà anh Tuấn», «8 triệu căn hộ») không còn được cảnh báo.
+- **SL-T100-7** (mới ở lượt 2): «giá» trong từ ghép («giá đỡ», «giá kệ», «đánh giá») rồi số có
+  dấu chấm nghìn trong vòng 3 từ bị coi là giá: kích thước «giá đỡ cách sàn 2.500 mm», số đếm
+  «được đánh giá cao bởi 12.000 khách». («Khách đánh giá tốt» bị cảnh báo từ trước, cùng gốc.)
+- **SL-T100-8** (hồi quy): từ khóa chính gõ không dấu («cua sat gia re») không còn che chữ có dấu
+  trong ghi chú («cửa sắt giá rẻ»); lượt 1 so không dấu như bước SEO (SL-T041-3).
+- **SL-T100-9** (biến thể gần LC-T100-2, có từ lượt 1): số tiền không đơn vị sau «tiền», «hết»,
+  «tốn», «trả», «công thợ» («Tiền thay motor 1.200.000», «Thay motor hết 1.200.000») chưa được
+  cảnh báo, trong khi «Giá thay motor 1.200.000» thì có.
+- **SL-T100-10** (mới ở lượt 2): kiểm «nằm trong từ khóa» so từng chỗ khớp với **mọi** lần xuất
+  hiện của từ khóa: chữ AI lặp từ khóa ngắn dày đặc làm thời gian dò tăng theo bình phương (ghi chú
+  2.000 ký tự khoảng 0,1 giây, 100 mục AI độc khoảng 10–25 giây).
+- **SL-T100-11** (biến thể gần LC-T100-1): Sheet đầy chỉ chặn «Thêm»; dòng chưa có mã vẫn được cấp
+  mã mới (đường «Cập nhật» của compare_rows) theo các mã đọc được, có thể trùng mã của dòng nằm
+  ngoài vùng đọc: Sheet có hai dòng cùng Mã bài.
 """
 
 from __future__ import annotations
@@ -25,6 +42,7 @@ import json
 import os
 import sqlite3
 import stat
+import time
 from contextlib import closing
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -42,7 +60,14 @@ from seo_app.google.service_account import ServiceAccountError, load_service_acc
 from seo_app.google.sheets import SheetsClient, SheetsError
 from seo_app.plan import model, sync
 from seo_app.plan.model import PlanRow
-from seo_app.plan.propose import WARN_PRICE, Action, Proposal, compare_rows, from_ai
+from seo_app.plan.propose import (
+    WARN_PRICE,
+    Action,
+    Proposal,
+    compare_rows,
+    from_ai,
+    mentions_plan_price,
+)
 from seo_app.storage.drafts import DraftSnapshot, DraftStore, SendState, new_draft_id
 from seo_app.storage.plan_cache import PlanCacheStore
 
@@ -737,3 +762,243 @@ def test_junction_inside_the_project_pointing_out_is_still_refused(tmp_path, pri
     with pytest.raises(ServiceAccountError):
         load_service_account(project / "lien-ket" / key.name, project_root=project)
     assert load_service_account(key, project_root=project).file_name == key.name
+
+
+# ================================================================ 9. lượt 2 (Thợ Máy 57bac59)
+
+OTHER_SHEET_ID = "1ZzYyXxWwVvUuTtSsRrQqPpOoNn9876543210_-abc"
+
+
+def test_round2_g1_keyless_addition_is_never_sent(sheet, client):
+    """G1 đóng: «Thêm» chưa có Mã bài không bao giờ gửi lệnh thêm dòng, kể cả bấm lại khi lệnh
+    trước «chưa rõ» (lượt 1: báo «chưa ghi» rồi thêm lần hai)."""
+    base = read(client)
+    keyless = Proposal(Action.ADD, "", PlanRow(keyword="cửa kéo đài loan"), None, "lý do")
+    sheet.fail("append", requests.exceptions.ConnectionError("đứt"), apply=True)
+    for _ in range(2):
+        result = sync.apply_proposals(client, base, [keyless], now=NOW)
+        assert [c.reason for c in result.conflicts] == [sync.CONFLICT_NO_KEY]
+    assert sheet.appends == []
+
+
+def test_round2_sheet_filled_by_another_machine_blocks_new_rows(fake, client):
+    """LC-T100-1, biến thể: lúc xem Sheet còn 999 dòng kế hoạch; máy khác thêm 2 dòng nên Google
+    trả đủ 1.001 dòng. «Thêm» thành xung đột, không gửi lệnh thêm; sửa dòng đang thấy vẫn ghi."""
+    rows = [HEADER] + [row(f"B-{n:03d}", f"từ khóa số {n}") for n in range(1, 1000)]
+    sheet = FakePlanSheet(fake, rows)
+    base = read(client)
+    assert not base.full and len(base.rows) == 999
+    sheet.grid.append(row("B-1000", "máy kia thêm 1"))
+    sheet.grid.append(row("B-1001", "máy kia thêm 2"))
+    (added,) = additions(base, "cửa kéo đài loan")
+    changed = update(base, "B-005", priority="Cao")
+    result = sync.apply_proposals(client, base, [changed, added], now=NOW)
+    assert result.written == (changed,)
+    assert [c.reason for c in result.conflicts] == [sync.CONFLICT_FULL]
+    assert sheet.appends == [] and sheet.cell(6, COL["priority"]) == "Cao"
+    assert sync.MSG_FULL in read(client).warnings
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-4: so mã băm Sheet với sheet_id nơi gọi đưa, không với Sheet thật của client",
+)
+def test_sl_t100_4_status_is_never_written_into_the_clients_sheet_for_another_sheet(
+    tmp_path, sheet, client
+):
+    """Client nối Sheet A; nháp mở từ Sheet B (cùng Mã bài B-001); nơi gọi đưa mã Sheet B (ví dụ
+    client cũ còn giữ sau khi đổi ``GOOGLE_SHEET_ID``). Không được ghi vào Sheet A, việc còn nợ giữ
+    nguyên cho Sheet B."""
+    ref = sync.plan_ref(sync.open_row(client, "B-001", now=NOW), OTHER_SHEET_ID, now=NOW)
+    write = sync.status_write(ref, model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    store = DraftStore(path=tmp_path / "drafts.sqlite")
+    draft_id = new_draft_id()
+    store.save_plan_write(draft_id, write)
+    sync.retry_pending(client, store, OTHER_SHEET_ID, now=NOW)
+    result = sync.write_status(client, write, sheet_id=OTHER_SHEET_ID, now=NOW)
+    assert sheet.updates == [] and sheet.cell(2, COL["status"]) == "Chưa viết"
+    assert result.outcome is sync.WriteOutcome.BLOCKED
+    assert store.load_plan_write(draft_id) == write
+
+
+def test_round2_status_without_sheet_id_uses_the_clients_own_sheet(sheet, client):
+    """Đối chứng cho SL-T100-4: không đưa ``sheet_id`` thì so với Sheet thật của client (đúng)."""
+    ref = sync.plan_ref(sync.open_row(client, "B-001", now=NOW), OTHER_SHEET_ID, now=NOW)
+    write = sync.status_write(ref, model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    assert sync.write_status(client, write, now=NOW).outcome is sync.WriteOutcome.BLOCKED
+    assert sheet.updates == []
+    own_ref = sync.plan_ref(sync.open_row(client, "B-001", now=NOW), SHEET_ID, now=NOW)
+    own = sync.status_write(own_ref, model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    assert sync.write_status(client, own, now=NOW).outcome is sync.WriteOutcome.WRITTEN
+    assert len(sheet.updates) == 1
+
+
+ROUND2_PRICES = [
+    "Thay motor 5tr",
+    "Thay motor 5 TR",
+    "Thay motor 1.5tr",
+    "Giá 500.000",
+    "VNĐ 500.000",
+    "500.000 VNĐ",
+    "500.000vnđ",
+    "Sơn tĩnh điện 150k/m2",
+    "Thay khóa 500K",
+    "giá 350.000/bộ",
+    "Tiền công 200.000",
+    "Hết khoảng 2 triệu rưỡi",
+    "Khoảng năm trăm nghìn",
+    "Giá 1,2 triệu",
+    "Bộ tay nắm 99$",
+]
+
+
+@pytest.mark.parametrize("notes", ROUND2_PRICES)
+def test_round2_real_prices_still_warn(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+ROUND2_NOT_PRICES = [
+    "Kiệt 12 K.Lê Duẩn",
+    "Năm 2026 làm lại cổng",
+    "Cửa 1.200 x 2.400 mm",
+    "Giá đỡ ray đặt cao 1.200 mm",
+    "Inox 304, mã B-012, thư mục CT012",
+    "Phía sau nhà 12.000 m2",
+    "10.000 lượt tìm mỗi tháng",
+    "Chi phí bảo trì năm 2026",
+]
+
+
+@pytest.mark.parametrize("notes", ROUND2_NOT_PRICES)
+def test_round2_ordinary_numbers_codes_sizes_do_not_warn(notes):
+    assert _price_warned(notes) == (False, True)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-5: luật «Đ.», «K.» theo chữ hoa, dấu chấm: lọt «150.000 Đ.», oan «45 đ. số 7»",
+)
+@pytest.mark.parametrize(
+    ("notes", "price"),
+    [
+        ("Bộ bản lề 150.000 Đ.", True),
+        ("Thay bản lề hết 150.000 Đ. Khách đồng ý", True),
+        ("Công trình ở 45 đ. số 7, Bình Tân", False),
+        ("Khách ở 123 đ.Nguyễn Văn Linh, quận 7", False),
+    ],
+)
+def test_sl_t100_5_street_abbreviation_rule_tells_prices_from_addresses(notes, price):
+    assert _price_warned(notes) == (price, not price)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-6: giá rồi «lần», «nhà», «căn» bị coi là số đếm nên không cảnh báo",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Bảo dưỡng cửa cuốn 300 nghìn lần đầu",
+        "Cổng 15 triệu nhà anh Tuấn ở Thủ Đức",
+        "Làm cửa 8 triệu căn hộ quận 2",
+    ],
+)
+def test_sl_t100_6_price_followed_by_a_counting_word_still_warns(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-7: «giá» trong «giá đỡ», «giá kệ», «đánh giá» + số có dấu chấm nghìn là giá",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Lắp giá đỡ cách sàn 2.500 mm",
+        "Làm giá kệ sắt 1.200 x 600 mm",
+        "Được đánh giá cao bởi 12.000 khách",
+        "Đánh giá của hơn 10.000 khách hàng",
+        pytest.param("Khách đánh giá tốt dịch vụ sửa bản lề", id="danh-gia-tot-co-tu-truoc"),
+    ],
+)
+def test_sl_t100_7_compound_words_with_gia_are_not_a_price(notes):
+    assert _price_warned(notes) == (False, True)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-8: từ khóa gõ không dấu không còn che chữ có dấu trong ghi chú",
+)
+@pytest.mark.parametrize(
+    ("keyword", "notes"),
+    [
+        ("cua sat gia re", "Bài về cửa sắt giá rẻ cho nhà phố"),
+        ("bang gia cua cuon", "Viết bảng giá cửa cuốn cho khách"),
+    ],
+)
+def test_sl_t100_8_unaccented_keyword_still_covers_accented_text(keyword, notes):
+    assert _price_warned(notes, keyword=keyword) == (False, True)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-9: số tiền không đơn vị sau «tiền», «hết», «tốn», «trả», «công thợ» chưa bắt",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Tiền thay motor 1.200.000",
+        "Thay motor hết 1.200.000",
+        "Khách trả 2.500.000 cho cổng",
+        "Tốn 800.000 tiền vật tư",
+        "Công thợ 300.000 một ngày",
+    ],
+)
+def test_sl_t100_9_amounts_after_money_words_warn(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+def _best(text: str, keyword: str) -> float:
+    timings = []
+    for _ in range(3):
+        start = time.perf_counter()
+        mentions_plan_price(text, keyword)
+        timings.append(time.perf_counter() - start)
+    return min(timings)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-10: so «nằm trong từ khóa» với mọi lần xuất hiện: thời gian tăng bình phương",
+)
+def test_sl_t100_10_price_check_stays_linear_when_the_keyword_repeats():
+    """Chữ dài gấp 4 thì thời gian không quá 8 lần (+10 ms). Đo xen kẽ nhỏ/lớn, lấy lần nhanh nhất
+    (như T-025). Không có từ khóa lặp thì đã tuyến tính (test của Thợ Máy)."""
+    text = "5k " * 700
+    small = big = float("inf")
+    for _ in range(3):
+        small = min(small, _best(text[:500], "5k 5k"))
+        big = min(big, _best(text[:2000], "5k 5k"))
+    assert big < 8 * small + 0.01
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-11: Sheet đầy mà cấp mã mới cho dòng chưa có mã: trùng mã dòng ngoài vùng đọc",
+)
+def test_sl_t100_11_full_sheet_never_gives_a_keyless_row_a_new_key(fake, client):
+    """LC-T100-1, biến thể đường «Cập nhật»: Sheet quá 1.000 dòng; dòng chưa có mã (đọc được) được
+    file kế hoạch cấp mã kế tiếp theo các mã đọc được (B-1000), mà B-1000 đã có ở dòng 1.002 (ngoài
+    vùng đọc). Không được ghi: Sheet sẽ có hai dòng B-1000."""
+    rows = [HEADER, row("", "cửa kéo đài loan")]
+    rows += [row(f"B-{n:03d}", f"từ khóa số {n}") for n in range(1, 1000)]
+    rows += [row("B-1000", "dòng ngoài vùng đọc 1"), row("B-1001", "dòng ngoài vùng đọc 2")]
+    sheet = FakePlanSheet(fake, rows)
+    base = read(client)
+    assert base.full
+    incoming = [PlanRow(keyword="cửa kéo đài loan", priority="Cao")]
+    (proposal,) = compare_rows(base.plan_rows(), incoming, today=TODAY).items
+    assert proposal.after.key == "B-1000" and "key" in proposal.changes
+    result = sync.apply_proposals(client, base, [proposal], now=NOW)
+    assert not result.written and sheet.updates == []
+    assert sheet.cell(2, COL["key"]) == ""

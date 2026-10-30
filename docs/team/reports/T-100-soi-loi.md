@@ -6,6 +6,7 @@
 | Phiếu | [T-100](../tickets/T-100-dong-bo-ke-hoach-cache-nhap.md), Thợ Máy đầu nhánh `04febcc` (gốc `main` `b241e79`); phạm vi gồm cả SL-T097-5 và G2 / LC-T103-1 |
 | Ngày nộp | 2026-10-29 (00:59 +07:00) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp** (SL-T100-1 → -3, đều là cảnh báo giá **oan** của G2: không mất dữ liệu, không ghi sai Sheet, người dùng vẫn tick được). Đồng bộ Sheet, cache, kho nháp, SL-T097-5: **không lỗi**. R5: 9 dòng test đổi đúng điều kiện Chỉ Huy duyệt. Điều kiện: Chỉ Huy chọn sửa 3 lỗi Thấp ngay (lượt 2 ngắn) hay ghi nhận để sau; không chặn Lá Chắn |
+| **Kết luận lượt 2** (đầu nhánh `57bac59`, 2026-10-30) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T100-1 → -3, G1 đóng; LC-T100-1 → -3 sửa đúng hướng, không phá đồng bộ, kho nháp, khóa gửi trùng; R5 đúng. **8 Thấp mới** (SL-T100-4 → -11: 2 ở phần Sheet, 6 ở hàm dò giá mới, trong đó 3 hồi quy). Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-30-0916-0700--soát-lượt-sửa-của-thợ-máy-57bac59) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -203,3 +204,90 @@ Script dò (ngoài repo, thư mục ghi chú chung của nhóm phiên): `T-100-s
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-30 09:16 +07:00) · soát lượt sửa của Thợ Máy (`57bac59`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 30/10 08:30: xác nhận SL-T100-1 → -3, G1; phần Lá Chắn bắt sửa (LC-T100-1 → -3) không phá đồng bộ, kho nháp, khóa gửi trùng; R5 các dấu `xfail` gỡ; lỗi mới do lượt 2 |
+| Đầu nhánh soát | `57bac59` (Thợ Máy lượt 2), trên `9840e13` (gộp `main` `0122d4b`: T-103, T-104); Lá Chắn `789713a` |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T100-1 → -3 và G1 **đóng** (mọi ca đã báo qua); LC-T100-1 → -3 sửa đúng hướng; đồng bộ, kho nháp, khóa gửi trùng không bị phá; R5 đúng. **8 lỗi Thấp mới** (SL-T100-4 → -11): 2 ở phần Sheet (LC-T100-3, LC-T100-1 còn biến thể), 6 ở hàm dò giá mới (3 hồi quy so với lượt 1, 2 mới, 1 biến thể gần LC-T100-2 còn lọt). 0 Nghiêm trọng, 0 Cao, 0 Trung bình. Không lỗi nào chặn gộp (chưa có giao diện dùng tới); nên sửa trước T-101, T-102 như hạn của Lá Chắn |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Lỗi cũ đã sửa:** địa chỉ «45 Đ. Số 7», số đếm «hơn 2 nghìn công trình», ghi chú dài không còn bị cảnh báo giá oan. Đề xuất «thêm bài» chưa có Mã bài không bao giờ được gửi lên Sheet (trước đây có thể thành dòng trùng).
+- **Phần Lá Chắn bắt sửa chạy đúng:** Sheet đủ 1.000 dòng thì phần mềm báo và không thêm dòng mới; cảnh báo giá bắt thêm «Giá thay motor 1.200.000», «VNĐ 500.000», «5tr»…; bài mở từ Sheet khác thì không ghi trạng thái nhầm Sheet. Nháp và khóa chống gửi trùng không bị ảnh hưởng.
+- **Còn 8 lỗi nhỏ**, đều chưa ảnh hưởng vì chưa có nút bấm nào dùng tới (trang Kế hoạch T-101, bước Xuất bản T-102 chưa làm):
+  - Hàm dò giá viết lại **bỏ sót** vài cách ghi giá trước đây vẫn bắt («Bộ bản lề 150.000 Đ.», «bảo dưỡng 300 nghìn lần đầu», «cổng 15 triệu nhà anh Tuấn») và **báo oan** vài cách viết khác («lắp giá đỡ cách sàn 2.500 mm», «được đánh giá cao bởi 12.000 khách», từ khóa gõ không dấu).
+  - Vẫn sót cách ghi «Tiền thay motor 1.200.000», «Thay motor hết 1.200.000».
+  - Chữ AI cố tình lặp từ khóa thì việc dò giá chậm dần (tới vài chục giây với 100 đề xuất).
+  - Nếu phần mềm đưa nhầm mã Sheet lúc ghi trạng thái, vẫn có thể ghi nhầm Sheet.
+  - Sheet đã quá 1.000 dòng: dòng chưa có mã vẫn có thể được cấp một mã trùng với dòng nằm ngoài phần phần mềm đọc được.
+- **Không có gì phải anh/chị quyết.**
+
+### R5: các dấu `xfail` được gỡ
+
+| File | Gỡ | Dòng xóa / thêm | Đúng? |
+|---|---|---|---|
+| `tests/test_la_chan_t103.py` | 1 dấu LC-T103-1 (test nhiều tham số, 5 ca) | 4 / 0 | Có: chỉ dấu; 5 ca nay qua (sau khi gộp `main`, đúng như lượt 1 đã báo trước) |
+| `tests/test_la_chan_t100.py` | 5 dấu: LC-T100-1 (3), LC-T100-2 (1 dấu, 8 ca), LC-T100-3 (1) | 7 / 0 | Có: chỉ dấu, thân test giữ nguyên, nay qua |
+| `tests/test_soi_loi_t100.py` | 3 dấu SL-T100-1 (3 ca), -2 (4 ca), -3 (3 ca) | 13 / 0 | Có: chỉ dấu; 10 ca nay qua |
+| `tests/test_plan_sync.py` (test của Thợ Máy) | Không gỡ dấu; đổi 2 dòng: hàm giả `write_then_other_tab` nhận thêm `sheet_id` để chuyển tiếp | 2 / 2 | Có: bắt buộc vì `retry_pending` nay gọi `write_status(…, sheet_id=…)`; khẳng định của test giữ nguyên |
+
+Không xóa, không bỏ qua, không nới test nào. Test canh của Lá Chắn (số đếm có dấu chấm nghìn) và mọi ca giá, số thường của tôi ở lượt 1 giữ nguyên, đều qua.
+
+### Từng lỗi cũ
+
+| Lỗi | Kiểm lại | Kết quả |
+|---|---|---|
+| SL-T100-1 | 3 ca đã báo qua; biến thể «Kiệt 12 K.Lê Duẩn» (không dấu cách sau «K.») qua. Biến thể chữ thường «45 đ. số 7», «123 đ.Nguyễn Văn Linh» vẫn bị cảnh báo oan, và cách sửa làm lọt giá thật «150.000 Đ.»: gộp thành SL-T100-5 | **Đóng** (ca đã báo) |
+| SL-T100-2 | 4 ca đã báo qua; «10k lượt xem», «Hơn hai nghìn khách» qua. Danh sách danh từ đếm quá rộng làm lọt giá: SL-T100-6 | **Đóng** (ca đã báo) |
+| SL-T100-3 | 3 ca qua; nay dò trên cả chữ, không cắt khúc (Thợ Máy thử từ khóa ở mọi vị trí của ghi chú 2.000 ký tự) | **Đóng** |
+| G1 | «Thêm» không Mã bài, lệnh thêm «chưa rõ», bấm lại hai lần: cả hai lần là xung đột `CONFLICT_NO_KEY`, **0** lệnh thêm dòng; `_key_present("")` trả «chưa rõ» | **Đóng** |
+
+### Phần Lá Chắn bắt sửa (không phá luồng cũ)
+
+| Mã | Kiểm | Kết quả |
+|---|---|---|
+| LC-T100-1 | Sheet đủ 1.001 dòng: câu báo `MSG_FULL`, «Thêm» thành `CONFLICT_FULL`, không lệnh thêm, sửa dòng đọc được vẫn ghi. Biến thể: lúc xem còn 999 dòng, **máy khác thêm 2 dòng** trước khi bấm áp dụng: chặn đúng, dòng sửa vẫn ghi. Ghi trạng thái dòng ngoài vùng đọc `BLOCKED` (giữ việc); «Viết bài» trên dòng đó báo `MSG_FULL` (test của Thợ Máy) | Đúng; **còn** SL-T100-11 (cấp mã mới cho dòng chưa có mã trên Sheet đầy) |
+| LC-T100-2 | 8 ca của Lá Chắn qua. Thêm 15 cách viết phải bắt: «5tr», «5 TR», «1.5tr», «Giá 500.000», «VNĐ 500.000», «500.000 VNĐ», «500.000vnđ», «150k/m2», «500K», «giá 350.000/bộ», «Tiền công 200.000», «2 triệu rưỡi», «năm trăm nghìn», «1,2 triệu», «99$»: bắt hết. 8 cách viết số thường, mã, kích thước («Cửa 1.200 x 2.400 mm», «Giá đỡ ray đặt cao 1.200 mm», «Inox 304, mã B-012, CT012», «Năm 2026», «10.000 lượt tìm»…): không cảnh báo | Đúng với ca của Lá Chắn; **còn** SL-T100-5, -6 (hồi quy), -7 (oan mới), -8 (hồi quy), -9 (biến thể gần), -10 (chậm) |
+| LC-T100-3 | Không đưa `sheet_id`: so với Sheet thật của client; nháp của Sheet khác → `BLOCKED`, không đọc, không ghi, giữ việc; nháp đúng Sheet → ghi (đối chứng) | Đúng; **còn** SL-T100-4 (đưa `sheet_id` lệch với client thì vẫn ghi nhầm) |
+| Đồng bộ, kho nháp, khóa gửi trùng | Lượt 2 không đổi `drafts.py`, `plan_cache.py`, `app/`. Bộ test chọn lọc (đồng bộ, cache, kho nháp, trạng thái gửi, T-086, T-089, dò giá, Google, T-103): xem «Bằng chứng (lượt 2)» | Không lùi |
+
+### Lỗi mới (lượt 2)
+
+| # | Mức | Mô tả | Vị trí | Trước Lá Chắn? | Test |
+|---|---|---|---|---|---|
+| SL-T100-4 | Thấp | LC-T100-3 đóng chưa trọn: `write_status`, `record_status`, `retry_pending` so mã băm Sheet của việc với `sheet_id` **nơi gọi đưa** (có thì dùng, bỏ qua Sheet thật của client). Client nối Sheet A mà nơi gọi đưa mã Sheet B (client cũ còn giữ trong phiên sau khi đổi `GOOGLE_SHEET_ID`, hay truyền nhầm biến): trạng thái của nháp mở từ Sheet B vẫn **ghi vào dòng cùng mã của Sheet A**, việc còn nợ bị bỏ. Đúng cái hại LC-T100-3 muốn chặn | `seo_app/plan/sync.py:860` (`_connected_hash`: `sheet_id` thắng `client.sheet_hash`) | Có | `test_sl_t100_4_…` |
+| SL-T100-5 | Thấp | Luật bỏ qua tên đường viết tắt (sửa SL-T100-1) dựa vào **chữ hoa** «Đ»/«K» + dấu cách trước + dấu chấm sau: (a) **hồi quy**: giá thật «Bộ bản lề 150.000 Đ.», «Thay bản lề hết 150.000 Đ. Khách đồng ý» không còn được cảnh báo (lượt 1 bắt được); (b) địa chỉ gõ chữ thường «45 đ. số 7», «123 đ.Nguyễn Văn Linh» vẫn bị cảnh báo oan | `seo_app/plan/propose.py:463` | Có | `test_sl_t100_5_…` (4 ca) |
+| SL-T100-6 | Thấp | **Hồi quy**: danh sách danh từ đếm (sửa SL-T100-2) có «lần», «nhà», «căn», «hộ»… là chữ hay đứng ngay sau giá: «Bảo dưỡng cửa cuốn 300 nghìn lần đầu», «Cổng 15 triệu nhà anh Tuấn ở Thủ Đức», «Làm cửa 8 triệu căn hộ quận 2» không còn được cảnh báo (lượt 1 bắt được) | `seo_app/plan/propose.py:430` (`_COUNT_NOUNS`), `:450` | Có | `test_sl_t100_6_…` (3 ca) |
+| SL-T100-7 | Thấp | **Mới ở lượt 2**: `_PRICE_LABEL` coi chữ «giá» trong từ ghép là nhãn giá: «giá đỡ», «giá kệ» (đồ sắt), «đánh giá», rồi số có dấu chấm nghìn trong vòng 3 từ: **kích thước** «Lắp giá đỡ cách sàn 2.500 mm», «Làm giá kệ sắt 1.200 x 600 mm» và **số đếm** «Được đánh giá cao bởi 12.000 khách», «Đánh giá của hơn 10.000 khách hàng» bị cảnh báo giá oan, không tick sẵn. Cùng gốc, có từ trước (cả bước SEO): «Khách đánh giá tốt dịch vụ» khớp cụm «giá tốt» | `seo_app/plan/propose.py:404`, cụm `_PRICE_PHRASES` | Có | `test_sl_t100_7_…` (5 ca) |
+| SL-T100-8 | Thấp | **Hồi quy**: `_keyword_spans` so từ khóa chính **có dấu**; từ khóa gõ không dấu trong Sheet («cua sat gia re», «bang gia cua cuon») không còn che chữ có dấu trong ghi chú («cửa sắt giá rẻ», «bảng giá cửa cuốn») nên bị cảnh báo giá oan. Lượt 1 (và bước SEO, SL-T041-3) so không dấu | `seo_app/plan/propose.py:468` | Có | `test_sl_t100_8_…` (2 ca) |
+| SL-T100-9 | Thấp | Biến thể gần LC-T100-2 còn lọt (có từ lượt 1): số tiền không đơn vị sau «tiền», «hết», «tốn», «trả», «công thợ»: «Tiền thay motor 1.200.000», «Thay motor hết 1.200.000», «Khách trả 2.500.000 cho cổng», «Tốn 800.000 tiền vật tư», «Công thợ 300.000 một ngày». Trong khi «Giá thay motor 1.200.000», «Tiền công 200.000» thì bắt | `seo_app/plan/propose.py:404` (chỉ «giá», «phí», «tiền công») | Có | `test_sl_t100_9_…` (5 ca) |
+| SL-T100-10 | Thấp | **Mới ở lượt 2**: `outside()` so mỗi chỗ khớp với **mọi** lần xuất hiện của từ khóa (danh sách, không chia đôi như `_KeywordSpans` của bước SEO): chữ AI lặp từ khóa ngắn dày đặc làm thời gian tăng theo bình phương: «5k » lặp, từ khóa «5k 5k»: 500 ký tự 6 ms, 2.000 ký tự 104 ms (gấp 16 lần khi chữ dài gấp 4; không từ khóa: gấp 3,6). 100 mục AI độc như vậy: khoảng 10–25 giây treo trang. Test tốc độ của Thợ Máy dùng từ khóa không lặp nên không thấy | `seo_app/plan/propose.py:488` | Có | `test_sl_t100_10_…` |
+| SL-T100-11 | Thấp | Biến thể gần LC-T100-1 còn hở: Sheet đầy chỉ chặn «Thêm». Dòng **chưa có mã** đọc được vẫn được `compare_rows` cấp mã kế tiếp theo các mã đọc được (đường «Cập nhật»), mà mã đó có thể đã có ở dòng ngoài vùng đọc: thử Sheet 1.003 dòng, dòng 2 chưa mã được cấp «B-1000», trong khi «B-1000» đã ở dòng 1.002 → Sheet có **hai dòng B-1000**; về sau ghi trạng thái cho bài B-1000 thấy dòng 2 | `seo_app/plan/sync.py:538` (`_update` không xét `fresh.full` khi đổi Mã bài) | Có | `test_sl_t100_11_…` |
+
+Cách sửa gợi ý (Thợ Máy chọn):
+
+- SL-T100-4: client có `sheet_hash` thì luôn so với nó (nơi gọi đưa thêm `sheet_id` thì cả hai phải khớp); chỉ dùng `sheet_id` khi client không cho biết Sheet.
+- SL-T100-5: quyết định theo **hình dạng số** thay vì chữ hoa: số có dấu chấm nghìn («150.000») luôn là tiền; bỏ qua «đ.», «Đ.», «k.», «K.» chỉ khi số trước nó là số nhà (không dấu chấm nghìn, ngắn) và sau dấu chấm là chữ (tên đường).
+- SL-T100-6: bỏ «lần», «nhà», «căn», «hộ», «bài», «cái», «chiếc»… khỏi danh sách đếm, hay chỉ coi là số đếm khi đơn vị là «nghìn/ngàn/triệu» mà danh từ đi kèm là số đông («lượt», «khách», «người», «công trình», «truy cập»…).
+- SL-T100-7: «giá» chỉ là nhãn khi không đứng sau «đánh» và không đứng trước «đỡ», «kệ», «treo», «trị»; cụm «giá tốt», «giá từ»… cũng không tính sau «đánh».
+- SL-T100-8: tìm từ khóa trên chữ đã bỏ dấu (như `_KeywordSpans` của `seo_app/onpage/meta.py`: bỏ dấu từng ký tự, giữ vị trí).
+- SL-T100-9: thêm «tiền» (trừ «mặt tiền», đã có test canh của Thợ Máy), «hết», «tốn», «trả», «công thợ» vào nhóm chữ đứng trước số tiền không đơn vị; giữ test canh «10.000 lượt tìm», «Mặt tiền 5.000 mm».
+- SL-T100-10: gộp và sắp các khoảng từ khóa, so bằng chia đôi (`bisect`), như `_KeywordSpans.covers`.
+- SL-T100-11: trong `_update`, Mã bài mới khác mã cũ (cấp mã cho dòng chưa có mã) mà `fresh.full` thì `Conflict` `CONFLICT_FULL`, như «Thêm».
+
+**Góp ý (không xếp lỗi):**
+
+- **G5:** Sheet đầy mà còn nhiều việc ghi trạng thái cho dòng ngoài vùng đọc: các việc đó nay `BLOCKED` (giữ lại) và `retry_pending` đi tiếp, mỗi việc **đọc lại cả Sheet một lần**, ở mỗi lần mở trang. Vài chục việc như vậy dễ chạm hạn mức đọc của Google (lỗi 429, trang chậm). Gợi ý: đọc Sheet một lần cho cả lượt thử lại, hay dừng ở việc `STATUS_FULL` đầu tiên.
+- G2, G3, G4 của lượt 1 (tab khác chữ hoa, cột ngày chưa định dạng, câu báo dòng «Bỏ»): chưa đổi, đúng như Thợ Máy ghi (việc giao diện, thử thật).
+
+### Bằng chứng (lượt 2)
+
+- `tests/test_soi_loi_t100.py`: **99 passed, 22 xfailed** (121 ca) (thêm 48 ca lượt 2: G1, LC-T100-1 biến thể, LC-T100-3 đối chứng, 15 dạng giá phải bắt, 8 dạng số thường; 22 `xfail` của 8 lỗi mới).
+- Bộ test chọn lọc 18 file trên `57bac59`: **1.227 passed, 22 xfailed, 0 failed** (39 phút; 22 xfail là đúng 22 ca của 8 lỗi mới). Gồm `test_plan_sync`, `test_plan_cache`, `test_t100_drafts_plan`, `test_la_chan_t100`, `test_plan_propose`, `test_la_chan_t103`, `test_google_sheets`, `test_storage_send_state`, `test_storage_drafts`, `test_t086_send_state`, `test_t089_send_draft`, `test_soi_loi_t089`, `test_la_chan_t089`, `test_soi_loi_t103`, `test_t103_plan_prompt`, `test_soi_loi_t097`, `test_t100_google_identity` và file của tôi. Máy đang chạy toàn bộ test của Chỉ Huy cùng lúc nên chỉ chạy chọn lọc.
+- Script dò (thư mục ghi chú chung, `T-100-soi-loi-scripts/`): `probe_round2_price.py` (bảng phải bắt / không được báo, so lượt 1 với lượt 2), `probe_round2_sync.py` (G1, SL-T100-4, thời gian), `probe_round2_time.py`, `probe_full_key_assign.py` (SL-T100-11).
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn: sạch; `PYTHONUTF8=1 uvx detect-secrets scan` file của tôi và 6 file đổi ở lượt 2: 0 phát hiện (mồi «AKIA…» bắt được, đã xóa).
