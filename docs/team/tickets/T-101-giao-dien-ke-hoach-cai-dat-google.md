@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (đợt 3) |
 | Phụ thuộc | T-100, T-103 đã gộp |
-| Trạng thái | Đã qua Lá Chắn; sửa test trước khi gộp |
+| Trạng thái | Xong (gộp `main` 2026-10-30) |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ Làm phần **T-101** đúng như thiết kế Giai đoạn 5: `docs/team/report
 - 2026-10-30 11:00 (Chỉ Huy B): điều kiện Lá Chắn T-100 (mục 5): hiện chữ Sheet, `Conflict.now` bằng chữ thuần (LC-T094-3); giữ `listing.plan` (bản người dùng đã xem) trong `session_state` tới lúc «Áp dụng»; không tự dựng `Proposal` ngoài `compare_rows` / `from_ai`. LC-T100-1 (vùng đọc đầy), LC-T100-2 (cảnh báo giá) phải xong ở T-100 lượt 2 trước khi nối «Áp dụng» và hiện đề xuất AI tick sẵn.
 - 2026-10-30 17:23 (Chỉ Huy B): T-100, T-103 đã gộp. Nhánh `team/T-101` từ `main` `fd28bbc`, worktree `wt-T-101`; giao Họa Sĩ (phiên Họa Sĩ T-084). Ranh giới (Họa Sĩ hỏi, Chỉ Huy chọn A): nút «Viết bài» trên dòng kế hoạch dùng khóa `write.py` có sẵn (`_open_draft`, `_start_keyword`) và khóa mới `_start_plan_key`, `open_row` chỉ đọc Sheet, không gửi WordPress (LC-T094-35); T-102 đọc `_start_plan_key` để gắn `DraftPlanRef`. «Cập nhật trạng thái từ website»: T-101 chỉ làm phần đọc; phần ghi Sheet → T-109.
 - 2026-10-30 19:59 (Chỉ Huy B): Họa Sĩ `6b0c785`; Soi Lỗi ĐẠT (`164c58a`, 0 lỗi; G1 `_start_plan_key` → T-102); Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`18756ae`, LC-T101-1 Thấp: nút tải CSV không trung hòa ô `=…` → sửa ở T-102). Khi T-102 gộp nhánh này, lộ 21 ca `tests/test_soi_loi_t103.py` (đã ở `main`) dùng `demo.plan_rows`, `demo.PLAN_PASTE_EXAMPLE` mà T-101 đã xóa (Soi Lỗi, Lá Chắn chỉ chạy test chọn lọc nên không thấy). R5 Chỉ Huy duyệt 30/10 19:50: chép mẫu thành hằng trong file test, ý test giữ nguyên; Họa Sĩ sửa trên `team/T-101`, rồi Chỉ Huy gộp sau toàn bộ test.
+- 2026-10-30 22:24 (Chỉ Huy B): sửa test `test_soi_loi_t103.py` trên nhánh (`944160c`, R5). Gộp `main` (`4594f06`, cùng T-107 lượt 3, T-110 lượt 1; `eef13b5` bỏ import thừa sau gộp). Windows 21.539 test qua, 0 hỏng. LC-T101-1 đã sửa ở nhánh T-102 (chờ Lá Chắn đầy đủ T-102 đóng).
