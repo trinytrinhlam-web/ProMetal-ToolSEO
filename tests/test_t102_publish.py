@@ -287,6 +287,37 @@ def test_internal_link_reloads_listing_right_before_sending(project_root, site, 
     assert f'<a href="{BASE_URL}/thay-ban-le/">Thay cả cặp bản lề</a>' in parts[1]
 
 
+def test_review_cells_cannot_become_excel_formulas(project_root, site, monkeypatch):
+    """Loại LC-T101-1 (Lá Chắn T-101): ô bảng xác nhận mở đầu bằng ``=``, ``+``, ``-``, ``@`` được
+    thêm một dấu cách đầu (``sync.safe_text``): tải CSV từ thanh công cụ của bảng rồi mở bằng
+    Excel thì không thành công thức. Chữ gửi lên website không đổi."""
+    monkeypatch.setattr(
+        WordPressClient, "list_published", lambda self: PublishedList([published_item()])
+    )
+    snap = MARKDOWN_ARTICLE.model_copy(
+        update={
+            "id": "8" * 32,
+            "parts": [
+                DraftPart(heading="Mở bài", versions=["Cổng inox ở Tân Phú bị xệ cánh."]),
+                DraftPart(heading="Bản lề", versions=["=HYPERLINK cửa sắt là cách gọi vui."]),
+            ],
+            "seo": DraftSeo(links=[DraftLink(section=1, anchor="=HYPERLINK cửa sắt", post_id=11)]),
+        }
+    )
+    at = open_snap(project_root, snap)
+    ui.to_publish(at)
+    (links,) = [t.value.to_dict("records") for t in at.dataframe if "Chữ neo" in t.value.columns]
+    assert links[0]["Chữ neo"] == " =HYPERLINK cửa sắt"
+    cells = [
+        value
+        for table in at.dataframe
+        for row in table.value.to_dict("records")
+        for value in row.values()
+        if isinstance(value, str)
+    ]
+    assert not any(value.startswith(("=", "+", "-", "@", "\t", "\r")) for value in cells)
+
+
 def test_changed_between_view_and_click_sends_nothing(project_root, site, sent, monkeypatch):
     """LC-T094-38: lúc bấm dựng lại gói (danh sách bài vừa tải lại khác: bài đích đổi địa chỉ) và
     so mã băm với bài người dùng vừa xem: khác thì không gửi gì, báo xem lại."""

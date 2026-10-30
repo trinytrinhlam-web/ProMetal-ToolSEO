@@ -102,6 +102,7 @@ from seo_app.plan.sync import (
     open_row,
     plan_ref,
     record_status,
+    safe_text,
     status_write,
 )
 from seo_app.publish.render import (
@@ -2813,6 +2814,13 @@ def shown_text(text: object, limit: int = MAX_SHOWN_TEXT) -> str:
     return value if len(value) <= limit else f"{value[: limit - 1]}…"
 
 
+def cell_text(text: object, limit: int = MAX_SHOWN_TEXT) -> str:
+    """Chữ trong ô bảng của màn hình xác nhận: như ``shown_text``, rồi ô mở đầu bằng ``=``, ``+``,
+    ``-``, ``@``, tab thì thêm một dấu cách đầu (``sync.safe_text``): bảng tải về CSV (nút trên
+    thanh công cụ của ``st.dataframe``) mở bằng Excel không thành công thức (loại LC-T101-1)."""
+    return safe_text(shown_text(text, limit))
+
+
 def default_publish_time() -> time:
     """Giờ điền sẵn vào ô Giờ của «Hẹn giờ»: ``[plan].default_time`` của config/content.toml đọc
     bằng ``parse_plan_time``; thiếu, sai dạng, file lỗi thì 08:00 (Lá Chắn T-103 điều kiện 2c,
@@ -3108,11 +3116,11 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
                 {
                     "Mức": LEVEL_BADGES[row.level][1],
                     "Dấu hiệu lạ": "; ".join(row.flags),
-                    "Tên máy (dạng ASCII)": shown_text(row.ascii_host),
-                    "Chữ neo": shown_text(row.text),
-                    "Địa chỉ": shown_text(row.href),
+                    "Tên máy (dạng ASCII)": cell_text(row.ascii_host),
+                    "Chữ neo": cell_text(row.text),
+                    "Địa chỉ": cell_text(row.href),
                     "Loại": LINK_KINDS.get(row.kind, "Khác"),
-                    "Lý do": shown_text(row.message),
+                    "Lý do": cell_text(row.message),
                 }
                 for row in review.links
             ],
@@ -3127,8 +3135,8 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
             [
                 {
                     "Dấu hiệu lạ": "; ".join(bare.flags),
-                    "Tên máy (dạng ASCII)": shown_text(bare.ascii_host),
-                    "Địa chỉ": shown_text(bare.text),
+                    "Tên máy (dạng ASCII)": cell_text(bare.ascii_host),
+                    "Địa chỉ": cell_text(bare.text),
                     "Loại": BARE_KINDS.get(bare.kind, "Khác"),
                 }
                 for bare in review.bare
@@ -3138,7 +3146,7 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
         )
     if review.embeds:
         st.markdown("**Đoạn WordPress sẽ nhúng cả trang khác vào bài** (phải sửa trước khi gửi)")
-        st.dataframe([{"Địa chỉ": shown_text(url)} for url in review.embeds], hide_index=True)
+        st.dataframe([{"Địa chỉ": cell_text(url)} for url in review.embeds], hide_index=True)
     if not full:
         return
     if review.images:
@@ -3146,9 +3154,9 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
         st.dataframe(
             [
                 {
-                    "Ở": shown_text(image.section_name),
-                    "Alt": shown_text(image.alt),
-                    "Chú thích": shown_text(image.caption),
+                    "Ở": cell_text(image.section_name),
+                    "Alt": cell_text(image.alt),
+                    "Chú thích": cell_text(image.caption),
                     "Vị trí GPS": "Còn" if image.has_gps else "Không",
                     "Ảnh AI": "Có" if image.ai else "",
                     "Ảnh đại diện": (
@@ -3165,7 +3173,7 @@ def review_tables(built: BuiltArticle, *, full: bool) -> None:
         st.markdown("**Đoạn dạng shortcode** («[» liền chữ, có «]» phía sau)")
         st.dataframe(
             [
-                {"Ở": shown_text(where), "Đoạn": shorten(shown_text(segment))}
+                {"Ở": cell_text(where), "Đoạn": shorten(cell_text(segment))}
                 for where, segment in review.shortcodes
             ],
             hide_index=True,
