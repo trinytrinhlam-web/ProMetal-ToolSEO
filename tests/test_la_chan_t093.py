@@ -56,10 +56,6 @@ class _ChosenFile:
         return self._data
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T093-1: trang Kết nối WordPress tải nguyên file ảnh, bỏ qua quyết định 2A",
-)
 def test_lc_t093_1_wordpress_page_upload_follows_decision_2a(project_root, monkeypatch):
     """Mong đợi: ảnh từ trang Kết nối WordPress lên website cũng theo quyết định 2A như ảnh của
     «Gửi nháp» (không số seri, tên chủ máy, MakerNote, XMP, chú thích, IPTC, ảnh nhỏ IFD1), hoặc

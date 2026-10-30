@@ -112,7 +112,7 @@ Phần này cần cho công tắc **Ghi SEO lên website** (mục 10). Không l�
 
 Ở trang này bạn còn có thể:
 - bấm **Tải chuyên mục và thẻ** để xem danh sách đang có trên website;
-- **tạo thử một bài nháp** có ảnh đại diện.
+- **tạo thử một bài nháp** chỉ có chữ, không có ảnh, để kiểm kết nối. Muốn thử gửi ảnh thì dùng «Gửi nháp» ở trang **Soạn bài**: ảnh ở đó đã qua bước làm sạch (bỏ số seri máy, tên chủ máy…) trước khi lên website.
 
 App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn tự bấm Đăng trong WordPress. Bài thử có thể xóa trong WordPress sau khi kiểm tra.
 
