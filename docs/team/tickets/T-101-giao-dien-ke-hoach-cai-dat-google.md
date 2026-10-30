@@ -45,3 +45,4 @@ Làm phần **T-101** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-28 23:14 (Chỉ Huy B): góp ý G4 của Soi Lỗi T-103: dữ liệu mẫu trang Kế hoạch demo (`seo_app/demo.py`) dùng trạng thái «Sẵn sàng», không thuộc danh sách nhãn của `PlanRow`; khi thay demo bằng dữ liệu thật đừng dùng lại nhãn đó.

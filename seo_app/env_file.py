@@ -40,7 +40,7 @@ MAX_VALUE_LENGTH = 512
 # Ký tự được phép trong khóa: chữ/số ASCII và vài dấu thường gặp trong khóa API
 # (Anthropic/OpenAI "sk-…", Gemini "AIza…"). Không có dấu nháy, "#", "$", "\", "=", dấu cách.
 _ALLOWED_VALUE = re.compile(r"[A-Za-z0-9_\-.:+/~]+")
-_BOM = "﻿"
+_BOM = chr(0xFEFF)  # dấu BOM đầu file «UTF-8 with BOM»
 # Thời gian chờ tối đa (giây) khi kiểm tra khóa với máy chủ AI.
 CHECK_TIMEOUT_SECONDS = 15.0
 
@@ -49,9 +49,37 @@ CHECK_TIMEOUT_SECONDS = 15.0
 SHEET_ID_VAR = "GOOGLE_SHEET_ID"
 SHEET_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{25,100}")
 
+# Mã băm mật khẩu đăng nhập (``set_password``, T-104): chữ, số ASCII và ":" (dạng
+# ``pbkdf2_sha256:lặp:muối:băm`` của ``seo_app.auth``), giới hạn độ dài.
+PASSWORD_HASH_VAR = "APP_PASSWORD_HASH"
+_PASSWORD_HASH_VALUE = re.compile(r"[A-Za-z0-9_:]{1,512}")
+
 
 class EnvFileError(ValueError):
     """Không ghi được ``.env`` hoặc giá trị không hợp lệ. Thông điệp tiếng Việt, không chứa khóa."""
+
+
+class EnvFileReadError(EnvFileError):
+    """Không đọc được ``.env``: ``not_utf8`` (sai bảng mã) hoặc lỗi hệ thống ``error_name``
+    (tên loại lỗi, ví dụ ``PermissionError``). Chưa ghi gì."""
+
+    def __init__(self, message: str, *, error_name: str = "", not_utf8: bool = False) -> None:
+        super().__init__(message)
+        self.error_name = error_name
+        self.not_utf8 = not_utf8
+
+
+class EnvFileWriteError(EnvFileError):
+    """Không ghi được ``.env`` (``error_name``: tên loại lỗi). Lỗi xảy ra trước hoặc ngay ở bước
+    ``os.replace``, nên file ``.env`` cũ **chưa bị thay**, còn nguyên (T-104, LC-T090-2)."""
+
+    def __init__(self, message: str, *, error_name: str) -> None:
+        super().__init__(message)
+        self.error_name = error_name
+
+
+class EnvFileFormatError(EnvFileError):
+    """Nội dung mới không khớp cách python-dotenv đọc: không ghi, hoặc đã trả lại bản cũ."""
 
 
 def _resolve_env_file(env_file: Path | None) -> Path:
@@ -120,11 +148,12 @@ def _read_env_text(path: Path) -> str | None:
         with path.open("r", encoding="utf-8", newline="") as fh:
             return fh.read()
     except UnicodeDecodeError as exc:
-        raise EnvFileError(
-            "File .env không đọc được dạng UTF-8. Mở và lưu lại bằng UTF-8."
+        raise EnvFileReadError(
+            "File .env không đọc được dạng UTF-8. Mở và lưu lại bằng UTF-8.", not_utf8=True
         ) from exc
     except OSError as exc:
-        raise EnvFileError(f"Không đọc được file .env ({type(exc).__name__}).") from exc
+        name = type(exc).__name__
+        raise EnvFileReadError(f"Không đọc được file .env ({name}).", error_name=name) from exc
 
 
 def _build_content(name: str, value: str, text: str, *, add_if_missing: bool) -> str | None:
@@ -177,6 +206,10 @@ _FORMAT_ERROR = (
     "File .env có định dạng lạ nên app không ghi khóa vào được (đã giữ nguyên file cũ). "
     "Hãy mở .env và sửa tay."
 )
+_RESTORE_FAILED = (
+    "File .env vừa ghi đọc lại thấy sai và không trả lại được bản cũ ({error}). Hãy mở .env "
+    "kiểm tra từng dòng."
+)
 
 
 def _write_value(
@@ -196,7 +229,7 @@ def _write_value(
     expected = _parse(text)
     expected[name] = value
     if _parse(content) != expected:
-        raise EnvFileError(_FORMAT_ERROR)
+        raise EnvFileFormatError(_FORMAT_ERROR)
 
     _atomic_write(path, content)
 
@@ -210,8 +243,12 @@ def _write_value(
             with contextlib.suppress(OSError):
                 path.unlink()
         else:
-            _atomic_write(path, old_text)
-        raise EnvFileError(_FORMAT_ERROR)
+            try:
+                _atomic_write(path, old_text)
+            except EnvFileWriteError as exc:
+                # File đã bị thay mà không trả lại được: không được báo «file cũ còn nguyên».
+                raise EnvFileError(_RESTORE_FAILED.format(error=exc.error_name)) from exc
+        raise EnvFileFormatError(_FORMAT_ERROR)
 
 
 def _is_windows() -> bool:
@@ -231,9 +268,11 @@ def _atomic_write(path: Path, content: str) -> None:
         os.replace(tmp_name, path)
         tmp_name = None
     except OSError as exc:
-        # Không đưa đường dẫn máy hay nội dung vào thông báo.
-        raise EnvFileError(
-            f"Không ghi được file .env ({type(exc).__name__}). Kiểm tra quyền ghi thư mục app."
+        # Không đưa đường dẫn máy hay nội dung vào thông báo. Lỗi ở đây là trước hoặc ngay ở
+        # ``os.replace`` (thay nguyên tử): file đích chưa bị đụng tới.
+        name = type(exc).__name__
+        raise EnvFileWriteError(
+            f"Không ghi được file .env ({name}). Kiểm tra quyền ghi thư mục app.", error_name=name
         ) from exc
     finally:
         if tmp_name is not None:
@@ -296,6 +335,21 @@ def clear_google_sheet_id(env_file: Path | None = None) -> None:
     Chưa có file hoặc chưa có dòng của biến thì không làm gì.
     """
     _write_value(SHEET_ID_VAR, "", env_file, add_if_missing=False)
+
+
+def set_password_hash(value: str, env_file: Path | None = None) -> None:
+    """Ghi ``APP_PASSWORD_HASH`` vào ``.env`` cho ``set_password`` (T-104, LC-T090-1, -2).
+
+    Cùng bộ ghi với khóa API (``_write_value``): tách ``.env`` bằng python-dotenv (bỏ BOM, chỉ CR,
+    LF là xuống dòng), thay **mọi** dòng của biến (kể cả dòng lặp, ``export``, có dấu cách quanh
+    «=»: app dùng dòng cuối), chép nguyên văn mọi đoạn khác, ghi file tạm rồi ``os.replace``, đọc
+    lại để kiểm. Giá trị chỉ nhận chữ, số ASCII và các dấu của mã băm (``pbkdf2_sha256:…``): không
+    xuống dòng, dấu cách, nháy, ``#``, ``=``. Lỗi: ``EnvFileReadError``, ``EnvFileWriteError`` (file
+    cũ còn nguyên), ``EnvFileFormatError``, ``EnvFileError``; câu báo không chứa giá trị.
+    """
+    if not isinstance(value, str) or not _PASSWORD_HASH_VALUE.fullmatch(value):
+        raise EnvFileError("Mã băm mật khẩu không đúng định dạng.")
+    _write_value(PASSWORD_HASH_VAR, value, env_file)
 
 
 def overridden_by_os_environ(name: str, environ: Mapping[str, str] | None = None) -> bool:

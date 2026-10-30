@@ -28,8 +28,9 @@
 # Ví dụ đổi việc viết bài sang ChatGPT: trong [tasks.write] ghi provider = "openai" và
 # model = "gpt-5.1".
 #
-# Việc đang có: research, outline, write, rewrite, review, meta, links (bài viết); alt (viết chữ
-# thay thế cho ảnh); image (tạo ảnh minh họa, đang tắt, xem ghi chú ở cuối file).
+# Việc đang có: research, outline, write, rewrite, review, meta, links (bài viết); plan (đọc ghi
+# chú kế hoạch ở trang Kế hoạch); alt (viết chữ thay thế cho ảnh); image (tạo ảnh minh họa, đang
+# tắt, xem ghi chú ở cuối file).
 
 [tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
 provider = "anthropic"
@@ -75,6 +76,16 @@ provider = "anthropic"
 model = "claude-opus-5-5"
 effort = "low"
 max_tokens = 2000
+
+[tasks.plan]  # đọc ghi chú kế hoạch bạn dán ở trang Kế hoạch, đề xuất thêm, sửa, bỏ bài
+# Thiết kế Giai đoạn 5 (T-094): cùng hãng, mô hình, effort với việc lập dàn ý ([tasks.outline])
+# cho tới khi bạn muốn đổi. Một lần đọc có thể ra tới 100 đề xuất nên max_tokens lớn hơn dàn ý.
+# KHÔNG thêm web_search ở việc này: lời dặn chứa kế hoạch và ghi chú chép từ nơi khác (điều kiện
+# Lá Chắn T-094). Dù có ghi, phần mềm vẫn luôn tắt tìm web cho việc này.
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "medium"
+max_tokens = 16000
 
 [tasks.alt]  # viết alt (chữ thay thế) và chú thích cho ảnh, AI nhìn ảnh rồi viết
 # Quyết định 4A (2026-10-19): Claude Sonnet. Quy tắc viết alt nằm ở mục [alt] của

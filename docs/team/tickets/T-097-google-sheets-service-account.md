@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (đợt 1) |
 | Phụ thuộc | Câu hỏi 1: **chủ dự án chốt A sáng 28/10** (khai báo `google-auth`) |
-| Trạng thái | Xong (gộp `main` 2026-10-28); còn lượt 2 (5 Thấp) trước T-100 |
+| Trạng thái | Xong (gộp `main` 2026-10-28, cả lượt 2); SL-T097-5 chuyển T-100 |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ Làm phần **T-097** đúng như thiết kế Giai đoạn 5: `docs/team/report
 - 2026-10-28 28/10 08:27 (Chỉ Huy B): chủ dự án chốt A cả 6 câu thiết kế (câu 1: khai báo `google-auth`). Nhánh `team/T-097` từ `main` `b513d67`, worktree `wt-T-097`; giao Thợ Máy (phiên Thợ Máy T-059).
 - 2026-10-28 17:31 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`82bf0c0`, 4 Thấp), Lá Chắn đầy đủ ĐẠT CÓ ĐIỀU KIỆN (`4f6a970`, 1 Thấp mới LC-T097-1). Gộp `main`, Windows 18.870 test qua, 0 hỏng. Lượt 2 (Thợ Máy) sửa SL-T097-1, -2, LC-T097-1 trước khi T-100 dùng client; SL-T097-3, -4 trước T-101.
 - 2026-10-28 21:09 (Chỉ Huy B): lượt 2 giao Thợ Máy (phiên Thợ Máy T-059), nhánh `team/T-097` tua tới `main` `24013b3`.
+- 2026-10-28 23:14 (Chỉ Huy B): lượt 2 Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`16b9f64`, 1 Thấp mới SL-T097-5), Lá Chắn xem lại ĐẠT CÓ ĐIỀU KIỆN (`931bfed`, LC-T097-1 đóng). Gộp `main`, Windows 19.645 test qua, 0 hỏng. SL-T097-5 (so danh tính file khóa theo đường thật) gom vào T-100 theo đề xuất Soi Lỗi.
