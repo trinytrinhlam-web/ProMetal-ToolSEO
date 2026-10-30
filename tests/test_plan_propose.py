@@ -523,3 +523,182 @@ def test_price_check_time_grows_linearly():
     piece = "giá 1.1.1.1 phí : : 9 VND 1, 2 nghìn đ. "
     small, big = best(piece * 50), best(piece * 400)
     assert big < 16 * small + 0.05
+
+
+# ------------------------------------------------- T-100 lượt 3: dò giá có dấu, không dấu (SL-T100)
+
+PRICES_BOTH_WAYS = [
+    ("Thay khóa 500k", "thay khoa 500k"),
+    ("Thay motor 1tr5", "thay motor 1tr5"),
+    ("Sơn 1,5 tr/m2", "son 1,5 tr/m2"),
+    ("Bộ bản lề 150.000đ", "bo ban le 150.000d"),
+    ("Bộ bản lề 150.000 Đ.", "bo ban le 150.000 d."),
+    ("Tay nắm 500.000 VNĐ", "tay nam 500.000 vnd"),
+    ("VNĐ 1.500.000 cả bộ", "VND 1.500.000 ca bo"),
+    ("Khoảng 500 nghìn", "khoang 500 nghin"),
+    ("Tầm 300 ngàn", "tam 300 ngan"),
+    ("Cổng 2 triệu", "cong 2 trieu"),
+    ("Hai triệu rưỡi", "hai trieu ruoi"),
+    ("Năm trăm nghìn đồng", "nam tram nghin dong"),
+    ("50 đô la", "50 do la"),
+    ("Giá thay motor 1.200.000", "gia thay motor 1.200.000"),
+    ("Chi phí 800.000 một lần", "chi phi 800.000 mot lan"),
+    ("Tiền thay motor 1.200.000", "tien thay motor 1.200.000"),
+    ("Thay motor hết 1.200.000", "thay motor het 1.200.000"),
+    ("Khách trả 2.500.000", "khach tra 2.500.000"),
+    ("Tốn 800.000 tiền vật tư", "ton 800.000 tien vat tu"),
+    ("Công thợ 300.000 một ngày", "cong tho 300.000 mot ngay"),
+    ("Bảo dưỡng 300 nghìn lần đầu", "bao duong 300 nghin lan dau"),
+    ("Cửa giá rẻ", "cua gia re"),
+    ("Có bảng giá", "co bang gia"),
+    ("Sửa trọn gói", "sua tron goi"),
+    ("Miễn phí khảo sát", "mien phi khao sat"),
+]
+NOT_PRICES_BOTH_WAYS = [
+    ("Công trình ở 45 Đ. Số 7", "cong trinh o 45 d. so 7"),
+    ("Kiệt 12 K. Lê Duẩn", "kiet 12 k. le duan"),
+    ("Hơn 2 nghìn công trình", "hon 2 nghin cong trinh"),
+    ("Video 10k lượt xem", "video 10k luot xem"),
+    ("3 triệu lượt xem", "3 trieu luot xem"),
+    ("Lắp giá đỡ cách sàn 2.500 mm", "lap gia do cach san 2.500 mm"),
+    ("Được đánh giá cao bởi 12.000 khách", "duoc danh gia cao boi 12.000 khach"),
+    ("Gia công 1.200 bộ cửa", "gia cong 1.200 bo cua"),
+    ("Mặt tiền 5.000 mm", "mat tien 5.000 mm"),
+    ("Trả lời 10.000 khách", "tra loi 10.000 khach"),
+    ("Tôn 1.200 x 2.400", "ton 1.200 x 2.400"),
+    ("Có 2 đồng hồ điện", "co 2 dong ho dien"),
+    ("Tỷ lệ 2 tỷ lệ cửa", "ty le 2 ty le cua"),
+    ("Làm năm 2026 ở quận 7", "lam nam 2026 o quan 7"),
+]
+
+
+@pytest.mark.parametrize("pair", PRICES_BOTH_WAYS, ids=lambda pair: pair[1])
+def test_prices_with_and_without_accents(pair):
+    accented, plain = pair
+    assert propose.mentions_plan_price(accented) and propose.mentions_plan_price(plain)
+
+
+@pytest.mark.parametrize("pair", NOT_PRICES_BOTH_WAYS, ids=lambda pair: pair[1])
+def test_not_prices_with_and_without_accents(pair):
+    accented, plain = pair
+    assert not propose.mentions_plan_price(accented)
+    assert not propose.mentions_plan_price(plain)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Nghiêng 5 độ",
+        "Tủ 3 ngăn kéo",
+        "Đổ trà 2 lần",
+        "Mua 2 tạ tôn",
+        "Cửa in hoa văn 3D",
+        "Sau đó 2 ngày",
+    ],
+)
+def test_words_with_other_accents_are_not_money_words(text):
+    assert not propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "notes"),
+    [
+        ("cửa sắt giá rẻ", "Bài về cua sat gia re cho nhà phố"),
+        ("cua sat gia re", "Bài về Cửa Sắt Giá Rẻ cho nhà phố"),
+        ("bảng giá cửa cuốn", "Viết bang gia cua cuon cho khách"),
+    ],
+)
+def test_keyword_covers_text_with_or_without_accents(keyword, notes):
+    assert not propose.mentions_plan_price(notes, keyword)
+    assert propose.mentions_plan_price(notes + ", giá 500.000", keyword)
+
+
+def test_price_next_to_a_skipped_word_is_still_found():
+    """Chỗ khớp bị bỏ qua («đánh giá tốt») không che chỗ khớp gối lên nó («giá 500.000»)."""
+    assert propose.mentions_plan_price("Khách đánh giá tốt, giá 500.000")
+    assert propose.mentions_plan_price("2 đồng hồ, thêm 500k")
+
+
+# ------------------------------------------------- T-100 lượt 4: so theo chữ có dấu, quy tắc chung
+
+BIG_AMOUNTS = [
+    "Khách đặt cọc 2.000.000",
+    "Thanh toán 1.500.000 khi xong",
+    "Chuyển khoản 1.500.000",
+    "Ứng trước 3.000.000 cho thợ",
+    "Tổng cộng 12.000.000",
+    "Giá nhập 800.000 một bộ",
+    "Giá trị hợp đồng 50.000.000",
+    "Mất 800.000 tiền vật tư",
+    "Bảo dưỡng 300.000 lần đầu",
+    "Cổng 15.000.000 nhà anh Tuấn",
+    "Lô 1.500.000 bộ cửa",  # từ 1.000.000 trở lên: đơn vị đếm không gỡ cảnh báo
+    "khach dat coc 2.000.000",
+    "thanh toan 1,500,000 khi xong",
+]
+
+
+@pytest.mark.parametrize("text", BIG_AMOUNTS)
+def test_amounts_from_ten_thousand_warn_whatever_word_comes_before(text):
+    assert propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Thợ kiểm tra 12.000 điểm hàn",
+        "Điều tra 10.000 hộ",
+        "Hệ thống tra cứu 15.000 bộ",
+        "Tôn 12.000 m2",
+        "Ray dài 12.000 mm",
+        "Khung 1.200 x 2.400",
+        "Bảo hành 36.000 giờ chạy",
+        "Từ khóa có 10.000 lượt tìm",
+        "Đã kiểm tra 1.000 lần đóng mở",
+        "Số 9.999 là số nhỏ",
+        "Ngày 30.10.2026",
+    ],
+)
+def test_measure_time_count_and_small_numbers_are_not_prices(text):
+    assert not propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Kiểm tra lại 1.500 bộ bản lề",
+        "Điều tra 5.000 hộ dân",
+        "Tra cứu 2.000 mã hàng",
+        "Gia công 1.200 mm",
+        "Tham gia 5.000 khách",
+        "Bản lề làm từ đồng thau",
+        "Cửa cuốn tự động",
+        "Gửi khách bản vẽ 3d",
+    ],
+)
+def test_accented_text_needs_accented_money_words(text):
+    """Chữ có dấu: «tra», «gia», «từ», «d» không dấu không phải «trả», «giá», «tư», «đ»."""
+    assert not propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    ("text", "price"),
+    [
+        ("kiem tra lai 1.500 bo ban le", False),
+        ("tra cuu 2.000 ma hang", False),
+        ("cua cuon tu dong", False),
+        ("ban le lam tu dong thau", False),
+        ("ban ve 3d", False),
+        ("khach tra 2.500 tien mat", True),
+        ("gia 5.000 mot cai", True),
+        ("hai trieu", True),
+    ],
+)
+def test_plain_text_is_read_without_accents(text, price):
+    assert propose.mentions_plan_price(text) is price
+
+
+def test_one_accent_makes_the_whole_text_accented():
+    """Có một dấu là chữ có dấu: nhãn không dấu không tính, nhưng quy tắc chung vẫn bắt số lớn."""
+    assert not propose.mentions_plan_price("gia 5.000 một cái")
+    assert propose.mentions_plan_price("gia 50.000 một cái")

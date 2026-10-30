@@ -828,3 +828,56 @@ def test_retry_goes_on_after_a_blocked_write(fake, client, store):
     ]  # fmt: skip
     assert [draft_id for draft_id, _ in store.list_plan_writes()] == [blocked]
     assert sheet.cell(3, COL["wp_post_id"]) == 502
+
+
+# ======================================================================== lượt 3 (Soi Lỗi T-100)
+
+
+class _NoHashClient:
+    """Client không cho biết Sheet nào (chỉ đọc, ghi): dùng ``sheet_id`` nơi gọi đưa."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    def read_plan_values(self):
+        return self.inner.read_plan_values()
+
+    def update_cells(self, updates):
+        return self.inner.update_cells(updates)
+
+
+def test_sheet_id_and_client_sheet_must_agree(sheet, client):
+    """SL-T100-4: việc của đúng Sheet client đang nối, nhưng nơi gọi nói Sheet khác: lệch nhau
+    thì không ghi."""
+    write = sync.status_write(ref(), model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    other = "Q" * 44
+    result = sync.write_status(client, write, sheet_id=other, now=NOW)
+    assert result.outcome is sync.WriteOutcome.BLOCKED and sheet.updates == []
+    both = sync.write_status(client, write, sheet_id=SHEET_ID, now=NOW)
+    assert both.outcome is sync.WriteOutcome.WRITTEN
+
+
+def test_client_without_sheet_hash_uses_the_given_sheet_id(sheet, client):
+    write = sync.status_write(ref(), model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    bare = _NoHashClient(client)
+    assert sync.write_status(bare, write, now=NOW).outcome is sync.WriteOutcome.BLOCKED
+    assert sync.write_status(bare, write, sheet_id="Q" * 44, now=NOW).outcome is (
+        sync.WriteOutcome.BLOCKED
+    )
+    done = sync.write_status(bare, write, sheet_id=SHEET_ID, now=NOW)
+    assert done.outcome is sync.WriteOutcome.WRITTEN
+
+
+def test_full_sheet_never_assigns_a_new_key(fake, client):
+    """SL-T100-11: Sheet đầy thì dòng chưa có mã không được cấp mã mới; dòng có mã vẫn sửa được."""
+    rows = [HEADER, row("", "cửa kéo đài loan")] + full_rows(999)[1:]
+    sheet = FakePlanSheet(fake, rows)
+    base = read(client)
+    assert base.full
+    incoming = [PlanRow(keyword="cửa kéo đài loan", priority="Cao"),
+                PlanRow(key="B-010", keyword="cửa sắt mẫu số 10", priority="Cao")]  # fmt: skip
+    proposals = compare_rows(base.plan_rows(), incoming, today=TODAY).items
+    result = sync.apply_proposals(client, base, list(proposals), now=NOW)
+    assert [c.reason for c in result.conflicts] == [sync.CONFLICT_FULL]
+    assert [p.key for p in result.written] == ["B-010"]
+    assert sheet.cell(2, COL["key"]) == ""

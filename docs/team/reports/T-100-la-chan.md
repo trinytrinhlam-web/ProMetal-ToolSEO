@@ -226,3 +226,79 @@ Máy đang chạy toàn bộ test của Chỉ Huy, nên tôi chạy 18 file ch�
 | 1 | SL-T100-11 (phần còn hở của LC-T100-1) và SL-T100-5 → -10 (hàm dò giá); gỡ `xfail` khi XPASS (R5) | Thợ Máy (lượt sửa T-100 sau), hay đầu T-101 | Trước khi T-101 nối «Áp dụng» và hiện đề xuất AI |
 | 2 | SL-T100-4 (phần còn hở của LC-T100-3) | Thợ Máy (lượt sửa T-100 sau), hay đầu T-102 | Trước khi T-102 gọi `record_status` / `retry_pending` |
 | 3 | Điều kiện 5, 6 của lượt 1 giữ nguyên (T-101 chữ thuần, giữ `listing.plan`, không tự dựng `Proposal`; T-102 `find_plan_draft` theo Sheet đang dùng; kiểm lại bằng Fable sau 01/11) | T-101, T-102, Chỉ Huy | Như lượt 1 |
+
+## Xem lại lượt 3–4
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Lượt 3: Thợ Máy `777d124` (`sync.py` +22/−13 cho SL-T100-4, -11; `propose.py` +212/−79 cho SL-T100-5 → -10), Soi Lỗi `0b1da79` (4 Thấp mới SL-T100-12 → -15). Lượt 4: Thợ Máy `a096b93` (`propose.py` +171/−131: so nhãn theo chữ có dấu, quy tắc chung số ≥ 10.000), Soi Lỗi `da0e510` (ĐẠT, 0 lỗi mới, bảng «Giới hạn đã biết»). Lượt 3–4 không đổi `seo_app/onpage`, `seo_app/storage`, `seo_app/google`, `app/`, `config/` |
+| Ngày | 2026-10-30 (12:45–12:59 +07, giờ máy) |
+| **Kết luận lượt 3–4** | **ĐẠT**: SL-T100-4 và SL-T100-11 đóng, nên **LC-T100-1, -2, -3 đóng hẳn**. Lá Chắn **0 lỗi mới**. 12 Thấp của Soi Lỗi (SL-T100-4 → -15) đóng, Soi Lỗi lượt 4 không có lỗi mới, trong phạm vi T-100 không còn lỗi nào mở. Tôi **đồng ý** coi các ca dò giá lặt vặt còn sót là giới hạn đã biết, kèm hai điều kiện cho T-101, T-102 (dưới). Dò giá mới chạy tuyến tính, không làm hỏng chức năng khác. Gộp `main` được: với `main` trên máy `3164a80` không xung đột, 21 file test chọn lọc qua trên cây gộp, 0 hỏng. **T-101, T-102 nối giao diện được** (phần T-100), mang theo các điều kiện ở mục cuối |
+
+### Tóm tắt (cho chủ dự án)
+
+Mọi lỗi nhỏ còn lại của phần đồng bộ kế hoạch đã sửa. Sheet đã đủ 1.000 dòng thì app không thêm dòng, không cấp mã bài mới. Trạng thái bài chỉ ghi vào đúng Google Sheet app đang thật sự nối, kể cả khi vừa đổi Sheet trong Cài đặt. Cảnh báo «AI nhắc tới giá» được viết lại: chạy nhanh với cả chữ cố ý gây khó, bắt các cách viết giá hay gặp, ít báo oan hơn. Vẫn còn vài cách viết hiếm bị lọt hay bị báo oan. Tôi đồng ý để như vậy: AI đã được dặn không nói giá, và anh/chị duyệt từng đề xuất trước khi lưu. Phần này đủ để làm giao diện trang Kế hoạch (T-101) và bước Xuất bản (T-102).
+
+### Phần còn hở của LC-T100-1, -3
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T100-4 (LC-T100-3) | **Đóng** | `_connected_hash` (`sync.py:865`): lấy `client.sheet_hash` (Sheet lệnh ghi thật sự tới); nơi gọi đưa thêm `sheet_id` mà lệch thì trả `None` (`:873`) → `BLOCKED`, không đọc, không ghi, giữ việc. Chỉ dùng `sheet_id` khi client không cho biết Sheet nào; `SheetsClient` thật luôn cho biết. `record_status`, `retry_pending` đi cùng đường này. Test `test_sl_t100_4_…` của Soi Lỗi (đã gỡ `xfail`) qua |
+| SL-T100-11 (LC-T100-1) | **Đóng** | `_update`: Sheet đầy mà đề xuất cấp mã mới → `CONFLICT_FULL` (`sync.py:562-563`). Các đường cấp mã khác đều đã chặn hay không cấp mã: «Thêm» bị chặn khi đầy (lượt 2); ghi trạng thái, «Viết bài» không cấp mã. Test `test_sl_t100_11_…` qua |
+
+### Dò giá viết lại (lượt 3–4)
+
+- **Phạm vi:** chỉ đổi phần dò giá của `propose.py` (từ dòng 383) và phần nhập thư viện. `mentions_plan_price` chỉ được `_has_price` gọi. `mentions_price` của bước SEO (`seo_app/onpage/meta.py`) không đổi. Code khác của `propose.py` (`from_ai`, `compare_rows`, cảnh báo số điện thoại) không đổi.
+- **Không có biểu thức chạy lâu.** Đọc code:
+  - các biểu thức chỉ có lượng từ giới hạn (`{0,3}?`) hay không lồng nhau; có nhìn trước, nhìn sau;
+  - `_all_matches` (`propose.py:540`) dò lại từ ký tự kế, nhưng chỗ khớp không bắt đầu được giữa một số (nhìn sau `(?<![\w.,])`);
+  - «nằm trong từ khóa» tìm bằng chia đôi (`in_keyword`, `:568`).
+
+  Đo (`probe_round34_time.py`, lần nhanh nhất trong 3, máy đang chạy toàn bộ test):
+  - 12 mẫu chữ độc (lặp «giá », «gia », «1.000.», chữ số liền, «5k » với từ khóa «5k 5k», «đánh giá 12.000 », «mặt tiền mặt »…): 2.000 ký tự chậm gấp ×2,6 → ×4,6 so với 500 ký tự (tuyến tính; bậc hai là ×16). Chậm nhất 3,3 ms cho một chữ 2.000 ký tự.
+  - Ca SL-T100-10 (100 mục AI lặp «5k ») còn 0,78 giây, lượt 2 là 15,9 giây.
+- `_fold_char` dùng `functools.cache` không giới hạn (`propose.py:522`), nhưng khóa chỉ là từng ký tự. `clean_text` đã bỏ ký tự chưa gán, dùng riêng, nửa cặp, nên bộ nhớ tối đa cỡ vài chục MB kể cả với chữ cố ý. Quan sát, không phải lỗi.
+- **Test của tôi** vẫn qua: LC-T100-2 (8 ca), test canh số đếm, LC-T103-1 (5 ca, test canh giá cũ).
+
+### Giới hạn đã biết của cảnh báo giá: Lá Chắn đồng ý
+
+Bảng «Giới hạn đã biết» của Soi Lỗi lượt 4 gồm các cách viết hiếm. Lọt: «150.000d» trong chữ có dấu, «Công thợ 300.000 ngày», «Lương thợ 8.000.000 tháng». Báo oan: «2.000.000 lượt xem», «100.000 lần đóng mở», «Mã đơn 12.345».
+
+Đồng ý không mở thêm lượt, vì:
+1. Cảnh báo giá là lớp thứ ba, không phải lớp chính. Lời dặn AI đã cấm giá (T-103); người dùng duyệt từng đề xuất; không đường nào từ đề xuất đi thẳng lên website.
+2. Ca lọt chỉ làm mất dòng cảnh báo và đề xuất được tick sẵn; chữ vẫn hiện để duyệt. Ca báo oan theo hướng an toàn.
+3. Mỗi lượt sửa thêm lại sinh hồi quy (lượt 2 có 3 hồi quy, lượt 4 lọt lại 2 ca lượt 3 bắt được); dừng ở một quy tắc dễ đoán là hợp lý.
+
+Không cần ghi sổ rủi ro, vì các lớp chính vẫn còn. Đổi lại phải giữ hai điều kiện:
+- (a) **T-101:** bảng duyệt hiện **đủ** chữ AI đề xuất (ghi chú, tiêu đề dự kiến, từ khóa phụ, không cắt ngắn), bằng chữ thuần, để người duyệt tự thấy giá;
+- (b) **T-102:** giữ điều kiện 2 của biên bản T-103: chữ dòng kế hoạch vào lời dặn viết bài qua khung dữ liệu; ghi chú sang «Kinh nghiệm của xưởng» có kiểm số điện thoại, email, giá.
+
+### Gỡ `xfail` (R5)
+
+Đúng R5. Lượt 3 xóa 8 dấu (32 dòng), lượt 4 xóa 4 dấu (17 dòng) trong `tests/test_soi_loi_t100.py`, 0 dòng thêm. Tôi đã liệt kê từng dòng bị xóa: toàn là dấu `@pytest.mark.xfail(...)`. Soi Lỗi tự sửa chú thích đầu file test của mình ở lượt 4 (được phép).
+
+### Thử gộp
+
+`main` trên máy `3164a80` (có T-100 lượt 2, T-099, T-106, T-108, T-093) chưa nằm trong nhánh. `git merge-tree --write-tree main da0e510` **không xung đột** (cây `7ec9762`); từ gốc chung `a214c0b`, hai bên không sửa chung file nào. Code mới bên `main` (`seo_app/publish/schedule.py`, client WordPress, `app/views/wordpress.py`) không nhập gì của `seo_app.plan.sync` hay kho nháp. Commit tạm `c32f690` trong worktree riêng (`git commit-tree`, không nhánh, đã gỡ).
+
+Trên cây gộp: `ruff check .` sạch. 21 file chọn lọc (đồng bộ, cache, kho nháp T-100, dò giá, lời dặn T-103, Google T-097, hẹn giờ và client T-099, kho nháp và gửi nháp T-089, `test_app_pages.py`): **2.203 passed, 6 xfailed, 0 failed**, 7 phút 45 giây. 6 ca `xfail` là lỗi còn mở có từ trước của T-099 trên `main` (LC-T099-1, SL-T099-1), không liên quan T-100.
+
+### Công cụ quét lượt 3–4
+
+| Công cụ | Kết quả |
+|---|---|
+| detect-secrets 1.5.0 | **Đặt `PYTHONUTF8=1`**, `--all-files` trên bản sao 8 file đổi, bản vá `a214c0b..da0e510`, **file mồi tiếng Việt**: mồi bắt **2/2**, file thật 0 mục. Đã xóa file mồi |
+| bandit 1.9.4 | `PYTHONUTF8=1`, `propose.py`, `sync.py` (1.681 dòng): không có mục nào |
+| Soát lịch sử git | `git log -p a214c0b..da0e510`: 0 dạng khóa thật |
+| ruff | `uv run ruff check .` trên cây gộp: `All checks passed!` |
+
+### T-101, T-102 nối giao diện được chưa
+
+**Được, về phía T-100.** Mọi lỗi của phần đồng bộ, cache, kho nháp, dò giá đã đóng. Hai phiếu vẫn phải làm đủ điều kiện LC-T094 của riêng mình, cộng các điều kiện mang theo:
+
+| Phiếu | Điều kiện mang theo |
+|---|---|
+| **T-101** (trang Kế hoạch, Cài đặt → Google) | (1) Mọi chữ từ Sheet, cache, AI (`PlanRow`, `Conflict.now`, đề xuất, cảnh báo) hiện bằng chữ thuần (LC-T094-3, -32); chữ AI đề xuất hiện đủ, không cắt (điều kiện (a) ở trên). (2) Giữ `listing.plan` (bản người dùng đã xem) trong `session_state` tới lúc «Áp dụng»; không tự dựng `Proposal` ngoài `compare_rows` / `from_ai`. (3) Hiện câu `MSG_FULL`, `ApplyResult.notes`, `Conflict` («trước / bây giờ / đề xuất»). (4) Bắt mọi lỗi của `parse`, `propose`, `plan_changes`, `sync` (`SheetsError`, `SheetPlanError`, `PlanKeyError`, `PersonalInfoError`, `AIError`…) thành câu cố định, không để Streamlit hiện khung lỗi (điều kiện 1 biên bản T-098). (5) Các điều kiện còn lại của biên bản T-098 (nút «Che» che cả từ khóa kế hoạch hiện tại), T-103 (thử AI thật với dữ liệu khác ví dụ, G3) |
+| **T-102** (bước Xuất bản thật) | (1) «Viết bài»: `find_plan_draft(key, sheet_hash(<Sheet đang dùng>))`, không có thì `open_row` (đọc lại Sheet). (2) Gửi xong: `record_status(…, sheet_id=settings.google_sheet_id)`; kết quả `BLOCKED` thì hiện câu của kết quả, việc vẫn giữ, thử lại chỉ ghi Sheet. (3) Điều kiện 2 của biên bản T-103 (khung dữ liệu, kiểm số điện thoại, email, giá khi sang chất liệu thật; `[plan].default_time` qua `parse_plan_time`) và điều kiện (b) ở trên |
+
+Kiểm lại toàn bộ biên bản T-100 bằng Claude Fable sau 01/11 (điều kiện 6 lượt 1).
