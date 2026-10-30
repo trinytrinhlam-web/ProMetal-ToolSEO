@@ -63,11 +63,6 @@ def _release_posts(fake: FakeWordPress) -> int:
 DRAFT = (200, {"id": 42, "status": "draft"}, {"Date": format_datetime(NOW, usegmt=True)})
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T099-1: release_draft kiểm mã thuộc _created_post_ids rồi mới bỏ mã sau lệnh kiểm "
-    "nháp; hai luồng dùng chung một client cùng qua bước kiểm, gửi 2 lệnh chuyển vào một bài",
-)
 def test_lc_t099_1_hai_luong_chung_mot_client_chi_mot_lenh_chuyen():
     arrived = threading.Condition()
     count = [0]

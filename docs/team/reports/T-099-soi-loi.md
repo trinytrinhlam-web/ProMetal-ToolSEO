@@ -156,3 +156,97 @@ Những ca đúng đều gửi được: biên 10 phút và 365 ngày, phần l�
 - Đột biến: 26/26 bị bắt.
 - `uv run ruff check .`: sạch. `detect-secrets scan tests/test_soi_loi_t099.py` (`PYTHONUTF8=1`): sạch.
 - Script dò, đột biến: thư mục ghi chú chung `T-099-soi-loi-scripts/` (`probe_date.py`, `probe_data_body.py`, `mutate099.py`).
+
+## Lượt 2 (2026-10-30): xác nhận SL-T099-1, LC-T099-1 đóng
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `team/T-099`, đầu nhánh `1040586` (lượt 2 của Thợ Máy, trên `ce451fe`); thử gộp với `main` `3164a80` |
+| Kết quả | **ĐẠT.** SL-T099-1 và LC-T099-1 đóng thật. **0 lỗi mới** (0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp). Gộp `main` không xung đột, test chọn lọc 0 hỏng |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Hai lỗi nhỏ của lượt trước đã sửa đúng:**
+  - lớp chặn lệnh gửi WordPress nay chỉ nhận thân dạng byte ở đúng lệnh **tải ảnh**. Tôi thử 11 dạng thân lạ ở 8 đường khác: đều bị chặn, không lệnh nào đi ra. Tải ảnh thật (6 loại ảnh, cả «Gửi nháp» kèm ảnh) vẫn chạy;
+  - nếu sau này có nhiều việc cùng hẹn giờ / đăng **một** bài, chỉ một việc gửi được lệnh. Thử 3 việc chạy cùng lúc, lặp 25 lần: lần nào cũng đúng 1 lệnh.
+- **Bị chặn trước khi gửi lệnh** (19 kiểu: giờ sai, mất mạng lúc kiểm nháp, lỗi máy chủ, đồng hồ lệch…): bài vẫn là nháp của lần gửi đó, thử lại được. **Đã gửi lệnh rồi** (14 kiểu kết quả, kể cả mất mạng, lỗi máy chủ): không bao giờ gửi lại.
+- **Việc của bạn:** không có.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t099.py` | Thêm mục «Lượt 2»: 146 ca, tất cả qua. Thợ Máy đã gỡ dấu `xfail` SL-T099-1 ở file này (xem R5). Cả file: 317 ca qua |
+| `docs/team/reports/T-099-soi-loi.md` | Mục này |
+
+### 1. SL-T099-1 đóng
+
+- **Thân lạ ở mọi đường không phải tải ảnh** (8 đường: `POST` bài có mã, tạo bài, sửa ảnh có sẵn `/wp/v2/media/9`, chạy ability; `GET` bài, danh sách bài, `users/me`, `/`) × 11 dạng: byte, byte rỗng, `bytearray`, `memoryview`, chữ (`str`), form `dict`, form danh sách cặp, đối tượng file (`BytesIO`), `files=`, byte kèm `Content-Type: image/jpeg`, byte kèm `Content-Type` dạng form: **88/88 bị chặn, 0 request**, bài vẫn nháp.
+- **Lệnh tải ảnh sai khuôn** (12 ca): không header, chỉ `Content-Disposition`, loại `text/plain`, dạng form, `multipart`, `image/jpeg; charset=…`, `image/svg+xml`, hai header loại (`Content-Type` và `content-type`), kèm `json` (có khóa, và `{}` rỗng), chữ thay byte, `bytearray`: **12/12 bị chặn, 0 request**.
+- **Không chặn oan:** `upload_media` với `.avif`, `.gif`, `.jpeg`, `.jpg`, `.png`, `.webp`: gửi đúng byte, đúng một `Content-Type` loại ảnh, rồi lệnh ghi alt (JSON) vẫn đi. `create_draft_with_images` với ảnh WebP thật (qua `make_web_image`): ảnh lên, bài nháp tạo, ảnh đại diện đặt.
+- Chạy mục «Lượt 2» trên code lượt 1 (`ce451fe`, trước khi thêm ca `json={}`): 24 ca thân lạ, 3 ca tải ảnh sai khuôn và 5 ca SL-T099-1 cũ hỏng, tức test bắt đúng lỗi cũ.
+
+### 2. LC-T099-1 đóng
+
+**Nhiều luồng, một client, một bài:**
+
+- **3 luồng** (hẹn giờ, đăng ngay, hẹn giờ giờ khác): luồng A giành bài, dừng ở lệnh kiểm nháp; B, C bị từ chối **ngay** («Chưa gửi gì», `unsure=False`), không hỏi website (chỉ 1 lệnh `GET`). Thả A: **đúng 1 lệnh chuyển**, bài trên website `future` đúng giờ của A.
+- **3 luồng xuất phát cùng lúc** (`threading.Barrier`), lặp 25 lần với website, client mới: lần nào cũng đúng 1 luồng thành công, 1 lệnh chuyển; 2 luồng kia «Chưa gửi gì».
+- **Luồng đầu bị chặn rồi luồng sau mới chạy** (4 ca): kiểm nháp lỗi 500, mất mạng, giờ quá gần → A trả mã, B (gọi trong lúc A giữ bài) bị từ chối, C (gọi sau) chuyển được, 1 lệnh. Website báo bài vừa bị đăng → A giữ mã (không trả), C bị từ chối, 0 lệnh chuyển.
+- Chạy trên code lượt 1: 3 ca nhiều luồng hỏng (2 lệnh chuyển, hay luồng sau không bị từ chối).
+
+**Trả mã hay giữ mã ở từng bước** (đúng thiết kế lượt 2):
+
+| Nhóm | Ca | Kết quả |
+|---|---|---|
+| Bị chặn trước lệnh chuyển: **trả mã** | 19: hình thức sai, Đăng ngay kèm giờ, giờ không múi giờ, header phiên đổi phương thức; lệnh kiểm nháp mất mạng, hết giờ, 301, 401, 404, 500, 503, không phải JSON; thiếu `Date`, `Date` rác, đồng hồ lệch 3 phút, giờ đã qua, quá gần, quá xa; đồng hồ máy ném lỗi lạ (`RuntimeError`) | Mã trở lại tập, 0 lệnh chuyển, bài vẫn nháp, câu không chép lời máy chủ. Website ổn trở lại thì **chính client đó** hẹn giờ được, đúng 1 lệnh chuyển |
+| Đã biết không còn nháp, hoặc đã gửi lệnh chuyển: **giữ mã** | 14: website báo đã đăng, thùng rác, trả lời kiểm nháp lạ (danh sách); lệnh chuyển thành công, mất mạng, hết giờ, 301, 302 không `Location`, 500, 503, trả lời lạ, thiếu trường, từ chối 400, 403 | Mã không trở lại; 0 lệnh chuyển (ca kiểm nháp) hay đúng 1 (ca đã gửi); sau đó `release_draft` hai hình thức, `set_featured_image`, `set_seo_meta` đều bị từ chối, **0 request thêm**, không gửi lại |
+
+Ca «đồng hồ máy ném lỗi lạ» kiểm `finally` trả mã cả với lỗi không phải `ReleaseError`: đột biến R5 dưới đây chỉ ca này bắt.
+
+### 3. R5 và không lùi
+
+- `tests/test_soi_loi_t099.py` (của tôi): Thợ Máy chỉ xóa 4 dòng dấu `xfail` SL-T099-1, thân 5 ca giữ nguyên (`git diff ce451fe..1040586`). `tests/test_la_chan_t099.py`: chỉ xóa 5 dòng dấu `xfail` LC-T099-1. `tests/test_wordpress_release.py`: chỉ thêm ca, không xóa dòng nào. **Đúng R5.**
+- `release_draft` đổi thứ tự (giành mã trước), `_release_check` đổi kiểu trả về `(còn nháp, giờ máy chủ)` và không còn tự bỏ mã; `_is_plain_request` thêm một dòng gọi `_is_image_upload`. Grep nơi gọi: `_release_check` chỉ `release_draft` gọi; `release_draft` chưa có nơi gọi ngoài test; `data=` chỉ `_post_media` gửi. Câu báo, số biên giữ nguyên (các ca ghim câu báo, biên 10 phút / 365 ngày của lượt 1 vẫn qua).
+- Test canh `status` (`test_soi_loi_t037.py::test_status_publish_or_future_only_in_list_published`) qua: lượt 2 không thêm dict `status` nào.
+
+### 4. Gộp thử với `main` `3164a80`
+
+`git merge-tree --write-tree main HEAD` → cây `3d49717`, **không xung đột** (sau lượt 1, `main` thêm T-099 lượt 1, T-100 lượt 2, T-106 + T-108, T-093). `main` trên máy nay là `e00fd0d`, chỉ thêm ghi việc (`CLAUDE.md`, `docs/team/`): gộp cũng không xung đột (cây `691e817`), code như `3164a80`. Chạy chọn lọc trên bản sao cây gộp (máy đang chạy toàn bộ test), 29 file, 2 phần song song: **4.079 passed, 2 xfailed, 0 failed** (2.299 + 1.780). 2 xfail có sẵn là LC-T093-2, -3 (phiếu khác).
+
+- T-099: `test_wordpress_release.py`, `test_publish_schedule.py`, `test_soi_loi_t099.py`, `test_la_chan_t099.py`; canh `status`: `test_soi_loi_t037.py`, `test_safety.py`.
+- T-059: `test_t059_siet_ghi_seo_va_srcset.py`, `test_soi_loi_t059.py`. T-086: `test_t086_send_state.py`, `test_soi_loi_t086.py`, `test_la_chan_t086.py`. T-089: `test_t089_send_draft.py`, `test_soi_loi_t089.py`, `test_la_chan_t089.py`. T-091: `test_t091_don_client_wordpress.py`, `test_soi_loi_t091.py`, `test_la_chan_t091.py`.
+- Đường tải ảnh (luật `data` mới): `test_wordpress_images.py`, `test_soi_loi_t054.py`, `test_soi_loi_t060.py`, `test_wordpress_t060.py`, `test_soi_loi_t085.py`, `test_wordpress_t085.py`, `test_soi_loi_t088.py`, `test_wordpress_t088.py`, `test_la_chan_t071.py`, `test_la_chan_t093.py`, `test_wordpress_client.py`; trang Kết nối sau T-108: `test_t106_trang_ket_noi.py`.
+
+### Đột biến lượt 2
+
+11 đột biến trên `client.py` (script `mutate099r2.py`), mỗi lần chạy `test_soi_loi_t099.py`, `test_wordpress_release.py`, `test_la_chan_t099.py`: **11/11 bị bắt**.
+
+| Đột biến | Ca hỏng: Soi Lỗi / Thợ Máy / Lá Chắn |
+|---|---|
+| R1 kiểm rồi mới bỏ mã (hai bước, có khe nhỏ) | 1 / 1 / 1 |
+| R2 trả mã cả sau khi quyết gửi lệnh chuyển | 30 / 29 / 1 |
+| R3 website báo không còn nháp vẫn trả mã | 13 / 10 / 0 |
+| R4 bị chặn trước lệnh chuyển không trả mã | 42 / 9 / 1 |
+| R5 chỉ trả mã khi lỗi là `ReleaseError` | 1 / 0 / 0 |
+| R6 thân byte ở mọi đường `POST` | 4 / 2 / 0 |
+| R7 thân byte kèm `json` | 1 (sau khi thêm ca `json={}`) / 1 / 0 |
+| R8 nhận hai header loại | 1 / 1 / 0 |
+| R9 thân byte không cần header loại | 2 / 2 / 0 |
+| R10 bỏ hẳn luật thân byte | 32 / 11 / 0 |
+| R11 trả lời kiểm nháp lạ coi như còn nháp | 17 / 9 / 0 |
+
+### Ghi nhận lượt 2 (không tính lỗi)
+
+- **G7 · Giành mã chỉ chặn «chuyển» với «chuyển».** `set_featured_image`, `set_seo_meta` vẫn «kiểm mã, hỏi website còn nháp, rồi ghi» qua mạng. Hai luồng dùng chung client, một ghi SEO, một chuyển cùng bài: luồng chuyển có thể đăng bài giữa lúc luồng SEO kiểm nháp xong và lúc ghi, nên SEO được ghi vào bài vừa đăng. Không hại (đúng SEO đã xác nhận, đúng bài của app) và ngoài thiết kế (T-102 làm tuần tự trên một luồng, LC-T094-23).
+- **G8 · Luồng bị từ chối vì luồng khác đang giữ bài** nhận câu «Chỉ hẹn giờ hay đăng được bài nháp phần mềm vừa tạo trong chính lần gửi này… Chưa gửi gì lên website». Đúng hướng an toàn («Chưa gửi gì» là thật), chữ chưa sát trường hợp này; chỉ gặp khi dùng sai thiết kế.
+- G1 (so `modified_gmt`), G2–G6 của lượt 1: giữ như cũ.
+
+### Lệnh đã chạy (lượt 2)
+
+- `uv run pytest tests/test_soi_loi_t099.py tests/test_la_chan_t099.py`: 320 passed.
+- Mục «Lượt 2» trên code lượt 1 (`ce451fe`): 35 failed (đúng các ca nhắm lỗi cũ: 3 ca nhiều luồng, 24 thân lạ, 3 tải ảnh sai khuôn, 5 SL-T099-1).
+- Bản sao cây gộp với `main` `3164a80`, 29 file: 4.079 passed, 2 xfailed, 0 failed.
+- Đột biến: 11/11 bị bắt.
+- `uv run ruff check .`: sạch. `detect-secrets` (`PYTHONUTF8=1`) trên file test và báo cáo: sạch.
+- Script: thư mục ghi chú chung `T-099-soi-loi-scripts/mutate099r2.py`.

@@ -950,3 +950,145 @@ def test_site_khong_tra_mui_gio(client, fake):
 def test_connection_info_cu_van_tao_duoc_khong_can_mui_gio():
     info = ConnectionInfo("Site", BASE_URL, "Lâm", ("editor",), True, True, True)
     assert info.gmt_offset is None and info.timezone_string == ""
+
+
+# ====================================================================== lượt 2: LC-T099-1
+
+
+def test_dang_kiem_nhap_thi_ma_bai_da_roi_khoi_tap(client, fake):
+    """Giành bài một bước: lúc lệnh kiểm nháp còn đang chờ, mã bài đã không còn trong tập, nên
+    lần gọi thứ hai (cùng client) bị từ chối ngay, không gửi gì, kể cả lệnh ghi nháp khác."""
+    own_draft(client, fake)
+    site(fake)
+    seen: list[object] = []
+    original = fake.routes[("GET", POST_42)]
+
+    def check(request):
+        seen.append(42 in client._created_post_ids)
+        before = len(fake.requests)
+        for call in (
+            lambda: client.release_draft(42, mode="publish"),
+            lambda: client.set_featured_image(42, 7),
+        ):
+            try:
+                call()
+            except WordPressError as exc:
+                seen.append(type(exc).__name__)
+        seen.append(len(fake.requests) - before)
+        return original(request)
+
+    fake.on("GET", POST_42, check)
+    client.release_draft(42, mode="publish")
+    assert seen == [False, "ReleaseError", "WordPressError", 0]
+    assert paths(fake) == [("GET", POST_42), ("POST", POST_42)]
+
+
+@pytest.mark.parametrize(
+    ("mode", "when", "setup"),
+    [
+        pytest.param("draft", None, None, id="hinh-thuc-la"),
+        pytest.param("publish", TOMORROW, None, id="dang-ngay-kem-gio"),
+        pytest.param("future", "ngày mai", None, id="gio-sai-kieu"),
+        pytest.param("publish", None, "header", id="session-header-la"),
+        pytest.param("publish", None, "check-500", id="kiem-nhap-loi"),
+        pytest.param("publish", None, "no-date", id="thieu-date"),
+        pytest.param("future", NOW + timedelta(minutes=5), None, id="gio-qua-gan"),
+    ],
+)
+def test_bi_chan_truoc_lenh_chuyen_thi_tra_ma_lai(client, fake, mode, when, setup):
+    own_draft(client, fake)
+    site(fake, check_status=500 if setup == "check-500" else 200,
+         date_header="" if setup == "no-date" else None)
+    if setup == "header":
+        client._session.headers["X-HTTP-Method-Override"] = "PATCH"
+    with pytest.raises(ReleaseError):
+        client.release_draft(42, mode=mode, when_utc=when)
+    assert client._created_post_ids == {42}
+    assert ("POST", POST_42) not in paths(fake)
+
+
+def test_khong_con_nhap_hay_da_gui_lenh_chuyen_thi_khong_tra_ma(client, fake):
+    own_draft(client, fake)
+    site(fake, check={"id": 42, "status": "publish"})
+    with pytest.raises(ReleaseError, match="không còn là nháp"):
+        client.release_draft(42, mode="publish")
+    assert client._created_post_ids == set()
+    own_draft(client, fake, 43)
+    site(fake, post_id=43, answer=(503, {"code": "x"}, {}))
+    with pytest.raises(ReleaseError) as caught:
+        client.release_draft(43, mode="publish")
+    assert caught.value.unsure and client._created_post_ids == set()
+
+
+def test_gianh_ma_bai_bang_mot_lenh_truoc_moi_lenh_mang():
+    """Đọc mã nguồn: ``release_draft`` giành mã bằng ``set.remove`` trước lệnh kiểm nháp; không
+    còn kiểu «kiểm ``in``, chờ mạng, rồi mới bỏ»."""
+    tree = ast.parse(CLIENT_SOURCE.read_text(encoding="utf-8"))
+    (function,) = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "release_draft"
+    ]
+    source = ast.unparse(function)
+    claim = source.index("self._created_post_ids.remove(post_id)")
+    assert claim < source.index("self._release_check(")
+    assert claim < source.index("self._request(")
+    assert "in self._created_post_ids" not in source
+    assert "_created_post_ids.discard" not in source
+
+
+# ====================================================================== lượt 2: SL-T099-1
+
+PHOTO = b"RIFF\x00\x00\x00\x00WEBPVP8 "
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "options"),
+    [
+        pytest.param("POST", "/wp/v2/posts/42", {"data": b"status=publish"}, id="bai-publish"),
+        pytest.param("POST", "/wp/v2/posts/42",
+                     {"data": b"status=future&date_gmt=2026-11-03T01:00:00"}, id="bai-future"),
+        pytest.param("POST", "/wp/v2/posts", {"data": b"status=publish&title=x"}, id="tao-bai"),
+        pytest.param("POST", "/wp/v2/posts/42",
+                     {"data": PHOTO, "headers": {"Content-Type": "image/webp"}},
+                     id="bai-kem-loai-anh"),
+        pytest.param("POST", "/wp/v2/media/9",
+                     {"data": PHOTO, "headers": {"Content-Type": "image/webp"}},
+                     id="sua-anh-co-san"),
+        pytest.param("POST", client_module.SITESEO_ABILITY_RUN_PATH, {"data": b"name=x"},
+                     id="ability"),
+        pytest.param("GET", "/wp/v2/posts/42", {"data": b"status=publish"}, id="get-co-than"),
+        pytest.param("POST", "/wp/v2/media", {"data": PHOTO}, id="anh-thieu-loai"),
+        pytest.param("POST", "/wp/v2/media",
+                     {"data": PHOTO, "headers": {"Content-Disposition": "attachment"}},
+                     id="anh-chi-co-ten-file"),
+        pytest.param("POST", "/wp/v2/media",
+                     {"data": PHOTO, "headers": {"Content-Type": "image/webp",
+                                                 "content-type": "image/png"}},
+                     id="hai-header-loai"),
+        pytest.param("POST", "/wp/v2/media",
+                     {"data": PHOTO, "json": {}, "headers": {"Content-Type": "image/webp"}},
+                     id="kem-json"),
+        pytest.param("POST", "/wp/v2/media",
+                     {"data": b"status=publish",
+                      "headers": {"Content-Type": "application/x-www-form-urlencoded"}},
+                     id="dang-form"),
+    ],
+)
+def test_than_byte_chi_o_lenh_tai_anh(client, fake, method, path, options):
+    with pytest.raises(WordPressError, match=re.escape(_ROUTE_BLOCKED)):
+        client._request(method, path, **options)
+    assert fake.requests == []
+
+
+@pytest.mark.parametrize("content_type", sorted(set(client_module.IMAGE_TYPES.values())))
+def test_than_byte_tai_anh_dung_loai_van_gui_duoc(client, fake, content_type):
+    fake.on("POST", "/wp-json/wp/v2/media", (201, {"id": 9}, {}))
+    client._request(
+        "POST",
+        "/wp/v2/media",
+        data=PHOTO,
+        headers={"Content-Type": content_type, "Content-Disposition": 'attachment; filename="a"'},
+        params={"_fields": "id,source_url,alt_text"},
+    )
+    (request,) = fake.requests
+    assert request.body == PHOTO and request.headers["Content-Type"] == content_type

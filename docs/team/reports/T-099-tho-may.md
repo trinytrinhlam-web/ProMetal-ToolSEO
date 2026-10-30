@@ -166,3 +166,78 @@ phiếu này không sửa dòng đó. 4 file còn lại: 0.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-30): LC-T099-1, SL-T099-1
+
+Theo biên bản Lá Chắn `T-099-la-chan.md` (ĐẠT CÓ ĐIỀU KIỆN, `ce451fe`) và Soi Lỗi `T-099-soi-loi.md`. Hai lỗi Thấp, bắt buộc trước khi T-102 nối màn hình xác nhận.
+
+### Tóm tắt (cho chủ dự án)
+
+- Chỗ hẹn giờ, đăng bài nay **giành quyền chuyển bài ngay bước đầu**. Nếu sau này có hai việc cùng chuyển một bài, chỉ một việc được gửi lệnh, việc kia bị từ chối ngay. Bị chặn trước khi gửi lệnh (giờ sai, mất mạng lúc kiểm nháp…) thì bài vẫn là nháp của lần gửi đó như cũ.
+- Lớp chặn lệnh WordPress nay chỉ nhận thân dạng byte ở đúng lệnh **tải ảnh**. Trước đây lệnh vào bài viết vẫn lọt qua lớp chặn nếu mang thân byte; website bỏ qua thân đó nên chưa thành lỗ, nhưng lời hứa «chỉ một chỗ được đăng bài» nay nằm hẳn ở lớp chặn của phần mềm.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/wordpress/client.py` | **LC-T099-1:** `release_draft` giành mã bài bằng `self._created_post_ids.remove(post_id)` ngay đầu hàm (`KeyError` → từ chối «chỉ bài nháp vừa tạo», 0 request). Mọi bước trước lệnh chuyển (hình thức, giờ, lớp chặn, lệnh kiểm nháp, giờ máy chủ, lệch đồng hồ, khoảng hẹn giờ) nằm trong `try … finally`: bị chặn thì `finally` trả mã lại (`give_back`). Website báo không còn nháp: **không** trả mã. Ngay trước lệnh chuyển: `give_back = False`, mã không bao giờ trả lại. `_release_check` nay trả `(còn nháp, giờ máy chủ)`, không tự đụng `_created_post_ids`. Docstring bước 1–3 viết lại. Mọi chỗ dùng `_RELEASE` vẫn chỉ trong `release_draft`, `_is_plain_request`. **SL-T099-1:** `_is_image_upload` (mới) và một dòng trong `_is_plain_request`: có `data` thì phải đúng `POST /wp/v2/media`, không kèm `json`, có **đúng một** header `Content-Type` thuộc `IMAGE_TYPES`; còn lại từ chối trước khi gửi |
+| `tests/test_la_chan_t099.py` | Gỡ 1 dấu `xfail` (LC-T099-1), chỉ xóa dòng dấu |
+| `tests/test_soi_loi_t099.py` | Gỡ 1 dấu `xfail` phủ 5 ca (SL-T099-1), chỉ xóa dòng dấu |
+| `tests/test_wordpress_release.py` | Thêm 27 ca của Thợ Máy (mục dưới) |
+
+Trước khi gỡ dấu: chạy `-rX`, đủ 6 ca XPASS(strict) (1 LC-T099-1, 5 SL-T099-1), mọi ca khác qua. Không đổi điều kiện ca nào.
+
+### Test mới (lượt 2)
+
+| Test | Kiểm |
+|---|---|
+| `test_dang_kiem_nhap_thi_ma_bai_da_roi_khoi_tap` | Lúc lệnh kiểm nháp còn chờ, mã bài đã rời tập; lần gọi `release_draft` thứ hai và `set_featured_image` từ chính lúc đó bị từ chối, 0 request thêm (bản một luồng, xác định, của ca hai luồng của Lá Chắn) |
+| `test_bi_chan_truoc_lenh_chuyen_thi_tra_ma_lai` (7 ca) | Hình thức lạ, Đăng ngay kèm giờ, giờ sai kiểu, header phiên lạ, lệnh kiểm nháp lỗi 500, thiếu `Date`, giờ quá gần: mã trở lại tập, không có lệnh chuyển |
+| `test_khong_con_nhap_hay_da_gui_lenh_chuyen_thi_khong_tra_ma` | Không còn nháp, hay đã gửi lệnh chuyển (lỗi 503): mã không trở lại |
+| `test_gianh_ma_bai_bang_mot_lenh_truoc_moi_lenh_mang` | Đọc mã nguồn: `remove` đứng trước `_release_check`, `_request`; không còn `in self._created_post_ids`, `discard` trong `release_draft` |
+| `test_than_byte_chi_o_lenh_tai_anh` (12 ca) | Thân byte ở bài (`status=publish`, `future`, tạo bài, kèm loại ảnh), sửa ảnh có sẵn, ability, `GET`; ảnh thiếu `Content-Type`, chỉ có tên file, hai header loại, kèm `json`, dạng form: chặn, 0 request |
+| `test_than_byte_tai_anh_dung_loai_van_gui_duoc` (5 loại ảnh) | Đối chứng: tải ảnh đúng loại vẫn gửi nguyên byte |
+
+### Hàm dùng chung đã sửa: nơi gọi, test cũ
+
+| Chỗ sửa | Nơi gọi (grep `seo_app/`, `app/`, `tests/`, cả nhập muộn) | Ảnh hưởng |
+|---|---|---|
+| `_is_plain_request`: luật `data` | `_request` (mọi hàm client), `release_draft` | Chỉ `_post_media` gửi `data` (đúng `POST /wp/v2/media`, `Content-Type` ảnh, `Content-Disposition`): không đổi. Test cũ gửi `data` qua `_request`: chỉ `test_soi_loi_t060.py::test_loai_than_khong_dung_loai_anh_bi_chan` (đã mong bị chặn, vẫn qua) |
+| `_release_check` đổi kiểu trả về | Chỉ `release_draft` | Không test nào gọi thẳng |
+| `release_draft` giành mã sớm | Chưa có nơi gọi ngoài test (T-102 sẽ gọi) | Câu báo giữ nguyên; ca cũ «bị chặn vì giờ thì bài vẫn của client» (`test_bi_chan_vi_gio_thi_bai_van_la_cua_client`, ca đối chứng của Lá Chắn, Soi Lỗi) vẫn qua |
+
+### Bằng chứng (lượt 2)
+
+```
+$ uv run pytest -q -p no:cacheprovider -rX tests/test_la_chan_t099.py tests/test_soi_loi_t099.py \
+      tests/test_wordpress_release.py tests/test_publish_schedule.py      # trước khi gỡ dấu
+6 failed (XPASS(strict): 1 LC-T099-1, 5 SL-T099-1), 469 passed
+
+$ uv run pytest -q -p no:cacheprovider tests/test_wordpress_release.py  # sau khi gỡ dấu, thêm ca
+247 passed in 16.93s
+
+$ uv run pytest -q -p no:cacheprovider <58 file test client WordPress>   # 30/10 10:34 → 11:22
+8255 passed, 1 skipped in 2875.72s (0:47:55)                          # máy đang chạy toàn bộ test
+
+$ uv run ruff check .
+All checks passed!
+```
+
+58 file chọn lọc: mọi file test có `upload_media`, `_post_media`, `create_draft_with_images`, `/wp/v2/media`, `release_draft`, `_is_plain_request`, `_request(`, `send_draft`, `fake_wp`, `FakeWordPress` (client WordPress, tải ảnh, gửi nháp T-054/T-086/T-089, ghi SEO T-042/T-059, T-060, T-085, T-088, T-091, T-099 cùng hai file kiểm của Soi Lỗi, Lá Chắn). Trên nhánh `team/T-099` (chưa gộp `main` `3164a80`, theo dặn).
+
+Thử «làm hỏng» code (sửa tạm, chạy `test_wordpress_release.py`, `test_la_chan_t099.py`, `test_soi_loi_t099.py`, trả nguyên file; script so lại: giống hệt):
+
+| Làm hỏng | Số test đỏ |
+|---|---|
+| Không trả mã khi bị chặn trước lệnh chuyển | 30 |
+| Trả mã cả khi website báo không còn nháp | 19 |
+| Bỏ luật `data` | 16 |
+| Nhận `data` ở mọi đường `POST` (bỏ điều kiện `/wp/v2/media`) | 2 |
+| Nhận hai header `Content-Type` | 1 |
+
+### Còn lại
+
+- Ghi nhận G1 (so `modified_gmt`, LC-T094-23 «nên»), G2–G6 của Soi Lỗi: không thuộc lượt này, giữ như biên bản.
+- Lời dặn T-102 của Lá Chắn (một lần `release_draft` mỗi lần bấm, trên chính client vừa tạo nháp, không giữ client chung) vẫn giữ: giành mã một bước chỉ là lớp phòng thêm.
