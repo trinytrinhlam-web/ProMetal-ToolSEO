@@ -732,7 +732,9 @@ REAL_CALLS = {
              "<p>Kết</p>"],
         ),
         [("POST", MEDIA, ["_fields"]), ("POST", f"{MEDIA}/101", ["_fields"]),
-         ("POST", POSTS, ["_fields"]), ("GET", f"{POSTS}/42", ["_fields", "context"]),
+         ("POST", POSTS, ["_fields"]),
+         ("POST", f"{MEDIA}/101", ["_fields"]),  # T-110 (Chỉ Huy duyệt 30/10): gắn ảnh vào bài nháp
+         ("GET", f"{POSTS}/42", ["_fields", "context"]),
          ("POST", f"{POSTS}/42", ["_fields"])],
     ),
 }

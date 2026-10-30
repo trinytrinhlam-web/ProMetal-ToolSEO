@@ -248,7 +248,10 @@ def test_moi_lenh_ghi_khong_con_ngoac_vuong_tran(fake_wp, wp_client, site, web, 
     methods = [(r.method, path(r)) for r in fake_wp.requests]
     assert methods.count(("POST", POSTS)) == 2 and methods.count(("POST", MEDIA)) == 2
     assert methods.count(("POST", f"{MEDIA}/101")) == 1
-    assert methods.count(("POST", f"{MEDIA}/102")) == 1
+    # T-110 (Chỉ Huy duyệt 30/10): ảnh 102 có thêm lệnh gắn vào bài nháp, thân đúng {"post": 42}.
+    assert methods.count(("POST", f"{MEDIA}/102")) == 2
+    to_102 = [r for r in fake_wp.requests if (r.method, path(r)) == ("POST", f"{MEDIA}/102")]
+    assert body(to_102[-1]) == {"post": 42}
     assert methods.count(("POST", POST_42)) == 2
     assert bare_brackets(fake_wp) == []
     for request in fake_wp.requests:
@@ -276,7 +279,10 @@ def test_chu_seo_ghi_qua_ca_hai_duong_khong_con_ngoac_vuong_tran(fake_wp, wp_cli
 
 # Trường app được phép xin trong lệnh ghi: không trường nào WordPress dựng bằng ``the_content``
 # hay ``the_excerpt`` (``content``, ``excerpt`` của bài; ``description``, ``caption`` của ảnh).
-SAFE_FIELDS = {"id", "status", "title", "link", "featured_media", "meta", "source_url", "alt_text"}
+SAFE_FIELDS = {
+    "id", "status", "title", "link", "featured_media", "meta", "source_url", "alt_text",
+    "post",  # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp
+}  # fmt: skip
 
 
 def test_moi_lenh_ghi_wp_v2_deu_co_fields_an_toan(fake_wp, wp_client, site, web):
@@ -290,8 +296,9 @@ def test_moi_lenh_ghi_wp_v2_deu_co_fields_an_toan(fake_wp, wp_client, site, web)
     assert wp_client.set_seo_meta(42, title="Cửa sắt", description="Mô tả ngắn.").written
 
     writes = [r for r in fake_wp.requests if r.method == "POST"]
-    # tải ảnh ×2, ghi chữ ảnh ×2, tạo nháp, đặt ảnh đại diện ×2, ghi meta dự phòng
-    assert len(writes) == 8
+    # tải ảnh ×2, ghi chữ ảnh ×2, tạo nháp, gắn ảnh vào bài nháp, đặt ảnh đại diện ×2, ghi meta
+    # dự phòng (T-110 (Chỉ Huy duyệt 30/10): thêm lệnh gắn ảnh, `_fields=id,post`)
+    assert len(writes) == 9
     for request in writes:
         assert path(request).startswith("/wp-json/wp/v2/")
         fields = query(request).get("_fields")
@@ -310,6 +317,8 @@ def test_lenh_ghi_dung_nguyen_dia_chi_ke_ca_truy_van(fake_wp, wp_client, site, w
         ("POST", MEDIA + media_fields),
         ("POST", f"{MEDIA}/101" + media_fields),
         ("POST", POSTS + post_fields),
+        # T-110 (Chỉ Huy duyệt 30/10): gắn ảnh vào bài nháp.
+        ("POST", f"{MEDIA}/101" + "?_fields=id%2Cpost"),
         ("GET", POST_42 + "?context=edit&_fields=id%2Cstatus%2Cmeta"),
         ("POST", POST_42 + post_fields),
     ]

@@ -151,7 +151,8 @@ def _send_ai_image(fake_wp, client, image, suggestion):
     assert len(creates) == 1
     route = ("POST", f"{MEDIA}/{FIRST_ID}")
     writes = [_body(r) for r in fake_wp.requests if (r.method, _path(r)) == route]
-    assert len(writes) == 1
+    # T-110 (Chỉ Huy duyệt 30/10): lệnh thứ hai là gắn ảnh vào bài nháp, thân đúng {"post": 42}.
+    assert len(writes) == 2 and writes[1] == {"post": 42}
     strings = [
         text
         for r in fake_wp.requests

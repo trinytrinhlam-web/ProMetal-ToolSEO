@@ -1128,7 +1128,10 @@ def test_send_draft_with_real_image(project_root, root, fake_ai, site, sent):
     with Image.open(io.BytesIO(upload.body)) as web:
         assert web.format == "WEBP"
         assert web.getexif().get_ifd(ExifTags.IFD.GPSInfo)  # GPS lên website (quyết định 5A)
-    (media,) = site.media_writes()
+    # T-110 (Chỉ Huy duyệt 30/10): sau lệnh ghi alt có lệnh gắn ảnh vào bài nháp.
+    *writes, attach = site.media_writes()
+    assert attach == {"post": POST_ID}
+    (media,) = writes
     assert media["alt_text"] == ALT.alt and not html.unescape(media["title"]).startswith("[AI]")
     (post,) = site.posts()
     assert post["status"] == "draft" and "<figure" in post["content"]
@@ -1153,7 +1156,10 @@ def test_send_ai_image_named_and_titled_as_ai(project_root, tmp_path, monkeypatc
     send(at)
     (name,) = site.file_names()
     assert name.startswith("minh-hoa-ai-")
-    (media,) = site.media_writes()
+    # T-110 (Chỉ Huy duyệt 30/10): sau lệnh ghi alt có lệnh gắn ảnh vào bài nháp.
+    *writes, attach = site.media_writes()
+    assert attach == {"post": POST_ID}
+    (media,) = writes
     assert html.unescape(media["title"]).startswith("[AI] ")
     assert media["alt_text"].startswith(f"{AI_ALT_PREFIX} ")
 
@@ -1212,7 +1218,10 @@ def test_marked_ai_image_sent_as_ai(project_root, root, monkeypatch, fake_ai, si
     assert image.tags.source == SOURCE_AI and not image.tags.project_code
     (name,) = site.file_names()
     assert name.startswith("minh-hoa-ai-") and "ct012" not in name
-    (media,) = site.media_writes()
+    # T-110 (Chỉ Huy duyệt 30/10): sau lệnh ghi alt có lệnh gắn ảnh vào bài nháp.
+    *writes, attach = site.media_writes()
+    assert attach == {"post": POST_ID}
+    (media,) = writes
     assert html.unescape(media["title"]).startswith("[AI] ")
 
 

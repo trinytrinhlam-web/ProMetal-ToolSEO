@@ -114,10 +114,6 @@ class _ParentSite(sl54.Site):
         return answer
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T093-2: ảnh gửi nháp không gắn vào bài nháp, REST liệt kê công khai",
-)
 def test_lc_t093_2_uploaded_images_attached_to_new_draft(fake_wp, wp_client):
     """Mong đợi: gửi nháp xong, mọi ảnh vừa tải có bài cha là đúng bài nháp vừa tạo (WordPress
     không cho người chưa đăng nhập đọc ảnh của bài chưa đăng qua REST). Thực tế: không lệnh nào

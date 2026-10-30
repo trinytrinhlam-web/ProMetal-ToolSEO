@@ -480,7 +480,10 @@ def test_evil_ai_alt_stays_text_and_listed(project_root, root, fake_ai, site, mo
     (post,) = site.posts()
     assert "[code_snippet" not in post["content"] and "&#91;code_snippet" in post["content"]
     assert "<script" not in post["content"] and "onerror" not in post["content"]
-    (media,) = site.media_writes()
+    # T-110 (Chỉ Huy duyệt 30/10): sau lệnh ghi alt có lệnh gắn ảnh vào bài nháp.
+    *writes, attach = site.media_writes()
+    assert attach == {"post": ui.POST_ID}
+    (media,) = writes
     assert "[" not in media["alt_text"] and "<" not in media["caption"]
 
 

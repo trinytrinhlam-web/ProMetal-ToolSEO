@@ -347,7 +347,8 @@ def _sent(fake_wp):
     posts = [_body(r) for r in fake_wp.requests if (r.method, _path(r)) == ("POST", POSTS)]
     route = ("POST", f"{MEDIA}/{FIRST_ID}")
     writes = [_body(r) for r in fake_wp.requests if (r.method, _path(r)) == route]
-    assert len(posts) == 1 and len(writes) == 1
+    # T-110 (Chỉ Huy duyệt 30/10): lệnh thứ hai là gắn ảnh vào bài nháp, thân đúng {"post": 42}.
+    assert len(posts) == 1 and len(writes) == 2 and writes[1] == {"post": 42}
     strings = [
         text
         for r in fake_wp.requests

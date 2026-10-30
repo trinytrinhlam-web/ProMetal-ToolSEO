@@ -216,8 +216,10 @@ MSG_FILE_REPLACED = (
     "lại ảnh, alt rồi duyệt lại ở bước Viết & kiểm tra"
 )
 GPS_PUBLIC_WARNING = (
-    "📍 Ảnh (kể cả vị trí GPS còn trong ảnh) **xem được công khai** qua đường dẫn ngay khi tải "
-    "lên, kể cả khi bài vẫn là nháp. Phần mềm không tự xóa ảnh đã tải lên."
+    "📍 Ảnh (kể cả vị trí GPS còn trong ảnh) **xem được công khai** qua đường dẫn trực tiếp ngay "
+    "khi tải lên, kể cả khi bài vẫn là nháp. Phần mềm gắn ảnh vào bài nháp, nên ảnh không hiện "
+    "trong danh sách Media công khai của website cho tới khi bài được đăng (gắn không được thì "
+    "phần mềm báo sau khi gửi). Phần mềm không tự xóa ảnh đã tải lên."
 )
 
 

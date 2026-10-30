@@ -406,7 +406,8 @@ def test_gui_site_gia_tien_to_kieu_moi_van_vo_hieu_shortcode(site, wp_client, im
     writes = [
         _body(r) for r in site.requests if (r.method, _path(r)) == ("POST", f"{MEDIA}/{FIRST_ID}")
     ]
-    assert len(posts) == 1 and len(writes) == 1
+    # T-110 (Chỉ Huy duyệt 30/10): lệnh thứ hai là gắn ảnh vào bài nháp, thân đúng {"post": 42}.
+    assert len(posts) == 1 and len(writes) == 2 and writes[1] == {"post": 42}
     page = _Page(posts[0]["content"])
     expected_alt, expected_caption = sent(result)
     assert page.alts == [expected_alt] and expected_alt.startswith(f"{AI_ALT_PREFIX} ")
