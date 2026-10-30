@@ -59,6 +59,14 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-30 19:59 · Chỉ Huy B
+
+- Gộp **T-099 lượt 2** (T-099 xong hẳn) và **T-107 lượt 1–2** (`17b2a31`). Windows 21.295 test qua, 0 hỏng.
+- Soi Lỗi xong 3 phiếu: T-107 lượt 3 ĐẠT CÓ ĐIỀU KIỆN (`4f270da`), T-110 ĐẠT CÓ ĐIỀU KIỆN (`f85b2bb`, xung đột vị trí `client.py`), T-101 ĐẠT (`164c58a`). Lá Chắn T-101 ĐẠT CÓ ĐIỀU KIỆN (`18756ae`, LC-T101-1 → T-102).
+- Bài học: Soi Lỗi/Lá Chắn chỉ chạy test chọn lọc nên không thấy T-101 xóa dữ liệu mẫu mà `test_soi_loi_t103.py` (ở `main`) còn dùng (21 ca). Phiếu nào **xóa hay đổi tên** hằng/hàm dùng chung (kể cả `seo_app/demo.py`) phải grep cả `tests/` của `main`.
+- Đang chạy: Lá Chắn T-107 lượt 3, Lá Chắn T-110, Họa Sĩ sửa test T-101 rồi gộp T-101 vào T-102 (kèm G1, LC-T101-1).
+- Gộp tiếp (một lượt toàn bộ test): T-101 (sau sửa test), T-107 lượt 3, T-110 (nếu Lá Chắn ĐẠT). Hàng đợi: T-109, T-105 (Thợ Máy), T-092 (Họa Sĩ), T-078 phần còn lại (Thợ Máy `required-version`, Thư Ký README + bỏ câu AVIF), chú thích `[plan]` trong `config/content.toml`.
+
 ### 2026-10-30 17:23 · Chỉ Huy B
 
 - **Chủ dự án trả lời 30/10 13:50** 5 câu rà soát Giai đoạn 3: 1A (T-110 gắn ảnh vào bài nháp, Thợ Máy đang làm), 2 đồng ý (4 dòng sổ rủi ro), 3 đồng ý (sửa câu `unfiltered_html`), 4 đồng ý (nâng pillow-heif khi có bản vá), 5 OK.

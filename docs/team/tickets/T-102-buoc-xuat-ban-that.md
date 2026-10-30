@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (đợt 3) |
 | Phụ thuộc | T-096, T-099, T-100 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Đang làm (gộp T-101 vào nhánh) |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ Làm phần **T-102** đúng như thiết kế Giai đoạn 5: `docs/team/report
 - 2026-10-30 11:00 (Chỉ Huy B): điều kiện Lá Chắn T-100 (mục 5): gọi `find_plan_draft` với mã băm Sheet đang dùng; chỉ gọi `record_status` sau khi T-100 lượt 2 sửa LC-T100-3 (so mã băm Sheet của nháp trước khi ghi trạng thái).
 - 2026-10-30 17:23 (Chỉ Huy B): T-101 đặt `_start_plan_key` (Mã bài) khi bấm «Viết bài» trên dòng kế hoạch chưa có nháp; T-102 đọc khóa này trong `write.py` để gắn `DraftPlanRef`, điền các ô còn lại (hợp đồng chi tiết trong báo cáo `T-101-hoa-si.md`).
 - 2026-10-30 17:23 (Chỉ Huy B): T-099 lượt 2 qua Lá Chắn (`38613fe`, T-102 nối màn hình xác nhận được). Nhánh `team/T-102` từ `main` `fd28bbc` + T-099 lượt 2 (`c8986da`), worktree `wt-T-102`; giao Họa Sĩ (phiên Họa Sĩ T-056). Giữ điều kiện Lá Chắn T-099 (Điều kiện 2 lượt 1, L2-1 → L2-3); công tắc Hẹn giờ/Đăng ngay mặc định tắt (LC-T094-41) tới khi thử thật (LC-T094-44).
+- 2026-10-30 19:59 (Chỉ Huy B): Họa Sĩ xong lượt 1 (`32a217a`); R5 duyệt 4 test cũ (18:45, kèm điều kiện giữ ý «đăng ngay cần xác nhận», client giả kiểm khóa gửi). Lượt gộp: gộp `team/T-101` vào nhánh (`b34145a`), R5 đổi 2 test T-101 (trang Kế hoạch không ghi Sheet; Soạn bài ghi «Đang viết» một lần, bỏ khóa sau khi dùng), G1 (bài gõ tay không nhận `DraftPlanRef` cũ; cho sửa đúng chỗ đó ở trang Bài viết), LC-T101-1 (`safe_text` cho bảng có nút tải CSV; cho sửa `app/views/plan.py`). Chú thích `[plan]` trong `config/content.toml` («chưa dùng») giao người được sửa `config/**` sau.

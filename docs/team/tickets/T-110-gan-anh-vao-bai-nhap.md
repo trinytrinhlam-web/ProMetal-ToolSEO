@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (trước khi đóng Giai đoạn 3) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Đang kiểm (Lá Chắn) |
 
 ## Mục tiêu
 
@@ -51,3 +51,4 @@ W2, W3, F1.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-30 theo quyết định 1A của chủ dự án (rà soát Giai đoạn 3, T-093).
+- 2026-10-30 19:59 (Chỉ Huy B): Thợ Máy `fc45a15` (R5 duyệt 3 nhóm, 18 hàm). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`f85b2bb`): SL-T110-1 Thấp (gửi hỏng trước khi tạo nháp: ảnh không bài cha, câu báo chưa nói); G1 lệnh gắn tin mã 201 (đề xuất xin `post` lúc tải, chỉ gắn khi trống); xung đột vị trí với `main` ở `client.py` (`_is_image_upload` / `_is_media_attach`, giữ cả hai). Giao Lá Chắn rút gọn, kiểm trên bản gộp thử.
