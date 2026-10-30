@@ -470,8 +470,10 @@ def test_publish_now_needs_seo_written(project_root, root, fake_ai, live):
 
 
 def test_publish_now_with_seo_written(project_root, root, fake_ai, live, monkeypatch):
-    """Đăng ngay khi bật «Ghi SEO lên website»: ghi SEO rồi mới đăng (Abilities chỉ ghi được bài
-    còn nháp); lệnh đăng là lệnh cuối cùng, thân đúng ``{"status": "publish"}``."""
+    """Đăng ngay khi bật «Ghi SEO lên website»: chưa tick xác nhận thì nút khóa (đăng ngay cần
+    xác nhận, ý của ``test_publish_now_requires_confirmation`` cũ); ghi SEO rồi mới đăng
+    (Abilities chỉ ghi được bài còn nháp); lệnh đăng là lệnh cuối cùng, thân đúng
+    ``{"status": "publish"}``."""
     from seo_app.wordpress.client import SeoWriteResult
 
     order: list[str] = []
@@ -490,6 +492,7 @@ def test_publish_now_with_seo_written(project_root, root, fake_ai, live, monkeyp
     at, _pid = ui.ready_image(project_root)
     to_mode(at, "Đăng ngay")
     run_ok(at.toggle(key="seo_write").set_value(True).run())
+    assert send_button(at).disabled and order == []  # chưa tick «Tôi đã đọc lại…»
     confirm(at)
     assert not send_button(at).disabled
     run_ok(send_button(at).click().run())

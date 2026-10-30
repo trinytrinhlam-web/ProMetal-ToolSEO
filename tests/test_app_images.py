@@ -1103,8 +1103,16 @@ def flatten(node):
 def test_send_draft_with_real_image(project_root, root, fake_ai, site, sent):
     """Chỉ gửi khi bấm; cảnh báo ảnh (có GPS) công khai ngay trước nút; ``DraftImage`` mang thẻ
     ``ImageTags`` đã kiểm của chính ảnh đó; ảnh lên còn GPS; bài là nháp (Lá Chắn T-054 4a, 4b,
-    T-071 3a)."""
+    T-071 3a).
+
+    T-102 (R5, Chỉ Huy B duyệt 30/10 18:45): nội dung là các khối của bộ dựng T-096 (mỗi phần một
+    khối, LC-T094-36), ảnh ngay sau khối của phần mình; giữ các kiểm về ảnh: alt, chú thích đã
+    làm sạch trong ``<figure>``, ``srcset`` chỉ file đầy đủ (T-059), «[» «]» vô hiệu (T-061),
+    không còn chỗ giữ chỗ ``{{…}}``."""
     at, pid = ready_image(project_root)
+    first = at.session_state["part_ids"][0]
+    at.session_state[f"texts-{first}"] = ["Cổng inox ở Tân Phú bị xệ cánh [gallery]."]
+    at.session_state[f"ver-{first}"] = 0
     to_publish(at)
     assert site.fake.requests == [] and sent.calls == []
     elements = list(flatten(at.main))
@@ -1113,12 +1121,11 @@ def test_send_draft_with_real_image(project_root, root, fake_ai, site, sent):
     send(at)
     ((title, parts),) = sent.calls
     assert title == "Sửa cổng inox Tân Phú"
-    assert parts[:3] == [
-        "<p>Cổng inox ở Tân Phú bị xệ cánh.</p>",
-        "<h2>Bản lề cổng</h2>",
-        "<p>Bản lề gỉ thì thay cả cặp.</p>",
+    assert parts[:2] == [
+        "<p>Cổng inox ở Tân Phú bị xệ cánh &#91;gallery&#93;.</p>",
+        "<h2>Bản lề cổng</h2>\n<p>Bản lề gỉ thì thay cả cặp.</p>",
     ]
-    (image,) = parts[3:]
+    (image,) = parts[2:]
     assert type(image.tags) is ImageTags
     assert image.tags == at.session_state[f"pick-{pid}"].tags
     assert image.tags.source == SOURCE_REAL and image.tags.project_code == "CT012"
@@ -1131,7 +1138,14 @@ def test_send_draft_with_real_image(project_root, root, fake_ai, site, sent):
     (media,) = site.media_writes()
     assert media["alt_text"] == ALT.alt and not html.unescape(media["title"]).startswith("[AI]")
     (post,) = site.posts()
-    assert post["status"] == "draft" and "<figure" in post["content"]
+    content = post["content"]
+    assert post["status"] == "draft" and content.count("<figure") == 1
+    assert content.index("<h2>Bản lề cổng</h2>") < content.index("<figure")  # ảnh đúng chỗ
+    assert f'srcset="{UPLOADS}cong-inox-tan-phu-ct012.webp 1x"' in content  # T-059
+    assert f'alt="{html.escape(ALT.alt)}"' in content
+    assert f"<figcaption>{html.escape(ALT.caption)}</figcaption>" in content
+    assert "&#91;gallery&#93;" in content and "[" not in content and "]" not in content  # T-061
+    assert "{{" not in content and "}}" not in content
     assert any("Đã tạo bài nháp trên WordPress" in s.value for s in at.success)
     assert button(at, "📤 Gửi nháp").disabled  # gửi lại phải xác nhận tạo thêm bài nháp mới
     run_ok(at.checkbox(key="_wp_again").check().run())
