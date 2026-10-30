@@ -2,7 +2,9 @@
 
 Chỉ làm những việc an toàn: đọc thông tin, tạo bài NHÁP, tải ảnh, đặt ảnh đại diện cho bài
 nháp vừa tạo. Chỉ nói chuyện qua https.
-Không có hàm nào đăng bài công khai. Mật khẩu không bao giờ xuất hiện trong thông báo lỗi.
+Đúng một hàm, ``release_draft`` (T-099), chuyển bài nháp chính client này vừa tạo sang hẹn giờ
+(``future``) hay đăng (``publish``); không hàm nào khác gửi được trạng thái khác ``draft``. Mật khẩu
+không bao giờ xuất hiện trong thông báo lỗi.
 """
 
 from __future__ import annotations
@@ -11,15 +13,18 @@ import html
 import html.entities
 import re
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
+from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import requests
 
-from seo_app.config import Settings
+from seo_app.config import DEFAULT_TIMEZONE, Settings
 from seo_app.sanitize import escape_shortcodes, sanitize_html, strip_tags
 from seo_app.text import slugify
 
@@ -76,7 +81,8 @@ ALLOWED_ROUTES: tuple[tuple[str, str], ...] = (
     ("GET", r"/wp/v2/pages"),
     ("GET", rf"/wp/v2/posts/{_ID}"),  # kiểm bài còn là nháp trước khi ghi SEO
     ("POST", r"/wp/v2/posts"),  # tạo nháp (create_draft)
-    ("POST", rf"/wp/v2/posts/{_ID}"),  # ảnh đại diện, meta SEO dự phòng (chỉ bài app tạo)
+    # ảnh đại diện, meta SEO dự phòng, hẹn giờ/đăng (``release_draft``): chỉ bài app vừa tạo
+    ("POST", rf"/wp/v2/posts/{_ID}"),
     ("POST", r"/wp/v2/media"),
     ("POST", rf"/wp/v2/media/{_ID}"),
     ("GET", re.escape(SITESEO_ABILITY_PATH)),  # dò Abilities của SiteSEO đã bật chưa
@@ -98,7 +104,8 @@ ALLOWED_PARAMS: dict[tuple[str, str], frozenset[str]] = {
     ("GET", r"/wp/v2/users/me"): frozenset({"context"}),
     ("GET", r"/wp/v2/categories"): _LIST_PARAMS | {"hide_empty"},
     ("GET", r"/wp/v2/tags"): _LIST_PARAMS | {"hide_empty"},
-    ("GET", r"/wp/v2/posts"): _LIST_PARAMS | {"status"},
+    # ``include``, ``context``: chỉ cho ``post_statuses`` (T-099), giá trị kiểm ở ``_PARAM_VALUES``
+    ("GET", r"/wp/v2/posts"): _LIST_PARAMS | {"status", "include", "context"},
     ("GET", r"/wp/v2/pages"): _LIST_PARAMS | {"status"},
     ("GET", rf"/wp/v2/posts/{_ID}"): frozenset({"context", "_fields"}),
     ("POST", r"/wp/v2/posts"): frozenset({"_fields"}),
@@ -152,9 +159,12 @@ _ROUTE_JSON_KEYS = tuple(
     (method, re.compile(pattern), ALLOWED_JSON_KEYS[(method, pattern)])
     for method, pattern in ALLOWED_ROUTES
 )
-# Không bao giờ nhận (phòng khi ai đó nới danh sách trên), so trên chữ thường. ``status`` có mặt
-# thì chỉ được là ``"draft"`` (phiếu mở đường đăng có xác nhận phải sửa chỗ này, qua Lá Chắn).
-_FORBIDDEN_JSON_KEYS = frozenset({"id", "name"})
+# Không bao giờ nhận (phòng khi ai đó nới danh sách trên), so trên chữ thường. ``date`` là giờ
+# theo múi giờ của site: không lệnh nào gửi (thiết kế T-094 mục 3.1: chỉ ``date_gmt``). ``status``
+# có mặt thì chỉ được là ``"draft"``; ``date_gmt`` không được có. Riêng lệnh mang dấu ``_RELEASE``
+# của ``release_draft`` (T-099) theo khuôn riêng ``_is_release_request``.
+_FORBIDDEN_JSON_KEYS = frozenset({"id", "name", "date"})
+_RELEASE_ONLY_JSON_KEYS = frozenset({"date_gmt"})
 # ``_request`` chỉ nhận các tùy chọn client tự dùng: không ``files`` (thân ``multipart`` thành
 # ``$_POST``, WordPress đọc ``rest_route`` từ đó), không ``verify``, ``auth``, ``cookies``…
 _REQUEST_OPTIONS = frozenset({"params", "json", "data", "headers"})
@@ -164,6 +174,26 @@ _ROUTE_BLOCKED = (
     "Phần mềm chặn một lệnh gọi WordPress không có trong danh sách được phép. Không có gì được "
     "gửi lên website."
 )
+
+# ---------------------------------------------------------------- hẹn giờ, đăng (T-099)
+# Dấu riêng của ``release_draft`` (LC-T094-22, thiết kế T-094 mục 3.3): ``_request`` gỡ nó khỏi
+# tùy chọn trước khi gửi (không tới ``requests``), ``_is_plain_request`` so bằng ``is``. Chỉ lệnh
+# mang dấu này mới gửi được ``status`` khác ``"draft"`` và khóa ``date_gmt``, và chỉ đúng khuôn
+# ``_is_release_request``. Test đọc mã nguồn: tên này chỉ có ở đây, ``release_draft`` và
+# ``_is_plain_request``.
+_RELEASE = object()
+RELEASE_MODES = ("future", "publish")
+_RELEASE_PATH = re.compile(rf"/wp/v2/posts/{_ID}")
+_RELEASE_FIELDS = "id,status,date_gmt,link"  # câu trả lời lệnh chuyển: không nội dung bài
+_RELEASE_CHECK_FIELDS = "id,status"  # hỏi lại còn nháp ngay trước lệnh chuyển
+_DATE_GMT_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")
+# Đọc trạng thái bài (``post_statuses``, LC-T094-26): chỉ đọc, giá trị tham số là hằng.
+POST_STATUS_FILTER = "draft,future,publish,pending,private"
+POST_STATUSES = frozenset(POST_STATUS_FILTER.split(","))
+_STATUS_FIELDS = "id,status,date_gmt,modified_gmt,link"
+MAX_STATUS_IDS = 100  # mỗi lệnh ``include`` tối đa 100 mã (đúng ``per_page`` tối đa)
+MAX_STATUS_LOOKUP = 1000  # ``post_statuses`` nhận tối đa chừng này mã (≤ 10 lệnh)
+_ID_LIST = re.compile(rf"{_ID}(?:,{_ID}){{0,{MAX_STATUS_IDS - 1}}}")
 
 
 def is_allowed_route(method: object, path: object) -> bool:
@@ -182,19 +212,31 @@ def is_allowed_route(method: object, path: object) -> bool:
     )
 
 
-def _is_plain_request(method: str, path: str, options: dict[str, Any], session: object) -> bool:
+def _is_plain_request(
+    method: str, path: str, options: dict[str, Any], session: object, *, release: object = None
+) -> bool:
     """Tham số, header, thân lệnh chỉ là loại client tự viết (LC-T042-1), xét TRƯỚC KHI gửi.
 
     - tùy chọn chỉ ``params``, ``json`` (``dict``), ``data`` (``bytes``), ``headers``;
     - khóa ``params`` thuộc ``ALLOWED_PARAMS`` của đúng đường, giá trị là chữ hay số nguyên;
       không bao giờ có ``rest_route``, ``_method``, ``_envelope``, ``_jsonp``; ``_fields`` không
       rỗng, không hỏi trường trong ``_RENDERED_FIELDS`` (LC-T060-2);
+    - giá trị ``include``, ``status``, ``context`` của ``GET /wp/v2/posts`` đúng dạng
+      ``_PARAM_VALUES`` (LC-T094-26);
     - khóa thân JSON cấp trên cùng thuộc ``ALLOWED_JSON_KEYS`` của đúng đường, không bao giờ có
-      ``id``, ``name``; có ``status`` thì chỉ ``"draft"`` (LC-T060-1);
+      ``id``, ``name``, ``date``, ``date_gmt``; có ``status`` thì chỉ ``"draft"`` (LC-T060-1);
+    - ``release`` đúng là dấu ``_RELEASE`` (so bằng ``is``): lệnh phải đúng khuôn
+      ``_is_release_request`` (hẹn giờ/đăng, LC-T094-22) thay cho luật thân JSON ở trên; ``release``
+      là thứ khác (kể cả bản chép của dấu): từ chối;
     - header chỉ ``Content-Type`` (loại ảnh trong ``IMAGE_TYPES``) và ``Content-Disposition``;
       không header nào (kể cả của ``session``) có chữ "method" (``X-HTTP-Method-Override``…);
     - ``session`` không có ``params`` hay ``Content-Type`` riêng (``requests`` gộp vào mọi lệnh).
     """
+    released = release is _RELEASE
+    if release is not None and not released:
+        return False
+    if released and not _is_release_request(method, path, options):
+        return False
     if not set(options) <= _REQUEST_OPTIONS:
         return False
     allowed = next(
@@ -211,11 +253,11 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
         return False
     if not (data is None or type(data) is bytes) or not (payload is None or type(payload) is dict):
         return False
-    if payload is not None:
+    if payload is not None and not released:
         for key in payload:
             if type(key) is not str or key not in json_keys:
                 return False
-            if key.lower() in _FORBIDDEN_JSON_KEYS:
+            if key.lower() in _FORBIDDEN_JSON_KEYS | _RELEASE_ONLY_JSON_KEYS:
                 return False
         status = payload.get("status", "draft")
         if type(status) is not str or status != "draft":
@@ -231,6 +273,9 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
                 return False
             if "fields" in folded and _asks_rendered_fields(value):
                 return False
+            check = _PARAM_VALUES.get((method, path, key))
+            if check is not None and not check(value):
+                return False
     if headers is not None:
         if type(headers) is not dict:
             return False
@@ -245,6 +290,50 @@ def _is_plain_request(method: str, path: str, options: dict[str, Any], session: 
     if any(str(name).lower() == "content-type" for name in session_headers):
         return False
     return not any("method" in str(name).lower() for name in [*session_headers, *(headers or {})])
+
+
+def _is_release_request(method: str, path: str, options: dict[str, Any]) -> bool:
+    """Khuôn duy nhất của lệnh hẹn giờ/đăng (LC-T094-22, thiết kế T-094 mục 3.3):
+    ``POST /wp/v2/posts/<mã>``, chỉ ``json`` và ``params``; ``params`` đúng
+    ``{"_fields": _RELEASE_FIELDS}``; thân **đúng** ``{"status": "future", "date_gmt":
+    "YYYY-MM-DDTHH:MM:SS"}`` hoặc ``{"status": "publish"}`` (``str`` thật, đúng chữ). Không
+    ``date``, không nội dung, tiêu đề, không khóa nào khác."""
+    if method != "POST" or not _RELEASE_PATH.fullmatch(path):
+        return False
+    if set(options) != {"json", "params"}:
+        return False
+    params, payload = options["params"], options["json"]
+    if type(params) is not dict or list(params) != ["_fields"]:
+        return False
+    if type(params["_fields"]) is not str or params["_fields"] != _RELEASE_FIELDS:
+        return False
+    if type(payload) is not dict or any(type(key) is not str for key in payload):
+        return False
+    status = payload.get("status")
+    if type(status) is not str:
+        return False
+    if status == "publish":
+        return list(payload) == ["status"]
+    if status != "future" or sorted(payload) != ["date_gmt", "status"]:
+        return False
+    stamp = payload["date_gmt"]
+    return type(stamp) is str and stamp.isascii() and bool(_DATE_GMT_PATTERN.fullmatch(stamp))
+
+
+def _is_id_list(value: object) -> bool:
+    """``include`` của ``post_statuses``: 1–100 số nguyên dương (chữ số ASCII, không số 0 đầu),
+    nối bằng dấu phẩy, không dấu cách (LC-T094-26)."""
+    return type(value) is str and value.isascii() and bool(_ID_LIST.fullmatch(value))
+
+
+# Giá trị tham số kiểm thêm theo (phương thức, đường đúng chữ, tên) (LC-T094-26): T-085 chỉ kiểm
+# kiểu. ``GET /wp/v2/posts`` dùng cho cả ``list_published`` (``status=publish``) lẫn
+# ``post_statuses`` (``include``, ``context=edit``, ``status`` hằng).
+_PARAM_VALUES: dict[tuple[str, str, str], Any] = {
+    ("GET", "/wp/v2/posts", "include"): _is_id_list,
+    ("GET", "/wp/v2/posts", "status"): lambda value: value in ("publish", POST_STATUS_FILTER),
+    ("GET", "/wp/v2/posts", "context"): lambda value: value == "edit",
+}
 
 
 def _asks_rendered_fields(value: str | int) -> bool:
@@ -423,6 +512,57 @@ _FEATURED_NOT_SET = (
     "trang quản trị WordPress."
 )
 
+# Câu báo hẹn giờ/đăng (T-099): cố định, không chép lời máy chủ, không chép WORDPRESS_URL. Mã bài
+# là số đã kiểm. «Chưa gửi gì», «vẫn là nháp» chỉ dùng khi chắc chắn chưa có lệnh chuyển nào chạy.
+_RELEASE_NOT_OWN = (
+    "Chỉ hẹn giờ hay đăng được bài nháp phần mềm vừa tạo trong chính lần gửi này. Bài đã có trên "
+    "website thì hẹn giờ, đăng trong trang quản trị WordPress. Chưa gửi gì lên website."
+)
+_RELEASE_BAD_MODE = "Hình thức gửi phải là hẹn giờ hoặc đăng ngay. Chưa gửi gì lên website."
+_RELEASE_BAD_TIME = (
+    "Giờ hẹn phải có ngày, giờ và múi giờ rõ ràng. Chưa hẹn giờ: bài vẫn là nháp trên website."
+)
+_RELEASE_NOW_WITH_TIME = (
+    "Đăng ngay thì không kèm giờ hẹn. Chưa đăng: bài vẫn là nháp trên website."
+)
+_RELEASE_CHECK_FAILED = (
+    "Không kiểm được bài nháp trên website ngay trước khi hẹn giờ/đăng{code}. Chưa hẹn giờ, chưa "
+    "đăng: bài vẫn là nháp."
+)
+_RELEASE_NOT_DRAFT = (
+    "Bài không còn là nháp trên website (có thể ai đó đã đăng, hẹn giờ, chuyển hay xóa bài trong "
+    "trang quản trị). Phần mềm không gửi lệnh nào vào bài này nữa; mở trang quản trị WordPress để "
+    "xem."
+)
+_RELEASE_STILL_DRAFT = " Chưa hẹn giờ, chưa đăng: bài vẫn là nháp trên website."
+_RELEASE_UNSURE = (
+    "Không biết chắc lệnh {action} đã chạy trên website chưa{code}. Bài (mã {post_id}) có thể đã "
+    "{done}. Mở trang quản trị WordPress kiểm tra bài này trước khi làm gì tiếp; phần mềm không "
+    "tự gửi lại."
+)
+_RELEASE_ODD_ANSWER = (
+    "Website trả lời lệnh {action} không đúng như mong đợi. Bài (mã {post_id}) có thể đã {done} "
+    "hoặc vẫn là nháp. Mở trang quản trị WordPress kiểm tra bài này; phần mềm không tự gửi lại."
+)
+_RELEASE_WRONG_TIME = (
+    "Website báo bài (mã {post_id}) đã hẹn giờ nhưng giờ hẹn khác giờ đã chọn. Mở trang quản trị "
+    "WordPress kiểm tra và sửa giờ hẹn; phần mềm không gửi thêm lệnh nào vào bài này."
+)
+# Hẹn giờ mà website đăng ngay (security.md mục 7, «Lỡ đăng bài»).
+_RELEASE_WENT_PUBLIC = (
+    "KHẨN: website báo bài (mã {post_id}) đã ĐĂNG CÔNG KHAI NGAY, không phải hẹn giờ. Nếu chưa "
+    "muốn đăng: vào trang quản trị WordPress → Bài viết, mở bài này, chuyển về «Bản nháp» rồi bấm "
+    "Cập nhật, và báo chủ dự án. Phần mềm không gửi thêm lệnh nào vào bài này."
+)
+_RELEASE_WORDS = {  # hình thức → (tên lệnh, điều có thể đã xảy ra)
+    "future": ("hẹn giờ", "được hẹn giờ"),
+    "publish": ("đăng", "hiện công khai"),
+}
+_STATUS_BAD_IDS = (
+    "Danh sách mã bài cần xem trạng thái không hợp lệ (phải là số nguyên dương, tối đa "
+    f"{MAX_STATUS_LOOKUP} mã). Chưa hỏi website."
+)
+
 
 IMAGE_TYPES = {
     ".jpg": "image/jpeg",
@@ -460,6 +600,31 @@ class ConnectionInfo:
     # GPS (T-059). Có (Biên tập viên trên site đơn) vẫn có thể bị tắt bằng
     # ``DISALLOW_UNFILTERED_HTML`` hay khi site là multisite: REST không cho biết điều đó.
     can_unfiltered_html: bool = False
+    # Múi giờ của website (T-099, đọc ở ``GET /wp-json/``): dữ liệu website, đã kiểm dạng
+    # (``_site_timezone``, ``_site_offset``; lạ thì rỗng / ``None``). Chỉ dùng cho
+    # ``timezone_warning`` (LC-T094-27): bài hẹn giờ gửi ``date_gmt`` (giờ tuyệt đối), múi giờ của
+    # site chỉ đổi giờ hiện trong trang quản trị.
+    timezone_string: str = ""
+    gmt_offset: float | None = None
+
+    def timezone_warning(self, timezone_name: str = DEFAULT_TIMEZONE) -> str:
+        """Câu Cảnh báo khi trang quản trị WordPress sẽ hiện giờ hẹn khác giờ của phần mềm
+        (``timezone_name``, mặc định giờ Việt Nam); chuỗi rỗng khi cùng giờ. Câu cố định, chỉ
+        chèn độ lệch đã kiểm là số (không chép chữ website trả)."""
+        app = "giờ Việt Nam" if timezone_name == DEFAULT_TIMEZONE else f"giờ {timezone_name}"
+        if self.gmt_offset is None:
+            return (
+                "Không đọc được múi giờ của website. Kiểm trong WordPress → Cài đặt → Tổng quan → "
+                f"Múi giờ (nên chọn «Hồ Chí Minh»). Bài hẹn giờ vẫn lên đúng {app} đã chọn."
+            )
+        offset = ZoneInfo(timezone_name).utcoffset(datetime.now(UTC))
+        if offset is not None and round(self.gmt_offset * 60) * 60 == offset.total_seconds():
+            return ""
+        return (
+            f"Múi giờ của website là {_format_offset(self.gmt_offset)}, khác {app}: trang quản trị "
+            f"WordPress sẽ hiện giờ hẹn khác, nhưng bài vẫn lên đúng {app} đã chọn. Nên đặt "
+            "WordPress → Cài đặt → Tổng quan → Múi giờ là «Hồ Chí Minh»."
+        )
 
     @property
     def unfiltered_html_status(self) -> str:
@@ -501,6 +666,67 @@ class SeoWriteResult:
     reason: str = ""
     message: str = ""
     status_code: int | None = None
+
+
+@dataclass(frozen=True)
+class Released:
+    """Kết quả ``release_draft``: website xác nhận đúng trạng thái đã chọn (T-099).
+
+    ``status``: ``"future"`` (đã hẹn giờ) hoặc ``"publish"`` (đã đăng công khai). ``date_gmt``:
+    giờ UTC dạng ``YYYY-MM-DDTHH:MM:SS``; với ``future`` là đúng chuỗi đã gửi (website trả khác
+    thì không có kết quả này mà là ``ReleaseError``), với ``publish`` là giờ đăng website trả (rỗng
+    nếu sai dạng). ``link``: địa chỉ bài, ``https://`` trên đúng website, rỗng nếu lạ (chưa escape:
+    giao diện hiện chữ thuần, không bấm được).
+    """
+
+    post_id: int
+    status: str
+    date_gmt: str
+    link: str
+    edit_link: str
+
+
+class ReleaseError(WordPressError):
+    """Hẹn giờ/đăng (``release_draft``) không xong. ``str(err)`` là câu tiếng Việt cố định.
+
+    - ``unsure``: lệnh chuyển đã gửi mà không biết chắc kết quả (hết giờ, mất mạng, chuyển hướng,
+      5xx, câu trả lời sai dạng, sai trạng thái, sai giờ): bài **có thể đã** hẹn giờ/đăng.
+      Giao diện khóa gửi lại, hướng dẫn kiểm trang quản trị; không tự gửi lại (LC-T094-25).
+    - ``went_public``: người dùng chọn hẹn giờ mà website báo bài đã **đăng công khai** (câu báo
+      khẩn, cách chuyển về nháp).
+    - Cả hai tắt: bài chắc chắn chưa chuyển (bị chặn trước khi gửi, hay website từ chối 4xx).
+    - ``post_id``, ``edit_link``: bài liên quan (0, rỗng khi lỗi trước khi biết bài).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        unsure: bool = False,
+        went_public: bool = False,
+        post_id: int = 0,
+        edit_link: str = "",
+        status_code: int | None = None,
+        code: str = "",
+    ) -> None:
+        super().__init__(message, status_code=status_code, code=code)
+        self.unsure = unsure
+        self.went_public = went_public
+        self.post_id = post_id
+        self.edit_link = edit_link
+
+
+@dataclass(frozen=True)
+class PostState:
+    """Trạng thái một bài trên website (``post_statuses``, chỉ đọc, T-099). Dữ liệu website đã
+    kiểm dạng: ``status`` thuộc ``POST_STATUSES``; ``date_gmt``, ``modified_gmt`` dạng
+    ``YYYY-MM-DDTHH:MM:SS`` (UTC) hay rỗng; ``link`` ``https://`` trên đúng website hay rỗng."""
+
+    id: int
+    status: str
+    date_gmt: str = ""
+    modified_gmt: str = ""
+    link: str = ""
 
 
 @dataclass(frozen=True)
@@ -797,6 +1023,8 @@ class WordPressClient:
             can_upload_files=capabilities.get("upload_files") is True,
             siteseo_writable=siteseo,
             can_unfiltered_html=capabilities.get("unfiltered_html") is True,
+            timezone_string=_site_timezone(root.get("timezone_string")),
+            gmt_offset=_site_offset(root.get("gmt_offset")),
         )
 
     def list_categories(self) -> list[Term]:
@@ -1122,6 +1350,224 @@ class WordPressClient:
             # SL-T042-11: câu trả lời nói về bài khác, hay bài không còn nháp: bất thường.
             raise WordPressError(_IMAGE_ODD_ANSWER)
         return self._post_from(data)
+
+    # ------------------------------------------------------- hẹn giờ, đăng (T-099)
+
+    def release_draft(
+        self, post_id: int, *, mode: str, when_utc: datetime | None = None
+    ) -> Released:
+        """Chuyển bài NHÁP client này vừa tạo sang hẹn giờ (``mode="future"``, giờ ``when_utc``)
+        hoặc đăng công khai ngay (``mode="publish"``). Đường **duy nhất** tới ``future``/``publish``
+        (thiết kế T-094 mục 3.3; Lá Chắn LC-T094-22 → -25, soát kỹ nhất).
+
+        Chỉ gọi từ bước Xuất bản, sau màn hình xác nhận (mã băm) và sau khi tải ảnh, tạo nháp, ảnh
+        đại diện, ghi SEO đã xong trong **cùng** lần bấm (T-102). Thứ tự:
+
+        1. Kiểm trước khi gửi gì (sai thì ``ReleaseError``, 0 request): ``post_id`` thuộc
+           ``_created_post_ids`` của **chính đối tượng client này** (client tạo mới mỗi lần bấm:
+           bài tạo ở lần gửi khác, mã bài đọc từ Sheet hay ``post_statuses`` không bao giờ vào
+           được); ``mode`` đúng chữ; Đăng ngay không kèm giờ; Hẹn giờ thì ``when_utc`` là
+           ``datetime`` có múi giờ.
+        2. Hỏi lại website bài **còn là nháp** (``GET``, chỉ đọc). Không còn: bỏ mã bài khỏi
+           ``_created_post_ids``, từ chối. Giờ máy chủ lấy từ header ``Date`` của **chính** câu
+           trả lời này (thiếu, sai dạng → chặn; không lấy đồng hồ máy thay); đồng hồ máy lệch quá
+           2 phút → chặn; giờ hẹn ≥ giờ máy chủ + 10 phút, ≤ 365 ngày (``release_time_problem``).
+        3. Bỏ mã bài khỏi ``_created_post_ids`` (từ đây không lệnh nào của client sửa tiếp bài
+           này, kể cả khi lỗi), rồi gửi **một** lệnh ``POST /wp/v2/posts/<mã>`` thân đúng
+           ``{"status": "future", "date_gmt": "YYYY-MM-DDTHH:MM:SS"}`` hoặc
+           ``{"status": "publish"}``, mang dấu ``_RELEASE`` (``_is_release_request``).
+        4. Kiểm câu trả lời: đúng mã bài, đúng trạng thái; hẹn giờ thì ``date_gmt`` trả về đúng
+           chuỗi đã gửi. Hẹn giờ mà website đăng ngay: ``ReleaseError(went_public=True)`` câu báo
+           khẩn. Từ chối 4xx: bài vẫn là nháp. Lỗi không rõ (hết giờ, mất mạng, 3xx, 5xx, câu trả
+           lời sai): ``ReleaseError(unsure=True)``. Không bao giờ tự gửi lại, không gửi lệnh nào
+           khác vào bài.
+        """
+        # Nhập muộn như ``_seo_text``: module giờ hẹn thuộc gói publish, client không cần lúc nạp.
+        from seo_app.publish.schedule import ScheduleError, date_gmt_text, release_time_problem
+
+        if type(post_id) is not int or post_id not in self._created_post_ids:
+            raise ReleaseError(_RELEASE_NOT_OWN)
+        if type(mode) is not str or mode not in RELEASE_MODES:
+            raise ReleaseError(_RELEASE_BAD_MODE)
+        fail = {"post_id": post_id, "edit_link": self.edit_link(post_id)}
+        stamp = ""
+        if mode == "publish" and when_utc is not None:
+            raise ReleaseError(_RELEASE_NOW_WITH_TIME, **fail)
+        if mode == "future":
+            try:
+                stamp = date_gmt_text(when_utc)  # type: ignore[arg-type]
+            except ScheduleError:
+                raise ReleaseError(_RELEASE_BAD_TIME, **fail) from None
+        payload = {"status": "future", "date_gmt": stamp} if stamp else {"status": "publish"}
+        path = f"/wp/v2/posts/{post_id}"
+        options = {"json": payload, "params": {"_fields": _RELEASE_FIELDS}}
+        if not is_allowed_route("POST", path) or not _is_plain_request(
+            "POST", path, options, self._session, release=_RELEASE
+        ):
+            raise ReleaseError(_ROUTE_BLOCKED, **fail)  # chưa gửi gì, kể cả lệnh kiểm nháp
+
+        server_now = self._release_check(post_id, fail)
+        try:
+            problem = release_time_problem(
+                mode, when_utc, server_now=server_now, local_now=_utc_now()
+            )
+        except ScheduleError:
+            problem = _RELEASE_BAD_TIME
+        if problem:
+            raise ReleaseError(problem, **fail)
+
+        self._created_post_ids.discard(post_id)
+        action, done = _RELEASE_WORDS[mode]
+        try:
+            data = self._json(self._request("POST", path, **options, release=_RELEASE))
+        except WordPressError as exc:
+            status = exc.status_code
+            if status is not None and 400 <= status < 500:
+                # Lời từ chối rõ ràng (thiếu quyền ``publish_posts``, giờ sai…): chưa chuyển.
+                raise ReleaseError(
+                    str(exc).rstrip() + _RELEASE_STILL_DRAFT,
+                    status_code=status,
+                    code=exc.code,
+                    **fail,
+                ) from None
+            code = f" (mã {status})" if status else ""
+            raise ReleaseError(
+                _RELEASE_UNSURE.format(action=action, code=code, post_id=post_id, done=done),
+                unsure=True,
+                status_code=status,
+                code=exc.code,
+                **fail,
+            ) from None
+        except Exception as exc:  # lỗi lạ giữa lúc gửi: lệnh có thể đã chạy
+            raise ReleaseError(
+                _RELEASE_UNSURE.format(action=action, code="", post_id=post_id, done=done),
+                unsure=True,
+                **fail,
+            ) from exc
+        return self._released_from(data, post_id, mode, stamp, fail)
+
+    def _release_check(self, post_id: int, fail: dict[str, Any]) -> datetime | None:
+        """Bước 2 của ``release_draft``: hỏi website bài còn là nháp (chỉ đọc); trả giờ máy chủ
+        đọc từ header ``Date`` của chính câu trả lời này (``None`` khi thiếu, sai dạng)."""
+        from seo_app.publish.schedule import parse_server_date
+
+        try:
+            response = self._request(
+                "GET",
+                f"/wp/v2/posts/{post_id}",
+                params={"context": "edit", "_fields": _RELEASE_CHECK_FIELDS},
+            )
+            data = self._json(response)
+        except WordPressError as exc:
+            code = f" (mã {exc.status_code})" if exc.status_code else ""
+            raise ReleaseError(
+                _RELEASE_CHECK_FAILED.format(code=code), status_code=exc.status_code, **fail
+            ) from None
+        except Exception as exc:  # lỗi lạ ở lệnh đọc: lệnh chuyển chưa gửi, bài vẫn là nháp
+            raise ReleaseError(_RELEASE_CHECK_FAILED.format(code=""), **fail) from exc
+        if not _is_own_draft_answer(data, post_id):
+            # Bài đã bị đăng, hẹn giờ, chuyển hay xóa ngoài app: thôi coi là bài app được sửa.
+            self._created_post_ids.discard(post_id)
+            raise ReleaseError(_RELEASE_NOT_DRAFT, **fail)
+        return parse_server_date(response.headers.get("Date"))
+
+    def _released_from(
+        self, data: object, post_id: int, mode: str, stamp: str, fail: dict[str, Any]
+    ) -> Released:
+        """Bước 4 của ``release_draft``: kiểm câu trả lời của lệnh chuyển (LC-T094-25)."""
+        action, done = _RELEASE_WORDS[mode]
+        odd = ReleaseError(
+            _RELEASE_ODD_ANSWER.format(action=action, post_id=post_id, done=done),
+            unsure=True,
+            **fail,
+        )
+        if not isinstance(data, dict) or _positive_id(data.get("id")) != post_id:
+            raise odd
+        status = data.get("status")
+        if type(status) is not str:
+            raise odd
+        if mode == "future" and status == "publish":
+            raise ReleaseError(
+                _RELEASE_WENT_PUBLIC.format(post_id=post_id), went_public=True, **fail
+            )
+        if status != mode:
+            raise odd
+        date_gmt = data.get("date_gmt")
+        if mode == "future" and (type(date_gmt) is not str or date_gmt != stamp):
+            raise ReleaseError(_RELEASE_WRONG_TIME.format(post_id=post_id), unsure=True, **fail)
+        link = data.get("link")
+        return Released(
+            post_id=post_id,
+            status=status,
+            date_gmt=stamp or (date_gmt if _is_date_gmt(date_gmt) else ""),
+            link=link if is_site_link(link, self.base_url) else "",
+            edit_link=self.edit_link(post_id),
+        )
+
+    def post_statuses(self, post_ids: Iterable[int]) -> dict[int, PostState]:
+        """Trạng thái hiện tại của các bài ``post_ids`` trên website: **chỉ đọc** (T-099; thiết kế
+        T-094 mục 1.7, 3.3; LC-T094-26). Dùng cho bước «Cập nhật trạng thái từ website».
+
+        - ``post_ids``: số nguyên dương thật (không ``bool``, chữ, số thực), tối đa
+          ``MAX_STATUS_LOOKUP`` mã; sai thì ``WordPressError``, chưa hỏi website. Mã bài thường
+          đọc từ Google Sheets (chưa tin cậy): kết quả chỉ để ghi ô trạng thái, **không** làm
+          mã nào thành «bài app được sửa» (``_created_post_ids`` không đổi).
+        - Mỗi lệnh ``GET /wp/v2/posts`` hỏi tối đa ``MAX_STATUS_IDS`` mã (``include``), ``status``
+          và ``_fields`` là hằng (không ``content``, ``excerpt``), ``context=edit``.
+        - Kết quả: mã → ``PostState``. Chỉ giữ mục đúng mã đã hỏi, trạng thái thuộc
+          ``POST_STATUSES``; mục sai khuôn bị bỏ. Bài không có trong kết quả: đã xóa, vào thùng
+          rác hay tài khoản không xem được.
+        """
+        if isinstance(post_ids, str | bytes | dict) or not isinstance(post_ids, Iterable):
+            raise WordPressError(_STATUS_BAD_IDS)
+        ids = list(islice(post_ids, MAX_STATUS_LOOKUP + 1))
+        if len(ids) > MAX_STATUS_LOOKUP or any(_positive_id(value) is None for value in ids):
+            raise WordPressError(_STATUS_BAD_IDS)
+        wanted = sorted(set(ids))
+        states: dict[int, PostState] = {}
+        for start in range(0, len(wanted), MAX_STATUS_IDS):
+            chunk = wanted[start : start + MAX_STATUS_IDS]
+            data = self._json(
+                self._request(
+                    "GET",
+                    "/wp/v2/posts",
+                    params={
+                        "include": ",".join(str(value) for value in chunk),
+                        "status": POST_STATUS_FILTER,
+                        "context": "edit",
+                        "per_page": MAX_STATUS_IDS,
+                        "_fields": _STATUS_FIELDS,
+                    },
+                )
+            )
+            if not isinstance(data, list):
+                raise WordPressError("WordPress trả về dữ liệu không đúng dạng danh sách.")
+            asked = set(chunk)
+            for raw in data:
+                state = self._state_from(raw, asked)
+                if state is not None and state.id not in states:
+                    states[state.id] = state
+        return states
+
+    def _state_from(self, raw: object, asked: set[int]) -> PostState | None:
+        """Một mục của ``post_statuses`` → ``PostState``; ``None`` nếu sai khuôn hay không phải
+        mã đã hỏi (website trả thêm bài khác: bỏ)."""
+        if not isinstance(raw, dict):
+            return None
+        post_id = _positive_id(raw.get("id"))
+        status = raw.get("status")
+        if post_id is None or post_id not in asked:
+            return None
+        if type(status) is not str or status not in POST_STATUSES:
+            return None
+        date_gmt, modified, link = raw.get("date_gmt"), raw.get("modified_gmt"), raw.get("link")
+        return PostState(
+            id=post_id,
+            status=status,
+            date_gmt=date_gmt if _is_date_gmt(date_gmt) else "",
+            modified_gmt=modified if _is_date_gmt(modified) else "",
+            link=link if is_site_link(link, self.base_url) else "",
+        )
 
     def upload_media(
         self,
@@ -1492,8 +1938,10 @@ class WordPressClient:
         )
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+        # Dấu hẹn giờ/đăng (chỉ ``release_draft`` có): gỡ khỏi tùy chọn, không tới ``requests``.
+        release = kwargs.pop("release", None)
         if not is_allowed_route(method, path) or not _is_plain_request(
-            method, path, kwargs, self._session
+            method, path, kwargs, self._session, release=release
         ):
             # Từ chối TRƯỚC KHI gửi: không có request nào đi ra (T-042, LC-T042-1). Câu cố định,
             # không chép đường, tham số hay header bị từ chối.
@@ -1871,6 +2319,48 @@ def _draft_images_error(
         maybe_draft=maybe_draft,
         status_code=status,
     )
+
+
+def _utc_now() -> datetime:
+    """Đồng hồ máy (UTC), để so lệch với giờ website trong ``release_draft`` (test thay hàm này)."""
+    return datetime.now(UTC)
+
+
+def _is_date_gmt(value: object) -> bool:
+    """Giờ UTC website trả dạng ``YYYY-MM-DDTHH:MM:SS`` (chữ số ASCII)."""
+    return type(value) is str and value.isascii() and bool(_DATE_GMT_PATTERN.fullmatch(value))
+
+
+# Tên múi giờ WordPress trả (``timezone_string``: tên IANA như ``Asia/Ho_Chi_Minh``, hay rỗng khi
+# site đặt độ lệch tay).
+_SITE_TIMEZONE = re.compile(r"[A-Za-z][A-Za-z0-9_+/-]{0,63}")
+_SITE_OFFSET = re.compile(r"-?[0-9]{1,2}(?:\.[0-9]{1,2})?")
+
+
+def _site_timezone(value: object) -> str:
+    """``timezone_string`` của site: tên múi giờ dạng IANA đã kiểm, còn lại rỗng."""
+    return value if isinstance(value, str) and _SITE_TIMEZONE.fullmatch(value) else ""
+
+
+def _site_offset(value: object) -> float | None:
+    """``gmt_offset`` của site (giờ, có thể lẻ: 5.5, 5.75; WordPress trả số hay chữ số) trong
+    khoảng −12 … +14; còn lại ``None``."""
+    if isinstance(value, str):
+        if not value.isascii() or not _SITE_OFFSET.fullmatch(value):
+            return None
+        value = float(value)
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    hours = float(value)
+    return hours if -12 <= hours <= 14 else None
+
+
+def _format_offset(hours: float) -> str:
+    """Độ lệch giờ đã kiểm → «UTC+7», «UTC+5:30», «UTC−3:30»."""
+    minutes = round(hours * 60)
+    sign = "+" if minutes >= 0 else "−"
+    whole, rest = divmod(abs(minutes), 60)
+    return f"UTC{sign}{whole}" + (f":{rest:02d}" if rest else "")
 
 
 def _positive_id(value: object) -> int | None:
