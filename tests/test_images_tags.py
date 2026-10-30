@@ -546,6 +546,9 @@ def test_ai_marker_in_file_name_makes_image_ai(file_name):
     assert real.tags.area == "Quận 7" and not real.tags.is_ai  # ảnh khác cùng thư mục vẫn thật
 
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): bật lại công tắc
+# HEIC trong test này để đường HEIC vẫn được kiểm cho lúc bật lại.
+@pytest.mark.usefixtures("heic_enabled")
 @pytest.mark.parametrize(
     "file_name",
     [

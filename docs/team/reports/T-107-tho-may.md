@@ -119,3 +119,84 @@ Ngày nộp lượt 2: 2026-10-30 12:50 (+07:00, theo lệnh `date`). Chỉ Huy 
   - `sl107_correct.py`: **258 ca (156 ảnh lưới), 0 lỗi**. Gồm 7 cỡ ảnh, ô 64 → 1024, 8 chiều xoay. Không ảnh nào bị từ chối oan; GPS, cỡ sau xoay đúng; điểm ảnh một luồng giống từng byte bốn luồng.
 - `uv run ruff check .`: All checks passed. `ruff format --check` sạch với 2 file test; `process.py` chỉ còn dòng `expected = (…)` có từ trước (đã ghi ở lượt 1).
 - Không có ảnh HEIC chụp thật trên máy (như lượt 1); 258 ảnh trên là ảnh dựng bằng bộ mã hóa pillow-heif.
+
+## Lượt 3 · Tạm không nhận HEIC (LC-T107-2) và chặn HEIC có alpha (LC-T107-1)
+
+Ngày nộp lượt 3: 2026-10-30 17:26 (+07:00, theo lệnh `date`). Chỉ Huy B giao sau biên bản Lá Chắn (`a9d381e`, `docs/team/reports/T-107-la-chan.md`). Lúc 14:20 Chỉ Huy đổi phạm vi: chủ dự án chọn cho LC-T107-2 **tạm không nhận ảnh HEIC** tới khi pillow-heif mang libheif từ 1.23.7 (đã duyệt nâng ngay khi có bản mới, sau khi Lá Chắn quét). Làm cả hai việc: tắt HEIC bằng một công tắc, và vẫn làm cách (a) cho LC-T107-1, vì lỗi này còn nguyên sau khi nâng libheif.
+
+### Tóm tắt (cho chủ dự án)
+
+- **App tạm không nhận ảnh HEIC của iPhone.**
+  - Ảnh `.heic`, `.heif` không hiện trong khung chọn ảnh.
+  - File HEIC bị đổi đuôi thành `.jpg` vẫn bị nhận ra theo nội dung, kèm câu báo: «Tạm chưa nhận ảnh HEIC của iPhone, hãy dùng ảnh JPEG.»
+  - Thư viện đọc HEIC không còn được gọi ở bất kỳ đường nào: ảnh xem trước, ảnh gửi AI, ảnh gửi WordPress.
+  - Ảnh qua Zalo là JPEG nên không bị ảnh hưởng.
+  - README có thêm câu báo, kèm cách cho iPhone chụp thẳng JPEG.
+- **Bật lại chỉ cần đổi một dòng:** `HEIC_ENABLED = False` thành `True` trong `seo_app/images/folders.py`, khi nâng thư viện. Mã đọc HEIC giữ nguyên: một luồng, kiểm lưới ô, chặn ảnh có lớp trong suốt.
+- **Đã chặn sẵn cho lúc bật lại:** ảnh HEIC có lớp trong suốt bị từ chối trước khi giải mã. Lá Chắn chỉ ra một file 3 kB dạng này bắt app giải mã 252 triệu điểm ảnh. Ảnh chụp điện thoại không có lớp trong suốt.
+
+### Đã thay đổi (mã)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/images/folders.py` | Công tắc duy nhất `HEIC_ENABLED = False` (chú thích: lý do, khi nào bật lại). `HEIC_EXTENSIONS = {".heic", ".heif"}` tách khỏi `IMAGE_EXTENSIONS` (nay `.jpg .jpeg .png .webp .avif`); `_is_image_name` đọc công tắc lúc gọi, nên thư mục không liệt kê HEIC. `ImageRef` tên `.heic` báo «Chỉ nhận ảnh JPEG, PNG, WebP hoặc AVIF (tạm chưa nhận ảnh HEIC của iPhone).» |
+| `seo_app/images/process.py` | `_allowed_formats()` đọc công tắc lúc gọi: tắt thì không có `"HEIF"`. `ALLOWED_FORMATS` là giá trị lúc nạp module (test Lá Chắn T-093, T-107 kiểm ở đây). `_open`: định dạng mặc định lấy lúc gọi. Không có `"HEIF"` mà nội dung là HEIC (`_is_heic_container`: hộp `ftyp` có nhãn HEIC, chính hay tương thích, chỉ đọc tối đa 256 byte đầu bằng Python) thì báo `_MSG_HEIC_OFF`. Chỉ gọi `_register_heif` khi có `"HEIF"`. `_MSG_NOT_IMAGE` không nhắc HEIC khi tắt. **Cách (a):** `_check_heif_alpha` gọi ngay sau `_check_heif_grid`, trước `load`: HEIF có mode chứa `A`/`a` (`RGBA`, `RGBa`, `LA`, `La`) thì báo `_MSG_HEIF_ALPHA`. Docstring module cập nhật |
+| `README.md` | Mục 9: bỏ «HEIC (iPhone)» khỏi danh sách định dạng, thêm một gạch đầu dòng «Tạm chưa nhận ảnh HEIC của iPhone…», cách đặt iPhone chụp JPEG (Cài đặt → Camera → Định dạng → Tương thích nhất) |
+| `tests/conftest.py` | Thêm fixture `heic_enabled` (không tự dùng): bật lại công tắc trong test |
+
+### Ca test đã đổi (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC; R5)
+
+**Giữ nguyên ý, bật công tắc HEIC trong test** (`heic_enabled`). Thân test, điều kiện kiểm không đổi:
+
+| File | Phạm vi bật | Số ca liên quan HEIC |
+|---|---|---|
+| `tests/test_images_process.py` | cả file (`pytestmark`) | 10 test có đường HEIC (đăng ký HEIF một chỗ, 4 định dạng, giới hạn điểm ảnh, bom giải nén, HEIC cụt, GPS, xoay, hồ sơ màu, `st.image`) |
+| `tests/test_soi_loi_t049.py` | cả file | 41 ca HEIF (GPS mọi cách viết, xoay 8 hướng, HEIC cụt, đột biến, bản AI 3 hãng…) |
+| `tests/test_soi_loi_t067.py` | cả file | 17 ca HEIF (thẻ Ref GPS sai khuôn, nhiều luồng) |
+| `tests/test_soi_loi_t107.py` | cả file | 10 ca (SL-T107-1, -2, một luồng, đối chứng lưới) |
+| `tests/test_t107_heif_mot_luong.py` | cả file | 17 ca đường HEIC (một luồng, lưới, alpha) |
+| `tests/test_ai_images.py` | `test_real_ai_copy_from_make_ai_image_passes` | ca `[heic]` |
+| `tests/test_images_tags.py` | `test_ordinary_file_names_are_not_ai` | ca `[IMG_20240512_101010.HEIC]` |
+| `tests/test_soi_loi_t056.py` | `test_heic_chosen_and_truncated_jpeg_blocked` | 1 |
+| `tests/test_la_chan_t107.py` | `test_lc_t107_1_big_alpha_rejected_before_decode` | 4 (để ca vẫn kiểm đúng phép chặn alpha; tắt thì HEIC bị từ chối sớm hơn nữa) |
+
+**Đổi kỳ vọng theo hành vi tắt** (cũ → mới):
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_images_folders.py::test_image_extensions_match_design` | `IMAGE_EXTENSIONS` có `.heic`, `.heif` | `IMAGE_EXTENSIONS` = `.jpg .jpeg .png .webp .avif`; `HEIC_EXTENSIONS` = `.heic .heif`; `HEIC_ENABLED is False` |
+| `test_images_folders.py::test_image_ref_accepts_normal_relative_paths[x.heic]`, `[x.HEIF]` | `ImageRef` nhận | Bỏ khỏi danh sách nhận; chuyển sang test mới `test_image_ref_heic_only_when_enabled` (3 ca): tắt thì `ImageFolderError` có «tạm chưa nhận ảnh HEIC của iPhone», bật thì nhận |
+| `test_images_folders.py::test_list_subfolder_gives_paths_relative_to_root` | thư mục `truoc` liệt kê `IMG_0001.HEIC` | liệt kê rỗng |
+| `test_images_folders.py::test_list_folder_recursive_collects_whole_project` | liệt kê `IMG_0002.jpeg`, `IMG_0001.HEIC` | chỉ `IMG_0002.jpeg`. Kỳ vọng cũ của hai ca này chuyển sang test mới `test_list_folder_lists_heic_when_enabled` (bật công tắc) |
+| `test_soi_loi_t049.py::test_ban_ai_moi_loai_nguon_qua_prepare_images[heic-trong-suot]` | HEIC RGBA được nhận, bản AI, ảnh xem trước qua bộ kiểm metadata | `make_ai_image`, `make_preview` đều từ chối: bật HEIC thì câu `_MSG_HEIF_ALPHA` (cách (a)), tắt HEIC thì `_MSG_HEIC_OFF` |
+| `test_app_images.py::test_preview_errors_are_vietnamese_without_trace` | câu «… không phải ảnh JPEG, PNG, WebP hoặc HEIC đọc được …» | «… không phải ảnh JPEG, PNG hoặc WebP đọc được …» |
+
+**Gỡ dấu `xfail(strict=True)` khi XPASS** (chỉ xóa dấu):
+- `test_la_chan_t107.py::test_lc_t107_1_big_alpha_rejected_before_decode` (4 ca).
+- `test_la_chan_t107.py::test_lc_t107_2_heic_not_decoded_by_libheif_with_known_cpu_advisories`: nay qua vì app không nhận HEIF (`"HEIF"` không có trong `ALLOWED_FORMATS`). Ca này sẽ hỏng lại nếu ai bật công tắc mà libheif vẫn dưới 1.23.7; đó đúng là chốt chặn cần có.
+
+### Test mới
+
+- `tests/test_t107_heic_tat.py`: cấu hình mặc định, không bật công tắc. Gồm:
+  - công tắc tắt: không `"HEIF"`, không đuôi HEIC, câu báo đúng chữ Chỉ Huy giao;
+  - 4 đường (`open_image`, `make_preview`, `make_ai_image`, `make_web_image`) từ chối HEIC, **không gọi libheif**, **không đăng ký HEIF**;
+  - JPEG mở được mà không đăng ký HEIF;
+  - file HEIC đổi đuôi `.jpg` trong thư mục ảnh thật: vẫn được liệt kê theo đuôi, nhưng bị từ chối theo nội dung ở cả 4 đường;
+  - thư mục không liệt kê `.HEIC/.heic/.heif/.HEIF`; bật lại thì liệt kê;
+  - nhận dạng hộp `ftyp` (10 ca: iPhone, `mif1`+`heic`, `heix`, `hevc`, AVIF, `mif1` thuần, JPEG, PNG, file cụt, cỡ hộp khai bừa);
+  - AVIF vẫn ra câu «không phải ảnh»;
+  - bật công tắc là đường HEIC chạy lại, vẫn một luồng.
+- `tests/test_t107_heif_mot_luong.py` (bật công tắc): HEIC `RGBA`, `LA` bị từ chối trước `load` ở cả 4 đường (8 ca); phép kiểm alpha chỉ áp cho HEIF (10 ca); PNG, WebP có alpha vẫn nhận; HEIC `RGB`, `L` vẫn mở.
+
+### Kiểm thử lượt 3
+
+- 61 file test: mọi file có chữ HEIC/HEIF/`pillow_heif` hay dùng `seo_app.images` (ảnh, thư mục, thẻ, trang ảnh, gửi nháp, AI ảnh, T-047, T-049, T-054, T-056, T-058, T-061, T-067, T-071, T-079, T-080, T-081, T-083, T-093, T-107), cộng `test_pillow_version_t058.py`, `test_soi_loi_t080.py`, `test_soi_loi_t080_linux.py`. Kết quả: **8220 qua, 51 bỏ qua, 16 xfail, 0 hỏng, không XPASS** (47 phút).
+  - 16 xfail đều có từ trước, thuộc phiếu khác: R2 thư mục ảnh (3), LC-T093-1, LC-T093-2, SL-T067-1 (4), SL-T070-4 (7).
+  - 51 bỏ qua: ca chỉ chạy trên Linux/Mac (file `_linux`, symlink, quyền POSIX).
+  - **T-047, T-049, T-058, T-080 không lùi.**
+- `uv run ruff check .`: All checks passed. `ruff format --check`: mọi file đã sửa sạch, trừ 2 chỗ có từ trước trên `HEAD` (`process.py` dòng `expected = (…)`, `tests/test_images_process.py` thiếu một dòng trống trước «tên file (naming.py)»), không đụng tới.
+
+### Ghi nhận
+
+- README và `IMAGE_EXTENSIONS` vẫn ghi nhận **AVIF**, nhưng `process.py` không mở AVIF (`ALLOWED_FORMATS` không có từ T-047). Ảnh `.avif` được liệt kê rồi báo «không phải ảnh … đọc được». Lệch này có từ trước, không thuộc phiếu này; đề nghị Chỉ Huy giao một phiếu nhỏ: hoặc bỏ AVIF khỏi danh sách đuôi và README, hoặc ghi rõ.
+- Quét ký tự vô hình trần và `detect-secrets` (`PYTHONUTF8=1`) trên mọi file đã sửa. Chỉ có 2 kết quả, cả hai đã có y hệt trên `HEAD`: `tests/test_images_tags.py:514` có U+200B, `tests/test_ai_images.py` có 3 kết quả «khóa» giả. Không do lượt này.

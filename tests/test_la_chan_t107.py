@@ -164,10 +164,9 @@ def test_big_alpha_fixture_is_valid_heic(big_alpha_heic):
     assert len(heif.data) == 512 * 512 * 4
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T107-1: ảnh phụ alpha (lưới) không qua giới hạn điểm ảnh, libheif giải mã hết",
-)
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): bật lại công tắc HEIC
+# để ca này vẫn kiểm đúng phép từ chối alpha (công tắc tắt thì HEIC bị từ chối sớm hơn nữa).
+@pytest.mark.usefixtures("heic_enabled")
 @pytest.mark.parametrize("make", MAKERS, ids=MAKER_IDS)
 def test_lc_t107_1_big_alpha_rejected_before_decode(big_alpha_heic, make, monkeypatch):
     """Mong đợi: ảnh HEIC có ảnh phụ alpha lớn hơn ảnh chính (lưới ô trỏ lặp) bị từ chối **trước
@@ -187,10 +186,6 @@ def test_lc_t107_1_big_alpha_rejected_before_decode(big_alpha_heic, make, monkey
     assert loads == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T107-2: libheif 1.23.6 còn lỗi làm treo CPU đã công bố (GHSA-48p4…), vá ở 1.23.7",
-)
 def test_lc_t107_2_heic_not_decoded_by_libheif_with_known_cpu_advisories():
     """Mong đợi: đăng ký HEIF như app (``_register_heif``) thì app không nhận HEIF, hoặc libheif
     mang theo từ 1.23.7. Thực tế: HEIF bật, libheif 1.23.6. Giải mã một luồng (LC-T093-3) và phép
