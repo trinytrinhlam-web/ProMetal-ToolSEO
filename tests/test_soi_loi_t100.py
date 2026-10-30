@@ -1066,11 +1066,6 @@ def test_round3_price_check_is_linear_even_when_the_keyword_repeats():
         assert big < 8 * small + 0.01, unit
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-12: loại «giá nhập», «giá công», «giá tăng», «giá trị», «giá để», «giá đó» "
-    "như từ ghép không nói tiền nên lọt giá (lượt 2 bắt được)",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -1087,10 +1082,6 @@ def test_sl_t100_12_price_compounds_still_warn(notes):
     assert _price_warned(notes) == (True, False)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-13: số tiền sau «đặt cọc», «thanh toán», «chuyển khoản», «mất» chưa bắt",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -1104,10 +1095,6 @@ def test_sl_t100_13_amounts_after_payment_words_warn(notes):
     assert _price_warned(notes) == (True, False)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-14: «tra» không dấu trong «kiểm tra», «điều tra», «tra cứu» bị coi là «trả»",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -1122,10 +1109,6 @@ def test_sl_t100_14_checking_words_with_tra_are_not_a_price(notes):
     assert _price_warned(notes) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-15: «từ đồng» (đồng thau) bị coi là «tư đồng», «3d» viết thường là «3 đ»",
-)
 @pytest.mark.parametrize(
     "notes",
     [

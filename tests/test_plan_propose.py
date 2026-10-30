@@ -617,3 +617,88 @@ def test_price_next_to_a_skipped_word_is_still_found():
     """Chỗ khớp bị bỏ qua («đánh giá tốt») không che chỗ khớp gối lên nó («giá 500.000»)."""
     assert propose.mentions_plan_price("Khách đánh giá tốt, giá 500.000")
     assert propose.mentions_plan_price("2 đồng hồ, thêm 500k")
+
+
+# ------------------------------------------------- T-100 lượt 4: so theo chữ có dấu, quy tắc chung
+
+BIG_AMOUNTS = [
+    "Khách đặt cọc 2.000.000",
+    "Thanh toán 1.500.000 khi xong",
+    "Chuyển khoản 1.500.000",
+    "Ứng trước 3.000.000 cho thợ",
+    "Tổng cộng 12.000.000",
+    "Giá nhập 800.000 một bộ",
+    "Giá trị hợp đồng 50.000.000",
+    "Mất 800.000 tiền vật tư",
+    "Bảo dưỡng 300.000 lần đầu",
+    "Cổng 15.000.000 nhà anh Tuấn",
+    "Lô 1.500.000 bộ cửa",  # từ 1.000.000 trở lên: đơn vị đếm không gỡ cảnh báo
+    "khach dat coc 2.000.000",
+    "thanh toan 1,500,000 khi xong",
+]
+
+
+@pytest.mark.parametrize("text", BIG_AMOUNTS)
+def test_amounts_from_ten_thousand_warn_whatever_word_comes_before(text):
+    assert propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Thợ kiểm tra 12.000 điểm hàn",
+        "Điều tra 10.000 hộ",
+        "Hệ thống tra cứu 15.000 bộ",
+        "Tôn 12.000 m2",
+        "Ray dài 12.000 mm",
+        "Khung 1.200 x 2.400",
+        "Bảo hành 36.000 giờ chạy",
+        "Từ khóa có 10.000 lượt tìm",
+        "Đã kiểm tra 1.000 lần đóng mở",
+        "Số 9.999 là số nhỏ",
+        "Ngày 30.10.2026",
+    ],
+)
+def test_measure_time_count_and_small_numbers_are_not_prices(text):
+    assert not propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Kiểm tra lại 1.500 bộ bản lề",
+        "Điều tra 5.000 hộ dân",
+        "Tra cứu 2.000 mã hàng",
+        "Gia công 1.200 mm",
+        "Tham gia 5.000 khách",
+        "Bản lề làm từ đồng thau",
+        "Cửa cuốn tự động",
+        "Gửi khách bản vẽ 3d",
+    ],
+)
+def test_accented_text_needs_accented_money_words(text):
+    """Chữ có dấu: «tra», «gia», «từ», «d» không dấu không phải «trả», «giá», «tư», «đ»."""
+    assert not propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    ("text", "price"),
+    [
+        ("kiem tra lai 1.500 bo ban le", False),
+        ("tra cuu 2.000 ma hang", False),
+        ("cua cuon tu dong", False),
+        ("ban le lam tu dong thau", False),
+        ("ban ve 3d", False),
+        ("khach tra 2.500 tien mat", True),
+        ("gia 5.000 mot cai", True),
+        ("hai trieu", True),
+    ],
+)
+def test_plain_text_is_read_without_accents(text, price):
+    assert propose.mentions_plan_price(text) is price
+
+
+def test_one_accent_makes_the_whole_text_accented():
+    """Có một dấu là chữ có dấu: nhãn không dấu không tính, nhưng quy tắc chung vẫn bắt số lớn."""
+    assert not propose.mentions_plan_price("gia 5.000 một cái")
+    assert propose.mentions_plan_price("gia 50.000 một cái")

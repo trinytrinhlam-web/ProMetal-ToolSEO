@@ -383,97 +383,139 @@ def _has_personal(proposal: Proposal) -> bool:
 
 # ------------------------------------------------------------- dò giá (LC-T103-1, LC-T100-2)
 #
-# Dò riêng cho chữ kế hoạch (không dùng ``mentions_price`` của bước SEO): chữ kế hoạch có địa chỉ
-# công trình, số đếm, kích thước, ghi chú dài tới 2.000 ký tự, chữ gõ không dấu, và hay ghi giá
-# kiểu «Giá thay motor 1.200.000». Cách dò:
+# Dò riêng cho chữ kế hoạch (không dùng ``mentions_price`` của bước SEO). Đây là lưới an toàn
+# **mềm**: lời dặn AI đã cấm giá, người dùng còn duyệt; báo thừa theo hướng an toàn dễ chấp nhận
+# hơn bỏ lọt. Cách dò:
 #
-# - Chữ đã làm sạch (``clean_text``), NFKC («５００ｋ» là «500k»), chữ thường; dò trên bản **bỏ
-#   dấu** giữ đúng vị trí từng ký tự (``_fold``), nên chữ gõ không dấu cũng bắt («gia 500.000»,
-#   «2 trieu»). Từ nói tiền mà **có dấu** thì phải đúng dấu («tôn», «trà», «giả», «độ», «ngăn» không
-#   phải «tốn», «trả», «giá», «đô», «ngàn»): ``_ACCENTED``.
-# - Dò trên **cả** chữ, không cắt khúc (Soi Lỗi SL-T100-3); từ khóa chính tìm trên bản bỏ dấu (từ
-#   khóa gõ không dấu vẫn che chữ có dấu, SL-T100-8); so «nằm trong từ khóa» bằng chia đôi
-#   (SL-T100-10). Mọi biểu thức không lồng lượng từ: chạy tuyến tính.
-# - Chỗ khớp bị bỏ qua thì dò tiếp từ ký tự kế (không bỏ sót chỗ khớp gối lên nó).
+# - Chữ đã làm sạch (``clean_text``), NFKC («５００ｋ» là «500k»), chữ thường.
+# - **So theo chữ có dấu** (Soi Lỗi SL-T100-12, -14, -15): chữ có dấu thì từ nói tiền phải viết
+#   đúng dấu («trả» không phải «tra» trong «kiểm tra», «tư» không phải «từ», «đ» không phải «d»
+#   trong «3d»). Chỉ khi cả chữ **không có dấu nào** (gõ không dấu) mới dò theo từ không dấu («gia
+#   500.000», «2 trieu»).
+# - Quy tắc chung, ít phụ thuộc danh sách từ đứng trước: số tiền viết có dấu phân nghìn từ 10.000
+#   trở lên là giá, trừ khi ngay sau là đơn vị đo, «x» (kích thước), đơn vị thời gian hay đơn vị đếm
+#   («2.500 mm», «12.000 điểm hàn», «15.000 bộ», «10.000 lượt tìm»). Bắt được «đặt cọc / thanh
+#   toán / chuyển khoản / mất 1.500.000» (SL-T100-13), «Giá nhập 800.000» (SL-T100-12) mà không
+#   cần kể hết các chữ đứng trước.
+# - Số nhỏ hơn (1.000–9.999) hay số không dấu phân nghìn (từ 5 chữ số) chỉ là giá khi đứng sau chữ
+#   nói tiền («giá», «phí», «tiền», «trả»…), trong vòng 3 từ.
+# - Dò trên **cả** chữ, không cắt khúc (SL-T100-3); từ khóa chính tìm trên bản bỏ dấu (SL-T100-8),
+#   so «nằm trong từ khóa» bằng chia đôi (SL-T100-10); chỗ khớp bị bỏ qua thì dò tiếp từ ký tự kế.
+#   Mọi biểu thức không lồng lượng từ: chạy tuyến tính.
 
-_UNIT = r"(?P<unit>dong|vnd|usd|do\s+la|do|nghin|ngan|trieu|ty|ti|tr|d|k)"
-# Số + đơn vị tiền: «150.000đ», «500k», «1,5 triệu», «1tr5», «2-3 triệu», «500 nghìn đồng».
-_PRICE_AMOUNT = re.compile(
-    r"(?<![\w.,])(?P<num>\d+(?:[.,]\d+)*)(?P<space>\s*)" + _UNIT + r"\d*(?!\w)"
-)
-# Số viết bằng chữ + đơn vị: «hai triệu», «vài trăm ngàn», «năm trăm nghìn đồng».
-_PRICE_WORDS = re.compile(
-    r"\b(?:mot|hai|ba|bon|tu|nam|lam|sau|bay|tam|chin|muoi|tram|chuc|vai|may|ruoi|nua)\s+"
-    r"(?P<unit>nghin|ngan|trieu|ty|ti|dong|do\s+la)(?!\w)"
-)
-# Chữ nói tiền rồi số tiền không đơn vị, cách tối đa 3 từ (LC-T100-2, SL-T100-9): «Giá thay motor
-# 1.200.000», «Giá: 500.000», «Chi phí 800.000», «Tiền thay motor 1.200.000», «hết 1.200.000»,
-# «Khách trả 2.500.000», «Tốn 800.000», «Công thợ 300.000». Số phải có dấu chấm nghìn hay từ 5 chữ
-# số: «giá … 2026» (năm) không tính.
-_PRICE_LABEL = re.compile(
-    r"(?<!\w)(?P<label>gia|phi|tien cong|tien|cong tho|het|ton|tra)(?!\w)(?:\s*:\s*|\s+)"
-    r"(?:[^\s\d:]+\s+){0,3}?:?\s*(?P<num>\d{1,3}(?:[.,]\d{3})+|\d{5,})(?![\d\w])"
-)
-# Đơn vị tiền đứng **trước** số: «VNĐ 500.000», «VND 1.500.000», «USD 50».
-_PRICE_CURRENCY = re.compile(r"\b(?P<label>vnd|usd)\s*:?\s*\d")
-_PRICE_SYMBOL = re.compile(r"[$€₫¥£]")
-# Cụm nói về giá, như bước SEO (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt).
-_PRICE_PHRASES = re.compile(
-    r"\b(?P<label>gia|chi phi)\s+(?:re|tot|chi|tu|goc|si|uu dai|canh tranh|hop ly|phai chang"
-    r"|thap|mem|binh dan|bao nhieu)(?!\w)"
-    r"|\b(?:bang gia|giam gia|khuyen mai|mien phi|uu dai|tron goi)(?!\w)"
-    r"|\b(?:nghin|ngan|trieu|ty|ti)\s+dong(?!\w)"
-)
-# «rẻ», «đắt» đứng riêng chỉ tính khi có dấu: «re», «dat» không dấu nhiều nghĩa («đặt», «đất»).
-_PRICE_ACCENTED = re.compile(r"(?<!\w)(?:rẻ|đắt)(?!\w)")
 
-# Dạng có dấu đúng của từng từ nói tiền (theo bản bỏ dấu). Từ có dấu khác: không phải từ đó.
-_ACCENTED = {
-    "gia": ("giá",), "phi": ("phí",), "tien": ("tiền",), "cong": ("công",), "tho": ("thợ",),
-    "het": ("hết",), "ton": ("tốn",), "tra": ("trả",), "dong": ("đồng",), "vnd": ("vnđ",),
-    "do": ("đô",), "nghin": ("nghìn",), "ngan": ("ngàn",), "trieu": ("triệu",),
-    "ty": ("tỷ", "tỉ"), "ti": ("tỉ", "tỷ"), "d": ("đ",), "chi": ("chỉ",), "tu": ("từ", "tư"),
-    "goc": ("gốc",), "si": ("sỉ",), "uu": ("ưu",), "dai": ("đãi",), "canh": ("cạnh",),
-    "hop": ("hợp",), "ly": ("lý", "lí"), "phai": ("phải",), "chang": ("chăng",),
-    "thap": ("thấp",), "mem": ("mềm",), "binh": ("bình",), "dan": ("dân",), "nhieu": ("nhiêu",),
-    "bang": ("bảng",), "giam": ("giảm",), "khuyen": ("khuyến",), "mai": ("mãi", "mại"),
-    "mien": ("miễn",), "tron": ("trọn",), "goi": ("gói",), "re": ("rẻ",), "tot": ("tốt",),
-    "mot": ("một",), "bon": ("bốn",), "nam": ("năm",), "lam": ("lăm",), "sau": ("sáu",),
-    "bay": ("bảy", "bẩy"), "tam": ("tám",), "chin": ("chín",), "muoi": ("mười", "mươi"),
-    "tram": ("trăm",), "chuc": ("chục",), "vai": ("vài",), "may": ("mấy",), "ruoi": ("rưỡi",),
-    "nua": ("nửa",),
+def _alternation(*words: str) -> str:
+    return "|".join(words)
+
+
+_UNITS = {
+    True: ("đồng", "vnđ", "vnd", "usd", r"đô\s+la", "đô", "nghìn", "ngàn", "triệu", "tỷ", "tỉ",
+           "tr", "đ", "k"),
+    False: ("dong", "vnd", "usd", r"do\s+la", "nghin", "ngan", "trieu", "ty", "ti", "tr", "d", "k"),
 }  # fmt: skip
-# Đơn vị tiền mà từ đứng sau cho thấy không phải tiền («2 đồng hồ», «đô thị», «tỷ lệ»).
+# Số viết bằng chữ; khi gõ không dấu, bỏ các chữ nhiều nghĩa («tu đồng» là «tự động», «nam», «sau»,
+# «may», «bay», «tam»).
+_NUMBER_WORDS = {
+    True: ("một", "hai", "ba", "bốn", "tư", "năm", "lăm", "sáu", "bảy", "bẩy", "tám", "chín",
+           "mười", "mươi", "trăm", "chục", "vài", "mấy", "rưỡi", "nửa"),
+    False: ("mot", "hai", "ba", "bon", "lam", "chin", "muoi", "tram", "chuc", "vai", "ruoi", "nua"),
+}  # fmt: skip
+_WORD_UNITS = {
+    True: ("nghìn", "ngàn", "triệu", "tỷ", "tỉ", "đồng", r"đô\s+la"),
+    False: ("nghin", "ngan", "trieu", "ty", "ti", "dong", r"do\s+la"),
+}
+# Chữ nói tiền đứng trước số tiền không đơn vị (LC-T100-2, SL-T100-9, -13).
+_LABELS = {
+    True: ("giá", "phí", "tiền công", "tiền", "công thợ", "hết", "tốn", "trả", "đặt cọc", "cọc",
+           "thanh toán", "chuyển khoản", "mất"),
+    False: ("gia", "phi", "tien cong", "tien", "cong tho", "het", "ton", "tra", "dat coc", "coc",
+            "thanh toan", "chuyen khoan", "mat"),
+}  # fmt: skip
+_PHRASE_HEADS = {True: ("giá", "chi phí"), False: ("gia", "chi phi")}
+_PHRASE_TAILS = {
+    True: ("rẻ", "tốt", "chỉ", "từ", "gốc", "sỉ", "ưu đãi", "cạnh tranh", "hợp lý", "phải chăng",
+           "thấp", "mềm", "bình dân", "bao nhiêu"),
+    False: ("re", "tot", "chi", "tu", "goc", "si", "uu dai", "canh tranh", "hop ly", "phai chang",
+            "thap", "mem", "binh dan", "bao nhieu"),
+}  # fmt: skip
+# Cụm nói giá đứng riêng; «rẻ», «đắt» chỉ khi có dấu (không dấu nhiều nghĩa: «đặt», «đất»).
+_PHRASES_ALONE = {
+    True: ("bảng giá", "giảm giá", "khuyến mãi", "khuyến mại", "miễn phí", "ưu đãi", "trọn gói",
+           "rẻ", "đắt"),
+    False: ("bang gia", "giam gia", "khuyen mai", "mien phi", "uu dai", "tron goi"),
+}  # fmt: skip
+_THOUSANDS = r"\d{1,3}(?:[.,]\d{3})+"
+
+
+def _patterns(accented: bool) -> dict[str, re.Pattern[str]]:
+    units = _alternation(*_UNITS[accented])
+    big_units = _alternation(*_WORD_UNITS[accented][:5])  # nghìn, ngàn, triệu, tỷ, tỉ
+    dong = "đồng" if accented else "dong"
+    return {
+        # Số + đơn vị tiền: «150.000đ», «500k», «1,5 triệu», «1tr5», «2-3 triệu».
+        "amount": re.compile(
+            rf"(?<![\w.,])(?P<num>\d+(?:[.,]\d+)*)(?P<space>\s*)(?P<unit>{units})\d*(?!\w)"
+        ),
+        # Số viết bằng chữ + đơn vị: «hai triệu», «vài trăm ngàn», «năm trăm nghìn đồng».
+        "words": re.compile(
+            rf"(?<!\w)(?:{_alternation(*_NUMBER_WORDS[accented])})\s+"
+            rf"(?P<unit>{_alternation(*_WORD_UNITS[accented])})(?!\w)"
+        ),
+        # Số có dấu phân nghìn đứng riêng (quy tắc chung, xét giá trị ≥ 10.000 ở nơi dùng).
+        "big": re.compile(rf"(?<![\w.,])(?P<num>{_THOUSANDS})(?![\d\w])"),
+        # Chữ nói tiền rồi số, cách tối đa 3 từ: «Giá thay motor 1.200.000», «Phí khảo sát 5.000».
+        "label": re.compile(
+            rf"(?<!\w)(?P<label>{_alternation(*_LABELS[accented])})(?!\w)(?:\s*:\s*|\s+)"
+            rf"(?:[^\s\d:]+\s+){{0,3}}?:?\s*(?P<num>{_THOUSANDS}|\d{{5,}})(?![\d\w])"
+        ),
+        # Đơn vị tiền đứng trước số: «VNĐ 500.000», «USD 50».
+        "currency": re.compile(r"(?<!\w)(?:vnđ|vnd|usd)\s*:?\s*\d"),
+        "phrase": re.compile(
+            rf"(?<!\w)(?P<label>{_alternation(*_PHRASE_HEADS[accented])})\s+"
+            rf"(?:{_alternation(*_PHRASE_TAILS[accented])})(?!\w)"
+            rf"|(?<!\w)(?:{_alternation(*_PHRASES_ALONE[accented])})(?!\w)"
+            rf"|(?<!\w)(?:{big_units})\s+{dong}(?!\w)"
+        ),
+    }
+
+
+_PATTERNS = {True: _patterns(True), False: _patterns(False)}
+_PRICE_SYMBOL = re.compile(r"[$€₫¥£]")
+_BIG_AMOUNT = 10_000
+
+# Các danh sách dưới đây so trên chữ **bỏ dấu** của từ đứng cạnh chỗ khớp (đủ cho cả hai cách gõ).
+# Đơn vị tiền mà từ đứng sau cho thấy không phải tiền («2 đồng hồ», «đồng thau», «đô thị», «tỷ lệ»).
 _NOT_MONEY_AFTER = {
     "dong": ("ho", "bo", "thoi", "loat", "deu", "mau", "nghiep", "y", "nat", "tam", "phuc",
-             "huong", "chi", "ruong", "bang", "co"),
+             "huong", "chi", "ruong", "bang", "co", "thau"),
     "do": ("thi",),
     "ty": ("le",),
     "ti": ("le",),
 }  # fmt: skip
-# «nghìn», «triệu», «k»… rồi danh từ chỉ số đông là số đếm, không phải tiền (SL-T100-2): «2 nghìn
-# công trình», «1 nghìn lượt tìm», «5 ngàn khách», «10k lượt xem». Chỉ danh từ số đông: «lần»,
-# «nhà», «căn» hay đứng ngay sau giá («300 nghìn lần đầu», «15 triệu nhà anh Tuấn», SL-T100-6).
+# «nghìn», «triệu», «k»… rồi danh từ chỉ số đông là số đếm (SL-T100-2): «2 nghìn công trình», «10k
+# lượt xem». Chỉ danh từ số đông: «300 nghìn lần đầu», «15 triệu nhà anh Tuấn» là giá (SL-T100-6).
 _COUNT_UNITS = frozenset({"nghin", "ngan", "trieu", "ty", "ti", "tr", "k"})
 _CROWD_NOUNS = (
     "luot", "khach", "nguoi", "cong trinh", "truy cap", "view", "thanh vien", "hoc vien",
 )  # fmt: skip
-# Số sau chữ nói tiền mà theo sau là đơn vị đo, «x» (kích thước) hay danh từ số đông: không phải
-# tiền («giá … 2.500 mm», «trả lời 10.000 khách»).
-_NOT_AMOUNT_NEXT = (
-    *_CROWD_NOUNS, "mm", "cm", "m", "m2", "m3", "km", "kg", "ly", "w", "v", "lit", "tan", "x",
+# Số (không đơn vị tiền) mà ngay sau là đơn vị đo, «x» (kích thước), đơn vị thời gian: không phải
+# tiền («2.500 mm», «1.200 x 600», «12.000 m2»).
+_MEASURE_NEXT = (
+    "mm", "cm", "m", "m2", "m3", "km", "kg", "g", "ly", "w", "kw", "v", "lit", "tan", "ta", "x",
+    "%", "do", "gio", "phut", "giay", "ngay", "tuan", "thang", "nam",
 )  # fmt: skip
-# Chữ nói tiền nằm trong từ ghép không nói tiền (SL-T100-7): «đánh giá», «tham gia», «giá đỡ»,
-# «giá kệ», «giá trị», «gia công», «mặt tiền», «trả lời», «hết hạn».
-_LABEL_NOT_BEFORE = {
-    "gia": ("danh", "tham", "quoc", "chuyen", "dai"),
-    "tien": ("mat",),
-}
-_LABEL_NOT_AFTER = {
-    "gia": ("do", "ke", "treo", "tri", "de", "cong", "dinh", "han", "tang", "nhap", "su", "vi"),
-    "tra": ("loi",),
-    "het": ("han",),
-}
+# Số dưới 1.000.000 mà ngay sau là đơn vị đếm: số lượng, không phải tiền («12.000 điểm hàn», «15.000
+# bộ», «10.000 hộ», «10.000 lượt tìm»). Từ 1.000.000 trở lên thì vẫn coi là tiền (đếm hàng triệu
+# bộ, điểm thì hiếm). Không có «lần», «nhà», «căn» (hay đứng ngay sau giá: «300.000 lần đầu»).
+_COUNT_NEXT = (
+    *_CROWD_NOUNS, "bo", "cai", "chiec", "ho", "diem", "san pham", "don", "cay", "tam", "cuon",
+    "bai", "du an", "mau", "ban", "doi", "cap", "vien", "con", "hop", "thung", "kien", "sp", "pcs",
+)  # fmt: skip
+_COUNT_LIMIT = 1_000_000
+# Chữ nói tiền nằm trong từ ghép không nói tiền: «đánh giá tốt», «mặt tiền», «trả lời», «hết hạn»,
+# và khi gõ không dấu: «kiem tra», «dieu tra», «tra cuu».
+_LABEL_NOT_BEFORE = {"gia": ("danh",), "tien": ("mat",), "tra": ("kiem", "dieu")}
+_LABEL_NOT_AFTER = {"tra": ("loi", "cuu"), "het": ("han",)}
 _WORD = re.compile(r"\w+")
 
 
@@ -504,14 +546,15 @@ def _all_matches(pattern: re.Pattern[str], text: str) -> Iterator[re.Match[str]]
 
 
 class _PriceText:
-    """Chữ để dò giá: ``original`` (chữ thường, có dấu), ``folded`` (bỏ dấu, cùng độ dài), vị trí
-    các lần xuất hiện của từ khóa chính (trên bản bỏ dấu)."""
+    """Chữ để dò giá: ``original`` (chữ thường, giữ dấu), ``folded`` (bỏ dấu, cùng độ dài),
+    ``accented`` (chữ có ít nhất một dấu), vị trí các lần xuất hiện của từ khóa chính."""
 
     def __init__(self, text: str, keyword: str) -> None:
         visible = unicodedata.normalize("NFKC", clean_text(text, multiline=True))
         self.visible = visible
         self.original = _lower_keep(visible)
         self.folded = _fold(self.original)
+        self.accented = self.folded != self.original
         key = " ".join(
             _fold(_lower_keep(unicodedata.normalize("NFKC", clean_text(keyword)))).split()
         )
@@ -522,8 +565,9 @@ class _PriceText:
             self.key_starts.append(start)
             start = self.folded.find(key, start + 1)
 
-    def in_keyword(self, start: int, end: int) -> bool:
-        """Đoạn ``[start, end)`` nằm trọn trong một lần xuất hiện của từ khóa chính."""
+    def in_keyword(self, found: re.Match[str]) -> bool:
+        """Chỗ khớp nằm trọn trong một lần xuất hiện của từ khóa chính."""
+        start, end = found.span()
         index = bisect_left(self.key_starts, end - self.key_length)
         return index < len(self.key_starts) and self.key_starts[index] <= start
 
@@ -534,15 +578,6 @@ class _PriceText:
     def words_after(self, end: int) -> str:
         return " ".join(self.folded[end : end + 40].split())
 
-    def accents_ok(self, start: int, end: int) -> bool:
-        """Mọi từ trong ``[start, end)`` gõ không dấu, hay đúng dấu của từ nói tiền."""
-        for found in _WORD.finditer(self.folded, start, end):
-            word = found.group()
-            written = self.original[found.start() : found.end()]
-            if written != word and written not in _ACCENTED.get(word, ()):
-                return False
-        return True
-
 
 def _starts_with_word(text: str, words: Iterable[str]) -> bool:
     """``text`` bắt đầu bằng một trong ``words``, trọn từ (không dính chữ cái sau)."""
@@ -552,27 +587,34 @@ def _starts_with_word(text: str, words: Iterable[str]) -> bool:
     return False
 
 
+def _number_value(number: str) -> int:
+    digits = re.sub(r"[.,]", "", number)
+    return int(digits[:15]) if digits.isdigit() else 0
+
+
+def _not_amount(text: _PriceText, end: int, value: int) -> bool:
+    """Số (không đơn vị tiền) kết thúc ở ``end`` là số đo, kích thước, thời gian hay số lượng."""
+    after = text.words_after(end)
+    if _starts_with_word(after, _MEASURE_NEXT):
+        return True
+    return value < _COUNT_LIMIT and _starts_with_word(after, _COUNT_NEXT)
+
+
 def _is_amount(text: _PriceText, found: re.Match[str]) -> bool:
-    """Số + đơn vị (``_PRICE_AMOUNT``, ``_PRICE_WORDS``) có thật là tiền không."""
-    unit_start, unit_end = found.span("unit")
-    unit = " ".join(found.group("unit").split())
-    # Số dính đơn vị («150.000đ») là một từ: chỉ xét dấu của đơn vị; số viết bằng chữ xét cả cụm.
-    checked_from = unit_start if "num" in found.re.groupindex else found.start()
-    if not text.accents_ok(checked_from, unit_end):
-        return False
-    written = text.original[unit_start:unit_end]
-    if unit == "do" and written != "đô":  # «độ», «đó», «do» không phải «đô» (đô la)
-        return False
-    if unit == "d" and text.visible[unit_start] == "D":  # «3D» không phải tiền
-        return False
+    """Số + đơn vị (mẫu ``amount``, ``words``) có thật là tiền không."""
+    unit = " ".join(text.folded[found.start("unit") : found.end("unit")].split())
+    unit_end = found.end("unit")
     after = text.words_after(found.end())
     if _starts_with_word(after, _NOT_MONEY_AFTER.get(unit, ())):
         return False
     groups = found.groupdict()
     number = groups.get("num") or ""
-    # Tên đường, kiệt viết tắt sau số nhà (SL-T100-1, -5): số nhà ngắn, không dấu chấm nghìn, dấu
-    # cách rồi «đ.»/«k.» và chữ («45 đ. số 7», «123 Đ.Nguyễn Văn Linh», «12 K. Lê Duẩn»). Số có
-    # dấu chấm nghìn («150.000 Đ.») luôn là tiền.
+    # «3d», «2d»: số nhỏ dính «d» là bản vẽ, ảnh, không phải tiền (SL-T100-15).
+    if unit == "d" and number and _number_value(number) < 100:
+        return False
+    # Tên đường, kiệt viết tắt sau số nhà (SL-T100-1, -5): số nhà ngắn, không dấu phân nghìn, dấu
+    # cách rồi «đ.»/«k.» và chữ («45 đ. số 7», «12 K. Lê Duẩn»). Số có dấu phân nghìn («150.000 Đ.»)
+    # luôn là tiền.
     if (
         unit in ("d", "k")
         and groups.get("space")
@@ -586,47 +628,45 @@ def _is_amount(text: _PriceText, found: re.Match[str]) -> bool:
 
 
 def _label_ok(text: _PriceText, found: re.Match[str]) -> bool:
-    """Chữ nói tiền (``giá``, ``phí``, ``tiền``…) không nằm trong từ ghép không nói tiền."""
-    label = " ".join(found.group("label").split())
-    head = label.split()[0]
-    if not text.accents_ok(*found.span("label")):
-        return False
+    """Chữ nói tiền không nằm trong từ ghép không nói tiền («đánh giá tốt», «mặt tiền»…)."""
+    head = _fold(found.group("label")).split()[0]
     if text.word_before(found.start()) in _LABEL_NOT_BEFORE.get(head, ()):
         return False
-    return not _starts_with_word(
-        text.words_after(found.end("label")), _LABEL_NOT_AFTER.get(head, ())
-    )
+    after = text.words_after(found.end("label"))
+    return not _starts_with_word(after, _LABEL_NOT_AFTER.get(head, ()))
 
 
 def mentions_plan_price(text: str, keyword: str = "") -> bool:
-    """Chữ kế hoạch có nói giá không (có dấu hay không dấu); chỗ khớp nằm trọn trong một lần xuất
-    hiện của từ khóa chính thì không tính («cửa sắt giá rẻ» là từ khóa, không phải lời nói giá)."""
+    """Chữ kế hoạch có nói giá không (chữ có dấu, hay gõ không dấu); chỗ khớp nằm trọn trong một
+    lần xuất hiện của từ khóa chính thì không tính («cửa sắt giá rẻ» là từ khóa, không phải lời nói
+    giá)."""
     seen = _PriceText(text, keyword)
-    folded = seen.folded
+    patterns = _PATTERNS[seen.accented]
+    source = seen.original
 
     def counts(found: re.Match[str]) -> bool:
-        return not seen.in_keyword(found.start(), found.end())
+        return not seen.in_keyword(found)
 
-    for pattern in (_PRICE_AMOUNT, _PRICE_WORDS):
-        if any(counts(f) and _is_amount(seen, f) for f in _all_matches(pattern, folded)):
+    for name in ("amount", "words"):
+        if any(counts(f) and _is_amount(seen, f) for f in _all_matches(patterns[name], source)):
             return True
-    for found in _all_matches(_PRICE_LABEL, folded):
-        number_end = found.end("num")
+    for found in _all_matches(patterns["big"], source):
+        value = _number_value(found.group("num"))
+        if value >= _BIG_AMOUNT and counts(found) and not _not_amount(seen, found.end(), value):
+            return True
+    for found in _all_matches(patterns["label"], source):
+        value = _number_value(found.group("num"))
         if (
             counts(found)
             and _label_ok(seen, found)
-            and not _starts_with_word(seen.words_after(number_end), _NOT_AMOUNT_NEXT)
+            and not _not_amount(seen, found.end("num"), value)
         ):
             return True
-    for found in _all_matches(_PRICE_CURRENCY, folded):
-        if counts(found) and seen.accents_ok(*found.span("label")):
+    for found in _all_matches(patterns["phrase"], source):
+        if counts(found) and (found.group("label") is None or _label_ok(seen, found)):
             return True
-    for found in _all_matches(_PRICE_PHRASES, folded):
-        label_ok = found.group("label") is None or _label_ok(seen, found)
-        if counts(found) and seen.accents_ok(found.start(), found.end()) and label_ok:
-            return True
-    for pattern, source in ((_PRICE_SYMBOL, seen.visible), (_PRICE_ACCENTED, seen.original)):
-        if any(counts(found) for found in _all_matches(pattern, source)):
+    for pattern, where in ((patterns["currency"], source), (_PRICE_SYMBOL, seen.visible)):
+        if any(counts(found) for found in _all_matches(pattern, where)):
             return True
     return False
 

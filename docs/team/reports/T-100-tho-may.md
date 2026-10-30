@@ -369,3 +369,85 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <5 file đổi ở lượt 3>
   - «500 k. Khách…» (có dấu cách giữa số và «k.») bị coi là địa chỉ.
   - Cả hai đều hiếm; ca đầu báo thừa theo hướng an toàn.
 - Tiếng lóng «2 củ», «15 chai»: chưa dò, như lượt 2.
+
+## Lượt 4 (2026-10-30 12:30 +07:00) · Soi Lỗi lượt 3 (`0b1da79`): SL-T100-12 → -15
+
+Chỉ Huy B giao (30/10 11:10, làm tiếp 12:20): sửa 4 lỗi Thấp SL-T100-12 → -15 ở hàm dò giá, theo nguyên tắc:
+- so nhãn theo chữ có dấu (chỉ bỏ dấu khi cả chữ không có dấu nào);
+- gom quy tắc để ít phụ thuộc danh sách từ đứng trước số;
+- cảnh báo là lưới an toàn mềm: báo thừa theo hướng an toàn dễ chấp nhận hơn bỏ lọt.
+
+### Tóm tắt (cho chủ dự án)
+
+- Cảnh báo «AI nhắc tới giá» nay theo một quy tắc chung dễ đoán: số tiền viết có dấu chấm phân nghìn **từ 10.000 trở lên** là giá. Không cần biết chữ đứng trước là «giá», «đặt cọc», «thanh toán» hay «chuyển khoản».
+  - Trừ khi ngay sau là đơn vị đo («2.500 mm», «12.000 m2»), kích thước («1.200 x 600»), thời gian («36.000 giờ»), hay số lượng nhỏ hơn 1 triệu («12.000 điểm hàn», «15.000 bộ», «10.000 lượt tìm»).
+- Ghi chú có dấu thì phải viết đúng dấu mới tính là từ nói tiền: «kiểm tra», «tra cứu», «gia công», «từ đồng», «tự động», «bản vẽ 3d» không còn bị báo oan.
+- Ghi chú gõ hoàn toàn không dấu vẫn được dò theo cách không dấu.
+
+### Đã sửa
+
+| Lỗi | Sửa |
+|---|---|
+| SL-T100-12 | Bỏ danh sách «giá + từ không nói tiền» (lượt 3 loại cả «giá nhập», «giá công», «giá tăng», «giá trị», «giá để», «giá đó»). «giá» chỉ còn loại khi đứng sau «đánh» («đánh giá»). Kích thước, số đếm đi sau số đã được loại bằng đơn vị đứng sau số («Lắp giá đỡ cách sàn 2.500 mm», «Làm giá kệ sắt 1.200 x 600 mm»). Thêm quy tắc chung ≥ 10.000 nên các ca trong lỗi đều có cảnh báo |
+| SL-T100-13 | Quy tắc chung: số có dấu phân nghìn ≥ 10.000 là giá, bất kể chữ đứng trước. Bắt «đặt cọc / thanh toán / chuyển khoản / mất / ứng trước / tổng cộng 1.500.000». Nhãn cũng thêm «đặt cọc», «cọc», «thanh toán», «chuyển khoản», «mất» cho số nhỏ hơn (1.000–9.999, hay không dấu phân nghìn từ 5 chữ số) |
+| SL-T100-14 | **So nhãn theo chữ có dấu.** Chữ có ít nhất một dấu thì dùng bộ mẫu có dấu: nhãn «trả» viết đúng dấu, «tra» trong «kiểm tra», «điều tra», «tra cứu» không khớp. Chữ không dấu nào mới dùng bộ mẫu không dấu, kèm «kiem tra», «dieu tra», «tra cuu», «tra loi» không tính |
+| SL-T100-15 | Cùng nguyên tắc: chữ có dấu thì số viết bằng chữ phải đúng «tư» (không phải «từ»: «làm từ đồng thau»), đơn vị phải đúng «đ» (không phải «d»: «bản vẽ 3d»). Chữ không dấu: bỏ «tu», «nam», «sau», «may», «bay», «tam» khỏi số viết bằng chữ («tu dong» là «tự động»); «d» chỉ là đồng khi số từ 100 trở lên; «đồng thau» không phải tiền |
+
+Chỗ đổi trong `seo_app/plan/propose.py` (thay hẳn phần dò giá của lượt 3):
+- `_patterns` (`:450`) dựng hai bộ mẫu từ cùng danh sách từ (`_UNITS`, `_LABELS`… `:411-447`): một bộ có dấu, một bộ không dấu.
+- `_PriceText` (`:548`) chọn bộ theo chữ có dấu hay không.
+- Quy tắc chung: `_BIG_AMOUNT` (`:484`), `_not_amount` (`:595`), với `_MEASURE_NEXT` luôn loại và `_COUNT_NEXT` chỉ loại dưới `_COUNT_LIMIT` = 1.000.000 (`:503-514`).
+- Nhãn: `_label_ok` (`:630`), `_LABEL_NOT_BEFORE` (`:517`).
+- Hàm chính: `mentions_plan_price` (`:639`).
+
+Giữ nguyên từ lượt 3:
+- từ khóa chính tìm trên bản bỏ dấu;
+- so «nằm trong từ khóa» bằng chia đôi;
+- dò tiếp từ ký tự kế khi bỏ qua một chỗ khớp;
+- luật địa chỉ viết tắt theo hình dạng số;
+- danh từ số đông sau «nghìn / triệu / k».
+
+Không sửa `seo_app/onpage/meta.py`.
+
+### Đánh đổi (cố ý, theo hướng an toàn)
+
+- Chữ có dấu mà xen một từ nói tiền gõ không dấu («gia 5.000 một cái»): nhãn không dấu không tính. Nhưng số từ 10.000 trở lên vẫn bị bắt theo quy tắc chung («gia 50.000 một cái» có cảnh báo).
+- Số từ 1.000.000 trở lên rồi đơn vị đếm vẫn bị coi là giá («1.500.000 bộ»). Đếm hàng triệu bộ, điểm thì hiếm, báo thừa là an toàn.
+- Số 10.000 trở lên không đơn vị đi sau (mã, số lượng không kèm đơn vị) bị coi là giá. Trong ghi chú kế hoạch hiếm gặp.
+
+### Gỡ `xfail` (R5, chỉ xóa dấu)
+
+`tests/test_soi_loi_t100.py`: 4 dấu (SL-T100-12, -13, -14, -15), **17 dòng xóa, 0 dòng thêm**; trong file không còn dấu `xfail` nào. Trước khi gỡ: 4 file test (của Soi Lỗi, Lá Chắn T-100, T-103, `test_plan_propose.py`) chạy `--runxfail` được 343 passed, gồm mọi ca của SL-T100-1 → -15, LC-T100-2, LC-T103-1, test canh số đếm.
+
+### Test thêm (của tôi)
+
+`tests/test_plan_propose.py`, 41 ca:
+- 13 số ≥ 10.000 sau đủ loại chữ, có dấu và không dấu, kể cả «1.500.000 bộ cửa»;
+- 11 số đo, kích thước, thời gian, số lượng, số nhỏ, ngày tháng: không cảnh báo;
+- 8 chữ có dấu với từ không dấu («kiểm tra», «tra cứu», «gia công», «tham gia», «từ đồng», «tự động», «3d»…): không cảnh báo;
+- 8 ca gõ không dấu (có và không có giá);
+- 1 ca «một dấu là chữ có dấu».
+
+Các bộ ca có dấu / không dấu của lượt 3 vẫn qua, không đổi ca nào.
+
+### Test (lượt 4)
+
+```
+$ uv run pytest -q tests/test_plan_sync.py tests/test_plan_cache.py tests/test_la_chan_t100.py \
+    tests/test_soi_loi_t100.py tests/test_t100_drafts_plan.py tests/test_t100_google_identity.py \
+    tests/test_plan_model.py tests/test_plan_parse.py tests/test_plan_propose.py tests/test_plan_ai.py \
+    tests/test_soi_loi_t098.py tests/test_t103_plan_prompt.py tests/test_soi_loi_t103.py \
+    tests/test_la_chan_t103.py tests/test_google_sheets.py tests/test_content_workflow.py
+(2026-10-30 12:27:06 → 12:30:01 +0700, máy đang chạy toàn bộ test của Chỉ Huy cùng lúc)
+1393 passed in 168.89s
+
+# trước khi gỡ dấu (--runxfail): test_soi_loi_t100.py, test_la_chan_t100.py,
+# test_la_chan_t103.py, test_plan_propose.py
+343 passed
+
+$ uv run ruff check .
+All checks passed!
+```
+
+- Thời gian dò: chữ 2.000 ký tự lặp «5k», «giá», «2 đồng hồ», «đánh giá tốt», «trả lời 1.000», có hay không từ khóa lặp: tối đa khoảng 5 ms một lần, tức dưới 1 giây cho 100 mục AI. Có test tuyến tính của Soi Lỗi (SL-T100-10) và của tôi.
+- Lượt này chỉ đổi `seo_app/plan/propose.py` (phần dò giá) và test, nên chỉ chạy các file gọi tới nó và các file test T-100, T-103, T-098.
