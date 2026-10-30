@@ -577,10 +577,6 @@ def test_dau_that_tren_duong_khac_bi_chan(site, client, method, path):
     assert len(site.requests) == before
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T099-1: thân data= (bytes) không qua luật khóa JSON/status, lọt ở mọi đường",
-)
 @pytest.mark.parametrize(
     "path, body",
     [("/wp/v2/posts/42", b"status=publish"),
