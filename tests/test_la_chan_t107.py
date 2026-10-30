@@ -5,16 +5,20 @@ Thử thêm các biến thể gần của SL-T107-2 (báo cáo ``docs/team/repor
 trong test: ô HEVC lấy từ bộ mã hóa đi kèm pillow-heif, phần khung HEIF (``iinf``, ``iloc``,
 ``iref``, ``iprp``) tự ghi. Không gọi mạng.
 
-- **LC-T107-1** (Trung bình): giới hạn 80 triệu điểm ảnh và phép kiểm lưới chỉ xét **ảnh chính**.
-  Ảnh phụ alpha (``auxC`` alpha, tham chiếu ``auxl``) được libheif giải mã cùng ảnh chính mà không
-  qua phép kiểm nào: file 3 kB, ảnh chính 512 × 512, alpha là lưới 31 × 31 ô 512 cùng trỏ một mục
-  → giải mã 252 triệu điểm ảnh, thêm khoảng 330 MB, app **nhận** ảnh; ô 1024 thì cam kết tới
-  khoảng 1,5 GB. Đúng dạng SL-T107-2, chỉ dời lưới sang ảnh phụ.
-- **LC-T107-2** (Trung bình): libheif 1.23.6 còn các lỗi «làm treo CPU» đã công bố, vá ở 1.23.7
-  (GHSA-48p4-gj45-w9v6, GHSA-2g6j-vhr6-6wrj, GHSA-7qm8-hj35-269r, GHSA-hhg3-fxg7-3gxw,
-  GHSA-74mj-m37q-h3q9). Phép kiểm lưới của T-107 không chặn được các dạng gần: lưới lồng lưới,
-  lưới mà mỗi ô là một ảnh chồng (``iovl``) của ảnh lớn. Hết khi app không giải mã HEIC bằng
-  libheif < 1.23.7 (nâng pillow-heif, hay tạm tắt HEIF).
+- **LC-T107-1** (Trung bình, đóng ở lượt 3): giới hạn 80 triệu điểm ảnh và phép kiểm lưới chỉ
+  xét **ảnh chính**. Ảnh phụ alpha (``auxC`` alpha, tham chiếu ``auxl``) được libheif giải mã cùng
+  ảnh chính mà không qua phép kiểm nào: file 3 kB, ảnh chính 512 × 512, alpha là lưới 31 × 31 ô
+  512 cùng trỏ một mục → giải mã 252 triệu điểm ảnh, thêm khoảng 330 MB, app **nhận** ảnh; ô 1024
+  thì cam kết tới khoảng 1,5 GB. Đúng dạng SL-T107-2, chỉ dời lưới sang ảnh phụ.
+- **LC-T107-2** (Trung bình, đóng ở lượt 3): libheif 1.23.6 còn các lỗi «làm treo CPU» đã công
+  bố, vá ở 1.23.7 (GHSA-48p4-gj45-w9v6, GHSA-2g6j-vhr6-6wrj, GHSA-7qm8-hj35-269r,
+  GHSA-hhg3-fxg7-3gxw, GHSA-74mj-m37q-h3q9). Phép kiểm lưới của T-107 không chặn được các dạng
+  gần: lưới lồng lưới, lưới mà mỗi ô là một ảnh chồng (``iovl``) của ảnh lớn. Hết khi app không
+  giải mã HEIC bằng libheif < 1.23.7 (nâng pillow-heif, hay tạm tắt HEIF).
+- **LC-T107-3** (Thấp khi HEIC tắt; **phải sửa trước khi bật lại HEIC**, lượt 3): phép chặn alpha
+  (``_check_heif_alpha``) dựa vào mode Pillow báo lúc mở. Ảnh chính là ảnh dẫn xuất ``iden`` trỏ
+  tới ảnh có alpha thì pillow-heif báo ``RGB``, nhưng libheif vẫn giải mã alpha của ảnh được trỏ:
+  alpha lưới 16 × 16 ô 512 thêm khoảng 67 MB, 2 s CPU; lưới lớn hơn thì như LC-T107-1.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ import test_images_process as tp
 from PIL import Image
 from pillow_heif import options as heif_options
 
-from seo_app.images import process
+from seo_app.images import folders, process
 
 _REGISTRIES = ("OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _OPTIONS = ("DECODE_THREADS", "THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
@@ -109,11 +113,12 @@ def _heif(items: list[tuple], primary: int, refs: list[tuple[bytes, int, list[in
     iref = _full(b"iref", links)
     hdlr = _full(b"hdlr", b"\0" * 4 + b"pict" + b"\0" * 13)
     head = hdlr + _full(b"pitm", struct.pack(">H", primary))
-    chunks = list(dict.fromkeys(data for _i, _k, data, _h, _l in items))
+    chunks = list(dict.fromkeys(data for _i, _k, data, _h, _l in items if data))
+    stored = [item for item in items if item[2]]  # mục dẫn xuất kiểu ``iden`` không có dữ liệu
 
     def iloc(offsets: dict[bytes, int]) -> bytes:
-        body = bytes([0x44, 0]) + struct.pack(">H", len(items))
-        for item_id, _kind, data, _hidden, _links in items:
+        body = bytes([0x44, 0]) + struct.pack(">H", len(stored))
+        for item_id, _kind, data, _hidden, _links in stored:
             body += struct.pack(">HHHHII", item_id, 0, 0, 1, offsets.get(data, 0), len(data))
         return _full(b"iloc", body, version=1)
 
@@ -187,10 +192,64 @@ def test_lc_t107_1_big_alpha_rejected_before_decode(big_alpha_heic, make, monkey
 
 
 def test_lc_t107_2_heic_not_decoded_by_libheif_with_known_cpu_advisories():
-    """Mong đợi: đăng ký HEIF như app (``_register_heif``) thì app không nhận HEIF, hoặc libheif
-    mang theo từ 1.23.7. Thực tế: HEIF bật, libheif 1.23.6. Giải mã một luồng (LC-T093-3) và phép
-    kiểm lưới của T-107 không chặn được lưới lồng lưới hay lưới ô ảnh chồng (đo ở báo cáo)."""
-    process._register_heif()
+    """Chốt chặn bật lại HEIC (LC-T107-2 đóng ở lượt 3 bằng công tắc ``folders.HEIC_ENABLED``):
+    app nhận HEIF theo bất kỳ đường nào (công tắc, định dạng lúc nạp module hay lúc gọi) thì
+    libheif phải từ 1.23.7. Giải mã một luồng (LC-T093-3) và phép kiểm lưới của T-107 không chặn
+    được lưới lồng lưới hay lưới ô ảnh chồng (đo ở báo cáo)."""
     libheif = tuple(int(part) for part in pillow_heif.libheif_info()["libheif"].split(".")[:3])
-    heif_on = "HEIF" in process.ALLOWED_FORMATS and Image.OPEN.get("HEIF") is not None
+    heif_on = (
+        folders.HEIC_ENABLED
+        or "HEIF" in process.ALLOWED_FORMATS
+        or "HEIF" in process._allowed_formats()
+    )
     assert not heif_on or libheif >= (1, 23, 7)
+
+
+@pytest.fixture(scope="module")
+def iden_alpha_heic(tile_512):
+    """Ảnh chính là ``iden`` (ảnh dẫn xuất, không dữ liệu) trỏ tới ảnh 512 × 512; ảnh đó có alpha
+    là lưới 4 × 4 ô 512 cùng trỏ một mục (2048 × 2048). Đo trên máy dùng lưới 16 × 16."""
+    hvcc, data = tile_512
+    tile = (hvcc, True), (_ispe(512, 512), False)
+    alpha = (_ispe(2048, 2048), False), (_full(b"auxC", ALPHA_URN), False)
+    items = [
+        (1, b"iden", b"", False, [(_ispe(512, 512), False)]),
+        (2, b"hvc1", data, True, list(tile)),
+        (3, b"grid", _grid(4, 4, 2048, 2048), True, list(alpha)),
+        (4, b"hvc1", data, True, list(tile)),
+    ]
+    return _heif(items, 1, [(b"dimg", 1, [2]), (b"dimg", 3, [4] * 16), (b"auxl", 3, [2])])
+
+
+def test_iden_alpha_fixture_reports_no_alpha(iden_alpha_heic):
+    """Tiền đề: file là HEIC hợp lệ với libheif; ảnh chính ``iden`` báo **không** có alpha (mode
+    ``RGB``) dù ảnh được trỏ có alpha, và giải mã được."""
+    heif = pillow_heif.open_heif(io.BytesIO(iden_alpha_heic))
+    assert heif.size == (512, 512)
+    assert not heif.has_alpha
+    assert len(heif.data) >= 512 * 512 * 3
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="LC-T107-3: ảnh chính iden báo RGB, chặn alpha không thấy alpha mà libheif vẫn giải mã",
+)
+@pytest.mark.usefixtures("heic_enabled")
+@pytest.mark.parametrize("make", MAKERS, ids=MAKER_IDS)
+def test_lc_t107_3_alpha_behind_iden_rejected_before_decode(iden_alpha_heic, make, monkeypatch):
+    """Mong đợi (khi bật lại HEIC): ảnh HEIC mà alpha nằm sau ảnh dẫn xuất ``iden`` bị từ chối
+    **trước khi giải mã**, như alpha gắn thẳng vào ảnh chính (LC-T107-1). Thực tế: Pillow báo
+    512 × 512 ``RGB``, ``_check_heif_alpha`` cho qua, libheif giải mã alpha của ảnh được trỏ.
+    Cách sửa gợi ý: chỉ nhận ảnh chính ``hvc1`` hay ``grid`` có ô ``hvc1`` (đọc ``pitm``,
+    ``iinf``, ``iref`` bằng Python trước ``Image.open``)."""
+    loads: list[tuple[int, int]] = []
+    real_load = pillow_heif.HeifImageFile.load
+
+    def counting_load(self):
+        loads.append(self.size)
+        return real_load(self)
+
+    monkeypatch.setattr(pillow_heif.HeifImageFile, "load", counting_load)
+    with pytest.raises(process.ImageProcessError):
+        make(iden_alpha_heic)
+    assert loads == []

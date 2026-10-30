@@ -10,6 +10,7 @@
 | Báo cáo đã đọc | [Thợ Máy](T-107-tho-may.md) (lượt 1, lượt 2), [Soi Lỗi](T-107-soi-loi.md) (SL-T107-1, SL-T107-2, GN-1 → GN-4); [Lá Chắn T-093](T-093-la-chan.md) (LC-T093-3) |
 | Ngày | 2026-10-30 (13:11 → 14:13 +07, giờ máy) |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, **2 Trung bình** (LC-T107-1 mới; LC-T107-2 là phần còn lại của LC-T093-3, tách mã để theo dõi), 0 Thấp. **LC-T093-3 đóng**: lỗ hổng hỏng bộ nhớ GHSA-35mc-3887-rr37 (và kẹt GHSA-rcqc-842v-m26h) không còn đường tới, mọi đường mở HEIC đều một luồng. **SL-T107-1 đóng. SL-T107-2 đóng ở ảnh chính**; dạng dời lưới sang ảnh phụ alpha vẫn lọt → LC-T107-1. Không lùi T-047, T-058, T-080; không đổi phiên bản thư viện; `pip-audit` sạch. **Gộp `main` được ngay**: gộp thử với `main` `fd28bbc` không xung đột, cây gộp 12 file test 629 qua, 0 hỏng. T-107 làm app an toàn hơn `main` hiện tại; hai lỗi Trung bình đều có từ trước, không do T-107 gây ra. Điều kiện: LC-T107-1 sửa, LC-T107-2 có quyết định của chủ dự án, **trước khi đóng Giai đoạn 3** |
+| **Lượt 3** (`4f270da`, 30/10) | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 2 Thấp (LC-T107-3 mới, chỉ chạm tới khi bật lại HEIC; SL-T107-3 của Soi Lỗi). **LC-T107-2 đóng** (công tắc `HEIC_ENABLED` tắt, không lối nào tới libheif), **LC-T107-1 đóng**. Gộp `main` được ngay. Bật lại HEIC phải làm đủ 8 điều kiện. Chi tiết: mục «Lượt 3» cuối biên bản |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -152,3 +153,85 @@ Không kể quyết định của chủ dự án đã có trong `TIEN-DO.md` m�
   - Chạy từ worktree: `.venv/Scripts/python.exe -X utf8 <thư mục>/lc107_variants.py v4a_alpha_grid:31,31 v2b_nested_grid:4 …`. Mỗi ca chạy trong tiến trình con; cha canh bộ nhớ, mặc định trần 700 MB (`LC107_CAP_MB`), hạn 180 s (`LC107_TIMEOUT`).
   - **Đừng chạy** các ca ô 1024 (`v4e_*`) khi máy còn ít RAM.
 - Không mở app thật (không cần cho phiếu này), không đụng `launch.json`, không đụng website, không chạy cloud. Cây gộp xuất ra thư mục nháp của phiên; không tạo worktree tạm.
+
+## Lượt 3 · Tạm không nhận HEIC (LC-T107-2), chặn HEIC có alpha (LC-T107-1)
+
+| Mục | Nội dung |
+|---|---|
+| Mã nguồn | `team/T-107` tại `4f270da`: Thợ Máy lượt 3 `9b5501f`, rồi Soi Lỗi lượt 3. Diff `a9d381e..4f270da`: `seo_app/images/folders.py` (công tắc `HEIC_ENABLED`), `seo_app/images/process.py` (định dạng theo công tắc lúc gọi, nhận HEIC theo nội dung, `_check_heif_alpha`), `README.md` mục 9, `tests/conftest.py` (fixture `heic_enabled`), test mới `tests/test_t107_heic_tat.py`, 11 file test đổi theo danh sách Chỉ Huy duyệt (R5), 2 báo cáo. Số dòng theo `4f270da` |
+| Báo cáo đã đọc | [Thợ Máy](T-107-tho-may.md) mục «Lượt 3», [Soi Lỗi](T-107-soi-loi.md) mục «Lượt 3» (SL-T107-3, GN-5 → GN-7) |
+| Ngày | 2026-10-30 (19:29 → 20:03 +07, giờ máy) |
+| **Kết luận lượt 3** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **2 Thấp**: LC-T107-3 (mới, chỉ chạm tới khi bật lại HEIC) và SL-T107-3 (của Soi Lỗi, giữ Thấp). **LC-T107-2 đóng**: công tắc tắt, không lối nào trong app đưa dữ liệu tới libheif. **LC-T107-1 đóng**: khi bật lại, alpha gắn vào ảnh chính hay vào ô đều bị từ chối trước khi giải mã; khi tắt thì không tới. **Gộp `main` được ngay** (gộp thử với `main` `17b2a31` không xung đột, cây gộp 8 file test 639 qua, 0 hỏng). Điều kiện: làm đủ danh sách «Bật lại HEIC» (gồm sửa LC-T107-3) **trước khi** đổi công tắc. SL-T107-3 không chặn đóng Giai đoạn 3 |
+
+### Tóm tắt (cho chủ dự án)
+
+- **App đã thôi đọc ảnh HEIC.** Thư viện HEIC còn lỗi «làm treo» không được gọi ở bất kỳ chỗ nào: xem trước, gửi AI, gửi WordPress, kể cả khi file HEIC bị đổi đuôi. Hai lỗi Trung bình của lượt trước đã đóng.
+- **Khi muốn nhận HEIC lại** (lúc có bản thư viện đã vá): phải làm đủ danh sách kiểm bên dưới. Trong đó có một lỗ nhỏ mới tìm thấy: ảnh HEIC «bọc» thêm một lớp (ảnh `iden`) giấu được lớp trong suốt khổng lồ khỏi phép chặn. Lúc HEIC đang tắt thì không dùng được lỗ này.
+- **Lỗi nháp cũ có ảnh HEIC bị bỏ (SL-T107-3)** là lỗi nhỏ, không ảnh hưởng an toàn. Trên máy này không có nháp nào chọn ảnh HEIC. Không cần sửa trước khi đóng Giai đoạn 3.
+
+### Trả lời câu hỏi của Chỉ Huy
+
+| Câu hỏi | Trả lời | Bằng chứng |
+|---|---|---|
+| LC-T107-2 đóng được chưa | **Đóng** (chủ dự án chọn tạm không nhận HEIC, 30/10) | Mục «Công tắc tắt». Chốt chặn bật lại: `test_lc_t107_2_…`, siết lại ở lượt này: đọc thẳng `folders.HEIC_ENABLED`, `ALLOWED_FORMATS` lúc nạp module và `_allowed_formats()` lúc gọi. Bật bằng bất kỳ đường nào mà libheif dưới 1.23.7 thì test hỏng. Thêm `test_images_folders.py::test_image_extensions_match_design` (`HEIC_ENABLED is False`) |
+| LC-T107-1 đóng được chưa | **Đóng** cho dạng đã báo | Bật lại công tắc (`LC107_HEIC=1`): file 3 kB alpha lưới 31 × 31 bị từ chối trước giải mã, CPU 0,3 s (trước: 5,4 s, +330 MB). Alpha gắn vào **ô** của lưới: libheif báo cả lưới `RGBA`, cũng bị từ chối. 4 ca LC-T107-1 qua (gỡ `xfail` đúng R5), 8 ca alpha của Thợ Máy qua. Biến thể alpha sau ảnh dẫn xuất `iden` lọt → **LC-T107-3** |
+| Công tắc có lối nào vẫn tới libheif | **Không** | Mục «Công tắc tắt» |
+| Điều kiện khi bật lại | 8 việc | Mục «Bật lại HEIC» |
+| SL-T107-3 có cần sửa trước khi đóng Giai đoạn 3 | **Không** (giữ Thấp) | Mục «Mức SL-T107-3» |
+
+### Công tắc tắt: không lối nào tới libheif
+
+| Lối | Kết quả | Bằng chứng |
+|---|---|---|
+| Đường mở ảnh của app | Không tới | `Image.open` duy nhất trong `app/`, `seo_app/`, `scripts/` là `process.py:309` (`_pillow_open`). Nó nhận `formats` từ `_allowed_formats()` lúc gọi (`:319`): tắt thì chỉ `JPEG`, `PNG`, `WEBP`. Pillow chỉ thử đúng các bộ mở đó, **kể cả khi mã khác đã đăng ký bộ mở HEIF**. File có nhãn HEIC bị chặn trước `Image.open` (`:320`, `_is_heic_container` chỉ đọc tối đa 256 byte đầu bằng Python). `_register_heif` chỉ được gọi khi có `"HEIF"` (`:326-327`). Ba nơi gọi `_open`: `open_image` (`:364`), `_prepare` (`:713`; dùng cho `make_web_image`, `make_ai_image`, `make_preview`), `_verify_web_image` (`:867`, chỉ `WEBP`) |
+| Ảnh xem trước, cache | Không tới | `PreviewCache` dựng ảnh bằng `make_preview` (qua `_open`). Bản đã lưu từ trước là JPEG do app dựng, không giải mã lại (GN-5 của Soi Lỗi). `ImageRef` từ chối tên `.heic`/`.heif`, nên ảnh HEIC đúng đuôi không lấy được ảnh xem trước nào |
+| `st.image` | Không tới | Streamlit tự gọi `Image.open` không có `formats` (`streamlit/elements/lib/image_utils.py:115`, `:194`). App chỉ đưa vào `st.image` JPEG do `make_preview` dựng (`write.py:1089`, `:1533`) và đường dẫn logo SVG (`main.py:38`). Khi tắt, Pillow không có bộ mở HEIF (sau `Image.init()`: `"HEIF" not in Image.OPEN`) |
+| Gửi AI, gửi WordPress | Không tới | AI chỉ nhận `make_ai_image` (JPEG dựng lại), WordPress chỉ nhận `make_web_image` (WebP). Cả hai qua `_open` |
+| `pillow_heif` ở thư viện khác | Không có | Grep `.venv/Lib/site-packages`, trừ chính `pillow_heif`: không gói nào nhắc `pillow_heif`, `HeifImagePlugin`, `register_heif_opener`, `pi_heif`. Không `.pth`, `sitecustomize` hay entry point nào về HEIF. Dù có, đường app vẫn không dùng bộ mở HEIF: Soi Lỗi thử 3 chế độ (tiến trình mới, plugin đăng ký sẵn, nhập muộn) đều 0 lời gọi `_pillow_heif` |
+| File HEIC dựng cố ý | Không tới | Các file của lượt 1–2 (alpha lưới 31 × 31, lưới lồng lưới, ô trỏ lặp) và alpha sau `iden`, với công tắc tắt: «Tạm chưa nhận ảnh HEIC của iPhone…», 0,00 s CPU |
+| File HEIF không có nhãn HEIC (`mif1` thuần, AVIF), hay hộp `ftyp` cỡ 64 bit | Không tới | Không được nhận là HEIC, nên đi tiếp tới `Image.open` với 3 định dạng → «không phải ảnh JPEG, PNG hoặc WebP đọc được» (GN-6 của Soi Lỗi). Chỉ khác câu báo; không gọi libheif |
+
+Ghi nhận: `process.py` vẫn `import pillow_heif` khi tắt, nên thư viện C được nạp vào tiến trình, nhưng không nhận dữ liệu nào. Không bắt buộc sửa; muốn gọn hơn thì lúc bật lại chuyển sang nhập muộn trong `_register_heif`.
+
+### LC-T107-3 (mới)
+
+| Mã | Mức | Có từ trước? | Mô tả | Test |
+|---|---|---|---|---|
+| **LC-T107-3** | **Thấp** khi HEIC tắt (không chạm tới được). Thành **Trung bình**, như LC-T107-1, nếu bật lại mà chưa sửa | Có: cùng gốc LC-T107-1, phép chặn alpha lượt 3 chưa phủ | `_check_heif_alpha` (`process.py:224-233`) dựa vào mode pillow-heif báo lúc mở. Ảnh chính là ảnh dẫn xuất `iden` (không có dữ liệu, chỉ trỏ tới một ảnh khác) thì pillow-heif báo `RGB`, nhưng libheif vẫn giải mã alpha của ảnh được trỏ. Đo với công tắc bật: file 1,7 kB, ảnh `iden` 512 × 512 trỏ tới ảnh có alpha là lưới 16 × 16 ô 512 → app **nhận** ảnh `RGB`, CPU 2,0 s, bộ nhớ +67 MB. Lưới 8 × 8: 0,9 s; đối chứng `iden` không alpha: 0,4 s. Lưới lớn hơn thì như LC-T107-1 (252 MP, +330 MB; ô 1024 tới ~1,5 GB). Máy đang rất bận nên giờ thực dài hơn 14–77 lần CPU (một lần thử 16 × 16 chạy quá hạn 300 s giờ thực) | `tests/test_la_chan_t107.py::test_lc_t107_3_alpha_behind_iden_rejected_before_decode` × 4 (bật `heic_enabled`), `xfail(strict=True)`; `--runxfail`: 4 ca «DID NOT RAISE». Tiền đề `test_iden_alpha_fixture_reports_no_alpha` (qua). Công tắc tắt thì cùng file bị từ chối ngay («Tạm chưa nhận…») |
+
+Cách sửa gợi ý (trước khi bật lại): đọc khung HEIF bằng Python trước `Image.open` (`pitm`, `iinf`, `iref`). Chỉ nhận ảnh chính `hvc1`, hay `grid` mà mọi ô là `hvc1`. Từ chối `iden`, `iovl`, lưới lồng lưới, và mọi ảnh có tham chiếu `auxl` kiểu alpha. Cách này đóng luôn ở tầng app các dạng GHSA-48p4 đã đo (lưới lồng lưới, lưới ô ảnh chồng). Phải thử với ảnh iPhone thật để chắc không chặn oan.
+
+### Bật lại HEIC: điều kiện trước khi đổi `HEIC_ENABLED = True`
+
+1. pillow-heif mới mang **libheif ≥ 1.23.7** (chủ dự án đã duyệt nâng 30/10; kiểm lúc viết biên bản: PyPI vẫn 1.8.1). Lá Chắn kiểm rút gọn D1 trên bản mới:
+   - `libheif_info()`: phiên bản libheif, libde265, và các bộ giải mã có trong wheel. Thêm AV1, JPEG, JPEG 2000… là thêm bề mặt phải xét;
+   - khuyến cáo mới của libheif, libde265;
+   - `pip-audit`.
+2. Chốt chặn `test_lc_t107_2_…` phải qua **mà không sửa**: nó hỏng khi bật mà libheif dưới 1.23.7. Đổi `test_image_extensions_match_design` (`HEIC_ENABLED is False`) có chủ đích, Chỉ Huy duyệt.
+3. **Sửa LC-T107-3**, gỡ `xfail` khi XPASS.
+4. Giữ nguyên `_register_heif`:
+   - một luồng (`HEIF_DECODE_THREADS = 0`). Giải mã song song có 3 lỗi nặng trong 1.23.x: GHSA-35mc-3887-rr37, GHSA-rcqc-842v-m26h, GHSA-prgh-72vc-3xmc;
+   - tắt ảnh nhỏ, ảnh độ sâu, ảnh phụ; `DISABLE_SECURITY_LIMITS = False`;
+   - giữ `_check_heif_grid`, `_check_heif_alpha`.
+
+   Muốn trả về nhiều luồng thì Lá Chắn xét riêng.
+5. Bật công tắc, chạy lại script dựng file (`T-107-la-chan-scripts/`, `T-107-soi-loi-scripts/`) trên libheif mới: lưới lồng lưới, lưới ô ảnh chồng, alpha, alpha sau `iden`, lưới lặp ô. Ghi thời gian CPU.
+6. Thử ảnh HEIC chụp thật từ iPhone (T-049 ĐK 7), cả ảnh chân dung (có ảnh độ sâu) và ảnh HDR: không bị chặn oan, giữ GPS, xoay đúng.
+7. README mục 9: bỏ câu «Tạm chưa nhận ảnh HEIC» (Thư Ký).
+8. SL-T107-3 nên đã sửa, để nháp lưu trong lúc tắt không mất ảnh HEIC.
+
+### Mức SL-T107-3 (Soi Lỗi)
+
+| Mã | Mức Lá Chắn | Lý do |
+|---|---|---|
+| SL-T107-3 | **Thấp**. Không cần sửa trước khi đóng Giai đoạn 3 | Không có mặt an toàn: không gọi libheif, ảnh bị bỏ thì không gửi đi đâu, câu báo không có tên file hay đường dẫn (U2). Hậu quả là nháp **đã chọn ảnh HEIC trước lượt 3** mất lựa chọn ảnh và alt đã duyệt, sau lần tự lưu kế tiếp. Trên máy này, `data/drafts.sqlite` của checkout chính không có tham chiếu `.heic`/`.heif` nào (đếm 0, không đọc nội dung). Chưa có ảnh HEIC thật nào được dùng (T-049 ĐK 7), và sau khi gộp lượt 3 không chọn thêm ảnh HEIC được nữa. Nên sửa ở một phiếu dọn nhỏ, theo cách Soi Lỗi đề nghị: giữ ảnh trong nháp như các ảnh không dùng được khác, câu báo nói HEIC đang tạm tắt. Muộn nhất là trước khi bật lại HEIC |
+
+### Kiểm thêm
+
+| Việc | Kết quả |
+|---|---|
+| R5 | Soi Lỗi đã đối chiếu từng dòng xóa với danh sách Chỉ Huy duyệt. Lá Chắn soát lại 4 file, đều khớp danh sách: `test_la_chan_t107.py` (file của tôi: chỉ xóa 2 decorator `xfail`, thêm `usefixtures("heic_enabled")` cho LC-T107-1), `test_images_folders.py` (4 test), `test_soi_loi_t049.py` (`[heic-trong-suot]`), `test_app_images.py` (câu báo). Lượt này tôi chỉ sửa file của mình: siết LC-T107-2 (đọc thẳng công tắc, bỏ đăng ký HEIF trong test), thêm LC-T107-3, bộ dựng không ghi mục không dữ liệu vào `iloc` |
+| Không lùi T-047, T-058, T-080 | `_register_heif` không đổi, chỉ gọi khi bật. `_require_pillow_13` vẫn chạy đầu `_open`. `folders.py` chỉ đổi danh sách đuôi, không đổi đường đọc chống tráo (T-079, T-080). Thợ Máy chạy 61 file, Soi Lỗi 19 file: 0 hỏng. Cây gộp: dòng dưới |
+| Gộp thử `main` `17b2a31` | `git merge-tree --write-tree 17b2a31 4f270da` → cây `3534587`, không xung đột. Xuất cây gộp bằng `git archive` (thêm `test_la_chan_t107.py` bản mới), chạy bằng `.venv` của worktree; `seo_app` nạp từ cây gộp, `HEIC_ENABLED = False`. 8 file: `test_la_chan_t107`, `test_t107_heic_tat`, `test_la_chan_t093`, `test_soi_loi_t107`, `test_t107_heif_mot_luong`, `test_images_folders`, `test_app_images`, `test_drafts_images`. Kết quả: **639 qua, 12 bỏ qua** (ca chỉ chạy trên Linux/Mac), **6 xfail đã biết** (LC-T107-3 × 4, LC-T093-2, SL-T107-3), **0 hỏng**, không XPASS (411 s) |
+| Thư viện | `pyproject.toml`, `uv.lock` không đổi. pillow-heif mới nhất vẫn 1.8.1, libheif mới nhất 1.23.7 (kiểm lại lúc viết) |
+| Công cụ | `ruff check`, `ruff format --check` `tests/test_la_chan_t107.py`: sạch. detect-secrets (`PYTHONUTF8=1`, `--all-files`, kèm file mồi): file mồi 2 phát hiện (máy quét có chạy); `tests/test_la_chan_t107.py` và mục này: 0 |
