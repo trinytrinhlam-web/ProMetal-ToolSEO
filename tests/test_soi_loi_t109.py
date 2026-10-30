@@ -59,10 +59,6 @@ def assert_no_bait(*texts: str) -> None:
 # ====================================================================== lỗi mới (xfail)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T109-1: Mã bài có 30 ký tự trắng đầu ô: kiểm không thấy trùng, ghi vào dòng trùng",
-)
 def test_key_with_leading_blanks_never_writes_a_duplicate_row(fake, client):
     """Mã bài B-070 ở hai dòng: dòng 2 gõ sau 30 dấu cách, dòng 3 gõ thường. Bộ đọc nhận dòng 2 là
     B-070 và bỏ dòng 3 («Mã bài trùng»), nhưng ``key_rows`` (cắt 30 ký tự **trước** khi làm sạch)
@@ -79,10 +75,6 @@ def test_key_with_leading_blanks_never_writes_a_duplicate_row(fake, client):
     assert sheet.updates == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T109-2: Mã bài WordPress có 30 ký tự trắng đầu ô: một bài nối hai dòng vẫn đề xuất",
-)
 @pytest.mark.parametrize("lead", [" " * 30, ZWSP * 30], ids=["dau-cach", "vo-hinh"])
 def test_post_on_two_rows_is_never_proposed_whatever_the_blanks(fake, client, lead):
     """Bộ đọc nối cả hai dòng với bài 170 (ô dòng 3 có 30 ký tự trắng hay vô hình ở đầu), nhưng
@@ -98,10 +90,6 @@ def test_post_on_two_rows_is_never_proposed_whatever_the_blanks(fake, client, le
     assert result.updates == ()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T109-3: ô Trạng thái / Ngày đăng thực tế không đọc được: đề xuất không ghi được",
-)
 @pytest.mark.parametrize(
     ("status", "published_at"),
     [("Xong rồi", ""), ("Đã hẹn giờ", "hôm qua"), ("Đã đăng", "hôm qua")],

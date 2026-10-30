@@ -7,6 +7,7 @@ giả có trạng thái (``FakePlanSheet`` gắn ``FakeGoogle``, đi qua ``Sheet
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 from datetime import UTC, datetime, timedelta
@@ -22,6 +23,7 @@ from seo_app.google.sheets import SheetsClient, SheetsError
 from seo_app.plan import model, sync, website
 from seo_app.plan.website import WebChangeKind as Kind
 from seo_app.plan.website import WebNoticeKind as Notice
+from seo_app.storage.drafts import DraftPlanRef
 from seo_app.storage.plan_cache import sheet_hash
 from seo_app.wordpress.client import PostState
 
@@ -484,3 +486,128 @@ def test_written_values_are_app_text_never_formulas(client, two_rows):
     for _row, column, value in two_rows.written_cells():
         assert column in APP_COLUMNS
         assert isinstance(value, str) and not value.startswith(("=", "+", "-", "@"))
+
+
+# ======================================================== lượt 2 (SL-T109-1 → -3, G3 → G6)
+
+ZWSP = "\N{ZERO WIDTH SPACE}"
+
+
+@pytest.mark.parametrize("lead", [" " * 40, ZWSP * 40, " " * 1500], ids=["40-cach", "40-vo-hinh",
+                                                                          "1500-cach"])  # fmt: skip
+def test_sync_reads_key_post_and_status_cells_like_the_table_reader(fake, client, lead):
+    """Gốc SL-T109-1, -2: ``sync._key_of``, ``_post_id_of``, ``_status_of`` đọc ô như bộ đọc bảng
+    (làm sạch cả ô, tối đa 2.000 ký tự), không cắt 30 / 100 ký tự trước khi làm sạch."""
+    FakePlanSheet(fake, rows(row(lead + "B-090", "cửa cuốn", status=lead + "Đã hẹn giờ",
+                                 wp_post_id=lead + "190")))  # fmt: skip
+    plan = sync.read_sheet(client, now=NOW)
+    (sheet_row,) = plan.rows
+    assert sheet_row.plan.key == "B-090" and plan.key_rows == {"B-090": (2,)}
+    assert sync._post_id_of(sheet_row.cells[COL["wp_post_id"]]) == sheet_row.plan.wp_post_id == 190
+    assert sync._status_of(sheet_row.cells[COL["status"]]) == sheet_row.plan.status == "Đã hẹn giờ"
+    (update,) = check(client, {190: state(190, "publish", NOV3_08)}).updates
+    assert update.status_before == "Đã hẹn giờ"
+
+
+def test_t100_status_write_finds_row_with_leading_blanks(fake, client):
+    """Nơi gọi khác của ``_key_of`` (T-100 ``write_status``): dòng bảng hiện là B-091 nay ghi được
+    (trước: «Không còn thấy dòng»)."""
+    sheet = FakePlanSheet(fake, rows(row(" " * 40 + "B-091", "cửa cuốn", status="Đang viết")))
+    ref = DraftPlanRef(key="B-091", sheet_hash=sheet_hash(SHEET_ID), status="Đang viết",
+                            wp_post_id=None, opened_at=NOW)  # fmt: skip
+    write = sync.status_write(ref, model.STATUS_DRAFT_SENT, wp_post_id=191, now=NOW)
+    assert sync.write_status(client, write, now=NOW).outcome is sync.WriteOutcome.WRITTEN
+    assert sheet.cell(2, COL["status"]) == "Đã gửi nháp"
+
+
+def test_row_reader_and_key_rows_disagree_is_not_proposed_nor_written(fake, client, monkeypatch):
+    """Phòng khi hai cách đọc lại lệch nhau: lúc kiểm, Mã bài không ứng đúng dòng bộ đọc nhận thì
+    chỉ cảnh báo; lúc ghi, dòng tìm được phải đúng là dòng bộ đọc nhận (như ``open_row``)."""
+    FakePlanSheet(fake, rows(row("B-092", "cửa cuốn", status="Đã hẹn giờ", wp_post_id=192)))
+    plan = sync.read_sheet(client, now=NOW)
+    skewed = dataclasses.replace(plan, key_rows={"B-092": (3,)})
+    result = website.check_website(skewed, {192: state(192, "publish")}, [192],
+                                   sheet_id=SHEET_ID, now=NOW)  # fmt: skip
+    assert result.updates == () and only(result, Notice.UNSURE_ROW).key == "B-092"
+
+    good = check(client, {192: state(192, "publish")})
+    real_read = website.read_sheet
+
+    def read_skewed(*args, **kwargs):
+        fresh = real_read(*args, **kwargs)
+        moved = dataclasses.replace(fresh.rows[0], number=5)
+        return dataclasses.replace(fresh, rows=(moved,))
+
+    monkeypatch.setattr(website, "read_sheet", read_skewed)
+    (conflict,) = apply(client, good).conflicts
+    assert conflict.reason == "Mã bài B-092 có ở nhiều dòng trên Google Sheet nên chưa ghi."
+
+
+@pytest.mark.parametrize(
+    ("status", "published_at", "field"),
+    [("Xong rồi", "", "Trạng thái"), ("Đã hẹn giờ", "hôm qua", "Ngày đăng thực tế"),
+     (MOI, "", "Trạng thái")],
+)  # fmt: skip
+def test_unreadable_status_or_date_cell_only_warns(fake, client, status, published_at, field):
+    """SL-T109-3: ô gõ chữ không đọc được thì không đề xuất (ghi đè chữ người dùng gõ không an
+    toàn), cảnh báo nêu đúng ô cần sửa, không chép chữ trong ô."""
+    sheet = FakePlanSheet(fake, rows(row("B-093", "cửa cuốn", status=status, wp_post_id=193,
+                                         published_at=published_at)))  # fmt: skip
+    result = check(client, {193: state(193, "publish", NOV3_08)})
+    assert result.updates == ()
+    notice = only(result, Notice.ODD_CELL)
+    assert notice.message.startswith(f"Ô «{field}» của dòng B-093 trên Google Sheet không đọc được")
+    no_cell_text(notice.message)
+    assert apply(client, result).message == "Không có thay đổi nào để ghi." and sheet.updates == []
+
+
+def test_dropped_row_whose_post_is_gone_is_quiet(fake, client):
+    """G3: dòng «Bỏ» mà bài đã xóa hay vào thùng rác: không cảnh báo «Không thấy bài» mỗi lần."""
+    FakePlanSheet(fake, rows(row("B-094", "cửa cuốn", status="Bỏ", wp_post_id=194)))
+    assert check(client, {}, [194]).notices == ()
+
+
+@pytest.mark.parametrize(
+    ("minutes", "stale"), [(0, False), (5, False), (6, True), (60, True), (-2, True)]
+)
+def test_old_check_is_refused_before_reading(client, two_rows, minutes, stale):
+    """G4: lần kiểm cũ hơn 5 phút (hay giờ máy lùi) thì không ghi: website có thể đã đổi."""
+    result = check(client, two_states())
+    reads = two_rows.reads
+    later = NOW + timedelta(minutes=minutes)
+    if stale:
+        with pytest.raises(sync.SheetPlanError) as info:
+            apply(client, result, now=later)
+        assert str(info.value) == website.MSG_STALE
+        assert two_rows.reads == reads and two_rows.updates == []
+    else:
+        assert len(apply(client, result, now=later).written) == 2
+
+
+@pytest.mark.parametrize("missing", ["Trạng thái", "Mã bài WordPress", "Mã bài"])
+def test_missing_column_is_reported_when_checking(fake, client, missing):
+    """G5: thiếu cột thì báo ngay lúc kiểm, không đề xuất «Chưa viết → …» rồi mới báo lúc ghi."""
+    header = ["Cột lạ" if name == missing else name for name in HEADER]
+    FakePlanSheet(fake, [header, row("B-095", "cửa cuốn", status="Đã hẹn giờ", wp_post_id=195)])
+    with pytest.raises(sync.SheetPlanError) as info:
+        check(client, {195: state(195, "publish")}, [195])
+    assert f"«{missing}»" in str(info.value)
+
+
+@pytest.mark.parametrize(
+    ("written", "date_change"),
+    [("2026-11-03 08:01+07:00", False), ("2026-11-03 07:58+07:00", False),
+     ("2026-11-03 08:03+07:00", True), ("2026-11-03 07:57+07:00", True)],
+)  # fmt: skip
+def test_publish_time_within_two_minutes_is_the_same(fake, client, written, date_change):
+    """G6: «Đăng ngay» ghi giờ máy lúc nhận trả lời; lệch website tới 2 phút không đề xuất sửa."""
+    FakePlanSheet(fake, rows(
+        row("B-096", "cửa cuốn", status="Đã đăng", wp_post_id=196, published_at=written),
+        row("B-097", "cửa kéo", status="Đã hẹn giờ", wp_post_id=197, published_at=written),
+    ))  # fmt: skip
+    states = {196: state(196, "publish", NOV3_08), 197: state(197, "publish", NOV3_08)}
+    result = check(client, states)
+    by_key = {u.key: u for u in result.updates}
+    assert ("B-096" in by_key) is date_change
+    moved = by_key["B-097"]  # đổi trạng thái; ngày chỉ đổi khi lệch quá 2 phút
+    assert moved.fields == (("status", "published_at") if date_change else ("status",))

@@ -880,17 +880,20 @@ def _conflict(write: PlanStatusWrite, reason: str) -> StatusResult:
 
 
 def _status_of(value: CellValue) -> str | None:
-    """Nhãn trạng thái chuẩn của ô (trống là «Chưa viết»); chữ lạ: ``None``."""
+    """Nhãn trạng thái chuẩn của ô (trống là «Chưa viết»); chữ lạ: ``None``. Đọc như bộ đọc bảng
+    (``_reader_text``, T-109 lượt 2)."""
     try:
-        label = model.match_label(_cell_text(value)[:100], model.STATUSES, model.STATUS_ALIASES)
+        label = model.match_label(_reader_text(value), model.STATUSES, model.STATUS_ALIASES)
     except ValueError:
         return None
     return label or model.STATUS_NEW
 
 
 def _post_id_of(value: CellValue) -> int | None | bool:
-    """Mã bài WordPress của ô (trống: ``None``); sai: ``False``."""
-    text = clean_text(_cell_text(value)[:30])
+    """Mã bài WordPress của ô (trống: ``None``); sai: ``False``. Đọc như bộ đọc bảng
+    (``_reader_text``; SL-T109-2: trước đây cắt 30 ký tự rồi mới làm sạch nên ô có ký tự trắng,
+    vô hình ở đầu đọc khác bộ đọc)."""
+    text = clean_text(_reader_text(value))
     if not text:
         return None
     try:
@@ -1108,12 +1111,20 @@ def _same(first: CellValue, second: CellValue) -> bool:
 
 
 def _key_of(cells: Sequence[CellValue], position: int | None) -> str:
-    """Mã bài (đã chuẩn hóa) của ô Mã bài; trống hay sai dạng: ``""``."""
-    text = _cell_text(_cell_at(cells, position))[:30]
+    """Mã bài (đã chuẩn hóa) của ô Mã bài; trống hay sai dạng: ``""``. Đọc như bộ đọc bảng
+    (``_reader_text``; SL-T109-1: trước đây cắt 30 ký tự rồi mới làm sạch, nên dòng có ký tự
+    trắng, vô hình ở đầu ô không vào ``key_rows`` dù bộ đọc nhận Mã bài của dòng đó)."""
     try:
-        return model.parse_key(text)
+        return model.parse_key(_reader_text(_cell_at(cells, position)))
     except ValueError:
         return ""
+
+
+def _reader_text(value: CellValue) -> str:
+    """Chữ của ô đúng như bộ đọc bảng thấy (``parse._cell``): tối đa ``model.MAX_CELL_CHARS``
+    ký tự, làm sạch sau (không cắt trước khi làm sạch). Mọi chỗ đọc lại một ô để so, ghi (Mã bài,
+    Mã bài WordPress, Trạng thái) phải đọc qua đây, để không lệch với bảng người dùng đã xem."""
+    return _cell_text(value)[: model.MAX_CELL_CHARS]
 
 
 def _labels(names: Sequence[str]) -> str:

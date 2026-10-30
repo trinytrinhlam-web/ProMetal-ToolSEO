@@ -118,3 +118,73 @@ outcome = website.apply_website_changes(sheets_client, result, chosen,
 
 - Khe hở đã biết của T-100 vẫn áp dụng (thiết kế 2.5): hai máy ghi **cùng một ô** trong 1–2 giây giữa lần đọc lại và lệnh ghi thì bản ghi sau thắng. Sheets không có lệnh ghi có điều kiện.
 - `pending` (chờ duyệt) được coi như nháp. Tài khoản Biên tập viên của app không tạo bài `pending`; chỉ gặp khi có người đổi trong trang quản trị.
+
+## Lượt 2 · SL-T109-1 → -3, góp ý G3 → G6 (Soi Lỗi `09870bd`, Lá Chắn `a40a107`)
+
+Ngày nộp lượt 2: 2026-10-30 23:45 (+07:00, theo lệnh `date`). Chỉ Huy B giao 23:45; nhánh từ `a40a107`.
+
+### Tóm tắt (cho chủ dự án)
+
+Sửa 3 lỗi nhỏ, đều chỉ gặp khi ô trên Google Sheet được gõ lạ. Không lỗi nào làm mất dữ liệu.
+
+- **Mã bài, Mã bài WordPress có nhiều dấu cách hay ký tự vô hình ở đầu ô.** Trước đây phần mềm có thể đọc ô đó khác với bảng anh/chị đang xem: không thấy dòng trùng, rồi ghi vào dòng mà bảng đang ẩn. Nay mọi chỗ đọc lại một ô đều đọc giống hệt bảng. Lúc ghi còn kiểm thêm: dòng tìm được phải đúng là dòng trong bảng, khác thì không ghi.
+- **Ô Trạng thái hay Ngày đăng thực tế gõ chữ tự do (ví dụ «Xong rồi», «hôm qua»).** Phần mềm không đề xuất gì cho dòng đó, chỉ nhắc đúng ô cần sửa. Trước đây nó đề xuất rồi lần nào ghi cũng báo sai lý do «vừa bị sửa ở nơi khác».
+- Thêm 4 góp ý nhỏ:
+  - lần kiểm cũ quá 5 phút thì phải kiểm lại rồi mới ghi;
+  - dòng «Bỏ» mà bài đã xóa thì không nhắc nữa;
+  - thiếu cột thì báo ngay khi bấm kiểm;
+  - giờ đăng lệch website dưới 2 phút thì coi như đúng.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/plan/sync.py` | **Sửa tận gốc SL-T109-1, -2:** thêm `_reader_text` (chữ ô đúng như bộ đọc bảng `parse._cell`: tối đa `MAX_CELL_CHARS` = 2.000 ký tự, làm sạch **sau**). `_key_of`, `_post_id_of`, `_status_of` đọc qua đó, thay vì cắt 30 / 30 / 100 ký tự **trước** khi làm sạch |
+| `seo_app/plan/website.py` | Chi tiết ở bảng dưới |
+| `tests/test_soi_loi_t109.py` (của Soi Lỗi) | Gỡ 3 dấu `xfail(strict=True)` (SL-T109-1, -2, -3): 6 ca XPASS. Chỉ xóa dòng dấu (R5) |
+| `tests/test_t109_website_status.py` (của Thợ Máy) | Thêm 8 hàm test, 21 ca (mục Kiểm thử) |
+
+Các thay đổi trong `seo_app/plan/website.py`:
+
+| Mục | Thay đổi |
+|---|---|
+| SL-T109-1 | Lúc kiểm: Mã bài không ứng đúng một dòng (`key_rows[key] != (số dòng,)`) thì chỉ cảnh báo `UNSURE_ROW`. Lúc ghi (`_cells_for`): `fresh.find(key)` phải có và đúng số dòng của `key_rows`, như `sync.open_row`; khác thì `WebConflict` |
+| SL-T109-3 | Lúc kiểm, đọc ô Trạng thái, Ngày đăng thực tế bằng **đúng hàm lúc ghi** (`_status_of`, `_moment_of` trên ô gốc); `*_before` lấy từ đó. Ô không đọc được thì cảnh báo `ODD_CELL`: «Ô «Trạng thái» / «Ngày đăng thực tế» của dòng … không đọc được…». Không đề xuất, vì ghi đè chữ người dùng gõ là không an toàn. `_moment_of` cũng đọc qua `_reader_text` |
+| G3 | Dòng «Bỏ» mà website không trả bài: không cảnh báo |
+| G4 | `CHECK_MAX_AGE = 5 phút`. `apply_website_changes` từ chối lần kiểm cũ hơn, hay giờ máy lùi quá 1 phút so với lúc kiểm: `SheetPlanError(MSG_STALE)`, chưa đọc, chưa ghi (điều kiện 1c của Lá Chắn làm ngay ở lõi) |
+| G5 | `check_website` thiếu cột Mã bài, Trạng thái hay Mã bài WordPress thì `SheetPlanError` ngay, cùng câu `MSG_NO_COLUMNS` như lúc ghi |
+| G6 | `DATE_TOLERANCE = 2 phút` (mức lệch đồng hồ thiết kế 3.1 cho phép). Giờ website lệch ô Ngày đăng thực tế không quá 2 phút thì coi như cùng giờ: không đề xuất sửa ngày, đổi trạng thái thì giữ nguyên ô ngày |
+
+Ô ODD_DATE không còn đi kèm dòng chỉ có cảnh báo («Bỏ», riêng tư, về nháp): một dòng một câu báo.
+
+### Nơi gọi hàm dùng chung đã đổi (bài học T-041, T-091)
+
+`grep -rn "_key_of\|_post_id_of\|_status_of" seo_app app tests`. Nơi gọi `_key_of`, `_post_id_of`, `_status_of`:
+- `sync.parse_sheet` (`key_rows`, dùng cho đề xuất T-100/T-101, `open_row`, `write_status`, `_key_present`);
+- `sync._fresh_row` (áp dụng đề xuất cho dòng chưa có mã);
+- `sync.write_status`, `record_status`, `retry_pending` (T-100, T-102 sẽ gọi);
+- `website.py`.
+
+`app/` không gọi trực tiếp; trang Kế hoạch (T-101) dùng qua `read_sheet`/`get_plan`/`open_row`.
+
+Hành vi đổi theo hướng khớp bộ đọc bảng: dòng có Mã bài gõ sau nhiều ký tự trắng nay vào `key_rows`, nên tìm được khi ghi trạng thái. Test mới `test_t100_status_write_finds_row_with_leading_blanks`: trước đây báo «Không còn thấy dòng». Không test cũ nào ghim cách cắt 30 ký tự (đã grep `tests/`); chạy test của mọi nơi gọi ở mục Kiểm thử.
+
+### Không làm (ghi lý do)
+
+- **Nửa sau của G6** (bài hẹn giờ / đã đăng mà website không cho giờ thì coi là «giờ lạ»): làm thì đổi kỳ vọng ca cũ `test_soi_loi_t109.py::test_odd_website_values_never_crash_late_or_leak`. Ca đó ghim bài 407 (`future`, giờ rỗng) **không** có cảnh báo giờ lạ. Theo dặn «đổi kỳ vọng test cũ khác thì hỏi trước» nên tôi để nguyên; anh duyệt thì thêm một dòng. Phần anh giao («Đăng ngay» lệch 1 phút) đã làm.
+- **G2** (`states` sai kiểu): ngoài danh sách anh giao (G3–G6); đã có trong điều kiện 1b của Lá Chắn cho lượt nối nút.
+
+### Kiểm thử lượt 2
+
+- `tests/test_t109_website_status.py` + `tests/test_soi_loi_t109.py`: **141 qua, 0 hỏng**. 6 ca của Soi Lỗi trước là `xfail` nay qua thật.
+- Test mới lượt 2 (21 ca):
+  - `_key_of`, `_post_id_of`, `_status_of` đọc ô có 40 dấu cách, 40 ký tự vô hình, 1.500 dấu cách ở đầu giống bộ đọc bảng;
+  - `write_status` của T-100 tìm được dòng như vậy;
+  - hai cách tìm dòng lệch nhau thì cảnh báo lúc kiểm, xung đột lúc ghi;
+  - ô Trạng thái «Xong rồi», chữ mồi, ô Ngày «hôm qua»: chỉ cảnh báo, câu nêu đúng ô, không chép chữ ô;
+  - dòng «Bỏ», bài đã xóa: không cảnh báo;
+  - lần kiểm cũ 0 / 5 / 6 / 60 phút, giờ máy lùi 2 phút: cũ thì từ chối trước khi đọc Sheet;
+  - thiếu từng cột Mã bài, Trạng thái, Mã bài WordPress: báo lúc kiểm;
+  - giờ lệch 1, 2, 3 phút hai phía.
+- Test liên quan: 25 file. Gồm T-097 (`test_google_sheets`, `test_la_chan_t097`, `test_soi_loi_t097`), T-098 (`test_plan_model`, `test_plan_parse`, `test_plan_propose`, `test_plan_ai`, `test_soi_loi_t098`), T-100 (`test_plan_sync`, `test_plan_cache`, `test_t100_drafts_plan`, `test_t100_google_identity`, `test_soi_loi_t100`, `test_la_chan_t100`), T-101 (`test_t101_plan_page`, `test_t101_home_page`, `test_t101_settings_google`, `test_soi_loi_t101`, `test_la_chan_t101`), T-103 (`test_t103_plan_prompt`, `test_soi_loi_t103`, `test_la_chan_t103`), T-109 (2 file), `test_wordpress_release`. Kết quả: **2286 qua, 2 xfail, 0 hỏng, không XPASS** (5 phút 28 giây). 2 xfail là LC-T101-1, có từ trước, sửa ở T-102.
+- `uv run ruff check .`: All checks passed. `ruff format --check` các file đã sửa: sạch.

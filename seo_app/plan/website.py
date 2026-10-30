@@ -37,16 +37,17 @@ from seo_app.plan.sync import (
     CONFLICT_DUPLICATE,
     MSG_NO_COLUMNS,
     MSG_ROW_MISSING,
+    MSG_ROW_UNREADABLE,
     SheetPlan,
     SheetPlanError,
     SheetsLike,
     _cell_at,
-    _cell_text,
     _connected_hash,
     _labels,
     _moment_text,
     _now,
     _post_id_of,
+    _reader_text,
     _status_of,
     read_sheet,
     to_cell,
@@ -59,6 +60,12 @@ if TYPE_CHECKING:
 
 # Bài hẹn giờ quá giờ chừng này mà website vẫn báo ``future``: «Lỡ lịch» (thiết kế 1.7, 3.1).
 LATE_AFTER = timedelta(minutes=15)
+# Lần kiểm dùng để ghi tối đa chừng này phút (G4 của Soi Lỗi, điều kiện 1c của Lá Chắn T-109):
+# cũ hơn thì website có thể đã đổi (bài về nháp…), phải kiểm lại rồi mới ghi.
+CHECK_MAX_AGE = timedelta(minutes=5)
+# Giờ trên Sheet lệch giờ website chừng này coi như cùng giờ (G6): «Đăng ngay» ghi giờ máy lúc
+# nhận trả lời, đồng hồ máy được lệch website tới 2 phút (thiết kế T-094 mục 3.1).
+DATE_TOLERANCE = timedelta(minutes=2)
 _DATE_GMT = "%Y-%m-%dT%H:%M:%S"
 _ORDER = (
     model.STATUS_NEW,
@@ -125,6 +132,17 @@ NOTICE_ODD_DATE = (
     "thực tế»."
 )
 
+NOTICE_ODD_CELL = (
+    "Ô «{field}» của dòng {key} trên Google Sheet không đọc được nên chưa đề xuất gì cho bài "
+    "#{post}. Sửa ô đó cho đúng (ví dụ «Đã hẹn giờ», «03/11/2026 08:00») rồi kiểm lại."
+)
+NOTICE_UNSURE_ROW = (
+    "Không xác định được đúng một dòng cho Mã bài {key} trên Google Sheet nên chưa đề xuất gì."
+)
+MSG_STALE = (
+    "Lần kiểm trạng thái đã cũ (quá 5 phút) nên chưa ghi gì: bấm «Cập nhật trạng thái từ "
+    "website» lại rồi ghi."
+)
 MSG_OTHER_SHEET = (
     "Google Sheet đang kết nối khác Sheet lúc kiểm trạng thái (có thể vừa đổi trong Cài đặt) nên "
     "chưa ghi gì. Bấm «Cập nhật trạng thái từ website» lại."
@@ -155,6 +173,8 @@ class WebNoticeKind(StrEnum):
     DUPLICATE_KEY = "duplicate_key"
     NO_KEY = "no_key"
     ODD_DATE = "odd_date"
+    ODD_CELL = "odd_cell"  # ô Trạng thái / Ngày đăng thực tế gõ chữ không đọc được (SL-T109-3)
+    UNSURE_ROW = "unsure_row"  # Mã bài không ứng đúng một dòng (SL-T109-1)
 
 
 @dataclass(frozen=True)
@@ -228,6 +248,9 @@ def check_website(
     now = now or _now()
     if now.tzinfo is None:
         raise ValueError("thời điểm phải có múi giờ")
+    missing = [name for name in ("key", "status", "wp_post_id") if name not in plan.columns]
+    if missing:  # G5: báo ngay lúc kiểm, không đề xuất «Chưa viết → …» rồi mới báo lúc ghi
+        raise SheetPlanError(MSG_NO_COLUMNS.format(columns=_labels(missing)))
     asked_ids = {value for value in asked if _is_post_id(value)}
     known = _known_states(states, asked_ids)
     shared = {post for post, count in _post_counts(plan).items() if count > 1}
@@ -249,22 +272,40 @@ def check_website(
                 _notice(WebNoticeKind.DUPLICATE_KEY, NOTICE_DUPLICATE_KEY, row.key, post)
             )
             continue
+        if plan.key_rows.get(row.key) != (sheet_row.number,):
+            # Bộ đọc bảng và cách tìm dòng lúc ghi không ra cùng một dòng (SL-T109-1).
+            notices.append(_notice(WebNoticeKind.UNSURE_ROW, NOTICE_UNSURE_ROW, row.key, post))
+            continue
         if post in shared:
             if post not in noted_shared:
                 noted_shared.add(post)
                 notices.append(_notice(WebNoticeKind.SHARED_POST, NOTICE_SHARED_POST, "", post))
             continue
+        # Đọc ô Trạng thái, Ngày đăng thực tế bằng đúng hàm lúc ghi (SL-T109-3): ô không đọc được
+        # thì chỉ cảnh báo (bộ đọc bảng coi là trống, lúc ghi lại coi là «đã khác»).
+        status = _status_of(_cell_at(sheet_row.cells, plan.columns["status"]))
+        published = _moment_of(_cell_at(sheet_row.cells, plan.columns.get("published_at")))
         state = known.get(post)
         if state is None:
-            notices.append(_notice(WebNoticeKind.MISSING, NOTICE_MISSING, row.key, post))
+            if status != model.STATUS_DROPPED:  # G3: dòng «Bỏ» mà bài đã xóa: không cần báo
+                notices.append(_notice(WebNoticeKind.MISSING, NOTICE_MISSING, row.key, post))
+            continue
+        bad = "status" if status is None else "published_at" if published is False else ""
+        if bad:
+            field = model.FIELD_LABELS[bad]
+            notices.append(
+                _notice(WebNoticeKind.ODD_CELL, NOTICE_ODD_CELL, row.key, post, field=field)
+            )
             continue
         web_status, due, odd_date = state
-        update, notice = _compare(sheet_row.number, row, post, web_status, due)
+        update, notice = _compare(sheet_row.number, row.key, post, status, published,
+                                  web_status, due)  # fmt: skip
         if update is not None:
             updates.append(update)
         if notice is not None:
             notices.append(notice)
-        if odd_date and web_status in ("future", "publish"):
+        # Dòng chỉ có cảnh báo («Bỏ», riêng tư…) thì không báo thêm giờ lạ.
+        if odd_date and web_status in ("future", "publish") and notice is None:
             notices.append(_notice(WebNoticeKind.ODD_DATE, NOTICE_ODD_DATE, row.key, post))
         if web_status == "future" and due is not None and now - due > LATE_AFTER:
             notices.append(_notice(WebNoticeKind.LATE, NOTICE_LATE, row.key, post, at=due))
@@ -272,11 +313,16 @@ def check_website(
 
 
 def _compare(
-    number: int, row: model.PlanRow, post: int, web_status: str, due: datetime | None
+    number: int,
+    key: str,
+    post: int,
+    status: str,
+    before: datetime | None,
+    web_status: str,
+    due: datetime | None,
 ) -> tuple[WebUpdate | None, WebNotice | None]:
-    """Một dòng (đã nối bài ``post``, trạng thái website đã kiểm) → thay đổi đề xuất và/hoặc
-    cảnh báo."""
-    key, status, before = row.key, row.status, row.published_at
+    """Một dòng (đã nối bài ``post``; ``status``, ``before``: ô Trạng thái, Ngày đăng thực tế đọc
+    như lúc ghi) → thay đổi đề xuất và/hoặc cảnh báo."""
     web = _WEB_LABELS[web_status]
     if status == model.STATUS_DROPPED:
         return None, _notice(WebNoticeKind.DROPPED, NOTICE_DROPPED, key, post, web=web)
@@ -290,7 +336,9 @@ def _compare(
         return None, _notice(
             WebNoticeKind.BACK_TO_DRAFT, NOTICE_BACK_TO_DRAFT, key, post, web=web, status=status
         )
-    after = due if web_status in ("future", "publish") and due is not None else before
+    after = before
+    if web_status in ("future", "publish") and due is not None and not _close(due, before):
+        after = due
     if here < there:
         kind = {
             model.STATUS_DRAFT_SENT: WebChangeKind.DRAFT,
@@ -386,6 +434,9 @@ def apply_website_changes(
     if not chosen:
         return WebApplyResult()
     now = now or _now()
+    age = now - check.checked_at
+    if age > CHECK_MAX_AGE or age < -timedelta(minutes=1):  # G4; giờ máy lùi cũng coi là cũ
+        raise SheetPlanError(MSG_STALE)
     fresh = read_sheet(client, now=now)
     missing = [name for name in ("key", "status", "wp_post_id") if name not in fresh.columns]
     if missing:
@@ -433,6 +484,13 @@ def _cells_for(update: WebUpdate, fresh: SheetPlan, stamp: str) -> list[CellUpda
     if len(numbers) > 1:
         return WebConflict(update, CONFLICT_DUPLICATE.format(key=update.key))
     number = numbers[0]
+    # Dòng tìm được phải đúng là dòng bộ đọc bảng nhận cho Mã bài này (như ``sync.open_row``,
+    # SL-T109-1): khác thì không biết người dùng đã xem dòng nào, không ghi.
+    seen = fresh.find(update.key)
+    if seen is None:
+        return WebConflict(update, MSG_ROW_UNREADABLE.format(key=update.key))
+    if seen.number != number:
+        return WebConflict(update, CONFLICT_DUPLICATE.format(key=update.key))
     cells = fresh.cells_of(number)
     status = _status_of(_cell_at(cells, columns["status"]))
     post = _post_id_of(_cell_at(cells, columns["wp_post_id"]))
@@ -551,7 +609,7 @@ def _post_counts(plan: SheetPlan) -> Counter[int]:
 def _moment_of(value: CellValue) -> datetime | None | bool:
     """Ô «Ngày đăng thực tế» → thời điểm; trống: ``None``; không đọc được: ``False``."""
     try:
-        return model.parse_plan_datetime(_cell_text(value)[:100])
+        return model.parse_plan_datetime(_reader_text(value))
     except ValueError:
         return False
 
@@ -563,6 +621,11 @@ def _same_moment(first: datetime | None | bool, second: datetime | None | bool) 
     return first.astimezone(UTC).replace(second=0, microsecond=0) == second.astimezone(UTC).replace(
         second=0, microsecond=0
     )
+
+
+def _close(due: datetime, before: datetime | None) -> bool:
+    """Giờ trên Sheet lệch giờ website không quá ``DATE_TOLERANCE`` (G6)."""
+    return isinstance(before, datetime) and abs(due - before) <= DATE_TOLERANCE
 
 
 def _time_text(moment: datetime) -> str:
@@ -578,16 +641,19 @@ def _notice(
     number: int = 0,
     web: str = "",
     status: str = "",
+    field: str = "",
     at: datetime | None = None,
 ) -> WebNotice:
     message = template.format(
-        key=key, post=post, number=number, web=web, status=status,
+        key=key, post=post, number=number, web=web, status=status, field=field,
         at=_time_text(at) if at is not None else "",
     )  # fmt: skip
     return WebNotice(kind, message, key, post)
 
 
 __all__ = [
+    "CHECK_MAX_AGE",
+    "DATE_TOLERANCE",
     "LATE_AFTER",
     "WebApplyResult",
     "WebChangeKind",
