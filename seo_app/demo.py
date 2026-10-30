@@ -109,10 +109,6 @@ BUSINESS_BRIEF = {
     "Điểm khác biệt": "Khảo sát tận nơi, ảnh công trình thật, bảo hành mối hàn",
 }
 
-# ----------------------------------------------------------------- bước 5: Xuất bản
-
-CATEGORIES = ["Inox", "Cổng inox", "Lan can", "Bảo dưỡng"]
-
 # ---------------------------------------------------------------- cài đặt
 
 TONE_SETTINGS = {

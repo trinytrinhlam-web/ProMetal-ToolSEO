@@ -1,6 +1,7 @@
 """Soạn bài: 5 bước. Bước 1–3 do AI làm thật; chỗ cần ảnh (Giai đoạn 3, T-056) là thật; bước 4
-(SEO) còn là bản demo; bước 5 (Xuất bản): «Nháp» gửi thật lên WordPress kèm ảnh, «Hẹn giờ» và
-«Đăng ngay» còn là bản demo (Giai đoạn 5).
+(SEO, T-041) là thật; bước 5 (Xuất bản, T-102): «Nháp», «Hẹn giờ», «Đăng ngay» gửi thật lên
+WordPress bằng gói của bộ dựng bài cuối (``seo_app.publish``), có màn hình xác nhận gắn mã băm;
+«Hẹn giờ» và «Đăng ngay» có công tắc mặc định tắt (``RELEASE_SWITCH``, LC-T094-41).
 
 Bài đang soạn nằm trong session_state:
 - ``research``: kết quả nghiên cứu từ khóa (``Research``)
@@ -51,8 +52,10 @@ import threading
 import tomllib
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -63,12 +66,15 @@ from seo_app.config import load_settings
 from seo_app.content import ContentWriter, Outline, OutlineItem, Research, Section, load_rules
 from seo_app.content.models import SCORE_LABELS
 from seo_app.content.rules import (
+    CONTENT_CONFIG_FILE,
     find_missing,
     load_alt_rules,
     load_image_settings,
     load_meta_rules,
 )
 from seo_app.content.workflow import apply_flag
+from seo_app.google.service_account import ServiceAccountError
+from seo_app.google.sheets import SheetsClient, SheetsError
 from seo_app.images import process as image_process
 from seo_app.images.alt import suggest_alt
 from seo_app.images.folders import FolderListing, ImageEntry, ImageFolderError, ImageLibrary
@@ -85,7 +91,34 @@ from seo_app.images.tags import (
 )
 from seo_app.onpage import links as onpage_links
 from seo_app.onpage import meta as onpage_meta
+from seo_app.onpage.links import LinkKind, Notice
 from seo_app.onpage.schema import build_article_faq
+from seo_app.plan import model as plan_model
+from seo_app.plan.model import parse_plan_time
+from seo_app.plan.sync import (
+    SheetPlanError,
+    WriteOutcome,
+    get_plan,
+    open_row,
+    plan_ref,
+    record_status,
+    status_write,
+)
+from seo_app.publish.render import (
+    ArticleImage,
+    ArticlePart,
+    BuildError,
+    BuiltArticle,
+    SeoFields,
+    build_article,
+)
+from seo_app.publish.schedule import (
+    ScheduleError,
+    check_schedule,
+    date_gmt_text,
+    local_to_utc,
+    schedule_label,
+)
 from seo_app.sanitize import escape_link_syntax, unbreak_autolinks, unescape_link_syntax
 from seo_app.storage import DraftError, DraftPart, DraftSnapshot, DraftStore, new_draft_id
 from seo_app.storage import drafts as draft_storage
@@ -102,10 +135,13 @@ from seo_app.storage.drafts import (
     check_draft_images,
 )
 from seo_app.storage.image_tags import ImageTagStore, ImageTagStoreError
-from seo_app.text import escape_markdown, markdown_link, paragraphs_to_html
+from seo_app.storage.plan_cache import PlanCacheError, PlanCacheStore, sheet_hash
+from seo_app.text import escape_markdown, markdown_link
 from seo_app.wordpress.client import (
     MAX_SEO_KEYWORD_CHARS,
+    ConnectionInfo,
     DraftImagesError,
+    ReleaseError,
     WordPressClient,
     WordPressError,
 )
@@ -142,6 +178,19 @@ COMPOSE_KEYS = (
     "_wp_maybe_draft",
     "_wp_sending",
     "_wp_seen",
+    # Bước Xuất bản (T-102): hình thức, ngày giờ hẹn, chuyên mục, ô xác nhận và mã băm đã xác nhận
+    "_wp_mode",
+    "_wp_day",
+    "_wp_time",
+    "_wp_cats",
+    "_wp_confirm",
+    "_wp_confirmed",
+    "_wp_shown",
+    # Dòng kế hoạch của bài (T-102): ``DraftPlanRef``, trang dịch vụ đích, loại bài, tiêu đề dự kiến
+    "_plan_ref",
+    "_plan_required",
+    "_plan_kind",
+    "_plan_title",
     "_kept",
 )
 # Ô nhập chỉ hiện ở một bước. Streamlit tự xóa giá trị của ô không được vẽ, nên mỗi lần chạy
@@ -149,7 +198,18 @@ COMPOSE_KEYS = (
 # nháp không lưu thiếu). Sang trang khác rồi quay lại thì trang này không chạy nên không gán lại
 # được: lấy lại từ bản sao ``_kept`` (``remember_inputs``).
 KEEP_PREFIXES = ("real-", "h-", "kind-", "prompt-", "alt-", "cap-", "altok-")
-KEEP_KEYS = ("keyword", "outline_title", "step", "_featured", "seo_slug", "seo_use_faq")
+KEEP_KEYS = (
+    "keyword",
+    "outline_title",
+    "step",
+    "_featured",
+    "seo_slug",
+    "seo_use_faq",
+    "_wp_mode",
+    "_wp_day",
+    "_wp_time",
+    "_wp_cats",
+)
 DRAFT_FLAGS = ("draft_id", "_draft_saved_json", "_draft_saved_at", "_draft_baseline")
 
 # Chỗ cần ảnh (T-056). Nhãn của segmented_control cố định giữa các lần chạy.
@@ -220,6 +280,74 @@ GPS_PUBLIC_WARNING = (
     "lên, kể cả khi bài vẫn là nháp. Phần mềm không tự xóa ảnh đã tải lên."
 )
 
+# Bước Xuất bản (T-102). Nhãn của segmented_control cố định giữa các lần chạy.
+MODE_DRAFT, MODE_FUTURE, MODE_PUBLISH = "Nháp", "Hẹn giờ", "Đăng ngay"
+MODE_LABELS = [MODE_DRAFT, MODE_FUTURE, MODE_PUBLISH]
+MODE_OF = {MODE_DRAFT: "draft", MODE_FUTURE: "future", MODE_PUBLISH: "publish"}
+# Công tắc Hẹn giờ, Đăng ngay (LC-T094-41): mặc định tắt. Chỉ bật sau lượt thử thật trên website
+# (LC-T094-44) và khi Lá Chắn rà xong Giai đoạn 5; chưa có chỗ bật trên giao diện (phiếu bật sau
+# lượt thử thật nối công tắc ở trang Cài đặt vào khóa này). Test đặt khóa này để thử hai hình thức.
+RELEASE_SWITCH = "_release_enabled"
+DEFAULT_PUBLISH_TIME = time(8, 0)  # khi `[plan].default_time` thiếu, sai (Lá Chắn T-103 đk 2c)
+MAX_SHOWN_TEXT = 300  # ký tự tối đa của một ô chữ trên màn hình xác nhận (chữ dài thì cắt «…»)
+MSG_RELEASE_OFF = (
+    "Hẹn giờ và Đăng ngay đang **tắt**: chỉ bật sau lượt thử thật trên website (kiểm website trả "
+    "giờ đúng, tài khoản Biên tập viên hẹn giờ được). Bây giờ hãy gửi dạng **Nháp**, rồi hẹn giờ "
+    "hay đăng bài trong trang quản trị WordPress."
+)
+MSG_CONFIRM_CHANGED = (
+    "Bài vừa thay đổi sau khi bạn xem lại (nội dung, ảnh, giờ hẹn, chuyên mục, SEO hay danh sách "
+    "bài trên website). Chưa gửi gì lên website: xem lại màn hình xác nhận rồi tick lại."
+)
+MSG_CONFIRM_RESET = (
+    "Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại."
+)
+MSG_NO_LISTING = (
+    "Chưa tải được danh sách bài đã đăng để kiểm link nội bộ ({reason}). Chưa gửi gì lên website: "
+    "thử lại, hoặc bỏ tick «Dùng» các link nội bộ ở bước SEO."
+)
+MSG_BUILD_FAILED = "Không dựng được bài để gửi ({reason}). Chưa gửi gì lên website."
+MSG_NO_PUBLISH_RIGHT = (
+    "Tài khoản WordPress của phần mềm không có quyền đăng bài (publish_posts) nên không hẹn giờ, "
+    "đăng được. Gửi dạng Nháp, hoặc nhờ người quản trị website đổi vai trò tài khoản."
+)
+MSG_RELEASE_UNEXPECTED = (
+    "Hẹn giờ/đăng gặp lỗi không mong đợi. Bài (mã {post_id}) có thể đã được hẹn giờ hay hiện "
+    "công khai. Mở trang quản trị WordPress kiểm tra bài này trước khi làm gì tiếp; phần mềm không "
+    "tự gửi lại."
+)
+# Mở Soạn bài từ một dòng kế hoạch (thiết kế T-094 mục 1.6; hợp đồng ``_start_plan_key`` của T-101).
+EXPERIENCE = "Kinh nghiệm của xưởng"  # ô chất liệu thật nhận ghi chú của dòng kế hoạch
+MSG_PLAN_NOT_CONNECTED = (
+    "Chưa kết nối Google Sheets nên bài mới chưa gắn với dòng kế hoạch {key}: chỉ có từ khóa."
+)
+MSG_PLAN_FAILED = "Chưa gắn bài với dòng kế hoạch {key}: {reason} Bài mới chỉ có từ khóa."
+MSG_PLAN_MASKED = (
+    "Ghi chú của dòng kế hoạch có số điện thoại hay email: phần mềm đã thay bằng «"
+    + plan_model.MASK
+    + "» trước khi đưa vào «Kinh nghiệm của xưởng» (không gửi thông tin khách cho AI)."
+)
+MSG_PLAN_PRICE = (
+    "Ghi chú của dòng kế hoạch có nhắc giá: xem lại ô «Kinh nghiệm của xưởng» trước khi viết (bài "
+    "không nêu giá)."
+)
+MSG_PLAN_OPENED = "Đã mở bài mới từ dòng kế hoạch {key}."
+MSG_PLAN_NO_LISTING = (
+    "Máy chưa có danh sách bài đã đăng nên chưa đọc được ô «Trang dịch vụ đích» (nếu dòng kế hoạch "
+    "có ghi). Có ghi thì mở bước SEO một lần để tải danh sách bài, rồi mở lại bài này."
+)
+# Loại bài trong kế hoạch → loại bài của quy tắc chọn link nội bộ (``select_candidates``).
+PLAN_KINDS = {
+    plan_model.KIND_GUIDE: onpage_links.ArticleKind.GUIDE,
+    plan_model.KIND_SERVICE: onpage_links.ArticleKind.SERVICE,
+    plan_model.KIND_AREA: onpage_links.ArticleKind.AREA,
+}
+MSG_RELEASE_UNSURE_LOCK = (
+    "Lần gửi trước (bài mã {post_id}) chưa biết chắc đã hẹn giờ/đăng hay chưa: **bài có thể đã "
+    "được hẹn giờ hay hiện công khai**. Mở trang quản trị WordPress, kiểm tra Bài viết trước khi "
+    "gửi lại. App không tự gửi lại."
+)
+
 
 # ------------------------------------------------------------------ trạng thái
 
@@ -231,6 +359,10 @@ def init_state() -> None:
         clear_compose()  # bài mới: xóa cả chất liệu thật của bài cũ (bài cũ vẫn còn trong nháp)
         forget_draft()  # lần tự lưu sau tạo nháp mới, không ghi đè nháp đang mở
         S.keyword = S.pop("_start_keyword")
+        plan_key = S.pop("_start_plan_key", None)  # «Viết bài» từ dòng kế hoạch (T-101 → T-102)
+        if plan_key is not None:
+            start_from_plan(plan_key)
+    S.pop("_start_plan_key", None)  # sót lại không kèm từ khóa (lần bấm cũ): bỏ, không đọc
     if "_open_draft" in S:  # bấm «Mở» ở khung Bài đang soạn dở (phải chạy trước khi vẽ ô nhập)
         open_draft(S.pop("_open_draft"))
     for key, value in S.get("_kept", {}).items():  # vừa quay lại từ trang khác
@@ -425,6 +557,7 @@ def snapshot() -> DraftSnapshot:
         auto_fixed=S.auto_fixed,
         ignored_flags=S.ignored_flags,
         seo=seo_snapshot(),
+        plan=S.get("_plan_ref"),  # dòng kế hoạch đã mở bài này (T-100, T-102); không có: None
     )
 
 
@@ -464,6 +597,9 @@ def open_draft(draft_id: str) -> None:
         S.part_ids.append(pid)
     restore_images(snap)
     restore_seo(snap.seo)
+    if snap.plan is not None:
+        S._plan_ref = snap.plan
+        plan_details_from_cache(snap.plan)
     S.review = snap.review
     S.auto_fixed = snap.auto_fixed
     S.ignored_flags = set(snap.ignored_flags)
@@ -471,6 +607,129 @@ def open_draft(draft_id: str) -> None:
     S._draft_saved_at = snap.saved_at
     S._draft_baseline = True  # lần chạy này chỉ ghi nhận, không lưu lại (giờ lưu giữ nguyên)
     st.toast("Đã mở bài đang soạn dở", icon="📂")
+
+
+def start_from_plan(key: object) -> None:
+    """«Viết bài» từ một dòng kế hoạch (thiết kế T-094 mục 1.6; hợp đồng ``_start_plan_key`` trong
+    báo cáo T-101): chỉ tin **Mã bài** (không tin chữ trong phiên), tự đọc lại.
+
+    1. Đã có nháp gắn Mã bài này trên **Sheet đang dùng** (``find_plan_draft`` với mã băm Sheet đang
+       kết nối, Lá Chắn T-100 đk 5): mở nháp đó, không tạo nháp thứ hai.
+    2. Không thì đọc lại đúng dòng trên Sheet (``open_row``, LC-T094-29), gắn ``DraftPlanRef``
+       (``plan_ref``), điền sẵn các ô (``fill_from_plan``), rồi ghi «Đang viết» vào dòng qua
+       ``record_status`` (4 ô, kiểm xung đột; ghi lỗi thì giữ việc còn nợ, LC-T094-40).
+
+    Lỗi (chưa kết nối, Sheet lỗi, không thấy dòng): câu cố định, bài mới chỉ có từ khóa."""
+    try:
+        key = plan_model.parse_key(key) if isinstance(key, str) else ""
+    except ValueError:
+        key = ""
+    if not key:
+        return
+    settings = load_settings()
+    if not settings.google_sheet_id:
+        S._plan_notice = MSG_PLAN_NOT_CONNECTED.format(key=key)
+        return
+    try:
+        existing = draft_store().find_plan_draft(key, sheet_hash(settings.google_sheet_id))
+    except (DraftError, ValueError) as exc:
+        S._plan_notice = MSG_PLAN_FAILED.format(key=key, reason=f"{exc}.")
+        return
+    if existing is not None:
+        open_draft(existing)
+        return
+    index = cached_site_index()
+    try:
+        client = SheetsClient.from_settings(settings)
+        with st.spinner("Đang đọc lại dòng kế hoạch trên Google Sheets…"):
+            row = open_row(client, key, index=index)
+    except (SheetsError, ServiceAccountError, SheetPlanError) as exc:
+        S._plan_notice = MSG_PLAN_FAILED.format(key=key, reason=str(exc))
+        return
+    ref = plan_ref(row, settings.google_sheet_id)
+    S._plan_ref = ref
+    notes = fill_from_plan(row.plan)
+    if index is None:
+        notes.append(MSG_PLAN_NO_LISTING)
+    S.draft_id = new_draft_id()  # nháp mới gắn kế hoạch: tự lưu ở cuối lần chạy này
+    try:
+        result = record_status(
+            client,
+            draft_store(),
+            S.draft_id,
+            status_write(ref, plan_model.STATUS_WRITING),
+            sheet_id=settings.google_sheet_id,
+        )
+        notes.append(result.message)
+    except DraftError as exc:
+        notes.append(str(exc))
+    S._plan_notice = " ".join([MSG_PLAN_OPENED.format(key=key), *notes])
+
+
+def fill_from_plan(row: plan_model.PlanRow) -> list[str]:
+    """Điền sẵn Soạn bài từ dòng kế hoạch (thiết kế 1.6): từ khóa (đã qua ``PlanRow``), ghi chú →
+    «Kinh nghiệm của xưởng» (che số điện thoại, email: nửa sau LC-T094-21; nhắc khi có giá: Lá Chắn
+    T-103 đk 2b), slug, trang dịch vụ đích, loại bài, ngày giờ dự kiến. Chữ kế hoạch chỉ vào lời
+    dặn AI qua khung dữ liệu có sẵn (từ khóa: ``_keyword``; chất liệu thật: ``_block``, T-103 đk
+    2a); tiêu đề dự kiến chỉ hiện làm gợi ý ở bước Dàn ý. Trả các câu nhắc."""
+    notes: list[str] = []
+    S.keyword = row.keyword
+    if row.notes:
+        phones, emails = plan_model.personal_info(row.notes)
+        masked = phones or emails
+        S[f"real-{EXPERIENCE}"] = plan_model.mask_personal_info(row.notes) if masked else row.notes
+        if masked:
+            notes.append(MSG_PLAN_MASKED)
+        if onpage_meta.mentions_price(row.notes, row.keyword):
+            notes.append(MSG_PLAN_PRICE)
+    if row.slug:
+        S.seo_slug = onpage_meta.make_slug("", given=row.slug)
+    plan_details(row)
+    return notes
+
+
+def plan_details(row: plan_model.PlanRow) -> None:
+    """Phần của dòng kế hoạch dùng lúc làm SEO và xuất bản: trang dịch vụ đích (link bắt buộc),
+    loại bài (quy tắc chọn link), tiêu đề dự kiến (gợi ý), ngày giờ dự kiến (ô Hẹn giờ)."""
+    S._plan_required = (row.target_id,) if row.target_id else ()
+    S._plan_kind = row.kind
+    S._plan_title = row.title_hint
+    if row.planned_date is not None:
+        S._wp_day = row.planned_date
+    if row.planned_time:
+        hour, minute = row.planned_time.split(":")
+        S._wp_time = time(int(hour), int(minute))
+
+
+def plan_details_from_cache(ref) -> None:
+    """Mở lại nháp gắn kế hoạch: lấy lại trang dịch vụ đích, loại bài, ngày giờ dự kiến từ bản lưu
+    kế hoạch trên máy (không gọi Google; nháp chỉ giữ Mã bài). Sheet khác Sheet đang dùng, không có
+    bản lưu, không thấy dòng: bỏ qua (bài vẫn gửi được, không có link bắt buộc)."""
+    settings = load_settings()
+    if not settings.google_sheet_id or sheet_hash(settings.google_sheet_id) != ref.sheet_hash:
+        return
+    try:
+        listing = get_plan(
+            PlanCacheStore(), settings.google_sheet_id, None, index=cached_site_index()
+        )
+    except (PlanCacheError, ValueError):
+        return
+    row = listing.plan.find(ref.key) if listing.plan is not None else None
+    if row is not None:
+        plan_details(row.plan)
+
+
+def cached_site_index() -> site_storage.SiteIndex | None:
+    """Danh sách bài đã đăng trong cache trên máy, **không gọi website** (LC-T094-35: «Viết bài»
+    không gửi gì lên WordPress): để đổi «Trang dịch vụ đích» của dòng kế hoạch thành mã bài
+    (``resolve_target``). Chưa kết nối WordPress, chưa có cache: ``None``."""
+    client, _problem = wordpress_client()
+    return site_store().load(client.base_url) if client is not None else None
+
+
+def article_kind() -> onpage_links.ArticleKind:
+    """Loại bài cho quy tắc chọn link nội bộ: theo dòng kế hoạch; không có thì «hướng dẫn»."""
+    return PLAN_KINDS.get(S.get("_plan_kind", ""), onpage_links.ArticleKind.GUIDE)
 
 
 def restore_images(snap: DraftSnapshot) -> None:
@@ -899,9 +1158,11 @@ def web_info(
     SL-T056-10). Ảnh xem trước của khung ảnh dựng từ chính các byte đó (``make_preview``), không
     lấy từ cache theo cỡ, giờ sửa: file bị thay tại chỗ thì khung vẫn hiện đúng bản được băm, được
     duyệt (SL-T086-2)."""
-    entry = checked.entry
-    key = (checked.ref, entry.size, entry.modified)
+    key = web_key(checked)
     cache = S.setdefault("_web_info", {})
+    # Băm byte WebP sẽ tải (T-102): màn hình xác nhận tính mã băm bài trên đúng ảnh sẽ gửi. Nén
+    # WebP cho cùng byte, cùng cấu hình luôn ra cùng byte, nên lúc gửi nén lại vẫn khớp.
+    web_sha = S.setdefault("_web_sha", {})
     if key not in cache:
         digest = preview = None
         try:
@@ -919,9 +1180,19 @@ def web_info(
             cache[key] = (None, "", MSG_IMAGE_FAILED, digest, preview)
         else:
             cache[key] = (web.has_gps, web.notice, "", digest, preview)
+            web_sha[key] = (digest, content_hash(web.data))
         while len(cache) > MAX_WEB_INFO_KEPT:  # giữ ảnh xem trước trong phiên có chừng mực
-            cache.pop(next(iter(cache)))
+            oldest = next(iter(cache))
+            cache.pop(oldest)
+            web_sha.pop(oldest, None)
     return cache[key]
+
+
+def web_key(checked: CheckedImage) -> tuple:
+    """Khóa một phiên bản file ảnh đã chọn (đường dẫn, cỡ, giờ sửa) cho các kết quả giữ trong
+    phiên (``web_info``)."""
+    entry = checked.entry
+    return (checked.ref, entry.size, entry.modified)
 
 
 def alt_limits() -> tuple[int, int]:
@@ -1628,14 +1899,6 @@ def move_item(uid: int, delta: int) -> None:
         S.outline_ids = ids
 
 
-def demo_toast(message: str) -> None:
-    st.toast(f"Bản demo: {message}", icon="🧪")
-
-
-def demo_note(text: str) -> None:
-    st.caption(f":orange-badge[🧪 Bản demo] {text}")
-
-
 # ------------------------------------------------------------------- các bước
 
 
@@ -1726,6 +1989,8 @@ def step_outline(writer: ContentWriter | None) -> None:
         return
 
     st.caption("Duyệt dàn ý trước. AI chỉ viết toàn bài sau khi bạn bấm Duyệt.")
+    if S.get("_plan_title"):  # tiêu đề dự kiến của dòng kế hoạch: chỉ gợi ý, không gửi AI
+        st.text(f"Tiêu đề dự kiến trong kế hoạch: {S._plan_title}")
     st.text_input("Tiêu đề bài (H1)", key="outline_title")
     for n, uid in enumerate(S.outline_ids, start=1):
         with st.container(border=True):
@@ -2263,9 +2528,10 @@ def links_panel(writer: ContentWriter | None, listing: site_storage.SiteListing)
     if listing.index is not None:
         candidates = onpage_links.select_candidates(
             listing.index,
-            kind=onpage_links.ArticleKind.GUIDE,
+            kind=article_kind(),  # loại bài, trang dịch vụ đích: theo dòng kế hoạch (T-102)
             title=sent_title(),
             keyword=keyword(),
+            required=required_links(),
         )
         for notice in candidates.notices:
             if notice.message != NO_ORDER_NOTICE:
@@ -2508,23 +2774,438 @@ def part_name(pid: int) -> str:
     return sent_line(S[f"heading-{pid}"])
 
 
-def article_parts(uploads: dict[int, WordPressImage]) -> list[str | WordPressImage]:
-    """Nội dung gửi WordPress theo thứ tự: tiêu đề mục (``<h2>``), đoạn văn, rồi ảnh của mục.
+@dataclasses.dataclass(frozen=True)
+class PublishOrder:
+    """Lựa chọn ở bước Xuất bản lúc bấm gửi (T-102). ``mode``: "draft", "future", "publish";
+    ``when_utc``: giờ hẹn (``local_to_utc``: cùng giá trị cho mã băm và ``release_draft``, Lá Chắn
+    T-099 đk 2); ``expected``: mã băm bài người dùng đã xem (Nháp) hay đã tick xác nhận (Hẹn giờ,
+    Đăng ngay): lúc gửi dựng lại gói và so (LC-T094-38)."""
 
-    Thân bài là Markdown; ở đây mỗi đoạn thành một ``<p>`` chữ thường (``paragraphs_to_html``
-    escape mọi ký tự HTML; cả bài còn qua ``sanitize_html`` khi tạo nháp). Chuyển định dạng
-    Markdown (đậm, gạch đầu dòng) sang HTML là việc của Giai đoạn 5.
-    """
-    parts: list[str | WordPressImage] = []
-    for index, pid in enumerate(S.part_ids):
-        if index > 0:
-            parts.append(f"<h2>{html.escape(part_name(pid))}</h2>")
-        body = paragraphs_to_html(sent_text(current_text(pid)))
-        if body:
-            parts.append(body)
-        if pid in uploads:
-            parts.append(uploads[pid])
-    return parts
+    mode: str
+    when_utc: datetime | None
+    categories: tuple[int, ...]
+    expected: str | None
+    timezone: str
+
+
+def release_enabled() -> bool:
+    """Công tắc Hẹn giờ, Đăng ngay (LC-T094-41), mặc định tắt (``RELEASE_SWITCH``)."""
+    return S.get(RELEASE_SWITCH) is True
+
+
+def shown_text(text: object, limit: int = MAX_SHOWN_TEXT) -> str:
+    """Chữ thô (bài, AI, website) để hiện trên màn hình xác nhận: một dòng, bỏ ký tự điều khiển,
+    ký tự vô hình, ký tự đổi hướng chữ (LC-T094-3: chữ không hiện đảo đánh lừa người duyệt); dài
+    thì cắt «…». **Chưa** escape: hiện bằng ô bảng, ``st.text`` hay qua ``escape_markdown``."""
+    value = onpage_meta.normalize_meta(text) if isinstance(text, str) else ""
+    return value if len(value) <= limit else f"{value[: limit - 1]}…"
+
+
+def default_publish_time() -> time:
+    """Giờ điền sẵn vào ô Giờ của «Hẹn giờ»: ``[plan].default_time`` của config/content.toml đọc
+    bằng ``parse_plan_time``; thiếu, sai dạng, file lỗi thì 08:00 (Lá Chắn T-103 điều kiện 2c,
+    đúng lời chú thích trong file). Không đọc nhãn nào từ cấu hình."""
+    try:
+        with CONTENT_CONFIG_FILE.open("rb") as file:
+            plan = tomllib.load(file).get("plan", {})
+        text = parse_plan_time(plan.get("default_time", "")) if isinstance(plan, dict) else ""
+        hour, minute = text.split(":") if text else ("", "")
+        return time(int(hour), int(minute)) if text else DEFAULT_PUBLISH_TIME
+    except (OSError, tomllib.TOMLDecodeError, ValueError, TypeError, AttributeError):
+        return DEFAULT_PUBLISH_TIME
+
+
+def schedule_picker(timezone_name: str) -> tuple[datetime | None, list[Notice]]:
+    """Ô Ngày, Giờ của «Hẹn giờ» (giờ của app, mặc định giờ Việt Nam; điền sẵn ngày mai và giờ
+    mặc định). Trả giờ UTC sẽ gửi (``local_to_utc``) và các dòng kiểm (đã qua, chưa tới 10 phút,
+    quá một năm: Chặn). Nhãn có thứ tính từ giờ đã chọn, không từ đồng hồ máy (LC-T094-27)."""
+    today = datetime.now(ZoneInfo(timezone_name)).date()
+    if type(S.get("_wp_day")) is not date or S._wp_day < today:
+        S._wp_day = today + timedelta(days=1)
+    if type(S.get("_wp_time")) is not time:
+        S._wp_time = default_publish_time()
+    left, right = st.columns(2)
+    day = left.date_input("Ngày đăng", key="_wp_day", min_value=today, format="DD/MM/YYYY")
+    at = right.time_input("Giờ đăng", key="_wp_time", step=timedelta(minutes=5))
+    try:
+        when = local_to_utc(day, at, timezone_name)
+    except ScheduleError as exc:
+        return None, [Notice(onpage_meta.Level.BLOCK, str(exc))]
+    st.caption(
+        f"Hẹn đăng: **{schedule_label(when, timezone_name)}**. WordPress tự đăng đúng giờ, không "
+        "cần mở app lúc đó."
+    )
+    return when, check_schedule(when, now_utc=datetime.now(UTC))
+
+
+def connection_info(client: WordPressClient) -> tuple[ConnectionInfo | None, str]:
+    """Quyền đăng bài và múi giờ của website (``check_connection``, chỉ đọc) cho Hẹn giờ, Đăng
+    ngay: hỏi một lần mỗi phiên, nút «Kiểm tra lại» hỏi lại. Câu lỗi là câu cố định của client."""
+    if st.button("🔄 Kiểm tra lại quyền đăng bài, múi giờ website", key="wp-recheck"):
+        S.pop("_wp_conn", None)
+    if "_wp_conn" not in S:
+        with st.spinner("Đang hỏi website quyền đăng bài và múi giờ…"):
+            try:
+                S._wp_conn = (client.check_connection(), "")
+            except WordPressError as exc:
+                S._wp_conn = (None, str(exc))
+    return S._wp_conn
+
+
+def category_picker(client: WordPressClient | None) -> tuple[int, ...]:
+    """Chuyên mục thật của website (``list_categories``, chỉ đọc), tải khi bấm: chỉ xem bước Xuất
+    bản thì không gọi website. Tên chuyên mục là chữ website: bỏ ký tự điều khiển, vô hình
+    (``shown_text``), hiện trong ô chọn (chữ thường, không Markdown)."""
+    terms: dict[int, str] = S.get("_wp_terms", {})
+    if client is not None and st.button("🔄 Tải chuyên mục từ website", key="wp-load-cats"):
+        try:
+            with st.spinner("Đang tải chuyên mục…"):
+                found = client.list_categories()
+        except WordPressError as exc:
+            st.warning(escape_markdown(str(exc)))
+        else:
+            terms = {term.id: shown_text(term.name, 80) or f"#{term.id}" for term in found}
+            S._wp_terms = terms
+    if not terms:
+        st.caption(
+            "Chuyên mục: chưa chọn, bài vào chuyên mục mặc định của website. Muốn chọn: bấm «Tải "
+            "chuyên mục từ website»."
+        )
+        return ()
+    S._wp_cats = [cat for cat in S.get("_wp_cats", []) if cat in terms]
+    chosen = st.multiselect(
+        "Chuyên mục",
+        list(terms),
+        format_func=lambda cat: terms.get(cat, f"#{cat}"),
+        key="_wp_cats",
+        placeholder="Chọn chuyên mục…",
+    )
+    return tuple(cat for cat in chosen if cat in terms)
+
+
+def featured_pid(ready: list[int]) -> int | None:
+    """Chỗ có ảnh người dùng chọn làm ảnh đại diện (ô chọn chỉ hiện khi bài có từ 2 ảnh; không
+    chọn thì website lấy ảnh đầu tiên)."""
+    featured = S.get("_featured")
+    return featured if len(ready) > 1 and featured in ready else None
+
+
+def chosen_links() -> tuple:
+    """Link nội bộ đang dùng (cột «Dùng» ở bước SEO), dựng lại qua ``InternalLink`` (LC-T039 2b)."""
+    return tuple(link.to_link() for link in S.get("seo_links", []) if link.use)
+
+
+def required_links() -> tuple[int, ...]:
+    """Mã bài phải có link tới (trang dịch vụ đích của dòng kế hoạch); chưa nối kế hoạch: rỗng."""
+    return tuple(S.get("_plan_required", ()))
+
+
+def package_index(
+    client: WordPressClient | None, *, fresh: bool
+) -> tuple[site_storage.SiteIndex | None, str]:
+    """Danh sách bài cho bộ dựng. Bài có link nội bộ (hay link bắt buộc) thì dùng danh sách bài đã
+    đăng; ``fresh``: tải lại từ website ngay trước khi dựng gói sẽ gửi (``check_links`` chạy trên
+    danh sách vừa tải, LC-T094-36), và giữ trong phiên cho lần vẽ sau. Bài không có link nào thì
+    danh sách rỗng (HTML không có ``<a>`` nào để kiểm), không gọi website."""
+    if not chosen_links() and not required_links():
+        site = client.base_url if client is not None else ""
+        return site_storage.SiteIndex(site=site, fetched_at=datetime.now(UTC), items=()), ""
+    if fresh:
+        S._site_listing = site_storage.site_listing(site_store(), client, refresh=True)
+    listing = published_listing()
+    if listing.index is None:
+        return None, listing.notice or site_storage.MSG_NOT_CONNECTED
+    return listing.index, ""
+
+
+def package_seo() -> SeoFields:
+    """Chữ SEO của gói (mã băm gồm 3 ô và công tắc ghi SEO, LC-T094-8). Công tắc bật: đúng chữ sẽ
+    ghi (``seo_request``: trường bị Chặn để trống). Tắt: chữ để chép tay (không kiểm trùng bài đã
+    đăng ở đây: không ghi gì lên website)."""
+    request = seo_request()
+    if request is not None:
+        fields = request["fields"]
+        return SeoFields(
+            title=fields["title"],
+            description=fields["description"],
+            focus_keyword=fields["focus_keyword"],
+            write=True,
+        )
+    title, description, _slug, focus = final_seo([], brand_suffix())
+    return SeoFields(
+        title=title[1] or "", description=description[1] or "", focus_keyword=focus[1] or ""
+    )
+
+
+def seo_holder(seo: SeoFields) -> dict | None:
+    """Yêu cầu ghi SEO (``write_seo``) từ chữ SEO trong gói đã xác nhận: ghi đúng chữ đó."""
+    if not seo.write:
+        return None
+    named = (
+        ("Tiêu đề SEO", "title", seo.title),
+        ("Mô tả SEO", "description", seo.description),
+        (KEYWORD_LABEL, "focus_keyword", seo.focus_keyword),
+    )
+    return {
+        "fields": {field: value for _label, field, value in named},
+        "skipped": [label for label, _field, value in named if not value],
+    }
+
+
+def build_package(
+    client: WordPressClient | None,
+    mode: str,
+    when_utc: datetime | None,
+    categories: tuple[int, ...],
+    images: list[ArticleImage],
+    *,
+    fresh: bool,
+) -> tuple[BuiltArticle | None, str]:
+    """Gói sẽ gửi, dựng bằng bộ dựng T-096 từ bài trong phiên (chữ thô như trong nháp): mọi hình
+    thức gửi đều gửi đúng gói này (LC-T094-36). Lỗi: câu báo, chưa gửi gì."""
+    index, problem = package_index(client, fresh=fresh)
+    if index is None:
+        return None, MSG_NO_LISTING.format(reason=problem)
+    try:
+        built = build_article(
+            title=S.get("article_title") or S.get("outline_title") or keyword(),
+            parts=[
+                ArticlePart(heading=S[f"heading-{pid}"], body=current_text(pid))
+                for pid in S.part_ids
+            ],
+            index=index,
+            links=chosen_links(),
+            required_ids=required_links(),
+            images=images,
+            slug=S.get("seo_slug", ""),
+            categories=categories,
+            seo=package_seo(),
+            mode=mode,
+            date_gmt=date_gmt_text(when_utc) if mode == "future" and when_utc else "",
+        )
+    except (BuildError, ScheduleError) as exc:
+        return None, MSG_BUILD_FAILED.format(reason=str(exc))
+    return built, ""
+
+
+def shown_images(ready: list[int]) -> tuple[list[ArticleImage], str]:
+    """Ảnh của bài cho màn hình xác nhận, đúng như lúc gửi: thứ tự phần, băm byte WebP sẽ tải
+    (``web_info``), alt và chú thích như ô đang có (lọc như lúc gửi), GPS, thẻ, ảnh đại diện. Ảnh
+    chưa kiểm được: câu báo (chưa dựng được gói)."""
+    library = image_library()
+    chosen = featured_pid(ready)
+    images: list[ArticleImage] = []
+    for section, pid in enumerate(S.part_ids):
+        if pid not in ready:
+            continue
+        checked: CheckedImage = S[f"pick-{pid}"]
+        has_gps, _notice, error, _digest, _preview = web_info(library, checked)
+        web_sha = S.get("_web_sha", {}).get(web_key(checked))
+        if error or has_gps is None or web_sha is None:
+            return [], f"Ảnh ở mục «{part_name(pid)}»: {error or MSG_IMAGE_FAILED}"
+        texts = DraftImage.from_library(checked.ref, slot_tags(checked), **slot_texts(pid))
+        images.append(
+            ArticleImage.of(
+                section=section,
+                sha256=web_sha[1],
+                alt=texts.alt,
+                caption=texts.caption,
+                featured=pid == chosen,
+                has_gps=has_gps,
+                tags=checked.tags,
+            )
+        )
+    return images, ""
+
+
+def send_label(mode: str, when_utc: datetime | None, timezone_name: str) -> str:
+    """Nút gửi ghi rõ hành động (thiết kế 3.5)."""
+    if mode == "future":
+        if when_utc is None:
+            return "📅 Gửi và hẹn giờ"
+        return f"📅 Gửi và hẹn giờ {schedule_label(when_utc, timezone_name).split(' (')[0]}"
+    if mode == "publish":
+        return "🚀 Gửi và đăng công khai ngay"
+    return "📤 Gửi nháp"
+
+
+def remember_confirm() -> None:
+    """Tick «Tôi đã đọc lại…»: nhớ mã băm của đúng màn hình người dùng vừa xem (LC-T094-38). Chạy
+    đầu lần chạy sau, khi ``_wp_shown`` vẫn là mã băm của lần vẽ người dùng đã thấy."""
+    S._wp_confirmed = S.get("_wp_shown") if S.get("_wp_confirm") else None
+
+
+def confirm_box(digest: str) -> bool:
+    """Ô xác nhận của Hẹn giờ, Đăng ngay, gắn với mã băm bài lúc tick: bài đổi sau đó (tab khác
+    sửa bài, ảnh đổi, đổi giờ, công tắc SEO) thì bỏ tick, phải xem lại rồi tick lại."""
+    if S.get("_wp_confirm") and S.get("_wp_confirmed") != digest:
+        S._wp_confirm = False
+        S._wp_confirmed = None
+        st.warning(MSG_CONFIRM_RESET)
+    return st.checkbox(
+        "Tôi đã đọc lại toàn bài và danh sách trên",
+        key="_wp_confirm",
+        on_change=remember_confirm,
+    )
+
+
+LINK_KINDS = {
+    LinkKind.INTERNAL: "Nội bộ",
+    LinkKind.EXTERNAL: "Ra ngoài website",
+    LinkKind.ANCHOR: "Trong bài",
+    LinkKind.OTHER: "Khác",
+}
+BARE_KINDS = {"url": "Địa chỉ web", "www": "Địa chỉ www.", "email": "Email"}
+# Ở Nháp (màn hình rút gọn), hai lời nhắc này đã có ngay trên nút (cảnh báo GPS, đoạn shortcode).
+_SHOWN_ELSEWHERE = ("đoạn dạng shortcode", "còn vị trí GPS")
+
+
+def review_notices(notices: list[Notice], *, compact: bool) -> None:
+    """Dòng Chặn trước, Cảnh báo sau; chữ có thể mang địa chỉ link (chữ thô): escape."""
+    ordered = sorted(notices, key=lambda notice: notice.level is not onpage_meta.Level.BLOCK)
+    for notice in ordered:
+        if notice.level is onpage_meta.Level.GOOD:
+            continue
+        if (
+            compact
+            and notice.level is onpage_meta.Level.WARN
+            and any(mark in notice.message for mark in _SHOWN_ELSEWHERE)
+        ):
+            continue
+        text = escape_markdown(shown_text(notice.message, 600))
+        (st.error if notice.level is onpage_meta.Level.BLOCK else st.warning)(text)
+
+
+def review_tables(built: BuiltArticle, *, full: bool) -> None:
+    """Bảng mọi link của HTML cuối, địa chỉ trần, chỗ bị nhúng (cả Nháp: nháp có thể được đăng
+    sau trong trang quản trị mà không qua app, LC-T094-37); với Hẹn giờ, Đăng ngay thêm ảnh và
+    đoạn shortcode. Ô bảng là chữ thường, link không bấm được (LC-T094-3, -37; LC-T039-1: tên máy
+    dạng ASCII ``xn--…``, cờ cho tên máy lạ)."""
+    review = built.review
+    if review.links:
+        st.markdown("**Mọi link trong bài**")
+        st.dataframe(
+            [
+                {
+                    "Chữ neo": shown_text(row.text),
+                    "Địa chỉ": shown_text(row.href),
+                    "Tên máy (dạng ASCII)": shown_text(row.ascii_host),
+                    "Loại": LINK_KINDS.get(row.kind, "Khác"),
+                    "Mức": LEVEL_BADGES[row.level][1],
+                    "Lý do": shown_text(row.message),
+                    "Dấu hiệu lạ": "; ".join(row.flags),
+                }
+                for row in review.links
+            ],
+            hide_index=True,
+        )
+    else:
+        st.caption("Bài không có link nào.")
+    if review.bare:
+        st.markdown("**Địa chỉ web, email còn dạng chữ** (trên website không bấm được)")
+        st.dataframe(
+            [
+                {
+                    "Địa chỉ": shown_text(bare.text),
+                    "Loại": BARE_KINDS.get(bare.kind, "Khác"),
+                    "Tên máy (dạng ASCII)": shown_text(bare.ascii_host),
+                    "Dấu hiệu lạ": "; ".join(bare.flags),
+                }
+                for bare in review.bare
+            ],
+            hide_index=True,
+        )
+    if review.embeds:
+        st.markdown("**Đoạn WordPress sẽ nhúng cả trang khác vào bài** (phải sửa trước khi gửi)")
+        st.dataframe([{"Địa chỉ": shown_text(url)} for url in review.embeds], hide_index=True)
+    if not full:
+        return
+    if review.images:
+        st.markdown("**Ảnh** (ảnh và vị trí GPS sẽ công khai cùng bài)")
+        st.dataframe(
+            [
+                {
+                    "Ở": shown_text(image.section_name),
+                    "Alt": shown_text(image.alt),
+                    "Chú thích": shown_text(image.caption),
+                    "Vị trí GPS": "Còn" if image.has_gps else "Không",
+                    "Ảnh AI": "Có" if image.ai else "",
+                    "Ảnh đại diện": (
+                        "Có (tự chọn ảnh đầu)"
+                        if image.featured_auto
+                        else ("Có" if image.featured else "")
+                    ),
+                }
+                for image in review.images
+            ],
+            hide_index=True,
+        )
+    if review.shortcodes:
+        st.markdown("**Đoạn dạng shortcode** («[» liền chữ, có «]» phía sau)")
+        st.dataframe(
+            [
+                {"Ở": shown_text(where), "Đoạn": shorten(shown_text(segment))}
+                for where, segment in review.shortcodes
+            ],
+            hide_index=True,
+        )
+
+
+def review_header(
+    built: BuiltArticle, mode: str, when_utc: datetime | None, timezone_name: str
+) -> None:
+    """Phần đầu màn hình xác nhận của Hẹn giờ, Đăng ngay: hình thức, bài, SEO (thiết kế 3.5)."""
+    if mode == "future" and when_utc is not None:
+        st.markdown(f"**Hình thức:** hẹn giờ đăng **{schedule_label(when_utc, timezone_name)}**")
+    else:
+        st.markdown("**Hình thức:** :red[**Hiện công khai ngay khi bấm**]")
+    names = S.get("_wp_terms", {})
+    seo = built.seo
+    st.text(
+        "\n".join(
+            [
+                f"Tiêu đề bài: {shown_text(built.title)}",
+                f"Đường dẫn sẽ có: {site_host()}/"
+                + (f"{built.slug}/" if built.slug else "(WordPress tự đặt theo tiêu đề)"),
+                "Chuyên mục: "
+                + (
+                    ", ".join(names.get(cat, f"#{cat}") for cat in built.categories)
+                    or "chuyên mục mặc định của website"
+                ),
+                "Thẻ: không có",
+                f"Tiêu đề SEO: {shown_text(seo.title) or '(trống)'}",
+                f"Mô tả SEO: {shown_text(seo.description) or '(trống)'}",
+                f"Từ khóa chính: {shown_text(seo.focus_keyword) or '(trống)'}",
+                "SEO: sẽ ghi lên website (hộp SiteSEO của bài)"
+                if seo.write
+                else "SEO: chưa ghi lên website, chép tay vào hộp SiteSEO",
+            ]
+        )
+    )
+
+
+def review_panel(
+    built: BuiltArticle | None,
+    mode: str,
+    when_utc: datetime | None,
+    timezone_name: str,
+    notices: list[Notice],
+    problem: str,
+) -> None:
+    """Màn hình xác nhận (thiết kế 3.5): đầy đủ với Hẹn giờ, Đăng ngay; rút gọn với Nháp (vẫn có
+    bảng mọi link, địa chỉ trần). Mọi chữ hiện thuần (ô bảng, ``st.text``, ``escape_markdown``)."""
+    full = mode != "draft"
+    with st.container(border=True):
+        st.markdown("**Xem lại trước khi gửi**" if full else "**Xem lại link, địa chỉ trong bài**")
+        if problem:
+            st.error(escape_markdown(problem))
+        if built is None:
+            review_notices(notices, compact=not full)
+            return
+        if full:
+            review_header(built, mode, when_utc, timezone_name)
+        review_notices([*notices, *built.review.problems], compact=not full)
+        review_tables(built, full=full)
 
 
 def shortcode_findings(ready: list[int]) -> list[tuple[str, str]]:
@@ -2577,8 +3258,10 @@ def send_draft(
     ready: list[int],
     previous_post: int | None,
     seen: tuple[SendState | None, bool],
+    order: PublishOrder,
 ) -> None:
-    """Gửi bài nháp kèm ảnh. **Chỉ chạy khi người dùng bấm «Gửi nháp»** (Lá Chắn T-054 4b).
+    """Gửi bài kèm ảnh: nháp, rồi hẹn giờ / đăng ngay nếu ``order.mode`` chọn (T-102). **Chỉ chạy
+    khi người dùng bấm nút gửi** (Lá Chắn T-054 4b).
 
     - Ngay trước khi tải, kiểm lại từng ảnh (``check_chosen_image``, LC-T055-2) và dùng đúng ảnh đã
       xem trước (cùng ``ref``). Ảnh không còn dùng được, đổi tên/thư mục, hay vừa thành ảnh AI
@@ -2589,6 +3272,12 @@ def send_draft(
     - ``DraftImage(web, alt, caption, tags=<thẻ đã kiểm của chính ảnh đó>, featured)`` (Lá Chắn
       T-071 điều kiện 3a): ảnh AI mang ``ImageTags(source="ai")``.
     - Một ảnh đặt ở hai chỗ, cùng alt và chú thích: dùng lại cùng một đối tượng (chỉ tải một lần).
+      Bộ dựng kiểm ảnh đại diện theo từng chỗ (tối đa một chỗ) nên chỗ có ảnh đại diện dùng đối
+      tượng riêng; kiểm xong mới gộp lại (``shared_uploads``).
+    - Dựng lại gói bằng bộ dựng T-096 trên đúng ảnh sắp tải (``build_package``; bài có link nội bộ
+      thì tải lại danh sách bài ngay trước khi dựng, LC-T094-36) và so mã băm với bài người dùng đã
+      xem / đã tick xác nhận **ngay trước lệnh ghi đầu tiên**: khác thì không gửi gì, bỏ tick
+      (LC-T094-38). Còn dòng Chặn thì cũng không gửi. Nội dung gửi là ``content_parts`` của gói.
     - Gửi bằng ``send_and_record`` (ghi «đang gửi» vào nháp nếu trạng thái gửi trong nháp vẫn là
       ``seen``, gửi, ghi kết quả vào đối tượng giữ kết quả và vào nháp, không có chỗ dừng nào ở
       giữa), rồi ``apply_send``. Lỗi hiện đủ (``send_result``); không rõ kết quả thì khóa nút tới
@@ -2623,14 +3312,13 @@ def send_draft(
                 )
             else:
                 fresh_by_pid[pid] = fresh
-    featured = S.get("_featured")
-    featured_ref = fresh_by_pid[featured].ref if featured in fresh_by_pid else None
+    chosen = featured_pid(ready)
     built: dict[tuple, WordPressImage] = {}
     digests: dict[tuple, str] = {}  # băm byte đã đọc để tải, theo ảnh của ``built``
     uploads: dict[int, WordPressImage] = {}
     with st.spinner("Đang nén ảnh WebP (giữ vị trí GPS)…"):
         for pid, fresh in fresh_by_pid.items():
-            key = (fresh.ref, fresh.image.alt, fresh.image.caption)
+            key = (fresh.ref, fresh.image.alt, fresh.image.caption, pid == chosen)
             try:
                 data = None
                 if key not in built:
@@ -2645,15 +3333,12 @@ def send_draft(
                     web = make_web_image(
                         data, max_edge_px=settings.max_edge_px, webp_quality=settings.webp_quality
                     )
-                    is_featured = fresh.ref == featured_ref and not any(
-                        item.featured for item in built.values()
-                    )
                     built[key] = WordPressImage(
                         web,
                         alt=fresh.image.alt,
                         caption=fresh.image.caption,
                         tags=fresh.tags,
-                        featured=is_featured,
+                        featured=pid == chosen,
                     )
             except (ImageFolderError, ImageProcessError) as exc:
                 problems.append(f"Ảnh ở mục «{part_name(pid)}»: {exc}")
@@ -2665,30 +3350,107 @@ def send_draft(
     if problems:
         S._wp_result = {"ok": False, "message": "Chưa gửi gì lên website.", "problems": problems}
         return
+    # Dựng lại gói trên đúng ảnh sắp tải rồi so mã băm, trước lệnh ghi đầu tiên (LC-T094-38).
+    by_section = {section: uploads[pid] for section, pid in enumerate(S.part_ids) if pid in uploads}
+    images = [
+        ArticleImage.of(
+            section=section,
+            sha256=content_hash(upload.image.data),
+            alt=upload.alt,
+            caption=upload.caption,
+            featured=upload.featured,
+            has_gps=upload.image.has_gps,
+            tags=upload.tags,
+        )
+        for section, upload in by_section.items()
+    ]
+    with st.spinner("Đang dựng bài để gửi…"):
+        package, problem = build_package(
+            client, order.mode, order.when_utc, order.categories, images, fresh=True
+        )
+    if package is None:
+        S._wp_result = {"ok": False, "message": problem}
+        return
+    if package.review.blocked:
+        blocking = [
+            notice.message
+            for notice in package.review.problems
+            if notice.level is onpage_meta.Level.BLOCK
+        ]
+        S._wp_result = {
+            "ok": False,
+            "message": "Chưa gửi gì lên website: bài còn dòng «Chặn».",
+            "problems": blocking,
+        }
+        return
+    if not package.matches(order.expected):
+        S._wp_result = {"ok": False, "message": MSG_CONFIRM_CHANGED}
+        return
+    try:
+        parts = shared_uploads(package.content_parts(by_section))
+    except BuildError as exc:
+        S._wp_result = {"ok": False, "message": MSG_BUILD_FAILED.format(reason=str(exc))}
+        return
     # Mọi thứ cần lấy từ trang lấy **trước** khi đặt dấu «đang gửi»: từ lúc đặt dấu tới lúc kết quả
     # nằm trong ``holder`` không có lần đọc/ghi ``st.session_state`` hay lệnh ``st.*`` nào (chỗ
     # Streamlit dừng lần chạy khi người dùng bấm gì đó; SL-T056-9).
-    title, parts = sent_title(), article_parts(uploads)
     draft = S.setdefault("draft_id", new_draft_id())
     holder = {"draft": draft, "result": None, "state": None, "done": threading.Event()}
-    holder["seo"] = seo_request()  # T-041: chữ ghi SiteSEO sau khi tạo nháp (công tắc bật)
+    holder["seo"] = seo_holder(package.seo)  # T-041: ghi đúng chữ SEO trong gói đã xác nhận
+    holder["mode"] = order.mode
+    holder["when"] = order.when_utc if order.mode == "future" else None
+    holder["timezone"] = order.timezone
+    holder["release"] = (
+        {"mode": order.mode, "when_utc": holder["when"]} if order.mode != "draft" else None
+    )
+    # Dòng kế hoạch của bài (T-100, T-102): ghi trạng thái sau khi gửi (``record_plan``).
+    # Client Google Sheets như client WordPress: tạo trong lần bấm, không giữ trong session.
+    holder["plan"] = S.get("_plan_ref")
+    holder["sheet_id"] = load_settings().google_sheet_id if holder["plan"] is not None else ""
+    sheets = sheets_client() if holder["plan"] is not None else None
     store = draft_store()
-    with st.spinner("Đang gửi bài nháp và ảnh lên WordPress…", show_time=True):
+    action = "bài nháp" if order.mode == "draft" else "bài"
+    with st.spinner(f"Đang gửi {action} và ảnh lên WordPress…", show_time=True):
         S._wp_sending = holder  # chỗ dừng cuối cùng trước khi gửi: dừng ở đây thì chưa gửi gì
         try:
-            send_and_record(client, store, holder, title, parts, previous_post, seen)
+            send_and_record(
+                client, store, holder, package, parts, previous_post, seen, sheets=sheets
+            )
         finally:
             holder["done"].set()  # cả khi lần chạy bị dừng ngay trong lúc gửi (``finish_send``)
     apply_send(holder, interrupted=False)
+
+
+def shared_uploads(parts: list[str | WordPressImage]) -> list[str | WordPressImage]:
+    """Ảnh đại diện đặt thêm ở chỗ khác chỉ tải một lần (Soi Lỗi T-054 G10): ``content_parts`` đã
+    kiểm từng chỗ với cờ ảnh đại diện của riêng chỗ đó; chỗ khác mang **cùng** ảnh (cùng băm byte,
+    alt, chú thích, thẻ, GPS; chỉ khác cờ) thì dùng lại đúng đối tượng ảnh đại diện, như trước
+    T-102. Không đổi chữ, HTML hay ảnh nào."""
+    featured = next((p for p in parts if isinstance(p, WordPressImage) and p.featured), None)
+    if featured is None:
+        return parts
+
+    def same(part: WordPressImage) -> tuple:
+        image = part.image
+        return (content_hash(image.data), part.alt, part.caption, part.tags, image.has_gps)
+
+    wanted = same(featured)
+    return [
+        featured
+        if isinstance(part, WordPressImage) and not part.featured and same(part) == wanted
+        else part
+        for part in parts
+    ]
 
 
 def replaced_after_approval(library: ImageLibrary, pid: int, fresh: CheckedImage) -> None:
     """Byte sắp tải khác bản đã xem và duyệt (file bị thay bằng ảnh khác cùng tên, có thể cùng cỡ,
     cùng giờ sửa, hay đúng lúc đang gửi). Như SL-T056-2: khung ảnh chuyển sang file mới (kiểm lại,
     tính lại dòng GPS, ảnh xem trước dựng từ chính file), bỏ «Đã duyệt»."""
-    cache = S.get("_web_info", {})
+    cache, web_sha = S.get("_web_info", {}), S.get("_web_sha", {})
     for key in [key for key in cache if key[0] == fresh.ref]:
         del cache[key]
+        web_sha.pop(key, None)
     S.setdefault("_replaced", set()).add(fresh.ref)
     again, _image = recheck(library, pid, fresh)
     if isinstance(again, CheckedImage):
@@ -2701,10 +3463,12 @@ def send_and_record(
     client: WordPressClient,
     store: DraftStore,
     holder: dict,
-    title: str,
+    package: BuiltArticle,
     parts: list[str | WordPressImage],
     previous_post: int | None,
     seen: tuple[SendState | None, bool],
+    *,
+    sheets: SheetsClient | None = None,
 ) -> None:
     """Ghi «đang gửi» vào nháp, gửi, rồi ghi kết quả vào ``holder`` (đối tượng giữ kết quả, sửa
     tại chỗ) và vào nháp (T-086: SL-T056-9, -11).
@@ -2721,8 +3485,17 @@ def send_and_record(
     nhớ đúng trạng thái đã ghi (``holder["claimed"]``): chỉ lần gửi có dấu này mới được ghi kết quả
     vào nháp (``record_outcome``, SL-T089-1); và nhớ trạng thái nó đã thay (``holder["replaced"]``)
     để trả lại khi lần gửi không tạo được bài nào (LC-T089-1).
+
+    Hẹn giờ, Đăng ngay (T-102): «đang gửi» mang hình thức, giờ hẹn và **giữ tới khi biết kết quả**
+    lệnh chuyển trạng thái (LC-T094-39): tạo nháp xong vẫn ghi «đang gửi» (kèm mã bài), rồi
+    ``release_post`` (lệnh cuối cùng trên client, sau ảnh đại diện và ghi SEO) ghi kết quả.
     """
-    sending = SendState.now(pending=True, post_id=previous_post)
+    sending = SendState.now(
+        pending=True,
+        post_id=previous_post,
+        mode=holder.get("mode", "draft"),
+        scheduled_for=holder.get("when"),
+    )
     try:
         written = store.save_send_state(holder["draft"], sending, expected=seen)
     except Exception as exc:
@@ -2745,7 +3518,14 @@ def send_and_record(
     holder["replaced"] = sending if seen[1] else seen[0]
     pending, post_id = True, previous_post
     try:
-        result = client.create_draft_with_images(title, parts)
+        result = client.create_draft_with_images(
+            package.title,
+            parts,
+            categories=package.categories,
+            tags=package.tags,
+            excerpt=package.excerpt,
+            slug=package.slug,
+        )
     except DraftImagesError as exc:
         holder["result"] = {
             "ok": False,
@@ -2768,10 +3548,111 @@ def send_and_record(
             "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in result.images],
             "message": result.message,
         }
-        pending, post_id = False, result.post.id
+        # Hẹn giờ, Đăng ngay: chưa biết kết quả lệnh chuyển nên vẫn «đang gửi» (LC-T094-39).
+        pending, post_id = holder.get("release") is not None, result.post.id
     holder["state"] = (pending, post_id)
     record_outcome(store, holder)
     write_seo(client, holder)  # T-041: sau khi đã ghi «đã gửi» vào nháp
+    release_post(client, store, holder)  # T-102: lệnh cuối cùng trên client, nối tiếp
+    record_plan(store, holder, sheets)  # T-102: dòng kế hoạch (Google Sheets, không WordPress)
+
+
+def sheets_client() -> SheetsClient | None:
+    """Client Google Sheets để ghi trạng thái dòng kế hoạch sau khi gửi. Chưa khai báo, file khóa
+    lỗi: ``None`` (việc ghi giữ lại trong kho nháp, thử lại ở trang Kế hoạch)."""
+    try:
+        return SheetsClient.from_settings(load_settings())
+    except (SheetsError, ServiceAccountError):
+        return None
+
+
+def record_plan(store: DraftStore, holder: dict, sheets: SheetsClient | None) -> None:
+    """Gửi xong: ghi trạng thái vào dòng kế hoạch của bài (thiết kế T-094 mục 1.7; LC-T094-40):
+    chỉ 4 ô, qua T-100 (``record_status``: lưu việc còn nợ trước, kiểm xung đột, Sheet của nháp phải
+    là Sheet đang kết nối). Ghi Sheet lỗi **không bao giờ** làm gửi lại WordPress: việc còn nợ thử
+    lại ở trang Kế hoạch (chỉ ghi Sheet). Chạy trong ``send_and_record``: không ``st.*``."""
+    ref, result = holder.get("plan"), holder.get("result")
+    if ref is None or not result or not result.get("ok"):
+        return
+    release = result.get("release") or {}
+    status, published = plan_model.STATUS_DRAFT_SENT, None
+    if release.get("ok") and release.get("status") == "future":
+        status, published = plan_model.STATUS_SCHEDULED, holder.get("when")
+    elif release.get("ok") or release.get("went_public"):
+        status, published = plan_model.STATUS_PUBLISHED, datetime.now(UTC)
+    try:
+        write = status_write(ref, status, wp_post_id=result["post_id"], published_at=published)
+        outcome = record_status(
+            sheets, store, holder["draft"], write, sheet_id=holder.get("sheet_id")
+        )
+    except DraftError as exc:
+        result["plan"] = f"Chưa lưu được việc ghi trạng thái kế hoạch ({exc})."
+    except Exception:  # lỗi lạ: bài đã gửi, chỉ việc ghi Sheet không xong
+        result["plan"] = "Chưa ghi được trạng thái vào dòng kế hoạch (lỗi không mong đợi)."
+    else:
+        result["plan"] = outcome.message
+        if outcome.outcome in (WriteOutcome.WRITTEN, WriteOutcome.ALREADY):
+            # Dòng giờ mang trạng thái, Mã bài do chính app ghi: lần ghi sau của nháp này (gửi lại
+            # sau khi xác nhận đã kiểm trang quản trị) so với đúng giá trị đó, không báo xung đột.
+            holder["plan_ref"] = ref.model_copy(
+                update={"status": status, "wp_post_id": result["post_id"]}
+            )
+
+
+def release_post(client: WordPressClient, store: DraftStore, holder: dict) -> None:
+    """Hẹn giờ / đăng ngay bài nháp **vừa tạo trong chính lần bấm này**, bằng **chính** client đó:
+    lệnh cuối cùng trên client, chạy nối tiếp sau ảnh đại diện và ghi SEO (Lá Chắn T-099 đk 2,
+    L2-1). Hàm **duy nhất** của app gọi ``release_draft`` (LC-T094-22); không bao giờ dùng mã bài
+    ghi trong nháp hay đọc từ website, Sheet.
+
+    Không đọc/ghi ``st.session_state``, không ``st.*`` (chạy trong ``send_and_record``). Kết quả
+    ghi vào nháp ngay (``record_outcome``): đã chuyển; lệnh chuyển không rõ kết quả hay lỗi lạ
+    (coi như **có thể đã** chuyển, L2-3): khóa gửi lại, câu cố định; bị chặn hay website từ chối
+    rõ ràng: bài vẫn là nháp. Hẹn giờ mà website đăng ngay: ghi đúng là đã đăng. Không bao giờ tự
+    gửi lại, không gửi lệnh nào khác vào bài."""
+    release, result = holder.get("release"), holder.get("result")
+    if not release or not result or not result.get("ok"):
+        return
+    post_id = result["post_id"]
+    released = unknown = False
+    try:
+        done = client.release_draft(post_id, mode=release["mode"], when_utc=release["when_utc"])
+    except ReleaseError as exc:
+        released, unknown = exc.went_public, exc.unsure and not exc.went_public
+        result["release"] = {
+            "ok": False,
+            "message": str(exc),
+            "unsure": exc.unsure,
+            "went_public": exc.went_public,
+            "edit_link": exc.edit_link,
+        }
+    except Exception:  # lỗi lạ quanh lệnh chuyển: có thể đã chuyển (L2-3), không hiện lời lỗi gốc
+        unknown = True
+        result["release"] = {
+            "ok": False,
+            "message": MSG_RELEASE_UNEXPECTED.format(post_id=post_id),
+            "unsure": True,
+            "went_public": False,
+            "edit_link": result.get("edit_link", ""),
+        }
+    else:
+        released = True
+        label = ""
+        if done.status == "future" and holder.get("when") is not None:
+            label = schedule_label(holder["when"], holder["timezone"])
+        result["release"] = {
+            "ok": True,
+            "status": done.status,
+            "label": label,
+            "link": done.link,
+            "edit_link": done.edit_link,
+        }
+    if released and release["mode"] == "future" and not result["release"]["ok"]:
+        holder["mode"], holder["when"] = "publish", None  # hẹn giờ mà website đăng ngay
+    holder["released"], holder["release_unknown"] = released, unknown
+    holder["state"] = (False, post_id)
+    holder.pop("saved", None)  # ghi lần hai: chưa ghi được thì ``finish_send`` thử lại
+    record_outcome(store, holder)
 
 
 def record_outcome(store: DraftStore, holder: dict) -> None:
@@ -2803,11 +3684,23 @@ def record_outcome(store: DraftStore, holder: dict) -> None:
     try:
         if nothing_created:
             state = holder.get("replaced")
+        elif pending or post_id:
+            # T-102: hình thức, giờ hẹn, đã chuyển trạng thái / không rõ kết quả lệnh chuyển.
+            state = SendState.now(
+                pending=pending,
+                post_id=post_id,
+                mode=holder.get("mode", "draft"),
+                scheduled_for=holder.get("when"),
+                released=holder.get("released", False),
+                release_unknown=holder.get("release_unknown", False),
+            )
         else:
-            state = SendState.now(pending=pending, post_id=post_id) if pending or post_id else None
+            state = None
         written = store.save_send_state(holder["draft"], state, expected=(claimed, False))
         if not written and not nothing_created and state is not None:
             written = store.save_send_state(holder["draft"], state, expected=(None, False))
+        if written and state is not None:
+            holder["claimed"] = state  # lần ghi sau (kết quả lệnh chuyển) so với đúng dòng này
     except DraftError as exc:
         holder["note"] = str(exc)
     except ValueError:  # ValidationError là một dạng ValueError: mã bài lạ từ website
@@ -2832,7 +3725,8 @@ def apply_send(holder: dict, *, interrupted: bool) -> None:
     Lần gửi bị ngắt (``interrupted``): vẫn hiện kết quả đã có (SL-T056-9) nhưng giữ khóa «gửi dở»:
     gửi tiếp phải xác nhận đã kiểm trang quản trị (như SL-T056-1)."""
     result, state = holder.get("result"), holder.get("state")
-    unsure = interrupted or state is None or state[0]
+    # Lệnh hẹn giờ/đăng không rõ kết quả: khóa như «gửi dở» (LC-T094-25, -39).
+    unsure = interrupted or state is None or state[0] or bool(holder.get("release_unknown"))
     sent = (result is not None and result["ok"]) or (state is not None and state[1] is not None)
     if unsure:
         S._wp_maybe_draft = True
@@ -2847,6 +3741,8 @@ def apply_send(holder: dict, *, interrupted: bool) -> None:
             "note": holder.get("note", ""),
             "kept_other": holder.get("kept_other", False),
         }
+    if holder.get("plan_ref") is not None:  # T-102: dòng kế hoạch vừa ghi trạng thái
+        S._plan_ref = holder["plan_ref"]
     if not unsure:
         S.pop("_wp_maybe_draft", None)
     S.pop("_wp_sending", None)
@@ -2906,7 +3802,10 @@ def saved_send_state() -> tuple[SendState | None, str]:
 
 
 def unsure_message(saved: SendState | None, saved_error: str) -> str:
-    """Khóa «gửi dở»: lần gửi trước có thể đã tạo bài nháp mà app không chắc."""
+    """Khóa «gửi dở»: lần gửi trước có thể đã tạo bài nháp (hay đã hẹn giờ, đăng) mà app không
+    chắc."""
+    if saved is not None and saved.release_unknown and saved.post_id is not None:
+        return MSG_RELEASE_UNSURE_LOCK.format(post_id=saved.post_id)
     if S.get("_wp_maybe_draft"):
         why = "Lần gửi trước bị lỗi hoặc bị ngắt đúng lúc gửi"
     elif saved_error:
@@ -2924,12 +3823,21 @@ def unsure_message(saved: SendState | None, saved_error: str) -> str:
 
 
 def sent_message(saved: SendState | None) -> str:
-    """Khóa «đã gửi»: gửi lại là thêm một bài nháp nữa."""
+    """Khóa «đã gửi»: gửi lại là thêm một bài nháp nữa. Nói đúng hình thức đã gửi (T-102)."""
     if saved is not None and saved.post_id is not None:
-        what = (
-            f"Bài này đã gửi lên WordPress (bài nháp mã {saved.post_id}, lúc "
-            f"{format_saved(saved.updated_at)})."
-        )
+        when = format_saved(saved.updated_at)
+        if saved.released and saved.mode == "future" and saved.scheduled_for is not None:
+            label = schedule_label(saved.scheduled_for, load_settings().timezone_name)
+            what = f"Bài này đã gửi và hẹn giờ đăng {label} (bài mã {saved.post_id})."
+        elif saved.released and saved.mode == "publish":
+            what = f"Bài này đã gửi và đăng công khai (bài mã {saved.post_id}, lúc {when})."
+        elif saved.mode != "draft":
+            what = (
+                f"Bài này đã gửi lên WordPress (bài nháp mã {saved.post_id}, lúc {when}) nhưng "
+                "chưa hẹn giờ/đăng: hẹn giờ, đăng bài nháp đó trong trang quản trị WordPress."
+            )
+        else:
+            what = f"Bài này đã gửi lên WordPress (bài nháp mã {saved.post_id}, lúc {when})."
     else:
         what = "Bài này đã gửi thành công."
     return (
@@ -2994,6 +3902,9 @@ def send_result() -> None:
         )
     if result.get("seo"):  # T-041: kết quả ghi SEO, câu cố định của client
         st.info(escape_markdown(result["seo"]))
+    release_result(result.get("release"))
+    if result.get("plan"):  # T-102: ghi trạng thái dòng kế hoạch, câu cố định của T-100
+        st.info(escape_markdown(result["plan"]))
     if result.get("uploaded"):
         title = (
             "Ảnh đã lên thư viện Media"
@@ -3009,12 +3920,39 @@ def send_result() -> None:
         )
 
 
-def draft_panel() -> None:
-    """«Nháp»: gửi bài nháp kèm ảnh lên WordPress (bài luôn là nháp)."""
+def release_result(release: dict | None) -> None:
+    """Kết quả lệnh hẹn giờ/đăng (T-102). Câu lỗi là câu cố định của client (``str(err)``, không
+    lời lỗi gốc), hiện chữ thường; địa chỉ bài, trang sửa bài hiện dạng chữ, không bấm được."""
+    if not release:
+        return
+    if release["ok"]:
+        if release["status"] == "future":
+            st.success(escape_markdown(f"Đã hẹn giờ đăng bài: {release['label']}."))
+        else:
+            st.success("Đã đăng bài công khai trên website.")
+        if release["link"]:
+            st.text(f"Địa chỉ bài: {release['link']}")
+        return
+    shown = st.error if release["unsure"] or release["went_public"] else st.warning
+    shown(escape_markdown(release["message"]))
+    if release.get("edit_link"):
+        st.text(f"Sửa bài trong trang quản trị: {release['edit_link']}")
+
+
+def publish_panel(mode: str) -> None:
+    """Gửi bài lên WordPress bằng gói của bộ dựng T-096 (LC-T094-36): «Nháp» (bài luôn là nháp),
+    «Hẹn giờ», «Đăng ngay» (công tắc mặc định tắt, LC-T094-41: tắt thì không có nút gửi, câu nói
+    rõ lý do). Màn hình xác nhận (thiết kế 3.5): rút gọn với Nháp (vẫn có bảng mọi link, địa chỉ
+    trần), đầy đủ với Hẹn giờ, Đăng ngay kèm ô tick gắn mã băm (LC-T094-37, -38). Còn dòng Chặn
+    thì nút khóa."""
     if S.get("_wp_reset_guards"):  # bỏ tick trước, bỏ cờ sau (LC-T056-1 b)
-        S.pop("_wp_checked", None)
-        S.pop("_wp_again", None)
+        for key in ("_wp_checked", "_wp_again", "_wp_confirm", "_wp_confirmed"):
+            S.pop(key, None)
         S.pop("_wp_reset_guards", None)
+    if mode != "draft" and not release_enabled():
+        st.info(MSG_RELEASE_OFF)
+        send_result()
+        return
     client, problem = wordpress_client(write_seo=bool(S.get("seo_write")))
     saved, saved_error = saved_send_state()  # đọc mỗi lần vẽ: mở lại nháp, phiên mới vẫn khóa
     # Trạng thái gửi ở lần vẽ người dùng đã thấy khi bấm: lần gửi chỉ ghi «đang gửi» khi nháp vẫn
@@ -3035,12 +3973,23 @@ def draft_panel() -> None:
         )
     if empty:
         st.caption(f"{len(empty)} chỗ cần ảnh chưa có ảnh: bài gửi đi không có ảnh ở các chỗ đó.")
+    timezone = load_settings().timezone_name
+    when_utc, notices = schedule_picker(timezone) if mode == "future" else (None, [])
+    if mode != "draft" and client is not None:
+        conn, conn_error = connection_info(client)
+        if conn is None:
+            notices.append(Notice(onpage_meta.Level.BLOCK, conn_error))
+        elif not conn.can_publish_posts:
+            notices.append(Notice(onpage_meta.Level.BLOCK, MSG_NO_PUBLISH_RIGHT))
+        elif mode == "future" and conn.timezone_warning(timezone):
+            notices.append(Notice(onpage_meta.Level.WARN, conn.timezone_warning(timezone)))
+    categories = category_picker(client)
     if len(ready) > 1:
         if S.get("_featured") not in ready:
             S.pop("_featured", None)
         labels = {pid: f"Ảnh ở mục «{part_name(pid)}»" for pid in ready}
         st.selectbox("Ảnh đại diện", ready, format_func=labels.get, key="_featured")
-    findings = shortcode_findings(ready)
+    findings = shortcode_findings(ready) if mode == "draft" else []
     if findings:
         lines = "\n".join(
             f"- {escape_markdown(where)}: {escape_markdown(shorten(segment))}"
@@ -3051,9 +4000,25 @@ def draft_panel() -> None:
             "nên đoạn này không chạy, nhưng **WordPress sẽ chạy đoạn này nếu bạn sửa và lưu bài "
             f"trong trang quản trị; nên xóa**:\n\n{lines}"
         )
-    allowed = client is not None and not blocked and bool(S.part_ids)
+    built, build_problem = None, ""
+    if mode != "future" or when_utc is not None:
+        images, build_problem = shown_images(ready)
+        if not build_problem:
+            built, build_problem = build_package(
+                client, mode, when_utc, categories, images, fresh=False
+            )
+    review_panel(built, mode, when_utc, timezone, notices, build_problem)
+    allowed = (
+        client is not None
+        and not blocked
+        and bool(S.part_ids)
+        and built is not None
+        and not built.review.blocked
+        and not any(notice.level is onpage_meta.Level.BLOCK for notice in notices)
+    )
     post_id = saved.post_id if saved is not None else None
-    if S.get("_wp_maybe_draft") or saved_error or (saved is not None and saved.pending):
+    locked = saved is not None and (saved.pending or saved.release_unknown)
+    if S.get("_wp_maybe_draft") or saved_error or locked:
         st.error(unsure_message(saved, saved_error))
         checked = st.checkbox("Tôi đã kiểm tra trang quản trị, vẫn muốn gửi", key="_wp_checked")
         allowed = allowed and checked
@@ -3064,17 +4029,30 @@ def draft_panel() -> None:
         again = st.checkbox("Tạo thêm một bài nháp mới", key="_wp_again")
         allowed = allowed and again
     seo_toggle()  # T-041: «Ghi SEO lên website», mặc định tắt (Lá Chắn T-042)
+    # Mã băm của đúng màn hình đang hiện (LC-T094-38): ô tick nhớ mã này, lúc bấm dựng lại và so.
+    S._wp_shown = built.digest if built is not None else None
+    if mode != "draft":
+        confirmed = built is not None and confirm_box(built.digest)
+        allowed = allowed and confirmed
     if ready:
         # Nhắc ngay trước nút (Lá Chắn T-046 số 8, T-054 4b).
         st.warning(GPS_PUBLIC_WARNING)
-    clicked = st.button("📤 Gửi nháp", type="primary", disabled=not allowed, width="stretch")
+    clicked = st.button(
+        send_label(mode, when_utc, timezone),
+        key="wp-send",
+        type="primary",
+        disabled=not allowed,
+        width="stretch",
+    )
     # Lần bấm thứ hai của một cú bấm đúp tới khi lần chạy trước đã gửi xong: Streamlit vẫn báo nút
     # đã bấm dù lúc này nút được vẽ là khóa. Nên xét lại điều kiện khóa ngay lúc bấm (SL-T056-1).
     if clicked and allowed:
         # Bỏ tick các ô xác nhận trước khi gửi (không phải sau): lần chạy bị dừng giữa chừng thì
         # lần sau vẫn phải xác nhận lại mới gửi tiếp được.
+        expected = S.get("_wp_confirmed") if mode != "draft" else S.get("_wp_shown")
         S._wp_reset_guards = True
-        send_draft(client, ready, post_id, seen)
+        order = PublishOrder(mode, when_utc, categories, expected, timezone)
+        send_draft(client, ready, post_id, seen, order)
         st.rerun()
     send_result()
 
@@ -3110,30 +4088,10 @@ def step_publish() -> None:
             st.markdown(f"{'✅' if ok else '⚠️'} {text}")
     with right, st.container(border=True):
         st.markdown("#### Gửi sang WordPress")
-        mode = st.segmented_control(
-            "Hình thức",
-            ["Nháp", "Hẹn giờ", "Đăng ngay"],
-            default="Nháp",
-            required=True,
-        )
-        if mode == "Nháp":
-            draft_panel()
-        else:
-            demo_note("hẹn giờ và đăng ngay sẽ nối ở Giai đoạn 5.")
-            if mode == "Hẹn giờ":
-                a, b = st.columns(2)
-                a.date_input("Ngày", format="DD/MM/YYYY")
-                b.time_input("Giờ")
-                st.caption("WordPress tự đăng đúng giờ — không cần mở app lúc đó.")
-            st.pills("Chuyên mục", demo.CATEGORIES, selection_mode="multi", default=["Inox"])
-            allowed = True
-            if mode == "Đăng ngay":
-                st.warning("Bài sẽ hiện công khai ngay trên website.")
-                allowed = st.checkbox("Tôi đã đọc lại bài và đồng ý đăng ngay")
-            if st.button(
-                "📤 Gửi sang WordPress", type="primary", disabled=not allowed, width="stretch"
-            ):
-                demo_toast(f"gửi bài ({mode.lower()}) sang WordPress")
+        if S.get("_wp_mode") not in MODE_LABELS:
+            S._wp_mode = MODE_DRAFT
+        label = st.segmented_control("Hình thức", MODE_LABELS, key="_wp_mode", required=True)
+        publish_panel(MODE_OF.get(label, "draft"))
     st.button("← SEO", on_click=go, args=(3,))
 
 
@@ -3159,6 +4117,8 @@ if "_draft_error" in S:
     st.error(S.pop("_draft_error"))
 if "_images_notice" in S:
     st.warning(S.pop("_images_notice"))
+if "_plan_notice" in S:  # mở bài từ dòng kế hoạch (T-102): câu cố định, có Mã bài
+    st.info(escape_markdown(S.pop("_plan_notice")))
 note_tag_store(tag_store())
 
 writer: ContentWriter | None = None
