@@ -53,6 +53,7 @@ _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
 _POST_FIELDS = "id,status,title,link,featured_media"
 _POST_META_FIELDS = "id,status,meta"
 _MEDIA_FIELDS = "id,source_url,alt_text"
+_MEDIA_PARENT_FIELDS = "id,post"  # câu trả lời lệnh gắn ảnh vào bài (T-110)
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
@@ -151,7 +152,8 @@ ALLOWED_JSON_KEYS: dict[tuple[str, str], frozenset[str]] = {
     ),
     ("POST", rf"/wp/v2/posts/{_ID}"): frozenset({"featured_media", "meta"}),
     ("POST", r"/wp/v2/media"): frozenset(),  # thân là byte ảnh (``data``)
-    ("POST", rf"/wp/v2/media/{_ID}"): frozenset({"alt_text", "title", "caption"}),
+    # ``post``: gắn ảnh vào bài nháp vừa tạo (T-110), chỉ dạng ``_is_media_attach``.
+    ("POST", rf"/wp/v2/media/{_ID}"): frozenset({"alt_text", "title", "caption", "post"}),
     ("GET", re.escape(SITESEO_ABILITY_PATH)): frozenset(),
     ("POST", re.escape(SITESEO_ABILITY_RUN_PATH)): frozenset({"input"}),
 }
@@ -184,6 +186,7 @@ _ROUTE_BLOCKED = (
 _RELEASE = object()
 RELEASE_MODES = ("future", "publish")
 _RELEASE_PATH = re.compile(rf"/wp/v2/posts/{_ID}")
+_MEDIA_PATH = re.compile(rf"/wp/v2/media/{_ID}")  # lệnh gắn ảnh vào bài (``_is_media_attach``)
 _RELEASE_FIELDS = "id,status,date_gmt,link"  # câu trả lời lệnh chuyển: không nội dung bài
 _RELEASE_CHECK_FIELDS = "id,status"  # hỏi lại còn nháp ngay trước lệnh chuyển
 _DATE_GMT_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")
@@ -265,6 +268,8 @@ def _is_plain_request(
         status = payload.get("status", "draft")
         if type(status) is not str or status != "draft":
             return False
+        if "post" in payload and not _is_media_attach(method, path, payload):
+            return False
     if params is not None:
         if type(params) is not dict:
             return False
@@ -314,6 +319,18 @@ def _is_image_upload(method: str, path: str, headers: object, payload: object) -
         if type(name) is str and name.lower() == "content-type"
     ]
     return len(types) == 1 and type(types[0]) is str and types[0] in IMAGE_TYPES.values()
+
+
+def _is_media_attach(method: str, path: str, payload: dict[str, Any]) -> bool:
+    """Khóa ``post`` (gắn ảnh vào bài, T-110) chỉ ở lệnh gắn ảnh: đúng ``POST /wp/v2/media/<mã>``,
+    thân **chỉ** ``{"post": <mã bài, số nguyên dương thật>}``. Ảnh và bài thuộc client (vừa tải,
+    vừa tạo) do ``_attach_media`` kiểm; ở đây chặn mọi dạng khác trước khi gửi."""
+    return (
+        method == "POST"
+        and _MEDIA_PATH.fullmatch(path) is not None
+        and list(payload) == ["post"]
+        and _positive_id(payload["post"]) is not None
+    )
 
 
 def _is_release_request(method: str, path: str, options: dict[str, Any]) -> bool:
@@ -535,6 +552,18 @@ _FEATURED_NOT_SET = (
     "Đã tạo bài nháp kèm ảnh nhưng chưa đặt được ảnh đại diện. {reason} Có thể đặt tay trong "
     "trang quản trị WordPress."
 )
+# Gắn ảnh vào bài nháp vừa tạo (T-110, LC-T093-2): ảnh chưa gắn bài nào thì danh sách Media công
+# khai của website (không cần đăng nhập) liệt kê được. Câu cố định, không chép lời máy chủ.
+_IMAGES_NOT_ATTACHED = (
+    "Đã tạo bài nháp nhưng chưa gắn được {count} ảnh vào bài, nên ảnh đó có thể vẫn hiện trong "
+    "danh sách Media công khai của website (ai cũng xem được, kể cả vị trí GPS còn trong ảnh). "
+    "Kiểm trong trang quản trị WordPress, mục Media → Thư viện: ảnh nào chưa gắn vào bài thì gắn "
+    "vào bài nháp này, hoặc xóa nếu không dùng. Không cần gửi lại bài."
+)
+_ATTACH_NOT_OWN = (
+    "Chỉ gắn được ảnh phần mềm vừa tải vào bài nháp phần mềm vừa tạo trong lần gửi này."
+)
+_ATTACH_ODD_ANSWER = "Website trả lời lệnh gắn ảnh vào bài không đúng như mong đợi."
 
 # Câu báo hẹn giờ/đăng (T-099): cố định, không chép lời máy chủ, không chép WORDPRESS_URL. Mã bài
 # là số đã kiểm. «Chưa gửi gì», «vẫn là nháp» chỉ dùng khi chắc chắn chưa có lệnh chuyển nào chạy.
@@ -887,12 +916,15 @@ class DraftWithImages:
 
     ``featured_media``: mã ảnh đại diện đã đặt; ``None`` khi chưa đặt được (``message`` nói vì
     sao) hoặc bài không có ảnh. Bài nháp và ảnh vẫn còn trên website trong mọi trường hợp.
+    ``unattached``: mã các ảnh chưa xác nhận gắn được vào bài nháp (T-110); ảnh đó có thể còn hiện
+    trong danh sách Media công khai, ``message`` nói cách kiểm. Rỗng: mọi ảnh đã gắn vào bài.
     """
 
     post: Post
     images: tuple[UploadedImage, ...]
     featured_media: int | None = None
     message: str = ""
+    unattached: tuple[int, ...] = ()
 
 
 class DraftImagesError(WordPressError):
@@ -980,6 +1012,9 @@ class WordPressClient:
         # Bài do chính client này tạo: chỉ những bài này mới được sửa (ảnh đại diện, meta SEO),
         # để không bao giờ đụng tới bài đã có trên website (R3).
         self._created_post_ids: set[int] = set()
+        # Ảnh chính client này vừa tải (website xác nhận 201 Created): chỉ những ảnh này mới được
+        # gắn vào bài nháp (T-110), không bao giờ gắn ảnh đã có trên website.
+        self._uploaded_media_ids: set[int] = set()
         self.write_seo = write_seo is True
         # Kết quả dò Abilities của SiteSEO (None: chưa dò hoặc dò lỗi, sẽ dò lại).
         self._siteseo_ok: bool | None = None
@@ -1734,6 +1769,8 @@ class WordPressClient:
         media_id = _positive_id(media.get("id") if isinstance(media, dict) else None)
         if media_id is None:
             raise WordPressError(_BAD_DATA.format(what="ảnh vừa tải lên"))
+        if new_only:  # website xác nhận vừa tạo mục mới: ảnh của chính client (T-110)
+            self._uploaded_media_ids.add(media_id)
         return media_id, media
 
     # ------------------------------------------------------- gửi nháp kèm ảnh (T-054)
@@ -1769,7 +1806,10 @@ class WordPressClient:
            ``naming.image_file_name`` (thẻ ``ImageTags``, alt đã duyệt). Địa chỉ ảnh phải là
            ``https://`` trên đúng website (``is_site_link``).
         3. ``create_draft``: bài luôn ``draft``; không bao giờ sửa bài có sẵn.
-        4. ``set_featured_image``: chỉ bài nháp vừa tạo, hỏi lại site bài còn nháp (``_own_draft``).
+        4. Gắn từng ảnh vừa tải vào bài nháp vừa tạo (``_attach_draft_images``, T-110), để danh
+           sách Media công khai không liệt kê ảnh của bài chưa đăng. Lỗi ở bước này không làm mất
+           bài: trả kết quả kèm ``unattached`` và ``message``.
+        5. ``set_featured_image``: chỉ bài nháp vừa tạo, hỏi lại site bài còn nháp (``_own_draft``).
            Lỗi ở bước này không làm mất bài: trả kết quả kèm ``message``.
 
         Lỗi ở bước 2–3: ``DraftImagesError`` liệt kê ảnh đã lên thư viện (``uploaded``). Phần
@@ -1858,16 +1898,69 @@ class WordPressClient:
                 status=None,
             ) from exc
 
-        if featured is None:
-            return DraftWithImages(post, tuple(uploaded))
-        featured_id = sent[id(featured)].id
-        try:
-            self.set_featured_image(post.id, featured_id)
-        except WordPressError as exc:
-            return DraftWithImages(
-                post, tuple(uploaded), message=_FEATURED_NOT_SET.format(reason=str(exc))
+        # Gắn từng ảnh vào bài nháp (T-110) ngay sau lệnh tạo, trước ảnh đại diện: lệnh kiểm nháp
+        # và đặt ảnh đại diện vẫn là hai lệnh cuối như trước.
+        unattached = self._attach_draft_images(post.id, uploaded)
+        notes: list[str] = []
+        featured_media: int | None = None
+        if featured is not None:
+            featured_id = sent[id(featured)].id
+            try:
+                self.set_featured_image(post.id, featured_id)
+            except WordPressError as exc:
+                notes.append(_FEATURED_NOT_SET.format(reason=str(exc)))
+            else:
+                featured_media = featured_id
+        if unattached:
+            notes.append(_IMAGES_NOT_ATTACHED.format(count=len(unattached)))
+        return DraftWithImages(
+            post,
+            tuple(uploaded),
+            featured_media=featured_media,
+            message=" ".join(notes),
+            unattached=unattached,
+        )
+
+    def _attach_draft_images(
+        self, post_id: int, images: Sequence[UploadedImage]
+    ) -> tuple[int, ...]:
+        """Gắn từng ảnh vừa tải vào bài nháp vừa tạo (T-110, LC-T093-2); trả mã các ảnh **chưa**
+        xác nhận gắn được (rỗng: gắn đủ).
+
+        Ảnh chưa gắn bài nào thì WordPress cho người chưa đăng nhập đọc (danh sách
+        ``GET /wp-json/wp/v2/media``); ảnh của bài nháp thì không, tới khi bài được đăng. Lỗi ở
+        một ảnh (mạng, 4xx, 5xx, câu trả lời lạ, lỗi lạ) thì dừng, không thử lại, không tải lại
+        ảnh, không đụng bài: bài nháp đã có, kết quả vẫn trả về như thường (khóa gửi trùng T-086,
+        T-089 giữ nguyên) kèm câu báo ``_IMAGES_NOT_ATTACHED``.
+        """
+        for index, image in enumerate(images):
+            try:
+                self._attach_media(image.id, post_id)
+            except Exception:  # bài nháp đã có: không để lỗi gắn ảnh thành lỗi gửi nháp
+                return tuple(item.id for item in images[index:])
+        return ()
+
+    def _attach_media(self, media_id: int, post_id: int) -> None:
+        """Gắn ảnh ``media_id`` vào bài ``post_id``: ``POST /wp/v2/media/<mã>`` thân **chỉ**
+        ``{"post": <mã bài>}`` (``_is_media_attach``). Chỉ ảnh chính client vừa tải
+        (``_uploaded_media_ids``) và bài nháp chính client vừa tạo (``_created_post_ids``); câu
+        trả lời phải nói đúng ảnh đó, bài cha đúng bài đó. Sai thì ``WordPressError``."""
+        if type(media_id) is not int or media_id not in self._uploaded_media_ids:
+            raise WordPressError(_ATTACH_NOT_OWN)
+        if type(post_id) is not int or post_id not in self._created_post_ids:
+            raise WordPressError(_ATTACH_NOT_OWN)
+        data = self._json(
+            self._request(
+                "POST",
+                f"/wp/v2/media/{media_id}",
+                json={"post": post_id},
+                params={"_fields": _MEDIA_PARENT_FIELDS},
             )
-        return DraftWithImages(post, tuple(uploaded), featured_media=featured_id)
+        )
+        if not isinstance(data, dict) or _positive_id(data.get("id")) != media_id:
+            raise WordPressError(_ATTACH_ODD_ANSWER)
+        if type(data.get("post")) is not int or data["post"] != post_id:
+            raise WordPressError(_ATTACH_ODD_ANSWER)
 
     def _plan_draft_images(
         self, parts: tuple[object, ...]
@@ -1982,11 +2075,30 @@ class WordPressClient:
             featured_media=_non_negative(data.get("featured_media")),
         )
 
+    def _owns_attach(self, path: str, options: dict[str, Any]) -> bool:
+        """Lệnh có khóa ``post`` (gắn ảnh vào bài, T-110): ảnh trên đường phải là ảnh chính client
+        này vừa tải (``_uploaded_media_ids``) và mã bài là bài nháp chính client này vừa tạo
+        (``_created_post_ids``). Dạng lệnh đã do ``_is_media_attach`` kiểm. Lệnh khác: ``True``."""
+        payload = options.get("json")
+        if type(payload) is not dict or "post" not in payload:
+            return True
+        media_id = None
+        if _MEDIA_PATH.fullmatch(path):
+            media_id = _positive_id(int(path.rsplit("/", 1)[1]))
+        post_id = payload["post"]
+        return (
+            media_id in self._uploaded_media_ids
+            and type(post_id) is int
+            and post_id in self._created_post_ids
+        )
+
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         # Dấu hẹn giờ/đăng (chỉ ``release_draft`` có): gỡ khỏi tùy chọn, không tới ``requests``.
         release = kwargs.pop("release", None)
-        if not is_allowed_route(method, path) or not _is_plain_request(
-            method, path, kwargs, self._session, release=release
+        if (
+            not is_allowed_route(method, path)
+            or not _is_plain_request(method, path, kwargs, self._session, release=release)
+            or not self._owns_attach(path, kwargs)
         ):
             # Từ chối TRƯỚC KHI gửi: không có request nào đi ra (T-042, LC-T042-1). Câu cố định,
             # không chép đường, tham số hay header bị từ chối.

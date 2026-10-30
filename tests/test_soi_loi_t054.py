@@ -619,6 +619,9 @@ def test_moi_lenh_deu_qua_danh_sach_duong_khong_tham_so_la(
         query = parse_qs(urlsplit(request.url).query)
         if request.method == "GET":  # chỉ lệnh kiểm nháp của _own_draft (T-042)
             assert query == {"context": ["edit"], "_fields": ["id,status,meta"]}
+        elif path(request).startswith(MEDIA + "/") and body(request) == {"post": 42}:
+            # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp.
+            assert query == {"_fields": ["id,post"]}
         elif path(request).startswith(MEDIA):  # T-061: ``_fields`` cố định, không ``description``
             assert query == {"_fields": ["id,source_url,alt_text"]}
         else:  # T-061: ``_fields`` cố định, không ``content``, ``excerpt``

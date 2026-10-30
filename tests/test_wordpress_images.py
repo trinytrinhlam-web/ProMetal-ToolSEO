@@ -458,6 +458,8 @@ def test_thu_tu_lenh_va_moi_duong_trong_danh_sach(fake_wp, wp_client, site, web,
         ("POST", MEDIA),
         ("POST", f"{MEDIA}/102"),
         ("POST", POST),
+        ("POST", f"{MEDIA}/101"),  # T-110 (Chỉ Huy duyệt 30/10): gắn từng ảnh vào bài nháp
+        ("POST", f"{MEDIA}/102"),
         ("GET", POST_42),
         ("POST", POST_42),
     ]
@@ -485,6 +487,8 @@ def test_khong_bao_gio_publish_future_va_chi_gui_truong_can_thiet(fake_wp, wp_cl
             assert data["status"] == "draft"
         else:
             assert "status" not in data
+        if path(request).startswith(MEDIA) and data == {"post": 42}:
+            continue  # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp
         if path(request).startswith(MEDIA):
             assert set(data) <= {"alt_text", "title", "caption"}
         if path(request) == POST_42:

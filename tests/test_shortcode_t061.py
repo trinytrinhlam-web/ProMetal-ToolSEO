@@ -403,7 +403,9 @@ def test_nhap_kem_anh_alt_chu_thich_va_truong_media_khong_con_shortcode(
     assert_disarmed(content)
     assert seen_attrs(content)["alt"] == plain
     assert seen_text(content) == plain  # chữ duy nhất của bài là chú thích
-    [describe] = posts_of(fake_wp, "POST", f"{MEDIA}/101")
+    # T-110 (Chỉ Huy duyệt 30/10): lệnh thứ hai là gắn ảnh vào bài nháp, thân đúng {"post": 42}.
+    [describe, attach] = posts_of(fake_wp, "POST", f"{MEDIA}/101")
+    assert body(attach) == {"post": 42}
     update = body(describe)
     for field in ("alt_text", "title", "caption"):
         assert_disarmed(update[field])
@@ -518,16 +520,17 @@ def test_moi_lenh_ghi_co_fields_co_dinh_khong_dung_noi_dung(fake_wp, wp_client, 
     result = wp_client.create_draft_with_images("Sửa cổng", parts)
     assert result.featured_media == 101
 
-    expected = {
-        ("POST", MEDIA): MEDIA_FIELDS,
-        ("POST", f"{MEDIA}/101"): MEDIA_FIELDS,
-        ("POST", POSTS): POST_FIELDS,
-        ("GET", POST_42): {"context": ["edit"], "_fields": ["id,status,meta"]},
-        ("POST", POST_42): POST_FIELDS,  # đặt ảnh đại diện
-    }
-    assert [(r.method, path(r)) for r in fake_wp.requests] == list(expected)
+    # Danh sách thay cho dict: ảnh 101 có hai lệnh khác ``_fields`` (T-110 (Chỉ Huy duyệt 30/10)).
+    expected = [
+        ("POST", MEDIA, MEDIA_FIELDS),
+        ("POST", f"{MEDIA}/101", MEDIA_FIELDS),
+        ("POST", POSTS, POST_FIELDS),
+        ("POST", f"{MEDIA}/101", {"_fields": ["id,post"]}),  # gắn ảnh vào bài nháp
+        ("GET", POST_42, {"context": ["edit"], "_fields": ["id,status,meta"]}),
+        ("POST", POST_42, POST_FIELDS),  # đặt ảnh đại diện
+    ]
+    assert [(r.method, path(r), query(r)) for r in fake_wp.requests] == expected
     for request in fake_wp.requests:
-        assert query(request) == expected[(request.method, path(request))]
         fields = set(query(request)["_fields"][0].split(","))
         assert not fields & {"content", "excerpt", "description", "caption"}
 
