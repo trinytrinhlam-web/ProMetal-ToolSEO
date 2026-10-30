@@ -8,6 +8,7 @@
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **3 Thấp** (SL-T100-1 → -3, đều là cảnh báo giá **oan** của G2: không mất dữ liệu, không ghi sai Sheet, người dùng vẫn tick được). Đồng bộ Sheet, cache, kho nháp, SL-T097-5: **không lỗi**. R5: 9 dòng test đổi đúng điều kiện Chỉ Huy duyệt. Điều kiện: Chỉ Huy chọn sửa 3 lỗi Thấp ngay (lượt 2 ngắn) hay ghi nhận để sau; không chặn Lá Chắn |
 | **Kết luận lượt 2** (đầu nhánh `57bac59`, 2026-10-30) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T100-1 → -3, G1 đóng; LC-T100-1 → -3 sửa đúng hướng, không phá đồng bộ, kho nháp, khóa gửi trùng; R5 đúng. **8 Thấp mới** (SL-T100-4 → -11: 2 ở phần Sheet, 6 ở hàm dò giá mới, trong đó 3 hồi quy). Chi tiết: mục [«Lượt 2»](#lượt-2-2026-10-30-0916-0700--soát-lượt-sửa-của-thợ-máy-57bac59) |
 | **Kết luận lượt 3** (đầu nhánh `777d124`, 2026-10-30) | **ĐẠT CÓ ĐIỀU KIỆN**: SL-T100-4 → -11 đóng; SL-T100-10 tuyến tính; R5 đúng; không lùi. **4 Thấp mới** (SL-T100-12 → -15, hàm dò giá viết lại: 1 hồi quy, 1 biến thể gần có từ trước, 2 báo oan mới). Chi tiết: mục [«Lượt 3»](#lượt-3-2026-10-30-1036-0700--soát-lượt-sửa-của-thợ-máy-777d124) |
+| **Kết luận lượt 4** (đầu nhánh `a096b93`, 2026-10-30) | **ĐẠT**: SL-T100-12 → -15 đóng; không lùi; vẫn tuyến tính; R5 đúng. **0 lỗi mới.** Ca dò giá còn sót ghi «Giới hạn đã biết» theo chỉ đạo của Chỉ Huy. Chi tiết: mục [«Lượt 4»](#lượt-4-2026-10-30-1238-0700--soát-lượt-sửa-của-thợ-máy-a096b93) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -380,3 +381,72 @@ Cách sửa gợi ý (Thợ Máy chọn):
 - Bộ test chọn lọc 13 file trên `777d124`: **1.153 passed, 21 xfailed, 0 failed** (2 phút; 21 xfail là đúng 21 ca của 4 lỗi mới). Gồm `test_soi_loi_t100`, `test_la_chan_t100`, `test_plan_propose`, `test_plan_sync`, `test_la_chan_t103`, `test_t103_plan_prompt`, `test_soi_loi_t103`, `test_plan_ai`, `test_soi_loi_t098`, `test_plan_cache`, `test_t100_drafts_plan`, `test_storage_send_state`, `test_google_sheets`. Lượt 3 chỉ đổi `propose.py`, `sync.py` (không đổi kho nháp, cache, client Google, giao diện).
 - Script dò (thư mục ghi chú chung, `T-100-soi-loi-scripts/`): `probe_round3_price.py` (bảng phải bắt / không được báo, có dấu và không dấu), `probe_round3_time.py` (số đo), cùng phép so lượt 2 với lượt 3 cho các ca SL-T100-12, -13.
 - `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn: sạch; `PYTHONUTF8=1 uvx detect-secrets scan` file của tôi và 2 file code đổi ở lượt 3: 0 phát hiện (mồi «AKIA…» bắt được, đã xóa).
+
+---
+
+## Lượt 4 (2026-10-30 12:38 +07:00) · soát lượt sửa của Thợ Máy (`a096b93`)
+
+| Mục | Nội dung |
+|---|---|
+| Phiếu giao | Chỉ Huy B, 30/10 12:55: xác nhận SL-T100-12 → -15 đóng, có biến thể gần; không lùi SL-T100-1 → -11, LC-T100-1 → -3, G1, LC-T103-1; vẫn tuyến tính; R5. Lưu ý của Chỉ Huy: cảnh báo giá là lưới an toàn mềm (lời dặn AI đã cấm giá, người dùng còn duyệt); ca dò giá lặt vặt còn sót ghi «Giới hạn đã biết», không xếp lỗi, trừ hồi quy rõ hay làm hỏng chức năng khác; chỉ xếp lỗi ngoài phần dò giá |
+| Đầu nhánh soát | `a096b93` (Thợ Máy lượt 4); lượt này chỉ đổi phần dò giá của `seo_app/plan/propose.py` và test |
+| **Kết luận lượt 4** | **ĐẠT**: SL-T100-12 → -15 **đóng** (mọi ca đã báo và biến thể gần); không lùi lỗi nào đã đóng; vẫn tuyến tính; R5 đúng. **0 lỗi mới** (0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp). Ngoài phần dò giá, lượt 4 không đổi gì. Các ca dò giá còn sót, kể cả 3 nhóm lượt 3 bắt được mà lượt 4 không: ghi ở «Giới hạn đã biết» theo chỉ đạo của Chỉ Huy (không phải hồi quy của ca đã báo hay đã có test, không làm hỏng chức năng khác) |
+
+### Tóm tắt (cho chủ dự án)
+
+- **4 lỗi nhỏ của lượt trước đã sửa đúng.** Cảnh báo giá nay theo một quy tắc dễ đoán: số tiền viết có dấu chấm phân nghìn từ 10.000 trở lên là giá, trừ khi theo sau là đơn vị đo, kích thước, thời gian hay số lượng. Bắt lại «Giá nhập 800.000», «Giá trị hợp đồng 50.000.000», «Khách đặt cọc 2.000.000», «Thanh toán 1.500.000»…; không còn báo oan «Đã kiểm tra 1.000 lần đóng mở», «Bản lề làm từ đồng thau», «bản vẽ 3d».
+- Mọi cách ghi giá và mọi ca «không phải giá» của 3 lượt trước vẫn đúng. Việc dò vẫn nhanh (100 đề xuất AI cố tình lặp chữ: dưới 1 giây).
+- Còn vài cách viết hiếm mà cảnh báo đoán sai (ví dụ «2.000.000 lượt xem» bị coi là giá, «Công thợ 300.000 ngày» không được cảnh báo). Theo chỉ đạo của Chỉ Huy, tôi ghi chúng là **giới hạn đã biết**: cảnh báo giá chỉ là lưới an toàn mềm, lời dặn AI đã cấm nói giá và anh/chị vẫn duyệt từng đề xuất.
+- **Không có lỗi mới. Không có gì phải anh/chị quyết.**
+
+### R5: các dấu `xfail` được gỡ
+
+| File | Gỡ | Dòng xóa / thêm | Đúng? |
+|---|---|---|---|
+| `tests/test_soi_loi_t100.py` | 4 dấu: SL-T100-12 (7 ca), -13 (4), -14 (5), -15 (5) | 17 / 0 | Có: 17 dòng xóa đều là dòng của dấu `xfail`, thân test không đổi; 21 ca nay qua; trong file không còn dấu `xfail` nào |
+| `tests/test_plan_propose.py` (test của Thợ Máy) | Không gỡ dấu | 0 / 85 | Có: chỉ thêm 41 ca |
+
+### Từng lỗi lượt 3 (ca đã báo và biến thể gần)
+
+| Lỗi | Kiểm lại | Kết quả |
+|---|---|---|
+| SL-T100-12 | 7 ca đã báo («Giá nhập / công / tăng / để / trị / đó …») có cảnh báo; «Giá đỡ cách sàn 2.500 mm», «Giá kệ sắt 1.200 x 600 mm», «đánh giá cao bởi 12.000 khách», «Khách đánh giá tốt» vẫn không | **Đóng** |
+| SL-T100-13 | 4 ca đã báo có cảnh báo; biến thể «Ứng trước 1.500.000», «Tổng cộng 2.300.000», «Cọc 5.000», «Thanh toán 5.000 phí gửi xe» cũng có | **Đóng** |
+| SL-T100-14 | 5 ca đã báo («kiểm tra», «điều tra», «tra cứu» + số) không cảnh báo; «Khách trả 2.500.000», «khach tra 2.500.000» vẫn có | **Đóng** |
+| SL-T100-15 | 5 ca đã báo («từ đồng», «3d») không cảnh báo; biến thể không dấu «cua cuon tu dong», «chuyen tu dong sang nhom», «ban ve 3d» cũng không | **Đóng** |
+
+**Không lùi:** 180 ca của lượt 1–3 trong file test của tôi, test của Lá Chắn (T-100, T-103) và của Thợ Máy đều qua; bảng dò tay hơn 100 ca (`probe_round4_price.py`): mọi ca giá thật, «không phải giá», từ khóa có dấu / không dấu của lượt 1–3 như cũ. SL-T100-4, -11, LC-T100-1 → -3, G1 (phần Sheet, nháp): lượt 4 không đổi `sync.py`, test của các lỗi đó qua. LC-T103-1: 5 ca của Lá Chắn qua.
+
+### Số đo (vẫn tuyến tính)
+
+| Chữ (lần nhanh nhất trong 5, đo xen kẽ) | 500 ký tự | 2.000 ký tự | Tỉ lệ (chữ gấp 4) |
+|---|---|---|---|
+| «5k» lặp, từ khóa «5k 5k» (ca của SL-T100-10) | 0,60 ms | 2,42 ms | 4,1 |
+| 16 kiểu chữ độc của lượt 3 (giá, «2 đồng hồ», «đánh giá tốt», dấu cách, xuống dòng…) | 0,06–0,89 ms | 0,20–3,53 ms | 2,2–4,1 |
+| Kiểu mới của quy tắc chung: «12.000.000 » lặp, «đặt cọc 1.000 » lặp, «12.000 bộ » lặp, «gia 1.000 » (không dấu) lặp | 0,31–0,90 ms | 1,21–3,73 ms | 2,5–4,1 |
+
+`from_ai` với 100 mục AI độc (từ khóa lặp, ghi chú 2.000 ký tự): 0,7–1,0 giây cho cả bước kiểm (lượt 3: khoảng 2 giây).
+
+### Giới hạn đã biết (dò giá; ghi theo chỉ đạo, không xếp lỗi)
+
+Cảnh báo giá là lưới an toàn mềm. Các ca dưới đây đoán sai; mỗi ca kèm cách sửa một dòng nếu sau này muốn làm (không mở thêm lượt):
+
+| Ca | Đoán | So với lượt 3 | Vì sao, cách sửa nếu muốn |
+|---|---|---|---|
+| «Thay bản lề 150.000d» (đồng gõ «d», dính số, trong chữ có dấu) | Lọt | Lượt 3 bắt | Chữ có dấu thì đơn vị phải là «đ»; số có dấu phân nghìn (≥ 10.000) dính chữ cái nên quy tắc chung không xét. Sửa: cho «d» dính sau số có dấu phân nghìn |
+| «Công thợ 300.000 ngày», «Phí bảo trì 1.200.000 năm đầu» | Lọt | Lượt 3 bắt | Đơn vị thời gian ngay sau số bị coi là thời lượng («36.000 giờ»). Viết «/ngày», «một ngày» thì vẫn bắt. Sửa: sau chữ nói tiền thì không loại đơn vị thời gian |
+| «khach tra 5.000 cho cổng» (chữ có dấu, xen nhãn gõ không dấu, số dưới 10.000) | Lọt | Lượt 3 bắt | Đánh đổi Thợ Máy đã ghi: chữ có dấu thì nhãn phải có dấu; số từ 10.000 vẫn bắt |
+| «Lương thợ 8.000.000 tháng», «Thuê máy 50.000 giờ» | Lọt | Lượt 3 cũng lọt | Như dòng thời gian ở trên |
+| «Video có 2.000.000 lượt xem», «Hơn 1.500.000 khách đã tin dùng» | Báo oan | Mới ở lượt 4 | Danh từ số đông («lượt», «khách», «người»…) chỉ được loại khi số dưới 1 triệu. Sửa: luôn loại danh từ số đông, chỉ giới hạn 1 triệu cho đơn vị đếm đồ vật («bộ», «cái») |
+| «Bản lề chịu 100.000 lần đóng mở», «Kiểm tra 120.000 lần» | Báo oan | Mới (lượt 3: chỉ ca «kiểm tra») | «lần» cố ý không loại vì «300.000 lần đầu» là giá. Sửa: loại «lần» khi sau nó không phải «đầu», «sau», «tới» |
+| «Mã đơn 12.345» (số ≥ 10.000 không đơn vị) | Báo oan | Mới ở lượt 4 | Đánh đổi Thợ Máy đã ghi (mã, số lượng không đơn vị hiếm trong ghi chú) |
+| Từ trước, Thợ Máy và tôi đã ghi: «tu 3 ngan» (tủ 3 ngăn gõ không dấu) bị coi là «3 ngàn»; «500 k. Khách…» bị coi là địa chỉ; tên riêng gõ không dấu («anh Tien 1.200 bộ»); từ khóa vắt qua chỗ xuống dòng; tiếng lóng «2 củ», «15 chai» | — | — | Hiếm, theo hướng an toàn hay không dò được |
+
+Không ca nào trong bảng là ca đã báo hay đã có test (mọi test của lượt 1–4 đều qua); không ca nào làm hỏng chức năng ngoài cảnh báo giá: đề xuất vẫn hiện, chỉ khác ô tick sẵn và dòng cảnh báo.
+
+### Bằng chứng (lượt 4)
+
+- `tests/test_soi_loi_t100.py`: **192 passed** (thêm 12 ca canh lượt 4: 5 dạng giá theo quy tắc chung và nhãn mới, 7 dạng số lượng, đo lường, chữ không dấu không phải giá; 0 `xfail`).
+- 14 file chọn lọc trên `a096b93`: **1.235 passed, 0 failed** (1 phút 27 giây; máy đang chạy toàn bộ test của Chỉ Huy). Gồm `test_soi_loi_t100`, `test_la_chan_t100`, `test_plan_propose`, `test_plan_sync`, `test_la_chan_t103`, `test_t103_plan_prompt`, `test_soi_loi_t103`, `test_plan_ai`, `test_soi_loi_t098`, `test_plan_cache`, `test_t100_drafts_plan`, `test_storage_send_state`, `test_google_sheets`, `test_content_workflow`.
+- Script dò (thư mục ghi chú chung, `T-100-soi-loi-scripts/`): `probe_round4_price.py` (so lượt 4 với lượt 3 trên hơn 100 ca), `probe_round3_time.py` (số đo).
+- `uv run ruff check .` sạch; `ruff format --check` file test sạch; quét ký tự ẩn: sạch; `PYTHONUTF8=1 uvx detect-secrets scan` file của tôi và `propose.py`: 0 phát hiện (mồi «AKIA…» bắt được, đã xóa).

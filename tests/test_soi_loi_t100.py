@@ -11,8 +11,10 @@ cắt khúc làm mất phần loại trừ).
 
 Lỗi lượt 2 SL-T100-4 → -11, **đã sửa ở lượt 3** (Thợ Máy ``777d124``, đã gỡ dấu; mô tả ở cuối).
 
-Lỗi tìm ra ở lượt 3 (``xfail(strict=True)``; sửa xong thì gỡ dấu), đều Thấp, cùng hàm dò giá viết
-lại ở lượt 3 (``mentions_plan_price``):
+Lỗi lượt 3 SL-T100-12 → -15, **đã sửa ở lượt 4** (Thợ Máy ``a096b93``, đã gỡ dấu). Từ lượt 4, các
+ca dò giá lặt vặt còn sót là **giới hạn đã biết** (báo cáo Soi Lỗi, mục «Lượt 4»), không xếp lỗi.
+
+Lỗi lượt 3 (đã sửa ở lượt 4), cùng hàm dò giá viết lại ở lượt 3 (``mentions_plan_price``):
 
 - **SL-T100-12** (hồi quy so với lượt 2): danh sách từ ghép «giá …» không nói tiền loại cả từ ghép
   là giá: «Giá nhập 800.000», «Giá công lắp đặt 300.000», «Giá tăng 200.000», «Giá trị hợp đồng
@@ -1120,4 +1122,38 @@ def test_sl_t100_14_checking_words_with_tra_are_not_a_price(notes):
     ],
 )
 def test_sl_t100_15_copper_and_3d_are_not_a_price(notes):
+    assert _price_warned(notes) == (False, True)
+
+
+# ================================================================ 11. lượt 4 (Thợ Máy a096b93)
+
+
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Ứng trước 1.500.000",
+        "Tổng cộng 2.300.000",
+        "Cọc 5.000",
+        "Thanh toán 5.000 phí gửi xe",
+        "Lương thợ 8.000.000/tháng",
+    ],
+)
+def test_round4_amounts_after_any_words_warn(notes):
+    """Quy tắc chung lượt 4 (số có dấu phân nghìn từ 10.000) và nhãn mới («cọc», «thanh toán»)."""
+    assert _price_warned(notes) == (True, False)
+
+
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "chuyen tu dong sang nhom",
+        "ban ve 3d",
+        "Đã bán 12.000 bộ",
+        "Hơn 15.000 sản phẩm",
+        "Motor chạy 36.000 giờ",
+        "Website có 25.000 lượt truy cập",
+        "Cửa nặng 12.000 kg",
+    ],
+)
+def test_round4_counts_measures_and_plain_words_do_not_warn(notes):
     assert _price_warned(notes) == (False, True)
