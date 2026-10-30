@@ -15,6 +15,12 @@ giả của ``tests/fake_wordpress.py``, client và trang được thay hàm).
   ``post``). WordPress coi ảnh không có bài cha là công khai (``check_read_permission``: trạng
   thái ``inherit`` không có bài cha thì đọc được), nên ``GET /wp-json/wp/v2/media`` không cần đăng
   nhập liệt kê được mọi ảnh app đã tải (đường dẫn file còn GPS), kể cả của bài chưa đăng.
+- **LC-T093-3** (Cao): pillow-heif 1.8.1 (bản mới nhất trên PyPI) mang sẵn libheif 1.23.6. Bản
+  này dính GHSA-35mc-3887-rr37 (cao, chỉ 1.23.6: dùng vùng nhớ đã giải phóng khi giải mã song song
+  các ô của ảnh lưới, với tùy chọn mặc định), cùng nhiều lỗi làm treo CPU vá ở libheif 1.23.7
+  (26/10). App giải mã HEIC trong thư mục ảnh (cả lúc dựng ảnh xem trước khi duyệt thư mục) với
+  ``DECODE_THREADS`` mặc định 4. Cách tránh của chính khuyến cáo: tắt giải mã song song
+  (``heif_context_set_max_decoding_threads(ctx, 0)``, pillow-heif ``DECODE_THREADS = 0``).
 """
 
 from __future__ import annotations
@@ -134,3 +140,36 @@ def test_lc_t093_2_uploaded_images_attached_to_new_draft(fake_wp, wp_client):
     assert {media_id: site.parents.get(media_id) for media_id in media_ids} == {
         media_id: site.post_id for media_id in media_ids
     }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="LC-T093-3: HEIC giải mã bằng libheif 1.23.6 (GHSA-35mc-3887-rr37), giải mã song song",
+)
+def test_lc_t093_3_heic_decoding_not_exposed_to_libheif_1_23_6(monkeypatch):
+    """Mong đợi: đăng ký HEIF như app làm (``_register_heif``) thì một trong ba điều đúng: app
+    không còn nhận HEIF, libheif mang theo từ 1.23.7 trở lên, hay giải mã không song song
+    (``DECODE_THREADS == 0``, cách tránh của khuyến cáo). Thực tế: HEIF bật, libheif 1.23.6,
+    ``DECODE_THREADS`` 4. Bảng định dạng của Pillow, tùy chọn pillow-heif được trả lại sau test."""
+    import pillow_heif
+    from PIL import Image
+    from pillow_heif import options as heif_options
+
+    from seo_app.images import process
+
+    # Như lúc app mới chạy: HEIF chưa đăng ký (bảng theo tên định dạng, và đuôi file trỏ tới
+    # "HEIF"), tùy chọn pillow-heif mặc định. monkeypatch trả lại bảng gốc sau test.
+    monkeypatch.setattr(Image, "ID", [name for name in Image.ID if name != "HEIF"])
+    for registry in ("OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION"):
+        table = getattr(Image, registry)
+        kept = {k: v for k, v in table.items() if k != "HEIF" and v != "HEIF"}
+        monkeypatch.setattr(Image, registry, kept)
+    for name in ("DECODE_THREADS", "THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES"):
+        monkeypatch.setattr(heif_options, name, getattr(heif_options, name))
+    monkeypatch.setattr(heif_options, "DECODE_THREADS", 4)
+
+    process._register_heif()
+
+    libheif = tuple(int(part) for part in pillow_heif.libheif_info()["libheif"].split(".")[:3])
+    heif_on = "HEIF" in process.ALLOWED_FORMATS and Image.OPEN.get("HEIF") is not None
+    assert not heif_on or libheif >= (1, 23, 7) or heif_options.DECODE_THREADS == 0
