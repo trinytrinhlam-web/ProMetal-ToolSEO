@@ -15,14 +15,13 @@ import contextlib
 import re
 import tomllib
 import unicodedata
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from google.genai import types as gemini_types
 
-from seo_app import demo
 from seo_app.ai import AIError, AIRouter, load_ai_config
 from seo_app.ai import registry as ai_registry
 from seo_app.ai.anthropic_provider import AnthropicProvider
@@ -107,21 +106,39 @@ def keyed(rows) -> list[PlanRow]:
 # ============================================================ dữ liệu thật
 
 
+# Mẫu kế hoạch của trang Kế hoạch bản demo, chép nguyên từ ``seo_app/demo.py`` trước T-101 (T-101
+# bỏ dữ liệu demo; R5, Chỉ Huy B duyệt 30/10 19:50): từ khóa, ý định, ưu tiên, ngày (lệch so với
+# ``TODAY``). Cột trạng thái mẫu không dùng ở đây nên không chép.
+SAMPLE_PLAN = (
+    ("so sánh inox 201 và 304", "So sánh trước khi mua", "Cao", 0),
+    ("giá cổng inox 304", "Mua hàng", "Cao", 2),
+    ("cách chống gỉ cửa sắt", "Tìm hiểu", "Trung bình", 5),
+    ("lan can cầu thang sắt", "Mua hàng", "Trung bình", 10),
+    ("sơn tĩnh điện là gì", "Tìm hiểu", "Thấp", 14),
+    ("cổng sắt hộp mạ kẽm có bền không", "So sánh trước khi mua", "Trung bình", 17),
+)
+# Đoạn chữ dán mẫu của trang Kế hoạch bản demo (cùng nguồn).
+SAMPLE_PASTE = """Tháng 10–11: tập trung cổng và lan can inox, khách nhà phố ở Đà Nẵng.
+- Đẩy "lan can cầu thang sắt" lên ưu tiên cao, viết trước 15/10
+- Thêm bài: "cổng inox 304 mạ vàng có bền không", "kích thước cổng nhà phố 4m"
+- Bỏ bài "sơn tĩnh điện là gì" (đã có bài cũ trên web)"""
+
+
 def demo_plan() -> list[PlanRow]:
     return [
-        PlanRow(key=f"B-00{i}", keyword=row["Từ khóa"], intent=row["Ý định"],
-                priority=row["Ưu tiên"], planned_date=row["Ngày dự kiến"])
-        for i, row in enumerate(demo.plan_rows(TODAY), 1)
+        PlanRow(key=f"B-00{i}", keyword=keyword, intent=intent, priority=priority,
+                planned_date=TODAY + timedelta(days=offset))
+        for i, (keyword, intent, priority, offset) in enumerate(SAMPLE_PLAN, 1)
     ]  # fmt: skip
 
 
 def test_sample_plan_of_the_demo_page_goes_into_the_frames_only():
     rows = demo_plan()
-    prompt = assert_data_cannot_change_instructions(rows, demo.PLAN_PASTE_EXAMPLE)
+    prompt = assert_data_cannot_change_instructions(rows, SAMPLE_PASTE)
     current = frame_body(prompt, CUR)
     for row in rows:
         assert f"- {row.key} | {row.keyword} | {row.planned_date:%d/%m/%Y} | " in current
-    assert frame_body(prompt, NEW) == demo.PLAN_PASTE_EXAMPLE
+    assert frame_body(prompt, NEW) == SAMPLE_PASTE
 
 
 @pytest.mark.parametrize("path", sorted(PLAN_DIR.glob("*.md")), ids=lambda path: path.name)
@@ -321,7 +338,7 @@ def test_plan_changes_with_real_config_sends_no_search_tool_and_data_rules(
     client = client_class(answer)
     writer = real_config_writer(monkeypatch, make(client), plan_config(tmp_path, vendor))
     rows = demo_plan()
-    result = writer.plan_changes(rows, demo.PLAN_PASTE_EXAMPLE, today=TODAY)
+    result = writer.plan_changes(rows, SAMPLE_PASTE, today=TODAY)
     assert [p.action for p in result.items] == [Action.UPDATE]
     system, sent, tools = client.sent()
     assert len(client.calls) == 1 and not tools
@@ -347,7 +364,7 @@ def test_broken_ai_answers_with_real_config_are_one_fixed_error(
         monkeypatch, make(client_class(answer)), plan_config(tmp_path, vendor)
     )
     with pytest.raises(AIError) as raised:
-        writer.plan_changes(demo_plan(), demo.PLAN_PASTE_EXAMPLE, today=TODAY)
+        writer.plan_changes(demo_plan(), SAMPLE_PASTE, today=TODAY)
     assert "MOI_TRA_LOI" not in str(raised.value) and str(raised.value).endswith("Bấm thử lại.")
 
 

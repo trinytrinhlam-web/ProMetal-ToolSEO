@@ -80,6 +80,7 @@ Test: `test_write_button_opens_compose_without_wordpress`, `test_start_from_plan
 | Ca | Cũ | Mới |
 |---|---|---|
 | `test_plan_reading_shows_proposed_changes` | Bấm «🧠 Đọc kế hoạch và đề xuất cập nhật» thì phiên có `plan_changes` dài bằng `demo.PLAN_CHANGES` (dữ liệu mẫu) | Chưa khai báo Google; mở tab «Dán nội dung», dán chữ, bấm «🧠 Đọc kế hoạch…» thì trang không lỗi, báo «Chưa đọc được kế hoạch hiện tại…», không có đề xuất (`plan_proposals`), không chờ AI (`plan_ai`), không gọi AI (AI giả `fake_ai` không có lần gọi nào) |
+| `tests/test_soi_loi_t103.py` (21 ca dùng mẫu kế hoạch của trang demo) | Đọc `demo.plan_rows(TODAY)` và `demo.PLAN_PASTE_EXAMPLE` từ `seo_app/demo.py`: T-101 đã xóa hai tên này nên 21 ca hỏng (`AttributeError`) | Chép đúng 6 dòng mẫu (từ khóa, ý định, ưu tiên, ngày lệch) và đoạn chữ dán mẫu thành hằng `SAMPLE_PLAN`, `SAMPLE_PASTE` ngay trong file test; ý test giữ nguyên (mẫu chỉ đi vào khung dữ liệu); không khôi phục dữ liệu demo. **R5: Chỉ Huy B duyệt 30/10 19:50** (Họa Sĩ sửa khi gộp T-101 vào T-102) |
 
 ## Đối chiếu điều kiện Lá Chắn
 
