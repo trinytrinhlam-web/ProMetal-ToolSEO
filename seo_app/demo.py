@@ -37,10 +37,6 @@ ARTICLES_IN_PROGRESS = [
 
 STEPS = ["Chuẩn bị", "Dàn ý", "Viết & kiểm tra", "SEO", "Xuất bản"]
 
-# ----------------------------------------------------------------- bước 5: Xuất bản
-
-CATEGORIES = ["Inox", "Cổng inox", "Lan can", "Bảo dưỡng"]
-
 # ---------------------------------------------------------------- cài đặt
 
 TONE_SETTINGS = {

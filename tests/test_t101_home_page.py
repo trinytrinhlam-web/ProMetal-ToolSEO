@@ -16,6 +16,7 @@ from fake_plan_sheet import HEADER, FakePlanSheet
 from streamlit.testing.v1 import AppTest
 
 import seo_app.storage.drafts as drafts
+from seo_app.plan import model
 from seo_app.storage import plan_cache
 from seo_app.storage.drafts import DraftSnapshot, DraftStore, SendState
 
@@ -98,19 +99,45 @@ def at_without_demo_cards(at: AppTest) -> AppTest:
     return View()
 
 
-def test_start_from_plan_row_opens_compose_without_wordpress(project_root, google, wordpress):
+def test_start_from_plan_row_opens_compose_without_wordpress(
+    project_root, google, wordpress, monkeypatch
+):
     """«Bắt đầu» trên dòng kế hoạch: đọc lại đúng dòng trên Sheet, mở Soạn bài; 0 request
-    WordPress (LC-T094-35)."""
+    WordPress (LC-T094-35). Trang Bài viết tự nó chỉ đọc Sheet.
+
+    Sau khi gộp T-102 (R5, Chỉ Huy B duyệt 30/10 19:05): trang Soạn bài ghi «Đang viết» đúng một
+    lần qua ``record_status`` (trước đó Sheet chưa có lệnh ghi nào), bỏ ``_start_plan_key``."""
     save_cache()
     sheet = FakePlanSheet(google, [list(line) for line in VALUES])
+    writes = plan_page.status_writes(monkeypatch, sheet)
     at = open_home(project_root)
     click(at, "start-B-002")
-    assert sheet.reads == 1
+    assert sheet.reads == 3  # trang Bài viết, trang Soạn bài, ``write_status`` trước khi ghi
     assert at.session_state["keyword"] == "sơn lại cổng sắt"
-    assert at.session_state["_start_plan_key"] == "B-002"
+    assert "_start_plan_key" not in at.session_state
+    assert at.session_state["_plan_ref"].key == "B-002"
     assert wordpress.requests == []
-    assert sheet.updates == [] and sheet.appends == [] and sheet.structure == []
-    assert not [r for r in google.sheets_requests() if r.method != "GET"]
+    assert writes == [(model.STATUS_WRITING, 0, 0, 0)]
+    assert len(sheet.updates) == 1 and sheet.appends == [] and sheet.structure == []
+    assert sheet.cell(3, HEADER.index("Trạng thái")) == model.STATUS_WRITING
+
+
+def test_typed_keyword_never_takes_a_stale_plan_row(project_root, google, wordpress, monkeypatch):
+    """G1 Soi Lỗi T-101: Mã bài của một lần bấm cũ còn sót trong phiên (lần chạy mở Soạn bài bị
+    ngắt) không bao giờ gắn vào bài gõ tay: không ``DraftPlanRef``, không đọc, không ghi Sheet,
+    từ khóa đúng như đã gõ."""
+    save_cache()
+    sheet = FakePlanSheet(google, [list(line) for line in VALUES])
+    writes = plan_page.status_writes(monkeypatch, sheet)
+    at = open_home(project_root)
+    at.session_state["_start_plan_key"] = "B-002"  # sót lại từ lần bấm «Bắt đầu» trước
+    at.text_input[0].input("lan can cầu thang")
+    next(b for b in at.button if b.label == "Bắt đầu").click()
+    run(at)
+    assert at.session_state["keyword"] == "lan can cầu thang"
+    assert "_start_plan_key" not in at.session_state and "_plan_ref" not in at.session_state
+    assert sheet.reads == 0 and sheet.updates == [] and writes == []
+    assert wordpress.requests == []
 
 
 def test_pick_from_plan_in_new_article_popover(project_root, google):

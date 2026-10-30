@@ -25,10 +25,14 @@ from __future__ import annotations
 
 import sys
 import threading
+from datetime import UTC, datetime
 
 import test_app_images as ui
 import test_t086_send_state as t86
+from fake_wordpress import BASE_URL
 
+from seo_app.publish.render import ArticlePart, build_article
+from seo_app.storage.site_index import SiteIndex
 from seo_app.wordpress.client import DraftImagesError
 
 # Fixture dùng chung (mật khẩu thử, cache ảnh xem trước tạm, AI giả, thư mục ảnh, WordPress giả).
@@ -57,13 +61,16 @@ def write_page() -> dict:
 
 class OverloadedSite:
     """Client của tab 2: tải ảnh đầu tiên thì website quá tải (503). Lỗi ở bước tải ảnh nên chưa có
-    bài nháp nào (``maybe_draft`` tắt, như ``WordPressClient.create_draft_with_images``)."""
+    bài nháp nào (``maybe_draft`` tắt, như ``WordPressClient.create_draft_with_images``). Ghi lại
+    đúng lệnh nhận được (T-102: gói của bộ dựng gửi thêm chuyên mục, thẻ, đoạn trích, slug)."""
 
     def __init__(self) -> None:
         self.started = threading.Event()
         self.release = threading.Event()
+        self.calls: list[tuple] = []
 
-    def create_draft_with_images(self, title, parts):
+    def create_draft_with_images(self, title, parts, **fields):
+        self.calls.append((title, list(parts), fields))
         self.started.set()  # tab 2 đã ghi «đang gửi» của nó, đang tải ảnh
         self.release.wait(WAIT)  # tab 1 tạo xong bài 501 trước
         raise DraftImagesError(
@@ -82,6 +89,12 @@ def test_lc_t089_1_confirmed_send_elsewhere_creating_nothing_keeps_this_post(
     ui.to_publish(at)
     draft = at.session_state["draft_id"]
     tab2 = {"draft": draft, "result": None, "state": None}
+    # T-102 (R5, Chỉ Huy B duyệt 30/10 18:45): ``send_and_record`` nhận gói của bộ dựng T-096.
+    package = build_article(
+        title="Bài thử",
+        parts=[ArticlePart(heading="Mở bài", body="Đoạn thử.")],
+        index=SiteIndex(site=BASE_URL, fetched_at=datetime.now(UTC), items=()),
+    )
     client2 = OverloadedSite()
     threads: list[threading.Thread] = []
     steps: list[object] = []
@@ -99,8 +112,8 @@ def test_lc_t089_1_confirmed_send_elsewhere_creating_nothing_keeps_this_post(
                     client2,
                     ui.store(),
                     tab2,
-                    "Bài thử",
-                    ["<p>Đoạn thử.</p>"],
+                    package,
+                    list(package.sections),
                     saved.post_id if saved else None,
                     (saved, False),
                 )
@@ -120,6 +133,14 @@ def test_lc_t089_1_confirmed_send_elsewhere_creating_nothing_keeps_this_post(
         thread.join(WAIT)
     assert steps == [True, True] and not failures
     assert not any(thread.is_alive() for thread in threads)
+    # Lệnh tạo nháp của tab 2 mang đúng gói (không nuốt lặng các trường T-102 gửi thêm).
+    assert client2.calls == [
+        (
+            "Bài thử",
+            ["<p>Đoạn thử.</p>"],
+            {"categories": (), "tags": (), "excerpt": package.excerpt, "slug": ""},
+        )
+    ]
     assert tab2.get("claimed") is not None  # tab 2 đã ghi được «đang gửi» của nó (sau tab 1)
     assert tab2["state"] == (False, None)  # tab 2 chưa tạo bài nào
     assert len(site.posts()) == 1

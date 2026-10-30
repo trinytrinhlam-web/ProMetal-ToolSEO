@@ -675,6 +675,14 @@ def test_absurd_hand_edited_seo_block_keeps_page_working(project_root, seo_ai, w
         {"Dùng": True, "Cụm từ trong bài": "không có trong bài", "Trỏ tới bài": "bài #424242"}
     ]
     assert not any(box.key == "seo_use_faq" for box in at.checkbox)
+    # T-102 (R5, Chỉ Huy B duyệt 30/10 18:45): slug sửa tay sai dạng là dòng Chặn của bộ dựng T-096
+    # (slug nay được gửi): «Gửi nháp» khóa, có câu nói rõ; xóa slug ở bước SEO thì gửi được.
+    ui.to_publish(at)
+    assert ui.button(at, "📤 Gửi nháp").disabled
+    assert any("Slug chỉ được có chữ thường không dấu" in e.value for e in at.error)
+    at.session_state["step"] = 3
+    ui.run_ok(at.run())
+    ui.run_ok(at.text_input(key="seo_slug").input("").run())
     ui.to_publish(at)
     ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
     ui.send(at)

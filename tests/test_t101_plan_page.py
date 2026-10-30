@@ -545,21 +545,51 @@ def sheet_read_url(sheet_id: str) -> str:
 # ======================================================================= viết bài, website
 
 
-def test_write_button_opens_compose_without_wordpress(project_root, sheet, wordpress):
+def status_writes(monkeypatch, sheet: FakePlanSheet) -> list[tuple[str, int, int, int]]:
+    """Ghi lại mọi lần ``record_status`` (trang Soạn bài): trạng thái sẽ ghi, và số lệnh ghi ô,
+    thêm dòng, sửa cấu trúc Sheet đã có **ngay trước** lần gọi đó."""
+    from seo_app.plan import sync
+
+    calls: list[tuple[str, int, int, int]] = []
+    original = sync.record_status
+
+    def spy(client, store, draft_id, write, **kwargs):
+        calls.append((write.status, len(sheet.updates), len(sheet.appends), len(sheet.structure)))
+        return original(client, store, draft_id, write, **kwargs)
+
+    monkeypatch.setattr(sync, "record_status", spy)
+    return calls
+
+
+def test_write_button_opens_compose_without_wordpress(project_root, sheet, wordpress, monkeypatch):
     """«Viết bài»: đọc lại đúng dòng trên Sheet, mở Soạn bài với từ khóa; 0 request WordPress
-    (LC-T094-35)."""
+    (LC-T094-35). Trang Kế hoạch tự nó chỉ đọc Sheet (Chỉ Huy chọn A, 30/10).
+
+    Sau khi gộp T-102 (R5, Chỉ Huy B duyệt 30/10 19:05): trang Soạn bài mở từ dòng kế hoạch đọc
+    lại dòng, ghi «Đang viết» **đúng một lần** qua ``record_status`` (lúc đó Sheet chưa có lệnh ghi
+    nào: trang Kế hoạch không ghi), và bỏ ``_start_plan_key`` sau khi dùng."""
+    writes = status_writes(monkeypatch, sheet)
     at = open_plan(project_root)
     reads = sheet.reads
     at.selectbox(key="plan-write-pick").select("B-002")
     run(at)
     click(at, "plan-write")
-    assert sheet.reads == reads + 1  # đọc lại Sheet trước khi mở Soạn bài (LC-T094-29)
+    # Đọc lại Sheet trước khi mở Soạn bài (LC-T094-29): trang Kế hoạch, trang Soạn bài, rồi
+    # ``write_status`` đọc lại trước khi ghi.
+    assert sheet.reads == reads + 3
     assert at.session_state["keyword"] == "sơn lại cổng sắt"
-    assert at.session_state["_start_plan_key"] == "B-002"
+    assert "_start_plan_key" not in at.session_state and "_start_keyword" not in at.session_state
+    assert at.session_state["_plan_ref"].key == "B-002"
     assert wordpress.requests == []
-    # Chỉ đọc Sheet (Chỉ Huy chọn A, 30/10): không lệnh ghi ô, thêm dòng, sửa cấu trúc.
-    assert sheet.updates == [] and sheet.appends == [] and sheet.structure == []
-    assert not [r for r in sheet_google(sheet).sheets_requests() if r.method != "GET"]
+    assert writes == [(model.STATUS_WRITING, 0, 0, 0)]  # trang Kế hoạch không ghi gì trước đó
+    assert len(sheet.updates) == 1 and sheet.appends == [] and sheet.structure == []
+    assert {column for _row, column, _value in sheet.written_cells()} == {
+        HEADER.index("Trạng thái"),
+        HEADER.index("Cập nhật lúc"),
+    }
+    assert sheet.cell(3, HEADER.index("Trạng thái")) == model.STATUS_WRITING
+    run(at)  # lần chạy sau: không đọc lại, không ghi lại
+    assert len(writes) == 1 and len(sheet.updates) == 1
 
 
 def test_write_button_reopens_existing_draft(project_root, sheet):
