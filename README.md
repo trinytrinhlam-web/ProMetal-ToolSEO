@@ -26,6 +26,16 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 4. Đóng cửa sổ đen (app sẽ tắt), rồi **bấm đúp `set_password.bat`** và nhập mật khẩu hai lần. Khi gõ mật khẩu, chữ sẽ không hiện ra.
 5. Bấm đúp `run.bat` lần nữa và đăng nhập.
 
+**Công cụ `uv` phải từ bản 0.13.4 trở lên.** Bản cũ hơn còn tin một chứng chỉ bảo mật đã bị lộ (lỗi GHSA-hq85-5cpj-mr62), nên kẻ xấu có thể giả kho thư viện Python để cài mã độc vào máy. Với `uv` cũ, app không mở: cửa sổ đen báo `Required uv version …` (xem mục 13). `run.bat` chỉ cài `uv` khi máy chưa có, **không tự nâng** bản đã có. Máy đã cài `uv` từ trước thì kiểm và nâng như sau:
+
+1. Bấm phím Windows, gõ `cmd`, nhấn Enter: cửa sổ **Command Prompt** (nền đen) mở ra. Không cần mở thư mục dự án.
+2. Gõ `uv --version` rồi nhấn Enter. So từng số: `uv 0.13.4`, `0.13.5`, `0.14.0`… là đủ mới, không cần làm gì thêm; `uv 0.12.23` hay `0.13.3` là cũ.
+3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
+4. Đóng cửa sổ, bấm đúp `run.bat` như thường.
+
+- Cửa sổ báo không tìm thấy lệnh `uv` (`'uv' is not recognized…` hay câu tương tự): ở bước 2, 3 gõ `%USERPROFILE%\.local\bin\uv.exe` thay cho `uv` (đó là chỗ `run.bat` cài `uv`).
+- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`, không phải bằng `run.bat`): gõ `pip install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/.
+
 ## 3. Chạy lần đầu trên Mac
 
 1. Mở thư mục dự án, **bấm đúp `run.command`**.
@@ -35,6 +45,16 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 3. Trình duyệt mở app và báo **"Chưa đặt mật khẩu"**.
 4. Tắt app (nhấn `Control + C` trong Terminal hoặc đóng cửa sổ), rồi **bấm đúp `set_password.command`** và nhập mật khẩu.
 5. Bấm đúp `run.command` lần nữa và đăng nhập.
+
+**Công cụ `uv` phải từ bản 0.13.4 trở lên** (lý do ở cuối mục 2). Với `uv` cũ, app không mở: cửa sổ Terminal báo `Required uv version …` (xem mục 13). `run.command` chỉ cài `uv` khi máy chưa có, **không tự nâng** bản đã có. Máy đã cài `uv` từ trước thì kiểm và nâng như sau:
+
+1. Nhấn `Command + Space`, gõ `Terminal`, nhấn Enter. Không cần mở thư mục dự án.
+2. Gõ `uv --version` rồi nhấn Enter. So từng số: `uv 0.13.4`, `0.13.5`, `0.14.0`… là đủ mới; `uv 0.12.23` hay `0.13.3` là cũ.
+3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
+4. Đóng Terminal, bấm đúp `run.command` như thường.
+
+- Terminal báo không tìm thấy lệnh `uv` (`command not found: uv`): ở bước 2, 3 gõ `~/.local/bin/uv` thay cho `uv` (đó là chỗ `run.command` cài `uv`).
+- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`): gõ `pip3 install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/.
 
 ## 4. Dùng hằng ngày
 
@@ -313,7 +333,7 @@ Anh SEO/                            ← thư mục đã khai báo
 
 1. Bấm **📁 Chọn ảnh từ thư mục**. Khung chọn ảnh mở ngay dưới chỗ đó: ô **Thư mục ảnh** (thư mục đã khai báo, chỉ hiện tên), ô **Thư mục con** để mở thư mục bên trong, nút **⬆ Lên một cấp**, **🔄 Quét lại**. Mỗi trang 12 ảnh nhỏ.
    - App chỉ xem thư mục khi bạn mở nó. Ổ Google Drive chậm thì app báo đang quét ở nền: đợi vài giây rồi bấm **🔄 Xem kết quả**.
-   - App nhận ảnh JPG, PNG, WebP, AVIF, mỗi ảnh tối đa 40 MB. Lối tắt, mục ẩn, file khác bị bỏ qua (khung ghi số mục bỏ qua).
+   - App nhận ảnh JPG, PNG, WebP, mỗi ảnh tối đa 40 MB. Lối tắt, mục ẩn, file khác (kể cả ảnh AVIF `.avif`) bị bỏ qua (khung ghi số mục bỏ qua).
    - **Tạm chưa nhận ảnh HEIC của iPhone** (file `.heic`, `.heif`): thư viện đọc HEIC đang chờ bản vá lỗi bảo mật, nên ảnh HEIC không hiện trong khung. Hãy dùng ảnh JPEG: ảnh gửi qua Zalo đã là JPEG; muốn iPhone chụp thẳng JPEG thì vào **Cài đặt → Camera → Định dạng → Tương thích nhất**.
 2. Bấm **Chọn** dưới ảnh muốn dùng. Khung hiện ảnh xem trước, tên file, thư mục, và:
    - **📷 Ảnh thật** hoặc **🤖 Ảnh AI**. Ảnh AI có dòng «Vì sao là ảnh AI: …» (tên thư mục, tên file có chữ AI hay tên công cụ tạo ảnh, hoặc ảnh đã được đánh dấu).
@@ -466,6 +486,7 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 
 - Với GitHub Desktop: mở dự án, bấm **Fetch origin**, rồi bấm **Pull origin** nếu có.
 - Sau đó chạy `run.bat` / `run.command` như bình thường. Thư viện mới (nếu có) sẽ được cài tự động.
+- Riêng công cụ `uv` **không** tự nâng. Bản mới của phần mềm đòi `uv` mới hơn thì cửa sổ báo `Required uv version …`: nâng `uv` như cuối mục 2 (Windows) hoặc cuối mục 3 (Mac).
 - File `.env` của bạn không bị ghi đè.
 
 ## 13. Xử lý sự cố
@@ -473,7 +494,8 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 | Hiện tượng | Cách xử lý |
 |---|---|
 | "Không cài được uv" | Kiểm tra mạng rồi chạy lại. Nếu vẫn lỗi, cài uv thủ công theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/ |
-| "Cài thư viện bị lỗi" | Chụp màn hình cửa sổ và gửi người hỗ trợ. |
+| Cửa sổ đen / Terminal báo `error: Required uv version … does not match the running version …`, rồi "Cài thư viện bị lỗi", app không mở | Công cụ `uv` trên máy cũ hơn bản phần mềm cần (từ 0.13.4, vì lỗi bảo mật chứng chỉ). Nâng `uv` theo cuối mục 2 (Windows) hoặc cuối mục 3 (Mac), rồi bấm đúp `run.bat` / `run.command` lại. Phần cuối câu báo (gợi ý cách sửa, bằng tiếng Anh) có thể khác nhau tùy bản `uv`; chỉ cần câu bắt đầu bằng `Required uv version`. `set_password.bat` / `set_password.command` cũng báo câu này khi `uv` cũ: nâng `uv` như trên. |
+| "Cài thư viện bị lỗi" (không có dòng `Required uv version` phía trên) | Chụp màn hình cửa sổ và gửi người hỗ trợ. |
 | Trình duyệt không tự mở | Tự mở trình duyệt và vào địa chỉ in trong cửa sổ đen (thường là `http://localhost:8501`). |
 | Lỡ mở app hai lần | Lần thứ hai sẽ dùng cổng khác (8502…). Nên đóng bớt một cửa sổ. |
 | App báo "Múi giờ APP_TIMEZONE không hợp lệ" | Sửa dòng `APP_TIMEZONE` trong `.env` thành `Asia/Ho_Chi_Minh`. |
@@ -482,7 +504,7 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 
 ## Dành cho người phát triển
 
-Cần có [uv](https://docs.astral.sh/uv/).
+Cần có [uv](https://docs.astral.sh/uv/) từ bản 0.13.4 (`required-version` trong `pyproject.toml`; bản cũ hơn bị từ chối, nâng bằng `uv self update`).
 
 ```bash
 uv sync                            # cài thư viện
