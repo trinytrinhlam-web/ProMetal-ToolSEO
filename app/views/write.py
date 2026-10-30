@@ -3222,9 +3222,9 @@ def shortcode_findings(ready: list[int]) -> list[tuple[str, str]]:
     dung, alt và chú thích của ảnh sẽ gửi, đúng như chữ sẽ tới WordPress (đã gỡ ký tự ngắt, escape
     link). App không gửi đoạn trích nên không xét.
 
-    Nội dung gửi WordPress là một chuỗi (``article_parts``): «[» mở ở mục này, «]» ở mục sau (hay ở
-    alt, chú thích của ảnh) vẫn là shortcode. Nên xét thêm cả nội dung ghép theo đúng thứ tự gửi và
-    liệt kê các đoạn chưa thấy khi xét từng phần (SL-T056-3)."""
+    Nội dung gửi WordPress là một chuỗi (các khối của gói bộ dựng ghép lại): «[» mở ở mục này, «]»
+    ở mục sau (hay ở alt, chú thích của ảnh) vẫn là shortcode. Nên xét thêm cả nội dung ghép theo
+    đúng thứ tự gửi và liệt kê các đoạn chưa thấy khi xét từng phần (SL-T056-3)."""
     found: list[tuple[str, str]] = []
 
     def scan(where: str, text: str) -> None:
@@ -3940,12 +3940,12 @@ def release_result(release: dict | None) -> None:
         else:
             st.success("Đã đăng bài công khai trên website.")
         if release["link"]:
-            st.text(f"Địa chỉ bài: {release['link']}")
+            st.text(f"Địa chỉ bài: {shown_text(release['link'])}")
         return
     shown = st.error if release["unsure"] or release["went_public"] else st.warning
     shown(escape_markdown(release["message"]))
     if release.get("edit_link"):
-        st.text(f"Sửa bài trong trang quản trị: {release['edit_link']}")
+        st.text(f"Sửa bài trong trang quản trị: {shown_text(release['edit_link'])}")
 
 
 def publish_panel(mode: str) -> None:

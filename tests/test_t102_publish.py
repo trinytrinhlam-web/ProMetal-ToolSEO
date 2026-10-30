@@ -222,9 +222,11 @@ def test_review_flags_odd_hosts_and_sends_no_zero_width(project_root, site, sent
     """Thiết kế mục 7 dòng 3, 7, 11 (LC-T039-1, T-031): địa chỉ trong bài hiện ở bảng với tên máy
     dạng ASCII (``xn--…``), cờ cho tên máy ngoài ASCII và «@» trong phần tên máy; HTML gửi đi
     không còn ký tự rộng 0 mà T-031 chèn vào địa chỉ trần."""
-    kirin = "https://suachuacuas" + chr(0x0430) + "t.com/gia"
+    kirin = "https://suachuacuas" + chr(0x0430) + "t.com/gia"  # «а» Nga trong tên
+    kirin_tld = "https://suachuacuasat.c" + chr(0x043E) + "m/lien-he"  # «о» Nga ở đuôi
     body = break_autolinks(
-        f"Xem bảng giá {kirin} hay https://suachuacuasat.com@evil.example/x. Gọi www.vi-du.com nhé."
+        f"Xem bảng giá {kirin}, {kirin_tld} hay https://suachuacuasat.com@evil.example/x. "
+        "Gọi www.vi-du.com nhé."
     )
     assert chr(0x200B) in body
     snap = MARKDOWN_ARTICLE.model_copy(
@@ -238,8 +240,8 @@ def test_review_flags_odd_hosts_and_sends_no_zero_width(project_root, site, sent
         if "Địa chỉ" in t.value.columns and "Chữ neo" not in t.value.columns
     ]
     hosts = {row["Tên máy (dạng ASCII)"]: row["Dấu hiệu lạ"] for row in bare}
-    (puny,) = [host for host in hosts if host.startswith("xn--")]
-    assert "ngoài ASCII" in hosts[puny]
+    puny = [host for host in hosts if "xn--" in host]  # thiết kế mục 7 dòng 11: cả hai địa chỉ
+    assert len(puny) == 2 and all("ngoài ASCII" in hosts[host] for host in puny)
     assert "«@»" in hosts["evil.example"]
     run_ok(button(at, SEND_DRAFT).click().run())
     ((_title, parts),) = sent.calls
