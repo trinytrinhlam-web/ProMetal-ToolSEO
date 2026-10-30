@@ -801,9 +801,9 @@ def plan(tmp_path, private_key, monkeypatch) -> FakePlanSheet:
     return FakePlanSheet(google, [HEADER, plan_line(status=plan_model.STATUS_WRITING)])
 
 
-def start_from(project_root, key: str = KEY, keyword: str = "chữ cũ trong phiên"):
-    """Như nút «Viết bài» của T-101 (hợp đồng ``_start_plan_key``): đặt từ khóa và Mã bài rồi mở
-    Soạn bài."""
+def start_from(project_root, key: str = KEY, keyword: str = "sửa cổng inox"):
+    """Như nút «Viết bài» của T-101 (hợp đồng ``_start_plan_key``): đặt từ khóa của dòng vừa đọc
+    lại và Mã bài rồi mở Soạn bài."""
     at = ui.pages.open_page(project_root, "write.py")
     at.session_state["_start_keyword"] = keyword
     at.session_state["_start_plan_key"] = key
@@ -812,9 +812,9 @@ def start_from(project_root, key: str = KEY, keyword: str = "chữ cũ trong phi
 
 def test_write_from_plan_rereads_row_fills_compose_and_marks_writing(project_root, site, plan):
     """Thiết kế 1.6, hợp đồng ``_start_plan_key`` (T-101), Lá Chắn T-100 đk 5, T-103 đk 2b: chỉ tin
-    Mã bài: đọc lại đúng dòng (từ khóa của Sheet thắng chữ trong phiên), gắn ``DraftPlanRef``, điền
-    sẵn ghi chú (che số điện thoại, nhắc giá), slug, trang dịch vụ đích (danh sách bài lưu trên
-    máy), loại bài, ngày giờ hẹn; ghi «Đang viết» qua T-100. Không gọi WordPress (LC-T094-35)."""
+    Mã bài: đọc lại đúng dòng (Mã bài viết khác dạng vẫn nhận), gắn ``DraftPlanRef``, điền sẵn ghi
+    chú (che số điện thoại, nhắc giá), slug, trang dịch vụ đích (danh sách bài lưu trên máy), loại
+    bài, ngày giờ hẹn; ghi «Đang viết» qua T-100. Không gọi WordPress (LC-T094-35)."""
     day = datetime.now(ZoneInfo(TIMEZONE)).date() + timedelta(days=20)
     plan.grid = [
         HEADER,
@@ -831,7 +831,7 @@ def test_write_from_plan_rereads_row_fills_compose_and_marks_writing(project_roo
         ),
     ]
     SiteIndexStore().save(SiteIndex(site=BASE_URL, fetched_at=datetime.now(UTC), items=(TARGET,)))
-    at = start_from(project_root, key="b-1")
+    at = start_from(project_root, key="b-1", keyword="sửa cổng inox tại nhà")
     state = at.session_state
     assert state["keyword"] == "sửa cổng inox tại nhà"
     assert "_start_plan_key" not in state and "_start_keyword" not in state
@@ -897,6 +897,18 @@ def test_draft_of_another_sheet_is_not_reused(project_root, plan):
     assert at.session_state["draft_id"] != other.id
     assert plan.reads == 2  # đọc lại dòng, rồi đọc lại trước khi ghi «Đang viết»
     assert at.session_state["_plan_ref"].sheet_hash == sheet_hash(SHEET_ID)
+
+
+@pytest.mark.parametrize("keyword", ["lan can cầu thang", "sửa cổng inox cũ"])
+def test_plan_key_with_another_keyword_is_not_attached(project_root, plan, keyword):
+    """G1 Soi Lỗi T-101: Mã bài chỉ được nhận khi đi cùng đúng lần bấm «Viết bài» trên dòng đó
+    (từ khóa lần bấm trùng dòng đọc lại). Mã bài sót lại đi cùng từ khóa gõ tay, hay dòng vừa đổi
+    từ khóa: không gắn ``DraftPlanRef``, không ghi Sheet, giữ từ khóa của lần bấm, câu báo."""
+    at = start_from(project_root, keyword=keyword)
+    assert at.session_state["keyword"] == keyword
+    assert "_plan_ref" not in at.session_state
+    assert plan.updates == [] and ui.store().list_plan_writes() == []
+    assert any(escape_markdown("chưa gắn với dòng kế hoạch B-001") in i.value for i in at.info)
 
 
 def test_plan_row_unreadable_opens_keyword_only(project_root, plan):

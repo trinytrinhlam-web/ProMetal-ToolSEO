@@ -332,6 +332,10 @@ MSG_PLAN_PRICE = (
     "không nêu giá)."
 )
 MSG_PLAN_OPENED = "Đã mở bài mới từ dòng kế hoạch {key}."
+MSG_PLAN_CHANGED = (
+    "Bài mới chưa gắn với dòng kế hoạch {key}: từ khóa của dòng trên Google Sheet khác từ khóa lúc "
+    "bấm. Cần gắn thì bấm lại «Viết bài» trên dòng đó ở trang Kế hoạch."
+)
 MSG_PLAN_NO_LISTING = (
     "Máy chưa có danh sách bài đã đăng nên chưa đọc được ô «Trang dịch vụ đích» (nếu dòng kế hoạch "
     "có ghi). Có ghi thì mở bước SEO một lần để tải danh sách bài, rồi mở lại bài này."
@@ -361,7 +365,7 @@ def init_state() -> None:
         S.keyword = S.pop("_start_keyword")
         plan_key = S.pop("_start_plan_key", None)  # «Viết bài» từ dòng kế hoạch (T-101 → T-102)
         if plan_key is not None:
-            start_from_plan(plan_key)
+            start_from_plan(plan_key, S.keyword)
     S.pop("_start_plan_key", None)  # sót lại không kèm từ khóa (lần bấm cũ): bỏ, không đọc
     if "_open_draft" in S:  # bấm «Mở» ở khung Bài đang soạn dở (phải chạy trước khi vẽ ô nhập)
         open_draft(S.pop("_open_draft"))
@@ -609,7 +613,7 @@ def open_draft(draft_id: str) -> None:
     st.toast("Đã mở bài đang soạn dở", icon="📂")
 
 
-def start_from_plan(key: object) -> None:
+def start_from_plan(key: object, clicked_keyword: str) -> None:
     """«Viết bài» từ một dòng kế hoạch (thiết kế T-094 mục 1.6; hợp đồng ``_start_plan_key`` trong
     báo cáo T-101): chỉ tin **Mã bài** (không tin chữ trong phiên), tự đọc lại.
 
@@ -618,6 +622,11 @@ def start_from_plan(key: object) -> None:
     2. Không thì đọc lại đúng dòng trên Sheet (``open_row``, LC-T094-29), gắn ``DraftPlanRef``
        (``plan_ref``), điền sẵn các ô (``fill_from_plan``), rồi ghi «Đang viết» vào dòng qua
        ``record_status`` (4 ô, kiểm xung đột; ghi lỗi thì giữ việc còn nợ, LC-T094-40).
+
+    Chỉ nhận Mã bài khi đi cùng đúng lần bấm «Viết bài» trên dòng đó (G1 Soi Lỗi T-101): từ
+    khóa lần bấm đặt (``clicked_keyword``, T-101 lấy từ chính dòng vừa đọc lại) phải trùng từ
+    khóa của dòng đọc lại ở đây. Khác (Mã bài sót lại đi cùng từ khóa gõ tay, hay dòng vừa đổi trên
+    Sheet): không gắn, không ghi Sheet, giữ từ khóa của lần bấm.
 
     Lỗi (chưa kết nối, Sheet lỗi, không thấy dòng): câu cố định, bài mới chỉ có từ khóa."""
     try:
@@ -645,6 +654,9 @@ def start_from_plan(key: object) -> None:
             row = open_row(client, key, index=index)
     except (SheetsError, ServiceAccountError, SheetPlanError) as exc:
         S._plan_notice = MSG_PLAN_FAILED.format(key=key, reason=str(exc))
+        return
+    if row.plan.keyword != clicked_keyword:
+        S._plan_notice = MSG_PLAN_CHANGED.format(key=key)
         return
     ref = plan_ref(row, settings.google_sheet_id)
     S._plan_ref = ref

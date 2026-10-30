@@ -243,7 +243,10 @@ with top_right, st.popover("✍️ Viết bài mới", type="primary", width="st
     )
     if st.button("Bắt đầu", type="primary", width="stretch"):
         if typed.strip():
-            # Trang Soạn bài đọc khóa này để mở bài mới với từ khóa đã gõ.
+            # Trang Soạn bài đọc khóa này để mở bài mới với từ khóa đã gõ. Bài gõ tay không gắn
+            # dòng kế hoạch nào: bỏ Mã bài, nháp của lần bấm trước còn sót (G1 Soi Lỗi T-101).
+            S.pop("_start_plan_key", None)
+            S.pop("_open_draft", None)
             S["_start_keyword"] = typed.strip()
             st.switch_page("views/write.py")
         elif picked:
