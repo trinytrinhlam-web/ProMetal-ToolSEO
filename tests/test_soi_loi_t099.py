@@ -21,7 +21,9 @@ Không gọi website thật (bộ chặn mạng của ``tests/conftest.py`` bậ
 
 from __future__ import annotations
 
+import io
 import json
+import threading
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from email.utils import format_datetime
 from urllib.parse import parse_qs, urlsplit
@@ -677,3 +679,318 @@ def test_mui_gio_website_duoc_kiem(site, client, zone, offset, expect_zone, expe
     assert (warning == "") is (expect_offset == 7.0)
     for piece in ("<b>", "AAAA", "Hồ_Chí"):
         assert piece not in warning
+
+
+# ================================================================ Lượt 2 (2026-10-30)
+# SL-T099-1 (thân byte chỉ ở lệnh tải ảnh) và LC-T099-1 (giành mã bài một bước) của Thợ Máy lượt 2.
+
+BODY_ROUTES = [
+    ("POST", "/wp/v2/posts/42"), ("POST", "/wp/v2/posts"), ("POST", "/wp/v2/media/9"),
+    ("POST", wp.SITESEO_ABILITY_RUN_PATH), ("GET", "/wp/v2/posts/42"), ("GET", "/wp/v2/posts"),
+    ("GET", "/wp/v2/users/me"), ("GET", "/"),
+]
+BODIES = {
+    "bytes": {"data": b"status=publish"},
+    "bytes-rong": {"data": b""},
+    "bytearray": {"data": bytearray(b"status=publish")},
+    "memoryview": {"data": memoryview(b"status=publish")},
+    "str": {"data": "status=publish"},
+    "form-dict": {"data": {"status": "publish"}},
+    "form-list": {"data": [("status", "publish")]},
+    "file-like": {"data": io.BytesIO(b"status=publish")},
+    "files": {"files": {"file": ("a.jpg", b"\xff\xd8\xff", "image/jpeg")}},
+    "bytes-kem-loai-anh": {"data": b"status=publish", "headers": {"Content-Type": "image/jpeg"}},
+    "bytes-kem-form": {"data": b"status=publish",
+                       "headers": {"Content-Type": "application/x-www-form-urlencoded"}},
+}
+
+
+@pytest.mark.parametrize("method, path", BODY_ROUTES)
+@pytest.mark.parametrize("options", BODIES.values(), ids=BODIES)
+def test_luot2_than_lenh_khong_phai_json_bi_chan_o_moi_duong_khac_tai_anh(
+    site, client, method, path, options
+):
+    draft(client)
+    before = len(site.requests)
+    with pytest.raises(WordPressError):
+        client._request(method, path, **options)
+    assert len(site.requests) == before
+    assert site.posts[42]["status"] == "draft"
+
+
+JPEG = b"\xff\xd8\xff\xe0 anh gia \xff\xd9"
+MEDIA_ODD = {
+    "khong-header": {"data": JPEG},
+    "chi-ten-file": {"data": JPEG,
+                     "headers": {"Content-Disposition": 'attachment; filename="a.jpg"'}},
+    "loai-chu": {"data": JPEG, "headers": {"Content-Type": "text/plain"}},
+    "loai-form": {"data": JPEG, "headers": {"Content-Type": "application/x-www-form-urlencoded"}},
+    "loai-multipart": {"data": JPEG,
+                       "headers": {"Content-Type": "multipart/form-data; boundary=x"}},
+    "loai-co-tham-so": {"data": JPEG, "headers": {"Content-Type": "image/jpeg; charset=utf-8"}},
+    "loai-svg": {"data": JPEG, "headers": {"Content-Type": "image/svg+xml"}},
+    "hai-loai": {"data": JPEG,
+                 "headers": {"Content-Type": "image/jpeg", "content-type": "image/png"}},
+    "kem-json": {"data": JPEG, "json": {"title": "x"}, "headers": {"Content-Type": "image/jpeg"}},
+    "kem-json-rong": {"data": JPEG, "json": {}, "headers": {"Content-Type": "image/jpeg"}},
+    "chu-thay-byte": {"data": "anh", "headers": {"Content-Type": "image/jpeg"}},
+    "bytearray": {"data": bytearray(JPEG), "headers": {"Content-Type": "image/jpeg"}},
+}
+
+
+@pytest.mark.parametrize("options", MEDIA_ODD.values(), ids=MEDIA_ODD)
+def test_luot2_lenh_tai_anh_sai_khuon_bi_chan(site, client, options):
+    with pytest.raises(WordPressError):
+        client._request("POST", "/wp/v2/media", **options)
+    assert site.requests == []
+
+
+def _media_site(site: _WpSite) -> None:
+    site.inject[("POST", f"{API}/media")] = (
+        201, {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh.jpg", "alt_text": ""})
+    site.inject[("POST", f"{API}/media/9")] = (
+        200, {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh.jpg", "alt_text": "Cổng"})
+
+
+@pytest.mark.parametrize("suffix", sorted(wp.IMAGE_TYPES))
+def test_luot2_tai_anh_moi_loai_van_gui_nguyen_byte(site, client, suffix):
+    """Không chặn oan: ``upload_media`` mọi loại ảnh vẫn gửi đúng byte, đúng một ``Content-Type``
+    loại ảnh, rồi ghi đè alt (lệnh JSON)."""
+    _media_site(site)
+    media = client.upload_media(JPEG, f"Cổng sắt{suffix}", alt_text="Cổng")
+    assert media.id == 9
+    upload, describe = site.requests
+    assert urlsplit(upload.url).path == f"{API}/media" and upload.body == JPEG
+    assert upload.headers["Content-Type"] == wp.IMAGE_TYPES[suffix]
+    assert urlsplit(describe.url).path == f"{API}/media/9"
+    assert json.loads(describe.body)["alt_text"] == "Cổng"
+
+
+def test_luot2_gui_nhap_kem_anh_that_van_chay(site, client):
+    """Không chặn oan đường «Gửi nháp» của Soạn bài: ảnh WebP qua ``make_web_image`` lên được,
+    bài nháp có ảnh đại diện."""
+    from PIL import Image
+
+    from seo_app.images.process import make_web_image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (64, 48), (120, 90, 60)).save(buffer, "JPEG")
+    web = make_web_image(buffer.getvalue())
+    _media_site(site)
+    result = client.create_draft_with_images(
+        "Sửa cổng inox", ["<p>Cổng sau khi sửa.</p>", wp.DraftImage(web, alt="Cổng inox")])
+    upload = next(r for r in site.requests if urlsplit(r.url).path == f"{API}/media")
+    assert upload.body == web.data and upload.headers["Content-Type"] == "image/webp"
+    assert result.post.status == "draft" and [image.id for image in result.images] == [9]
+
+
+# ---------------------------------------------------------------- LC-T099-1: nhiều luồng
+def _hold_check(site: _WpSite, post_id: int, answer=None):
+    """Lệnh kiểm nháp của luồng đầu tiên dừng lại tới khi ``go`` được bật."""
+    inside, go = threading.Event(), threading.Event()
+
+    def handler(request):
+        inside.set()
+        assert go.wait(10)
+        if answer is not None:
+            return answer
+        return 200, {"id": post_id, "status": site.posts[post_id]["status"]}
+
+    site.inject[("GET", f"{API}/posts/{post_id}")] = handler
+    return inside, go
+
+
+def _run(results: dict, client: WordPressClient, name: str, post_id: int, mode: str, when):
+    try:
+        results[name] = client.release_draft(post_id, mode=mode, when_utc=when)
+    except ReleaseError as exc:
+        results[name] = exc
+
+
+def _releases(site: _WpSite, post_id: int) -> int:
+    return site.writes().count(("POST", f"{API}/posts/{post_id}"))
+
+
+def test_luot2_ba_luong_chung_mot_client_chi_mot_lenh_chuyen(site, client):
+    post_id = draft(client)
+    inside, go = _hold_check(site, post_id)
+    results: dict = {}
+    first = threading.Thread(target=_run, args=(results, client, "A", post_id, "future", vn(3, 8)))
+    first.start()
+    assert inside.wait(10)  # A đã giành bài, đang chờ lệnh kiểm nháp
+    others = [threading.Thread(target=_run, args=(results, client, name, post_id, mode, when))
+              for name, mode, when in (("B", "publish", None), ("C", "future", vn(4, 8)))]
+    for thread in others:
+        thread.start()
+    for thread in others:
+        thread.join(10)
+    gets = [r for r in site.requests if r.method == "GET"]
+    assert len(gets) == 1  # B, C bị từ chối ngay, không hỏi website
+    for name in "BC":
+        assert isinstance(results[name], ReleaseError) and not results[name].unsure
+        assert "Chưa gửi gì" in str(results[name])
+    go.set()
+    first.join(10)
+    assert results["A"].status == "future" and results["A"].date_gmt == "2026-11-03T01:00:00"
+    assert _releases(site, post_id) == 1
+    assert site.posts[post_id] == {"status": "future", "date_gmt": "2026-11-03T01:00:00",
+                                   "author": "app"}
+
+
+@pytest.mark.parametrize(
+    "answer, when, gives_back",
+    [((500, {"code": "x", "message": MOI}), vn(3, 8), True),
+     (requests.exceptions.ConnectionError(MOI), vn(3, 8), True),
+     (None, SERVER_NOW + timedelta(minutes=5), True),  # giờ quá gần
+     ((200, {"id": 42, "status": "publish"}), vn(3, 8), False)],  # ai đó vừa đăng
+    ids=["kiem-500", "kiem-mat-mang", "gio-qua-gan", "khong-con-nhap"],
+)
+def test_luot2_luong_dau_bi_chan_thi_luong_sau_moi_duoc_chuyen(site, client, answer, when,
+                                                              gives_back):
+    post_id = draft(client)
+    inside, go = _hold_check(site, post_id, answer)
+    results: dict = {}
+    first = threading.Thread(target=_run, args=(results, client, "A", post_id, "future", when))
+    first.start()
+    assert inside.wait(10)
+    _run(results, client, "B", post_id, "publish", None)  # trong lúc A giữ bài: từ chối
+    assert isinstance(results["B"], ReleaseError) and _releases(site, post_id) == 0
+    go.set()
+    first.join(10)
+    assert isinstance(results["A"], ReleaseError) and not results["A"].unsure
+    assert (post_id in client._created_post_ids) is gives_back
+    del site.inject[("GET", f"{API}/posts/{post_id}")]
+    before = len(site.requests)
+    _run(results, client, "C", post_id, "publish", None)
+    if gives_back:
+        assert results["C"].status == "publish" and _releases(site, post_id) == 1
+    else:
+        assert isinstance(results["C"], ReleaseError) and len(site.requests) == before
+        assert _releases(site, post_id) == 0
+
+
+def _together(barrier, results, client, name, post_id, mode, when):
+    barrier.wait(10)
+    _run(results, client, name, post_id, mode, when)
+
+
+def test_luot2_ba_luong_xuat_phat_cung_luc_lap_lai_luon_mot_lenh_chuyen():
+    for _round in range(25):
+        site = _WpSite()
+        client = new_client(site)
+        post_id = draft(client)
+        barrier = threading.Barrier(3)
+        results: dict = {}
+        threads = [
+            threading.Thread(target=_together,
+                             args=(barrier, results, client, name, post_id, mode, when))
+            for name, mode, when in
+            (("A", "future", vn(3, 8)), ("B", "publish", None), ("C", "future", vn(4, 8)))
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(10)
+        done = [name for name, value in results.items() if not isinstance(value, ReleaseError)]
+        assert len(done) == 1 and _releases(site, post_id) == 1
+        assert all("Chưa gửi gì" in str(results[name]) for name in "ABC" if name not in done)
+
+
+# ---------------------------------------------------------------- LC-T099-1: trả hay giữ mã
+GIVE_BACK = {  # bị chặn trước lệnh chuyển: mã trở lại, bài vẫn là nháp của client
+    "hinh-thuc-sai": {"mode": "Publish"},
+    "dang-ngay-kem-gio": {"mode": "publish", "when": vn(3, 8)},
+    "gio-khong-mui-gio": {"when": datetime(2026, 11, 3, 8, 0)},
+    "header-phien-doi-phuong-thuc": {"session_header": True},
+    "kiem-mat-mang": {"check": requests.exceptions.ConnectionError(MOI)},
+    "kiem-het-gio": {"check": requests.exceptions.ReadTimeout(MOI)},
+    "kiem-301": {"check": (301, b"", {"Location": "https://evil.example/"})},
+    "kiem-401": {"check": (401, {"code": "x", "message": MOI})},
+    "kiem-404": {"check": (404, {"code": "rest_post_invalid_id", "message": MOI})},
+    "kiem-500": {"check": (500, {"code": "x", "message": MOI})},
+    "kiem-503": {"check": (503, b"")},
+    "kiem-khong-json": {"check": (200, MOI.encode())},
+    "thieu-date": {"date_header": ""},
+    "date-rac": {"date_header": "khong phai ngay"},
+    "dong-ho-lech": {"skew": timedelta(minutes=3)},
+    "gio-da-qua": {"when": SERVER_NOW - timedelta(minutes=1)},
+    "gio-qua-gan": {"when": SERVER_NOW + timedelta(minutes=9)},
+    "gio-qua-xa": {"when": SERVER_NOW + timedelta(days=366)},
+    "dong-ho-may-hong": {"clock_error": True},
+}
+
+
+@pytest.mark.parametrize("case", GIVE_BACK.values(), ids=GIVE_BACK)
+def test_luot2_bi_chan_truoc_lenh_chuyen_thi_tra_ma_va_thu_lai_duoc(site, client, monkeypatch,
+                                                                    case):
+    post_id = draft(client)
+    if case.get("session_header"):
+        client._session.headers["X-HTTP-Method-Override"] = "PUT"
+    if "check" in case:
+        site.inject[("GET", f"{API}/posts/{post_id}")] = case["check"]
+    if "date_header" in case:
+        site.date_header = case["date_header"]
+    if "skew" in case:
+        monkeypatch.setattr(wp, "_utc_now", lambda: SERVER_NOW + case["skew"])
+    if case.get("clock_error"):
+        def broken():
+            raise RuntimeError("đồng hồ hỏng")
+        monkeypatch.setattr(wp, "_utc_now", broken)
+    mode = case.get("mode", "future")
+    when = case.get("when", vn(3, 8) if mode == "future" else None)
+    with pytest.raises((ReleaseError, RuntimeError)) as error:
+        client.release_draft(post_id, mode=mode, when_utc=when)
+    if isinstance(error.value, ReleaseError):
+        assert not error.value.unsure and not error.value.went_public
+        assert MOI not in str(error.value)
+    assert post_id in client._created_post_ids  # mã trở lại
+    assert _releases(site, post_id) == 0 and site.posts[post_id]["status"] == "draft"
+    # Site ổn trở lại: chính client đó chuyển được, đúng một lệnh chuyển.
+    client._session.headers.pop("X-HTTP-Method-Override", None)
+    site.inject.pop(("GET", f"{API}/posts/{post_id}"), None)
+    site.date_header = None
+    monkeypatch.setattr(wp, "_utc_now", lambda: SERVER_NOW)
+    client.release_draft(post_id, mode="future", when_utc=vn(3, 8))
+    assert _releases(site, post_id) == 1 and site.posts[post_id]["status"] == "future"
+
+
+KEEP = {  # đã biết bài không còn nháp, hoặc đã gửi lệnh chuyển: mã không bao giờ trở lại
+    "site-bao-da-dang": {"check": (200, {"id": 42, "status": "publish"})},
+    "site-bao-thung-rac": {"check": (200, {"id": 42, "status": "trash"})},
+    "kiem-tra-loi-la": {"check": (200, [{"id": 42, "status": "draft"}])},
+    "chuyen-thanh-cong": {},
+    "chuyen-mat-mang": {"release": requests.exceptions.ConnectionError(MOI)},
+    "chuyen-het-gio": {"release": requests.exceptions.ReadTimeout(MOI)},
+    "chuyen-301": {"release": (301, b"", {"Location": "https://evil.example/"})},
+    "chuyen-302-khong-location": {"release": (302, b"")},
+    "chuyen-500": {"release": (500, {"code": "x", "message": MOI})},
+    "chuyen-503": {"release": (503, b"")},
+    "chuyen-tra-loi-la": {"release": (200, [])},
+    "chuyen-thieu-truong": {"release": (200, {"id": 42})},
+    "chuyen-tu-choi-400": {"release": (400, {"code": "rest_invalid_param", "message": MOI})},
+    "chuyen-tu-choi-403": {"release": (403, {"code": "rest_cannot_publish", "message": MOI})},
+}
+
+
+@pytest.mark.parametrize("case", KEEP.values(), ids=KEEP)
+def test_luot2_khong_con_nhap_hay_da_gui_lenh_chuyen_thi_giu_ma(site, client, case):
+    post_id = draft(client)
+    if "check" in case:
+        site.inject[("GET", f"{API}/posts/{post_id}")] = case["check"]
+    if "release" in case:
+        site.inject[("POST", f"{API}/posts/{post_id}")] = case["release"]
+    try:
+        client.release_draft(post_id, mode="future", when_utc=vn(3, 8))
+    except ReleaseError as exc:
+        assert MOI not in str(exc)
+    assert post_id not in client._created_post_ids
+    sent = _releases(site, post_id)
+    assert sent == (0 if "check" in case else 1)
+    before = len(site.requests)
+    for call in (lambda: client.release_draft(post_id, mode="publish"),
+                 lambda: client.release_draft(post_id, mode="future", when_utc=vn(4, 8)),
+                 lambda: client.set_featured_image(post_id, 7),
+                 lambda: client.set_seo_meta(post_id, title="Cổng inox")):
+        with pytest.raises(WordPressError):
+            call()
+    assert len(site.requests) == before and _releases(site, post_id) == sent
