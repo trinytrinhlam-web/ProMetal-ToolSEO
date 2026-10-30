@@ -87,11 +87,6 @@ def test_lc1_duplicate_lines_old_password_is_the_active_one_before(tmp_path, tex
     assert verify_password(OLD_PASSWORD, _active_hash(_env(tmp_path, text)))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T090-1: .env có hai dòng APP_PASSWORD_HASH: set_password thay dòng đầu, app dùng "
-    "dòng cuối, nên mật khẩu mới không có hiệu lực, mật khẩu cũ vẫn đăng nhập được",
-)
 @pytest.mark.parametrize("text", DUPLICATES.values(), ids=DUPLICATES.keys())
 def test_lc1_new_password_takes_effect_with_duplicate_lines(
     tmp_path, project_root, monkeypatch, text
@@ -109,11 +104,6 @@ def test_lc1_new_password_takes_effect_with_duplicate_lines(
 BREAKS = {"FF": 0x0C, "VT": 0x0B, "RS": 0x1E, "NEL": 0x85, "LS": 0x2028, "PS": 0x2029}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T090-1: set_password tách dòng bằng str.splitlines (cắt cả ở FF, VT, NEL, U+2028…) "
-    "rồi nối lại bằng xuống dòng: giá trị của biến khác bị cắt cụt hay đổi",
-)
 @pytest.mark.parametrize("quoted", [False, True], ids=["khong-nhay", "trong-nhay"])
 @pytest.mark.parametrize("code", BREAKS.values(), ids=BREAKS.keys())
 def test_lc1_other_values_kept_when_they_hold_unicode_line_separators(
@@ -202,11 +192,6 @@ def test_lc2_shared_lock_lets_others_read_but_not_write(tmp_path):
 
 
 @pytest.mark.skipif(not IS_WINDOWS, reason="khóa vùng byte của Windows (LockFileEx)")
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T090-2: set_password mở .env kiểu 'w' (cắt về 0 byte) rồi mới ghi; ghi lỗi vì "
-    "chương trình khác giữ khóa chia sẻ thì .env thành rỗng, mất mọi biến khác",
-)
 def test_lc2_env_never_emptied_when_write_fails(tmp_path, project_root, monkeypatch, capsys):
     env = _env(tmp_path, f"{KEY}={OLD}\n{OTHER}")
     before, others = env.read_bytes(), _others(env)
