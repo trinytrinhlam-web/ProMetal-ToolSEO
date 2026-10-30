@@ -80,3 +80,42 @@ Trong 16 khuyến cáo libheif 1.23.7 vá, phần liên quan tới app (đọc �
 | GHSA-48p4-gj45-w9v6 (lưới ô giải mã lặp ảnh chồng lớn, treo CPU) | **Giảm**: chặn dạng ô 1 × 1 và thừa ô; file dựng với ô ≥ 64 vẫn có thể làm chậm |
 | GHSA-2g6j-vhr6-6wrj (nhiều ảnh mã hóa ẩn), GHSA-7qm8-hj35-269r (thuộc tính xoay, cắt lặp), GHSA-hhg3-fxg7-3gxw (nhiều `colr`, ngay lúc mở), GHSA-74mj-m37q-h3q9 (`moov`/`stsc`, ngay lúc mở) | **Còn**: treo CPU (vài chục giây tới vài phút) khi app đọc file HEIC dựng cố ý. Không chạy được mã, không lộ dữ liệu; tắt app mở lại là hết. Hết hẳn khi nâng lên libheif từ 1.23.7 |
 | Các khuyến cáo còn lại (AV1, OpenH264, bộ mã hóa, công cụ dòng lệnh, gdk-pixbuf) | Không dùng tới: app chỉ giải mã HEVC bằng libde265, không mã hóa, không dùng công cụ dòng lệnh |
+
+## Lượt 2 · SL-T107-2, SL-T107-1 (Soi Lỗi `f68a206`)
+
+Ngày nộp lượt 2: 2026-10-30 12:50 (+07:00, theo lệnh `date`). Chỉ Huy B giao sau khi Soi Lỗi kết luận ĐẠT CÓ ĐIỀU KIỆN (`docs/team/reports/T-107-soi-loi.md`).
+
+### Tóm tắt (cho chủ dự án)
+
+- Soi Lỗi tìm được một file HEIC dựng cố ý, chỉ khoảng 20 kB, khai cỡ ảnh nhỏ nhưng thực ra là một lưới rất lớn. File này làm app bận 11–14 giây và tốn thêm 250 MB bộ nhớ mỗi lần mở. Nay app so cỡ lưới với cỡ ảnh khai trong file và từ chối ngay, **trước khi giải mã** (tức thì).
+- Một loại lỗi của thư viện HEIC trước đây hiện câu chung «Không xử lý được ảnh này». Nay hiện đúng câu «Ảnh bị hỏng…».
+- Ảnh điện thoại thật vẫn đọc bình thường; vẫn giải mã một luồng.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/images/process.py` | `_check_heif_grid` thêm 2 phép kiểm, vẫn trước `load`. (1) Đầu ra của lưới (`tiling` `image_width × image_height`) phải khớp cỡ ảnh lúc mở (`image.size`, từ `ispe`), nhận cả hai chiều do xoay. Chỉ được lớn hơn **dưới một ô mỗi chiều**: đó là phần thừa của ô bị `clap` cắt. (2) Đầu ra của lưới, và tổng điểm ảnh của mọi ô phải giải mã (`số ô × cỡ ô`), không vượt `MAX_IMAGE_PIXELS` (80 triệu). `_open` bắt thêm `RuntimeError`, `MemoryError` quanh `open`/`load`, ra câu cố định `_MSG_BROKEN`. Docstring module cập nhật |
+| `tests/test_soi_loi_t107.py` (file của Soi Lỗi) | Gỡ 2 dấu `xfail(strict=True)` (SL-T107-1 ×4 ca, SL-T107-2 ×3 ca, cả 7 XPASS). Chỉ xóa dấu, thân test không đổi (R5) |
+| `tests/test_t107_heif_mot_luong.py` (file của Thợ Máy) | Ảnh giả của phép kiểm lưới nay có `size` (`_grid`); thêm ca nhận (64 MP, ảnh đã xoay mà lưới chưa, `clap` cắt phần thừa) và 8 ca từ chối mới (`test_grid_not_matching_image_size_rejected`) |
+
+### Quyết định khi sửa
+
+- **So cỡ có dung sai, không so bằng tuyệt đối.** Soi Lỗi gợi ý từ chối khi cỡ lưới khác `image.size`. Nhưng `clap` (cắt khung) có thật trong file của bộ mã hóa: chính pillow-heif coi `clap` neo góc trên trái, cắt dưới 64 điểm ảnh, là «bỏ phần thừa của bộ mã hóa». Nếu so bằng tuyệt đối thì ảnh thật có `clap` có thể bị từ chối oan. Dung sai dưới một ô mỗi chiều đủ cho phần thừa đó. Kẻ dựng file chỉ còn lợi thêm được chưa tới một hàng, một cột ô, và vẫn bị trần 80 MP ở phép (2).
+- **GN-4 (ô chữ nhật dựng cố ý được thừa ô):** giữ phép «thừa ô» nhận cả hai chiều, vì không biết chắc libheif đã xoay cỡ ô hay chưa. Đổi lại, tổng điểm ảnh phải giải mã nay bị chặn ở 80 MP (phép 2). Nên dù thừa ô, công giải mã không vượt mức của một ảnh 80 MP hợp lệ.
+- **Đánh đổi:** ảnh HEIC sát 80 MP mà phần thừa của ô đẩy tổng điểm ảnh phải giải mã quá 80 triệu sẽ bị từ chối (ví dụ 10328 × 7744, ô 512: phải giải mã 88 triệu). Không điện thoại nào chụp HEIC cỡ này: iPhone 48 MP giải mã 50,3 triệu, máy 64 MP giải mã 69,7 triệu, máy 108/200 MP đã vượt giới hạn 80 MP từ trước. Người dùng gặp câu «cấu trúc lạ… xuất lại ảnh sang JPEG».
+- **Đính chính lượt 1:** câu «giới hạn 80 triệu điểm ảnh vẫn áp cho HEIC» chỉ đúng với cỡ khai trong `ispe`, không đúng với lưới libheif thật sự dựng (Soi Lỗi chỉ ra). Phép (1), (2) ở lượt này bịt chỗ đó.
+
+### Kiểm thử lượt 2
+
+- 12 file test chọn lọc, đúng bộ Soi Lỗi đã chạy: `test_soi_loi_t107`, `test_t107_heif_mot_luong`, `test_la_chan_t093`, `test_pillow_heif_setup`, `test_images_process`, `test_soi_loi_t047`, `test_soi_loi_t049`, `test_pillow_version_t058`, `test_soi_loi_t058`, `test_soi_loi_t067`, `test_soi_loi_t080`, `test_app_images`. Kết quả: **628 qua, 6 xfail, 0 hỏng, không XPASS** (7 phút 48 giây).
+  - 7 ca SL-T107 nay qua thật.
+  - 6 xfail có từ trước: LC-T093-1, LC-T093-2 và 4 ca cũ của phiếu khác.
+  - **T-047, T-058, T-080 không lùi.**
+- Chạy lại script của Soi Lỗi (thư mục ghi chú chung `T-107-soi-loi-scripts/`):
+  - `sl107_gridrepeat.py 8 6 24 24 31 31` (file dựng 18–20 kB, mọi ô trỏ cùng một mục, Pillow báo 4032 × 3024):
+    - lưới 24 × 24 (151 MP) và 31 × 31 (252 MP): «cấu trúc lạ» sau **0,2 giây**, bộ nhớ không tăng. Trước khi sửa: 9–14 giây, thêm 108–250 MB;
+    - lưới 8 × 6 (đầu ra 4096 × 3072, lớn hơn cỡ khai dưới một ô) lọt qua phép kiểm theo dung sai `clap`; libheif tự từ chối sau 0,3 giây, ra «Ảnh bị hỏng».
+  - `sl107_correct.py`: **258 ca (156 ảnh lưới), 0 lỗi**. Gồm 7 cỡ ảnh, ô 64 → 1024, 8 chiều xoay. Không ảnh nào bị từ chối oan; GPS, cỡ sau xoay đúng; điểm ảnh một luồng giống từng byte bốn luồng.
+- `uv run ruff check .`: All checks passed. `ruff format --check` sạch với 2 file test; `process.py` chỉ còn dòng `expected = (…)` có từ trước (đã ghi ở lượt 1).
+- Không có ảnh HEIC chụp thật trên máy (như lượt 1); 258 ảnh trên là ảnh dựng bằng bộ mã hóa pillow-heif.

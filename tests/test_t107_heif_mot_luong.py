@@ -169,21 +169,37 @@ def _tiling(columns, rows, tile_w, tile_h, width, height):
     }
 
 
+def _grid(tiling, size=None):
+    """Ảnh giả chỉ có những gì ``_check_heif_grid`` đọc. Mặc định cỡ ảnh lúc mở (``ispe``) đúng
+    bằng đầu ra của lưới, như ảnh thật của bộ mã hóa."""
+    if size is None:
+        try:
+            size = (int(tiling["image_width"]), int(tiling["image_height"]))
+        except (KeyError, TypeError, ValueError):
+            size = (1, 1)
+    return SimpleNamespace(format="HEIF", info={"tiling": tiling}, size=size)
+
+
 @pytest.mark.parametrize(
-    "tiling",
+    ("tiling", "size"),
     [
-        _tiling(8, 6, 512, 512, 4032, 3024),  # iPhone 12 MP
-        _tiling(6, 8, 512, 512, 3024, 4032),  # iPhone 12 MP chụp dọc (đã xoay)
-        _tiling(16, 12, 512, 512, 8064, 6048),  # iPhone 48 MP
-        _tiling(3, 2, 512, 512, 1100, 800),
-        _tiling(1, 1, 64, 64, 64, 64),  # ô nhỏ nhất hợp lệ
-        _tiling(8, 12, 512, 256, 4032, 3024),  # ô chữ nhật, libheif chưa xoay kích thước ô
-        _tiling(12, 8, 512, 256, 4032, 3024),
+        (_tiling(8, 6, 512, 512, 4032, 3024), None),  # iPhone 12 MP
+        (_tiling(6, 8, 512, 512, 3024, 4032), None),  # iPhone 12 MP chụp dọc (đã xoay)
+        (_tiling(16, 12, 512, 512, 8064, 6048), None),  # iPhone 48 MP
+        (_tiling(19, 14, 512, 512, 9248, 6936), None),  # điện thoại 64 MP
+        (_tiling(3, 2, 512, 512, 1100, 800), None),
+        (_tiling(1, 1, 64, 64, 64, 64), None),  # ô nhỏ nhất hợp lệ
+        (_tiling(8, 12, 512, 256, 4032, 3024), None),  # ô chữ nhật, libheif chưa xoay cỡ ô
+        (_tiling(12, 8, 512, 256, 4032, 3024), None),
+        (_tiling(8, 6, 512, 512, 4032, 3024), (3024, 4032)),  # cỡ ảnh đã xoay, lưới chưa
+        (_tiling(8, 6, 512, 512, 4032, 3024), (4030, 3022)),  # clap cắt phần thừa của ô
+        (_tiling(8, 6, 512, 512, 4032, 3024), (3521, 2513)),  # cắt dưới một ô mỗi chiều
     ],
-    ids=["12mp", "12mp-doc", "48mp", "nho", "o-64", "o-chu-nhat-a", "o-chu-nhat-b"],
-)
-def test_real_phone_grids_accepted(tiling):
-    process._check_heif_grid(SimpleNamespace(format="HEIF", info={"tiling": tiling}))
+    ids=["12mp", "12mp-doc", "48mp", "64mp", "nho", "o-64", "o-chu-nhat-a", "o-chu-nhat-b",
+         "anh-xoay-luoi-chua", "clap-it", "clap-duoi-mot-o"],
+)  # fmt: skip
+def test_real_phone_grids_accepted(tiling, size):
+    process._check_heif_grid(_grid(tiling, size))
 
 
 @pytest.mark.parametrize(
@@ -205,14 +221,39 @@ def test_real_phone_grids_accepted(tiling):
 )  # fmt: skip
 def test_strange_grids_rejected_before_decode(tiling):
     with pytest.raises(process.ImageProcessError) as info:
-        process._check_heif_grid(SimpleNamespace(format="HEIF", info={"tiling": tiling}))
+        process._check_heif_grid(_grid(tiling))
+    assert str(info.value) == process._MSG_HEIF_GRID
+
+
+@pytest.mark.parametrize(
+    ("tiling", "size"),
+    [
+        # SL-T107-2: lưới lớn, mọi ô trỏ cùng một mục, cỡ ảnh khai nhỏ (qua giới hạn 80 MP).
+        (_tiling(24, 24, 512, 512, 12288, 12288), (1100, 800)),
+        (_tiling(31, 31, 512, 512, 15872, 15872), (1100, 800)),
+        (_tiling(31, 31, 1024, 1024, 31744, 31744), (1100, 800)),
+        (_tiling(31, 31, 512, 512, 15872, 15872), (4032, 3024)),
+        # Lớn hơn cỡ ảnh đúng một ô, hay nhỏ hơn cỡ ảnh.
+        (_tiling(9, 6, 512, 512, 4544, 3024), (4032, 3024)),
+        (_tiling(8, 6, 512, 512, 4032, 3024), (4100, 3024)),
+        # Một ô rất lớn cho ảnh nhỏ: phải giải mã 268 triệu điểm ảnh.
+        (_tiling(1, 1, 16384, 16384, 100, 100), (100, 100)),
+        # Sát 80 MP, phần thừa của ô đẩy tổng điểm ảnh phải giải mã lên 88 triệu.
+        (_tiling(21, 16, 512, 512, 10328, 7744), (10328, 7744)),
+    ],
+    ids=["24x24-o512", "31x31-o512", "31x31-o1024", "31x31-anh-12mp", "thua-dung-mot-o",
+         "nho-hon-anh", "mot-o-khong-lo", "sat-80mp-tong-o"],
+)  # fmt: skip
+def test_grid_not_matching_image_size_rejected(tiling, size):
+    with pytest.raises(process.ImageProcessError) as info:
+        process._check_heif_grid(_grid(tiling, size))
     assert str(info.value) == process._MSG_HEIF_GRID
 
 
 def test_grid_check_only_for_heif():
     bad = _tiling(31, 31, 1, 1, 31, 31)
-    process._check_heif_grid(SimpleNamespace(format="PNG", info={"tiling": bad}))
-    process._check_heif_grid(SimpleNamespace(format="HEIF", info={}))
+    process._check_heif_grid(SimpleNamespace(format="PNG", info={"tiling": bad}, size=(31, 31)))
+    process._check_heif_grid(SimpleNamespace(format="HEIF", info={}, size=(31, 31)))
 
 
 def test_open_rejects_strange_grid_without_decoding(grid_heic, monkeypatch):

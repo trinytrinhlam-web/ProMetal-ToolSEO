@@ -73,14 +73,6 @@ def _with_grid_output(data: bytes, width: int, height: int) -> bytes:
 # ----- SL-T107-1: RuntimeError của libheif lúc giải mã -----------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T107-1 (soi-loi): _open chỉ bắt OSError, ValueError, SyntaxError, EOFError, "
-        "struct.error quanh load(); RuntimeError của libheif (Security limit exceeded, lỗi "
-        "cấp bộ nhớ) lọt ra khỏi process thay vì thành ImageProcessError với câu cố định"
-    ),
-)
 @pytest.mark.parametrize("make", MAKERS, ids=MAKER_IDS)
 def test_sl_t107_1_libheif_runtime_error_becomes_fixed_message(grid_heic, make):
     """File thật: mô tả lưới khai đầu ra 65535 × 65535 (cỡ ảnh lúc mở vẫn 1100 × 800). libheif từ
@@ -94,15 +86,6 @@ def test_sl_t107_1_libheif_runtime_error_becomes_fixed_message(grid_heic, make):
 # ----- SL-T107-2: lưới lớn hơn cỡ ảnh qua phép kiểm, giải mã hết rồi mới báo ----------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T107-2 (soi-loi): _check_heif_grid không so cỡ đầu ra lưới (tiling image_width × "
-        "image_height) với cỡ ảnh lúc mở (ispe) hay MAX_IMAGE_PIXELS; lưới 31 × 31 ô 512 mà mọi ô "
-        "trỏ cùng một mục (file 20 kB) qua mọi phép kiểm, libheif giải mã hết 252 MP (11–14 giây, "
-        "thêm 250 MB) rồi mới báo cỡ không khớp"
-    ),
-)
 @pytest.mark.parametrize(
     ("columns", "rows", "tile"),
     [(24, 24, 512), (31, 31, 512), (31, 31, 1024)],

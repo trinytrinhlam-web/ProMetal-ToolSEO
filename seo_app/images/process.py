@@ -23,12 +23,14 @@ Mở ảnh an toàn (điều kiện Lá Chắn T-047 mục 7, T-048, T-058):
   ``"MPO"`` (gây ``KeyError``): ảnh MPO đi qua bộ mở JPEG, và chỉ dùng khung đầu (không ``seek``).
 - Giới hạn số điểm ảnh ``MAX_IMAGE_PIXELS`` (kể cả HEIC): tự so ``rộng × cao`` ngay sau khi đọc
   phần đầu file, trước khi giải mã; ``DecompressionBombWarning`` của Pillow cũng thành lỗi.
-- Bắt lỗi quanh cả ``open`` lẫn ``load``: ``OSError``, ``ValueError`` (HEIC cụt), và
-  ``DecompressionBombError`` (không phải con của ``OSError``). Câu báo tiếng Việt cố định, không
+- Bắt lỗi quanh cả ``open`` lẫn ``load``: ``OSError``, ``ValueError`` (HEIC cụt),
+  ``RuntimeError`` (libheif từ chối lúc giải mã) và ``DecompressionBombError`` (không phải con
+  của ``OSError``). Câu báo tiếng Việt cố định, không
   chép câu lỗi gốc hay đường dẫn.
 - HEIF đăng ký ở đúng một chỗ (``_register_heif``), giải mã một luồng (LC-T093-3), tắt ảnh nhỏ,
   ảnh độ sâu, ảnh phụ; không gọi ``load_libheif_plugin``, không bật ``DISABLE_SECURITY_LIMITS``,
-  không ghi file HEIC. Ảnh HEIC chia lưới ô lạ (ô quá nhỏ, thừa ô) bị từ chối trước khi giải mã.
+  không ghi file HEIC. Ảnh HEIC chia lưới ô lạ (ô quá nhỏ, thừa ô, lưới lớn hơn cỡ ảnh khai) bị
+  từ chối trước khi giải mã.
 - Không xuất ảnh sang Arrow, không đặt hay đọc ``PILLOW_ALIGNMENT`` (LC-T058-1).
 """
 
@@ -161,9 +163,18 @@ def _register_heif() -> None:
 
 
 def _check_heif_grid(image: Image.Image) -> None:
-    """Ảnh HEIC chia lưới ô: từ chối **trước khi giải mã** khi ô nhỏ hơn ``MIN_HEIF_TILE_EDGE``
-    hay số ô nhiều hơn số ô cần để phủ kín ảnh (T-107, giảm lỗi «làm treo CPU» của libheif
-    1.23.6). Thông tin lưới đọc từ phần đầu file (``info["tiling"]`` của pillow-heif)."""
+    """Ảnh HEIC chia lưới ô: từ chối **trước khi giải mã** (T-107, giảm lỗi «làm treo CPU» của
+    libheif 1.23.6) khi:
+
+    - ô nhỏ hơn ``MIN_HEIF_TILE_EDGE``, hay số ô nhiều hơn số ô cần để phủ kín đầu ra của lưới;
+    - đầu ra của lưới không khớp cỡ ảnh lúc mở (``image.size``, từ ``ispe``): chỉ được lớn hơn
+      dưới một ô mỗi chiều (phần thừa của ô bị cắt bằng ``clap``). SL-T107-2: lưới lớn mà mọi
+      ô trỏ cùng một mục, file vài chục kB khai cỡ nhỏ để qua ``MAX_IMAGE_PIXELS``, libheif giải
+      mã hết lưới rồi mới báo sai cỡ;
+    - đầu ra của lưới, hay tổng điểm ảnh của mọi ô phải giải mã, vượt ``MAX_IMAGE_PIXELS``.
+
+    Thông tin lưới đọc từ phần đầu file (``info["tiling"]`` của pillow-heif).
+    """
     tiling = image.info.get("tiling") if image.format == "HEIF" else None
     if not tiling:
         return
@@ -180,6 +191,14 @@ def _check_heif_grid(image: Image.Image) -> None:
         -(-width // tile_w) * -(-height // tile_h), -(-width // tile_h) * -(-height // tile_w)
     )
     if columns * rows > needed:
+        raise ImageProcessError(_MSG_HEIF_GRID)
+    slack = max(tile_w, tile_h)
+    if not any(
+        0 <= width - a < slack and 0 <= height - b < slack
+        for a, b in (image.size, image.size[::-1])
+    ):
+        raise ImageProcessError(_MSG_HEIF_GRID)
+    if max(width * height, columns * rows * tile_w * tile_h) > MAX_IMAGE_PIXELS:
         raise ImageProcessError(_MSG_HEIF_GRID)
 
 
@@ -274,8 +293,10 @@ def _open(
         raise _too_many_pixels() from None
     except Image.UnidentifiedImageError:
         raise ImageProcessError(_MSG_NOT_IMAGE) from None
-    except (OSError, ValueError, SyntaxError, EOFError, struct.error):
-        # OSError: JPEG cụt, PNG hỏng; ValueError: HEIC cụt (chỉ nổ lúc ``load``).
+    except (OSError, ValueError, SyntaxError, EOFError, struct.error, RuntimeError, MemoryError):
+        # OSError: JPEG cụt, PNG hỏng; ValueError: HEIC cụt (chỉ nổ lúc ``load``); RuntimeError,
+        # MemoryError: libheif từ chối lúc giải mã («Security limit exceeded», hết bộ nhớ;
+        # SL-T107-1).
         raise ImageProcessError(_MSG_BROKEN) from None
     return image
 
