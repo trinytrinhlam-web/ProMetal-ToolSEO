@@ -858,6 +858,9 @@ AI_SOURCES = {
 }
 
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): bật lại công tắc
+# HEIC trong test này để đường HEIC vẫn được kiểm cho lúc bật lại.
+@pytest.mark.usefixtures("heic_enabled")
 @pytest.mark.parametrize("kind", AI_SOURCES)
 def test_real_ai_copy_from_make_ai_image_passes(kind, pillow_state_restored):
     data = ai_source(kind)

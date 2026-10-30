@@ -247,3 +247,12 @@ def wp_client(fake_wp):
     from seo_app.wordpress import WordPressClient
 
     return WordPressClient(BASE_URL, "lam", "abcd efgh ijkl", session=make_session(fake_wp))
+
+
+@pytest.fixture
+def heic_enabled(monkeypatch):
+    """Bật lại đường đọc HEIC trong một test (T-107 lượt 3: app tạm không nhận HEIC, công tắc
+    ``folders.HEIC_ENABLED``, LC-T107-2), để đường đó vẫn được kiểm cho lúc bật lại."""
+    from seo_app.images import folders
+
+    monkeypatch.setattr(folders, "HEIC_ENABLED", True)

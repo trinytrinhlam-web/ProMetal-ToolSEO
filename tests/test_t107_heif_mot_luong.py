@@ -24,6 +24,11 @@ from pillow_heif import options as heif_options
 
 from seo_app.images import process
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): app tắt HEIC bằng
+# công tắc ``folders.HEIC_ENABLED``; file này bật lại công tắc để đường HEIC vẫn được kiểm cho
+# lúc bật lại (fixture ``heic_enabled`` trong ``tests/conftest.py``).
+pytestmark = pytest.mark.usefixtures("heic_enabled")
+
 _REGISTRIES = ("OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _OPTIONS = ("DECODE_THREADS", "THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
 
@@ -282,3 +287,68 @@ def test_open_rejects_strange_grid_without_decoding(grid_heic, monkeypatch):
 def test_grid_message_is_fixed_vietnamese():
     message = process._MSG_HEIF_GRID
     assert message.startswith("Ảnh HEIC") and "\\" not in message and "/" not in message
+
+
+# ------------------------------------------------------------------ lượt 3: alpha (LC-T107-1)
+
+
+def _heic(mode, size=(64, 48)):
+    buffer = io.BytesIO()
+    pillow_heif.from_pillow(Image.new(mode, size)).save(buffer, quality=80)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("mode", ["RGBA", "LA"])
+@pytest.mark.parametrize(
+    "make",
+    [process.open_image, process.make_web_image, process.make_ai_image, process.make_preview],
+    ids=["open_image", "make_web_image", "make_ai_image", "make_preview"],
+)
+def test_heic_with_alpha_rejected_before_decode(monkeypatch, make, mode):
+    loads: list[str] = []
+    real_load = pillow_heif.HeifImageFile.load
+
+    def counting_load(self):
+        loads.append("load")
+        return real_load(self)
+
+    monkeypatch.setattr(pillow_heif.HeifImageFile, "load", counting_load)
+    with pytest.raises(process.ImageProcessError) as info:
+        make(_heic(mode))
+    assert str(info.value) == process._MSG_HEIF_ALPHA
+    assert loads == []
+
+
+@pytest.mark.parametrize(
+    ("image_format", "mode", "rejected"),
+    [
+        ("HEIF", "RGBA", True),
+        ("HEIF", "RGBa", True),
+        ("HEIF", "LA", True),
+        ("HEIF", "La", True),
+        ("HEIF", "RGB", False),
+        ("HEIF", "L", False),
+        ("HEIF", "I;16", False),
+        ("PNG", "RGBA", False),
+        ("WEBP", "RGBA", False),
+        ("JPEG", "RGB", False),
+    ],
+)
+def test_alpha_check_only_for_heif(image_format, mode, rejected):
+    image = SimpleNamespace(format=image_format, mode=mode)
+    if rejected:
+        with pytest.raises(process.ImageProcessError):
+            process._check_heif_alpha(image)
+    else:
+        process._check_heif_alpha(image)
+
+
+@pytest.mark.parametrize("image_format", ["PNG", "WEBP"])
+def test_png_webp_with_alpha_still_accepted(image_format):
+    data = tp._luu(Image.new("RGBA", (64, 48), (10, 20, 30, 100)), image_format)
+    assert tp._mo(process.make_web_image(data).data).mode == "RGBA"
+
+
+@pytest.mark.parametrize("mode", ["RGB", "L"])
+def test_heic_without_alpha_still_accepted(mode):
+    assert process.open_image(_heic(mode)).size == (64, 48)

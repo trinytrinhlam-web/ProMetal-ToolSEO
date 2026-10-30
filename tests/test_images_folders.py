@@ -126,8 +126,6 @@ def tree(tmp_path: Path) -> dict[str, Path]:
         "x.JPEG",
         "x.png",
         "x.webp",
-        "x.heic",
-        "x.HEIF",
         "x.avif",
         "CT012 - Cổng inox - Hải Châu/truoc/IMG_0001.jpg",
         "a b/c-d_e (1).jpg",
@@ -216,7 +214,22 @@ def test_image_ref_rejects_non_string_paths(rel):
 
 
 def test_image_extensions_match_design():
-    assert {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".avif"} == IMAGE_EXTENSIONS
+    # T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): .heic, .heif tách
+    # ra ``HEIC_EXTENSIONS``, chỉ được nhận khi bật ``HEIC_ENABLED`` (đang tắt).
+    assert {".jpg", ".jpeg", ".png", ".webp", ".avif"} == IMAGE_EXTENSIONS
+    assert {".heic", ".heif"} == folders.HEIC_EXTENSIONS
+    assert folders.HEIC_ENABLED is False
+
+
+@pytest.mark.parametrize("rel", ["x.heic", "x.HEIF", "CT012/truoc/IMG_0001.HEIC"])
+def test_image_ref_heic_only_when_enabled(rel, monkeypatch):
+    """T-107 lượt 3: hai ca ``x.heic``, ``x.HEIF`` trước ở ``test_image_ref_accepts_normal_
+    relative_paths`` (được nhận); nay công tắc tắt thì bị từ chối có câu báo, bật lại thì nhận."""
+    with pytest.raises(ImageFolderError) as info:
+        ImageRef(0, rel)
+    assert "tạm chưa nhận ảnh HEIC của iPhone" in str(info.value)
+    monkeypatch.setattr(folders, "HEIC_ENABLED", True)
+    assert ImageRef(0, rel).rel_path == rel
 
 
 # ----- thư mục gốc -------------------------------------------------------------------------
@@ -315,20 +328,35 @@ def test_list_subfolder_gives_paths_relative_to_root(tree):
         "CT012 - Cổng inox - Hải Châu/truoc",
     ]
     inner = lib.list_folder(0, listing.subfolders[1].rel_path)
-    assert [e.ref.rel_path for e in inner.images] == [
-        "CT012 - Cổng inox - Hải Châu/truoc/IMG_0001.HEIC"
-    ]
+    # T-107 lượt 3 (Chỉ Huy duyệt 30/10): HEIC tạm tắt nên IMG_0001.HEIC không được liệt kê
+    # (trước: được liệt kê); ca bật lại ở ``test_list_folder_lists_heic_when_enabled``.
+    assert [e.ref.rel_path for e in inner.images] == []
 
 
 def test_list_folder_recursive_collects_whole_project(tree):
     lib = ImageLibrary([tree["root"]])
     listing = lib.list_folder(0, "CT012 - Cổng inox - Hải Châu", recursive=True)
+    # T-107 lượt 3 (Chỉ Huy duyệt 30/10): HEIC tạm tắt nên IMG_0001.HEIC không được liệt kê.
+    assert [e.ref.rel_path for e in listing.images] == [
+        "CT012 - Cổng inox - Hải Châu/sau/IMG_0002.jpeg",
+    ]
+    # Thư mục con trả về vẫn chỉ là tầng trực tiếp.
+    assert len(listing.subfolders) == 2
+
+
+def test_list_folder_lists_heic_when_enabled(tree, monkeypatch):
+    """T-107 lượt 3: kỳ vọng cũ của hai test trên, khi bật lại công tắc HEIC."""
+    monkeypatch.setattr(folders, "HEIC_ENABLED", True)
+    lib = ImageLibrary([tree["root"]])
+    inner = lib.list_folder(0, "CT012 - Cổng inox - Hải Châu/truoc")
+    assert [e.ref.rel_path for e in inner.images] == [
+        "CT012 - Cổng inox - Hải Châu/truoc/IMG_0001.HEIC"
+    ]
+    listing = lib.list_folder(0, "CT012 - Cổng inox - Hải Châu", recursive=True)
     assert [e.ref.rel_path for e in listing.images] == [
         "CT012 - Cổng inox - Hải Châu/sau/IMG_0002.jpeg",
         "CT012 - Cổng inox - Hải Châu/truoc/IMG_0001.HEIC",
     ]
-    # Thư mục con trả về vẫn chỉ là tầng trực tiếp.
-    assert len(listing.subfolders) == 2
 
 
 def test_recursive_depth_limit(tmp_path):

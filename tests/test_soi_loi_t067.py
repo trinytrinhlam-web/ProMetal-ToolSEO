@@ -47,6 +47,11 @@ from tests.test_soi_loi_t049 import (  # noqa: F401  (fixture tự dùng: trả 
     _tra_nguyen_trang_pillow,
 )
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): app tắt HEIC bằng
+# công tắc ``folders.HEIC_ENABLED``; file này bật lại công tắc để đường HEIC vẫn được kiểm cho
+# lúc bật lại (fixture ``heic_enabled`` trong ``tests/conftest.py``).
+pytestmark = pytest.mark.usefixtures("heic_enabled")
+
 G = ExifTags.GPS
 DINH_DANG = ["JPEG", "PNG", "WEBP", "HEIF"]
 

@@ -26,7 +26,8 @@ Nguyên tắc (phiếu T-048, thiết kế T-046 mục 1, ``security.md`` mục 
   mở/``stat`` file trong chính thư mục đã mở; Windows hỏi đường dẫn thật của chính handle vừa mở
   (phải trùng từng chữ với gốc và tên trên ổ, LC-T079-1). Số liệu, nội dung và câu báo lỗi (cỡ,
   loại file) lấy từ mục đã mở, không từ ``lstat`` theo tên (LC-T079-2).
-- Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``.
+- Chỉ nhận đuôi ảnh đã biết (``IMAGE_EXTENSIONS``) và file không quá ``MAX_IMAGE_BYTES``. Ảnh
+  HEIC/HEIF chỉ được liệt kê khi bật ``HEIC_ENABLED`` (tạm tắt, T-107 lượt 3).
 - Quét có ngân sách (số mục, số giây), phân trang; vượt ngân sách thì dừng và báo "còn nữa".
 - Chỉ đọc: module không tạo, sửa, đổi tên hay xóa gì trong thư mục ảnh (quyết định 3A).
 - Tên file, tên thư mục trả về là dữ liệu chưa tin cậy (góp ý Lá Chắn số 3): module chỉ trả
@@ -49,8 +50,17 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
-# JPEG, PNG, WebP, HEIC/HEIF (iPhone, quyết định 1A), AVIF. Không nhận GIF, BMP, TIFF, .lnk.
-IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".avif"})
+# Công tắc HEIC duy nhất (T-107 lượt 3, LC-T107-2): chủ dự án chọn 30/10 tạm không nhận ảnh
+# HEIC/HEIF vì libheif 1.23.6 trong pillow-heif 1.8.1 còn lỗi làm treo máy đã công bố. Đổi thành
+# ``True`` khi nâng pillow-heif lên bản mang libheif từ 1.23.7 (chủ dự án đã duyệt nâng, Lá Chắn
+# quét trước). ``process.py`` đọc công tắc này lúc mở ảnh.
+HEIC_ENABLED = False
+HEIC_EXTENSIONS = frozenset({".heic", ".heif"})
+# JPEG, PNG, WebP, AVIF; HEIC/HEIF (iPhone, quyết định 1A) khi ``HEIC_ENABLED``. Không nhận GIF,
+# BMP, TIFF, .lnk.
+IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".avif"}) | (
+    HEIC_EXTENSIONS if HEIC_ENABLED else frozenset()
+)
 MAX_IMAGE_BYTES = 40 * 1024 * 1024  # 40 MB/file (thiết kế T-046 mục 1)
 MAX_REL_PATH_CHARS = 1024
 MAX_NAME_CHARS = 255
@@ -183,7 +193,9 @@ def _match_disk_name(names: Iterable[str], name: str, time_is_up: Callable[[], b
 
 
 def _is_image_name(name: str) -> bool:
-    return PurePosixPath(name).suffix.lower() in IMAGE_EXTENSIONS
+    # Đọc ``HEIC_ENABLED`` lúc gọi (test bật lại đường HEIC chỉ cần đổi công tắc).
+    suffix = PurePosixPath(name).suffix.lower()
+    return suffix in IMAGE_EXTENSIONS or (HEIC_ENABLED and suffix in HEIC_EXTENSIONS)
 
 
 def _is_link_stat(st: os.stat_result) -> bool:
@@ -506,7 +518,11 @@ class ImageRef:
             raise ImageFolderError("Số thứ tự thư mục ảnh không hợp lệ.")
         parts = _parse_rel(self.rel_path, allow_empty=False)
         if not _is_image_name(parts[-1]):
-            raise ImageFolderError("Chỉ nhận ảnh JPEG, PNG, WebP, HEIC/HEIF hoặc AVIF.")
+            raise ImageFolderError(
+                "Chỉ nhận ảnh JPEG, PNG, WebP, HEIC/HEIF hoặc AVIF."
+                if HEIC_ENABLED
+                else "Chỉ nhận ảnh JPEG, PNG, WebP hoặc AVIF (tạm chưa nhận ảnh HEIC của iPhone)."
+            )
 
     @property
     def parts(self) -> tuple[str, ...]:

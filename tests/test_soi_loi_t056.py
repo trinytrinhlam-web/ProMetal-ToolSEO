@@ -387,6 +387,9 @@ def heic(size=(400, 300)) -> bytes:
     return buffer.getvalue()
 
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): bật lại công tắc
+# HEIC trong test này để đường HEIC vẫn được kiểm cho lúc bật lại.
+@pytest.mark.usefixtures("heic_enabled")
 def test_heic_chosen_and_truncated_jpeg_blocked(project_root, root, fake_ai):
     """Ảnh HEIC của iPhone (quyết định 1A): xem trước, chọn, AI viết alt được. JPEG bị cắt giữa
     chừng (chép dở từ USB): nút «Chọn» khóa, kèm câu tiếng Việt."""

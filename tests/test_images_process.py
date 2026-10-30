@@ -33,6 +33,11 @@ from seo_app.config import PROJECT_ROOT
 from seo_app.images import naming, process
 from seo_app.images.folders import ImageLibrary, ImageRef
 
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): app tắt HEIC bằng
+# công tắc ``folders.HEIC_ENABLED``; file này bật lại công tắc để đường HEIC vẫn được kiểm cho
+# lúc bật lại (fixture ``heic_enabled`` trong ``tests/conftest.py``).
+pytestmark = pytest.mark.usefixtures("heic_enabled")
+
 _PILLOW_REGISTRIES = ("ID", "OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _HEIF_OPTIONS = ("THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
 

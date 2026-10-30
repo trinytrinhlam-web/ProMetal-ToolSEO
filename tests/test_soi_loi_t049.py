@@ -43,11 +43,16 @@ from pillow_heif import options as heif_options
 
 from seo_app.ai import AIError
 from seo_app.ai.base import ImageInput, prepare_images
-from seo_app.images import naming, process
+from seo_app.images import folders, naming, process
 from seo_app.images.folders import ImageLibrary, ImageRef
 from tests.test_ai_images import VENDORS, network, run  # noqa: F401  (fixture dùng chung)
 from tests.test_images_process import CHU_TRONG_ICC, XMP, _icc_co_chu, _them_ifd1
 from tests.test_pillow_heif_setup import _go_heif_khoi_bang
+
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): app tắt HEIC bằng
+# công tắc ``folders.HEIC_ENABLED``; file này bật lại công tắc để đường HEIC vẫn được kiểm cho
+# lúc bật lại (fixture ``heic_enabled`` trong ``tests/conftest.py``).
+pytestmark = pytest.mark.usefixtures("heic_enabled")
 
 _BANG = ("ID", "OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _TUY_CHON_HEIF = ("THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
@@ -453,6 +458,20 @@ def _kiem_khong_metadata(data):
 @pytest.mark.parametrize("loai", NGUON_AI)
 def test_ban_ai_moi_loai_nguon_qua_prepare_images(loai):
     """A3, Lá Chắn T-050 điều kiện 2: bản AI từ mọi nguồn qua bộ kiểm "danh sách cho phép"."""
+    if loai == "heic-trong-suot":
+        # T-107 lượt 3 (Chỉ Huy duyệt 30/10, R5; trước đây được nhận): HEIC có kênh alpha bị từ
+        # chối trước khi giải mã (LC-T107-1, file này bật công tắc HEIC); công tắc tắt như mặc
+        # định thì mọi HEIC bị từ chối với câu «tạm chưa nhận» (chủ dự án chọn).
+        for ham in (process.make_ai_image, process.make_preview):
+            with pytest.raises(process.ImageProcessError) as info:
+                ham(_nguon_ai(loai))
+            assert str(info.value) == process._MSG_HEIF_ALPHA
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(folders, "HEIC_ENABLED", False)
+                with pytest.raises(process.ImageProcessError) as info:
+                    ham(_nguon_ai(loai))
+            assert str(info.value) == process._MSG_HEIC_OFF
+        return
     ai = process.make_ai_image(_nguon_ai(loai))
     assert ai.mime == "image/jpeg" and max(ai.width, ai.height) <= process.AI_MAX_EDGE_PX
     _kiem_khong_metadata(ai.data)

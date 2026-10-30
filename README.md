@@ -313,7 +313,8 @@ Anh SEO/                            ← thư mục đã khai báo
 
 1. Bấm **📁 Chọn ảnh từ thư mục**. Khung chọn ảnh mở ngay dưới chỗ đó: ô **Thư mục ảnh** (thư mục đã khai báo, chỉ hiện tên), ô **Thư mục con** để mở thư mục bên trong, nút **⬆ Lên một cấp**, **🔄 Quét lại**. Mỗi trang 12 ảnh nhỏ.
    - App chỉ xem thư mục khi bạn mở nó. Ổ Google Drive chậm thì app báo đang quét ở nền: đợi vài giây rồi bấm **🔄 Xem kết quả**.
-   - App nhận ảnh JPG, PNG, WebP, HEIC (iPhone), AVIF, mỗi ảnh tối đa 40 MB. Lối tắt, mục ẩn, file khác bị bỏ qua (khung ghi số mục bỏ qua).
+   - App nhận ảnh JPG, PNG, WebP, AVIF, mỗi ảnh tối đa 40 MB. Lối tắt, mục ẩn, file khác bị bỏ qua (khung ghi số mục bỏ qua).
+   - **Tạm chưa nhận ảnh HEIC của iPhone** (file `.heic`, `.heif`): thư viện đọc HEIC đang chờ bản vá lỗi bảo mật, nên ảnh HEIC không hiện trong khung. Hãy dùng ảnh JPEG: ảnh gửi qua Zalo đã là JPEG; muốn iPhone chụp thẳng JPEG thì vào **Cài đặt → Camera → Định dạng → Tương thích nhất**.
 2. Bấm **Chọn** dưới ảnh muốn dùng. Khung hiện ảnh xem trước, tên file, thư mục, và:
    - **📷 Ảnh thật** hoặc **🤖 Ảnh AI**. Ảnh AI có dòng «Vì sao là ảnh AI: …» (tên thư mục, tên file có chữ AI hay tên công cụ tạo ảnh, hoặc ảnh đã được đánh dấu).
    - **Thẻ** đọc từ tên thư mục, ví dụ «Mã CT012 · Cổng inox · Tân Phú · Trước khi làm». Tên thư mục chưa theo quy ước (mục 8) thì ghi «Chưa có thẻ (tên thư mục chưa theo quy ước).»

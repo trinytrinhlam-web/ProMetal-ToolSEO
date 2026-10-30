@@ -27,10 +27,12 @@ Mở ảnh an toàn (điều kiện Lá Chắn T-047 mục 7, T-048, T-058):
   ``RuntimeError`` (libheif từ chối lúc giải mã) và ``DecompressionBombError`` (không phải con
   của ``OSError``). Câu báo tiếng Việt cố định, không
   chép câu lỗi gốc hay đường dẫn.
+- HEIC/HEIF **tạm không nhận** (công tắc ``folders.HEIC_ENABLED``, T-107 lượt 3, LC-T107-2): file
+  HEIC (nhận theo nội dung) báo câu cố định, không đăng ký HEIF, không gọi libheif. Khi bật lại:
 - HEIF đăng ký ở đúng một chỗ (``_register_heif``), giải mã một luồng (LC-T093-3), tắt ảnh nhỏ,
   ảnh độ sâu, ảnh phụ; không gọi ``load_libheif_plugin``, không bật ``DISABLE_SECURITY_LIMITS``,
-  không ghi file HEIC. Ảnh HEIC chia lưới ô lạ (ô quá nhỏ, thừa ô, lưới lớn hơn cỡ ảnh khai) bị
-  từ chối trước khi giải mã.
+  không ghi file HEIC. Ảnh HEIC chia lưới ô lạ (ô quá nhỏ, thừa ô, lưới lớn hơn cỡ ảnh khai) hay
+  có kênh alpha (ảnh phụ app không kiểm được cỡ) bị từ chối trước khi giải mã.
 - Không xuất ảnh sang Arrow, không đặt hay đọc ``PILLOW_ALIGNMENT`` (LC-T058-1).
 """
 
@@ -55,12 +57,22 @@ from PIL.TiffImagePlugin import IFDRational
 from pillow_heif import options as heif_options
 
 from seo_app.config import PROJECT_ROOT
+from seo_app.images import folders
 from seo_app.images.folders import MAX_IMAGE_BYTES, ImageLibrary, ImageRef
 
 MIN_PILLOW_MAJOR = 13  # T-058: Pillow 13 vá các khuyến cáo của 12.3.0
 # Định dạng được mở (Lá Chắn T-047 điều kiện 4). Không có AVIF: máy ảnh, điện thoại của đội không
-# chụp AVIF, thêm vào là thêm thư viện giải mã phải lo.
-ALLOWED_FORMATS = ("JPEG", "PNG", "WEBP", "HEIF")
+# chụp AVIF, thêm vào là thêm thư viện giải mã phải lo. "HEIF" chỉ có khi bật công tắc
+# ``folders.HEIC_ENABLED`` (tạm tắt, T-107 lượt 3, LC-T107-2).
+_BASE_FORMATS = ("JPEG", "PNG", "WEBP")
+
+
+def _allowed_formats() -> tuple[str, ...]:
+    """Định dạng được mở, theo công tắc HEIC lúc gọi."""
+    return _BASE_FORMATS + (("HEIF",) if folders.HEIC_ENABLED else ())
+
+
+ALLOWED_FORMATS = _allowed_formats()  # lúc nạp module (test Lá Chắn T-093, T-107 kiểm ở đây)
 # 80 triệu điểm ảnh: đủ cho máy 48–64 MP (iPhone 48 MP = 8064 × 6048). Thấp hơn ngưỡng cảnh báo
 # mặc định của Pillow (89.478.485) nên luôn là phép so của module này quyết định, câu báo rõ ràng.
 MAX_IMAGE_PIXELS = 80_000_000
@@ -103,12 +115,19 @@ _MSG_OLD_PILLOW = (
 _MSG_EMPTY = "File ảnh rỗng (0 byte)."
 _MSG_NOT_IMAGE = (
     "File này không phải ảnh JPEG, PNG, WebP hoặc HEIC đọc được (có thể bị đổi đuôi hoặc hỏng)."
+    if folders.HEIC_ENABLED
+    else "File này không phải ảnh JPEG, PNG hoặc WebP đọc được (có thể bị đổi đuôi hoặc hỏng)."
 )
+_MSG_HEIC_OFF = "Tạm chưa nhận ảnh HEIC của iPhone, hãy dùng ảnh JPEG."
 _MSG_BROKEN = "Ảnh bị hỏng hoặc chưa tải xong (Google Drive chưa đồng bộ?), app không đọc được."
 _MSG_ENCODE = "Không nén được ảnh này. Hãy thử ảnh khác."
 _MSG_HEIF_GRID = (
     "Ảnh HEIC này có cấu trúc lạ (lưới ô không giống ảnh điện thoại), app không mở để tránh treo "
     "máy. Hãy dùng ảnh khác hoặc xuất lại ảnh sang JPEG."
+)
+_MSG_HEIF_ALPHA = (
+    "Ảnh HEIC này có lớp trong suốt (ảnh chụp điện thoại không có), app không mở để tránh treo "
+    "máy. Hãy xuất lại ảnh sang JPEG hoặc PNG."
 )
 _MSG_GPS_LOST = (
     "Ảnh gốc có vị trí GPS nhưng bản nén không giữ được đúng vị trí, nên app dừng lại "
@@ -202,6 +221,17 @@ def _check_heif_grid(image: Image.Image) -> None:
         raise ImageProcessError(_MSG_HEIF_GRID)
 
 
+def _check_heif_alpha(image: Image.Image) -> None:
+    """Ảnh HEIC có kênh alpha: từ chối **trước khi giải mã** (T-107 lượt 3, LC-T107-1).
+
+    Alpha của HEIC là một ảnh phụ riêng (``auxl``) libheif tự giải mã cùng ảnh chính, mà app
+    không thấy cỡ hay lưới của nó: file 3 kB khai ảnh chính 512 × 512 kèm alpha là lưới 31 × 31
+    ô 512 bắt giải mã 252 triệu điểm ảnh. Ảnh chụp điện thoại không có alpha.
+    """
+    if image.format == "HEIF" and ("A" in image.mode or "a" in image.mode):
+        raise ImageProcessError(_MSG_HEIF_ALPHA)
+
+
 def _too_many_pixels(pixels: int | None = None) -> ImageProcessError:
     limit = _format_megapixels(MAX_IMAGE_PIXELS)
     if pixels is None:
@@ -250,6 +280,23 @@ def _webp_canvas_pixels(data: bytes) -> int | None:
     return width * height
 
 
+# Nhãn ``ftyp`` của ảnh HEIC (mã HEVC). File HEIF chỉ có nhãn ``mif1``/``msf1`` (AVIF, JPEG trong
+# HEIF) không tính: Pillow không mở chúng, câu báo là «không phải ảnh … đọc được».
+_HEIC_BRANDS = frozenset({b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs"})
+
+
+def _is_heic_container(data: bytes) -> bool:
+    """Phần đầu file là hộp ``ftyp`` có nhãn HEIC (nhãn chính hay nhãn tương thích).
+
+    Chỉ đọc vài chục byte đầu bằng Python, không gọi libheif.
+    """
+    if len(data) < 16 or data[4:8] != b"ftyp":
+        return False
+    end = min(int.from_bytes(data[:4], "big"), len(data), 256)
+    brands = [data[8:12]] + [data[i : i + 4] for i in range(16, end - 3, 4)]
+    return any(brand in _HEIC_BRANDS for brand in brands)
+
+
 def _pillow_open(data: bytes, formats: tuple[str, ...]) -> Image.Image:
     """``Image.open`` với ``DecompressionBombWarning`` thành lỗi (Lá Chắn T-047 điều kiện 2).
 
@@ -263,15 +310,21 @@ def _pillow_open(data: bytes, formats: tuple[str, ...]) -> Image.Image:
 
 
 def _open(
-    data: object, formats: tuple[str, ...] = ALLOWED_FORMATS, draft_edge: int | None = None
+    data: object, formats: tuple[str, ...] | None = None, draft_edge: int | None = None
 ) -> Image.Image:
     """Mở và giải mã khung đầu của ảnh; mọi lỗi thành ``ImageProcessError``."""
     _require_pillow_13()
     data = _check_source_size(data)
+    if formats is None:
+        formats = _allowed_formats()
+    if "HEIF" not in formats and _is_heic_container(data):
+        # Theo nội dung, không theo đuôi: file HEIC đổi đuôi .jpg cũng vào đây.
+        raise ImageProcessError(_MSG_HEIC_OFF)
     canvas = _webp_canvas_pixels(data)
     if canvas is not None and canvas > MAX_IMAGE_PIXELS:
         raise _too_many_pixels(canvas)
-    _register_heif()
+    if "HEIF" in formats:
+        _register_heif()
     try:
         image = _pillow_open(data, formats)
         try:
@@ -279,6 +332,7 @@ def _open(
             if pixels > MAX_IMAGE_PIXELS:
                 raise _too_many_pixels(pixels)
             _check_heif_grid(image)
+            _check_heif_alpha(image)
             if draft_edge and image.format in ("JPEG", "MPO"):
                 # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần (vẫn
                 # không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.

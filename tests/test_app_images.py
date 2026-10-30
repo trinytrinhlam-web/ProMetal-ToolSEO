@@ -517,9 +517,9 @@ def test_preview_errors_are_vietnamese_without_trace(project_root, root, monkeyp
     names = [entry.name for entry in listing(at).images]
     assert by_key(at, f"choose-{names.index('IMG_0003.jpg')}").disabled
     assert not by_key(at, f"choose-{names.index('IMG_0001.jpg')}").disabled
-    message = (
-        "File này không phải ảnh JPEG, PNG, WebP hoặc HEIC đọc được (có thể bị đổi đuôi hoặc hỏng)."
-    )
+    # T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): câu không còn nhắc
+    # HEIC khi công tắc HEIC tắt (trước: «JPEG, PNG, WebP hoặc HEIC»).
+    message = "File này không phải ảnh JPEG, PNG hoặc WebP đọc được (có thể bị đổi đuôi hoặc hỏng)."
     assert escape_markdown(message) in [c.value for c in at.caption]
 
     def broken(self, library, ref):

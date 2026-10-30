@@ -8,6 +8,9 @@
   báo lúc mở (``ispe``) hay với giới hạn 80 triệu điểm ảnh. Lưới lớn mà mọi ô trỏ cùng một mục mã
   hóa (file khoảng 20 kB) qua mọi phép kiểm, libheif giải mã hết lưới rồi mới báo cỡ không khớp
   (đo trên máy: lưới 31 × 31 ô 512, 11–14 giây và thêm 250 MB mỗi lần mở; xem báo cáo).
+- SL-T107-3 (lượt 3): tắt HEIC rồi mở lại nháp cũ đã chọn ảnh ``.heic``: ảnh bị bỏ khỏi nháp như
+  «dữ liệu ảnh hỏng» (trang báo «… ảnh đã chọn trong nháp bị hỏng nên đã bỏ»), lần tự lưu sau xóa
+  hẳn ảnh cùng alt đã duyệt, bật lại HEIC cũng không còn.
 
 Lỗi tìm được đánh dấu ``xfail(strict=True)`` kèm mã SL-T107-x. Ảnh dựng bằng bộ mã hóa đi kèm
 pillow-heif, không gọi mạng.
@@ -25,6 +28,11 @@ from PIL import Image
 from pillow_heif import options as heif_options
 
 from seo_app.images import process
+
+# T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): app tắt HEIC bằng
+# công tắc ``folders.HEIC_ENABLED``; file này bật lại công tắc để đường HEIC vẫn được kiểm cho
+# lúc bật lại (fixture ``heic_enabled`` trong ``tests/conftest.py``).
+pytestmark = pytest.mark.usefixtures("heic_enabled")
 
 _REGISTRIES = ("OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _OPTIONS = ("DECODE_THREADS", "THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
@@ -81,6 +89,30 @@ def test_sl_t107_1_libheif_runtime_error_becomes_fixed_message(grid_heic, make):
     with pytest.raises(process.ImageProcessError) as info:
         make(data)
     assert str(info.value) in _fixed_messages()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("Memory allocation error: Security limit exceeded: Image size 9x9"),
+        MemoryError(),
+    ],
+    ids=["RuntimeError", "MemoryError"],
+)
+@pytest.mark.parametrize("make", MAKERS, ids=MAKER_IDS)
+def test_libheif_error_while_decoding_becomes_fixed_message(grid_heic, monkeypatch, make, error):
+    """Bổ sung test (thử đột biến lượt 3, L13): từ lượt 2, file của ca SL-T107-1 ở trên bị phép kiểm
+    lưới chặn **trước** ``load``, nên không ca nào còn đi qua nhánh bắt ``RuntimeError``,
+    ``MemoryError`` quanh ``load()``. Ở đây ``load`` của pillow-heif ném đúng lỗi libheif trả lúc
+    giải mã (ảnh lưới thật, qua mọi phép kiểm). Mong đợi: câu cố định, không lọt lỗi gốc."""
+
+    def failing_load(self):
+        raise error
+
+    monkeypatch.setattr(pillow_heif.HeifImageFile, "load", failing_load)
+    with pytest.raises(process.ImageProcessError) as info:
+        make(grid_heic)
+    assert str(info.value) == process._MSG_BROKEN
 
 
 # ----- SL-T107-2: lưới lớn hơn cỡ ảnh qua phép kiểm, giải mã hết rồi mới báo ----------------------
@@ -164,6 +196,44 @@ def test_already_registered_heif_open_still_single_thread(grid_heic, monkeypatch
     monkeypatch.setattr(heif_module, "_pillow_heif", spy)
     process.open_image(grid_heic)
     assert spy.threads == [process.HEIF_DECODE_THREADS] == [0]
+
+
+# ----- SL-T107-3 (lượt 3): nháp cũ đã chọn ảnh .heic, mở lại khi tắt HEIC -----------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "SL-T107-3 (soi-loi): tắt HEIC thì DraftImage dựng ImageRef .heic bị từ chối, nên mở nháp "
+        "cũ bỏ ảnh như dữ liệu hỏng (dropped_images, câu «ảnh … bị hỏng nên đã bỏ»); lần tự lưu "
+        "sau xóa hẳn ảnh và alt đã duyệt, bật lại HEIC không còn"
+    ),
+)
+def test_sl_t107_3_old_draft_heic_image_kept_with_heic_message(tmp_path, monkeypatch, grid_heic):
+    """Nháp lưu lúc app còn nhận HEIC (``main`` trước T-107 lượt 3) có ảnh ``IMG_0001.HEIC`` đã
+    duyệt alt. Tắt HEIC rồi mở lại. Mong đợi như ảnh không dùng được khác (file mất, thư mục đổi
+    tên): ảnh vẫn nằm trong nháp (không tính là ảnh hỏng), khung ảnh báo câu có chữ «HEIC», bật
+    lại HEIC là dùng tiếp được."""
+    import test_drafts_images as td
+
+    from seo_app.images import folders
+    from seo_app.images.folders import ImageLibrary
+    from seo_app.storage.drafts import DraftStore, check_draft_images
+
+    root = tmp_path / "anh"
+    folder = root / "CT012 - Cổng inox - Tân Phú" / "truoc"
+    folder.mkdir(parents=True)
+    (folder / "IMG_0001.HEIC").write_bytes(grid_heic)
+    store = DraftStore(path=tmp_path / "data" / "drafts.sqlite")
+    rel_path = "CT012 - Cổng inox - Tân Phú/truoc/IMG_0001.HEIC"
+    saved = store.save(td.snapshot_with(td.real_image(rel_path=rel_path)))
+
+    monkeypatch.setattr(folders, "HEIC_ENABLED", False)
+    loaded = store.load(saved.id)
+    assert loaded.dropped_images == 0
+    assert [p.chosen_image.rel_path for p in loaded.parts if p.chosen_image] == [rel_path]
+    (item,) = check_draft_images(loaded, ImageLibrary([root])).values()
+    assert item.entry is None and "HEIC" in item.message
 
 
 def test_grid_output_equal_to_image_size_still_accepted(grid_heic):
