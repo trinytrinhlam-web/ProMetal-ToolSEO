@@ -1,5 +1,6 @@
-"""Cài đặt: văn phong, mô hình AI (có thử mù), ảnh, kết nối."""
+"""Cài đặt: văn phong, mô hình AI (có thử mù), ảnh, kết nối, Google Sheets."""
 
+import os
 import unicodedata
 from pathlib import Path
 
@@ -9,9 +10,12 @@ from seo_app import demo, env_file, ui
 from seo_app.ai import AIError
 from seo_app.ai.base import EFFORTS, redact_secrets
 from seo_app.ai.registry import PROVIDERS
-from seo_app.config import load_settings
+from seo_app.config import ConfigError, load_settings
 from seo_app.content import blind_test, load_rules
+from seo_app.google.service_account import ServiceAccountError, load_service_account
+from seo_app.google.sheets import SheetsClient, SheetsError, mask_sheet_id, sheet_id_from_link
 from seo_app.images.folders import ImageLibrary
+from seo_app.plan import sync as plan_sync
 from seo_app.sanitize import escape_link_syntax
 from seo_app.text import escape_markdown
 
@@ -503,6 +507,214 @@ def image_folders_list(settings) -> None:
     )
 
 
+# ------------------------------------------------------------------ tab Google (T-101)
+# Cài đặt → Google (thiết kế T-094 mục 2.1, 2.4; Lá Chắn LC-T094-12, -15, -31, -34; điều kiện 3
+# Lá Chắn T-097): chỉ hiện «đã khai báo / chưa», **tên** file khóa (không đường dẫn), email tài
+# khoản dịch vụ (để chia sẻ Sheet), tên Sheet đọc từ Google; mã Sheet chỉ 4 ký tự cuối. Không in
+# nội dung file khóa. ``GOOGLE_SERVICE_ACCOUNT_FILE`` không ghi được từ đây; ``GOOGLE_SHEET_ID`` ghi
+# qua ``env_file.set_google_sheet_id`` (bộ kiểm riêng). Client Google tạo mới mỗi lần bấm, không
+# giữ client, tài khoản dịch vụ hay đối tượng lỗi trong phiên. «Kiểm tra kết nối», «Chuẩn bị trang
+# tính» chỉ chạy khi bấm.
+
+GOOGLE_SHEET_VAR = "GOOGLE_SHEET_ID"
+GOOGLE_LINK_KEY = "google-sheet-link"
+
+
+def visible(text: str) -> str:
+    """Chữ lấy từ file (tên file, email): ký tự vô hình, điều khiển, đảo hướng chữ thành «�»."""
+    hidden = _HIDDEN_IN_NAME
+    return "".join("\ufffd" if unicodedata.category(ch) in hidden else ch for ch in str(text))
+
+
+def google_flash(kind: str, text: str) -> None:
+    S["google-flash"] = (kind, text)
+
+
+def _save_sheet() -> None:
+    # Chạy trong on_click, trước khi trang đọc lại .env: ghi rồi xóa ô nhập dù lưu được hay không.
+    value = S.get(GOOGLE_LINK_KEY, "")
+    S[GOOGLE_LINK_KEY] = ""
+    for name in ("google-check", "google-missing"):
+        S.pop(name, None)
+    try:
+        sheet_id = sheet_id_from_link(value)
+        env_file.set_google_sheet_id(sheet_id)
+    except (SheetsError, env_file.EnvFileError) as exc:
+        google_flash("error", str(exc))
+    else:
+        google_flash(
+            "success",
+            f"Đã lưu Sheet kế hoạch (mã {mask_sheet_id(sheet_id)}) vào file .env. Bấm «Kiểm tra "
+            "kết nối» để xem phần mềm đọc được chưa.",
+        )
+
+
+def _clear_sheet() -> None:
+    for name in ("google-check", "google-missing"):
+        S.pop(name, None)
+    try:
+        env_file.clear_google_sheet_id()
+    except env_file.EnvFileError as exc:
+        google_flash("error", str(exc))
+    else:
+        google_flash("success", "Đã bỏ Sheet kế hoạch khỏi file .env (Sheet trên Google vẫn còn).")
+
+
+def google_client(settings) -> tuple[SheetsClient | None, str]:
+    """Client mới mỗi lần bấm; ``(None, câu báo)`` khi chưa khai báo hay khai báo sai."""
+    if not (settings.google_sheet_id and settings.google_service_account_file):
+        return None, "Chưa khai báo đủ file khóa và Sheet kế hoạch."
+    try:
+        return SheetsClient.from_settings(settings), ""
+    except (SheetsError, ServiceAccountError, ConfigError) as exc:
+        return None, str(exc)
+
+
+def account_card(settings) -> bool:
+    """Tài khoản dịch vụ: đã khai báo chưa, tên file, email, cảnh báo. ``True`` nếu dùng được."""
+    st.markdown("#### 🔑 Tài khoản dịch vụ Google (file khóa)")
+    if not settings.google_service_account_file:
+        st.markdown(":gray-badge[⚪ Chưa khai báo]")
+        st.caption(
+            "Ghi đường dẫn đầy đủ của file khóa JSON vào dòng GOOGLE_SERVICE_ACCOUNT_FILE trong "
+            "file .env (ô này không nhập ở đây được). File phải nằm ngoài thư mục phần mềm, ngoài "
+            "thư mục ảnh và thư mục đồng bộ (Google Drive, OneDrive…). Xem README."
+        )
+        return False
+    try:
+        account = load_service_account(
+            settings.google_service_account_file, image_folders=settings.image_folders
+        )
+    except ServiceAccountError as exc:
+        st.markdown(":orange-badge[⚠️ Đã khai báo nhưng chưa dùng được]")
+        st.error(escape_markdown(str(exc)))
+        return False
+    st.markdown(":green-badge[✅ Đã khai báo]")
+    st.markdown(f"File khóa: {folder_name_md(account.file_name)}")
+    st.caption("Email của tài khoản dịch vụ, để chia sẻ Sheet kế hoạch (quyền Người chỉnh sửa):")
+    st.code(visible(account.email), language=None)
+    for warning in account.warnings:  # câu cố định; có thể chứa tên file (đã làm sạch)
+        st.warning(escape_markdown(visible(warning)))
+    return True
+
+
+def sheet_card(settings) -> None:
+    st.markdown("#### 📗 Google Sheet kế hoạch")
+    if settings.google_sheet_id:
+        st.markdown(":green-badge[✅ Đã khai báo]")
+        st.caption(f"Mã Sheet {mask_sheet_id(settings.google_sheet_id)} (chỉ hiện 4 ký tự cuối).")
+    else:
+        st.markdown(":gray-badge[⚪ Chưa khai báo]")
+    # ``env_file.overridden_by_os_environ`` chỉ nhận tên biến khóa AI: kiểm thẳng biến môi trường.
+    if os.environ.get(GOOGLE_SHEET_VAR, "").strip():
+        st.warning(
+            "Mã Sheet đang được đặt trong biến môi trường của máy (được ưu tiên hơn file .env), "
+            f"nên link nhập ở đây sẽ không có hiệu lực. Muốn đổi, hãy gỡ biến {GOOGLE_SHEET_VAR} "
+            "khỏi máy."
+        )
+    st.text_input(
+        "Link Google Sheet kế hoạch",
+        key=GOOGLE_LINK_KEY,
+        placeholder="https://docs.google.com/spreadsheets/d/…",
+        autocomplete="off",
+    )
+    st.caption(
+        "Mở Sheet trên trình duyệt, chép link ở thanh địa chỉ rồi dán vào đây. Phần mềm chỉ lấy "
+        "mã Sheet trong link, không mở link."
+    )
+    save, clear, _ = st.columns([1, 1.5, 1.5])
+    save.button(
+        "Lưu", key="google-sheet-save", type="primary", width="stretch", on_click=_save_sheet
+    )
+    clear.button(
+        "Bỏ Sheet",
+        key="google-sheet-clear",
+        width="stretch",
+        disabled=not settings.google_sheet_id,
+        on_click=_clear_sheet,
+    )
+
+
+def check_card(settings, ready: bool) -> None:
+    st.markdown("#### 🔎 Kiểm tra và chuẩn bị")
+    usable = ready and bool(settings.google_sheet_id)
+    check, prepare = st.columns(2)
+    if check.button(
+        "Kiểm tra kết nối", key="google-check-btn", width="stretch", disabled=not usable
+    ):
+        S.pop("google-missing", None)
+        client, problem = google_client(settings)
+        if client is None:
+            S["google-check"] = ("error", problem)
+        else:
+            try:
+                with st.spinner("Đang hỏi Google Sheets…"):
+                    info = client.get_info()
+            except SheetsError as exc:
+                S["google-check"] = ("error", str(exc))
+            else:
+                tab = (
+                    "đã có"
+                    if info.plan_tab is not None
+                    else "chưa có (bấm «Chuẩn bị trang tính» để tạo)"
+                )
+                S["google-check"] = (
+                    "success",
+                    f"Kết nối được Google Sheet «{info.title}». Trang tính «KeHoach»: {tab}.",
+                )
+    if prepare.button(
+        "Chuẩn bị trang tính",
+        key="google-prepare-btn",
+        width="stretch",
+        disabled=not usable,
+        help="Tạo trang tính «KeHoach» nếu chưa có, ghi dòng tiêu đề cột, cố định dòng tiêu đề, "
+        "định dạng cột ngày và danh sách chọn. Không xóa, không dời cột có sẵn.",
+    ):
+        prepare_plan_sheet(settings, add_missing=False)
+    if S.get("google-missing") and st.button(
+        "Thêm cột còn thiếu", key="google-add-columns", disabled=not usable
+    ):
+        prepare_plan_sheet(settings, add_missing=True)
+    checked = S.get("google-check")
+    if checked:
+        kind, text = checked
+        (st.success if kind == "success" else st.error)(escape_markdown(visible(text)))
+
+
+def prepare_plan_sheet(settings, *, add_missing: bool) -> None:
+    """«Chuẩn bị trang tính» / «Thêm cột còn thiếu»: chỉ khi bấm (LC-T094-31)."""
+    client, problem = google_client(settings)
+    if client is None:
+        S["google-check"] = ("error", problem)
+        return
+    try:
+        with st.spinner("Đang chuẩn bị trang tính trên Google Sheets…"):
+            result = plan_sync.prepare_sheet(client, add_missing=add_missing)
+    except (SheetsError, plan_sync.SheetPlanError) as exc:
+        S["google-check"] = ("error", str(exc))
+        return
+    S["google-missing"] = bool(result.missing)
+    S["google-check"] = ("success", result.message)
+
+
+def google_tab(settings) -> None:
+    st.caption(
+        "Kế hoạch bài viết nằm trên Google Sheets để hai máy luôn thấy giống nhau. Phần mềm đọc, "
+        "ghi Sheet bằng một tài khoản dịch vụ (service account) chỉ được chia sẻ đúng Sheet đó."
+    )
+    flash = S.pop("google-flash", None)
+    if flash:
+        kind, text = flash
+        (st.success if kind == "success" else st.error)(escape_markdown(text))
+    left, right = st.columns(2, gap="large")
+    with left, st.container(border=True, height="stretch"):
+        ready = account_card(settings)
+    with right, st.container(border=True, height="stretch"):
+        sheet_card(settings)
+    check_card(settings, ready)
+    st.page_link("views/plan.py", label="Mở trang Kế hoạch", icon="🗂️")
+
+
 # Đọc cấu hình sau các callback ở trên, nên trạng thái "đã khai báo" đổi ngay khi vừa lưu.
 settings = load_settings()
 
@@ -513,7 +725,10 @@ if logout.button("Đăng xuất", width="stretch"):
     S.clear()
     st.rerun()
 
-tone, models, images, connections = st.tabs(["✍️ Văn phong", "🤖 Mô hình AI", "🖼️ Ảnh", "🔌 Kết nối"])
+# Tab Google đặt cuối: giữ thứ tự các tab đã có (test cũ tìm tab theo vị trí).
+tone, models, images, connections, google = st.tabs(
+    ["✍️ Văn phong", "🤖 Mô hình AI", "🖼️ Ảnh", "🔌 Kết nối", "📗 Google"]
+)
 
 with tone:
     left, right = st.columns(2, gap="large")
@@ -576,3 +791,6 @@ with connections:
             f"{'đã khai báo' if configured else 'chưa khai báo'}"
         )
     st.page_link("views/wordpress.py", label="Mở trang kết nối WordPress", icon="🔌")
+
+with google:
+    google_tab(settings)
