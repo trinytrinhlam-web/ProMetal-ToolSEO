@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (đợt 3) |
 | Phụ thuộc | T-100, T-103 đã gộp |
-| Trạng thái | Chờ |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -47,3 +47,4 @@ Làm phần **T-101** đúng như thiết kế Giai đoạn 5: `docs/team/report
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
 - 2026-10-28 23:14 (Chỉ Huy B): góp ý G4 của Soi Lỗi T-103: dữ liệu mẫu trang Kế hoạch demo (`seo_app/demo.py`) dùng trạng thái «Sẵn sàng», không thuộc danh sách nhãn của `PlanRow`; khi thay demo bằng dữ liệu thật đừng dùng lại nhãn đó.
 - 2026-10-30 11:00 (Chỉ Huy B): điều kiện Lá Chắn T-100 (mục 5): hiện chữ Sheet, `Conflict.now` bằng chữ thuần (LC-T094-3); giữ `listing.plan` (bản người dùng đã xem) trong `session_state` tới lúc «Áp dụng»; không tự dựng `Proposal` ngoài `compare_rows` / `from_ai`. LC-T100-1 (vùng đọc đầy), LC-T100-2 (cảnh báo giá) phải xong ở T-100 lượt 2 trước khi nối «Áp dụng» và hiện đề xuất AI tick sẵn.
+- 2026-10-30 17:23 (Chỉ Huy B): T-100, T-103 đã gộp. Nhánh `team/T-101` từ `main` `fd28bbc`, worktree `wt-T-101`; giao Họa Sĩ (phiên Họa Sĩ T-084). Ranh giới (Họa Sĩ hỏi, Chỉ Huy chọn A): nút «Viết bài» trên dòng kế hoạch dùng khóa `write.py` có sẵn (`_open_draft`, `_start_keyword`) và khóa mới `_start_plan_key`, `open_row` chỉ đọc Sheet, không gửi WordPress (LC-T094-35); T-102 đọc `_start_plan_key` để gắn `DraftPlanRef`. «Cập nhật trạng thái từ website»: T-101 chỉ làm phần đọc; phần ghi Sheet → T-109.

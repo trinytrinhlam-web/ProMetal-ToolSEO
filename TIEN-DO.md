@@ -65,6 +65,10 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ### Việc anh quyết (Chỉ Huy B ghi 30/10, từ bản rà soát bảo mật Giai đoạn 3)
 
+**Anh đã trả lời 30/10 13:50:** 1A (phần mềm gắn ảnh vào bài nháp: phiếu T-110 đang làm); 2 đồng ý (4 dòng mới ở sổ rủi ro `docs/team/security.md` mục 6); 3 đồng ý (đã sửa câu dòng 28/10 về quyền «HTML tự do»); 4 đồng ý (nâng pillow-heif ngay khi có bản vá, sau khi Lá Chắn quét); 5 OK (mang sang các việc hoãn).
+
+**Anh chọn thêm 30/10 14:15** (Lá Chắn T-107, thư viện ảnh iPhone còn lỗi làm treo, chưa có bản vá): **tạm không nhận ảnh HEIC**; có bản mới thì nâng và bật lại (T-107 lượt 3 làm công tắc).
+
 Lá Chắn rà soát cả phần ảnh: đường ảnh chính của «Soạn bài» an toàn. Hai lỗi cần sửa (thư viện đọc ảnh iPhone, trang Kết nối tải nguyên ảnh) đang được sửa. Còn mấy việc cần anh chọn:
 
 1. **Ảnh đã tải lên website trước khi bài đăng** (kể cả ảnh của bài bỏ dở, lần gửi hỏng) hiện xem được trong danh sách Media công khai của website, không cần đăng nhập, ảnh còn GPS. **A (khuyên):** phần mềm gắn ảnh vào bài nháp ngay khi tải, để ảnh chỉ công khai cùng lúc bài đăng. **B:** để như hiện nay, ghi vào sổ rủi ro.

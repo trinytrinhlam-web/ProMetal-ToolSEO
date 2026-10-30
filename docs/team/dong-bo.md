@@ -59,6 +59,20 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-30 17:23 · Chỉ Huy B
+
+- **Chủ dự án trả lời 30/10 13:50** 5 câu rà soát Giai đoạn 3: 1A (T-110 gắn ảnh vào bài nháp, Thợ Máy đang làm), 2 đồng ý (4 dòng sổ rủi ro), 3 đồng ý (sửa câu `unfiltered_html`), 4 đồng ý (nâng pillow-heif khi có bản vá), 5 OK.
+- Lá Chắn T-107 ĐẠT CÓ ĐIỀU KIỆN (`a9d381e`, gộp được): LC-T093-3 đóng; 2 Trung bình có từ trước: LC-T107-1 (HEIC alpha lớn) → lượt 3 cách (a); LC-T107-2 (libheif còn lỗi làm treo) → **chủ dự án chọn tạm không nhận HEIC** (lượt 3 làm công tắc).
+- Đóng Giai đoạn 3 khi xong: T-107 lượt 3, T-110, T-078 phần còn lại (`required-version`, README).
+- T-099 lượt 2: Lá Chắn ĐẠT (`38613fe`), chờ gộp cùng T-107 (`a9d381e`) ở lượt test kế tiếp. Giao **T-102** (Họa Sĩ phiên T-056) từ `fd28bbc` + T-099 lượt 2 (`c8986da`); công tắc Hẹn giờ/Đăng ngay mặc định tắt tới khi thử thật.
+- Đang chạy: Họa Sĩ T-101, Họa Sĩ T-102, Thợ Máy T-107 lượt 3 (tắt HEIC + chặn HEIC alpha), Thợ Máy T-110.
+
+### 2026-10-30 17:23 · Chỉ Huy B
+
+- Gộp **T-100 lượt 3–4** (T-100 xong hẳn). Windows 21.063 test qua, 0 hỏng. (1 ca khóa chờ `test_soi_loi_t037.py::test_r2_long_lock_in_other_thread_is_busy_not_deleted` hỏng oan khi máy bận, chạy lại riêng qua; đúng loại T-073.) Chủ dự án dặn 14:57 dừng mọi phiên tới khi hạn mức mở lại (17:20); đã chạy lại. Giao **T-101** (Họa Sĩ) từ `main` `fd28bbc`.
+- Đang chạy: Lá Chắn xem lại T-099 lượt 2 (Soi Lỗi ĐẠT), Lá Chắn T-107 (2 lượt Thợ Máy xong), Họa Sĩ T-101 (Chỉ Huy chọn A cho ranh giới «Viết bài»; ghi Sheet trạng thái website → T-109).
+- Hàng đợi (máy rảnh): T-109 (Thợ Máy), T-102 (Họa Sĩ, sau T-099 lượt 2), T-105, T-092 (Họa Sĩ), T-078 phần còn lại. Chờ chủ dự án: 5 câu ở `TIEN-DO.md` mục 4.
+
 ### 2026-10-30 12:52 · Chỉ Huy B
 
 - Gộp **T-099** (lượt 1), **T-100** (lượt 2), **T-106 + T-108**, biên bản **T-093**. Windows 20.877 test qua, 0 hỏng. Giai đoạn 5 xong phần lõi 6/8.

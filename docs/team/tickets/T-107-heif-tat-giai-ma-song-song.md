@@ -50,3 +50,4 @@ F1, F2, S1 (thư viện).
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-30 theo đề xuất Lá Chắn T-093 (việc 1 để đóng Giai đoạn 3) và chỉ đạo «vấn đề nào có đề xuất thì làm theo đề xuất».
+- 2026-10-30 17:23 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`f68a206`); lượt 2 (`28f4a4d`, SL-T107-1, -2); Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`a9d381e`): LC-T093-3 đóng, gộp `main` được. Còn 2 Trung bình có từ trước: LC-T107-1 (HEIC có ảnh phụ alpha lớn) → lượt 3 cách (a), Chỉ Huy duyệt đổi ca `test_soi_loi_t049.py::…[heic-trong-suot]`; LC-T107-2 (libheif 1.23.6 còn 5 lỗi làm treo, vá ở 1.23.7) → **chủ dự án chọn tạm không nhận HEIC** (30/10 14:15): lượt 3 làm công tắc tắt HEIC, giữ mã để bật lại khi nâng.
