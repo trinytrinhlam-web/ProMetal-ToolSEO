@@ -6,7 +6,7 @@
 | Phiếu | [T-102](../tickets/T-102-buoc-xuat-ban-that.md) |
 | Ngày nộp | 2026-10-30 |
 | Nhánh | `team/T-102` (từ `c8986da`: `main` `fd28bbc` + T-099 lượt 2). Không gộp `main` |
-| Kết quả | Xong yêu cầu 1–3 của phiếu: cả ba hình thức gửi bằng gói của bộ dựng T-096, màn hình xác nhận có mã băm, Hẹn giờ và Đăng ngay qua `release_draft` (công tắc **mặc định tắt**), khóa khi không rõ kết quả, mở Soạn bài từ dòng kế hoạch và ghi trạng thái dòng sau khi gửi. 43 ca test mới; 4 test cũ sửa theo R5 Chỉ Huy duyệt (mục 6). **Khi gộp:** 2 test của T-101 sẽ lệch (mục 7) |
+| Kết quả | Xong yêu cầu 1–3 của phiếu: cả ba hình thức gửi bằng gói của bộ dựng T-096, màn hình xác nhận có mã băm, Hẹn giờ và Đăng ngay qua `release_draft` (công tắc **mặc định tắt**), khóa khi không rõ kết quả, mở Soạn bài từ dòng kế hoạch và ghi trạng thái dòng sau khi gửi. Test mới ở `test_t102_publish.py`; 4 test cũ sửa theo R5 Chỉ Huy duyệt (mục 6). Lượt 2: đã gộp `team/T-101`, sửa G1 và 2 test T-101 theo R5 (mục 9). 21 ca `test_soi_loi_t103.py` hỏng do T-101 xóa dữ liệu mẫu: đã sửa trên nhánh T-101 theo R5 rồi gộp lại (mục 9) |
 
 ## 1. Tóm tắt (cho chủ dự án)
 
@@ -126,8 +126,8 @@ Test ở `tests/test_t102_publish.py` trừ khi ghi khác.
 
 ## 7. Việc khi gộp và phiếu sau
 
-- **T-101 (chưa gộp):** `test_write_button_opens_compose_without_wordpress` và `test_start_from_plan_row_opens_compose_without_wordpress` kiểm `_start_plan_key` còn nằm trong phiên và Sheet không có lệnh ghi. Hợp đồng ghi đó là trạng thái **trước khi T-102 xong**; với T-102, Soạn bài bỏ khóa này và ghi «Đang viết» (thiết kế 1.6 bước 4, câu hỏi 4A), Sheet được đọc 3 lần (T-101 một, T-102 hai). Gộp hai nhánh thì sửa hai test đó.
-- **`config/content.toml`:** chú thích mục `[plan]` còn ghi «phần mềm chưa dùng mục này… T-102 sẽ đọc»; nay đã đọc `default_time`. Cần người được sửa `config/**` cập nhật chú thích.
+- **T-101:** đã gộp vào nhánh này (mục 9); hai test T-101 lệch đã sửa theo R5.
+- **`config/content.toml`:** chú thích mục `[plan]` còn ghi «phần mềm chưa dùng mục này… T-102 sẽ đọc»; nay đã đọc `default_time`. Chỉ Huy để nguyên, giao người được sửa `config/**` sau.
 - **README** «Hẹn giờ và Đăng ngay» (phiếu Thư Ký theo thiết kế), công tắc Cài đặt (quyết định 1).
 
 ## 8. Commit
@@ -136,4 +136,32 @@ Test ở `tests/test_t102_publish.py` trừ khi ghi khác.
 - `4419428` client mới trong lần bấm (L2-2), bảng xác nhận (cột cờ lên đầu, độ rộng cột, khung gửi rộng hơn), thêm test (lời commit này nhắc lại cả gộp ảnh đại diện và trang dịch vụ đích, thật ra hai phần đó đã nằm ở `7c5efb2`).
 - `afc3afd` địa chỉ bài sau khi hẹn giờ/đăng hiện qua `shown_text`; thêm ca địa chỉ Kirin ở đuôi tên miền; sửa docstring.
 - `c9221f3` sửa 4 test cũ theo R5 (mục 6); thêm kiểm «Đăng ngay chưa tick thì nút khóa».
-- Commit cuối: báo cáo này.
+- `32a217a` báo cáo (lượt 1).
+- Lượt 2 (gộp T-101): `b34145a` gộp `team/T-101` (`164c58a`); `bc90a35` G1 và 2 test T-101 (R5); `1e61053` gộp lại `team/T-101` (`944160c`: Lá Chắn T-101, test T-103 dùng mẫu riêng); `c869615` ô bảng xác nhận dạng công thức; `0728706` LC-T101-1 cho mọi bảng, gỡ 2 dấu xfail; commit cuối: báo cáo mục 9.
+
+## 9. Gộp T-101 (lượt 2, Chỉ Huy B giao 30/10 19:05)
+
+- **Gộp** `origin/team/T-101` (`164c58a`, Soi Lỗi ĐẠT) vào `team/T-102`: commit gộp `b34145a`. Xung đột duy nhất ở `seo_app/demo.py`: T-101 bỏ dữ liệu mẫu kế hoạch (`PLAN_ROWS`, `plan_rows`, `PLAN_PASTE_EXAMPLE`, `PLAN_CHANGES`, `BUSINESS_BRIEF`, `SENT_TO_WORDPRESS`), T-102 bỏ `CATEGORIES`: giữ việc bỏ của cả hai. `write.py` không đụng nhau (T-101 không sửa file này).
+- **G1 (góp ý Soi Lỗi T-101):** bài gõ tay không bao giờ nhận `DraftPlanRef` cũ, chặn ở hai lớp:
+  - trang Bài viết (`app/views/home.py`, phạm vi Chỉ Huy mở rộng): ô «Từ khóa» gõ tay bỏ `_start_plan_key` và `_open_draft` còn sót trước khi đặt `_start_keyword`;
+  - trang Soạn bài (`start_from_plan`): chỉ nhận Mã bài khi đi cùng đúng lần bấm «Viết bài» trên dòng đó, tức từ khóa lần bấm đặt (T-101 lấy từ chính dòng vừa đọc lại) trùng từ khóa của dòng T-102 đọc lại. Khác (Mã bài sót đi cùng từ khóa gõ tay, hay dòng vừa đổi trên Sheet): không gắn, không ghi Sheet, giữ từ khóa của lần bấm, câu báo `MSG_PLAN_CHANGED`.
+  - Test: `tests/test_t101_home_page.py::test_typed_keyword_never_takes_a_stale_plan_row` (Mã bài sót + gõ tay: không `DraftPlanRef`, 0 lệnh đọc/ghi Sheet, 0 request WordPress), `tests/test_t102_publish.py::test_plan_key_with_another_keyword_is_not_attached` (2 ca).
+- **2 test T-101 (R5: Chỉ Huy duyệt 30/10 19:05, kèm điều kiện giữ ý):**
+
+| Test | Cũ | Mới |
+|---|---|---|
+| `tests/test_t101_plan_page.py::test_write_button_opens_compose_without_wordpress` | `_start_plan_key` còn trong phiên; Sheet chỉ có lệnh đọc (1 lần) | Trang Kế hoạch tự nó vẫn không ghi Sheet, không gửi WordPress: một bộ theo dõi `record_status` ghi lại số lệnh ghi ô, thêm dòng, sửa cấu trúc **ngay trước** lần gọi (đều 0). Trang Soạn bài ghi «Đang viết» **đúng một lần** qua `record_status` (một lệnh ghi, chỉ ô Trạng thái và Cập nhật lúc của dòng B-002), lần chạy sau không ghi lại; `_start_plan_key`, `_start_keyword` bị bỏ sau khi dùng; `DraftPlanRef` đúng B-002; Sheet đọc 3 lần (trang Kế hoạch, Soạn bài, `write_status`); 0 request WordPress |
+| `tests/test_t101_home_page.py::test_start_from_plan_row_opens_compose_without_wordpress` | Như trên, ở nút «Bắt đầu» của trang Bài viết | Như trên: trước lần `record_status` duy nhất Sheet chưa có lệnh ghi nào; một lệnh ghi «Đang viết»; khóa bị bỏ; 0 request WordPress |
+
+- **Lỗi có sẵn trên nhánh T-101 (không do gộp):** T-101 xóa `demo.plan_rows` và `demo.PLAN_PASTE_EXAMPLE` nhưng `tests/test_soi_loi_t103.py` (Soi Lỗi T-103, đã ở `main`) còn dùng hai tên này (hàm `demo_plan` của file): **21 ca** hỏng cùng một lỗi `AttributeError: … has no attribute 'plan_rows'` trên `team/T-101` và trên nhánh gộp. **R5: Chỉ Huy B duyệt 30/10 19:50**, sửa **trên nhánh T-101** (để T-101 gộp `main` một mình vẫn xanh): chép đúng 6 dòng mẫu và đoạn chữ dán mẫu thành hằng `SAMPLE_PLAN`, `SAMPLE_PASTE` trong file test, ý test giữ nguyên, không khôi phục dữ liệu demo; commit `944160c` trên `team/T-101` (ghi dòng R5 vào bảng cũ → mới của `T-101-hoa-si.md`), chạy `test_soi_loi_t103.py` + `test_app_pages.py` trên T-101: 56 qua. Rồi gộp lại `origin/team/T-101` vào nhánh này: commit gộp `1e61053` (kèm biên bản và test Lá Chắn T-101).
+- **LC-T101-1 (Lá Chắn T-101, Thấp; Chỉ Huy B giao sửa trên nhánh T-102 30/10 19:52, cho sửa `app/views/plan.py`):** bảng `st.dataframe`/`st.data_editor` có nút «Tải về CSV» của Streamlit; ô mở đầu bằng `=`, `+`, `-`, `@`, tab, CR mở bằng Excel thành công thức. Đã kiểm **mọi** bảng của ba trang:
+
+| Trang | Bảng | Chữ từ | Sửa |
+|---|---|---|---|
+| Kế hoạch (`plan.py`) | Danh sách bài (`list_rows`), Đề xuất (`proposal_rows`), Xem đủ một đề xuất (`proposal_detail`), Xung đột khi «Áp dụng» (`conflict_rows`) | Sheet, file, chữ dán, AI | `safe_rows`: mọi ô chữ qua `sync.safe_text` ngay lúc đưa vào bảng (dữ liệu, so sánh, lệnh ghi Sheet không đổi) |
+| Bài viết (`home.py`) | Không có `st.dataframe`/`st.data_editor` | | Không cần sửa |
+| Soạn bài (`write.py`) | Bảng xác nhận: link, địa chỉ, nhúng, ảnh, shortcode | Bài (AI, người dùng), website | `cell_text` = `shown_text` rồi `sync.safe_text` |
+| Soạn bài (`write.py`) | Bảng liên kết nội bộ ở bước SEO (`st.data_editor`) | Cụm từ AI chọn, tên bài trên website | Hai cột chữ (chỉ đọc) qua `safe_text`; chỉ cột «Dùng» được đọc lại, theo thứ tự dòng |
+
+  Test: 2 ca của Lá Chắn (`tests/test_la_chan_t101.py`) nay qua, đã **gỡ 2 dấu `xfail(strict=True)`** (R5 Chỉ Huy duyệt 30/10 19:52: chỉ xóa dòng dấu; `import pytest` thành thừa nên bỏ theo); thêm `tests/test_t102_formula_cells.py::test_conflict_table_cells_cannot_become_excel_formulas` (bảng xung đột: chữ Sheet và chữ dán dạng công thức), `test_review_cells_cannot_become_excel_formulas` và `test_seo_links_table_cells_cannot_become_excel_formulas` (`tests/test_t102_publish.py`). Lá Chắn đầy đủ T-102 đóng LC-T101-1.
+- **Test lượt này** (chọn lọc, vì máy đang chạy toàn bộ test trên `main`): T-101 (`test_t101_plan_page`, `test_t101_home_page`, `test_t101_settings_google`, `test_soi_loi_t101`, `test_la_chan_t101`), `test_t102_formula_cells`, `test_t102_publish`, `test_app_pages`, `test_wordpress_release`, `test_soi_loi_t103`, `test_t041_seo_ui`, `test_soi_loi_t041` trên nhánh đã gộp: **613 qua, 0 hỏng**. Bộ luồng gửi (14 file): **471 qua, 0 hỏng**. `ruff check .` sạch.
