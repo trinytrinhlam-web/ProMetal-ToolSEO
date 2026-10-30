@@ -412,3 +412,114 @@ def test_written_key_repeated_or_dropped_is_not_kept():
     assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-010", "B-011"]
     incoming = [PlanRow(key="B-010", keyword="cửa xếp", status="Bỏ"), PlanRow(keyword="cửa nhôm")]
     assert [p.key for p in compare_rows(CURRENT, incoming).items] == ["B-005"]
+
+
+# ------------------------------------------------------- T-100: giá trong chữ AI (LC-T103-1, G2)
+
+PRICED = [
+    pytest.param("cap_nhat", "B-001", {"notes": "Giá thay bản lề 150.000đ, rẻ nhất quận"},
+                 id="cap-nhat-ghi-chu-150000d"),
+    pytest.param("cap_nhat", "B-001", {"notes": "Nhắc khách: thay motor chỉ 1,5 triệu"},
+                 id="cap-nhat-ghi-chu-1-5-trieu"),
+    pytest.param("cap_nhat", "B-001", {"title_hint": "Bảng giá lan can cầu thang sắt"},
+                 id="cap-nhat-tieu-de-bang-gia"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "secondary": "sửa cửa kéo 500k"},
+                 id="them-tu-khoa-phu-500k"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "notes": "Sửa trọn gói 2 triệu"},
+                 id="them-ghi-chu-2-trieu"),
+    pytest.param("them", "", {"keyword": "cửa kéo bị kẹt ray", "notes": "x " * 700 + "giá 500k"},
+                 id="them-ghi-chu-dai-gia-o-cuoi"),
+]  # fmt: skip
+
+
+@pytest.mark.parametrize(("action", "key", "fields"), PRICED)
+def test_price_in_ai_text_warns_and_is_not_preselected(action, key, fields):
+    result = ai(suggestion(action=action, key=key, **fields))
+    (proposal,) = result.items
+    assert propose.WARN_PRICE in proposal.warnings and not proposal.preselected
+
+
+def test_price_already_in_plan_or_inside_the_keyword_is_not_warned():
+    current = [*CURRENT[:1], PlanRow(key="B-002", keyword="sơn tĩnh điện", notes="Giá 1,2 triệu")]
+    result = from_ai(
+        PlanSuggestions(items=[suggestion(action="cap_nhat", key="B-002", priority="Cao")]),
+        current,
+        today=TODAY,
+    )
+    assert result.items[0].warnings == () and result.items[0].preselected
+    (add,) = ai(suggestion(action="them", keyword="báo giá cổng inox giá rẻ",
+                           title_hint="Báo giá cổng inox giá rẻ tại xưởng")).items  # fmt: skip
+    assert propose.WARN_PRICE not in add.warnings
+
+
+def test_long_ai_notes_without_price_are_not_warned():
+    notes = "Khách hỏi cách chỉnh bản lề cổng sắt bị xệ và cách tra dầu. " * 33  # ~2.000 ký tự
+    (add,) = ai(suggestion(action="them", keyword="chỉnh bản lề cổng", notes=notes[:2000])).items
+    assert propose.WARN_PRICE not in add.warnings and add.preselected
+
+
+# ------------------------------------------------------- T-100 lượt 2: dò giá (LC-T100-2, SL-T100)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Giá thay motor 1.200.000",
+        "Giá: 500.000",
+        "Đơn giá 1.200.000/m2",
+        "Chi phí 800.000 một lần",
+        "Tiền công 350000 cả bộ",
+        "VNĐ 500.000",
+        "Giá 150.000Đ.",
+        "Sửa trọn gói 500k. Khách rất hài lòng",
+        "Thay motor hết 1tr5",
+        "Bộ tay nắm hai triệu",
+        "Khoảng 500 nghìn đồng một bộ",
+        "Phí khảo sát 200.000 cho mỗi lần tới",
+        "Giảm 2 triệu cho khách quen",
+    ],
+)
+def test_plan_price_forms_are_found(text):
+    assert propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Công trình ở 45 Đ. Số 7, Bình Tân",
+        "Kiệt 12 K. Lê Duẩn, Đà Nẵng",
+        "Xưởng đã làm hơn 2 nghìn công trình",
+        "Video có 10k lượt xem",
+        "Hơn hai nghìn khách đã gọi",
+        "Mặt tiền 5.000 mm, cửa cao 2.400 mm",
+        "Chi phí bảo trì năm 2026 do khách lo",
+        "Từ khóa có khoảng 10.000 lượt tìm mỗi tháng",
+        "2 đồng hồ điện, tỷ lệ cửa 2 cánh",
+        "Phía sau nhà 12, giáp đường 3/2",
+    ],
+)
+def test_plan_numbers_that_are_not_prices(text):
+    assert not propose.mentions_plan_price(text)
+
+
+def test_price_inside_the_keyword_is_not_counted_anywhere_in_long_notes():
+    keyword = "cửa sắt giá rẻ"
+    for at in range(0, 1950, 37):  # mọi vị trí, kể cả chỗ ngày trước cắt khúc
+        notes = ("x " * 1000)[:at] + keyword + " " + "y " * 1000
+        assert not propose.mentions_plan_price(notes[:2000], keyword)
+
+
+def test_price_check_time_grows_linearly():
+    import time
+
+    def best(text: str) -> float:
+        timings = []
+        for _ in range(3):
+            start = time.perf_counter()
+            propose.mentions_plan_price(text, "giá 1 2")
+            timings.append(time.perf_counter() - start)
+        return min(timings)
+
+    piece = "giá 1.1.1.1 phí : : 9 VND 1, 2 nghìn đ. "
+    small, big = best(piece * 50), best(piece * 400)
+    assert big < 16 * small + 0.05

@@ -1283,12 +1283,6 @@ def test_luot2_khong_chan_oan_thu_muc_ten_giong_va_ngoai(dirs, rsa_pem, tmp_path
         assert load(write_key(folder, rsa_pem), dirs).email == EMAIL
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T097-5: _inside_by_identity đi ngược các thư mục cha THEO CHỮ của đường gõ (không "
-    "chuẩn hóa ..): «<dự án>/../ngoai/k.json» có một thư mục cha theo chữ là thư mục dự án nên bị "
-    "coi là nằm trong dự án (trước lượt 2, phép so chuỗi sau normpath nhận đúng)",
-)
 @pytest.mark.parametrize("via", ["du-an", "anh", "du-an-con"])
 def test_sl_t097_5_duong_co_cham_cham_di_ngang_roi_ra_ngoai_khong_bi_chan_oan(
     dirs, rsa_pem, via

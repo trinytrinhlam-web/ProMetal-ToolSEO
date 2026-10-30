@@ -78,6 +78,10 @@ WARN_PERSONAL = (
     "Đề xuất của AI có số điện thoại hoặc email: kiểm tra trước khi đưa vào kế hoạch (có thể là "
     "thông tin của khách)."
 )
+WARN_PRICE = (
+    "Đề xuất của AI có nhắc tới giá: Pro-Metal không công bố giá. Kiểm tra trước khi đưa vào kế "
+    "hoạch (ghi chú của thợ sẽ thành chất liệu thật của bài)."
+)
 WARN_MANY_AI = "AI đề xuất {count} thay đổi cùng lúc: xem kỹ từng dòng trước khi tick."
 NOTE_DUPLICATES = "{count} dòng trùng một bài đã khớp ở dòng trên nên bỏ qua."
 NOTE_AI_DROPPED = "{count} đề xuất của AI không hợp lệ nên đã bỏ."
@@ -325,7 +329,8 @@ def from_ai(
     có từ khóa hay có Mã bài, «Cập nhật»/«Bỏ» nói Mã bài không có thật, hai mục cùng một Mã bài,
     quá ``MAX_AI_ITEMS`` mục. «Cập nhật» không đổi gì thì bỏ qua (không tính là sai).
 
-    Thêm cảnh báo: chữ AI có số điện thoại, email (A3); AI đề xuất quá ``AI_MANY`` thay đổi."""
+    Thêm cảnh báo: chữ AI có số điện thoại, email (A3); chữ AI đưa vào dòng có giá (LC-T103-1); AI
+    đề xuất quá ``AI_MANY`` thay đổi."""
     if not isinstance(raw, PlanSuggestions):
         raise TypeError("cần PlanSuggestions")
     items = list(raw.items)
@@ -342,7 +347,13 @@ def from_ai(
             proposals.append(proposal)
     many = [WARN_MANY_AI.format(count=len(proposals))] if len(proposals) > AI_MANY else []
     proposals = [
-        proposal.with_warnings([*many, *([WARN_PERSONAL] if _has_personal(proposal) else [])])
+        proposal.with_warnings(
+            [
+                *many,
+                *([WARN_PERSONAL] if _has_personal(proposal) else []),
+                *([WARN_PRICE] if _has_price(proposal) else []),
+            ]
+        )
         for proposal in proposals
     ]
     checked = check_proposals(proposals, current, posts=posts, today=today)
@@ -364,12 +375,145 @@ def _has_personal(proposal: Proposal) -> bool:
     """Chữ **do AI đưa** (lý do; với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường AI đổi) có số
     điện thoại, email. Chữ cũ của dòng không tính: ghi chú có số khách là chuyện thường (Soi Lỗi
     SL-T098-15)."""
+    texts = [proposal.reason, *_ai_texts(proposal)]
+    return any(any(model.personal_info(text)) for text in texts if text)
+
+
+# ------------------------------------------------------------- dò giá (LC-T103-1, LC-T100-2)
+#
+# Dò riêng cho chữ kế hoạch (không dùng ``mentions_price`` của bước SEO): chữ kế hoạch có địa chỉ
+# công trình, số đếm, ghi chú dài tới 2.000 ký tự, và hay ghi giá kiểu «Giá thay motor 1.200.000».
+# Dò trên **cả** chữ (không cắt khúc, Soi Lỗi SL-T100-3); mọi biểu thức không lồng lượng từ, chạy
+# tuyến tính. Chữ đã làm sạch (``clean_text``) rồi NFKC («５００ｋ» là «500k»), như chữ AI sẽ thấy.
+
+# Số + đơn vị tiền: «150.000đ», «500k», «1,5 triệu», «1tr5», «2-3 triệu», «500 nghìn đồng».
+_PRICE_AMOUNT = re.compile(
+    r"(?<![\w.,])\d+(?:[.,]\d+)*(?P<space>\s*)"
+    r"(?P<unit>đồng|vnđ|vnd|usd|đô(?:\s+la)?|nghìn|ngàn|triệu|tỷ|tỉ|tr|đ|k)\d*(?!\w)",
+    re.IGNORECASE,
+)
+# Số viết bằng chữ + đơn vị: «hai triệu», «vài trăm ngàn», «năm trăm nghìn đồng».
+_PRICE_WORDS = re.compile(
+    r"\b(?:một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|bẩy|tám|chín|mười|mươi|trăm|chục|vài|mấy|rưỡi|nửa)"
+    r"\s+(?P<unit>nghìn|ngàn|triệu|tỷ|tỉ|đồng|đô)(?!\w)",
+    re.IGNORECASE,
+)
+# Chữ nói giá rồi số tiền không có đơn vị, cách vài từ (LC-T100-2): «Giá thay motor 1.200.000»,
+# «Giá: 500.000», «Đơn giá 1.200.000/m2», «Báo giá 2.500.000», «Chi phí 800.000», «Phí khảo sát
+# 200.000». Số phải có dấu chấm nghìn hay từ 5 chữ số: «giá … 2026» (năm) không tính.
+_PRICE_LABEL = re.compile(
+    r"\b(?:giá|phí|tiền công)(?!\w)(?:\s*:\s*|\s+)(?:[^\s\d:]+\s+){0,3}?:?\s*"
+    r"(?:\d{1,3}(?:[.,]\d{3})+|\d{5,})(?![\d\w])",
+    re.IGNORECASE,
+)
+# Đơn vị tiền đứng **trước** số: «VNĐ 500.000», «VND 1.500.000», «USD 50»; ký hiệu tiền.
+_PRICE_CURRENCY = re.compile(r"\b(?:vnđ|vnd|usd)\s*:?\s*\d|[$€₫¥£]", re.IGNORECASE)
+# Cụm nói về giá, như bước SEO (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt).
+_PRICE_PHRASES = re.compile(
+    r"\b(?:giá|chi phí)\s+(?:rẻ|tốt|chỉ|từ|gốc|sỉ|ưu đãi|cạnh tranh|hợp lý|phải chăng|thấp|mềm"
+    r"|bình dân|bao nhiêu)(?!\w)"
+    r"|\b(?:rẻ|đắt|bảng giá|giảm giá|khuyến mãi|miễn phí|ưu đãi|trọn gói)(?!\w)"
+    r"|\b(?:nghìn|ngàn|triệu|tỷ|tỉ)\s+đồng(?!\w)",
+    re.IGNORECASE,
+)
+# Đơn vị tiền mà từ đứng sau cho thấy không phải tiền (như bước SEO, SL-T036-5, -10).
+_NOT_MONEY_AFTER = {
+    "đồng": ("hồ", "bộ", "thời", "loạt", "đều", "màu", "nghiệp", "ý", "nát", "tâm", "phục",
+             "hương", "chí", "ruộng", "bằng", "cỏ"),
+    "đô": ("thị",),
+    "tỷ": ("lệ",),
+    "tỉ": ("lệ",),
+}  # fmt: skip
+# «nghìn», «triệu»… rồi danh từ đếm là số đếm, không phải tiền (Soi Lỗi SL-T100-2): «2 nghìn công
+# trình», «1 nghìn lượt tìm», «5 ngàn khách», «3 triệu lượt xem», «10k lượt xem».
+_COUNT_UNITS = frozenset({"nghìn", "ngàn", "triệu", "tỷ", "tỉ", "tr", "k"})
+_COUNT_NOUNS = (
+    "công trình", "lượt", "khách", "người", "lần", "bài", "cái", "chiếc", "căn", "nhà", "hộ",
+    "gia đình", "đơn hàng", "sản phẩm", "truy cập", "view", "thành viên", "học viên", "dự án",
+    "km", "mét", "m2",
+)  # fmt: skip
+_WORD_CHAR = re.compile(r"\w")
+
+
+def _next_words(text: str, end: int) -> str:
+    return " ".join(text[end : end + 40].lower().split())
+
+
+def _starts_with_word(text: str, words: Iterable[str]) -> bool:
+    """``text`` bắt đầu bằng một trong ``words``, trọn từ (không dính chữ cái sau)."""
+    for word in words:
+        if text.startswith(word) and not _WORD_CHAR.match(text[len(word) : len(word) + 1]):
+            return True
+    return False
+
+
+def _is_money(text: str, found: re.Match[str]) -> bool:
+    """Chỗ khớp số + đơn vị có thật là tiền không (bỏ «2 đồng hồ», «tỷ lệ», «45 Đ. Số 7», «2 nghìn
+    công trình»)."""
+    unit = found.group("unit")
+    folded = " ".join(unit.lower().split())
+    after = _next_words(text, found.end())
+    key = "đô" if folded.startswith("đô") and folded != "đồng" else folded
+    if _starts_with_word(after, _NOT_MONEY_AFTER.get(key, ())):
+        return False
+    # Tên đường, kiệt viết tắt sau số nhà («45 Đ. Số 7», «123 Đ.Nguyễn Văn Linh», «12 K. Lê Duẩn»,
+    # Soi Lỗi SL-T100-1): chữ hoa, có dấu cách trước, dấu chấm ngay sau. «150.000đ.» vẫn là giá.
+    groups = found.groupdict()
+    spaced = bool(groups.get("space"))
+    if unit in ("Đ", "K") and spaced and text[found.end() : found.end() + 1] == ".":
+        return False
+    return not (folded in _COUNT_UNITS and _starts_with_word(after, _COUNT_NOUNS))
+
+
+def _keyword_spans(text: str, keyword: str) -> list[tuple[int, int]]:
+    """Các chỗ từ khóa chính xuất hiện trong ``text`` (không phân biệt hoa thường)."""
+    key = unicodedata.normalize("NFKC", clean_text(keyword)).lower()
+    if not key:
+        return []
+    lowered = text.lower()
+    spans: list[tuple[int, int]] = []
+    start = lowered.find(key)
+    while start >= 0:
+        spans.append((start, start + len(key)))
+        start = lowered.find(key, start + 1)
+    return spans
+
+
+def mentions_plan_price(text: str, keyword: str = "") -> bool:
+    """Chữ kế hoạch có nói giá không; chỗ khớp nằm trọn trong một lần xuất hiện của từ khóa chính
+    thì không tính («cửa sắt giá rẻ» là từ khóa, không phải lời nói giá)."""
+    visible = unicodedata.normalize("NFKC", clean_text(text, multiline=True))
+    spans = _keyword_spans(visible, keyword)
+
+    def outside(found: re.Match[str]) -> bool:
+        return not any(a <= found.start() and found.end() <= b for a, b in spans)
+
+    for pattern in (_PRICE_AMOUNT, _PRICE_WORDS):
+        for found in pattern.finditer(visible):
+            if outside(found) and _is_money(visible, found):
+                return True
+    for pattern in (_PRICE_LABEL, _PRICE_CURRENCY, _PRICE_PHRASES):
+        if any(outside(found) for found in pattern.finditer(visible)):
+            return True
+    return False
+
+
+def _ai_texts(proposal: Proposal) -> list[str]:
+    """Chữ **do AI đưa** trong dòng đề xuất: với «Thêm» mọi trường chữ, với «Cập nhật» chỉ trường
+    AI đổi (Soi Lỗi SL-T098-15)."""
     if proposal.action is Action.ADD:
         names: Iterable[str] = _AI_TEXT_FIELDS
     else:
         names = [name for name in _AI_TEXT_FIELDS if name in proposal.changes]
-    texts = [proposal.reason, *(getattr(proposal.after, name) for name in names)]
-    return any(any(model.personal_info(text)) for text in texts if text)
+    return [text for name in names if (text := getattr(proposal.after, name))]
+
+
+def _has_price(proposal: Proposal) -> bool:
+    """Chữ AI đưa vào dòng kế hoạch nói về giá (Lá Chắn LC-T103-1, LC-T100-2; Soi Lỗi SL-T100-1 →
+    -3): ``mentions_plan_price``, không tính chỗ nằm trong từ khóa chính. Pro-Metal không công bố
+    giá; ghi chú của thợ thành «Kinh nghiệm của xưởng» ở Soạn bài, nơi số liệu được coi là thật."""
+    keyword = proposal.after.keyword
+    return any(mentions_plan_price(text, keyword) for text in _ai_texts(proposal))
 
 
 def _ai_values(item: PlanSuggestion) -> dict[str, object] | None:
