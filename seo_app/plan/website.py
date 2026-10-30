@@ -304,7 +304,10 @@ def check_website(
             updates.append(update)
         if notice is not None:
             notices.append(notice)
-        # Dòng chỉ có cảnh báo («Bỏ», riêng tư…) thì không báo thêm giờ lạ.
+        # G6 (Chỉ Huy duyệt 31/10): bài hẹn giờ / đã đăng mà website không cho giờ
+        # (``post_statuses`` đổi giờ sai khuôn thành rỗng) cũng là giờ lạ. Dòng chỉ có cảnh báo
+        # («Bỏ», riêng tư…) thì không báo thêm.
+        odd_date = odd_date or due is None
         if odd_date and web_status in ("future", "publish") and notice is None:
             notices.append(_notice(WebNoticeKind.ODD_DATE, NOTICE_ODD_DATE, row.key, post))
         if web_status == "future" and due is not None and now - due > LATE_AFTER:

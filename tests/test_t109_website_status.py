@@ -611,3 +611,23 @@ def test_publish_time_within_two_minutes_is_the_same(fake, client, written, date
     assert ("B-096" in by_key) is date_change
     moved = by_key["B-097"]  # đổi trạng thái; ngày chỉ đổi khi lệch quá 2 phút
     assert moved.fields == (("status", "published_at") if date_change else ("status",))
+
+
+@pytest.mark.parametrize("web_status", ["future", "publish"])
+def test_scheduled_or_published_without_date_is_odd_date(fake, client, web_status):
+    """G6 (Chỉ Huy duyệt 31/10): website không trả giờ (``post_statuses`` đổi giờ sai khuôn thành
+    rỗng) cho bài hẹn giờ / đã đăng: vẫn đổi trạng thái, không ghi ngày, cảnh báo «giờ lạ»."""
+    FakePlanSheet(fake, rows(row("B-098", "cửa cuốn", status="Đã gửi nháp", wp_post_id=198)))
+    result = check(client, {198: state(198, web_status, "")})
+    (update,) = result.updates
+    assert update.fields == ("status",) and update.published_after is None
+    notice = only(result, Notice.ODD_DATE)
+    assert notice.message.startswith("Giờ đăng của bài #198 (dòng B-098) trên website không đọc")
+    assert not result.late
+
+
+@pytest.mark.parametrize("web_status", ["draft", "pending", "private"])
+def test_draft_without_date_is_not_odd(fake, client, web_status):
+    FakePlanSheet(fake, rows(row("B-099", "cửa cuốn", status="Đang viết", wp_post_id=199)))
+    result = check(client, {199: state(199, web_status, "")})
+    assert all(n.kind is not Notice.ODD_DATE for n in result.notices)

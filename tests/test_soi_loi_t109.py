@@ -186,7 +186,9 @@ def test_odd_website_values_never_crash_late_or_leak(fake, client):
     assert sorted(u.wp_post_id for u in result.updates) == [401, 402, 403, 404, 405, 406, 407]
     notices = {(n.kind, n.wp_post_id) for n in result.notices}
     odd_dates = {post for kind, post in notices if kind is Notice.ODD_DATE}
-    assert odd_dates == set(range(401, 407))
+    # T-109 lượt 2 (Chỉ Huy duyệt 31/10 00:45, R5): bài 407 (hẹn giờ, website không trả giờ)
+    # nay cũng có cảnh báo «giờ lạ» (trước: range(401, 407), không có 407).
+    assert odd_dates == set(range(401, 408))
     assert {post for kind, post in notices if kind is Notice.MISSING} == {408, 409, 410}
     assert_no_bait(*texts_of(result))
 

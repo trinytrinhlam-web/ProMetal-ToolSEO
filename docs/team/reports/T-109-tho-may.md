@@ -171,8 +171,8 @@ Hành vi đổi theo hướng khớp bộ đọc bảng: dòng có Mã bài gõ 
 
 ### Không làm (ghi lý do)
 
-- **Nửa sau của G6** (bài hẹn giờ / đã đăng mà website không cho giờ thì coi là «giờ lạ»): làm thì đổi kỳ vọng ca cũ `test_soi_loi_t109.py::test_odd_website_values_never_crash_late_or_leak`. Ca đó ghim bài 407 (`future`, giờ rỗng) **không** có cảnh báo giờ lạ. Theo dặn «đổi kỳ vọng test cũ khác thì hỏi trước» nên tôi để nguyên; anh duyệt thì thêm một dòng. Phần anh giao («Đăng ngay» lệch 1 phút) đã làm.
-- **G2** (`states` sai kiểu): ngoài danh sách anh giao (G3–G6); đã có trong điều kiện 1b của Lá Chắn cho lượt nối nút.
+- ~~Nửa sau của G6~~: Chỉ Huy duyệt 31/10 00:45, đã làm (mục «Bổ sung lượt 2» dưới).
+- **G2** (`states` sai kiểu): Chỉ Huy quyết 31/10 để lượt nối nút (điều kiện 1b của Lá Chắn), không làm ở T-109.
 
 ### Kiểm thử lượt 2
 
@@ -188,3 +188,15 @@ Hành vi đổi theo hướng khớp bộ đọc bảng: dòng có Mã bài gõ 
   - giờ lệch 1, 2, 3 phút hai phía.
 - Test liên quan: 25 file. Gồm T-097 (`test_google_sheets`, `test_la_chan_t097`, `test_soi_loi_t097`), T-098 (`test_plan_model`, `test_plan_parse`, `test_plan_propose`, `test_plan_ai`, `test_soi_loi_t098`), T-100 (`test_plan_sync`, `test_plan_cache`, `test_t100_drafts_plan`, `test_t100_google_identity`, `test_soi_loi_t100`, `test_la_chan_t100`), T-101 (`test_t101_plan_page`, `test_t101_home_page`, `test_t101_settings_google`, `test_soi_loi_t101`, `test_la_chan_t101`), T-103 (`test_t103_plan_prompt`, `test_soi_loi_t103`, `test_la_chan_t103`), T-109 (2 file), `test_wordpress_release`. Kết quả: **2286 qua, 2 xfail, 0 hỏng, không XPASS** (5 phút 28 giây). 2 xfail là LC-T101-1, có từ trước, sửa ở T-102.
 - `uv run ruff check .`: All checks passed. `ruff format --check` các file đã sửa: sạch.
+
+### Bổ sung lượt 2 · nửa sau G6 (Chỉ Huy duyệt 31/10 00:45)
+
+- `check_website`: bài `future` / `publish` mà website không trả giờ thì cũng là giờ lạ. `post_statuses` (T-099) đổi giờ sai khuôn thành chuỗi rỗng, nên chuỗi rỗng ở hai trạng thái này nghĩa là giờ hỏng. Cảnh báo `ODD_DATE` là câu cố định, không chép giá trị website. Trạng thái vẫn được đề xuất đổi, ô ngày không ghi. Bài nháp, chờ duyệt, riêng tư không có giờ thì không báo. Dòng chỉ có cảnh báo («Bỏ», riêng tư…) không báo thêm.
+- Ca test cũ đổi kỳ vọng (Chỉ Huy duyệt 31/10 00:45, R5):
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_soi_loi_t109.py::test_odd_website_values_never_crash_late_or_leak` | cảnh báo giờ lạ đúng các bài `range(401, 407)`: bài 407 (hẹn giờ, `date_gmt=None`) **không** có | `range(401, 408)`: bài 407 **có** cảnh báo giờ lạ. Mọi kiểm khác của ca giữ nguyên: dưới 2 giây, không «Lỡ lịch», không ghi ngày, đúng 7 đề xuất, 408–410 là «không thấy», không lộ chữ |
+
+- Test mới: `test_scheduled_or_published_without_date_is_odd_date` (2 ca) và `test_draft_without_date_is_not_odd` (3 ca).
+- Chạy lại: 2 file T-109 **146 qua**. Bộ 25 file liên quan (như trên) **2291 qua, 2 xfail (LC-T101-1, có từ trước), 0 hỏng** (3 phút 58 giây). `uv run ruff check .` sạch; `ruff format --check` sạch.
