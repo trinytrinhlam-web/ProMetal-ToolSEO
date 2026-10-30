@@ -9,7 +9,23 @@ Lỗi lượt 1, **đã sửa ở lượt 2** (Thợ Máy ``57bac59``, đã gỡ
 «K.» bị coi là giá), SL-T100-2 (số đếm có «nghìn», «triệu» bị coi là giá), SL-T100-3 (ghi chú dài
 cắt khúc làm mất phần loại trừ).
 
-Lỗi tìm ra ở lượt 2 (``xfail(strict=True)``; sửa xong thì gỡ dấu), đều Thấp:
+Lỗi lượt 2 SL-T100-4 → -11, **đã sửa ở lượt 3** (Thợ Máy ``777d124``, đã gỡ dấu; mô tả ở cuối).
+
+Lỗi tìm ra ở lượt 3 (``xfail(strict=True)``; sửa xong thì gỡ dấu), đều Thấp, cùng hàm dò giá viết
+lại ở lượt 3 (``mentions_plan_price``):
+
+- **SL-T100-12** (hồi quy so với lượt 2): danh sách từ ghép «giá …» không nói tiền loại cả từ ghép
+  là giá: «Giá nhập 800.000», «Giá công lắp đặt 300.000», «Giá tăng 200.000», «Giá trị hợp đồng
+  50.000.000», «Giá để tham khảo 1.200.000», «Giá đó 1.200.000» không còn được cảnh báo.
+- **SL-T100-13** (biến thể gần SL-T100-9, có từ trước): số tiền không đơn vị sau «đặt cọc», «thanh
+  toán», «chuyển khoản», «mất» chưa được cảnh báo.
+- **SL-T100-14** (mới ở lượt 3): «tra» không dấu trong «kiểm tra», «điều tra», «tra cứu» được coi
+  là «trả»: «Đã kiểm tra 1.000 lần đóng mở», «Kiểm tra lại 1.500 bộ bản lề» bị cảnh báo giá oan.
+- **SL-T100-15** (mới ở lượt 3): «từ đồng» (đồng thau, vật liệu) được coi là «tư đồng» (bốn đồng):
+  «Bản lề làm từ đồng thau»; «3d» viết thường được coi là «3 đ»: «Gửi khách bản vẽ 3d». Cảnh báo
+  giá oan.
+
+Lỗi lượt 2 (đã sửa ở lượt 3):
 
 - **SL-T100-4**: LC-T100-3 đóng chưa trọn. ``write_status`` / ``record_status`` /
   ``retry_pending`` so mã băm Sheet của việc với ``sheet_id`` nơi gọi đưa, **không** với Sheet
@@ -970,3 +986,155 @@ def test_sl_t100_11_full_sheet_never_gives_a_keyless_row_a_new_key(fake, client)
     result = sync.apply_proposals(client, base, [proposal], now=NOW)
     assert not result.written and sheet.updates == []
     assert sheet.cell(2, COL["key"]) == ""
+
+
+# ================================================================ 10. lượt 3 (Thợ Máy 777d124)
+
+ROUND3_PRICES = [
+    "Bộ bản lề 150.000 Đ.",
+    "Thay bản lề hết 150.000 Đ. Khách đồng ý",
+    "Bảo dưỡng cửa cuốn 300 nghìn lần đầu",
+    "Cổng 15 triệu nhà anh Tuấn ở Thủ Đức",
+    "Tiền thay motor 1.200.000",
+    "Thay motor hết 1.200.000",
+    "Tốn 800.000 tiền vật tư",
+    "Khách trả 2.500.000 cho cổng",
+    "Công thợ 300.000 một ngày",
+    "Thay motor 5tr",
+    "Thay khóa 500k/bộ",
+    "gia 500.000",
+    "chi phi 800.000",
+    "het 1.200.000",
+    "500 nghin dong",
+    "Định giá 1.200.000",
+    "Trị giá 50.000.000",
+    "Khách đánh giá tốt, giá 500.000",
+]
+
+
+@pytest.mark.parametrize("notes", ROUND3_PRICES)
+def test_round3_real_prices_with_and_without_accents_warn(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+ROUND3_NOT_PRICES = [
+    "Lắp giá đỡ cách sàn 2.500 mm",
+    "Được đánh giá cao bởi 12.000 khách",
+    "Khách đánh giá tốt dịch vụ",
+    "Giá năm 2026 tăng",
+    "Công trình ở 45 đ. số 7, Bình Tân",
+    "Khách ở 123 Đ.Nguyễn Văn Linh",
+    "Tôn dày 0,45 ly",
+    "Tham gia 10.000 khách",
+    "Gia công 1.200 mm",
+    "Mặt tiền 5.000 mm",
+    "Trả lời 10.000 khách",
+    "Tôn 12.000 m2",
+    "In 3D",
+    "Ổ khóa lõi đồng",
+    "Cửa cuốn tự động",
+    "Làm hết 1.200 m2 tôn",
+]
+
+
+@pytest.mark.parametrize("notes", ROUND3_NOT_PRICES)
+def test_round3_ordinary_words_numbers_do_not_warn(notes):
+    assert _price_warned(notes) == (False, True)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "notes"),
+    [
+        ("cua sat gia re", "Bài về cửa sắt giá rẻ cho nhà phố"),
+        ("cửa sắt giá rẻ", "Bài về cua sat gia re cho nhà phố"),
+        ("cửa sắt giá rẻ", "Bài về cửa  sắt   giá rẻ cho nhà phố"),
+    ],
+)
+def test_round3_keyword_covers_text_with_or_without_accents(keyword, notes):
+    assert _price_warned(notes, keyword=keyword) == (False, True)
+
+
+def test_round3_price_check_is_linear_even_when_the_keyword_repeats():
+    """SL-T100-10 đóng: chữ dài gấp 4 thì thời gian không quá 8 lần (+10 ms), với từ khóa lặp dày
+    và các chữ dò dễ khớp («giá», «2 đồng hồ», «đánh giá tốt», «45 đ.»)."""
+    for unit, keyword in (("5k ", "5k 5k"), ("giá ", ""), ("2 đồng hồ ", ""), ("45 đ. ", "")):
+        text = unit * 700
+        small = big = float("inf")
+        for _ in range(3):
+            small = min(small, _best(text[:500], keyword))
+            big = min(big, _best(text[:2000], keyword))
+        assert big < 8 * small + 0.01, unit
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-12: loại «giá nhập», «giá công», «giá tăng», «giá trị», «giá để», «giá đó» "
+    "như từ ghép không nói tiền nên lọt giá (lượt 2 bắt được)",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Giá nhập 800.000 một bộ",
+        "Giá công lắp đặt 300.000",
+        "Giá tăng 200.000 từ tháng 11",
+        "Giá để tham khảo 1.200.000",
+        "Giá trị hợp đồng 50.000.000",
+        "Đơn hàng giá trị 15.000.000",
+        "Giá đó 1.200.000 là trọn bộ",
+    ],
+)
+def test_sl_t100_12_price_compounds_still_warn(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-13: số tiền sau «đặt cọc», «thanh toán», «chuyển khoản», «mất» chưa bắt",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Khách đặt cọc 2.000.000",
+        "Thanh toán 1.500.000 khi xong",
+        "Chuyển khoản 1.500.000",
+        "Mất 800.000 tiền vật tư",
+    ],
+)
+def test_sl_t100_13_amounts_after_payment_words_warn(notes):
+    assert _price_warned(notes) == (True, False)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-14: «tra» không dấu trong «kiểm tra», «điều tra», «tra cứu» bị coi là «trả»",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Kiểm tra lại 1.500 bộ bản lề",
+        "Đã kiểm tra 1.000 lần đóng mở",
+        "Thợ kiểm tra 12.000 điểm hàn",
+        "Điều tra 10.000 hộ",
+        "Hệ thống tra cứu 15.000 bộ",
+    ],
+)
+def test_sl_t100_14_checking_words_with_tra_are_not_a_price(notes):
+    assert _price_warned(notes) == (False, True)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="SL-T100-15: «từ đồng» (đồng thau) bị coi là «tư đồng», «3d» viết thường là «3 đ»",
+)
+@pytest.mark.parametrize(
+    "notes",
+    [
+        "Bản lề làm từ đồng thau",
+        "Tay nắm đúc từ đồng",
+        "Chuyển từ đồng sang nhôm",
+        "Gửi khách bản vẽ 3d",
+        "Mô hình 3d của cổng",
+    ],
+)
+def test_sl_t100_15_copper_and_3d_are_not_a_price(notes):
+    assert _price_warned(notes) == (False, True)
