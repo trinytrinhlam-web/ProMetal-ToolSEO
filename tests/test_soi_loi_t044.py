@@ -255,7 +255,10 @@ SOURCE_URLS = (
 
 @pytest.mark.parametrize("source_url", SOURCE_URLS)
 def test_uploaded_image_url_line_is_plain(project_root, fake_wp, monkeypatch, source_url):
-    # wordpress.py:134: nhánh có ảnh, địa chỉ ảnh do WordPress trả về.
+    # T-108 (LC-T093-1; Chỉ Huy duyệt R5 phương án A, 30/10): trang Kết nối không còn tải ảnh.
+    # Website giả vẫn nhận ảnh (trả địa chỉ ảnh độc hại), ``file_uploader`` giả vẫn trả file: bấm
+    # «Tạo bài nháp» thì không lệnh nào tới thư viện Media, không dòng ảnh, địa chỉ ảnh và tên
+    # file không lên trang, bài nháp chữ vẫn tạo được với tiêu đề là chữ thường.
     media = {"id": 9, "source_url": source_url, "alt_text": "cửa"}
     fake_wp.on("POST", "/wp-json/wp/v2/media", (201, media, {}))
     fake_wp.on("POST", "/wp-json/wp/v2/media/9", media)
@@ -267,17 +270,18 @@ def test_uploaded_image_url_line_is_plain(project_root, fake_wp, monkeypatch, so
     fake_file_uploader(monkeypatch, FakeUpload("anh cua.jpg", b"\xff\xd8\xff anh gia"))
     at = open_wordpress_page(project_root)
     next(t for t in at.text_input if t.label == "Tiêu đề").input("Bài thử")
-    next(t for t in at.text_input if t.label.startswith("Mô tả ảnh")).input("cửa")
     button(at, "Tạo bài nháp").click().run()
 
     assert_page_plain(at)
-    lines = [el.value for el in at.markdown if "Ảnh đại diện đã tải lên" in el.value]
-    assert len(lines) == 1
-    assert shown(lines[0]) == f"Ảnh đại diện đã tải lên: {source_url}"
+    assert not [r for r in fake_wp.requests if "/wp/v2/media" in r.url]
+    assert not [el for el in at.markdown if "Ảnh đại diện" in el.value]
+    page = [el.value for el in markdown_elements(at)]
+    page += [shown(value) for value in page]
+    assert not [text for text in page if source_url in text or "anh cua.jpg" in text]
     assert shown(at.success[0].value) == "Đã tạo bài nháp #42: **Bài [x](https://evil.example)**"
     # T-061: lệnh tạo nháp có thêm ``?_fields=`` cố định, nên so phần đường.
     posted = [r for r in fake_wp.requests if r.url.split("?")[0].endswith("/wp/v2/posts")]
-    assert len(posted) == 1 and b'"featured_media": 9' in posted[0].body
+    assert len(posted) == 1 and b'"featured_media"' not in posted[0].body
     assert b'"status": "draft"' in posted[0].body
 
 
@@ -290,16 +294,30 @@ def test_uploaded_image_url_line_is_plain(project_root, fake_wp, monkeypatch, so
     ids=["sai-duoi", "rong"],
 )
 def test_upload_error_with_hostile_filename_is_plain(project_root, fake_wp, monkeypatch, upload):
-    # Câu lỗi chép lại tên file người dùng chọn: cũng không thành link.
+    # T-108 (LC-T093-1; Chỉ Huy duyệt R5 phương án A, 30/10): trang Kết nối không còn tải ảnh nên
+    # không còn câu lỗi chép tên file. ``file_uploader`` giả vẫn trả file tên độc hại, website giả
+    # vẫn nhận ảnh: không lệnh nào tới thư viện Media, tên file không lên trang, bài nháp chữ vẫn
+    # tạo được.
+    media = {"id": 9, "source_url": "https://example.com/wp-content/uploads/a.jpg"}
+    fake_wp.on("POST", "/wp-json/wp/v2/media", (201, media, {}))
+    fake_wp.on("POST", "/wp-json/wp/v2/media/9", media)
+    post = {"id": 42, "status": "draft", "title": "Bài thử"}
+    fake_wp.on("POST", "/wp-json/wp/v2/posts", (201, post, {}))
     fake_file_uploader(monkeypatch, upload)
     at = open_wordpress_page(project_root)
     next(t for t in at.text_input if t.label == "Tiêu đề").input("Bài thử")
     button(at, "Tạo bài nháp").click().run()
 
-    assert len(at.error) == 1
+    assert not at.error
     assert_page_plain(at)
-    assert f"File '{upload.name}'" in shown(at.error[0].value)
-    assert not [r for r in fake_wp.requests if "/wp/v2/" in r.url]
+    assert shown(at.success[0].value) == "Đã tạo bài nháp #42: **Bài thử**"
+    page = [el.value for el in markdown_elements(at)]
+    page += [shown(value) for value in page]
+    assert not [text for text in page if upload.name in text]
+    assert not [r for r in fake_wp.requests if "/wp/v2/media" in r.url]
+    posted = [r for r in fake_wp.requests if r.url.split("?")[0].endswith("/wp/v2/posts")]
+    assert len(posted) == 1 and b'"featured_media"' not in posted[0].body
+    assert b'"status": "draft"' in posted[0].body
 
 
 # SL-T044-1: đã sửa ở T-044 lượt 2 (Họa Sĩ), bỏ xfail.

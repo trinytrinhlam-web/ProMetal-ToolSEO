@@ -1,16 +1,22 @@
-"""Trang WordPress: kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp.
+"""Trang WordPress: kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp (chữ thuần).
 
-Mọi chữ lấy từ WordPress (tên site, tên tài khoản, vai trò, tiêu đề bài, địa chỉ ảnh, câu lỗi có
-chữ của máy chủ) đều qua ``escape_markdown`` trước khi vào Markdown: không thành link, không thành
-định dạng, không thành HTML (T-044, SL-T031-1). Bảng chuyên mục/thẻ dùng ``st.dataframe`` (chữ
-thường, không đọc Markdown). Trang này không dùng ``unsafe_allow_html``.
+Mọi chữ lấy từ WordPress (tên site, tên tài khoản, vai trò, tiêu đề bài, câu lỗi có chữ của máy
+chủ) đều qua ``escape_markdown`` trước khi vào Markdown: không thành link, không thành định dạng,
+không thành HTML (T-044, SL-T031-1). Bảng chuyên mục/thẻ dùng ``st.dataframe`` (chữ thường, không
+đọc Markdown). Trang này không dùng ``unsafe_allow_html``.
+
+Bài nháp thử không có ảnh (T-108, LC-T093-1): ảnh chỉ lên website qua «Gửi nháp» của trang Soạn
+bài, sau bước làm sạch ảnh (quyết định 2A).
 """
 
 import streamlit as st
 
 from seo_app.config import load_settings
 from seo_app.text import escape_markdown, paragraphs_to_html
-from seo_app.wordpress import WordPressClient, WordPressError
+from seo_app.wordpress import ConnectionInfo, WordPressClient, WordPressError
+
+# Vai trò WordPress mặc định có quyền ``unfiltered_html`` trên site đơn (T-106).
+_UNFILTERED_ROLES = frozenset({"editor", "administrator"})
 
 
 def plain(value: object) -> str:
@@ -22,6 +28,46 @@ def plain(value: object) -> str:
     if value is None:
         return ""
     return escape_markdown(value if isinstance(value, str) else str(value))
+
+
+def unfiltered_html_note(info: ConnectionInfo) -> tuple[str, str] | None:
+    """Câu báo về quyền ``unfiltered_html`` của tài khoản (T-106): ``("warning", câu)`` khi biết là
+    thiếu, ``("info", câu)`` khi không biết, ``None`` khi có quyền.
+
+    Thiếu quyền thì WordPress lọc bài khi lưu, bỏ ``srcset`` app ghi cho ảnh: điện thoại tải bản
+    thu nhỏ đã mất GPS (T-059, T-091). «Không biết» khi website không cho biết quyền viết bài (câu
+    trả lời thiếu ``capabilities``, hay tài khoản quá thấp để xét). Có quyền thì không báo gì: REST
+    trả quyền theo vai, không thấy ``DISALLOW_UNFILTERED_HTML`` nên đó chỉ là dấu hiệu tốt. Câu cố
+    định: không tên đăng nhập, mật khẩu, đường dẫn; không khuyên nâng lên Quản trị viên (Lá Chắn
+    T-059).
+    """
+    has_it = getattr(info, "can_unfiltered_html", None)
+    if has_it is True:
+        return None
+    if has_it is not False or info.can_edit_posts is not True:
+        return (
+            "info",
+            "Chưa biết ảnh trong bài có giữ được vị trí GPS khi xem trên điện thoại không: website "
+            "chưa cho biết đủ quyền của tài khoản này. Bấm «Kiểm tra kết nối» lại sau khi tài "
+            "khoản có quyền viết bài.",
+        )
+    lost = (
+        "Ảnh trong bài có thể **mất vị trí GPS khi xem trên điện thoại**: tài khoản này không có "
+        "quyền giữ nguyên mã HTML của bài (quyền `unfiltered_html`), nên khi lưu bài WordPress bỏ "
+        "phần chỉ cho điện thoại dùng ảnh đầy đủ 1600 px, điện thoại tải bản thu nhỏ đã mất GPS."
+    )
+    if any(isinstance(role, str) and role in _UNFILTERED_ROLES for role in info.roles):
+        return (
+            "warning",
+            f"{lost}\n\nTài khoản đã ở vai trò Biên tập viên trở lên mà website đã bỏ quyền này "
+            "khỏi vai trò (thường do plugin quản lý quyền hoặc cấu hình website): báo người làm "
+            "web xem lại. Đừng nâng tài khoản lên Quản trị viên chỉ vì việc này.",
+        )
+    return (
+        "warning",
+        f"{lost}\n\nCách sửa: nhờ người quản trị website đặt tài khoản này ở vai trò **Biên tập "
+        "viên (Editor)**. Không cần, và không nên, nâng lên Quản trị viên.",
+    )
 
 
 settings = load_settings()
@@ -77,6 +123,10 @@ if info:
             "Tài khoản thiếu quyền viết bài hoặc tải ảnh. Nên dùng tài khoản có vai trò "
             "Biên tập viên (Editor) hoặc Quản trị viên (Administrator)."
         )
+    note = unfiltered_html_note(info)
+    if note:
+        kind, text = note
+        (st.warning if kind == "warning" else st.info)(text)
 
 # ------------------------------------------------------- 2. Chuyên mục và thẻ
 st.header("2. Chuyên mục và thẻ")
@@ -107,7 +157,8 @@ if categories is not None and tags is not None:
 st.header("3. Tạo thử một bài nháp")
 st.caption(
     "Bài chỉ được lưu **NHÁP** trên WordPress: khách không thấy cho tới khi bạn tự đăng trong "
-    "trang quản trị. Kiểm tra xong có thể xóa bài thử trong WordPress."
+    "trang quản trị. Kiểm tra xong có thể xóa bài thử trong WordPress. Bài thử chỉ có chữ, không "
+    "có ảnh: muốn thử gửi ảnh, dùng «Gửi nháp» ở trang Soạn bài (ảnh đã qua bước làm sạch)."
 )
 if categories is None:
     st.caption("Muốn chọn chuyên mục/thẻ: bấm **Tải chuyên mục và thẻ** ở mục 2 trước.")
@@ -121,30 +172,20 @@ with st.form("draft", clear_on_submit=False):
     chosen_tags = st.multiselect(
         "Thẻ", tags or [], format_func=lambda t: t.name, placeholder="Chọn..."
     )
-    image = st.file_uploader(
-        "Ảnh đại diện (không bắt buộc)", type=["jpg", "jpeg", "png", "webp", "gif"]
-    )
-    alt_text = st.text_input("Mô tả ảnh (alt) — nói rõ ảnh chụp gì")
     submitted = st.form_submit_button("Tạo bài nháp")
 
 if submitted:
     try:
         with st.spinner("Đang gửi sang WordPress..."):
-            media = None
-            if image is not None:
-                media = client.upload_media(image.getvalue(), image.name, alt_text=alt_text)
             post = client.create_draft(
                 title,
                 paragraphs_to_html(content),
                 categories=[t.id for t in chosen_categories],
                 tags=[t.id for t in chosen_tags],
-                featured_media=media.id if media else None,
+                featured_media=None,  # bài thử không có ảnh (T-108)
             )
     except WordPressError as exc:
         st.error(plain(exc))
     else:
         st.success(f"Đã tạo bài nháp #{post.id}: **{plain(post.title)}**")
-        source_url = plain(media.source_url) if media else ""
-        if source_url:  # WordPress có thể trả null: khi đó bỏ dòng này (SL-T044-2)
-            st.markdown(f"Ảnh đại diện đã tải lên: {source_url}")
         st.link_button("Mở bài trong trang quản trị WordPress", post.edit_link)
