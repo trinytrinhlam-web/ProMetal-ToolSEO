@@ -63,6 +63,18 @@ Trên trang Soạn bài, bước 4 (SEO) và bước 5 (Xuất bản) vẫn là 
 
 ## 4. Việc đang chờ anh
 
+### Việc anh quyết (Chỉ Huy B ghi 30/10, từ bản rà soát bảo mật Giai đoạn 3)
+
+Lá Chắn rà soát cả phần ảnh: đường ảnh chính của «Soạn bài» an toàn. Hai lỗi cần sửa (thư viện đọc ảnh iPhone, trang Kết nối tải nguyên ảnh) đang được sửa. Còn mấy việc cần anh chọn:
+
+1. **Ảnh đã tải lên website trước khi bài đăng** (kể cả ảnh của bài bỏ dở, lần gửi hỏng) hiện xem được trong danh sách Media công khai của website, không cần đăng nhập, ảnh còn GPS. **A (khuyên):** phần mềm gắn ảnh vào bài nháp ngay khi tải, để ảnh chỉ công khai cùng lúc bài đăng. **B:** để như hiện nay, ghi vào sổ rủi ro.
+2. **Bốn lỗi nhỏ để như cũ và ghi sổ rủi ro** (Lá Chắn đề xuất): (a) nếu anh tự sửa rồi lưu bài trong trình soạn của WordPress, dấu «[» có thể thành mã ngắn (shortcode) chạy được; (b) thư viện đọc ảnh iPhone còn 2 lỗi chưa ai sửa (ảnh dựng cố ý có thể làm app sập), xem lại mỗi cuối giai đoạn; (c) thư viện đó có phần mã giấy phép GPLv2 (chỉ là lưu ý vì app không phát hành ra ngoài); (d) 2 khe nhỏ ở kho thẻ ảnh trên máy. **Khuyên:** đồng ý ghi sổ cả 4.
+3. **Sửa câu trong sổ rủi ro** dòng 28/10 về quyền «HTML tự do» của tài khoản Biên tập viên cho đúng hơn: mã chèn vào bài chạy trong phiên của người đang đăng nhập xem bài (kể cả quản trị viên). **Khuyên:** đồng ý.
+4. **Khi thư viện pillow-heif có bản mới vá lỗi** (mang libheif 1.23.7 trở lên): cho Thợ Máy nâng ngay sau khi Lá Chắn quét, không cần hỏi lại? **Khuyên:** đồng ý.
+5. **Xác nhận các việc hoãn mang sang sau Giai đoạn 3:** tạo ảnh AI (T-053), GPS thẻ phụ (T-072), lỗi nhỏ đọc thư mục ảnh (T-064), chạy test trên máy Mac (chờ máy), lượt test Linux (cần cloud).
+
+Anh trả lời ngắn, ví dụ: «1A, 2 đồng ý, 3 đồng ý, 4 đồng ý, 5 OK».
+
 ### Việc anh xử lý sáng 28/10 (Chỉ Huy B ghi tối 27/10)
 
 **Anh đã trả lời 28/10 08:27:** 1 xong (đã tắt «Enable File-Based Execution»); 2 đã gỡ, còn 2 mật khẩu ứng dụng cũ để nguyên; 3 snippet tạm để nguyên; 4 Chỉ Huy đã gửi file `.htaccess` cũ, anh tự xử lý khi rảnh; 5 đồng ý; 6 (Giai đoạn 5) đồng ý A cả 6 câu; 7 (thử lại nháp có ảnh) OK; 8 và 10 (sổ rủi ro) đồng ý, đã ghi `docs/team/security.md` mục 6.

@@ -46,3 +46,4 @@ Làm phần **T-101** đúng như thiết kế Giai đoạn 5: `docs/team/report
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
 - 2026-10-28 23:14 (Chỉ Huy B): góp ý G4 của Soi Lỗi T-103: dữ liệu mẫu trang Kế hoạch demo (`seo_app/demo.py`) dùng trạng thái «Sẵn sàng», không thuộc danh sách nhãn của `PlanRow`; khi thay demo bằng dữ liệu thật đừng dùng lại nhãn đó.
+- 2026-10-30 11:00 (Chỉ Huy B): điều kiện Lá Chắn T-100 (mục 5): hiện chữ Sheet, `Conflict.now` bằng chữ thuần (LC-T094-3); giữ `listing.plan` (bản người dùng đã xem) trong `session_state` tới lúc «Áp dụng»; không tự dựng `Proposal` ngoài `compare_rows` / `from_ai`. LC-T100-1 (vùng đọc đầy), LC-T100-2 (cảnh báo giá) phải xong ở T-100 lượt 2 trước khi nối «Áp dụng» và hiện đề xuất AI tick sẵn.

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 0 (đăng nhập app) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-090 đã gộp (cùng `scripts/hash_password.py`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-30) |
 
 ## Mục tiêu
 
@@ -58,3 +58,4 @@ U3, F3.
 
 - Lập 2026-10-28 theo đề xuất của Lá Chắn T-090 và chỉ đạo «vấn đề nào có đề xuất thì làm theo đề xuất».
 - 2026-10-29 00:41 (Chỉ Huy B): T-090 đã gộp. Nhánh `team/T-104` từ `main` `b8ac183`, worktree `wt-T-104`; giao Thợ Máy (phiên Thợ Máy T-094). Chỉ Huy duyệt (R5) đổi cách giả lỗi của `test_set_password_cannot_write_env` (giả ở file tạm hoặc `os.replace`), giữ ý ca.
+- 2026-10-30 11:00 (Chỉ Huy B): Soi Lỗi ĐẠT (`8eef5cb`), Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`b9e51fc`: LC-T090-1, -2 đóng). Gộp `main` (`0122d4b`), Windows 20.051 test qua, 0 hỏng. SL-T104-1, -2 (Thấp) → T-105 theo đề xuất.

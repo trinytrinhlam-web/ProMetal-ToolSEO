@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-082, T-083, T-084 đã gộp |
-| Trạng thái | Chờ (sau T-082, T-083) |
+| Trạng thái | Lá Chắn xong; chờ T-107, T-108, chủ dự án quyết, T-078 phần còn lại |
 
 ## Mục tiêu
 
@@ -38,3 +38,5 @@ Một biên bản rà soát cả Giai đoạn 3 trên `main` (không chỉ từn
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi»; việc đã có trong kế hoạch («Lá Chắn rà cả Giai đoạn 3»).
+- 2026-10-29 01:50 (Chỉ Huy B): T-082, T-083 đã gộp. Nhánh `team/T-093` từ `main` `209615a`, worktree `wt-T-093`; giao Lá Chắn (phiên Lá Chắn T-056). Máy dừng khoảng 02:00 ngày 29/10; 30/10 07:35 cho làm tiếp.
+- 2026-10-30 11:00 (Chỉ Huy B): Lá Chắn xong (`c51fe4f`): **chưa đóng được Giai đoạn 3**. Làm theo đề xuất: LC-T093-3 (Cao) → T-107 (Thợ Máy, làm ngay); LC-T093-1 (Trung bình) → T-108 (Họa Sĩ, cùng nhánh T-106); LC-T093-2, N1 → N5, câu sổ rủi ro dòng `unfiltered_html`, các việc hoãn mang sang: chủ dự án quyết (`TIEN-DO.md` mục 4); T-078 phần còn lại giao khi máy rảnh. Biên bản, test `xfail` của T-093 vào `main` qua nhánh T-107, T-106.

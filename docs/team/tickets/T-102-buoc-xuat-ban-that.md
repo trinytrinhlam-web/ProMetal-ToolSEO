@@ -45,3 +45,4 @@ Làm phần **T-102** đúng như thiết kế Giai đoạn 5: `docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 23:46 theo thiết kế T-094 (Lá Chắn: thiết kế đủ để mở phiếu code, 44 điều kiện) và chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-10-30 11:00 (Chỉ Huy B): điều kiện Lá Chắn T-100 (mục 5): gọi `find_plan_draft` với mã băm Sheet đang dùng; chỉ gọi `record_status` sau khi T-100 lượt 2 sửa LC-T100-3 (so mã băm Sheet của nháp trước khi ghi trạng thái).

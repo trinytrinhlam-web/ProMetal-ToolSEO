@@ -59,6 +59,17 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-30 11:00 · Chỉ Huy B
+
+- **Máy dừng từ khoảng 02:00 ngày 29/10 tới 07:30 ngày 30/10** (mọi phiên, lượt test toàn bộ đang chạy bị ngắt). Đã cho làm tiếp từ chỗ dừng; chạy lại toàn bộ test.
+- Gộp **T-103** (lời dặn AI đọc kế hoạch) và **T-104** (`set_password` ghi `.env` an toàn). Windows 20.051 test qua, 0 hỏng. Lập T-105 (SL-T104-1, -2), T-106 (cảnh báo `unfiltered_html`, Họa Sĩ) theo đề xuất.
+- T-099: Lá Chắn đầy đủ ĐẠT CÓ ĐIỀU KIỆN (`ce451fe`, 2 Thấp; LC-T099-1 trước T-102): gộp ở lượt test kế tiếp, rồi lượt 2.
+- **T-093 (Lá Chắn rà soát Giai đoạn 3): chưa đóng được giai đoạn.** 1 Cao LC-T093-3 (libheif 1.23.6 trong pillow-heif) → T-107 (Thợ Máy, làm ngay); 1 Trung bình LC-T093-1 (trang Kết nối tải nguyên ảnh) → T-108 (Họa Sĩ, cùng nhánh T-106); 1 Thấp LC-T093-2 và N1 → N5 chờ chủ dự án quyết (`TIEN-DO.md` mục 4); T-078 phần còn lại (Thợ Máy `required-version`, Thư Ký README).
+- T-100: Lá Chắn xem lại lượt 2 ĐẠT CÓ ĐIỀU KIỆN (`a214c0b`): gộp `a214c0b` cùng T-099 ở lượt test kế tiếp; lượt 3 (8 Thấp SL-T100-4 → -11) làm tiếp trên nhánh.
+- Chờ gộp (đã đạt): T-099 (`ce451fe`), T-100 (`a214c0b`), T-106 + T-108 (`aa67649`, Lá Chắn ĐẠT CÓ ĐIỀU KIỆN; LC-T093-1 đóng).
+- Đang chạy: Soi Lỗi T-107 (Thợ Máy xong `9a04a91`), Soi Lỗi kiểm lại T-100 lượt 3 (`777d124`), Thợ Máy T-099 lượt 2 (LC-T099-1, SL-T099-1).
+- Hàng đợi (máy rảnh): T-105 (Thợ Máy), T-078 phần còn lại, T-092 (Họa Sĩ, sau T-100). T-101 sau T-100; T-102 sau T-099 lượt 2 + T-100.
+
 ### 2026-10-29 00:41 · Chỉ Huy B
 
 - Gộp **T-091** và **T-096 lượt 5**. Windows 19.888 test qua, 0 hỏng. T-096 xong hẳn; T-102 chỉ còn chờ T-099, T-100.
