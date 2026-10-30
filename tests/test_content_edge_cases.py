@@ -388,19 +388,21 @@ def test_html_in_ai_article_is_not_rendered_as_html(project_root, monkeypatch, a
 
 
 def test_publish_now_requires_confirmation(project_root, monkeypatch, app_env):
+    """«Nháp» là nút thật «📤 Gửi nháp» (T-056). T-102 (R5, Chỉ Huy B duyệt 30/10 18:45): «Hẹn
+    giờ», «Đăng ngay» có công tắc mặc định tắt (LC-T094-41): không có nút gửi nào, câu nói rõ
+    lý do, không đường tới ``release_draft``. Bật công tắc thì chỉ gửi được sau màn hình xác nhận
+    có mã băm: ``tests/test_t102_publish.py`` (``test_schedule_flow_confirms_then_releases_last``,
+    ``test_publish_now_with_seo_written``, ``test_untick_when_*``,
+    ``test_switch_off_hides_schedule_and_publish``)."""
     at = open_write(project_root, monkeypatch, FakeProvider())
     at.session_state["step"] = 4
     at.run()
-    # T-056: «Nháp» là nút thật «📤 Gửi nháp» (test ở tests/test_app_images.py); «Hẹn giờ»,
-    # «Đăng ngay» vẫn là bản demo với nút «📤 Gửi sang WordPress».
     assert any(b.label == "📤 Gửi nháp" for b in at.button)
-    send = "📤 Gửi sang WordPress"
-    at.segmented_control[-1].set_value("Hẹn giờ").run()
-    assert not button(at, send).disabled  # hẹn giờ: không cần ô xác nhận đăng ngay
-    at.segmented_control[-1].set_value("Đăng ngay").run()
-    assert button(at, send).disabled
-    at.checkbox[0].check().run()
-    assert not button(at, send).disabled
+    for mode in ("Hẹn giờ", "Đăng ngay"):
+        at.segmented_control[-1].set_value(mode).run()
+        assert not at.exception
+        assert not any(b.key == "wp-send" for b in at.button)  # không nút gửi nào
+        assert any("Hẹn giờ và Đăng ngay đang **tắt**" in i.value for i in at.info)
 
 
 def test_page_opens_with_minimal_ai_config(project_root, monkeypatch, app_env, tmp_path):

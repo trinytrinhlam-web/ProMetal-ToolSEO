@@ -17,7 +17,6 @@ Không gọi Google, WordPress, AI thật: dùng lại bộ giả của ``tests/
 
 from __future__ import annotations
 
-import pytest
 import test_t101_plan_page as plan_page
 from fake_plan_sheet import HEADER
 
@@ -46,9 +45,6 @@ def formula_cells(table) -> list[str]:
     ]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="LC-T101-1: ô bảng dạng công thức tải về CSV mở bằng Excel thành công thức"
-)
 def test_lc_t101_1_plan_list_cells_cannot_become_excel_formulas(project_root, sheet):
     sheet.set(2, HEADER.index("Từ khóa chính"), SHEET_FORMULA)
     sheet.set(2, HEADER.index("Tiêu đề dự kiến"), TITLE_FORMULA)
@@ -58,9 +54,6 @@ def test_lc_t101_1_plan_list_cells_cannot_become_excel_formulas(project_root, sh
     assert formula_cells(table) == []
 
 
-@pytest.mark.xfail(
-    strict=True, reason="LC-T101-1: ô bảng dạng công thức tải về CSV mở bằng Excel thành công thức"
-)
 def test_lc_t101_1_proposal_cells_cannot_become_excel_formulas(project_root, sheet):
     at = open_plan(project_root)
     paste(at, f"Từ khóa chính\tTiêu đề dự kiến\n{PASTED_FORMULA}\t{TITLE_FORMULA}\n")

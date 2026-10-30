@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-099, T-100 đã gộp (`post_statuses`, đồng bộ kế hoạch) |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ Theo `docs/team/reports/T-094-la-chan.md` mục «Chung» và mục T-100 (đồ
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-30 theo đề xuất Họa Sĩ T-101 (ranh giới giao diện / lõi). Nối nút ghi vào trang Kế hoạch ở lượt sau của T-101 hoặc ở T-102.
+- 2026-10-30 22:24 (Chỉ Huy B): giao 20:25 cho phiên Thợ Máy T-094 (người viết thiết kế 1.7). Nhánh `team/T-109`, worktree `wt-T-109`, từ `main` `eef13b5` (có T-101). Lưu ý điều kiện LC-T101-1 (ô mở đầu `=`, `+`, `-`, `@`) khi ghi Sheet hay hiện bảng.

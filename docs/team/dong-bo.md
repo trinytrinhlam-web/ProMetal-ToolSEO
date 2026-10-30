@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-30 22:24 · Chỉ Huy B
+
+- Gộp **T-107 lượt 3** (T-107 xong; HEIC tạm tắt), **T-110 lượt 1**, **T-101** (`eef13b5`). Windows 21.539 test qua, 0 hỏng. Sau gộp phải bỏ `import pytest` thừa ở `test_la_chan_t093.py` (mỗi nhánh gỡ một dấu `xfail` cuối, đứng riêng thì không lỗi).
+- Lập **T-111** (bật lại HEIC khi có pillow-heif mới, 8 điều kiện Lá Chắn, LC-T107-3, SL-T107-3). AVIF trong README → T-078 phần còn lại.
+- 3 phiên dừng vì hết hạn mức (mở lại 22:20), đã nhắn tiếp tục 22:22: Thợ Máy T-110 lượt 2 (LC-T110-1 cách A, SL-T110-1), Soi Lỗi T-102, Thợ Máy T-109.
+- Đóng Giai đoạn 3 khi xong: T-110 lượt 2, T-078 phần còn lại. Hàng đợi: T-105 (Thợ Máy), T-092 (Họa Sĩ), T-078 phần còn lại, chú thích `[plan]` trong `config/content.toml`.
+
 ### 2026-10-30 19:59 · Chỉ Huy B
 
 - Gộp **T-099 lượt 2** (T-099 xong hẳn) và **T-107 lượt 1–2** (`17b2a31`). Windows 21.295 test qua, 0 hỏng.
