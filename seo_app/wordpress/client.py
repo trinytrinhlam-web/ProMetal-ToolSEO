@@ -217,7 +217,8 @@ def _is_plain_request(
 ) -> bool:
     """Tham số, header, thân lệnh chỉ là loại client tự viết (LC-T042-1), xét TRƯỚC KHI gửi.
 
-    - tùy chọn chỉ ``params``, ``json`` (``dict``), ``data`` (``bytes``), ``headers``;
+    - tùy chọn chỉ ``params``, ``json`` (``dict``), ``data`` (``bytes``), ``headers``; ``data``
+      chỉ ở lệnh tải ảnh (``_is_image_upload``, SL-T099-1);
     - khóa ``params`` thuộc ``ALLOWED_PARAMS`` của đúng đường, giá trị là chữ hay số nguyên;
       không bao giờ có ``rest_route``, ``_method``, ``_envelope``, ``_jsonp``; ``_fields`` không
       rỗng, không hỏi trường trong ``_RENDERED_FIELDS`` (LC-T060-2);
@@ -252,6 +253,8 @@ def _is_plain_request(
     if allowed is None or json_keys is None or getattr(session, "params", None):
         return False
     if not (data is None or type(data) is bytes) or not (payload is None or type(payload) is dict):
+        return False
+    if data is not None and not _is_image_upload(method, path, headers, payload):
         return False
     if payload is not None and not released:
         for key in payload:
@@ -290,6 +293,27 @@ def _is_plain_request(
     if any(str(name).lower() == "content-type" for name in session_headers):
         return False
     return not any("method" in str(name).lower() for name in [*session_headers, *(headers or {})])
+
+
+def _is_image_upload(method: str, path: str, headers: object, payload: object) -> bool:
+    """Thân byte (``data``) chỉ được ở lệnh tải ảnh (SL-T099-1): đúng ``POST /wp/v2/media``,
+    không kèm ``json``, có đúng một header ``Content-Type`` thuộc ``IMAGE_TYPES``.
+
+    ``requests`` không gắn ``Content-Type`` cho byte; WordPress lõi hôm nay không đọc thân thiếu
+    ``Content-Type`` với ``POST`` (PHP chỉ điền ``$_POST`` cho thân dạng form), nhưng lời hứa «chỉ
+    lệnh có dấu ``_RELEASE`` gửi được ``status`` khác nháp» phải nằm ở lớp chặn này, không dựa vào
+    cách website đọc thân: thân byte ở đường khác (``status=publish``, ``id=7``…) bị từ chối.
+    """
+    if method != "POST" or path != "/wp/v2/media" or payload is not None:
+        return False
+    if type(headers) is not dict:
+        return False
+    types = [
+        value
+        for name, value in headers.items()
+        if type(name) is str and name.lower() == "content-type"
+    ]
+    return len(types) == 1 and type(types[0]) is str and types[0] in IMAGE_TYPES.values()
 
 
 def _is_release_request(method: str, path: str, options: dict[str, Any]) -> bool:
@@ -1363,19 +1387,22 @@ class WordPressClient:
         Chỉ gọi từ bước Xuất bản, sau màn hình xác nhận (mã băm) và sau khi tải ảnh, tạo nháp, ảnh
         đại diện, ghi SEO đã xong trong **cùng** lần bấm (T-102). Thứ tự:
 
-        1. Kiểm trước khi gửi gì (sai thì ``ReleaseError``, 0 request): ``post_id`` thuộc
-           ``_created_post_ids`` của **chính đối tượng client này** (client tạo mới mỗi lần bấm:
-           bài tạo ở lần gửi khác, mã bài đọc từ Sheet hay ``post_statuses`` không bao giờ vào
-           được); ``mode`` đúng chữ; Đăng ngay không kèm giờ; Hẹn giờ thì ``when_utc`` là
-           ``datetime`` có múi giờ.
-        2. Hỏi lại website bài **còn là nháp** (``GET``, chỉ đọc). Không còn: bỏ mã bài khỏi
-           ``_created_post_ids``, từ chối. Giờ máy chủ lấy từ header ``Date`` của **chính** câu
-           trả lời này (thiếu, sai dạng → chặn; không lấy đồng hồ máy thay); đồng hồ máy lệch quá
-           2 phút → chặn; giờ hẹn ≥ giờ máy chủ + 10 phút, ≤ 365 ngày (``release_time_problem``).
-        3. Bỏ mã bài khỏi ``_created_post_ids`` (từ đây không lệnh nào của client sửa tiếp bài
-           này, kể cả khi lỗi), rồi gửi **một** lệnh ``POST /wp/v2/posts/<mã>`` thân đúng
-           ``{"status": "future", "date_gmt": "YYYY-MM-DDTHH:MM:SS"}`` hoặc
-           ``{"status": "publish"}``, mang dấu ``_RELEASE`` (``_is_release_request``).
+        1. **Giành bài một bước** (LC-T099-1): ``post_id`` phải thuộc ``_created_post_ids`` của
+           **chính đối tượng client này** (client tạo mới mỗi lần bấm: bài tạo ở lần gửi khác, mã
+           bài đọc từ Sheet hay ``post_statuses`` không bao giờ vào được), và được **bỏ khỏi tập
+           ngay trong bước kiểm** (``set.remove``): hai luồng dùng chung client cùng gọi cho một
+           bài thì chỉ một luồng đi tiếp, luồng kia bị từ chối, 0 request. Bị chặn ở bước 1–2
+           (chưa gửi lệnh chuyển) thì trả mã lại: bài vẫn là nháp của client.
+        2. Kiểm trước khi gửi gì (sai thì ``ReleaseError``, 0 request): ``mode`` đúng chữ; Đăng
+           ngay không kèm giờ; Hẹn giờ thì ``when_utc`` là ``datetime`` có múi giờ. Rồi hỏi lại
+           website bài **còn là nháp** (``GET``, chỉ đọc); không còn: từ chối, **không** trả mã.
+           Giờ máy chủ lấy từ header ``Date`` của **chính** câu trả lời này (thiếu, sai dạng →
+           chặn; không lấy đồng hồ máy thay); đồng hồ máy lệch quá 2 phút → chặn; giờ hẹn ≥ giờ
+           máy chủ + 10 phút, ≤ 365 ngày (``release_time_problem``).
+        3. Gửi **một** lệnh ``POST /wp/v2/posts/<mã>`` thân đúng ``{"status": "future",
+           "date_gmt": "YYYY-MM-DDTHH:MM:SS"}`` hoặc ``{"status": "publish"}``, mang dấu
+           ``_RELEASE`` (``_is_release_request``). Từ đây mã bài không bao giờ được trả lại: không
+           lệnh nào của client sửa tiếp bài này, kể cả khi lỗi.
         4. Kiểm câu trả lời: đúng mã bài, đúng trạng thái; hẹn giờ thì ``date_gmt`` trả về đúng
            chuỗi đã gửi. Hẹn giờ mà website đăng ngay: ``ReleaseError(went_public=True)`` câu báo
            khẩn. Từ chối 4xx: bài vẫn là nháp. Lỗi không rõ (hết giờ, mất mạng, 3xx, 5xx, câu trả
@@ -1385,38 +1412,54 @@ class WordPressClient:
         # Nhập muộn như ``_seo_text``: module giờ hẹn thuộc gói publish, client không cần lúc nạp.
         from seo_app.publish.schedule import ScheduleError, date_gmt_text, release_time_problem
 
-        if type(post_id) is not int or post_id not in self._created_post_ids:
+        if type(post_id) is not int:
             raise ReleaseError(_RELEASE_NOT_OWN)
-        if type(mode) is not str or mode not in RELEASE_MODES:
-            raise ReleaseError(_RELEASE_BAD_MODE)
-        fail = {"post_id": post_id, "edit_link": self.edit_link(post_id)}
-        stamp = ""
-        if mode == "publish" and when_utc is not None:
-            raise ReleaseError(_RELEASE_NOW_WITH_TIME, **fail)
-        if mode == "future":
-            try:
-                stamp = date_gmt_text(when_utc)  # type: ignore[arg-type]
-            except ScheduleError:
-                raise ReleaseError(_RELEASE_BAD_TIME, **fail) from None
-        payload = {"status": "future", "date_gmt": stamp} if stamp else {"status": "publish"}
-        path = f"/wp/v2/posts/{post_id}"
-        options = {"json": payload, "params": {"_fields": _RELEASE_FIELDS}}
-        if not is_allowed_route("POST", path) or not _is_plain_request(
-            "POST", path, options, self._session, release=_RELEASE
-        ):
-            raise ReleaseError(_ROUTE_BLOCKED, **fail)  # chưa gửi gì, kể cả lệnh kiểm nháp
-
-        server_now = self._release_check(post_id, fail)
         try:
-            problem = release_time_problem(
-                mode, when_utc, server_now=server_now, local_now=_utc_now()
-            )
-        except ScheduleError:
-            problem = _RELEASE_BAD_TIME
-        if problem:
-            raise ReleaseError(problem, **fail)
+            # Kiểm và bỏ mã trong MỘT lệnh (LC-T099-1): không có khe giữa «kiểm» và «bỏ» để luồng
+            # khác dùng chung client chen vào.
+            self._created_post_ids.remove(post_id)
+        except KeyError:
+            raise ReleaseError(_RELEASE_NOT_OWN) from None
+        give_back = True  # chưa gửi lệnh chuyển: bị chặn thì trả mã lại cho client
+        try:
+            if type(mode) is not str or mode not in RELEASE_MODES:
+                raise ReleaseError(_RELEASE_BAD_MODE)
+            fail = {"post_id": post_id, "edit_link": self.edit_link(post_id)}
+            stamp = ""
+            if mode == "publish" and when_utc is not None:
+                raise ReleaseError(_RELEASE_NOW_WITH_TIME, **fail)
+            if mode == "future":
+                try:
+                    stamp = date_gmt_text(when_utc)  # type: ignore[arg-type]
+                except ScheduleError:
+                    raise ReleaseError(_RELEASE_BAD_TIME, **fail) from None
+            payload = {"status": "future", "date_gmt": stamp} if stamp else {"status": "publish"}
+            path = f"/wp/v2/posts/{post_id}"
+            options = {"json": payload, "params": {"_fields": _RELEASE_FIELDS}}
+            if not is_allowed_route("POST", path) or not _is_plain_request(
+                "POST", path, options, self._session, release=_RELEASE
+            ):
+                raise ReleaseError(_ROUTE_BLOCKED, **fail)  # chưa gửi gì, kể cả lệnh kiểm nháp
 
-        self._created_post_ids.discard(post_id)
+            still_draft, server_now = self._release_check(post_id, fail)
+            if not still_draft:
+                # Bài đã bị đăng, hẹn giờ, chuyển hay xóa ngoài app: không trả mã (thôi coi là
+                # bài app được sửa, cả ảnh đại diện, SEO).
+                give_back = False
+                raise ReleaseError(_RELEASE_NOT_DRAFT, **fail)
+            try:
+                problem = release_time_problem(
+                    mode, when_utc, server_now=server_now, local_now=_utc_now()
+                )
+            except ScheduleError:
+                problem = _RELEASE_BAD_TIME
+            if problem:
+                raise ReleaseError(problem, **fail)
+            give_back = False  # sắp gửi lệnh chuyển: mã bài không bao giờ trả lại nữa
+        finally:
+            if give_back:
+                self._created_post_ids.add(post_id)
+
         action, done = _RELEASE_WORDS[mode]
         try:
             data = self._json(self._request("POST", path, **options, release=_RELEASE))
@@ -1446,9 +1489,13 @@ class WordPressClient:
             ) from exc
         return self._released_from(data, post_id, mode, stamp, fail)
 
-    def _release_check(self, post_id: int, fail: dict[str, Any]) -> datetime | None:
-        """Bước 2 của ``release_draft``: hỏi website bài còn là nháp (chỉ đọc); trả giờ máy chủ
-        đọc từ header ``Date`` của chính câu trả lời này (``None`` khi thiếu, sai dạng)."""
+    def _release_check(
+        self, post_id: int, fail: dict[str, Any]
+    ) -> tuple[bool, datetime | None]:
+        """Bước 2 của ``release_draft``: hỏi website bài còn là nháp (chỉ đọc). Trả (còn nháp
+        không, giờ máy chủ đọc từ header ``Date`` của chính câu trả lời này; ``None`` khi thiếu,
+        sai dạng). Không hỏi được: ``ReleaseError``. Không đụng ``_created_post_ids``: người gọi
+        đã giành mã bài và tự quyết trả lại hay không."""
         from seo_app.publish.schedule import parse_server_date
 
         try:
@@ -1466,10 +1513,8 @@ class WordPressClient:
         except Exception as exc:  # lỗi lạ ở lệnh đọc: lệnh chuyển chưa gửi, bài vẫn là nháp
             raise ReleaseError(_RELEASE_CHECK_FAILED.format(code=""), **fail) from exc
         if not _is_own_draft_answer(data, post_id):
-            # Bài đã bị đăng, hẹn giờ, chuyển hay xóa ngoài app: thôi coi là bài app được sửa.
-            self._created_post_ids.discard(post_id)
-            raise ReleaseError(_RELEASE_NOT_DRAFT, **fail)
-        return parse_server_date(response.headers.get("Date"))
+            return False, None
+        return True, parse_server_date(response.headers.get("Date"))
 
     def _released_from(
         self, data: object, post_id: int, mode: str, stamp: str, fail: dict[str, Any]
