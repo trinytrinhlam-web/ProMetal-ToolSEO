@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-091 đã gộp (`ConnectionInfo.can_unfiltered_html`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-30) |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ W2, U1.
 
 - Lập 2026-10-29: phần giao diện còn lại của T-091 yêu cầu 4 (đề xuất Soi Lỗi T-059), theo chỉ đạo «vấn đề nào có đề xuất thì làm theo đề xuất».
 - 2026-10-30 11:00 (Chỉ Huy B): làm cùng T-108 trên nhánh `team/T-106` (từ `main` `0122d4b` + T-093), worktree `wt-T-106`; giao Họa Sĩ (phiên Họa Sĩ T-084).
+- 2026-10-30 12:52 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`43d0a97`), Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`aa67649`). Gộp `main` cùng T-108, Windows 20.877 test qua, 0 hỏng.

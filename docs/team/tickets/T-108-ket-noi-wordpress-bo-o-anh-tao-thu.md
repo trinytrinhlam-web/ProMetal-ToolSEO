@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (chặn đóng Giai đoạn 3) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-30) |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ W2, F1, U1.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-30 theo đề xuất Lá Chắn T-093 (việc 2 để đóng Giai đoạn 3) và chỉ đạo «vấn đề nào có đề xuất thì làm theo đề xuất».
+- 2026-10-30 12:52 (Chỉ Huy B): LC-T093-1 đóng (Soi Lỗi, Lá Chắn xác nhận). Gộp `main` cùng T-106, Windows 20.877 test qua, 0 hỏng.

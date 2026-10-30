@@ -59,6 +59,12 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-30 12:52 · Chỉ Huy B
+
+- Gộp **T-099** (lượt 1), **T-100** (lượt 2), **T-106 + T-108**, biên bản **T-093**. Windows 20.877 test qua, 0 hỏng. Giai đoạn 5 xong phần lõi 6/8.
+- Đang chạy: Thợ Máy T-107 lượt 2 (Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN `f68a206`: LC-T093-3 đóng đúng ý; sửa thêm SL-T107-2 Trung bình, SL-T107-1 có từ trước, theo đề xuất, rồi Lá Chắn kiểm một lần), Soi Lỗi kiểm lại T-099 lượt 2 (`1040586`), Lá Chắn xem lại T-100 lượt 3–4 (Soi Lỗi lượt 4 ĐẠT).
+- Hàng đợi (máy rảnh): T-105, T-092 (Họa Sĩ, đã mở khóa), T-078 phần còn lại. T-101 sau T-100 lượt 4; T-102 sau T-099 lượt 2 + T-100 lượt 4. Chờ chủ dự án: 5 câu ở `TIEN-DO.md` mục 4.
+
 ### 2026-10-30 11:00 · Chỉ Huy B
 
 - **Máy dừng từ khoảng 02:00 ngày 29/10 tới 07:30 ngày 30/10** (mọi phiên, lượt test toàn bộ đang chạy bị ngắt). Đã cho làm tiếp từ chỗ dừng; chạy lại toàn bộ test.
