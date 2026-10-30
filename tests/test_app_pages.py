@@ -65,12 +65,18 @@ def test_every_writing_step_renders(project_root, step):
     assert not at.exception, at.exception
 
 
-def test_plan_reading_shows_proposed_changes(project_root):
+def test_plan_reading_shows_proposed_changes(project_root, fake_ai):
+    # T-101 (Chỉ Huy duyệt R5 phương án A, 30/10): trang Kế hoạch thật thay bản demo. Chưa khai
+    # báo Google: dán chữ rồi bấm đọc thì trang không lỗi, báo chưa đọc được kế hoạch hiện tại,
+    # không có đề xuất, không gọi AI (chi tiết: tests/test_t101_plan_page.py).
     at = open_page(project_root, "plan.py")
-    assert "plan_changes" not in at.session_state
+    at.session_state["plan_source"] = "Dán nội dung"
+    at.text_area(key="plan_paste").input("Tháng 11: thêm bài sửa cửa cuốn bị kẹt.")
     button(at, "🧠 Đọc kế hoạch và đề xuất cập nhật").click().run()
     assert not at.exception
-    assert len(at.session_state["plan_changes"]) == len(demo.PLAN_CHANGES)
+    assert any("Chưa đọc được kế hoạch hiện tại" in w.value for w in at.warning)
+    assert "plan_proposals" not in at.session_state and "plan_ai" not in at.session_state
+    assert fake_ai.calls == []
 
 
 def test_blind_test_locked_without_api_key(project_root):
