@@ -152,3 +152,77 @@ Không điều kiện nào bắt buộc trước khi gộp T-100 vào `main`.
 | 6 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
 
 3 lỗi Thấp đều có lượt sửa, không cần chủ dự án chấp nhận rủi ro; không thêm dòng vào sổ rủi ro (`security.md` mục 6).
+
+## Xem lại lượt 2
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Thợ Máy `57bac59`: `seo_app/plan/sync.py` (+92/−16), `seo_app/plan/propose.py` (+122/−16), `seo_app/google/sheets.py` (+16/−8), `tests/fake_plan_sheet.py` (+2), test mới; gỡ `xfail` ở 3 file. Soi Lỗi `e55c2cd` (8 Thấp mới, `xfail(strict=True)`). Nhánh đã gộp `main` `0122d4b` (`9840e13`, có T-103, T-104) |
+| Ngày | 2026-10-30 (09:40–10:08 +07, giờ máy) |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN**: LC-T100-2 **đóng**. LC-T100-1 và LC-T100-3 **đóng phần đã báo**; mỗi lỗi còn một biến thể Soi Lỗi tìm ra: SL-T100-11 (của LC-T100-1) và SL-T100-4 (của LC-T100-3). Tôi tính đó là phần còn hở của hai lỗi này, nên LC-T100-1, -3 chỉ đóng hẳn khi hai biến thể được sửa. Lá Chắn **0 lỗi mới**. 8 Thấp mới của Soi Lỗi (SL-T100-4 → -11) **giữ Thấp, không nâng mức**. **Không lỗi nào bắt buộc sửa trước khi gộp T-100**. Trước T-101: SL-T100-5 → -11; trước T-102: SL-T100-4. Gộp `main` được: `main` trên máy vẫn là `0122d4b`, nhánh đã gộp bản đó; 18 file test chọn lọc qua trên đầu nhánh, 0 hỏng |
+
+### Tóm tắt (cho chủ dự án)
+
+Ba lỗi nhỏ tôi báo lượt trước đã được sửa đúng hướng: Sheet đủ 1.000 dòng thì app báo và không thêm dòng; cảnh báo «AI nhắc tới giá» bắt được các cách viết giá tôi nêu; bài mở từ Sheet khác thì không ghi trạng thái nhầm Sheet. Soi Lỗi tìm thêm 8 lỗi nhỏ, phần lớn ở cách nhận ra chữ nói giá. Hai lỗi là chỗ còn hở của chính lỗi tôi báo: Sheet đầy vẫn cấp mã mới cho dòng chưa có mã, và đổi Sheet mà phần mềm còn giữ kết nối cũ thì vẫn có thể ghi nhầm. Không lỗi nào nguy hiểm; chưa có nút bấm nào dùng tới. Cần sửa trước khi làm giao diện trang Kế hoạch (T-101) và bước Xuất bản (T-102).
+
+### Ba lỗi của Lá Chắn
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| LC-T100-1 | **Đóng phần đã báo**; còn SL-T100-11 | `parse_sheet` đặt `SheetPlan.full` khi Google trả đủ 1.001 dòng (`sync.py:256`), kèm câu báo `MSG_FULL`. «Thêm» trên Sheet đầy → `CONFLICT_FULL`, không gửi lệnh thêm (`:519`). `_key_present` không thấy mã trên Sheet đầy → `None` (`:629`). Lệnh thêm báo dòng > 1.001 (Sheet vừa đầy ở máy khác) → `MSG_APPENDED_OUTSIDE`, dừng các lệnh thêm sau (`:505`). Ghi trạng thái cho dòng ngoài vùng đọc → `BLOCKED`, giữ việc (`:732`). «Viết bài» trên dòng đó → `SheetPlanError(MSG_FULL)` (`:837`). Sheet giả của test nay cắt lệnh đọc như Google. 3 test của tôi qua. **Còn hở** (SL-T100-11): `_update` (`:538`) vẫn cấp mã mới cho dòng chưa có mã trên Sheet đầy, mà mã đó có thể đã có ở dòng ngoài vùng đọc |
+| LC-T100-2 | **Đóng** | Hàm riêng `mentions_plan_price` (`propose.py:482`), dò trên cả chữ: «giá / phí / tiền công» rồi số tiền không đơn vị trong vòng 3 từ (`_PRICE_LABEL` `:404`), «VNĐ / VND / USD» trước số. 8 ca của tôi qua; test canh số đếm («10.000 lượt tìm», «từ năm 2009») qua. Hàm mới còn lọt và còn báo oan: SL-T100-5 → -10 (xếp mức dưới) |
+| LC-T100-3 | **Đóng khi nơi gọi không đưa `sheet_id`**; còn SL-T100-4 | Trước khi đọc, `write_status` so mã băm Sheet của việc với Sheet đang kết nối (`:719`). Khác hay không biết → `BLOCKED`: không đọc, không ghi, giữ việc. `retry_pending` gặp `BLOCKED` thì đi tiếp, chỉ dừng khi Google, mạng lỗi. Client có thêm `sheet_hash` (`sheets.py:634`): mã băm SHA-256, không lộ mã Sheet. **Còn hở** (SL-T100-4): `_connected_hash` (`sync.py:860`) tin `sheet_id` nơi gọi đưa hơn Sheet thật của client. Client cũ còn nối Sheet A, nơi gọi đưa mã Sheet B mới → nháp của B vẫn ghi vào A. Báo cáo Thợ Máy dặn T-102 gọi `record_status(…, sheet_id=settings.google_sheet_id)`, đúng đường này |
+
+### Gỡ `xfail` (R5)
+
+Đúng R5: chỉ xóa dòng dấu, 0 dòng thêm, không sửa thân test. Đã soát bằng `git diff 9840e13 57bac59`:
+- `tests/test_la_chan_t103.py`: 4 dòng (một dấu cho 5 ca LC-T103-1);
+- `tests/test_la_chan_t100.py`: 7 dòng (5 dấu của tôi);
+- `tests/test_soi_loi_t100.py`: 13 dòng (3 dấu SL-T100-1 → -3).
+
+Thợ Máy chạy `--runxfail` trước khi gỡ. Trên đầu nhánh, cả ba file của tôi, của T-103, của Soi Lỗi: 120 passed, 22 xfailed (22 = đúng các ca SL-T100-4 → -11).
+
+### Không mở lỗ mới
+
+- `seo_app/google/sheets.py` chỉ thêm `sheet_hash` và định dạng lại (ruff). Lớp kiểm đường gọi, `RAW`, vùng ô không đổi; `repr` vẫn che mã Sheet.
+- `BLOCKED` không tính là xong: việc còn nợ được giữ. «Thêm» chưa có Mã bài → `CONFLICT_NO_KEY`, không gửi (G1 Soi Lỗi; `_key_present("")` → `None`).
+- Biểu thức dò giá mới có lượng từ giới hạn, không lồng nhau. Chỗ chạy bậc hai là `outside()` (`propose.py:488`): mỗi chỗ khớp so với mọi lần xuất hiện của từ khóa (SL-T100-10).
+- Không thấy lỗ nào khác ngoài 8 lỗi Soi Lỗi đã nêu.
+
+### Xếp mức 8 Thấp mới của Soi Lỗi
+
+| Mã | Ý kiến Lá Chắn | Hạn |
+|---|---|---|
+| SL-T100-4 | **Giữ Thấp.** Phần còn hở của LC-T100-3 (ghi nhầm Sheet, không đụng website, không lộ gì). Cách sửa: client có `sheet_hash` thì luôn so với nó; nơi gọi đưa `sheet_id` thì phải khớp cả hai | Trước khi T-102 gọi `record_status` / `retry_pending` |
+| SL-T100-5 | **Giữ Thấp.** Lọt giá thật «150.000 Đ.» (hồi quy so với lượt 1) | Trước T-101 hiện đề xuất AI |
+| SL-T100-6 | **Giữ Thấp.** Lọt giá «300 nghìn lần đầu», «15 triệu nhà anh Tuấn» (hồi quy) | Trước T-101 |
+| SL-T100-7 | **Giữ Thấp**, không phải bảo mật: báo oan theo hướng an toàn («giá đỡ», «đánh giá») | Cùng lượt sửa |
+| SL-T100-8 | **Giữ Thấp**, không phải bảo mật: báo oan (từ khóa không dấu, hồi quy) | Cùng lượt sửa |
+| SL-T100-9 | **Giữ Thấp.** Lọt «Tiền thay motor 1.200.000», «hết / tốn / trả …», «Công thợ 300.000» | Trước T-101 |
+| SL-T100-10 | **Giữ Thấp.** Tôi đo lại: 100 mục AI lặp từ khóa ngắn tới giới hạn độ dài mất 15,9 giây (máy đang bận), chữ thường cùng độ dài 1,1–2,4 giây. Nhưng lượng chữ đó (khoảng 270.000 ký tự) vượt xa `max_tokens = 16000` của `[tasks.plan]`: lời đáp bị cắt thành lỗi cố định, nên với cấu hình hiện tại xấu nhất chỉ vài giây. Tăng `max_tokens` thì tệ hơn. Sửa: tìm vị trí bằng chia đôi như `_KeywordSpans` của `seo_app/onpage/meta.py` | Trước T-101 |
+| SL-T100-11 | **Giữ Thấp.** Phần còn hở của LC-T100-1 (trùng Mã bài với dòng ngoài vùng đọc). Cách sửa: Sheet đầy thì không cấp mã mới (`Conflict` như «Thêm») | Trước T-101 nối «Áp dụng» |
+
+Không lỗi nào phải sửa trước khi gộp T-100: phần đồng bộ chưa nối vào giao diện.
+
+### Thử gộp
+
+`main` trên máy vẫn là `0122d4b`, và nhánh đã gộp đúng bản đó ở `9840e13`. `git merge-base --is-ancestor main e55c2cd` đúng; `git merge-tree --write-tree main e55c2cd` cho cây `586f429`, trùng cây của đầu nhánh. Vậy thử gộp chính là chạy test trên đầu nhánh.
+
+Máy đang chạy toàn bộ test của Chỉ Huy, nên tôi chạy 18 file chọn lọc: đồng bộ, cache, kho nháp T-100, dò giá, lời dặn kế hoạch T-103, Google T-097, kho nháp và gửi nháp T-089. Kết quả: **1.592 passed, 22 xfailed** (22 là đúng các ca SL-T100-4 → -11), **0 failed**, 19 phút 51 giây. `ruff check .` sạch.
+
+### Công cụ quét lượt 2
+
+| Công cụ | Kết quả |
+|---|---|
+| detect-secrets 1.5.0 | **Đặt `PYTHONUTF8=1`**, `--all-files` trên bản sao 12 file đổi ở lượt 2, bản vá `9840e13..e55c2cd`, **file mồi tiếng Việt**: mồi bắt **2/2**, file thật 0 mục. Đã xóa file mồi |
+| bandit 1.9.4 | `PYTHONUTF8=1`, `sync.py`, `propose.py`, `sheets.py` (2.350 dòng): 1 mục B311 `random.uniform` ở `sheets.py:830` (độ trễ ngẫu nhiên khi thử lại, có từ T-097): báo nhầm |
+| Soát lịch sử git | `git log -p 9840e13..e55c2cd`: 0 dạng khóa thật |
+| ruff | `uv run ruff check .` trên đầu nhánh: `All checks passed!` |
+
+### Điều kiện sau lượt 2
+
+| # | Điều kiện | Phiếu nhận | Hạn |
+|---|---|---|---|
+| 1 | SL-T100-11 (phần còn hở của LC-T100-1) và SL-T100-5 → -10 (hàm dò giá); gỡ `xfail` khi XPASS (R5) | Thợ Máy (lượt sửa T-100 sau), hay đầu T-101 | Trước khi T-101 nối «Áp dụng» và hiện đề xuất AI |
+| 2 | SL-T100-4 (phần còn hở của LC-T100-3) | Thợ Máy (lượt sửa T-100 sau), hay đầu T-102 | Trước khi T-102 gọi `record_status` / `retry_pending` |
+| 3 | Điều kiện 5, 6 của lượt 1 giữ nguyên (T-101 chữ thuần, giữ `listing.plan`, không tự dựng `Proposal`; T-102 `find_plan_draft` theo Sheet đang dùng; kiểm lại bằng Fable sau 01/11) | T-101, T-102, Chỉ Huy | Như lượt 1 |
