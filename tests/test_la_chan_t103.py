@@ -65,10 +65,6 @@ PRICED = [
 ]  # fmt: skip
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T103-1: chữ AI có giá vẫn tick sẵn, không cảnh báo (code chưa kiểm giá)",
-)
 @pytest.mark.parametrize(("action", "key", "fields"), PRICED)
 def test_lc_t103_1_price_in_ai_text_warns_and_is_not_preselected(action, key, fields):
     result = ai(suggestion(action=action, key=key, **fields))

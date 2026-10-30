@@ -584,8 +584,8 @@ def test_retry_does_not_remove_a_newer_write_from_another_tab(sheet, client, sto
     store.save_plan_write(draft_id, old)
     real_write = sync.write_status
 
-    def write_then_other_tab(client_, write, *, now=None):
-        result = real_write(client_, write, now=now)
+    def write_then_other_tab(client_, write, *, sheet_id=None, now=None):
+        result = real_write(client_, write, sheet_id=sheet_id, now=now)
         store.save_plan_write(draft_id, newer)  # tab khác ghi việc mới trong lúc này
         return result
 
@@ -721,3 +721,110 @@ def test_to_cell_values():
     assert sync.to_cell("published_at", moment) == "2026-11-20 08:00+07:00"
     with pytest.raises(ValueError):
         sync.to_cell("published_at", datetime(2026, 11, 20, 8, 0))
+
+
+# ======================================================================== lượt 2 (Lá Chắn T-100)
+
+
+def full_rows(count: int = 1000) -> list[list]:
+    return [HEADER] + [row(f"B-{n:03d}", f"cửa sắt mẫu số {n}") for n in range(1, count + 1)]
+
+
+def test_full_sheet_is_reported_and_new_rows_are_not_added(fake, client):
+    sheet = FakePlanSheet(fake, full_rows() + [row("B-2000", "dòng sau vùng đọc")])
+    base = read(client)
+    assert base.full and sync.MSG_FULL in base.warnings and len(base.rows) == 1000
+    (added,) = compare_rows(base.plan_rows(), [PlanRow(keyword="cửa kéo")], today=TODAY).items
+    result = sync.apply_proposals(client, base, [added], now=NOW)
+    assert result.conflicts[0].reason == sync.CONFLICT_FULL and sheet.appends == []
+
+
+def test_full_sheet_still_updates_rows_it_can_see(fake, client):
+    sheet = FakePlanSheet(fake, full_rows())
+    base = read(client)
+    result = sync.apply_proposals(client, base, [update(base, "B-500", priority="Cao")], now=NOW)
+    assert result.written and sheet.cell(501, COL["priority"]) == "Cao"
+
+
+def test_sheet_one_row_short_of_full_is_not_full(fake, client):
+    FakePlanSheet(fake, full_rows(999))
+    assert not read(client).full
+
+
+def test_append_landing_after_row_1001_is_reported_and_stops(sheet, client, monkeypatch):
+    base = read(client)
+    incoming = [PlanRow(keyword="cửa kéo"), PlanRow(keyword="cổng xếp")]
+    first, second = compare_rows(base.plan_rows(), incoming, today=TODAY).items
+    monkeypatch.setattr(client, "append_row", lambda _row: 1002)  # máy khác vừa làm Sheet đầy
+    result = sync.apply_proposals(client, base, [first, second], now=NOW)
+    assert result.written == (first,) and result.not_written == (second,)
+    assert sync.MSG_APPENDED_OUTSIDE in result.message
+
+
+def test_key_present_is_unknown_on_a_full_sheet(fake, client):
+    FakePlanSheet(fake, full_rows())
+    assert sync._key_present(client, "B-001") is True
+    assert sync._key_present(client, "B-9999") is None
+    assert sync._key_present(client, "") is None
+
+
+def test_add_without_key_is_never_appended(sheet, client):
+    base = read(client)
+    after = PlanRow(keyword="cửa kéo")  # không có Mã bài (đường dựng đề xuất lạ)
+    result = sync.apply_proposals(client, base, [Proposal(Action.ADD, "", after)], now=NOW)
+    assert result.conflicts[0].reason == sync.CONFLICT_NO_KEY and sheet.appends == []
+
+
+def test_status_for_a_row_beyond_a_full_sheet_is_kept(fake, client, store):
+    sheet = FakePlanSheet(fake, full_rows())
+    draft_id = new_draft_id()
+    write = sync.status_write(ref("B-2000"), model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    result = sync.record_status(client, store, draft_id, write, now=NOW)
+    assert result.outcome is sync.WriteOutcome.BLOCKED and not result.finished
+    assert store.load_plan_write(draft_id) == write and sheet.updates == []
+    with pytest.raises(sync.SheetPlanError) as raised:
+        sync.open_row(client, "B-2000", now=NOW)
+    assert str(raised.value) == sync.MSG_FULL
+
+
+def test_status_is_never_written_into_another_sheet(sheet, client, store):
+    other = DraftPlanRef(key="B-001", sheet_hash=sheet_hash("Q" * 44), status="Chưa viết",
+                         opened_at=NOW)  # fmt: skip
+    write = sync.status_write(other, model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    reads = sheet.reads
+    for kwargs in ({}, {"sheet_id": SHEET_ID}):
+        result = sync.write_status(client, write, now=NOW, **kwargs)
+        assert result.outcome is sync.WriteOutcome.BLOCKED and not result.finished
+    assert sheet.reads == reads and sheet.updates == []  # không đọc, không ghi
+    draft_id = new_draft_id()
+    sync.record_status(client, store, draft_id, write, now=NOW)
+    assert store.load_plan_write(draft_id) == write
+
+
+def test_status_without_a_known_sheet_is_not_written(sheet, client):
+    class NoHash:  # client không cho biết Sheet nào, nơi gọi cũng không nói
+        def read_plan_values(self):
+            raise AssertionError("không được đọc")
+
+    write = sync.status_write(ref(), model.STATUS_DRAFT_SENT, wp_post_id=501, now=NOW)
+    assert sync.write_status(NoHash(), write, now=NOW).outcome is sync.WriteOutcome.BLOCKED
+    assert sync.write_status(client, write, now=NOW).outcome is sync.WriteOutcome.WRITTEN
+
+
+def test_client_sheet_hash_matches_cache_hash_without_the_id(client):
+    assert client.sheet_hash == sheet_hash(SHEET_ID) and SHEET_ID not in client.sheet_hash
+
+
+def test_retry_goes_on_after_a_blocked_write(fake, client, store):
+    sheet = FakePlanSheet(fake, full_rows())
+    blocked, normal = new_draft_id(), new_draft_id()
+    store.save_plan_write(blocked, sync.status_write(ref("B-2000"), model.STATUS_DRAFT_SENT,
+                                                     wp_post_id=501, now=NOW))  # fmt: skip
+    store.save_plan_write(normal, sync.status_write(ref("B-002"), model.STATUS_DRAFT_SENT,
+                                                    wp_post_id=502, now=NOW))  # fmt: skip
+    items = sync.retry_pending(client, store, SHEET_ID, now=NOW)
+    assert [item.result.outcome for item in items] == [
+        sync.WriteOutcome.BLOCKED, sync.WriteOutcome.WRITTEN
+    ]  # fmt: skip
+    assert [draft_id for draft_id, _ in store.list_plan_writes()] == [blocked]
+    assert sheet.cell(3, COL["wp_post_id"]) == 502

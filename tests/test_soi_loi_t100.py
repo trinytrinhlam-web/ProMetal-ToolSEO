@@ -638,10 +638,6 @@ def test_keyword_with_price_word_is_not_a_price_when_ai_changes_it():
     assert WARN_PRICE not in proposal.warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-1: số nhà viết tắt tên đường «Đ.», kiệt «K.» khớp đơn vị tiền «đ», «k»",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -654,10 +650,6 @@ def test_sl_t100_1_abbreviated_street_after_house_number_is_not_a_price(notes):
     assert _price_warned(notes) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-2: số đếm có «nghìn», «ngàn», «triệu» (công trình, lượt tìm) bị coi là giá",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -687,11 +679,6 @@ def test_long_notes_place_the_same_text_far_from_window_edges_without_warning():
     assert _price_warned(_long_note("2 đồng hồ điện ở trụ", 300)) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-3: dò giá theo khúc 900 ký tự, chỗ cắt khúc làm mất phần loại trừ (từ khóa, "
-    "«đồng hồ») nên ghi chú dài bị cảnh báo giá oan",
-)
 @pytest.mark.parametrize(
     ("insert", "at", "keyword"),
     [

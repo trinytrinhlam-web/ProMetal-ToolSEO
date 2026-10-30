@@ -116,6 +116,8 @@ class FakePlanSheet:
             values.append(trimmed)
         while values and not values[-1]:
             values.pop()
+        # Như Google: vùng đọc A1:Z1001 chỉ trả tối đa 1.001 dòng đầu (Lá Chắn LC-T100-1).
+        values = values[: sheets.MAX_ROWS]
         return {"range": "'KeHoach'!A1:Z1001", "majorDimension": "ROWS", "values": values}
 
     def _update(self, request):

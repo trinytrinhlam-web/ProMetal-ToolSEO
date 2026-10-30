@@ -119,23 +119,18 @@ def add_new_article(client) -> sync.ApplyResult:
 # ------------------------------------------------------------------------------- LC-T100-1
 
 
-@pytest.mark.xfail(strict=True, reason="LC-T100-1: Sheet đầy 1.000 dòng mà app không báo")
 def test_lc_t100_1_full_sheet_is_reported(full_sheet, client):
     plan = sync.read_sheet(client, now=NOW)
     assert len(plan.rows) == MAX_ROWS - 1
     assert plan.warnings
 
 
-@pytest.mark.xfail(
-    strict=True, reason="LC-T100-1: dòng thêm ngoài vùng đọc, đề xuất lại thêm trùng"
-)
 def test_lc_t100_1_full_sheet_never_gets_the_same_article_twice(full_sheet, client):
     add_new_article(client)
     add_new_article(client)  # người dùng dán lại kế hoạch: app phải thấy bài đã có (hay không thêm)
     assert len(rows_with(full_sheet, NEW_KEYWORD)) <= 1
 
 
-@pytest.mark.xfail(strict=True, reason="LC-T100-1: thêm «chưa rõ» trên Sheet đầy bị báo «chưa ghi»")
 def test_lc_t100_1_unsure_append_on_full_sheet_is_not_reported_as_not_written(full_sheet, client):
     full_sheet.fail("append", requests.exceptions.ConnectionError("đứt"), apply=True)
     result = add_new_article(client)
@@ -169,7 +164,6 @@ MISSED_PRICES = [
 ]
 
 
-@pytest.mark.xfail(strict=True, reason="LC-T100-2: cách viết giá thường gặp chưa được cảnh báo")
 @pytest.mark.parametrize("text", MISSED_PRICES)
 def test_lc_t100_2_common_price_writing_in_ai_notes_is_warned(text):
     proposal = ai_notes(text)
@@ -197,7 +191,6 @@ def call(func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-@pytest.mark.xfail(strict=True, reason="LC-T100-3: ghi trạng thái vào Sheet khác Sheet của nháp")
 def test_lc_t100_3_status_is_never_written_into_another_sheet(fake, client, tmp_path):
     sheet = FakePlanSheet(fake, [HEADER, row("B-001", "sửa cửa cuốn", status="Chưa viết")])
     store = DraftStore(path=tmp_path / "drafts.sqlite")

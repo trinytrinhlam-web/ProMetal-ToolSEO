@@ -182,3 +182,91 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <11 file đổi>
 
 - T-101, T-102: dùng đúng các hàm ở mục «Cách dùng»; giữ `listing.plan` (bản gốc) trong `session_state` tới lúc «Áp dụng».
 - Khi T-103 đã gộp `main`: Chỉ Huy báo, tôi gộp `main` vào `team/T-100` và gỡ 5 dấu `xfail` LC-T103-1 (mục trên).
+
+## Lượt 2 (2026-10-30 08:19 +07:00) · Soi Lỗi (`07bca14`), Lá Chắn (`789713a`): điều kiện 1–4 của Lá Chắn
+
+Chỉ Huy B giao (30/10 07:35): gộp `main` `0122d4b` (có T-103, T-104), gỡ 5 dấu `xfail` LC-T103-1; sửa LC-T100-1 (kèm G1 của Soi Lỗi), LC-T100-2 cùng SL-T100-1 → -3, LC-T100-3. Mục 5 (việc của T-101, T-102) không làm ở đây.
+
+### Tóm tắt (cho chủ dự án)
+
+- Google Sheet đã tới 1.000 dòng kế hoạch: app báo rõ «chỉ đọc 1.000 dòng đầu», **không thêm dòng mới** (trước đây có thể thêm trùng một bài mà không biết), vẫn sửa được các dòng đang thấy.
+- Cảnh báo «AI nhắc tới giá» bắt thêm cách viết giá thường gặp («Giá thay motor 1.200.000», «Chi phí 800.000», «VNĐ 500.000»…). Không còn cảnh báo oan với địa chỉ («45 Đ. Số 7», «12 K. Lê Duẩn»), số đếm («hơn 2 nghìn công trình», «3 triệu lượt xem») và ghi chú dài.
+- Bài mở từ một Google Sheet (ví dụ Sheet bản sao lúc thử) thì gửi xong chỉ ghi trạng thái vào **đúng Sheet đó**; đang nối Sheet khác thì app giữ việc lại, không ghi nhầm.
+
+### Đã sửa
+
+| Điều kiện | Sửa | Chỗ |
+|---|---|---|
+| 4. Gộp `main`, LC-T103-1 | Gộp `main` `0122d4b` (commit gộp `9840e13`, không xung đột). Gỡ dấu `xfail` của 5 ca LC-T103-1: **4 dòng xóa, 0 dòng thêm** (một dấu `@pytest.mark.xfail(...)` cho 5 ca của một test nhiều tham số) | `tests/test_la_chan_t103.py` |
+| 1. LC-T100-1 | Google trả đủ 1.001 dòng của vùng đọc → `SheetPlan.full`, câu báo cố định `MSG_FULL`. «Thêm» trên Sheet đầy → `Conflict` `CONFLICT_FULL`, không gửi lệnh thêm dòng. `_key_present` trên Sheet đầy mà không thấy mã → «chưa rõ» (`None`), không phải «chưa có». Lệnh thêm dòng báo số dòng > 1.001 (Sheet vừa đầy ở máy khác) → câu báo `MSG_APPENDED_OUTSIDE`, dừng, không thêm tiếp. Ghi trạng thái cho dòng nằm ngoài vùng đọc → `BLOCKED` (giữ việc còn nợ); «Viết bài» trên dòng đó → `SheetPlanError(MSG_FULL)`. Sheet giả của test nay cắt lệnh đọc ở 1.001 dòng như Google | `sync.py:98-104`, `:211`, `:256`, `:503`, `:518`, `:629`, `:824`; `tests/fake_plan_sheet.py:120` |
+| 1. G1 (Soi Lỗi) | «Thêm» chưa có Mã bài → `Conflict` `CONFLICT_NO_KEY`, không bao giờ gửi lệnh thêm dòng (thêm «chưa rõ» mà không có mã thì không kiểm lại được) | `sync.py:516` |
+| 2. LC-T100-2, SL-T100-1 → -3 | Một hàm dò giá riêng cho chữ kế hoạch: `mentions_plan_price`, dùng cho `_has_price`. Không còn dùng `mentions_price` của bước SEO; **không sửa** `seo_app/onpage/meta.py`.<br>- Dò trên **cả** chữ, không cắt khúc (SL-T100-3); vị trí từ khóa chính tìm trên cả chữ.<br>- Thêm «giá / phí / tiền công» + số tiền không đơn vị, cách tối đa 3 từ (số có dấu chấm nghìn hay từ 5 chữ số; năm «2026» không tính).<br>- Thêm «VNĐ / VND / USD» đứng trước số (LC-T100-2).<br>- Bỏ qua «Đ.», «K.» viết hoa có dấu cách trước, dấu chấm ngay sau số nhà: tên đường, kiệt viết tắt (SL-T100-1). «150.000Đ.» vẫn là giá.<br>- Bỏ qua «nghìn / ngàn / triệu / tỷ / tr / k» + danh từ đếm («công trình», «lượt», «khách», «người»…), như SL-T100-2.<br>- Giữ mọi dạng giá và phần loại trừ cũ («2 đồng hồ», «tỷ lệ», «xu hướng»).<br>- Biểu thức không lồng lượng từ, chạy tuyến tính (có test đo). | `propose.py:390-430` (biểu thức, danh sách), `_is_money` `:450`, `_keyword_spans` `:468`, `mentions_plan_price` `:482`, `_has_price` `:511` |
+| 3. LC-T100-3 | `write_status`, `record_status` nhận `sheet_id` (như `retry_pending`); không truyền thì lấy `SheetsClient.sheet_hash` (thuộc tính mới, chỉ là mã băm SHA-256 của mã Sheet, giống `plan_cache.sheet_hash`, không đưa mã Sheet ra ngoài). Mã băm Sheet của việc khác Sheet đang kết nối, hay không biết Sheet nào → `BLOCKED`, **không đọc, không ghi**, việc còn nợ giữ lại cho đúng Sheet của nó. Kết quả mới `WriteOutcome.BLOCKED` (chưa xong: `finished` sai); `retry_pending` gặp `BLOCKED` thì đi tiếp việc sau, chỉ dừng khi Google, mạng lỗi | `sync.py:696` (`write_status`), `:768`, `:801`, `:860` (`_connected_hash`), `:654`, `:663`; `seo_app/google/sheets.py:634` |
+
+Vì sao không bắt buộc `sheet_id`: test của Soi Lỗi gọi `write_status(client, write, now=…)`, `record_status(client, store, draft_id, write, now=…)` (không có mã Sheet). Bắt buộc thì phải sửa test của người khác. Lấy mã băm từ client vẫn an toàn: client nào không cho biết Sheet nào (và nơi gọi không nói) thì không ghi.
+
+### Gỡ `xfail` (R5, chỉ xóa dấu)
+
+| File | Dấu | Dòng xóa / thêm |
+|---|---|---|
+| `tests/test_la_chan_t103.py` | LC-T103-1 (1 dấu, 5 ca) | 4 / 0 |
+| `tests/test_la_chan_t100.py` | LC-T100-1 (3 dấu), LC-T100-2 (1 dấu, 8 ca), LC-T100-3 (1 dấu) | 7 / 0 |
+| `tests/test_soi_loi_t100.py` | SL-T100-1 (3 ca), SL-T100-2 (4 ca), SL-T100-3 (3 ca) | 13 / 0 |
+
+Trước khi gỡ, chạy cả ba file với `--runxfail` (các ca `xfail` như ca thường): đều qua. Test canh số đếm của Lá Chắn (`test_counts_with_thousand_dots_are_not_prices`) và mọi ca giá, số thường của Soi Lỗi giữ nguyên, đều qua.
+
+### Test thêm (của tôi)
+
+- `tests/test_plan_sync.py`, 11 ca:
+  - Sheet đầy: báo, không thêm, vẫn sửa dòng thấy được; 999 dòng chưa là đầy.
+  - Lệnh thêm dòng trả dòng 1.002: báo, dừng.
+  - `_key_present` «chưa rõ» trên Sheet đầy.
+  - «Thêm» không mã: không gửi.
+  - Ghi trạng thái cho dòng ngoài vùng đọc: `BLOCKED`, giữ việc.
+  - Sheet khác (cả `sheet_id` lẫn `client.sheet_hash`): không đọc, không ghi, giữ việc.
+  - Client không cho biết Sheet: không ghi.
+  - `sheet_hash` của client trùng mã băm của cache.
+  - `retry_pending` đi tiếp sau việc `BLOCKED`.
+- `tests/test_plan_propose.py`, 26 ca:
+  - 13 dạng giá phải bắt;
+  - 10 dạng số không phải giá (địa chỉ viết tắt, số đếm, «10k lượt xem», «Mặt tiền 5.000 mm», «Chi phí bảo trì năm 2026»…);
+  - từ khóa chính có «giá rẻ» ở mọi vị trí trong ghi chú 2.000 ký tự: không cảnh báo;
+  - thời gian dò tăng tuyến tính.
+
+### Test (lượt 2)
+
+```
+$ uv run pytest -q tests/test_plan_sync.py tests/test_plan_cache.py tests/test_la_chan_t100.py \
+    tests/test_soi_loi_t100.py tests/test_t100_drafts_plan.py tests/test_t100_google_identity.py \
+    tests/test_plan_model.py tests/test_plan_parse.py tests/test_plan_propose.py tests/test_plan_ai.py \
+    tests/test_soi_loi_t098.py tests/test_t103_plan_prompt.py tests/test_soi_loi_t103.py \
+    tests/test_la_chan_t103.py tests/test_google_sheets.py tests/test_google_service_account.py \
+    tests/test_soi_loi_t097.py tests/test_la_chan_t097.py tests/test_storage_drafts.py \
+    tests/test_storage_send_state.py tests/test_drafts_images.py tests/test_soi_loi_t016_t020.py \
+    tests/test_soi_loi_t041.py tests/test_soi_loi_t055.py tests/test_t086_send_state.py \
+    tests/test_t089_send_draft.py tests/test_la_chan_t086.py tests/test_la_chan_t089.py \
+    tests/test_soi_loi_t086.py tests/test_soi_loi_t089.py tests/test_app_drafts.py
+(2026-10-30 07:42:01 → 08:18:59 +0700, máy đang chạy toàn bộ test của Chỉ Huy cùng lúc)
+2456 passed, 10 skipped in 2202.15s
+
+# trước khi gỡ dấu: 3 file test của Lá Chắn, Soi Lỗi T-100 và test_plan_sync.py chạy --runxfail
+154 passed
+# các ca dò giá (Soi Lỗi, Lá Chắn T-100, T-103, của tôi) chạy --runxfail
+62 passed
+
+$ uv run ruff check .
+All checks passed!
+$ PYTHONUTF8=1 uvx detect-secrets scan <6 file đổi ở lượt 2>
+(không có kết quả)
+```
+
+- 31 file trên gồm: kho nháp, gửi nháp (T-086, T-089, trang Soạn bài với nháp), kế hoạch (T-098, T-103), Google (T-097), cả ba file test T-100 (của tôi, Soi Lỗi, Lá Chắn) và `test_la_chan_t103.py`.
+- Không chạy file trang Soạn bài khác (ảnh, SEO): lượt này không đổi `drafts.py` hay giao diện.
+- 10 ca bỏ qua có từ trước: symlink, `chmod`, ca chỉ chạy trên Mac/Linux.
+
+### Còn để lại
+
+- Mục 5 của Lá Chắn (T-101: hiện chữ Sheet, `Conflict.now` bằng chữ thuần, giữ `listing.plan` trong `session_state`; T-102: `find_plan_draft` với mã băm Sheet đang dùng, chỉ gọi `record_status` sau khi sửa điều kiện 3): Chỉ Huy ghi sang hai phiếu đó.
+  - Ghi thêm cho T-102: gọi `record_status(…, sheet_id=settings.google_sheet_id)`. Khi trả `BLOCKED`, hiện câu của kết quả (`STATUS_OTHER_SHEET` hay `STATUS_FULL`); việc vẫn được giữ.
+- Góp ý G2, G3, G4 của Soi Lỗi: cần thử thật hay là việc giao diện (T-101), không đổi ở lượt này.
+- Tiếng lóng «2 củ», «15 chai» (Lá Chắn không đưa vào test): chưa dò.

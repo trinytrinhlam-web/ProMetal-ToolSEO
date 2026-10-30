@@ -34,6 +34,7 @@ cậy**: client chỉ kiểm khuôn (≤ 1.001 dòng, ≤ 26 cột, ô là chữ
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import random
@@ -126,9 +127,7 @@ _MSG_BAD_LINK = (
     "Link chưa đúng dạng link Google Sheet (https://docs.google.com/spreadsheets/d/…). Mở Sheet "
     "trên trình duyệt, chép đường link ở thanh địa chỉ rồi dán lại."
 )
-_MSG_BLOCKED = (
-    "Lệnh gọi Google Sheets này không nằm trong danh sách được phép, phần mềm không gửi."
-)
+_MSG_BLOCKED = "Lệnh gọi Google Sheets này không nằm trong danh sách được phép, phần mềm không gửi."
 _MSG_NO_INFO = "Phải đọc thông tin Google Sheet (kiểm tra kết nối) ngay trước khi sửa cấu trúc."
 _MSG_BAD_VALUE = (
     "Dữ liệu định ghi lên Google Sheet không đúng dạng (ô phải là chữ ≤ "
@@ -517,9 +516,10 @@ def _valid_structure_request(request: object, plan_sheet_id: int | None) -> bool
         ):
             return False
         cell = body["cell"]
-        if not (_keys(cell, {"userEnteredFormat"}) and _keys(
-            cell["userEnteredFormat"], {"numberFormat"}
-        )):
+        if not (
+            _keys(cell, {"userEnteredFormat"})
+            and _keys(cell["userEnteredFormat"], {"numberFormat"})
+        ):
             return False
         number_format = cell["userEnteredFormat"]["numberFormat"]
         return (
@@ -631,6 +631,12 @@ class SheetsClient:
         return f"SheetsClient(sheet={mask_sheet_id(self._id)!r})"
 
     @property
+    def sheet_hash(self) -> str:
+        """Mã băm SHA-256 (hex) của mã Sheet đang dùng, như ``storage.plan_cache.sheet_hash``: để so
+        với Sheet ghi trong nháp, việc còn nợ (T-100, LC-T100-3) mà không đưa mã Sheet ra ngoài."""
+        return hashlib.sha256(self._id.encode("utf-8")).hexdigest()
+
+    @property
     def account_email(self) -> str:
         """Email tài khoản dịch vụ (để chủ dự án chia sẻ Sheet; chỉ hiện ở trang Cài đặt)."""
         return self._account.email
@@ -696,8 +702,10 @@ class SheetsClient:
         """Ghi đúng các ô ``updates`` trong **một** lệnh (Google áp dụng trọn hoặc không), luôn
         ``RAW``. Trả số ô Google báo đã ghi (hoặc ``None`` nếu câu trả lời không có số)."""
         items = list(updates) if isinstance(updates, Sequence) else []
-        if not items or len(items) > MAX_UPDATES or not all(
-            isinstance(item, CellUpdate) for item in items
+        if (
+            not items
+            or len(items) > MAX_UPDATES
+            or not all(isinstance(item, CellUpdate) for item in items)
         ):
             raise SheetsError(_MSG_BAD_VALUE)
         data = []

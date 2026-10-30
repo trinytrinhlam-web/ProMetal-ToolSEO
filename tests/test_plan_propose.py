@@ -456,3 +456,70 @@ def test_long_ai_notes_without_price_are_not_warned():
     notes = "Khách hỏi cách chỉnh bản lề cổng sắt bị xệ và cách tra dầu. " * 33  # ~2.000 ký tự
     (add,) = ai(suggestion(action="them", keyword="chỉnh bản lề cổng", notes=notes[:2000])).items
     assert propose.WARN_PRICE not in add.warnings and add.preselected
+
+
+# ------------------------------------------------------- T-100 lượt 2: dò giá (LC-T100-2, SL-T100)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Giá thay motor 1.200.000",
+        "Giá: 500.000",
+        "Đơn giá 1.200.000/m2",
+        "Chi phí 800.000 một lần",
+        "Tiền công 350000 cả bộ",
+        "VNĐ 500.000",
+        "Giá 150.000Đ.",
+        "Sửa trọn gói 500k. Khách rất hài lòng",
+        "Thay motor hết 1tr5",
+        "Bộ tay nắm hai triệu",
+        "Khoảng 500 nghìn đồng một bộ",
+        "Phí khảo sát 200.000 cho mỗi lần tới",
+        "Giảm 2 triệu cho khách quen",
+    ],
+)
+def test_plan_price_forms_are_found(text):
+    assert propose.mentions_plan_price(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Công trình ở 45 Đ. Số 7, Bình Tân",
+        "Kiệt 12 K. Lê Duẩn, Đà Nẵng",
+        "Xưởng đã làm hơn 2 nghìn công trình",
+        "Video có 10k lượt xem",
+        "Hơn hai nghìn khách đã gọi",
+        "Mặt tiền 5.000 mm, cửa cao 2.400 mm",
+        "Chi phí bảo trì năm 2026 do khách lo",
+        "Từ khóa có khoảng 10.000 lượt tìm mỗi tháng",
+        "2 đồng hồ điện, tỷ lệ cửa 2 cánh",
+        "Phía sau nhà 12, giáp đường 3/2",
+    ],
+)
+def test_plan_numbers_that_are_not_prices(text):
+    assert not propose.mentions_plan_price(text)
+
+
+def test_price_inside_the_keyword_is_not_counted_anywhere_in_long_notes():
+    keyword = "cửa sắt giá rẻ"
+    for at in range(0, 1950, 37):  # mọi vị trí, kể cả chỗ ngày trước cắt khúc
+        notes = ("x " * 1000)[:at] + keyword + " " + "y " * 1000
+        assert not propose.mentions_plan_price(notes[:2000], keyword)
+
+
+def test_price_check_time_grows_linearly():
+    import time
+
+    def best(text: str) -> float:
+        timings = []
+        for _ in range(3):
+            start = time.perf_counter()
+            propose.mentions_plan_price(text, "giá 1 2")
+            timings.append(time.perf_counter() - start)
+        return min(timings)
+
+    piece = "giá 1.1.1.1 phí : : 9 VND 1, 2 nghìn đ. "
+    small, big = best(piece * 50), best(piece * 400)
+    assert big < 16 * small + 0.05

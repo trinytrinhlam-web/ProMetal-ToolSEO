@@ -95,6 +95,14 @@ MSG_DUPLICATE_KEYS = (
     "Sửa cho mỗi bài một mã."
 )
 MSG_NOT_CONNECTED = "Chưa kết nối Google Sheets nên chưa đọc được kế hoạch."
+MSG_FULL = (
+    "Kế hoạch đã tới 1.000 dòng: phần mềm chỉ đọc 1.000 dòng đầu và không thêm dòng mới. Chuyển "
+    "bớt dòng đã xong sang trang tính khác (ví dụ «KeHoach-cu») rồi tải lại."
+)
+MSG_APPENDED_OUTSIDE = (
+    "Dòng mới đã thêm nằm sau dòng 1.001, ngoài phần phần mềm đọc được: phần mềm dừng, không thêm "
+    "tiếp. Chuyển bớt dòng đã xong sang trang tính khác rồi tải lại."
+)
 MSG_CACHED_AT = "Đang hiện bản lưu lúc {time}."
 MSG_NO_COLUMNS = (
     "Trang tính «KeHoach» thiếu cột {columns}: bấm «Chuẩn bị trang tính» ở trang Cài đặt rồi thử "
@@ -117,11 +125,21 @@ CONFLICT_COLUMNS = "Trang tính thiếu cột {columns} nên chưa ghi."
 CONFLICT_UNKNOWN_ROW = (
     "Không còn thấy dòng này trong bản kế hoạch đã xem. Đề xuất lại trên bản mới."
 )
+CONFLICT_NO_KEY = "Dòng mới chưa có Mã bài nên chưa thêm. Đề xuất lại trên bản mới."
+CONFLICT_FULL = "Kế hoạch đã tới 1.000 dòng nên chưa thêm dòng mới."
 
 STATUS_WRITTEN = "Đã cập nhật trạng thái dòng {key} trên Google Sheet."
 STATUS_ALREADY = "Dòng {key} trên Google Sheet đã đúng trạng thái."
 STATUS_LATER = "Dòng {key} trên Google Sheet đã ở bước sau nên không đổi trạng thái."
 STATUS_CONFLICT = "Chưa ghi trạng thái vào dòng {key}: {reason}"
+STATUS_OTHER_SHEET = (
+    "Chưa ghi trạng thái dòng {key}: bài này mở từ một Google Sheet khác Sheet đang kết nối. Phần "
+    "mềm giữ việc này, ghi khi kết nối lại đúng Sheet đó."
+)
+STATUS_FULL = (
+    "Chưa ghi trạng thái dòng {key}: kế hoạch đã quá 1.000 dòng và dòng này nằm ngoài phần phần "
+    "mềm đọc được. Chuyển bớt dòng đã xong sang trang tính khác; phần mềm giữ việc này để ghi sau."
+)
 STATUS_CHANGED = (
     "trạng thái hay Mã bài WordPress trên Sheet đã khác lúc mở bài (sửa ở nơi khác). Kiểm tra lại "
     "dòng đó trên Google Sheet."
@@ -176,7 +194,11 @@ class SheetPlan:
     (đọc thẳng ô Mã bài, kể cả dòng không đọc được); ``values``: mọi ô (bản gốc, ghi cache).
 
     Chữ trong ``PlanRow`` đã làm sạch nhưng chưa escape: giao diện hiện bằng ô bảng, ``st.text``
-    (LC-T094-3). ``warnings`` là câu cố định (chỉ số dòng, Mã bài, tên cột chuẩn)."""
+    (LC-T094-3). ``warnings`` là câu cố định (chỉ số dòng, Mã bài, tên cột chuẩn).
+
+    ``full``: Google trả đủ ``MAX_ROWS`` dòng của vùng đọc ``A1:Z1001`` (Lá Chắn LC-T100-1): dòng
+    sau đó (kể cả dòng app vừa thêm) phần mềm không thấy, nên không thêm dòng mới, và «Mã bài chưa
+    có» thành «chưa rõ»."""
 
     rows: tuple[SheetRow, ...]
     columns: Mapping[str, int]
@@ -186,6 +208,7 @@ class SheetPlan:
     warnings: tuple[str, ...] = ()
     skipped: int = 0
     from_cache: bool = False
+    full: bool = False  # Google trả đủ 1.001 dòng: có thể còn dòng sau, phần mềm không thấy
 
     @property
     def missing(self) -> tuple[str, ...]:
@@ -230,12 +253,13 @@ def parse_sheet(
     bằng đúng bộ đọc bảng của T-098 (ô sai thì bỏ trống ô đó và báo; thiếu từ khóa thì bỏ dòng).
     ``index``: danh sách bài đã đăng, để đổi «Trang dịch vụ đích» thành mã bài."""
     table = tuple(tuple(row) for row in values)
+    full = len(table) >= MAX_ROWS
     header = table[0] if table else ()
     columns, header_notes = parse._header_map([_cell_text(cell) for cell in header])
-    warnings = list(header_notes)
+    warnings = list(header_notes) + ([MSG_FULL] if full else [])
     if "keyword" not in columns:
         warnings.append(MSG_NO_KEYWORD_COLUMN)
-        return SheetPlan((), columns, fetched_at, table, {}, tuple(warnings), 0, from_cache)
+        return SheetPlan((), columns, fetched_at, table, {}, tuple(warnings), 0, from_cache, full)
     fields_at = {position: name for name, position in columns.items()}
     notes = parse._Notes()
     key_rows: dict[str, list[int]] = {}
@@ -273,6 +297,7 @@ def parse_sheet(
         warnings=tuple(warnings),
         skipped=skipped,
         from_cache=from_cache,
+        full=full,
     )
 
 
@@ -373,6 +398,7 @@ class ApplyResult:
     unsure: tuple[Proposal, ...] = ()
     not_written: tuple[Proposal, ...] = ()
     error: str = ""
+    notes: tuple[str, ...] = ()  # câu báo thêm (dòng mới nằm ngoài vùng đọc…)
 
     @property
     def message(self) -> str:
@@ -393,6 +419,7 @@ class ApplyResult:
             )
         if self.error:
             parts.append(self.error)
+        parts.extend(self.notes)
         if self.not_written:
             parts.append(f"{len(self.not_written)} thay đổi chưa ghi.")
         return " ".join(parts) or "Không có thay đổi nào để ghi."
@@ -439,6 +466,7 @@ def apply_proposals(
             written.append(proposal)  # ô trên Sheet đã đúng giá trị đề xuất (lần ghi trước)
     unsure: list[Proposal] = []
     not_written: list[Proposal] = []
+    notes: list[str] = []
     error = ""
     for batch in _batches(updates):
         if error:
@@ -452,11 +480,11 @@ def apply_proposals(
             continue
         written.extend(proposal for proposal, _ in batch)
     for proposal, row in additions:
-        if error:
+        if error or notes:
             not_written.append(proposal)
             continue
         try:
-            client.append_row(row)
+            number = client.append_row(row)
         except SheetsError as exc:
             error = str(exc)
             if not exc.unsure:
@@ -472,7 +500,12 @@ def apply_proposals(
                 unsure.append(proposal)
             continue
         written.append(proposal)
-    return ApplyResult(tuple(written), tuple(conflicts), tuple(unsure), tuple(not_written), error)
+        if number is not None and number > MAX_ROWS:
+            # Sheet vừa đầy ở máy khác: dòng này nằm ngoài vùng đọc, dòng sau cũng vậy (LC-T100-1).
+            notes.append(MSG_APPENDED_OUTSIDE)
+    return ApplyResult(
+        tuple(written), tuple(conflicts), tuple(unsure), tuple(not_written), error, tuple(notes)
+    )
 
 
 def _addition(
@@ -480,6 +513,10 @@ def _addition(
 ) -> list[CellValue] | Conflict:
     """Các ô của dòng mới (theo cột của bản vừa đọc), hay ``Conflict``."""
     after = proposal.after
+    if not after.key:  # Soi Lỗi G1: thêm «chưa rõ» mà không có mã thì không kiểm lại được
+        return Conflict(proposal, CONFLICT_NO_KEY)
+    if fresh.full:  # dòng thêm sẽ nằm ngoài vùng đọc (Lá Chắn LC-T100-1)
+        return Conflict(proposal, CONFLICT_FULL)
     if after.key in fresh.key_rows:
         return Conflict(proposal, CONFLICT_EXISTS.format(key=after.key))
     fields = [name for name, _ in SHEET_COLUMNS if _value(after, name) not in ("", None)]
@@ -590,12 +627,18 @@ def _batches(
 
 
 def _key_present(client: SheetsLike, key: str) -> bool | None:
-    """Mã bài ``key`` đã có trên Sheet chưa (đọc lại); đọc lỗi thì ``None`` (chưa rõ)."""
+    """Mã bài ``key`` đã có trên Sheet chưa (đọc lại). Đọc lỗi, hay vùng đọc đầy mà không thấy
+    (dòng có thể nằm sau dòng 1.001, Lá Chắn LC-T100-1): ``None`` (chưa rõ)."""
+    if not key:
+        return None
     try:
         values = client.read_plan_values()
     except SheetsError:
         return None
-    return key in parse_sheet(values, fetched_at=_now()).key_rows
+    fresh = parse_sheet(values, fetched_at=_now())
+    if key in fresh.key_rows:
+        return True
+    return None if fresh.full else False
 
 
 # ======================================================= ghi trạng thái sau khi gửi (1.6, 1.7)
@@ -608,6 +651,7 @@ class WriteOutcome(StrEnum):
     CONFLICT = "conflict"  # dòng đã khác lúc mở bài, không thấy, trùng mã, thiếu cột: không ghi
     FAILED = "failed"  # lỗi Google, mạng: chưa ghi, giữ việc còn nợ để thử lại
     UNSURE = "unsure"  # lệnh ghi lỗi giữa chừng: có thể đã ghi; thử lại sẽ đọc lại trước
+    BLOCKED = "blocked"  # chưa ghi được cho tới khi người dùng sửa (Sheet khác, Sheet quá đầy)
 
 
 @dataclass(frozen=True)
@@ -617,8 +661,14 @@ class StatusResult:
 
     @property
     def finished(self) -> bool:
-        """Không cần thử lại nữa (đã ghi, đã đúng, hay không được ghi vì dòng đã khác)."""
-        return self.outcome not in (WriteOutcome.FAILED, WriteOutcome.UNSURE)
+        """Không cần thử lại nữa (đã ghi, đã đúng, ở bước sau, hay không được ghi vì dòng đã
+        khác). ``FAILED``, ``UNSURE``, ``BLOCKED``: giữ việc còn nợ."""
+        return self.outcome in (
+            WriteOutcome.WRITTEN,
+            WriteOutcome.ALREADY,
+            WriteOutcome.LATER,
+            WriteOutcome.CONFLICT,
+        )
 
 
 def status_write(
@@ -644,7 +694,11 @@ def status_write(
 
 
 def write_status(
-    client: SheetsLike, write: PlanStatusWrite, *, now: datetime | None = None
+    client: SheetsLike,
+    write: PlanStatusWrite,
+    *,
+    sheet_id: str | None = None,
+    now: datetime | None = None,
 ) -> StatusResult:
     """Ghi tối đa 4 ô của dòng ``write.key`` (Trạng thái, Mã bài WordPress, Ngày đăng thực tế,
     Cập nhật lúc), có kiểm (thiết kế 1.7, 2.5 cuối; LC-T094-28, -30):
@@ -655,8 +709,14 @@ def write_status(
       (không bao giờ lùi); «Bỏ», chữ lạ: không ghi;
     - Mã bài WordPress hiện tại phải trống, bằng mã lúc mở bài, hay bằng mã sắp ghi.
 
+    Trước hết so mã băm Sheet của việc (Sheet nơi mở nháp) với Sheet đang kết nối (``sheet_id``,
+    không có thì ``client.sheet_hash``): khác hay không biết thì ``BLOCKED``, không đọc, không ghi
+    (Lá Chắn LC-T100-3). Sheet quá 1.000 dòng mà không thấy dòng: ``BLOCKED`` (LC-T100-1).
+
     Không bao giờ ném ``SheetsError``: lỗi thành ``FAILED`` / ``UNSURE`` (giữ việc còn nợ)."""
     now = now or _now()
+    if _connected_hash(client, sheet_id) != write.sheet_hash:
+        return StatusResult(WriteOutcome.BLOCKED, STATUS_OTHER_SHEET.format(key=write.key))
     try:
         fresh = read_sheet(client, now=now)
     except SheetsError as exc:
@@ -668,6 +728,8 @@ def write_status(
     if missing:
         return _conflict(write, MSG_NO_COLUMNS.format(columns=_labels(missing)))
     numbers = fresh.key_rows.get(write.key, ())
+    if not numbers and fresh.full:
+        return StatusResult(WriteOutcome.BLOCKED, STATUS_FULL.format(key=write.key))
     if not numbers:
         return _conflict(write, MSG_ROW_MISSING.format(key=write.key))
     if len(numbers) > 1:
@@ -709,18 +771,21 @@ def record_status(
     draft_id: str,
     write: PlanStatusWrite,
     *,
+    sheet_id: str | None = None,
     now: datetime | None = None,
 ) -> StatusResult:
     """Sau khi gửi WordPress xong (thiết kế 1.7): **lưu việc ghi vào kho nháp trước**, rồi thử ghi
     Sheet; xong (hay không được ghi vì dòng đã khác) thì bỏ việc đó. ``client`` là ``None`` (chưa
-    kết nối Google): chỉ lưu, thử lại sau. Lỗi kho nháp: ``DraftError``."""
+    kết nối Google): chỉ lưu, thử lại sau. ``sheet_id``: mã Sheet đang kết nối (không có thì
+    ``client.sheet_hash``); nháp mở từ Sheet khác thì không ghi, giữ việc (Lá Chắn LC-T100-3).
+    Lỗi kho nháp: ``DraftError``."""
     store.save_plan_write(draft_id, write)
     if client is None:
         return StatusResult(
             WriteOutcome.FAILED,
             STATUS_FAILED.format(key=write.key, error=MSG_NOT_CONNECTED),
         )
-    result = write_status(client, write, now=now)
+    result = write_status(client, write, sheet_id=sheet_id, now=now)
     if result.finished:
         store.save_plan_write(draft_id, None, expected=write)
     return result
@@ -745,14 +810,14 @@ def retry_pending(
     for draft_id, write in store.list_plan_writes():
         if write.sheet_hash != wanted:
             continue
-        result = write_status(client, write, now=now)
+        result = write_status(client, write, sheet_id=sheet_id, now=now)
         if result.finished:
             # Không bỏ được: lần sau thử lại, kết quả là «đã đúng».
             with suppress(DraftError):
                 store.save_plan_write(draft_id, None, expected=write)
         items.append(RetryItem(draft_id, write.key, result))
-        if not result.finished:
-            break
+        if result.outcome in (WriteOutcome.FAILED, WriteOutcome.UNSURE):
+            break  # Google, mạng đang lỗi: để lần sau
     return tuple(items)
 
 
@@ -768,6 +833,8 @@ def open_row(
     Lỗi Google: ``SheetsError``."""
     fresh = read_sheet(client, index=index, now=now)
     numbers = fresh.key_rows.get(key, ())
+    if not numbers and fresh.full:
+        raise SheetPlanError(MSG_FULL)
     if not numbers:
         raise SheetPlanError(MSG_ROW_MISSING.format(key=key))
     if len(numbers) > 1:
@@ -788,6 +855,15 @@ def plan_ref(row: SheetRow, sheet_id: str, *, now: datetime | None = None) -> Dr
         wp_post_id=row.plan.wp_post_id,
         opened_at=now or _now(),
     )
+
+
+def _connected_hash(client: SheetsLike, sheet_id: str | None) -> str | None:
+    """Mã băm Sheet đang kết nối: từ ``sheet_id`` nếu có, không thì ``client.sheet_hash``
+    (``SheetsClient``). Không biết: ``None`` (không ghi)."""
+    if isinstance(sheet_id, str) and sheet_id:
+        return sheet_hash(sheet_id)
+    value = getattr(client, "sheet_hash", None)
+    return value if isinstance(value, str) and len(value) == 64 else None
 
 
 def _conflict(write: PlanStatusWrite, reason: str) -> StatusResult:

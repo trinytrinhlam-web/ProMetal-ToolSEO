@@ -28,7 +28,7 @@ from enum import StrEnum
 from pydantic import ValidationError
 
 from seo_app.content.models import PlanSuggestion, PlanSuggestions
-from seo_app.onpage.meta import compare_key, has_html, mentions_price, similarity
+from seo_app.onpage.meta import compare_key, has_html, similarity
 from seo_app.plan import model
 from seo_app.plan.model import FIELD_LABELS, PlanRow, clean_text, fold_key, keyword_key
 from seo_app.text import slugify
@@ -379,10 +379,123 @@ def _has_personal(proposal: Proposal) -> bool:
     return any(any(model.personal_info(text)) for text in texts if text)
 
 
-# ``mentions_price`` coi chữ dài hơn ``MAX_SCAN_CHARS`` (1.000) là có giá: dò ghi chú dài (tới
-# 2.000 ký tự) theo từng khúc gối nhau, để ghi chú dài không bị cảnh báo oan.
-_PRICE_WINDOW = 900
-_PRICE_STEP = 700
+# ------------------------------------------------------------- dò giá (LC-T103-1, LC-T100-2)
+#
+# Dò riêng cho chữ kế hoạch (không dùng ``mentions_price`` của bước SEO): chữ kế hoạch có địa chỉ
+# công trình, số đếm, ghi chú dài tới 2.000 ký tự, và hay ghi giá kiểu «Giá thay motor 1.200.000».
+# Dò trên **cả** chữ (không cắt khúc, Soi Lỗi SL-T100-3); mọi biểu thức không lồng lượng từ, chạy
+# tuyến tính. Chữ đã làm sạch (``clean_text``) rồi NFKC («５００ｋ» là «500k»), như chữ AI sẽ thấy.
+
+# Số + đơn vị tiền: «150.000đ», «500k», «1,5 triệu», «1tr5», «2-3 triệu», «500 nghìn đồng».
+_PRICE_AMOUNT = re.compile(
+    r"(?<![\w.,])\d+(?:[.,]\d+)*(?P<space>\s*)"
+    r"(?P<unit>đồng|vnđ|vnd|usd|đô(?:\s+la)?|nghìn|ngàn|triệu|tỷ|tỉ|tr|đ|k)\d*(?!\w)",
+    re.IGNORECASE,
+)
+# Số viết bằng chữ + đơn vị: «hai triệu», «vài trăm ngàn», «năm trăm nghìn đồng».
+_PRICE_WORDS = re.compile(
+    r"\b(?:một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|bẩy|tám|chín|mười|mươi|trăm|chục|vài|mấy|rưỡi|nửa)"
+    r"\s+(?P<unit>nghìn|ngàn|triệu|tỷ|tỉ|đồng|đô)(?!\w)",
+    re.IGNORECASE,
+)
+# Chữ nói giá rồi số tiền không có đơn vị, cách vài từ (LC-T100-2): «Giá thay motor 1.200.000»,
+# «Giá: 500.000», «Đơn giá 1.200.000/m2», «Báo giá 2.500.000», «Chi phí 800.000», «Phí khảo sát
+# 200.000». Số phải có dấu chấm nghìn hay từ 5 chữ số: «giá … 2026» (năm) không tính.
+_PRICE_LABEL = re.compile(
+    r"\b(?:giá|phí|tiền công)(?!\w)(?:\s*:\s*|\s+)(?:[^\s\d:]+\s+){0,3}?:?\s*"
+    r"(?:\d{1,3}(?:[.,]\d{3})+|\d{5,})(?![\d\w])",
+    re.IGNORECASE,
+)
+# Đơn vị tiền đứng **trước** số: «VNĐ 500.000», «VND 1.500.000», «USD 50»; ký hiệu tiền.
+_PRICE_CURRENCY = re.compile(r"\b(?:vnđ|vnd|usd)\s*:?\s*\d|[$€₫¥£]", re.IGNORECASE)
+# Cụm nói về giá, như bước SEO (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt).
+_PRICE_PHRASES = re.compile(
+    r"\b(?:giá|chi phí)\s+(?:rẻ|tốt|chỉ|từ|gốc|sỉ|ưu đãi|cạnh tranh|hợp lý|phải chăng|thấp|mềm"
+    r"|bình dân|bao nhiêu)(?!\w)"
+    r"|\b(?:rẻ|đắt|bảng giá|giảm giá|khuyến mãi|miễn phí|ưu đãi|trọn gói)(?!\w)"
+    r"|\b(?:nghìn|ngàn|triệu|tỷ|tỉ)\s+đồng(?!\w)",
+    re.IGNORECASE,
+)
+# Đơn vị tiền mà từ đứng sau cho thấy không phải tiền (như bước SEO, SL-T036-5, -10).
+_NOT_MONEY_AFTER = {
+    "đồng": ("hồ", "bộ", "thời", "loạt", "đều", "màu", "nghiệp", "ý", "nát", "tâm", "phục",
+             "hương", "chí", "ruộng", "bằng", "cỏ"),
+    "đô": ("thị",),
+    "tỷ": ("lệ",),
+    "tỉ": ("lệ",),
+}  # fmt: skip
+# «nghìn», «triệu»… rồi danh từ đếm là số đếm, không phải tiền (Soi Lỗi SL-T100-2): «2 nghìn công
+# trình», «1 nghìn lượt tìm», «5 ngàn khách», «3 triệu lượt xem», «10k lượt xem».
+_COUNT_UNITS = frozenset({"nghìn", "ngàn", "triệu", "tỷ", "tỉ", "tr", "k"})
+_COUNT_NOUNS = (
+    "công trình", "lượt", "khách", "người", "lần", "bài", "cái", "chiếc", "căn", "nhà", "hộ",
+    "gia đình", "đơn hàng", "sản phẩm", "truy cập", "view", "thành viên", "học viên", "dự án",
+    "km", "mét", "m2",
+)  # fmt: skip
+_WORD_CHAR = re.compile(r"\w")
+
+
+def _next_words(text: str, end: int) -> str:
+    return " ".join(text[end : end + 40].lower().split())
+
+
+def _starts_with_word(text: str, words: Iterable[str]) -> bool:
+    """``text`` bắt đầu bằng một trong ``words``, trọn từ (không dính chữ cái sau)."""
+    for word in words:
+        if text.startswith(word) and not _WORD_CHAR.match(text[len(word) : len(word) + 1]):
+            return True
+    return False
+
+
+def _is_money(text: str, found: re.Match[str]) -> bool:
+    """Chỗ khớp số + đơn vị có thật là tiền không (bỏ «2 đồng hồ», «tỷ lệ», «45 Đ. Số 7», «2 nghìn
+    công trình»)."""
+    unit = found.group("unit")
+    folded = " ".join(unit.lower().split())
+    after = _next_words(text, found.end())
+    key = "đô" if folded.startswith("đô") and folded != "đồng" else folded
+    if _starts_with_word(after, _NOT_MONEY_AFTER.get(key, ())):
+        return False
+    # Tên đường, kiệt viết tắt sau số nhà («45 Đ. Số 7», «123 Đ.Nguyễn Văn Linh», «12 K. Lê Duẩn»,
+    # Soi Lỗi SL-T100-1): chữ hoa, có dấu cách trước, dấu chấm ngay sau. «150.000đ.» vẫn là giá.
+    groups = found.groupdict()
+    spaced = bool(groups.get("space"))
+    if unit in ("Đ", "K") and spaced and text[found.end() : found.end() + 1] == ".":
+        return False
+    return not (folded in _COUNT_UNITS and _starts_with_word(after, _COUNT_NOUNS))
+
+
+def _keyword_spans(text: str, keyword: str) -> list[tuple[int, int]]:
+    """Các chỗ từ khóa chính xuất hiện trong ``text`` (không phân biệt hoa thường)."""
+    key = unicodedata.normalize("NFKC", clean_text(keyword)).lower()
+    if not key:
+        return []
+    lowered = text.lower()
+    spans: list[tuple[int, int]] = []
+    start = lowered.find(key)
+    while start >= 0:
+        spans.append((start, start + len(key)))
+        start = lowered.find(key, start + 1)
+    return spans
+
+
+def mentions_plan_price(text: str, keyword: str = "") -> bool:
+    """Chữ kế hoạch có nói giá không; chỗ khớp nằm trọn trong một lần xuất hiện của từ khóa chính
+    thì không tính («cửa sắt giá rẻ» là từ khóa, không phải lời nói giá)."""
+    visible = unicodedata.normalize("NFKC", clean_text(text, multiline=True))
+    spans = _keyword_spans(visible, keyword)
+
+    def outside(found: re.Match[str]) -> bool:
+        return not any(a <= found.start() and found.end() <= b for a, b in spans)
+
+    for pattern in (_PRICE_AMOUNT, _PRICE_WORDS):
+        for found in pattern.finditer(visible):
+            if outside(found) and _is_money(visible, found):
+                return True
+    for pattern in (_PRICE_LABEL, _PRICE_CURRENCY, _PRICE_PHRASES):
+        if any(outside(found) for found in pattern.finditer(visible)):
+            return True
+    return False
 
 
 def _ai_texts(proposal: Proposal) -> list[str]:
@@ -396,18 +509,11 @@ def _ai_texts(proposal: Proposal) -> list[str]:
 
 
 def _has_price(proposal: Proposal) -> bool:
-    """Chữ AI đưa vào dòng kế hoạch nói về giá («150.000đ», «1,5 triệu», «500k», «bảng giá»):
-    ``mentions_price`` của bước SEO, không tính chỗ nằm trong từ khóa chính (Lá Chắn LC-T103-1,
-    góp ý G2 của Soi Lỗi T-103). Pro-Metal không công bố giá; ghi chú của thợ thành «Kinh nghiệm
-    của xưởng» ở Soạn bài, nơi số liệu được coi là thật."""
+    """Chữ AI đưa vào dòng kế hoạch nói về giá (Lá Chắn LC-T103-1, LC-T100-2; Soi Lỗi SL-T100-1 →
+    -3): ``mentions_plan_price``, không tính chỗ nằm trong từ khóa chính. Pro-Metal không công bố
+    giá; ghi chú của thợ thành «Kinh nghiệm của xưởng» ở Soạn bài, nơi số liệu được coi là thật."""
     keyword = proposal.after.keyword
-    for text in _ai_texts(proposal):
-        starts = list(range(0, max(len(text) - _PRICE_WINDOW, 0) + 1, _PRICE_STEP))
-        if starts[-1] + _PRICE_WINDOW < len(text):
-            starts.append(len(text) - _PRICE_WINDOW)  # khúc cuối, gối lên khúc trước
-        if any(mentions_price(text[start : start + _PRICE_WINDOW], keyword) for start in starts):
-            return True
-    return False
+    return any(mentions_plan_price(text, keyword) for text in _ai_texts(proposal))
 
 
 def _ai_values(item: PlanSuggestion) -> dict[str, object] | None:
