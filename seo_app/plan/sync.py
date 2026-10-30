@@ -126,7 +126,7 @@ CONFLICT_UNKNOWN_ROW = (
     "Không còn thấy dòng này trong bản kế hoạch đã xem. Đề xuất lại trên bản mới."
 )
 CONFLICT_NO_KEY = "Dòng mới chưa có Mã bài nên chưa thêm. Đề xuất lại trên bản mới."
-CONFLICT_FULL = "Kế hoạch đã tới 1.000 dòng nên chưa thêm dòng mới."
+CONFLICT_FULL = "Kế hoạch đã tới 1.000 dòng nên chưa thêm dòng mới hay cấp Mã bài mới."
 
 STATUS_WRITTEN = "Đã cập nhật trạng thái dòng {key} trên Google Sheet."
 STATUS_ALREADY = "Dòng {key} trên Google Sheet đã đúng trạng thái."
@@ -558,8 +558,11 @@ def _update(
     now_cells = fresh.cells_of(number)
     now_plan = fresh.plan_at(number)
     new_key = proposal.after.key
-    if new_key and new_key != before.key and new_key in fresh.key_rows:  # mã mới cấp đã có
-        return Conflict(proposal, CONFLICT_EXISTS.format(key=proposal.after.key), (), now_plan)
+    if new_key and new_key != before.key:
+        if fresh.full:  # mã mới có thể đã ở dòng ngoài vùng đọc (Soi Lỗi SL-T100-11, LC-T100-1)
+            return Conflict(proposal, CONFLICT_FULL, (), now_plan)
+        if new_key in fresh.key_rows:  # mã mới cấp đã có
+            return Conflict(proposal, CONFLICT_EXISTS.format(key=new_key), (), now_plan)
     wanted = {name: to_cell(name, _value(proposal.after, name), index) for name in changes}
     changed: list[str] = []
     applied = True
@@ -709,9 +712,10 @@ def write_status(
       (không bao giờ lùi); «Bỏ», chữ lạ: không ghi;
     - Mã bài WordPress hiện tại phải trống, bằng mã lúc mở bài, hay bằng mã sắp ghi.
 
-    Trước hết so mã băm Sheet của việc (Sheet nơi mở nháp) với Sheet đang kết nối (``sheet_id``,
-    không có thì ``client.sheet_hash``): khác hay không biết thì ``BLOCKED``, không đọc, không ghi
-    (Lá Chắn LC-T100-3). Sheet quá 1.000 dòng mà không thấy dòng: ``BLOCKED`` (LC-T100-1).
+    Trước hết so mã băm Sheet của việc (Sheet nơi mở nháp) với Sheet lệnh ghi sẽ tới
+    (``_connected_hash``: ``client.sheet_hash``, và ``sheet_id`` nếu nơi gọi đưa thì phải khớp):
+    khác, lệch nhau hay không biết thì ``BLOCKED``, không đọc, không ghi (Lá Chắn LC-T100-3, Soi
+    Lỗi SL-T100-4). Sheet quá 1.000 dòng mà không thấy dòng: ``BLOCKED`` (LC-T100-1).
 
     Không bao giờ ném ``SheetsError``: lỗi thành ``FAILED`` / ``UNSURE`` (giữ việc còn nợ)."""
     now = now or _now()
@@ -776,8 +780,9 @@ def record_status(
 ) -> StatusResult:
     """Sau khi gửi WordPress xong (thiết kế 1.7): **lưu việc ghi vào kho nháp trước**, rồi thử ghi
     Sheet; xong (hay không được ghi vì dòng đã khác) thì bỏ việc đó. ``client`` là ``None`` (chưa
-    kết nối Google): chỉ lưu, thử lại sau. ``sheet_id``: mã Sheet đang kết nối (không có thì
-    ``client.sheet_hash``); nháp mở từ Sheet khác thì không ghi, giữ việc (Lá Chắn LC-T100-3).
+    kết nối Google): chỉ lưu, thử lại sau. ``sheet_id``: mã Sheet nơi gọi tin là đang kết nối;
+    so cùng ``client.sheet_hash`` (``_connected_hash``): nháp mở từ Sheet khác, hay hai mã lệch
+    nhau, thì không ghi, giữ việc (Lá Chắn LC-T100-3, Soi Lỗi SL-T100-4).
     Lỗi kho nháp: ``DraftError``."""
     store.save_plan_write(draft_id, write)
     if client is None:
@@ -858,12 +863,16 @@ def plan_ref(row: SheetRow, sheet_id: str, *, now: datetime | None = None) -> Dr
 
 
 def _connected_hash(client: SheetsLike, sheet_id: str | None) -> str | None:
-    """Mã băm Sheet đang kết nối: từ ``sheet_id`` nếu có, không thì ``client.sheet_hash``
-    (``SheetsClient``). Không biết: ``None`` (không ghi)."""
-    if isinstance(sheet_id, str) and sheet_id:
-        return sheet_hash(sheet_id)
+    """Mã băm Sheet mà lệnh ghi **thật sự** đi tới: ``client.sheet_hash`` (``SheetsClient``) nếu
+    client cho biết; nơi gọi đưa thêm ``sheet_id`` thì hai bên phải khớp, lệch nhau là ``None``
+    (Soi Lỗi SL-T100-4: client cũ còn nối Sheet A mà nơi gọi nói Sheet B). Client không cho biết
+    thì dùng ``sheet_id``. Không biết: ``None`` (không ghi)."""
     value = getattr(client, "sheet_hash", None)
-    return value if isinstance(value, str) and len(value) == 64 else None
+    own = value if isinstance(value, str) and len(value) == 64 else None
+    given = sheet_hash(sheet_id) if isinstance(sheet_id, str) and sheet_id else None
+    if own is not None and given is not None and own != given:
+        return None
+    return own or given
 
 
 def _conflict(write: PlanStatusWrite, reason: str) -> StatusResult:

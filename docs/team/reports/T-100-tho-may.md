@@ -270,3 +270,102 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <6 file đổi ở lượt 2>
   - Ghi thêm cho T-102: gọi `record_status(…, sheet_id=settings.google_sheet_id)`. Khi trả `BLOCKED`, hiện câu của kết quả (`STATUS_OTHER_SHEET` hay `STATUS_FULL`); việc vẫn được giữ.
 - Góp ý G2, G3, G4 của Soi Lỗi: cần thử thật hay là việc giao diện (T-101), không đổi ở lượt này.
 - Tiếng lóng «2 củ», «15 chai» (Lá Chắn không đưa vào test): chưa dò.
+
+## Lượt 3 (2026-10-30 10:23 +07:00) · Soi Lỗi lượt 2 (`e55c2cd`), Lá Chắn xem lại (`a214c0b`): SL-T100-4 → -11
+
+Chỉ Huy B giao (30/10 10:20): sửa đủ 8 lỗi Thấp SL-T100-4 → -11. Hàm dò giá phải bắt giá thật mà không báo oan, có bộ ca có / không có giá (kể cả không dấu, «k», «tr», «đ», «VNĐ», «nghìn», «triệu»). Không lùi LC-T100-1 → -3, SL-T100-1 → -3, G1, LC-T103-1.
+
+### Tóm tắt (cho chủ dự án)
+
+- Cảnh báo «AI nhắc tới giá» nay bắt cả cách ghi giá **không dấu** («gia 500.000», «2 trieu», «500 nghin»).
+  - Bắt lại các cách ghi trước đây bị sót: «150.000 Đ.», «300 nghìn lần đầu», «Tiền thay motor 1.200.000», «hết / tốn / trả 1.200.000», «Công thợ 300.000».
+  - Không còn báo oan: «giá đỡ», «giá kệ», «đánh giá», «gia công», «mặt tiền», «tôn», «trà», «5 độ», địa chỉ «45 đ. số 7», từ khóa gõ không dấu.
+- Việc dò giá không còn chậm dần khi chữ AI lặp từ khóa: 100 đề xuất dài nhất mất dưới 1 giây.
+- Ghi trạng thái lên Google Sheet: phần mềm luôn so với Sheet **thật** đang nối; nơi gọi đưa mã Sheet khác thì không ghi.
+- Sheet đã tới 1.000 dòng: dòng chưa có Mã bài không được cấp mã mới (mã đó có thể đã nằm ở dòng phần mềm không đọc được).
+
+### Đã sửa
+
+| Lỗi | Sửa | Chỗ |
+|---|---|---|
+| SL-T100-4 | `_connected_hash`: client cho biết Sheet (`SheetsClient.sheet_hash`) thì **luôn** so với nó; nơi gọi đưa thêm `sheet_id` thì hai bên phải khớp, lệch nhau là không ghi (`BLOCKED`, giữ việc). Client không cho biết Sheet mới dùng `sheet_id`; không biết gì thì không ghi | `sync.py:865` |
+| SL-T100-11 | `_update`: dòng chưa có mã được cấp Mã bài mới mà Sheet đầy thì `Conflict` `CONFLICT_FULL` (như «Thêm»), không ghi ô nào của đề xuất đó. Dòng đã có mã vẫn sửa được | `sync.py:562`, `:129` |
+| SL-T100-5 → -10 | Viết lại hàm dò giá `mentions_plan_price` (`propose.py:601`, dùng cho `_has_price` `:644`); chi tiết ngay dưới bảng | `propose.py:399-650` |
+
+Hàm dò giá mới, theo từng lỗi:
+
+- **Không dấu (yêu cầu 2):**
+  - Dò trên bản **bỏ dấu** giữ đúng vị trí từng ký tự (`_fold_char`, `_PriceText`), nên «gia 500.000», «2 trieu», «500 nghin dong», «chi phi 800.000», «50 do la» đều bắt.
+  - Từ nói tiền mà **có dấu** thì phải đúng dấu của từ đó (`_ACCENTED`, `accents_ok`). Vì vậy «tôn», «trà», «giả», «độ», «ngăn», «đó» không thành «tốn», «trả», «giá», «đô», «ngàn».
+  - «rẻ», «đắt» đứng riêng chỉ tính khi có dấu: «dat», «re» không dấu còn nghĩa «đặt», «đất».
+  - «đô» đứng riêng (không «la») chỉ tính khi có dấu.
+  - «3D» không phải «3 đ».
+- **SL-T100-5:** tên đường, kiệt viết tắt nhận theo **hình dạng số**, không theo chữ hoa.
+  - Số nhà ngắn (≤ 4 chữ số, không dấu chấm nghìn), có dấu cách, rồi «đ.»/«k.» và chữ: không phải giá («45 đ. số 7», «123 Đ.Nguyễn Văn Linh»).
+  - Số có dấu chấm nghìn luôn là tiền: «150.000 Đ.» bắt lại.
+- **SL-T100-6:** danh từ đếm thu lại còn danh từ chỉ số đông: «lượt», «khách», «người», «công trình», «truy cập», «view», «thành viên», «học viên» (`_CROWD_NOUNS`). «300 nghìn lần đầu», «15 triệu nhà…», «8 triệu căn hộ» lại có cảnh báo.
+- **SL-T100-7:** «giá» đứng sau «đánh / tham / quốc / chuyên / đại», hay trước «đỡ / kệ / treo / trị / để / công / đình / hạn / tăng / nhập / sư / vị», không phải chữ nói tiền (`_LABEL_NOT_BEFORE`, `_LABEL_NOT_AFTER`).
+  - Cùng luật cho cụm «giá tốt…» («Khách đánh giá tốt» không cảnh báo, kể cả chỗ có từ trước).
+  - Số sau chữ nói tiền mà theo sau là đơn vị đo, «x» hay danh từ số đông thì không tính («giá … 2.500 mm», «trả lời 10.000 khách»): `_NOT_AMOUNT_NEXT`.
+- **SL-T100-8:** từ khóa chính tìm trên bản bỏ dấu, nên từ khóa gõ không dấu vẫn che chữ có dấu và ngược lại.
+- **SL-T100-9:** thêm «tiền» (trừ «mặt tiền»), «hết» (trừ «hết hạn»), «tốn», «trả» (trừ «trả lời»), «công thợ» vào nhóm chữ đứng trước số tiền không đơn vị.
+- **SL-T100-10:** «nằm trong từ khóa» so bằng chia đôi (`bisect`) trên vị trí các lần xuất hiện (cùng độ dài nên so đúng «trọn trong một lần xuất hiện»).
+  - Chỗ khớp bị bỏ qua thì dò tiếp từ ký tự kế (`_all_matches`): «Khách đánh giá tốt, giá 500.000» vẫn bắt «giá 500.000».
+  - Mọi biểu thức không lồng lượng từ; các đoạn cắt quanh chỗ khớp đều có độ dài giới hạn.
+  - Đo trên máy đang chạy toàn bộ test: chữ 2.000 ký tự lặp «5k», «giá», «2 đồng hồ», «đánh giá tốt», «trả lời 1.000», có hay không từ khóa lặp: tối đa khoảng 6 ms một lần dò, tức dưới 1 giây cho 100 mục AI.
+
+Không sửa `seo_app/onpage/meta.py` (bước SEO giữ `mentions_price` cũ).
+
+### Gỡ `xfail` (R5, chỉ xóa dấu)
+
+`tests/test_soi_loi_t100.py`: 8 dấu (SL-T100-4, -5, -6, -7, -8, -9, -10, -11), **32 dòng xóa, 0 dòng thêm**, không còn dấu `xfail` nào trong file. Trước khi gỡ: 5 file test (của Soi Lỗi, Lá Chắn T-100, T-103, `test_plan_sync.py`, `test_plan_propose.py`) chạy `--runxfail` được 313 passed.
+
+### Không lùi
+
+- LC-T100-1 → -3, SL-T100-1 → -3, G1, LC-T103-1: mọi test của chúng (Lá Chắn T-100, T-103, Soi Lỗi T-100 lượt 1, 2, của tôi lượt 2) vẫn qua. Gồm 8 ca LC-T100-2, test canh số đếm, 17 ca số thường, 15 ca giá lượt 2 của Soi Lỗi.
+
+### Test thêm (của tôi)
+
+- `tests/test_plan_propose.py`, 54 ca:
+  - 25 cặp có giá: mỗi cặp một bản có dấu, một bản không dấu, gồm «k», «tr», «đ», «VNĐ», «nghìn», «ngàn», «triệu», «đô la», số viết bằng chữ, chữ nói tiền + số, cụm nói giá.
+  - 14 cặp không có giá, có dấu và không dấu: địa chỉ viết tắt, số đếm, kích thước, «giá đỡ», «đánh giá», «gia công», «mặt tiền», «trả lời», «tôn», «đồng hồ», «tỷ lệ», năm.
+  - 6 chữ có dấu khác từ nói tiền: «5 độ», «3 ngăn», «trà», «tôn», «3D», «sau đó».
+  - 3 ca từ khóa che chữ có dấu / không dấu.
+  - 1 ca chỗ khớp bị bỏ qua không che chỗ khớp gối lên nó.
+- `tests/test_plan_sync.py`, 3 ca:
+  - `sheet_id` lệch Sheet của client: không ghi;
+  - client không cho biết Sheet: dùng `sheet_id`;
+  - Sheet đầy: không cấp mã mới, dòng có mã vẫn sửa được.
+
+### Test (lượt 3)
+
+```
+$ uv run pytest -q tests/test_plan_sync.py tests/test_plan_cache.py tests/test_la_chan_t100.py \
+    tests/test_soi_loi_t100.py tests/test_t100_drafts_plan.py tests/test_t100_google_identity.py \
+    tests/test_plan_model.py tests/test_plan_parse.py tests/test_plan_propose.py tests/test_plan_ai.py \
+    tests/test_soi_loi_t098.py tests/test_t103_plan_prompt.py tests/test_soi_loi_t103.py \
+    tests/test_la_chan_t103.py tests/test_google_sheets.py tests/test_content_workflow.py
+(2026-10-30 10:21:10 → 10:23:29 +0700, máy đang chạy toàn bộ test của Chỉ Huy cùng lúc)
+1293 passed in 132.49s
+
+# trước khi gỡ dấu (--runxfail): test_soi_loi_t100.py, test_la_chan_t100.py, test_plan_sync.py,
+# test_plan_propose.py, test_la_chan_t103.py
+313 passed
+
+$ uv run ruff check .
+All checks passed!
+$ PYTHONUTF8=1 uvx detect-secrets scan <5 file đổi ở lượt 3>
+(không có kết quả)
+```
+
+- 16 file trên gồm mọi nơi gọi `propose` (so bảng, đề xuất AI qua `ContentWriter.plan_changes`) và `sync`, cùng test của T-098, T-103, T-100 (của tôi, Soi Lỗi, Lá Chắn).
+- Lượt này không đổi `drafts.py`, `plan_cache.py`, `seo_app/google/`, giao diện, nên không chạy lại các file kho nháp, gửi nháp (lượt 2: 2456 passed).
+
+### Còn để lại
+
+- Góp ý G5 của Soi Lỗi: `retry_pending` đọc lại cả Sheet cho từng việc còn nợ. Chưa đổi, vì thiết kế đòi đọc lại ngay trước mỗi lệnh ghi. Thường chỉ có vài việc; nếu thử thật thấy chậm hay gặp lỗi 429 thì làm phiếu sau.
+- Chữ không dấu vốn nhiều nghĩa nên vẫn có ca không chắc:
+  - «tu 3 ngan» (tủ 3 ngăn gõ không dấu) bị coi là «3 ngàn»;
+  - «500 k. Khách…» (có dấu cách giữa số và «k.») bị coi là địa chỉ.
+  - Cả hai đều hiếm; ca đầu báo thừa theo hướng an toàn.
+- Tiếng lóng «2 củ», «15 chai»: chưa dò, như lượt 2.

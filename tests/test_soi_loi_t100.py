@@ -799,10 +799,6 @@ def test_round2_sheet_filled_by_another_machine_blocks_new_rows(fake, client):
     assert sync.MSG_FULL in read(client).warnings
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-4: so mã băm Sheet với sheet_id nơi gọi đưa, không với Sheet thật của client",
-)
 def test_sl_t100_4_status_is_never_written_into_the_clients_sheet_for_another_sheet(
     tmp_path, sheet, client
 ):
@@ -874,10 +870,6 @@ def test_round2_ordinary_numbers_codes_sizes_do_not_warn(notes):
     assert _price_warned(notes) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-5: luật «Đ.», «K.» theo chữ hoa, dấu chấm: lọt «150.000 Đ.», oan «45 đ. số 7»",
-)
 @pytest.mark.parametrize(
     ("notes", "price"),
     [
@@ -891,10 +883,6 @@ def test_sl_t100_5_street_abbreviation_rule_tells_prices_from_addresses(notes, p
     assert _price_warned(notes) == (price, not price)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-6: giá rồi «lần», «nhà», «căn» bị coi là số đếm nên không cảnh báo",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -907,10 +895,6 @@ def test_sl_t100_6_price_followed_by_a_counting_word_still_warns(notes):
     assert _price_warned(notes) == (True, False)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-7: «giá» trong «giá đỡ», «giá kệ», «đánh giá» + số có dấu chấm nghìn là giá",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -925,10 +909,6 @@ def test_sl_t100_7_compound_words_with_gia_are_not_a_price(notes):
     assert _price_warned(notes) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-8: từ khóa gõ không dấu không còn che chữ có dấu trong ghi chú",
-)
 @pytest.mark.parametrize(
     ("keyword", "notes"),
     [
@@ -940,10 +920,6 @@ def test_sl_t100_8_unaccented_keyword_still_covers_accented_text(keyword, notes)
     assert _price_warned(notes, keyword=keyword) == (False, True)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-9: số tiền không đơn vị sau «tiền», «hết», «tốn», «trả», «công thợ» chưa bắt",
-)
 @pytest.mark.parametrize(
     "notes",
     [
@@ -967,10 +943,6 @@ def _best(text: str, keyword: str) -> float:
     return min(timings)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-10: so «nằm trong từ khóa» với mọi lần xuất hiện: thời gian tăng bình phương",
-)
 def test_sl_t100_10_price_check_stays_linear_when_the_keyword_repeats():
     """Chữ dài gấp 4 thì thời gian không quá 8 lần (+10 ms). Đo xen kẽ nhỏ/lớn, lấy lần nhanh nhất
     (như T-025). Không có từ khóa lặp thì đã tuyến tính (test của Thợ Máy)."""
@@ -982,10 +954,6 @@ def test_sl_t100_10_price_check_stays_linear_when_the_keyword_repeats():
     assert big < 8 * small + 0.01
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T100-11: Sheet đầy mà cấp mã mới cho dòng chưa có mã: trùng mã dòng ngoài vùng đọc",
-)
 def test_sl_t100_11_full_sheet_never_gives_a_keyless_row_a_new_key(fake, client):
     """LC-T100-1, biến thể đường «Cập nhật»: Sheet quá 1.000 dòng; dòng chưa có mã (đọc được) được
     file kế hoạch cấp mã kế tiếp theo các mã đọc được (B-1000), mà B-1000 đã có ở dòng 1.002 (ngoài
