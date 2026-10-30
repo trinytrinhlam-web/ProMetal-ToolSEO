@@ -200,6 +200,20 @@ def cell(name: str, value: object) -> str:
     return str(value)
 
 
+def safe_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Ô chữ của bảng: mở đầu bằng ``=``, ``+``, ``-``, ``@``, tab, CR thì thêm một dấu cách đầu
+    (``sync.safe_text``, như khi ghi Sheet, LC-T094-28): bảng tải về CSV (nút trên thanh công cụ
+    của ``st.dataframe``) mở bằng Excel không thành công thức (Lá Chắn LC-T101-1). Chỉ đổi chữ
+    hiện ra; dữ liệu, so sánh, lệnh ghi Sheet không đi qua đây."""
+    return [
+        {
+            name: sync.safe_text(value) if isinstance(value, str) else value
+            for name, value in row.items()
+        }
+        for row in rows
+    ]
+
+
 def proposal_change(item: propose.Proposal) -> str:
     if item.action is propose.Action.ADD:
         return "Bài mới"
@@ -432,7 +446,7 @@ def proposal_detail(item: propose.Proposal) -> None:
         if now or then:
             mark = "✏️" if before is not None and now != then else ""
             rows.append({"Cột": FIELD_LABELS[name], "Hiện tại": now, "Đề xuất": then, "Đổi": mark})
-    st.dataframe(rows, hide_index=True)
+    st.dataframe(safe_rows(rows), hide_index=True)
     for name in LONG_FIELDS:
         value = getattr(item.after, name)
         if value:
@@ -458,7 +472,7 @@ def proposals_box() -> None:
         for note in S.get("plan_notes", ()):
             show("caption", note)
         st.dataframe(
-            proposal_rows(items),
+            safe_rows(proposal_rows(items)),
             hide_index=True,
             column_config={
                 "Dòng": st.column_config.NumberColumn(width="small"),
@@ -555,7 +569,7 @@ def result_box() -> None:
         show("warning" if bad else "success", result.message)
         if result.conflicts:
             st.caption("Các thay đổi chưa ghi vì dòng trên Google Sheet đã khác bản bạn đã xem:")
-            st.dataframe(conflict_rows(result), hide_index=True)
+            st.dataframe(safe_rows(conflict_rows(result)), hide_index=True)
             st.caption(
                 "Bấm «Đọc kế hoạch và đề xuất cập nhật» lần nữa để đề xuất lại trên bản mới."
             )
@@ -780,7 +794,7 @@ def plan_list(listing: sync.PlanListing | None, client: SheetsClient | None) -> 
         show("info", "Kế hoạch chưa có bài nào. Đưa kế hoạch vào ở khung «Cung cấp kế hoạch».")
         return
     st.dataframe(
-        list_rows(plan),
+        safe_rows(list_rows(plan)),
         hide_index=True,
         column_config={
             FIELD_LABELS["planned_date"]: st.column_config.DateColumn(format="DD/MM/YYYY"),

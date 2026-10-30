@@ -2587,11 +2587,13 @@ def links_panel(writer: ContentWriter | None, listing: site_storage.SiteListing)
             st.caption("Chưa có liên kết nội bộ nào: bấm «AI gợi ý liên kết».")
         return
     titles = {item.id: item.title for item in listing.index.items} if listing.index else {}
+    # Ô chữ (cụm từ AI chọn, tên bài trên website) qua ``safe_text``: bảng tải về CSV mở bằng Excel
+    # không thành công thức (LC-T101-1). Chỉ cột «Dùng» được đọc lại, theo thứ tự dòng.
     rows = [
         {
             "Dùng": link.use,
-            "Cụm từ trong bài": link.anchor,
-            "Trỏ tới bài": titles.get(link.post_id) or f"bài #{link.post_id}",
+            "Cụm từ trong bài": safe_text(link.anchor),
+            "Trỏ tới bài": safe_text(titles.get(link.post_id) or f"bài #{link.post_id}"),
         }
         for link in links
     ]
