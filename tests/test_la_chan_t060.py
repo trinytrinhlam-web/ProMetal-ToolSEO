@@ -32,6 +32,7 @@ from fake_wordpress import BASE_URL
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import (
     _MEDIA_FIELDS,
+    _MEDIA_UPLOAD_FIELDS,
     _POST_FIELDS,
     _POST_META_FIELDS,
     SITESEO_ABILITY,
@@ -180,7 +181,8 @@ def test_lc_t060_doi_chung_than_json_va_fields_that_cua_app_van_gui(fake_wp, wp_
     assert result.written
     assert [_summary(r) for r in fake_wp.requests] == [
         ("POST", "/wp/v2/posts", _CREATE_KEYS, [_POST_FIELDS]),
-        ("POST", "/wp/v2/media", None, [_MEDIA_FIELDS]),
+        # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh xin thêm ``post``.
+        ("POST", "/wp/v2/media", None, [_MEDIA_UPLOAD_FIELDS]),
         ("POST", f"/wp/v2/media/{NEW_ID}", ["alt_text", "caption", "title"], [_MEDIA_FIELDS]),
         ("GET", "/wp/v2/posts/42", None, [_POST_META_FIELDS]),
         ("POST", "/wp/v2/posts/42", ["featured_media"], [_POST_FIELDS]),

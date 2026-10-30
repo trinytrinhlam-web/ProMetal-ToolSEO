@@ -1009,7 +1009,7 @@ class Site:
         name = re.fullmatch(r'attachment; filename="([^"]+)"', disposition).group(1)
         media_id, self.next_id = self.next_id, self.next_id + 1
         self.names[media_id] = name
-        return (201, {"id": media_id, "source_url": f"{UPLOADS}{name}"}, {})
+        return (201, {"id": media_id, "source_url": f"{UPLOADS}{name}", "post": None}, {})
 
     def update_media(self, request):
         media_id = int(path_of(request).rsplit("/", 1)[1])

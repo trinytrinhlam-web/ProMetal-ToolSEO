@@ -77,7 +77,8 @@ class _ParentSite(BaseAdapter):
         if request.method == "POST" and path == f"{API}/media":
             media_id, self.next_media = self.next_media, self.next_media + 1
             self.media[media_id] = {"post": int(query["post"][0]) if "post" in query else None}
-            return 201, {"id": media_id, "source_url": self._url(media_id), "alt_text": ""}
+            return 201, {"id": media_id, "source_url": self._url(media_id), "alt_text": "",
+                         "post": None}
         if request.method == "POST" and path.startswith(f"{API}/media/"):
             media_id = int(path.rsplit("/", 1)[1])
             item = self.media.get(media_id)
@@ -426,11 +427,6 @@ def test_gui_hong_truoc_khi_co_nhap_anh_khong_duoc_gan(wp_site, client, webs, cr
     assert wp_site.media[101]["post"] is None and wp_site.media[102]["post"] is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T110-1: gửi hỏng trước khi có nháp, câu báo không nói ảnh còn trong danh sách "
-    "Media công khai (câu nhắc GPS mới hứa «gắn không được thì phần mềm báo»)",
-)
 @pytest.mark.parametrize(
     "create",
     [(400, {"code": "rest_invalid_param", "message": MOI}), (500, {"code": "x", "message": MOI}),

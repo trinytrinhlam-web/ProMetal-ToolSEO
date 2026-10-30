@@ -653,7 +653,7 @@ def real_site(fake_wp):
 
     def created_media(_request):
         media_id = next(counter)
-        return (201, {"id": media_id, "source_url": f"{UPLOADS}a{media_id}.webp"}, {})
+        return (201, {"id": media_id, "source_url": f"{UPLOADS}a{media_id}.webp", "post": None}, {})
 
     def updated_media(request):
         media_id = int(path(request).rsplit("/", 1)[1])

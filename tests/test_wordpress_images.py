@@ -196,7 +196,9 @@ class Site:
         media_id = self.next_id
         self.next_id += 1
         self.files[media_id] = name
-        answer = {"id": media_id, "source_url": self.source_url(media_id), "mime_type": "x"}
+        answer = {
+            "id": media_id, "source_url": self.source_url(media_id), "mime_type": "x", "post": None
+        }
         return (201, answer, {})
 
     def update_media(self, request):

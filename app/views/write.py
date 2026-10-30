@@ -175,13 +175,16 @@ MSG_IMAGE_FAILED = "Không xử lý được ảnh này. Hãy thử ảnh khác.
 MSG_SCAN_FAILED = "Không xem được thư mục này. Bấm quét lại hoặc chọn thư mục khác."
 MSG_ALT_FAILED = "AI chưa viết được alt cho ảnh này. Bấm thử lại hoặc tự gõ alt."
 MSG_SEND_UNEXPECTED = (
-    "Gửi nháp gặp lỗi không mong đợi. Bài nháp và ảnh có thể đã lên website: mở trang quản trị "
-    "WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện trước khi gửi lại."
+    "Gửi nháp gặp lỗi không mong đợi. Bài nháp và ảnh có thể đã lên website; ảnh chưa gắn vào bài "
+    "nào thì đang hiện công khai trong danh sách Media (kể cả vị trí GPS): mở trang quản trị "
+    "WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện (xóa ảnh không dùng) trước khi gửi "
+    "lại."
 )
 MSG_SEND_INTERRUPTED = (
     "Lần gửi trước bị ngắt giữa chừng (có thể do bấm nút khác hoặc bấm đúp trong lúc đang gửi), "
-    "app không biết kết quả. Bài nháp và ảnh có thể đã lên website: mở trang quản trị WordPress, "
-    "kiểm tra Bài viết → Nháp và Media → Thư viện trước khi gửi lại."
+    "app không biết kết quả. Bài nháp và ảnh có thể đã lên website; ảnh chưa gắn vào bài nào thì "
+    "đang hiện công khai trong danh sách Media (kể cả vị trí GPS): mở trang quản trị WordPress, "
+    "kiểm tra Bài viết → Nháp và Media → Thư viện (xóa ảnh không dùng) trước khi gửi lại."
 )
 MSG_SLOW_CHECK = (
     "Ổ đĩa đang chậm (Google Drive?) nên chưa kiểm lại được ảnh. Đợi vài giây rồi bấm lại."
@@ -219,7 +222,8 @@ GPS_PUBLIC_WARNING = (
     "📍 Ảnh (kể cả vị trí GPS còn trong ảnh) **xem được công khai** qua đường dẫn trực tiếp ngay "
     "khi tải lên, kể cả khi bài vẫn là nháp. Phần mềm gắn ảnh vào bài nháp, nên ảnh không hiện "
     "trong danh sách Media công khai của website cho tới khi bài được đăng (gắn không được thì "
-    "phần mềm báo sau khi gửi). Phần mềm không tự xóa ảnh đã tải lên."
+    "phần mềm báo sau khi gửi; lần gửi hỏng trước khi tạo được nháp cũng báo, vì ảnh đã tải khi "
+    "đó chưa gắn vào bài nào nên hiện trong danh sách này). Phần mềm không tự xóa ảnh đã tải lên."
 )
 
 

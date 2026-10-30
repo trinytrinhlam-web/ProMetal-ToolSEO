@@ -53,6 +53,9 @@ _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
 _POST_FIELDS = "id,status,title,link,featured_media"
 _POST_META_FIELDS = "id,status,meta"
 _MEDIA_FIELDS = "id,source_url,alt_text"
+# Lệnh tải ảnh xin thêm ``post`` (bài cha, LC-T110-1): ảnh mới tải qua REST chưa có bài cha
+# (``null``); có bài cha là website trả lại ảnh có sẵn, không phải ảnh client vừa tải.
+_MEDIA_UPLOAD_FIELDS = "id,source_url,alt_text,post"
 _MEDIA_PARENT_FIELDS = "id,post"  # câu trả lời lệnh gắn ảnh vào bài (T-110)
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
 _SLUG_PATTERN = re.compile(r"[A-Za-z0-9%._~-]+")
@@ -508,6 +511,7 @@ _MEDIA_ODD_ANSWER = (
 _MEDIA_BAD_URL = (
     "WordPress trả về địa chỉ ảnh không phải https trên đúng website. Chưa tạo bài nháp."
 )
+_NO_PARENT_FIELD = object()  # câu trả lời lệnh tải ảnh không có khóa ``post``
 _MEDIA_NOT_CREATED = (
     "WordPress không xác nhận đã tạo ảnh mới trong thư viện Media (cần mã 201 Created). Chưa ghi "
     "alt cho ảnh này, chưa tạo bài nháp."
@@ -531,14 +535,16 @@ _MEDIA_NOT_DESCRIBED = (
     "kiểm, sửa hoặc xóa trước khi tải lại (tải lại sẽ thêm một ảnh nữa). Chưa tạo bài nháp."
 )
 _DRAFT_IMAGES_LEFT = (
-    " Đã có {count} ảnh lên thư viện Media trước khi lỗi (danh sách bên dưới). Phần mềm không xóa "
-    "ảnh: ảnh vẫn xem được công khai qua đường dẫn; nếu không dùng, hãy tự xóa trong trang quản "
-    "trị WordPress (Media → Thư viện)."
+    " Đã có {count} ảnh lên thư viện Media trước khi lỗi (danh sách bên dưới). Ảnh đó chưa gắn "
+    "vào bài nào nên đang hiện công khai trong danh sách Media của website (ai cũng xem được, kể "
+    "cả vị trí GPS còn trong ảnh). Phần mềm không xóa ảnh: nếu không dùng, hãy tự xóa trong trang "
+    "quản trị WordPress (Media → Thư viện)."
 )
 _DRAFT_IMAGES_NONE = " Chưa có ảnh nào lên thư viện Media."
 _DRAFT_IMAGE_MAYBE = (
     " Ảnh đang tải lúc lỗi có thể vẫn đã lên thư viện Media: kiểm tra Media → Thư viện trong "
-    "trang quản trị."
+    "trang quản trị; nếu có, ảnh đó chưa gắn vào bài nào nên đang hiện công khai trong danh sách "
+    "Media, hãy xóa nếu không dùng."
 )
 # Lỗi ở chính lệnh tạo nháp mà không phải lời từ chối 4xx rõ ràng (LC-T054-2, SL-T054-3).
 _DRAFT_MAYBE_CREATED = (
@@ -1759,7 +1765,7 @@ class WordPressClient:
                 "Content-Type": content_type,
                 "Content-Disposition": f'attachment; filename="{file_name}"',
             },
-            params={"_fields": _MEDIA_FIELDS},
+            params={"_fields": _MEDIA_UPLOAD_FIELDS},
         )
         if new_only and response.status_code != 201:
             raise WordPressError(_MEDIA_NOT_CREATED)
@@ -1769,8 +1775,17 @@ class WordPressClient:
         media_id = _positive_id(media.get("id") if isinstance(media, dict) else None)
         if media_id is None:
             raise WordPressError(_BAD_DATA.format(what="ảnh vừa tải lên"))
-        if new_only:  # website xác nhận vừa tạo mục mới: ảnh của chính client (T-110)
-            self._uploaded_media_ids.add(media_id)
+        if new_only:
+            parent = media.get("post", _NO_PARENT_FIELD)
+            if _positive_id(parent) is not None:
+                # LC-T110-1: 201 mà ảnh đã thuộc một bài là ảnh có sẵn (plugin trả lại ảnh trùng):
+                # như mã khác 201, không ghi alt, không gắn (W2).
+                raise WordPressError(_MEDIA_NOT_CREATED)
+            if parent is None or (type(parent) is int and parent == 0):
+                # Website xác nhận vừa tạo mục mới, chưa có bài cha: ảnh của chính client.
+                self._uploaded_media_ids.add(media_id)
+            # Thiếu ``post`` hay giá trị lạ: không biết ảnh có bài cha chưa, nên không gắn
+            # (``_attach_media`` từ chối, câu báo «chưa gắn được»), các bước khác như cũ.
         return media_id, media
 
     # ------------------------------------------------------- gửi nháp kèm ảnh (T-054)
