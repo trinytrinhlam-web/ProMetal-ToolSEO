@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, urlsplit
 
-import pytest
 import streamlit as st
 import test_app_wordpress as wp_page
 import test_images_process as tp
