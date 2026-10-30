@@ -26,8 +26,9 @@ Mở ảnh an toàn (điều kiện Lá Chắn T-047 mục 7, T-048, T-058):
 - Bắt lỗi quanh cả ``open`` lẫn ``load``: ``OSError``, ``ValueError`` (HEIC cụt), và
   ``DecompressionBombError`` (không phải con của ``OSError``). Câu báo tiếng Việt cố định, không
   chép câu lỗi gốc hay đường dẫn.
-- HEIF đăng ký ở đúng một chỗ (``_register_heif``), tắt ảnh nhỏ, ảnh độ sâu, ảnh phụ; không gọi
-  ``load_libheif_plugin``, không bật ``DISABLE_SECURITY_LIMITS``, không ghi file HEIC.
+- HEIF đăng ký ở đúng một chỗ (``_register_heif``), giải mã một luồng (LC-T093-3), tắt ảnh nhỏ,
+  ảnh độ sâu, ảnh phụ; không gọi ``load_libheif_plugin``, không bật ``DISABLE_SECURITY_LIMITS``,
+  không ghi file HEIC. Ảnh HEIC chia lưới ô lạ (ô quá nhỏ, thừa ô) bị từ chối trước khi giải mã.
 - Không xuất ảnh sang Arrow, không đặt hay đọc ``PILLOW_ALIGNMENT`` (LC-T058-1).
 """
 
@@ -61,6 +62,15 @@ ALLOWED_FORMATS = ("JPEG", "PNG", "WEBP", "HEIF")
 # 80 triệu điểm ảnh: đủ cho máy 48–64 MP (iPhone 48 MP = 8064 × 6048). Thấp hơn ngưỡng cảnh báo
 # mặc định của Pillow (89.478.485) nên luôn là phép so của module này quyết định, câu báo rõ ràng.
 MAX_IMAGE_PIXELS = 80_000_000
+# LC-T093-3 (T-107): libheif 1.23.6 (mang sẵn trong pillow-heif 1.8.1) dùng vùng nhớ đã giải phóng
+# khi giải mã song song các ô của ảnh lưới (GHSA-35mc-3887-rr37, cả với tùy chọn mặc định) và có
+# thể treo khi giải mã song song bỏ qua ô hỏng (GHSA-rcqc-842v-m26h). 0 = giải mã trên luồng đang
+# gọi, không mở luồng phụ: cách tránh của chính khuyến cáo. Bỏ khi nâng lên libheif từ 1.23.7.
+HEIF_DECODE_THREADS = 0
+# Ảnh HEIC của điện thoại chia lưới ô 512 × 512 (iPhone 12 MP: 48 ô, 48 MP: 192 ô). Ô dưới 64 điểm
+# ảnh không có ở ảnh thật (MIAF đòi tối thiểu 64) mà là dấu hiệu file dựng để làm treo CPU
+# (GHSA-48p4-gj45-w9v6: lưới ô 1 × 1 cắt từ một ảnh chồng rất lớn).
+MIN_HEIF_TILE_EDGE = 64
 
 WEB_MAX_EDGE_PX = 1600  # quyết định 5A; T-051 đưa vào config/content.toml [images] max_edge_px
 WEB_WEBP_QUALITY = 80  # T-051: config/content.toml [images] webp_quality
@@ -94,6 +104,10 @@ _MSG_NOT_IMAGE = (
 )
 _MSG_BROKEN = "Ảnh bị hỏng hoặc chưa tải xong (Google Drive chưa đồng bộ?), app không đọc được."
 _MSG_ENCODE = "Không nén được ảnh này. Hãy thử ảnh khác."
+_MSG_HEIF_GRID = (
+    "Ảnh HEIC này có cấu trúc lạ (lưới ô không giống ảnh điện thoại), app không mở để tránh treo "
+    "máy. Hãy dùng ảnh khác hoặc xuất lại ảnh sang JPEG."
+)
 _MSG_GPS_LOST = (
     "Ảnh gốc có vị trí GPS nhưng bản nén không giữ được đúng vị trí, nên app dừng lại "
     "(không dùng ảnh này)."
@@ -132,12 +146,41 @@ def _register_heif() -> None:
     được đặt lại mỗi lần (ai đó bật lại cũng không ăn); bảng định dạng của Pillow chỉ được ghi
     khi HEIF chưa có trong bảng.
     """
+    heif_options.DECODE_THREADS = HEIF_DECODE_THREADS
     heif_options.THUMBNAILS = False
     heif_options.DEPTH_IMAGES = False
     heif_options.AUX_IMAGES = False
     heif_options.DISABLE_SECURITY_LIMITS = False
     if Image.OPEN.get("HEIF", (None,))[0] is not pillow_heif.HeifImageFile:
-        pillow_heif.register_heif_opener(thumbnails=False, depth_images=False, aux_images=False)
+        pillow_heif.register_heif_opener(
+            decode_threads=HEIF_DECODE_THREADS,
+            thumbnails=False,
+            depth_images=False,
+            aux_images=False,
+        )
+
+
+def _check_heif_grid(image: Image.Image) -> None:
+    """Ảnh HEIC chia lưới ô: từ chối **trước khi giải mã** khi ô nhỏ hơn ``MIN_HEIF_TILE_EDGE``
+    hay số ô nhiều hơn số ô cần để phủ kín ảnh (T-107, giảm lỗi «làm treo CPU» của libheif
+    1.23.6). Thông tin lưới đọc từ phần đầu file (``info["tiling"]`` của pillow-heif)."""
+    tiling = image.info.get("tiling") if image.format == "HEIF" else None
+    if not tiling:
+        return
+    try:
+        columns, rows = int(tiling["num_columns"]), int(tiling["num_rows"])
+        tile_w, tile_h = int(tiling["tile_width"]), int(tiling["tile_height"])
+        width, height = int(tiling["image_width"]), int(tiling["image_height"])
+    except (KeyError, TypeError, ValueError):
+        raise ImageProcessError(_MSG_HEIF_GRID) from None
+    if min(columns, rows, width, height) < 1 or min(tile_w, tile_h) < MIN_HEIF_TILE_EDGE:
+        raise ImageProcessError(_MSG_HEIF_GRID)
+    # Không biết chắc libheif đã xoay kích thước ô theo ảnh hay chưa: nhận cả hai chiều.
+    needed = max(
+        -(-width // tile_w) * -(-height // tile_h), -(-width // tile_h) * -(-height // tile_w)
+    )
+    if columns * rows > needed:
+        raise ImageProcessError(_MSG_HEIF_GRID)
 
 
 def _too_many_pixels(pixels: int | None = None) -> ImageProcessError:
@@ -216,6 +259,7 @@ def _open(
             pixels = image.width * image.height
             if pixels > MAX_IMAGE_PIXELS:
                 raise _too_many_pixels(pixels)
+            _check_heif_grid(image)
             if draft_edge and image.format in ("JPEG", "MPO"):
                 # Giải mã JPEG ở 1/2, 1/4, 1/8 kích thước khi ảnh lớn hơn nhiều so với cần (vẫn
                 # không nhỏ hơn ``draft_edge`` ở cả hai cạnh): đỡ RAM, đỡ thời gian.

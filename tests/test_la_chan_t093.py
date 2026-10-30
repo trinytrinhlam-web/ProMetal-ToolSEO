@@ -142,10 +142,6 @@ def test_lc_t093_2_uploaded_images_attached_to_new_draft(fake_wp, wp_client):
     }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T093-3: HEIC giải mã bằng libheif 1.23.6 (GHSA-35mc-3887-rr37), giải mã song song",
-)
 def test_lc_t093_3_heic_decoding_not_exposed_to_libheif_1_23_6(monkeypatch):
     """Mong đợi: đăng ký HEIF như app làm (``_register_heif``) thì một trong ba điều đúng: app
     không còn nhận HEIF, libheif mang theo từ 1.23.7 trở lên, hay giải mã không song song
