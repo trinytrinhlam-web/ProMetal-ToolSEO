@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-099, T-100 đã gộp (`post_statuses`, đồng bộ kế hoạch) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-10-31, đủ 2 lượt) |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ Theo `docs/team/reports/T-094-la-chan.md` mục «Chung» và mục T-100 (đồ
 
 - Lập 2026-10-30 theo đề xuất Họa Sĩ T-101 (ranh giới giao diện / lõi). Nối nút ghi vào trang Kế hoạch ở lượt sau của T-101 hoặc ở T-102.
 - 2026-10-30 22:24 (Chỉ Huy B): giao 20:25 cho phiên Thợ Máy T-094 (người viết thiết kế 1.7). Nhánh `team/T-109`, worktree `wt-T-109`, từ `main` `eef13b5` (có T-101). Lưu ý điều kiện LC-T101-1 (ô mở đầu `=`, `+`, `-`, `@`) khi ghi Sheet hay hiện bảng.
+- 2026-10-31 13:32 (Chỉ Huy B): lượt 2 (`82464d4`, `088b1e1`: SL-T109-1 → -3 sửa tận gốc ở `sync.py`, G3–G6; R5 duyệt ca bài 407): Soi Lỗi ĐẠT (`635e95f`), Lá Chắn ĐẠT (`401d5ac`). Gộp `main`, Windows 21.819 test qua, 0 hỏng. Nối nút vào trang Kế hoạch: T-113.

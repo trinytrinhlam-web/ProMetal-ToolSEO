@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (bảo mật toàn máy) |
 | Mức ưu tiên | **Cao** (Lá Chắn T-075, LC-T075-1) |
 | Phụ thuộc | Chủ dự án duyệt nâng `uv` 2026-10-21 13:39 |
-| Trạng thái | Đang làm (máy Windows xong; chờ máy Mac; phần Thợ Máy, Thư Ký chưa giao) |
+| Trạng thái | Xong (gộp `main` 2026-10-31; máy Mac: khi có máy) |
 
 ## Mục tiêu
 
@@ -45,3 +45,4 @@ D1, D3.
 - 2026-10-21 13:39 (Chỉ Huy B): chủ dự án duyệt. Máy Windows: `uv self update` từ 0.12.23 lên **0.13.4** (Chỉ Huy chạy). Máy Mac: chủ dự án tự chạy `uv self update`. Phần `required-version` (Thợ Máy) và README (Thư Ký) chưa giao.
 - 2026-10-22 09:01 (Chỉ Huy B): Chủ dự án báo 2026-10-22: **hiện chưa có máy Mac**. Bỏ bước nâng `uv` trên Mac cho tới khi có máy Mac. Máy Windows đã xong (0.13.4). Phần `required-version` (Thợ Máy) và README (Thư Ký) vẫn chưa giao.
 - 2026-10-30 22:24 (Chỉ Huy B): thêm vào phần Thư Ký: README và danh sách đuôi ảnh vẫn ghi nhận AVIF nhưng app không mở được AVIF (Thợ Máy, Soi Lỗi T-107 lượt 3 xác nhận, có từ trước): bỏ câu AVIF khỏi README (phần bỏ AVIF khỏi danh sách đuôi giao Thợ Máy cùng `required-version`).
+- 2026-10-31 13:32 (Chỉ Huy B): Thợ Máy (`1ebf679`), Thư Ký 2 lượt (`10d33f4`, `12c2a3d`), Soi Lỗi ĐẠT (`517f178`), Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`09a5569`): LC-T075-1 đóng trên Windows; LC-T078-1 (`required-version` không chặn `uvx` → quy tắc kiểm `uv --version` trong `security.md`, `la-chan.md`, README), LC-T078-2 (nâng `uv` ở mạng tin cậy) đã sửa; LC-T078-3 (`pyasn1`) → T-114. Gộp `main`, Windows 21.819 test qua. Còn: máy Mac nâng `uv` khi có máy.

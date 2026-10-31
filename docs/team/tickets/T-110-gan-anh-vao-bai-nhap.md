@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Trung bình (trước khi đóng Giai đoạn 3) |
 | Phụ thuộc | Không |
-| Trạng thái | Lượt 1 gộp `main`; lượt 2 đang làm |
+| Trạng thái | Lượt 1 gộp `main`; lượt 2–3 đang Lá Chắn xem lại |
 
 ## Mục tiêu
 
@@ -53,3 +53,4 @@ W2, W3, F1.
 - Lập 2026-10-30 theo quyết định 1A của chủ dự án (rà soát Giai đoạn 3, T-093).
 - 2026-10-30 19:59 (Chỉ Huy B): Thợ Máy `fc45a15` (R5 duyệt 3 nhóm, 18 hàm). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`f85b2bb`): SL-T110-1 Thấp (gửi hỏng trước khi tạo nháp: ảnh không bài cha, câu báo chưa nói); G1 lệnh gắn tin mã 201 (đề xuất xin `post` lúc tải, chỉ gắn khi trống); xung đột vị trí với `main` ở `client.py` (`_is_image_upload` / `_is_media_attach`, giữ cả hai). Giao Lá Chắn rút gọn, kiểm trên bản gộp thử.
 - 2026-10-30 22:24 (Chỉ Huy B): Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`7497a4f`): LC-T093-2 đóng; G1 nâng thành **LC-T110-1** (Thấp: website trả 201 kèm ảnh có sẵn thì ảnh bị đổi bài cha). Gộp `main` (`dddae6b`, gỡ xung đột vị trí `client.py` giữ `_is_image_upload` và `_is_media_attach`), Windows 21.539 test qua, 0 hỏng. Lượt 2 (trước khi đóng Giai đoạn 3, theo đề xuất Lá Chắn): LC-T110-1 cách **A** (Chỉ Huy chọn 20:40: chỉ gắn khi website trả `post` null/0; thiếu hay lạ thì không gắn; R5: thêm `"post": None` vào câu trả lời tải ảnh của site giả), SL-T110-1 (câu báo gửi hỏng trước lúc có nháp); R5 duyệt trước đổi chuỗi `_fields` và câu báo cũ, không nới kiểm.
+- 2026-10-31 13:32 (Chỉ Huy B): lượt 2 (`f8e8815`) Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`f0ff53a`: SL-T110-2, -3 Thấp; G4). Lượt 3 (`94c19e2`): SL-T110-2, -3; **Chỉ Huy quyết G4**: `post` thiếu/lạ = chưa xác nhận là ảnh của client → không ghi alt, không gắn, áp cả `upload_media` (cách A 08:55, R5 thêm `"post": None` vào site giả 17 file). Soi Lỗi lượt 3 ĐẠT (`b7c018b`). Giao Lá Chắn xem lại lượt 2–3.

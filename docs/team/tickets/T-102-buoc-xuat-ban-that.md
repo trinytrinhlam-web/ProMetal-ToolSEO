@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (đợt 3) |
 | Phụ thuộc | T-096, T-099, T-100 đã gộp |
-| Trạng thái | Đang làm (gộp T-101 vào nhánh) |
+| Trạng thái | Xong (gộp `main` 2026-10-31) |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ Làm phần **T-102** đúng như thiết kế Giai đoạn 5: `docs/team/report
 - 2026-10-30 17:23 (Chỉ Huy B): T-099 lượt 2 qua Lá Chắn (`38613fe`, T-102 nối màn hình xác nhận được). Nhánh `team/T-102` từ `main` `fd28bbc` + T-099 lượt 2 (`c8986da`), worktree `wt-T-102`; giao Họa Sĩ (phiên Họa Sĩ T-056). Giữ điều kiện Lá Chắn T-099 (Điều kiện 2 lượt 1, L2-1 → L2-3); công tắc Hẹn giờ/Đăng ngay mặc định tắt (LC-T094-41) tới khi thử thật (LC-T094-44).
 - 2026-10-30 19:59 (Chỉ Huy B): Họa Sĩ xong lượt 1 (`32a217a`); R5 duyệt 4 test cũ (18:45, kèm điều kiện giữ ý «đăng ngay cần xác nhận», client giả kiểm khóa gửi). Lượt gộp: gộp `team/T-101` vào nhánh (`b34145a`), R5 đổi 2 test T-101 (trang Kế hoạch không ghi Sheet; Soạn bài ghi «Đang viết» một lần, bỏ khóa sau khi dùng), G1 (bài gõ tay không nhận `DraftPlanRef` cũ; cho sửa đúng chỗ đó ở trang Bài viết), LC-T101-1 (`safe_text` cho bảng có nút tải CSV; cho sửa `app/views/plan.py`). Chú thích `[plan]` trong `config/content.toml` («chưa dùng») giao người được sửa `config/**` sau.
 - 2026-10-30 22:24 (Chỉ Huy B): Họa Sĩ lượt gộp `5c37be0` (T-101 `944160c`, G1, LC-T101-1). Giao Soi Lỗi rút gọn (20:25; gộp thử với `main` `eef13b5`), rồi Lá Chắn đầy đủ (đóng cả LC-T101-1).
+- 2026-10-31 13:32 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`7dec772`, SL-T102-1 Trung bình), Lá Chắn đầy đủ ĐẠT CÓ ĐIỀU KIỆN (`9381783`): gộp được khi công tắc tắt, LC-T101-1 đóng, LC-T102-1 (Thấp) mới. Gộp `main` (`3cdd096`); ghi chú `[plan]` trong `config/content.toml` sai sự thật sau khi T-102 đọc `default_time` → Ngòi Bút sửa (`d6df633`, R5 test T-103). Windows 21.819 test qua, 0 hỏng. Trước khi bật công tắc: T-112 (SL-T102-1, LC-T102-1, nút công tắc, README), T-115 (`modified_gmt`), thử thật LC-T094-44, Lá Chắn rà soát GĐ5.

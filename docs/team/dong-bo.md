@@ -59,6 +59,14 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-10-31 13:32 · Chỉ Huy B
+
+- Gộp **T-102** (+ ghi chú `[plan]` Ngòi Bút), **T-109**, **T-078**, **T-114** (`bb25dde`). Windows 21.819 test qua, 0 hỏng. Lượt toàn bộ test đêm 30/10 chết ở 16% vì máy ngủ ~00:45; lượt 07:40 trên `3cdd096` hỏng đúng 1 ca đã biết (ghi chú `[plan]`).
+- Chủ dự án 31/10: nâng `pyasn1` ngay (T-114 xong); lập phiên **Giám Sát** (`local_bed15da7-2a29-4f16-bebd-017948d87d38`, đã tách lên cấp trên cùng; cron 10 phút, hết hạn ~07/11); chỉ báo chủ dự án khi cần quyết.
+- Lập T-112 (chuẩn bị bật Hẹn giờ/Đăng ngay; công tắc chỉ trong phiên — Chỉ Huy chọn A), T-113 (nối nút T-109), T-114, T-115 (`modified_gmt`, tách từ T-112).
+- Đang chạy: Lá Chắn T-110 lượt 2–3 (việc cuối đóng GĐ3), Soi Lỗi T-113, Thợ Máy T-115 (rồi gộp vào T-112 → Soi Lỗi, Lá Chắn đầy đủ T-112).
+- Hàng đợi: T-105 (Thợ Máy), T-092 (Họa Sĩ), test `test_soi_loi_t102.py` ghi `data/site_index.sqlite` vào thư mục dự án (Soi Lỗi dọn), chú thích `pyproject.toml` về `uvx`; sau T-112/T-115: thử thật LC-T094-44 với chủ dự án, Lá Chắn rà soát GĐ5.
+
 ### 2026-10-30 22:24 · Chỉ Huy B
 
 - Gộp **T-107 lượt 3** (T-107 xong; HEIC tạm tắt), **T-110 lượt 1**, **T-101** (`eef13b5`). Windows 21.539 test qua, 0 hỏng. Sau gộp phải bỏ `import pytest` thừa ở `test_la_chan_t093.py` (mỗi nhánh gỡ một dấu `xfail` cuối, đứng riêng thì không lỗi).
