@@ -22,8 +22,11 @@ from fake_plan_sheet import HEADER, FakePlanSheet
 from test_plan_sync import COL, row
 
 from seo_app.plan import model, sync, website
+from seo_app.plan.model import PlanRow
+from seo_app.plan.propose import Action, Proposal
 from seo_app.plan.website import WebChangeKind as Kind
 from seo_app.plan.website import WebNoticeKind as Notice
+from seo_app.storage.drafts import DraftPlanRef
 from seo_app.storage.plan_cache import sheet_hash
 from seo_app.wordpress.client import PostState
 
@@ -493,3 +496,222 @@ def test_stale_website_check_after_send_write_is_a_conflict(fake, client):
         sync.WriteOutcome.LATER
     )
     assert sheet.cell(2, COL["status"]) == "Đã hẹn giờ" and HEADER[COL["status"]] == "Trạng thái"
+
+
+# ================================================================ lượt 2 (đầu nhánh 088b1e1)
+
+# Ký tự trắng, vô hình, điều khiển hướng chữ, ký tự riêng: viết bằng mã số (file không chứa
+# ký tự ẩn).
+BLANKS = {
+    name: chr(code)
+    for name, code in (
+        ("dau-cach", 0x20), ("nbsp", 0xA0), ("nnbsp", 0x202F), ("ideo", 0x3000), ("tab", 0x09),
+        ("xuong-dong", 0x0A), ("nel", 0x85), ("ls", 0x2028), ("zwsp", 0x200B), ("zwnj", 0x200C),
+        ("zwj", 0x200D), ("wj", 0x2060), ("bom", 0xFEFF), ("shy", 0xAD), ("mvs", 0x180E),
+        ("lrm", 0x200E), ("rlo", 0x202E), ("lri", 0x2066), ("hangul", 0x3164), ("cgj", 0x34F),
+        ("vs16", 0xFE0F), ("tag", 0xE0020), ("pua", 0xE000),
+    )
+}  # fmt: skip
+
+
+def reading_gaps(values) -> list[tuple[str, int]]:
+    """Chỗ bộ đọc bảng (``PlanRow``) và các hàm đọc lại ô lúc kiểm / lúc ghi (``_key_of``,
+    ``key_rows``, ``_post_id_of``, ``_status_of``, ``_moment_of``) ra kết quả khác nhau."""
+    plan = sync.parse_sheet(values, fetched_at=NOW)
+    gaps = []
+    for sheet_row in plan.rows:
+        cells, line = sheet_row.cells, sheet_row.plan
+        if sync._key_of(cells, plan.columns["key"]) != line.key:
+            gaps.append(("key", sheet_row.number))
+        if line.key and sheet_row.number not in plan.key_rows.get(line.key, ()):
+            gaps.append(("key_rows", sheet_row.number))
+        post = sync._post_id_of(sync._cell_at(cells, plan.columns["wp_post_id"]))
+        if post != line.wp_post_id and not (line.wp_post_id is None and post in (None, False)):
+            gaps.append(("wp_post_id", sheet_row.number))
+        status = sync._status_of(sync._cell_at(cells, plan.columns["status"]))
+        if status != line.status and not (status is None and line.status == model.STATUS_NEW):
+            gaps.append(("status", sheet_row.number))
+        moment = website._moment_of(sync._cell_at(cells, plan.columns["published_at"]))
+        if moment != line.published_at and not (moment is False and line.published_at is None):
+            gaps.append(("published_at", sheet_row.number))
+    return gaps
+
+
+@pytest.mark.parametrize("blank", list(BLANKS.values()), ids=list(BLANKS))
+def test_round2_every_blank_or_invisible_char_reads_the_same_both_ways(blank):
+    """SL-T109-1, -2 (gốc ở ``sync``): ký tự trắng, vô hình ở đầu, cuối, giữa ô Mã bài, Mã bài
+    WordPress, Trạng thái, Ngày đăng thực tế (1, 29, 30, 31, 40, 1.500 ký tự): hai cách đọc khớp
+    nhau. Bản lượt 1 (``09870bd``) lệch ở 231 / 297 biến thể của phép dò cùng kiểu."""
+    for count in (1, 29, 30, 31, 40, 1500):
+        pad = blank * count
+        values = [
+            HEADER,
+            row(pad + "b-70", "cửa cuốn", status=pad + "Đã hẹn giờ", wp_post_id=pad + "170",
+                published_at=pad + "03/11/2026 08:00"),
+            row("B-071" + pad, "cửa kéo", status="Đã đăng" + pad, wp_post_id="171" + pad,
+                published_at="2026-11-03 08:00+07:00" + pad),
+            row("B-" + pad + "072", "cửa sắt", status="Đã" + pad + "đăng",
+                wp_post_id="1" + pad + "72", published_at="03/11/2026" + pad + "08:00"),
+        ]  # fmt: skip
+        assert reading_gaps(values) == [], count
+
+
+@pytest.mark.parametrize("pad", [1995, 1996, 1997, 2100])
+def test_round2_cells_longer_than_the_reader_limit_read_the_same_both_ways(pad):
+    """Ô quá 2.000 ký tự: bộ đọc bảng cắt ở 2.000 ký tự (và báo «dài quá»), các hàm lúc ghi cắt y
+    như vậy, nên không lệch nhau (cắt giữa chữ có thể đọc ra mã khác: «Giới hạn đã biết»)."""
+    blanks = " " * pad
+    values = [
+        HEADER,
+        row(
+            blanks + "B-070",
+            "cửa cuốn",
+            status=blanks + "Đã đăng",
+            wp_post_id=blanks + "1700",
+            published_at=blanks + "03/11/2026 08:00",
+        ),
+    ]
+    assert reading_gaps(values) == []
+    plan = sync.parse_sheet(values, fetched_at=NOW)
+    assert any("dài quá" in warning for warning in plan.warnings)
+
+
+@pytest.mark.parametrize("blank", [chr(0xA0), chr(0xFEFF), chr(0x2060), chr(0xAD), chr(0x3000),
+                                   chr(0x200E), chr(0xE0020)],
+                         ids=["nbsp", "bom", "wj", "shy", "ideo", "lrm", "tag"])  # fmt: skip
+def test_round2_blank_led_cells_end_to_end(fake, client, blank):
+    """Qua ``SheetsClient`` thật: Mã bài trùng (một ô có 40 ký tự đầu) không ghi; một bài ở hai dòng
+    chỉ cảnh báo; ô Trạng thái, Ngày có 40 ký tự đầu vẫn đọc được, ghi không xung đột."""
+    pad = blank * 40
+    sheet = FakePlanSheet(fake, rows(
+        row(pad + "b-70", "cửa cuốn", status="Đã hẹn giờ", wp_post_id=170),
+        row("B-070", "cửa kéo", status="Đã hẹn giờ", wp_post_id=171),
+        row("B-001", "cửa sắt", status="Đã hẹn giờ", wp_post_id=172),
+        row("B-002", "cổng inox", status="Đã hẹn giờ", wp_post_id=pad + "172"),
+        row("B-003", "lan can", status=pad + "Đã hẹn giờ", wp_post_id=173,
+            published_at=pad + "03/11/2026 08:00"),
+    ))  # fmt: skip
+    states = {post: state(post, "publish", NOV3_08) for post in (170, 171, 172, 173)}
+    result = check(client, states)
+    assert [u.key for u in result.updates] == ["B-003"]
+    assert {n.kind for n in result.notices} == {Notice.DUPLICATE_KEY, Notice.SHARED_POST}
+    outcome = apply(client, result)
+    assert len(outcome.written) == 1 and outcome.conflicts == ()
+    assert {r for r, _, _ in sheet.written_cells()} == {6}
+
+
+@pytest.mark.parametrize(
+    ("after", "stale"),
+    [
+        (timedelta(minutes=5), False),
+        (timedelta(minutes=5, microseconds=1), True),
+        (-timedelta(minutes=1), False),
+        (-timedelta(minutes=1, microseconds=1), True),
+    ],
+)
+@pytest.mark.parametrize("zone", ["Asia/Ho_Chi_Minh", "America/New_York"])
+def test_round2_check_age_edges_to_the_microsecond(fake, client, after, stale, zone):
+    """G4: lần kiểm dùng được tới **đúng** 5 phút; giờ máy lùi tới đúng 1 phút vẫn nhận; múi giờ của
+    ``now`` không đổi kết quả. Cũ thì từ chối trước khi đọc Sheet."""
+    sheet = two_rows(fake)
+    result = check(client, TWO_STATES)
+    reads = sheet.reads
+    later = (NOW + after).astimezone(ZoneInfo(zone))
+    if stale:
+        with pytest.raises(sync.SheetPlanError) as info:
+            apply(client, result, now=later)
+        assert str(info.value) == website.MSG_STALE
+        assert sheet.reads == reads and sheet.updates == []
+    else:
+        assert len(apply(client, result, now=later).written) == 2
+
+
+@pytest.mark.parametrize(
+    ("due", "moves"),
+    [
+        ("2026-11-03T01:02:00", False),  # 08:02:00, ô ghi 08:00: lệch đúng 2 phút
+        ("2026-11-03T01:02:01", True),
+        ("2026-11-03T00:58:00", False),
+        ("2026-11-03T00:57:59", True),
+        ("2026-11-03T01:02:59", True),  # ghi «08:02» (tới phút): lần sau lệch 59 giây
+    ],
+)
+def test_round2_date_tolerance_edges_settle_after_one_write(fake, client, due, moves):
+    """G6: lệch không quá 2 phút thì không đề xuất; quá thì đề xuất sửa ngày một lần, ghi xong kiểm
+    lại không còn đề xuất (giờ ghi tới phút không làm đề xuất lặp lại)."""
+    FakePlanSheet(fake, rows(row("B-001", "cửa cuốn", status="Đã đăng", wp_post_id=170,
+                                 published_at="2026-11-03 08:00+07:00")))  # fmt: skip
+    states = {170: state(170, "publish", due)}
+    result = check(client, states)
+    assert bool(result.updates) is moves
+    if moves:
+        (update,) = result.updates
+        assert update.kind is Kind.DATE
+        assert len(apply(client, result).written) == 1
+    again = check(client, states)
+    assert again.updates == () and again.notices == ()
+
+
+@pytest.mark.parametrize(
+    ("status", "web_status", "kind"),
+    [("Bỏ", "publish", Notice.DROPPED), ("Bỏ", "future", Notice.DROPPED),
+     ("Đã đăng", "future", Notice.AHEAD)],
+)  # fmt: skip
+def test_round2_odd_date_is_not_added_to_rows_that_only_warn(fake, client, status, web_status,
+                                                              kind):  # fmt: skip
+    """G6 nửa sau: website không trả giờ cho bài hẹn giờ / đã đăng; dòng chỉ có cảnh báo thì một
+    câu báo, không thêm «giờ lạ»."""
+    FakePlanSheet(fake, rows(row("B-001", "cửa cuốn", status=status, wp_post_id=170)))
+    result = check(client, {170: state(170, web_status, "")})
+    assert result.updates == () and [n.kind for n in result.notices] == [kind]
+
+
+def test_round2_formula_looking_status_reads_the_same_and_stays(fake, client):
+    """Ô Trạng thái gõ «=Đã đăng» (dạng công thức): hai cách đọc cùng ra «Đã đăng»; chỉ ô ngày được
+    ghi, ô trạng thái giữ nguyên chữ người dùng."""
+    sheet = FakePlanSheet(fake, rows(row("B-001", "cửa cuốn", status="=Đã đăng", wp_post_id=170)))
+    result = check(client, {170: state(170, "publish", NOV3_08)})
+    (update,) = result.updates
+    assert update.kind is Kind.DATE and update.status_before == "Đã đăng"
+    assert len(apply(client, result).written) == 1
+    assert sheet.cell(2, COL["status"]) == "=Đã đăng"
+    assert {c for _, c, _ in sheet.written_cells()} == {COL["published_at"], COL["updated_at"]}
+
+
+# ------------------------------------------- nơi gọi khác của hàm dùng chung (T-100, T-101, T-102)
+
+
+def test_round2_t100_paths_find_a_key_typed_after_blanks(fake, client):
+    """«Viết bài» (``open_row``, T-101 / T-102) và «Áp dụng» đề xuất (``_fresh_row``, T-100) nay tìm
+    được dòng có Mã bài gõ sau 40 dấu cách, như bảng đang hiện (trước: «Không còn thấy dòng»)."""
+    pad = " " * 40
+    sheet = FakePlanSheet(fake, rows(row(pad + "B-080", "cửa cuốn", status="Đang viết",
+                                         priority="Cao")))  # fmt: skip
+    assert sync.open_row(client, "B-080", now=NOW).number == 2
+    plan = sync.read_sheet(client, now=NOW)
+    before = plan.find("B-080").plan
+    after = PlanRow.model_validate({**before.model_dump(), "priority": "Thấp"})
+    proposal = Proposal(Action.UPDATE, "B-080", after, before, "lý do")
+    result = sync.apply_proposals(client, plan, [proposal], now=NOW)
+    assert result.written == (proposal,) and not result.conflicts
+    assert sheet.cell(2, COL["priority"]) == "Thấp"
+    assert sheet.cell(2, COL["key"]) == pad + "B-080"  # ô Mã bài giữ nguyên chữ người dùng gõ
+
+
+def test_round2_key_after_blanks_and_plain_key_are_duplicates_everywhere(fake, client):
+    """Dòng «(40 dấu cách)B-081» và dòng «B-081»: mọi đường đều thấy trùng. ``write_status``
+    (T-100, việc ghi sau khi gửi của T-102) không còn ghi vào dòng trùng như ở lượt 1."""
+    pad = " " * 40
+    sheet = FakePlanSheet(fake, rows(
+        row(pad + "B-081", "cửa cuốn", status="Đang viết"),
+        row("B-081", "cửa kéo", status="Đang viết"),
+    ))  # fmt: skip
+    plan = sync.read_sheet(client, now=NOW)
+    assert plan.key_rows == {"B-081": (2, 3)} and plan.duplicate_keys == {"B-081"}
+    with pytest.raises(sync.SheetPlanError):
+        sync.open_row(client, "B-081", now=NOW)
+    ref = DraftPlanRef(key="B-081", sheet_hash=sheet_hash(SHEET_ID), status="Đang viết",
+                       wp_post_id=None, opened_at=NOW)  # fmt: skip
+    write = sync.status_write(ref, model.STATUS_DRAFT_SENT, wp_post_id=181, now=NOW)
+    done = sync.write_status(client, write, sheet_id=SHEET_ID, now=NOW)
+    assert done.outcome is sync.WriteOutcome.CONFLICT and sheet.updates == []
