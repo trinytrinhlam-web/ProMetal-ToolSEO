@@ -54,7 +54,7 @@ Câu báo `_RELEASE_CHANGED`: «Bài nháp trên website đã bị sửa sau l�
 | `test_shortcode_t061.py:508`, `:529` | `id,status,meta` → `id,status,meta,modified_gmt` |
 | `test_soi_loi_t061.py:315` | `?_fields=id%2Cstatus%2Ctitle%2Clink%2Cfeatured_media` → `…%2Cmodified_gmt` |
 | `test_soi_loi_t061.py:323` | `?context=edit&_fields=id%2Cstatus%2Cmeta` → `…%2Cmodified_gmt` |
-| `test_soi_loi_t061.py:285` (`SAFE_FIELDS`) | thêm `"modified_gmt"` vào danh sách tên trường được phép xin. Cùng kiểu, dạng danh sách thay cho chuỗi: `modified_gmt` là giờ, không phải trường WordPress dựng bằng `the_content`. Anh xem lại giúp |
+| `test_soi_loi_t061.py:285` (`SAFE_FIELDS`) | thêm `"modified_gmt"` vào danh sách tên trường được phép xin. Cùng kiểu, dạng danh sách thay cho chuỗi: `modified_gmt` là giờ, không phải trường WordPress dựng bằng `the_content`. **Chỉ Huy xác nhận 14:20** |
 | `test_soi_loi_t054.py:621` | `id,status,meta` → `…,modified_gmt` |
 | `test_soi_loi_t054.py:628` | `id,status,title,link,featured_media` → `…,modified_gmt` |
 | `test_wordpress_seo_meta_t042.py:202` | `id,status,meta` → `…,modified_gmt` |
@@ -81,7 +81,7 @@ Câu báo `_RELEASE_CHANGED`: «Bài nháp trên website đã bị sửa sau l�
 | `test_soi_loi_t102.py:171` | lệnh kiểm nháp có header `Date` lệch (giữ nguyên ý «đồng hồ website lệch») |
 | `test_la_chan_t102.py:50` | lệnh ghi vào bài (ảnh đại diện) |
 
-**Ghi rõ:** ở nhóm test app và T-099, ngoài lệnh tạo nháp, kiểm nháp, tôi thêm `modified_gmt` cả vào câu trả lời giả của **lệnh ghi vào bài nháp** (ảnh đại diện, meta): `test_app_images.py:1006`, `test_t102_publish.py:114`, `test_la_chan_t102.py:50`. Website thật luôn trả trường này khi được xin trong `_fields`. Thiếu nó thì client coi là «không biết» (đúng yêu cầu 1) và không chuyển bài, nên các test Hẹn giờ/Đăng ngay có ảnh đại diện sẽ đỏ. Đây cũng chỉ là thêm trường vào câu trả lời giả, không đổi điều kiện, không nới kiểm, nhưng rộng hơn đúng chữ «tạo/kiểm nháp» trong lời duyệt nên tôi nêu ra để anh xác nhận.
+**Ghi rõ:** ở nhóm test app và T-099, ngoài lệnh tạo nháp, kiểm nháp, tôi thêm `modified_gmt` cả vào câu trả lời giả của **lệnh ghi vào bài nháp** (ảnh đại diện, meta): `test_app_images.py:1006`, `test_t102_publish.py:114`, `test_la_chan_t102.py:50`. Website thật luôn trả trường này khi được xin trong `_fields`. Thiếu nó thì client coi là «không biết» (đúng yêu cầu 1) và không chuyển bài, nên các test Hẹn giờ/Đăng ngay có ảnh đại diện sẽ đỏ. Đây cũng chỉ là thêm trường vào câu trả lời giả, không đổi điều kiện, không nới kiểm, nhưng rộng hơn đúng chữ «tạo/kiểm nháp» trong lời duyệt nên tôi đã nêu ra: **Chỉ Huy xác nhận 14:20**.
 
 Không ca cố ý thử «website trả lạ/thiếu» nào bị đổi ý: các ca truyền `check=` riêng, câu trả lời lệnh chuyển (`UNSURE_ANSWERS`…), lệnh lỗi, lệnh không còn nháp đều giữ nguyên và vẫn qua. Không đụng câu trả lời **tải ảnh** (T-110 lượt 3 đang thêm `"post": None` ở đó).
 
