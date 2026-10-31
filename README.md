@@ -30,11 +30,11 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 
 1. Bấm phím Windows, gõ `cmd`, nhấn Enter: cửa sổ **Command Prompt** (nền đen) mở ra. Không cần mở thư mục dự án.
 2. Gõ `uv --version` rồi nhấn Enter. So từng số: `uv 0.13.4`, `0.13.5`, `0.14.0`… là đủ mới, không cần làm gì thêm; `uv 0.12.23` hay `0.13.3` là cũ.
-3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
+3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). **Làm bước này ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng**: `uv` cũ tải bản mới qua đúng kênh chứng chỉ bị lộ. Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
 4. Đóng cửa sổ, bấm đúp `run.bat` như thường.
 
 - Cửa sổ báo không tìm thấy lệnh `uv` (`'uv' is not recognized…` hay câu tương tự): ở bước 2, 3 gõ `%USERPROFILE%\.local\bin\uv.exe` thay cho `uv` (đó là chỗ `run.bat` cài `uv`).
-- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`, không phải bằng `run.bat`): gõ `pip install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/.
+- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`, không phải bằng `run.bat`): gõ `pip install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/. Cũng làm ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng.
 
 ## 3. Chạy lần đầu trên Mac
 
@@ -50,11 +50,11 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 
 1. Nhấn `Command + Space`, gõ `Terminal`, nhấn Enter. Không cần mở thư mục dự án.
 2. Gõ `uv --version` rồi nhấn Enter. So từng số: `uv 0.13.4`, `0.13.5`, `0.14.0`… là đủ mới; `uv 0.12.23` hay `0.13.3` là cũ.
-3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
+3. Bản cũ: gõ `uv self update` rồi nhấn Enter, đợi xong (cần mạng). **Làm bước này ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng**: `uv` cũ tải bản mới qua đúng kênh chứng chỉ bị lộ. Gõ lại `uv --version` để chắc đã từ 0.13.4 trở lên.
 4. Đóng Terminal, bấm đúp `run.command` như thường.
 
 - Terminal báo không tìm thấy lệnh `uv` (`command not found: uv`): ở bước 2, 3 gõ `~/.local/bin/uv` thay cho `uv` (đó là chỗ `run.command` cài `uv`).
-- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`): gõ `pip3 install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/.
+- `uv self update` báo không tự nâng được (thường do `uv` được cài bằng `pip`): gõ `pip3 install --upgrade uv`, hoặc cài lại `uv` theo hướng dẫn ở https://docs.astral.sh/uv/getting-started/installation/. Cũng làm ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng.
 
 ## 4. Dùng hằng ngày
 
@@ -504,7 +504,7 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 
 ## Dành cho người phát triển
 
-Cần có [uv](https://docs.astral.sh/uv/) từ bản 0.13.4 (`required-version` trong `pyproject.toml`; bản cũ hơn bị từ chối, nâng bằng `uv self update`).
+Cần có [uv](https://docs.astral.sh/uv/) từ bản 0.13.4 (`required-version` trong `pyproject.toml`; bản cũ hơn bị từ chối ở lệnh dự án như `uv sync`, `uv run`, nâng bằng `uv self update`). `required-version` không áp dụng cho `uvx`: kiểm `uv --version` trước khi dùng `uvx` (quy tắc ở `docs/team/security.md` mục 5).
 
 ```bash
 uv sync                            # cài thư viện

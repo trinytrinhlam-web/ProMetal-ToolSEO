@@ -79,3 +79,37 @@ Không chạy pytest, ruff: chỉ đổi `README.md` và báo cáo.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-10-31 08:20, +07:00)
+
+Sửa 2 lỗi Thấp của biên bản Lá Chắn T-078 (`09a5569`, `docs/team/reports/T-078-la-chan.md`), theo tin Chỉ Huy B 31/10. Chỉ sửa chữ, không sửa hook, `AGENTS.md`, `pyproject.toml`, code.
+
+### Tóm tắt (cho chủ dự án)
+
+- Bước nâng `uv` trong README (cả Windows và Mac) nay dặn: **làm ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng**. Bản `uv` cũ tải bản mới qua đúng kênh chứng chỉ bị lộ, nên trên Wi-Fi lạ có thể bị tráo bản giả. Cách nâng bằng `pip` cũng dặn như vậy.
+- Thêm quy tắc cho các agent: trước khi chạy công cụ kiểm tra bằng `uvx`, phải xem `uv --version` từ 0.13.4 trở lên; cũ hơn thì dừng và báo Chỉ Huy. Lớp chặn `uv` cũ của dự án không phủ lệnh `uvx`.
+- Máy Windows của anh/chị đã là `uv 0.13.4`: không phải làm gì.
+
+### Đã thay đổi
+
+| Lỗi | Chỗ | Thay đổi |
+|---|---|---|
+| LC-T078-1 | `docs/team/security.md` mục 5, ngay trên khối lệnh (`:129`) | Đoạn mới: «**Trước khi chạy `uvx` / `uv tool run`:** chạy `uv --version`, phải từ **0.13.4** trở lên (T-078, GHSA-hq85-5cpj-mr62 …). Thấp hơn thì **không chạy**, dừng và báo Chỉ Huy. `required-version` của dự án (`pyproject.toml`) chỉ chặn lệnh dự án (`uv sync`, `uv run`…), **không chặn `uvx`**.» |
+| LC-T078-1 | `.claude/agents/la-chan.md` bước 3 (`:25`) | Thêm cuối bước 3 (Chỉ Huy cho phép sửa đúng câu này): «Trước khi chạy `uvx`: `uv --version` phải từ 0.13.4 (T-078, GHSA-hq85-5cpj-mr62); cũ hơn thì không chạy, báo Chỉ Huy (`required-version` của dự án không chặn `uvx`).» |
+| LC-T078-1 | `README.md:507` (Dành cho người phát triển) | «bản cũ hơn bị từ chối» → «bản cũ hơn bị từ chối ở lệnh dự án như `uv sync`, `uv run`»; thêm «`required-version` không áp dụng cho `uvx`: kiểm `uv --version` trước khi dùng `uvx` (quy tắc ở `docs/team/security.md` mục 5).» |
+| LC-T078-2 | `README.md:33`, `:53` (bước 3 của khối Windows, Mac) | Thêm «**Làm bước này ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng**: `uv` cũ tải bản mới qua đúng kênh chứng chỉ bị lộ.» |
+| LC-T078-2 | `README.md:37`, `:57` (dòng `pip install` / `pip3 install`) | Thêm «Cũng làm ở mạng nhà hoặc công ty, không dùng Wi-Fi công cộng.» Không nêu bản `pip` (theo biên bản) |
+
+### Ghi chú
+
+- Các chỗ khác nhắc `uvx` (`grep -rln uvx`, bỏ `docs/team/reports`, `tickets`, `.venv`): chỉ còn `docs/team/dong-bo.md` (phiếu điều phối của Chỉ Huy, ngoài phạm vi). Hồ sơ agent khác trong `.claude/agents/` và `AGENTS.md`, `docs/team/rules.md` không có lệnh `uvx`.
+- Chú thích `pyproject.toml:40-42` (phần Thợ Máy) vẫn ghi «uv cũ hơn thì từ chối chạy» mà không nói `uvx`. Biên bản nêu chỗ này trong vị trí của LC-T078-1, nhưng tin giao việc không gồm `pyproject.toml`, nên tôi không sửa. Nếu cần thì thêm «(không áp dụng cho `uvx`)» ở lượt Thợ Máy sau.
+
+### Kiểm tra lượt 2
+
+```
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/security.md .claude/agents/la-chan.md docs/team/reports/T-078-thu-ky.md
+  "results": {}
+```
+
+Số mục README không đổi (## 1 … ## 13); README không có link neo `](#…)`. Không chạy pytest, ruff (chỉ đổi tài liệu).
