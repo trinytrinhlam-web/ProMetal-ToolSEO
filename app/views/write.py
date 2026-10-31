@@ -349,6 +349,42 @@ PLAN_KINDS = {
     plan_model.KIND_SERVICE: onpage_links.ArticleKind.SERVICE,
     plan_model.KIND_AREA: onpage_links.ArticleKind.AREA,
 }
+# T-112 (SL-T102-1, LC-T102-1): phần đã xác nhận mà lúc gửi chưa lên website (LC-T094-38, -39).
+MISSING_FEATURED = "ảnh đại diện"
+MISSING_SEO = "SEO (tiêu đề, mô tả, từ khóa chính trong hộp SiteSEO)"
+MSG_RELEASE_OFF_SEND = (
+    "Chưa gửi gì lên website: Hẹn giờ và Đăng ngay đang tắt. Gửi dạng Nháp, hoặc bật công tắc "
+    "rồi xem lại bài."
+)
+MSG_PUBLISH_HELD = (
+    "Chưa đăng bài: {parts} chưa lên website lúc gửi nên bài vẫn là nháp (mã {post_id}). Sửa phần "
+    "đó trong trang quản trị WordPress, xem lại bài rồi bấm «Đăng» ở đó."
+)
+MSG_SCHEDULE_MISSING = (
+    "Bài đã hẹn giờ nhưng {parts} chưa lên website lúc gửi. Sửa phần đó trong trang quản trị "
+    "WordPress trước giờ đăng, hoặc chuyển bài về nháp nếu chưa kịp."
+)
+MSG_PLAN_RELEASE_UNSURE = (
+    "Chưa ghi trạng thái vào dòng kế hoạch {key}: chưa rõ bài đã hẹn giờ/đăng hay chưa. Kiểm bài "
+    "trong trang quản trị WordPress rồi sửa ô «Trạng thái» trên Google Sheet."
+)
+# Ô «gửi lại» khi bài đã gửi: nói đúng việc sẽ làm theo hình thức đang chọn (T-112, Ghi nhận 2 của
+# Lá Chắn T-102).
+AGAIN_LABELS = {
+    "draft": "Tạo thêm một bài nháp mới",
+    "future": "Tạo thêm một bài mới và hẹn giờ đăng bài mới đó",
+    "publish": "Tạo thêm một bài mới và đăng công khai ngay bài mới đó",
+}
+AGAIN_NOTES = {
+    "draft": "Gửi lại sẽ tạo **thêm một bài nháp mới** và tải ảnh lên lần nữa.",
+    "future": (
+        "Gửi lại sẽ tạo **thêm một bài mới**, tải ảnh lên lần nữa và **hẹn giờ đăng** bài đó."
+    ),
+    "publish": (
+        "Gửi lại sẽ tạo **thêm một bài mới**, tải ảnh lên lần nữa và **đăng công khai "
+        "ngay** bài đó."
+    ),
+}
 MSG_RELEASE_UNSURE_LOCK = (
     "Lần gửi trước (bài mã {post_id}) chưa biết chắc đã hẹn giờ/đăng hay chưa: **bài có thể đã "
     "được hẹn giờ hay hiện công khai**. Mở trang quản trị WordPress, kiểm tra Bài viết trước khi "
@@ -2751,20 +2787,24 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
     if not request or not result or not result.get("ok"):
         return
     post_id = result["post_id"]
+    written = False  # T-112 (SL-T102-1): SEO đã lên website chắc chắn (Đăng ngay chỉ đi khi có)
     try:
         seo = client.set_seo_meta(post_id, **request["fields"])
         message = seo.message
-        if seo.written and seo.route == "abilities":
+        written = seo.written is True
+        if written and seo.route == "abilities":
             try:
                 # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai;
                 # phiếu sửa client sau nên mở hàm này ra).
                 client._own_draft(post_id)
             except WordPressError as exc:
                 message = f"{message} {MSG_SEO_RECHECK} {exc}"
+                written = False
     except WordPressError as exc:
         message = str(exc)
     except Exception:  # lỗi lạ: bài nháp đã tạo và đã ghi vào nháp, chỉ báo phần SEO
         message = MSG_SEO_UNEXPECTED
+    result["seo_ok"] = written
     if request["skipped"]:
         message = f"{message} {MSG_SEO_SKIPPED.format(fields=', '.join(request['skipped']))}"
     result["seo"] = message
@@ -3316,6 +3356,9 @@ def send_draft(
       giữa), rồi ``apply_send``. Lỗi hiện đủ (``send_result``); không rõ kết quả thì khóa nút tới
       khi người dùng xác nhận đã kiểm trang quản trị. Không bao giờ tự gửi lại.
     """
+    if order.mode != "draft" and not release_enabled():  # G2 Lá Chắn T-102: xét lại lúc bấm
+        S._wp_result = {"ok": False, "message": MSG_RELEASE_OFF_SEND}
+        return
     library = image_library()
     try:
         settings = load_image_settings() if ready else None
@@ -3580,6 +3623,10 @@ def send_and_record(
             "edit_link": result.post.edit_link,
             "uploaded": [(i.file_name, i.source_url, i.edit_link) for i in result.images],
             "message": result.message,
+            # T-112 (LC-T102-1): bài có ảnh mà chưa đặt được ảnh đại diện (client lấy ảnh đã chọn,
+            # không chọn thì ảnh đầu tiên; ``featured_media`` trống khi lệnh đặt hỏng).
+            "featured_missing": result.featured_media is None
+            and any(isinstance(part, WordPressImage) for part in parts),
         }
         # Hẹn giờ, Đăng ngay: chưa biết kết quả lệnh chuyển nên vẫn «đang gửi» (LC-T094-39).
         pending, post_id = holder.get("release") is not None, result.post.id
@@ -3608,6 +3655,11 @@ def record_plan(store: DraftStore, holder: dict, sheets: SheetsClient | None) ->
     if ref is None or not result or not result.get("ok"):
         return
     release = result.get("release") or {}
+    if release.get("unsure") and not release.get("went_public"):
+        # Lệnh chuyển không rõ kết quả: không ghi gì vào dòng (G1 Lá Chắn T-102, T-112): Sheet
+        # không được nói «nháp» khi bài có thể đã công khai.
+        result["plan"] = MSG_PLAN_RELEASE_UNSURE.format(key=ref.key)
+        return
     status, published = plan_model.STATUS_DRAFT_SENT, None
     if release.get("ok") and release.get("status") == "future":
         status, published = plan_model.STATUS_SCHEDULED, holder.get("when")
@@ -3647,6 +3699,22 @@ def release_post(client: WordPressClient, store: DraftStore, holder: dict) -> No
     if not release or not result or not result.get("ok"):
         return
     post_id = result["post_id"]
+    missing = release_missing(holder, result)
+    if missing and release["mode"] == "publish":
+        # Đăng ngay chỉ đi khi mọi phần đã xác nhận đã lên website (T-112: SL-T102-1, LC-T102-1;
+        # LC-T094-38, -39): thiếu thì không gửi lệnh đăng, bài vẫn là nháp («đã gửi nháp»).
+        result["release"] = {
+            "ok": False,
+            "message": MSG_PUBLISH_HELD.format(parts=missing, post_id=post_id),
+            "unsure": False,
+            "went_public": False,
+            "edit_link": result.get("edit_link", ""),
+        }
+        holder["released"], holder["release_unknown"] = False, False
+        holder["state"] = (False, post_id)
+        holder.pop("saved", None)
+        record_outcome(store, holder)
+        return
     released = unknown = False
     try:
         done = client.release_draft(post_id, mode=release["mode"], when_utc=release["when_utc"])
@@ -3679,6 +3747,8 @@ def release_post(client: WordPressClient, store: DraftStore, holder: dict) -> No
             "label": label,
             "link": done.link,
             "edit_link": done.edit_link,
+            # Hẹn giờ mà có phần chưa lên: vẫn hẹn giờ, cảnh báo rõ (còn sửa được trước giờ đăng).
+            "missing": missing if done.status == "future" else "",
         }
     if released and release["mode"] == "future" and not result["release"]["ok"]:
         holder["mode"], holder["when"] = "publish", None  # hẹn giờ mà website đăng ngay
@@ -3686,6 +3756,18 @@ def release_post(client: WordPressClient, store: DraftStore, holder: dict) -> No
     holder["state"] = (False, post_id)
     holder.pop("saved", None)  # ghi lần hai: chưa ghi được thì ``finish_send`` thử lại
     record_outcome(store, holder)
+
+
+def release_missing(holder: dict, result: dict) -> str:
+    """Phần người dùng đã xác nhận mà lúc gửi chưa lên website (T-112: SL-T102-1, LC-T102-1): ảnh
+    đại diện (bài có ảnh mà lệnh đặt hỏng), SEO (bật «Ghi SEO lên website» mà lệnh ghi hỏng, website
+    từ chối, SiteSEO chưa cho ghi, hay bài không còn là nháp sau khi ghi). Chữ cố định, rỗng: đủ."""
+    missing = []
+    if result.get("featured_missing"):
+        missing.append(MISSING_FEATURED)
+    if holder.get("seo") and not result.get("seo_ok"):
+        missing.append(MISSING_SEO)
+    return ", ".join(missing)
 
 
 def record_outcome(store: DraftStore, holder: dict) -> None:
@@ -3855,7 +3937,7 @@ def unsure_message(saved: SendState | None, saved_error: str) -> str:
     )
 
 
-def sent_message(saved: SendState | None) -> str:
+def sent_message(saved: SendState | None, mode: str = "draft") -> str:
     """Khóa «đã gửi»: gửi lại là thêm một bài nháp nữa. Nói đúng hình thức đã gửi (T-102)."""
     if saved is not None and saved.post_id is not None:
         when = format_saved(saved.updated_at)
@@ -3873,9 +3955,7 @@ def sent_message(saved: SendState | None) -> str:
             what = f"Bài này đã gửi lên WordPress (bài nháp mã {saved.post_id}, lúc {when})."
     else:
         what = "Bài này đã gửi thành công."
-    return (
-        f"{escape_markdown(what)} Gửi lại sẽ tạo **thêm một bài nháp mới** và tải ảnh lên lần nữa."
-    )
+    return f"{escape_markdown(what)} {AGAIN_NOTES.get(mode, AGAIN_NOTES['draft'])}"
 
 
 def kept_other_message(result: dict) -> str:
@@ -3961,6 +4041,8 @@ def release_result(release: dict | None) -> None:
     if release["ok"]:
         if release["status"] == "future":
             st.success(escape_markdown(f"Đã hẹn giờ đăng bài: {release['label']}."))
+            if release.get("missing"):
+                st.warning(escape_markdown(MSG_SCHEDULE_MISSING.format(parts=release["missing"])))
         else:
             st.success("Đã đăng bài công khai trên website.")
         if release["link"]:
@@ -4056,10 +4138,10 @@ def publish_panel(mode: str) -> None:
         checked = st.checkbox("Tôi đã kiểm tra trang quản trị, vẫn muốn gửi", key="_wp_checked")
         allowed = allowed and checked
     elif S.get("_wp_sent") or post_id is not None:
-        st.info(sent_message(saved))
+        st.info(sent_message(saved, mode))
         if post_id is not None and client is not None and not S.get("_wp_result"):
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
-        again = st.checkbox("Tạo thêm một bài nháp mới", key="_wp_again")
+        again = st.checkbox(AGAIN_LABELS.get(mode, AGAIN_LABELS["draft"]), key="_wp_again")
         allowed = allowed and again
     seo_toggle()  # T-041: «Ghi SEO lên website», mặc định tắt (Lá Chắn T-042)
     # Mã băm của đúng màn hình đang hiện (LC-T094-38): ô tick nhớ mã này, lúc bấm dựng lại và so.

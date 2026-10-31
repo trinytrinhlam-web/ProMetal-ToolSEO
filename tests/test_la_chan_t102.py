@@ -17,7 +17,6 @@ Khung test (trang Soạn bài, WordPress giả ``live``, công tắc bật trong
 
 from __future__ import annotations
 
-import pytest
 import test_app_images as ui
 import test_t102_publish as t102
 
@@ -61,10 +60,6 @@ def _publish_now(project_root):
     return t102.run_ok(t102.send_button(at).click().run())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T102-1: Đăng ngay mà đặt ảnh đại diện hỏng lúc gửi vẫn gửi lệnh đăng công khai",
-)
 def test_lc_t102_1_dang_ngay_ma_anh_dai_dien_hong_thi_khong_dang(
     project_root, root, fake_ai, live, monkeypatch
 ):

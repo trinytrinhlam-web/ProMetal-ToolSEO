@@ -214,10 +214,6 @@ def test_lenh_chuyen_la_lenh_cuoi_sau_moi_lenh_anh(project_root, root, fake_ai, 
 
 
 # ================================================================ 5. SL-T102-1
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T102-1: Đăng ngay mà lệnh ghi SEO hỏng lúc gửi vẫn đăng công khai (LC-T094-39)",
-)
 @pytest.mark.parametrize("failure", ["loi-500", "khong-ghi-duoc", "chua-bat-abilities"])
 def test_sl_t102_1_dang_ngay_ma_seo_ghi_hong_thi_khong_dang(project_root, root, fake_ai, live,
                                                            monkeypatch, failure):
