@@ -56,6 +56,7 @@ TOMORROW = NOW + timedelta(days=1)
 STAMP = "2026-11-03T01:00:00"
 BAIT = "MỒI-máy-chủ <b>evil</b>"
 LINK = f"{BASE_URL}/sua-cua-sat/"
+MODIFIED = "2026-11-02T00:50:00"  # T-115: ``modified_gmt`` giả (Chỉ Huy duyệt 31/10)
 
 
 def http_date(when: datetime) -> str:
@@ -92,7 +93,8 @@ def paths(fake: FakeWordPress) -> list[tuple[str, str]]:
 
 def own_draft(client: WordPressClient, fake: FakeWordPress, post_id: int = 42) -> int:
     """Client tạo bài nháp ``post_id`` (site giả xác nhận ``draft``), rồi xóa sổ request."""
-    fake.on("POST", POSTS, {"id": post_id, "status": "draft", "title": {"raw": "Bài"}})
+    fake.on("POST", POSTS, {"id": post_id, "status": "draft", "title": {"raw": "Bài"},
+                            "modified_gmt": MODIFIED})  # T-115
     post = client.create_draft("Bài", "<p>Nội dung</p>")
     assert post.id == post_id
     fake.requests.clear()
@@ -119,7 +121,8 @@ def site(
     fake.on(
         "GET",
         path,
-        lambda r: (check_status, check if check is not None else {"id": post_id, "status": "draft"},
+        lambda r: (check_status, check if check is not None else {"id": post_id, "status": "draft",
+                                                                  "modified_gmt": MODIFIED},
                    headers),
     )
 
@@ -142,7 +145,7 @@ def test_hen_gio_gui_dung_mot_lenh_kiem_va_mot_lenh_chuyen(client, fake):
     assert result == Released(42, "future", STAMP, LINK, client.edit_link(42))
     check, release = fake.requests
     assert (check.method, urlsplit(check.url).path) == ("GET", POST_42)
-    assert query(check) == {"context": ["edit"], "_fields": ["id,status"]}
+    assert query(check) == {"context": ["edit"], "_fields": ["id,status,modified_gmt"]}  # T-115
     assert (release.method, urlsplit(release.url).path) == ("POST", POST_42)
     assert query(release) == {"_fields": [_RELEASE_FIELDS]}
     assert body(release) == {"status": "future", "date_gmt": STAMP}
@@ -621,7 +624,8 @@ def test_moc_10_phut_tinh_theo_gio_may_chu_khong_theo_dong_ho_may(client, fake, 
 def test_gio_may_chu_lay_tu_chinh_cau_tra_loi_kiem_nhap(client, fake):
     """Câu trả lời tạo bài có ``Date`` đúng nhưng câu trả lời kiểm nháp ngay trước lệnh không có:
     vẫn chặn (không dùng giờ của lệnh trước)."""
-    fake.on("POST", POSTS, lambda r: (201, {"id": 42, "status": "draft"},
+    fake.on("POST", POSTS, lambda r: (201, {"id": 42, "status": "draft",
+                                            "modified_gmt": MODIFIED},  # T-115
                                       {"Date": http_date(NOW)}))
     client.create_draft("Bài", "<p>x</p>")
     fake.requests.clear()

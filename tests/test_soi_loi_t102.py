@@ -168,7 +168,7 @@ def test_gio_hen_da_qua_trong_ngay_bi_chan(project_root, root, fake_ai, live, mo
 
 def test_dong_ho_website_lech_thi_khong_chuyen_bai_van_la_nhap(project_root, root, fake_ai, live):
     skewed = format_datetime(datetime.now(UTC) + timedelta(minutes=5), usegmt=True)
-    draft = {"id": t102.POST_ID, "status": "draft"}
+    draft = {"id": t102.POST_ID, "status": "draft", "modified_gmt": ui.MODIFIED}  # T-115
     live.site.fake.on("GET", t102.POST, lambda _r: (200, draft, {"Date": skewed}))
     at, _pid = ui.ready_image(project_root)
     t102.to_mode(at, SCHEDULE)

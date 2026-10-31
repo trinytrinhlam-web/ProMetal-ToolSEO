@@ -50,8 +50,10 @@ _PUBLISHED_FIELDS = "id,type,status,slug,link,title,modified_gmt,meta"
 # Không hỏi ``content``, ``excerpt`` (bài) hay ``description``, ``caption`` (ảnh): WordPress dựng
 # các trường đó bằng ``the_content``/``the_excerpt``, tức chạy shortcode ngay trong lệnh của app
 # (``description`` của ảnh còn chèn ``<img alt="…">`` qua ``prepend_attachment``).
-_POST_FIELDS = "id,status,title,link,featured_media"
-_POST_META_FIELDS = "id,status,meta"
+# ``modified_gmt`` (T-115, LC-T094-23): giờ sửa cuối của bài, để ``release_draft`` biết bài nháp
+# không bị ai sửa sau lần ghi cuối của chính client.
+_POST_FIELDS = "id,status,title,link,featured_media,modified_gmt"
+_POST_META_FIELDS = "id,status,meta,modified_gmt"
 _MEDIA_FIELDS = "id,source_url,alt_text"
 _MEDIA_PARENT_FIELDS = "id,post"  # câu trả lời lệnh gắn ảnh vào bài (T-110)
 _MODIFIED_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
@@ -188,7 +190,7 @@ RELEASE_MODES = ("future", "publish")
 _RELEASE_PATH = re.compile(rf"/wp/v2/posts/{_ID}")
 _MEDIA_PATH = re.compile(rf"/wp/v2/media/{_ID}")  # lệnh gắn ảnh vào bài (``_is_media_attach``)
 _RELEASE_FIELDS = "id,status,date_gmt,link"  # câu trả lời lệnh chuyển: không nội dung bài
-_RELEASE_CHECK_FIELDS = "id,status"  # hỏi lại còn nháp ngay trước lệnh chuyển
+_RELEASE_CHECK_FIELDS = "id,status,modified_gmt"  # hỏi lại còn nháp, chưa bị sửa (T-115)
 _DATE_GMT_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}")
 # Đọc trạng thái bài (``post_statuses``, LC-T094-26): chỉ đọc, giá trị tham số là hằng.
 POST_STATUS_FILTER = "draft,future,publish,pending,private"
@@ -588,6 +590,13 @@ _RELEASE_NOT_DRAFT = (
     "xem."
 )
 _RELEASE_STILL_DRAFT = " Chưa hẹn giờ, chưa đăng: bài vẫn là nháp trên website."
+# T-115 (LC-T094-23): bài nháp bị sửa ngoài app sau lần ghi cuối của phần mềm, hay phần mềm
+# không biết chắc lần sửa cuối (website không trả giờ sửa, lệnh ghi trước đó lỗi giữa chừng).
+_RELEASE_CHANGED = (
+    "Bài nháp trên website đã bị sửa sau lần phần mềm ghi cuối (trong trang quản trị, plugin hay "
+    "người khác), hoặc phần mềm không biết chắc bài có bị sửa không. Chưa hẹn giờ, chưa đăng: "
+    "bài vẫn là nháp. Mở trang quản trị WordPress xem lại bài rồi hẹn giờ hay đăng ở đó."
+)
 _RELEASE_UNSURE = (
     "Không biết chắc lệnh {action} đã chạy trên website chưa{code}. Bài (mã {post_id}) có thể đã "
     "{done}. Mở trang quản trị WordPress kiểm tra bài này trước khi làm gì tiếp; phần mềm không "
@@ -1015,6 +1024,12 @@ class WordPressClient:
         # Ảnh chính client này vừa tải (website xác nhận 201 Created): chỉ những ảnh này mới được
         # gắn vào bài nháp (T-110), không bao giờ gắn ảnh đã có trên website.
         self._uploaded_media_ids: set[int] = set()
+        # T-115 (LC-T094-23): mã bài nháp → ``modified_gmt`` website trả sau lệnh ghi cuối của
+        # chính client này vào bài đó; ``None``: không biết (website không trả, lệnh ghi lỗi giữa
+        # chừng, hay bài bị sửa ngoài app giữa hai lệnh ghi). ``release_draft`` so lại ngay trước
+        # lệnh chuyển: khác hay không biết thì không chuyển. Riêng từng client (mỗi lần bấm một
+        # client mới), hai tab không dùng chung.
+        self._modified: dict[int, str | None] = {}
         self.write_seo = write_seo is True
         # Kết quả dò Abilities của SiteSEO (None: chưa dò hoặc dò lỗi, sẽ dò lại).
         self._siteseo_ok: bool | None = None
@@ -1244,6 +1259,7 @@ class WordPressClient:
         post = self._post_from(data)
         if post.status == "draft":  # chỉ ghi nhận bài site xác nhận là nháp (R3, T-042)
             self._created_post_ids.add(post.id)
+            self._remember_modified(post.id, data)
         return post
 
     def set_seo_meta(
@@ -1311,6 +1327,11 @@ class WordPressClient:
             # Bài đã bị đăng/xóa ngoài app: thôi coi là "bài app được sửa" (cả ảnh đại diện).
             self._created_post_ids.discard(post_id)
             raise WordPressError(_SEO_NOT_DRAFT)
+        if not self._same_modified(post_id, data):
+            # T-115: bài bị sửa ngoài app từ lần ghi trước. Lệnh ghi sắp tới vẫn được làm (bài
+            # còn là nháp của app), nhưng giờ sửa nó trả về không được xóa dấu vết này: đánh dấu
+            # «không biết» để ``release_draft`` không chuyển bài.
+            self._taint_modified(post_id)
         return data
 
     def _siteseo_abilities(self) -> bool | None:
@@ -1371,7 +1392,9 @@ class WordPressClient:
                 return SeoWriteResult(
                     False, "meta", reason="unavailable", message=_SEO_UNAVAILABLE
                 )
+            self._taint_modified(post_id)  # lỗi giữa chừng: có thể đã ghi, không biết giờ sửa
             return _seo_error("meta", exc.status_code)
+        self._remember_modified(post_id, data)
         if not _is_own_draft_answer(data, post_id):
             # Câu trả lời của lệnh ghi nói về bài khác, hay bài không còn nháp: bất thường.
             return _seo_error("meta", None)
@@ -1397,14 +1420,19 @@ class WordPressClient:
         if _positive_id(media_id) is None:
             raise WordPressError("Mã ảnh đại diện không hợp lệ.")
         self._own_draft(post_id, failed=_IMAGE_CHECK_FAILED)
-        data = self._json(
-            self._request(
-                "POST",
-                f"/wp/v2/posts/{post_id}",
-                json={"featured_media": media_id},
-                params={"_fields": _POST_FIELDS},
+        try:
+            data = self._json(
+                self._request(
+                    "POST",
+                    f"/wp/v2/posts/{post_id}",
+                    json={"featured_media": media_id},
+                    params={"_fields": _POST_FIELDS},
+                )
             )
-        )
+        except Exception:
+            self._taint_modified(post_id)  # T-115: có thể đã ghi, không biết giờ sửa
+            raise
+        self._remember_modified(post_id, data)
         if not _is_own_draft_answer(data, post_id):
             # SL-T042-11: câu trả lời nói về bài khác, hay bài không còn nháp: bất thường.
             raise WordPressError(_IMAGE_ODD_ANSWER)
@@ -1476,12 +1504,18 @@ class WordPressClient:
             ):
                 raise ReleaseError(_ROUTE_BLOCKED, **fail)  # chưa gửi gì, kể cả lệnh kiểm nháp
 
-            still_draft, server_now = self._release_check(post_id, fail)
+            still_draft, server_now, modified = self._release_check(post_id, fail)
             if not still_draft:
                 # Bài đã bị đăng, hẹn giờ, chuyển hay xóa ngoài app: không trả mã (thôi coi là
                 # bài app được sửa, cả ảnh đại diện, SEO).
                 give_back = False
                 raise ReleaseError(_RELEASE_NOT_DRAFT, **fail)
+            known = self._modified.get(post_id)
+            if known is None or modified != known:
+                # T-115 (LC-T094-23): bài nháp bị sửa sau lần ghi cuối của client (hay không biết
+                # chắc): không chuyển, không trả mã (bài cần người xem lại trong trang quản trị).
+                give_back = False
+                raise ReleaseError(_RELEASE_CHANGED, **fail)
             try:
                 problem = release_time_problem(
                     mode, when_utc, server_now=server_now, local_now=_utc_now()
@@ -1526,11 +1560,12 @@ class WordPressClient:
 
     def _release_check(
         self, post_id: int, fail: dict[str, Any]
-    ) -> tuple[bool, datetime | None]:
+    ) -> tuple[bool, datetime | None, str | None]:
         """Bước 2 của ``release_draft``: hỏi website bài còn là nháp (chỉ đọc). Trả (còn nháp
         không, giờ máy chủ đọc từ header ``Date`` của chính câu trả lời này; ``None`` khi thiếu,
-        sai dạng). Không hỏi được: ``ReleaseError``. Không đụng ``_created_post_ids``: người gọi
-        đã giành mã bài và tự quyết trả lại hay không."""
+        sai dạng, ``modified_gmt`` của bài; ``None`` khi thiếu, sai dạng). Không hỏi được:
+        ``ReleaseError``. Không đụng ``_created_post_ids``: người gọi đã giành mã bài và tự quyết
+        trả lại hay không."""
         from seo_app.publish.schedule import parse_server_date
 
         try:
@@ -1548,8 +1583,13 @@ class WordPressClient:
         except Exception as exc:  # lỗi lạ ở lệnh đọc: lệnh chuyển chưa gửi, bài vẫn là nháp
             raise ReleaseError(_RELEASE_CHECK_FAILED.format(code=""), **fail) from exc
         if not _is_own_draft_answer(data, post_id):
-            return False, None
-        return True, parse_server_date(response.headers.get("Date"))
+            return False, None, None
+        modified = data.get("modified_gmt")
+        return (
+            True,
+            parse_server_date(response.headers.get("Date")),
+            modified if _is_date_gmt(modified) else None,
+        )
 
     def _released_from(
         self, data: object, post_id: int, mode: str, stamp: str, fail: dict[str, Any]
@@ -2052,6 +2092,26 @@ class WordPressClient:
         raise WordPressError(_MEDIA_BAD_URL)
 
     # ------------------------------------------------------------- nội bộ
+
+    def _remember_modified(self, post_id: int, data: object) -> None:
+        """Sau một lệnh ghi của client vào bài ``post_id``: nhớ ``modified_gmt`` câu trả lời mang
+        (T-115). Thiếu, sai dạng thì «không biết»; bài đã bị đánh dấu «không biết» (bị sửa ngoài
+        app giữa hai lệnh ghi) thì giữ «không biết»."""
+        if post_id in self._modified and self._modified[post_id] is None:
+            return
+        value = data.get("modified_gmt") if isinstance(data, dict) else None
+        self._modified[post_id] = value if _is_date_gmt(value) else None
+
+    def _taint_modified(self, post_id: int) -> None:
+        """Đánh dấu «không biết giờ sửa cuối» cho bài ``post_id``: ``release_draft`` sẽ không
+        chuyển bài này (T-115)."""
+        self._modified[post_id] = None
+
+    def _same_modified(self, post_id: int, data: object) -> bool:
+        """Câu trả lời đọc bài (``data``) mang đúng ``modified_gmt`` client nhớ từ lệnh ghi cuối."""
+        value = data.get("modified_gmt") if isinstance(data, dict) else None
+        known = self._modified.get(post_id)
+        return known is not None and _is_date_gmt(value) and value == known
 
     def edit_link(self, post_id: int) -> str:
         return f"{self.base_url}/wp-admin/post.php?post={post_id}&action=edit"

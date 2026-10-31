@@ -36,6 +36,9 @@ def fixed_clock(monkeypatch):
     monkeypatch.setattr(client_module, "_utc_now", lambda: NOW)
 
 
+MODIFIED = "2026-11-02T00:50:00"  # T-115: ``modified_gmt`` giả (Chỉ Huy duyệt 31/10)
+
+
 def _released(request):
     body = json.loads(request.body)
     return {"id": 42, "status": body["status"], "date_gmt": body.get("date_gmt", ""), "link": ""}
@@ -43,7 +46,8 @@ def _released(request):
 
 def _site(check) -> FakeWordPress:
     fake = FakeWordPress()
-    fake.on("POST", POSTS, (201, {"id": 42, "status": "draft", "title": {"raw": "T"}}, {}))
+    fake.on("POST", POSTS, (201, {"id": 42, "status": "draft", "title": {"raw": "T"},
+                               "modified_gmt": MODIFIED}, {}))  # T-115
     fake.on("GET", f"{POSTS}/42", check)
     fake.on("POST", f"{POSTS}/42", _released)
     return fake
@@ -60,7 +64,8 @@ def _release_posts(fake: FakeWordPress) -> int:
     return sum(1 for r in fake.requests if r.method == "POST" and r.path_url.startswith(prefix))
 
 
-DRAFT = (200, {"id": 42, "status": "draft"}, {"Date": format_datetime(NOW, usegmt=True)})
+DRAFT = (200, {"id": 42, "status": "draft", "modified_gmt": MODIFIED},  # T-115
+         {"Date": format_datetime(NOW, usegmt=True)})
 
 
 def test_lc_t099_1_hai_luong_chung_mot_client_chi_mot_lenh_chuyen():
@@ -108,7 +113,8 @@ def test_lc_t099_1_doi_chung_goi_lan_luot_chi_mot_lenh_chuyen():
 def test_lc_t099_1_doi_chung_bi_chan_truoc_lenh_chuyen_thi_van_goi_lai_duoc():
     """Cách sửa không được làm mất điều này: bị chặn trước lệnh chuyển (thiếu header ``Date``)
     thì bài vẫn là của client, lần sau (đủ điều kiện) hẹn giờ được."""
-    answers = iter([(200, {"id": 42, "status": "draft"}, {}), DRAFT])
+    answers = iter([(200, {"id": 42, "status": "draft", "modified_gmt": MODIFIED}, {}),  # T-115
+                    DRAFT])
     fake = _site(lambda _request: next(answers))
     client = _client(fake)
     with pytest.raises(ReleaseError, match="Không đọc được giờ của website"):

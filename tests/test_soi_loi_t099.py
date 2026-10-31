@@ -51,6 +51,9 @@ MAT_KHAU_GIA = "abcd efgh ijkl mnop"  # Application Password giả
 MOI = "MOI-T099 <b>evil</b> https://evil.example"
 
 
+MODIFIED = "2026-11-01T23:50:00"  # T-115: ``modified_gmt`` giả (Chỉ Huy duyệt 31/10)
+
+
 def http_date(when: datetime) -> str:
     return format_datetime(when.astimezone(UTC), usegmt=True)
 
@@ -78,14 +81,16 @@ class _WpSite(BaseAdapter):
         if request.method == "POST" and path == f"{API}/posts":
             post_id, self.next_id = self.next_id, self.next_id + 1
             self.posts[post_id] = {"status": "draft", "date_gmt": "", "author": "app"}
-            return 201, {"id": post_id, "status": "draft", "title": {"raw": "Bài"}}
+            return 201, {"id": post_id, "status": "draft", "title": {"raw": "Bài"},
+                         "modified_gmt": MODIFIED}  # T-115
         if path.startswith(f"{API}/posts/"):
             post_id = int(path.rsplit("/", 1)[1])
             post = self.posts.get(post_id)
             if post is None:
                 return 404, {"code": "rest_post_invalid_id", "message": MOI}
             if request.method == "GET":
-                return 200, {"id": post_id, "status": post["status"]}
+                return 200, {"id": post_id, "status": post["status"],
+                             "modified_gmt": MODIFIED}  # T-115
             sent = json.loads(request.body)
             if "status" in sent:
                 post["status"] = sent["status"]
@@ -178,7 +183,7 @@ def test_hen_gio_doi_trang_thai_dung_va_chi_mot_lenh_chuyen(site, client):
         "status": "future", "date_gmt": "2026-11-03T01:00:00"}
     check = [r for r in site.requests if r.method == "GET"]
     assert len(check) == 1 and parse_qs(urlsplit(check[0].url).query) == {
-        "context": ["edit"], "_fields": ["id,status"]}
+        "context": ["edit"], "_fields": ["id,status,modified_gmt"]}  # T-115
     assert site.requests.index(check[0]) == len(site.requests) - 2  # kiểm ngay trước lệnh
 
 
@@ -794,7 +799,8 @@ def _hold_check(site: _WpSite, post_id: int, answer=None):
         assert go.wait(10)
         if answer is not None:
             return answer
-        return 200, {"id": post_id, "status": site.posts[post_id]["status"]}
+        return 200, {"id": post_id, "status": site.posts[post_id]["status"],
+                     "modified_gmt": MODIFIED}  # T-115
 
     site.inject[("GET", f"{API}/posts/{post_id}")] = handler
     return inside, go

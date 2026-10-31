@@ -618,14 +618,14 @@ def test_moi_lenh_deu_qua_danh_sach_duong_khong_tham_so_la(
         assert not [name for name in request.headers if "override" in name.lower()]
         query = parse_qs(urlsplit(request.url).query)
         if request.method == "GET":  # chỉ lệnh kiểm nháp của _own_draft (T-042)
-            assert query == {"context": ["edit"], "_fields": ["id,status,meta"]}
+            assert query == {"context": ["edit"], "_fields": ["id,status,meta,modified_gmt"]}
         elif path(request).startswith(MEDIA + "/") and body(request) == {"post": 42}:
             # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp.
             assert query == {"_fields": ["id,post"]}
         elif path(request).startswith(MEDIA):  # T-061: ``_fields`` cố định, không ``description``
             assert query == {"_fields": ["id,source_url,alt_text"]}
         else:  # T-061: ``_fields`` cố định, không ``content``, ``excerpt``
-            assert query == {"_fields": ["id,status,title,link,featured_media"]}
+            assert query == {"_fields": ["id,status,title,link,featured_media,modified_gmt"]}
 
 
 def test_duong_bi_go_khoi_danh_sach_thi_khong_gui(fake_wp, wp_client, site, web, monkeypatch):

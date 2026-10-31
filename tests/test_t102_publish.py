@@ -103,14 +103,15 @@ def live(site, monkeypatch):
     )
 
     def get_post(_request):
-        return (200, {"id": POST_ID, "status": "draft"}, {"Date": http_date()})
+        return (200, {"id": POST_ID, "status": "draft", "modified_gmt": ui.MODIFIED},  # T-115
+                {"Date": http_date()})
 
     def post_post(request):
         body = ui.body_of(request)
         if "status" in body and Live.answers:
             answer = Live.answers.pop(0)
             return answer(request) if callable(answer) else answer
-        return {"id": POST_ID, "status": "draft", **body}
+        return {"id": POST_ID, "status": "draft", "modified_gmt": ui.MODIFIED, **body}  # T-115
 
     site.fake.on("GET", POST, get_post)
     site.fake.on("POST", POST, post_post)

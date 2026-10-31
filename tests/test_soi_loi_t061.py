@@ -282,6 +282,7 @@ def test_chu_seo_ghi_qua_ca_hai_duong_khong_con_ngoac_vuong_tran(fake_wp, wp_cli
 SAFE_FIELDS = {
     "id", "status", "title", "link", "featured_media", "meta", "source_url", "alt_text",
     "post",  # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp
+    "modified_gmt",  # T-115 (Chỉ Huy duyệt 31/10): giờ sửa cuối, không dựng nội dung
 }  # fmt: skip
 
 
@@ -311,7 +312,7 @@ def test_lenh_ghi_dung_nguyen_dia_chi_ke_ca_truy_van(fake_wp, wp_client, site, w
     chỉ đầy đủ của mỗi lệnh ghi là cố định, không có tham số nào khác ngoài ``_fields`` (ví dụ
     ``rest_route``, ``_method`` sẽ làm test này hỏng)."""
     wp_client.create_draft_with_images("Sửa cổng", ["<p>Bài</p>", DraftImage(web, alt="Cổng")])
-    post_fields = "?_fields=id%2Cstatus%2Ctitle%2Clink%2Cfeatured_media"
+    post_fields = "?_fields=id%2Cstatus%2Ctitle%2Clink%2Cfeatured_media%2Cmodified_gmt"  # T-115
     media_fields = "?_fields=id%2Csource_url%2Calt_text"
     assert [(r.method, r.path_url) for r in fake_wp.requests] == [
         ("POST", MEDIA + media_fields),
@@ -319,7 +320,7 @@ def test_lenh_ghi_dung_nguyen_dia_chi_ke_ca_truy_van(fake_wp, wp_client, site, w
         ("POST", POSTS + post_fields),
         # T-110 (Chỉ Huy duyệt 30/10): gắn ảnh vào bài nháp.
         ("POST", f"{MEDIA}/101" + "?_fields=id%2Cpost"),
-        ("GET", POST_42 + "?context=edit&_fields=id%2Cstatus%2Cmeta"),
+        ("GET", POST_42 + "?context=edit&_fields=id%2Cstatus%2Cmeta%2Cmodified_gmt"),  # T-115
         ("POST", POST_42 + post_fields),
     ]
 
