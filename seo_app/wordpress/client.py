@@ -512,6 +512,16 @@ _MEDIA_BAD_URL = (
     "WordPress trả về địa chỉ ảnh không phải https trên đúng website. Chưa tạo bài nháp."
 )
 _NO_PARENT_FIELD = object()  # câu trả lời lệnh tải ảnh không có khóa ``post``
+# Lệnh tải ảnh không xác nhận được là ảnh mới của client (T-110): ảnh website trả có thể là ảnh có
+# sẵn của bài khác, nên câu báo chỉ dặn kiểm, không bảo xóa (SL-T110-2).
+_MEDIA_HAS_PARENT = (
+    "Website trả về một ảnh đã thuộc một bài khác, không phải ảnh mới vừa tải. Chưa ghi alt cho "
+    "ảnh này, chưa tạo bài nháp."
+)
+_MEDIA_PARENT_UNKNOWN = (
+    "Website không cho biết ảnh vừa tải là ảnh mới hay ảnh đã có (thiếu thông tin bài cha). "
+    "Chưa ghi alt cho ảnh này, chưa tạo bài nháp."
+)
 _MEDIA_NOT_CREATED = (
     "WordPress không xác nhận đã tạo ảnh mới trong thư viện Media (cần mã 201 Created). Chưa ghi "
     "alt cho ảnh này, chưa tạo bài nháp."
@@ -541,6 +551,13 @@ _DRAFT_IMAGES_LEFT = (
     "quản trị WordPress (Media → Thư viện)."
 )
 _DRAFT_IMAGES_NONE = " Chưa có ảnh nào lên thư viện Media."
+# Lỗi vì website trả lại ảnh không xác nhận là ảnh mới (``_ReturnedMediaError``): chỉ dặn kiểm.
+_DRAFT_IMAGE_RETURNED = (
+    " Ảnh website trả về có thể là ảnh có sẵn, đang thuộc bài khác: phần mềm không ghi gì vào "
+    "ảnh đó. Kiểm tra Media → Thư viện trong trang quản trị trước khi gửi lại; ảnh đang thuộc "
+    "bài khác thì để nguyên. Nếu website đã tạo thêm ảnh mới chưa gắn vào bài nào, ảnh mới đó "
+    "đang hiện công khai trong danh sách Media."
+)
 _DRAFT_IMAGE_MAYBE = (
     " Ảnh đang tải lúc lỗi có thể vẫn đã lên thư viện Media: kiểm tra Media → Thư viện trong "
     "trang quản trị; nếu có, ảnh đó chưa gắn vào bài nào nên đang hiện công khai trong danh sách "
@@ -931,6 +948,11 @@ class DraftWithImages:
     featured_media: int | None = None
     message: str = ""
     unattached: tuple[int, ...] = ()
+
+
+class _ReturnedMediaError(WordPressError):
+    """Lệnh tải ảnh không xác nhận được là ảnh mới của client (mã khác 201, ảnh có bài cha, hay
+    không rõ bài cha; T-071, T-110): không ghi gì vào ảnh website trả về (W2)."""
 
 
 class DraftImagesError(WordPressError):
@@ -1768,7 +1790,7 @@ class WordPressClient:
             params={"_fields": _MEDIA_UPLOAD_FIELDS},
         )
         if new_only and response.status_code != 201:
-            raise WordPressError(_MEDIA_NOT_CREATED)
+            raise _ReturnedMediaError(_MEDIA_NOT_CREATED)
         media = self._json(response)
         # SL-T042-4, LC-T044-1: chỉ nhận id là số nguyên dương thật (``True``, ``"7"``, ``7.9``
         # không được thành ảnh 1 hay ảnh 7 của người khác).
@@ -1780,12 +1802,13 @@ class WordPressClient:
             if _positive_id(parent) is not None:
                 # LC-T110-1: 201 mà ảnh đã thuộc một bài là ảnh có sẵn (plugin trả lại ảnh trùng):
                 # như mã khác 201, không ghi alt, không gắn (W2).
-                raise WordPressError(_MEDIA_NOT_CREATED)
-            if parent is None or (type(parent) is int and parent == 0):
-                # Website xác nhận vừa tạo mục mới, chưa có bài cha: ảnh của chính client.
-                self._uploaded_media_ids.add(media_id)
-            # Thiếu ``post`` hay giá trị lạ: không biết ảnh có bài cha chưa, nên không gắn
-            # (``_attach_media`` từ chối, câu báo «chưa gắn được»), các bước khác như cũ.
+                raise _ReturnedMediaError(_MEDIA_HAS_PARENT)
+            if not (parent is None or (type(parent) is int and parent == 0)):
+                # G4 (Chỉ Huy quyết 31/10): thiếu ``post`` hay giá trị lạ là ảnh chưa xác nhận
+                # của client, có thể là ảnh có sẵn: cũng không ghi alt, không gắn.
+                raise _ReturnedMediaError(_MEDIA_PARENT_UNKNOWN)
+            # Website xác nhận vừa tạo mục mới, chưa có bài cha: ảnh của chính client.
+            self._uploaded_media_ids.add(media_id)
         return media_id, media
 
     # ------------------------------------------------------- gửi nháp kèm ảnh (T-054)
@@ -1900,6 +1923,7 @@ class WordPressClient:
                 maybe_uploaded=uploading and unsure,
                 maybe_draft=creating and unsure,
                 status=status,
+                returned_media=isinstance(exc, _ReturnedMediaError),
             ) from None
         except Exception as exc:
             # Lỗi lạ (không nên có): vẫn phải báo ảnh nào đã công khai trên website (W2), và
@@ -2474,16 +2498,18 @@ def _draft_images_error(
     maybe_uploaded: bool,
     maybe_draft: bool,
     status: int | None,
+    returned_media: bool = False,
 ) -> DraftImagesError:
     """Câu báo lỗi gửi nháp kèm ảnh: lý do, bài nháp có thể đã có (lỗi ở lệnh tạo nháp), rồi
-    ảnh đã lên thư viện (không xóa, W2)."""
+    ảnh đã lên thư viện (không xóa, W2). ``returned_media``: lỗi vì website trả lại ảnh không
+    xác nhận là ảnh mới (có thể là ảnh có sẵn của bài khác): chỉ dặn kiểm (SL-T110-2)."""
     tail = _DRAFT_MAYBE_CREATED if maybe_draft else ""
     if uploaded:
         tail += _DRAFT_IMAGES_LEFT.format(count=len(uploaded))
     elif not maybe_uploaded:
         tail += _DRAFT_IMAGES_NONE
     if maybe_uploaded:
-        tail += _DRAFT_IMAGE_MAYBE
+        tail += _DRAFT_IMAGE_RETURNED if returned_media else _DRAFT_IMAGE_MAYBE
     return DraftImagesError(
         message.rstrip() + tail,
         uploaded=uploaded,

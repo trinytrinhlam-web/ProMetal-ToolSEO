@@ -361,7 +361,7 @@ OVERWRITE_FAILURES = {
 @pytest.mark.parametrize("name", OVERWRITE_FAILURES)
 def test_ghi_de_hong_moi_kieu_bao_anh_dang_o_thu_vien_media(fake_wp, wp_client, name):
     answer = OVERWRITE_FAILURES[name]
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL, "post": None}, {}))
     handler = (lambda _r: answer) if isinstance(answer, Exception) else answer
     fake_wp.on("POST", f"{MEDIA}/9", handler)
     with pytest.raises(WordPressError) as err:
@@ -378,7 +378,10 @@ def test_ghi_de_hong_moi_kieu_bao_anh_dang_o_thu_vien_media(fake_wp, wp_client, 
 
 
 def test_ghi_de_dung_anh_tra_ket_qua_cua_chinh_anh_do(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": "https://evil.example/cu.jpg"}, {}))
+    fake_wp.on(
+        "POST", MEDIA,
+        (201, {"id": 9, "source_url": "https://evil.example/cu.jpg", "post": None}, {}),
+    )
     fake_wp.on("POST", f"{MEDIA}/9", lambda r: {"id": 9, "source_url": SOURCE_URL, **body(r)})
     media = wp_client.upload_media(PHOTO, "cong.jpg", alt_text="Cổng")
     assert (media.id, media.source_url, media.alt_text) == (9, SOURCE_URL, "Cổng")

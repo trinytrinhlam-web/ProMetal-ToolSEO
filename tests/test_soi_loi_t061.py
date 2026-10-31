@@ -463,7 +463,7 @@ def media_site(fake_wp):
             caption=meta["caption"],
             alt_text=wp_sanitize_text_field(meta["alt"]),
         )
-        return (201, {"id": 101, "source_url": f"{UPLOADS}cong.jpg", **stored}, {})
+        return (201, {"id": 101, "source_url": f"{UPLOADS}cong.jpg", **stored, "post": None}, {})
 
     def update(request):
         for key in ("title", "caption", "alt_text"):

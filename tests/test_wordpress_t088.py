@@ -192,7 +192,10 @@ def test_loi_giai_ma_la_thanh_cau_co_dinh(fake_wp, wp_client, monkeypatch, error
 
 
 def uploaded(fake, media_id=9):
-    fake.on("POST", MEDIA, (201, {"id": media_id, "source_url": f"{UPLOADS}cong.jpg"}, {}))
+    fake.on(
+        "POST", MEDIA,
+        (201, {"id": media_id, "source_url": f"{UPLOADS}cong.jpg", "post": None}, {}),
+    )
 
 
 def assert_in_media_library(message, media_id=9):

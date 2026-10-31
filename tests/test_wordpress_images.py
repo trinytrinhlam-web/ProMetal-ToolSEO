@@ -969,7 +969,8 @@ def test_t071_tai_anh_khong_phai_201_thi_dung_khong_ghi_alt(fake_wp, wp_client, 
         send(wp_client, [DraftImage(web, alt="Cổng")])
     err = error.value
     assert err.uploaded == () and err.maybe_uploaded is True and err.maybe_draft is False
-    assert "201" in str(err) and "có thể vẫn đã lên" in str(err)
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45): câu mới chỉ dặn kiểm, nói ảnh có thể là ảnh có sẵn.
+    assert "201" in str(err) and "có thể là ảnh có sẵn" in str(err)
     # Không ghi alt cho ảnh 7 (có thể là ảnh có sẵn trên website), không tạo nháp.
     assert [(r.method, path(r)) for r in fake_wp.requests] == [("POST", MEDIA)]
 
@@ -998,7 +999,10 @@ def test_t071_anh_thu_hai_khong_phai_201_liet_ke_anh_dau(
 def test_t071_website_tra_cung_ma_anh_thi_dung_khong_ghi_de_alt(fake_wp, wp_client, site, web):
     def same_id(request):
         site.create_media(request)
-        return (201, {"id": FIRST_MEDIA_ID, "source_url": site.source_url(FIRST_MEDIA_ID)}, {})
+        answer = {
+            "id": FIRST_MEDIA_ID, "source_url": site.source_url(FIRST_MEDIA_ID), "post": None
+        }
+        return (201, answer, {})
 
     fake_wp.on("POST", MEDIA, same_id)
     # Hai ảnh khác đối tượng, cùng byte (plugin gộp ảnh trùng byte có thể trả lại mã cũ).

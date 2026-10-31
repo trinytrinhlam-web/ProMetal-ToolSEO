@@ -3853,9 +3853,10 @@ def unsure_message(saved: SendState | None, saved_error: str) -> str:
             "vẫn đang gửi ở cửa sổ khác, hoặc đã bị ngắt (tải lại trang, đóng tab, mất mạng)"
         )
     return (
-        f"{escape_markdown(why)}: **bài nháp có thể đã có trên website**. Mở trang quản trị "
-        "WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện trước khi gửi lại. App không tự "
-        "gửi lại."
+        f"{escape_markdown(why)}: **bài nháp có thể đã có trên website**. Ảnh đã tải lên mà chưa "
+        "gắn vào bài nào thì đang hiện công khai trong danh sách Media (kể cả vị trí GPS). Mở "
+        "trang quản trị WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện (xóa ảnh không "
+        "dùng) trước khi gửi lại. App không tự gửi lại."
     )
 
 

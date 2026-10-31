@@ -36,7 +36,7 @@ def test_lc_t085_1_tra_loi_loi_long_qua_sau_thanh_cau_co_dinh(fake_wp, wp_client
 
 
 def test_lc_t085_1_ghi_de_loi_long_qua_sau_van_bao_anh_da_o_thu_vien(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/9", (500, DEEP_JSON, {}))
     with pytest.raises(WordPressError) as err:
         wp_client.upload_media(JPEG, "cong-inox.jpg", alt_text="Cổng inox")

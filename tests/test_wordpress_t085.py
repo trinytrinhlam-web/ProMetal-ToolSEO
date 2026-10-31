@@ -306,7 +306,10 @@ SERVER_TEXT = "Gọi 0909 123 456 https://evil.example/x <b>quản trị</b>"
 
 def uploaded(fake, media_id=9):
     """Lệnh tải trả ``201`` với mã ảnh ``media_id``: từ đây ảnh đã ở thư viện Media."""
-    fake.on("POST", MEDIA, (201, {"id": media_id, "source_url": f"{UPLOADS}cong.jpg"}, {}))
+    fake.on(
+        "POST", MEDIA,
+        (201, {"id": media_id, "source_url": f"{UPLOADS}cong.jpg", "post": None}, {}),
+    )
 
 
 def assert_says_in_media_library(message, media_id=9):

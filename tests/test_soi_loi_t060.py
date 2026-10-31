@@ -337,7 +337,10 @@ def test_loi_mang_khong_chep_dia_chi_hay_mat_khau(fake_wp, own_client, error):
 
 @pytest.mark.parametrize("status", [400, 403, 500])
 def test_lenh_ghi_de_anh_loi_bao_cau_co_dinh(fake_wp, own_client, status):
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": f"{SITE}/wp-content/a.jpg"}, {}))
+    fake_wp.on(
+        "POST", MEDIA,
+        (201, {"id": 9, "source_url": f"{SITE}/wp-content/a.jpg", "post": None}, {}),
+    )
     fake_wp.on("POST", f"{MEDIA}/9", (status, TOXIC_BODIES["dia-chi"], {}))
     with pytest.raises(WordPressError) as err:
         own_client.upload_media(PHOTO, "cong.jpg", alt_text="Cổng")
@@ -599,7 +602,10 @@ def test_upload_media_201_ma_anh_sai_khong_ghi_de_gi(fake_wp, wp_client, created
 def test_upload_media_lenh_ghi_de_luon_du_ba_o(fake_wp, wp_client, kwargs, sent):
     """LC-T061-3 (kiểm độc lập): ô trống hay ``None`` vẫn gửi chuỗi rỗng, tiêu đề trống lấy tên
     file đã làm sạch, để WordPress không lấy ba ô từ chữ nằm trong file ảnh."""
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": f"{UPLOADS}cong.jpg"}, {}))
+    fake_wp.on(
+        "POST", MEDIA,
+        (201, {"id": 9, "source_url": f"{UPLOADS}cong.jpg", "post": None}, {}),
+    )
     fake_wp.on("POST", f"{MEDIA}/9", lambda r: {"id": 9, "source_url": f"{UPLOADS}cong.jpg",
                                                 **body(r)})
     wp_client.upload_media(PHOTO, "Ảnh Cổng Sắt.jpg", **kwargs)

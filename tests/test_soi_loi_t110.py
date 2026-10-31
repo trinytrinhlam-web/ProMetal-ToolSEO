@@ -528,7 +528,8 @@ def test_l2_post_so_duong_dung_ngay_khong_ghi_alt_khong_gan_khong_tao(wp_site, c
         client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
     assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi alt, không tạo, không gắn
     assert error.value.uploaded == () and error.value.maybe_draft is False
-    assert str(error.value).startswith(wp._MEDIA_NOT_CREATED)
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45): câu riêng cho ảnh có bài cha.
+    assert str(error.value).startswith(wp._MEDIA_HAS_PARENT)
     assert client._uploaded_media_ids == set() and client._created_post_ids == set()
     assert wp_site.media[101] == {"post": None} and wp_site.media[9] == OLD_9
 
@@ -553,14 +554,19 @@ def test_l2_website_tra_lai_anh_co_san_9_khong_bi_ghi_alt_doi_bai_cha(
 
 
 @pytest.mark.parametrize("token", POST_ODD.values(), ids=POST_ODD)
-def test_l2_post_thieu_hay_la_thi_khong_gan_bai_van_tao(wp_site, client, webs, token):
+def test_l2_post_thieu_hay_la_dung_ngay_khong_ghi_alt_khong_gan_khong_tao(
+    wp_site, client, webs, token
+):
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: thiếu/lạ là ảnh chưa xác nhận của client,
+    # dừng như số dương.
     _upload_post(wp_site, token)
-    result = client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
-    assert (result.post.id, result.unattached, result.featured_media) == (42, (101, 102), 102)
-    assert wp_site.attaches() == []  # lệnh gắn bị chặn trước khi gửi
-    assert result.message == wp._IMAGES_NOT_ATTACHED.format(count=2)
-    assert (wp_site.media[101]["post"], wp_site.media[102]["post"]) == (None, None)
-    assert wp_site.media[9] == OLD_9 and client._uploaded_media_ids == set()
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi alt, không tạo, không gắn
+    assert error.value.uploaded == () and error.value.maybe_draft is False
+    assert str(error.value).startswith(wp._MEDIA_PARENT_UNKNOWN)
+    assert wp_site.media[101] == {"post": None} and wp_site.media[9] == OLD_9
+    assert client._uploaded_media_ids == set() and client._created_post_ids == set()
 
 
 @pytest.mark.parametrize(
@@ -568,23 +574,27 @@ def test_l2_post_thieu_hay_la_thi_khong_gan_bai_van_tao(wp_site, client, webs, t
     ids=["thieu", "chu-7", "mang", "qua-max", "nan"],
 )
 def test_l2_post_la_ma_la_anh_co_san_thi_khong_doi_bai_cha(wp_site, client, webs, token):
-    """Thiếu/lạ mà website trả lại ảnh có sẵn 9: không gắn, bài cha vẫn 7. Alt vẫn ghi như
-    trước T-110 (cách A chỉ bỏ bước gắn ở nhánh này; báo cáo lượt 2, G5)."""
+    """Thiếu/lạ mà website trả lại ảnh có sẵn 9: không gắn, bài cha vẫn 7, alt cũng không ghi
+    (T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4)."""
     _upload_post(wp_site, token, existing=9)
-    result = client.create_draft_with_images(
-        "Sửa cổng", ["<p>Mở bài.</p>", DraftImage(webs[0], alt="Cổng inox mới sơn")]
-    )
-    assert result.unattached == (9,) and wp_site.attaches() == []
-    assert wp_site.media[9]["post"] == 7
+    with pytest.raises(DraftImagesError):
+        client.create_draft_with_images(
+            "Sửa cổng", ["<p>Mở bài.</p>", DraftImage(webs[0], alt="Cổng inox mới sơn")]
+        )
+    assert wp_site.attaches() == []
+    assert wp_site.media[9] == OLD_9  # bài cha vẫn 7, alt cũ giữ nguyên
 
 
 def test_l2_xet_tung_anh_anh_dau_trong_anh_sau_la(wp_site, client, webs):
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: ảnh sau lạ thì dừng ở ảnh đó
+    # (không ghi alt, không tạo nháp).
     _upload_post(wp_site, "null", '"x"')
-    result = client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
-    assert result.unattached == (102,)
-    assert [_body(r) for r in wp_site.attaches()] == [{"post": 42}]
-    assert (wp_site.media[101]["post"], wp_site.media[102]["post"]) == (42, None)
-    assert result.message == wp._IMAGES_NOT_ATTACHED.format(count=1)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert [image.id for image in error.value.uploaded] == [101]
+    assert str(error.value).startswith(wp._MEDIA_PARENT_UNKNOWN)
+    assert wp_site.attaches() == []
+    assert (wp_site.media[101]["post"], wp_site.media[102]) == (None, {"post": None})
 
 
 UPLOAD_ALONE = {
@@ -598,18 +608,20 @@ UPLOAD_ALONE = {
 @pytest.mark.parametrize("token, kind", UPLOAD_ALONE.values(), ids=UPLOAD_ALONE)
 def test_l2_upload_media_rieng_cung_xet_post(wp_site, client, webs, token, kind):
     _upload_post(wp_site, token)
-    if kind == "tu-choi":
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: «khong-ro» cũng dừng.
+    if kind in ("tu-choi", "khong-ro"):
         with pytest.raises(WordPressError) as error:
             client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
         assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi gì vào ảnh đó
         message = str(error.value)
-        assert message.startswith(wp._MEDIA_NOT_CREATED) and "Media → Thư viện" in message
+        start = wp._MEDIA_HAS_PARENT if kind == "tu-choi" else wp._MEDIA_PARENT_UNKNOWN
+        assert message.startswith(start) and "Media → Thư viện" in message
         assert "xóa" not in message  # ảnh website vừa trả có thể là ảnh có sẵn
         return
     media = client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
     assert media.id == 101 and wp_site.media[101]["alt_text"] == "Cổng inox"
     assert wp_site.attaches() == [] and wp_site.media[101]["post"] is None  # không gắn bài nào
-    assert client._uploaded_media_ids == ({101} if kind == "cua-client" else set())
+    assert client._uploaded_media_ids == {101}
 
 
 def test_l2_upload_media_website_tra_lai_anh_co_san_9_khong_bi_ghi(wp_site, client, webs):
@@ -727,12 +739,6 @@ def test_l2_cau_bao_moi_loi_hong_dung_su_that(
         assert piece not in message
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T110-2: website trả lại ảnh có sẵn (201 kèm bài cha, hay mã khác 201) mà câu báo "
-    "vẫn nói ảnh «chưa gắn vào bài nào… hãy xóa nếu không dùng» (_DRAFT_IMAGE_MAYBE lượt 2); "
-    "tìm trong Media → Thư viện dễ gặp đúng ảnh có sẵn đó (cùng hình) và xóa nhầm (W2)",
-)
 @pytest.mark.parametrize("answer", [EXISTING_9, (200, EXISTING_9[1])], ids=["201-co-cha", "200"])
 def test_sl_t110_2_website_tra_lai_anh_co_san_cau_bao_khong_xui_xoa(wp_site, client, webs, answer):
     wp_site.inject[("POST", f"{API}/media")] = answer
@@ -788,12 +794,6 @@ def test_l2_trang_soan_bai_loi_la_hien_cau_moi(project_root, root, fake_ai, site
     assert not [text for text in shown if "MOI-T110" in text]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T110-3: lần gửi bị ngắt lúc đang tải ảnh (ảnh đã lên, chưa có nháp), mở lại nháp ở "
-    "phiên mới chỉ hiện câu khóa «gửi dở» (unsure_message), không nói ảnh chưa gắn đang hiện công "
-    "khai trong danh sách Media; câu nhắc GPS ngay đó hứa lần gửi hỏng trước khi có nháp cũng báo",
-)
 def test_sl_t110_3_mo_lai_nhap_gui_do_bao_anh_trong_danh_sach_media(
     project_root, root, fake_ai, site
 ):
