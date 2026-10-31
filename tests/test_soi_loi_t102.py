@@ -26,6 +26,7 @@ import test_app_images as ui
 import test_t086_send_state as t86
 import test_t102_publish as t102
 
+from seo_app.storage import site_index
 from seo_app.wordpress.client import SeoWriteResult, WordPressClient, WordPressError
 
 # Khung dùng chung (mật khẩu thử, cache ảnh xem trước, AI giả, thư mục ảnh, WordPress giả).
@@ -38,6 +39,16 @@ live = t102.live
 
 WRITE = Path(__file__).resolve().parents[1] / "app" / "views" / "write.py"
 SCHEDULE, PUBLISH = "Hẹn giờ", "Đăng ngay"
+
+
+@pytest.fixture(autouse=True)
+def site_cache(monkeypatch, tmp_path_factory):
+    """File cache danh sách bài đã đăng trong thư mục tạm: trang Soạn bài đọc
+    ``DEFAULT_SITE_INDEX_FILE`` lúc chạy, không để test tạo ``data/site_index.sqlite`` thật
+    (ghi nhận Soi Lỗi T-109)."""
+    path = tmp_path_factory.mktemp("danh-sach-bai") / "site_index.sqlite"
+    monkeypatch.setattr(site_index, "DEFAULT_SITE_INDEX_FILE", path)
+    return path
 
 
 def spy_release(monkeypatch) -> list[tuple]:
