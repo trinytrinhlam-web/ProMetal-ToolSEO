@@ -126,7 +126,6 @@ def tree(tmp_path: Path) -> dict[str, Path]:
         "x.JPEG",
         "x.png",
         "x.webp",
-        "x.avif",
         "CT012 - Cổng inox - Hải Châu/truoc/IMG_0001.jpg",
         "a b/c-d_e (1).jpg",
         "ảnh.tar.jpg",
@@ -216,7 +215,8 @@ def test_image_ref_rejects_non_string_paths(rel):
 def test_image_extensions_match_design():
     # T-107 lượt 3 (Chỉ Huy duyệt 30/10, chủ dự án chọn tạm không nhận HEIC): .heic, .heif tách
     # ra ``HEIC_EXTENSIONS``, chỉ được nhận khi bật ``HEIC_ENABLED`` (đang tắt).
-    assert {".jpg", ".jpeg", ".png", ".webp", ".avif"} == IMAGE_EXTENSIONS
+    # T-078 (Chỉ Huy duyệt 30/10, R5): bỏ .avif khỏi danh sách mong đợi (app không mở AVIF).
+    assert {".jpg", ".jpeg", ".png", ".webp"} == IMAGE_EXTENSIONS
     assert {".heic", ".heif"} == folders.HEIC_EXTENSIONS
     assert folders.HEIC_ENABLED is False
 
