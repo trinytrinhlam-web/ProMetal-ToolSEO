@@ -32,6 +32,7 @@ from fake_wordpress import BASE_URL
 from seo_app.wordpress import WordPressError
 from seo_app.wordpress.client import (
     _MEDIA_FIELDS,
+    _MEDIA_UPLOAD_FIELDS,
     _POST_FIELDS,
     _POST_META_FIELDS,
     SITESEO_ABILITY,
@@ -160,7 +161,7 @@ def test_lc_t060_doi_chung_than_json_va_fields_that_cua_app_van_gui(fake_wp, wp_
     fake_wp.on("POST", "/wp-json/wp/v2/posts", (201, _draft(42), {}))
     fake_wp.on("GET", "/wp-json/wp/v2/posts/42", _draft(42))
     fake_wp.on("POST", "/wp-json/wp/v2/posts/42", _draft(42, NEW_ID))
-    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{NEW_ID}", {"id": NEW_ID, "source_url": SOURCE_URL})
     fake_wp.on("GET", f"/wp-json{SITESEO_ABILITY_PATH}", {"name": SITESEO_ABILITY})
     fake_wp.on(
@@ -180,7 +181,8 @@ def test_lc_t060_doi_chung_than_json_va_fields_that_cua_app_van_gui(fake_wp, wp_
     assert result.written
     assert [_summary(r) for r in fake_wp.requests] == [
         ("POST", "/wp/v2/posts", _CREATE_KEYS, [_POST_FIELDS]),
-        ("POST", "/wp/v2/media", None, [_MEDIA_FIELDS]),
+        # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh xin thêm ``post``.
+        ("POST", "/wp/v2/media", None, [_MEDIA_UPLOAD_FIELDS]),
         ("POST", f"/wp/v2/media/{NEW_ID}", ["alt_text", "caption", "title"], [_MEDIA_FIELDS]),
         ("GET", "/wp/v2/posts/42", None, [_POST_META_FIELDS]),
         ("POST", "/wp/v2/posts/42", ["featured_media"], [_POST_FIELDS]),
@@ -219,7 +221,7 @@ def _summary(request: requests.PreparedRequest) -> tuple:
 def test_lc_t060_3_ghi_de_hong_thi_bao_anh_da_o_thu_vien_media(fake_wp, wp_client, answer):
     """Câu báo phải nói ảnh đã ở «thư viện Media» (như các câu báo khác của client) để người
     dùng vào kiểm, xóa ảnh mang chữ lấy từ file; bấm gửi lại chỉ tải thêm một ảnh nữa."""
-    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{NEW_ID}", answer)
     with pytest.raises(WordPressError) as caught:
         wp_client.upload_media(JPEG, "cong-inox.jpg")
@@ -228,7 +230,7 @@ def test_lc_t060_3_ghi_de_hong_thi_bao_anh_da_o_thu_vien_media(fake_wp, wp_clien
 
 
 def test_lc_t060_3_doi_chung_ghi_de_thanh_cong_khong_bao_loi(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{NEW_ID}", {"id": NEW_ID, "source_url": SOURCE_URL})
     media = wp_client.upload_media(JPEG, "cong-inox.jpg")
     assert media.id == NEW_ID

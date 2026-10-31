@@ -290,7 +290,7 @@ def image():
 def site(fake_wp):
     """Site giả: một ảnh mã 101 (trả 201), bài nháp 42."""
     url = f"{BASE_URL}/wp-content/uploads/2026/10/minh-hoa.webp"
-    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{FIRST_ID}", lambda r: {"id": FIRST_ID, "source_url": url})
     fake_wp.on("POST", POSTS, (201, {"id": 42, "status": "draft", "title": {"raw": "T"}}, {}))
     fake_wp.on("GET", f"{POSTS}/42", lambda _r: {"id": 42, "status": "draft"})

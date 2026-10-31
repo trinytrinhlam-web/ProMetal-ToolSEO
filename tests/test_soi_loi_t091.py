@@ -265,7 +265,7 @@ def test_bai_nhap_vua_tao_khong_lot_surrogate():
 
 
 def test_anh_vua_tai_khong_lot_surrogate_va_khong_ghep_thanh_file_khac():
-    created = {"id": 9, "source_url": f"{UPLOADS}a{SUR}.webp"}
+    created = {"id": 9, "source_url": f"{UPLOADS}a{SUR}.webp", "post": None}
     described = {"id": 9, "source_url": f"{UPLOADS}a{SUR}.webp", "alt_text": "Cổng " + SUR}
     client, _site = raw_client({
         ("POST", MEDIA): (201, js(created), {}),
@@ -400,7 +400,10 @@ def test_anh_ma_qua_bien_chi_mot_lenh_va_cau_bao_khong_chep_gi(media_id):
 
 def test_anh_ma_bang_bien_ghi_de_dung_anh():
     client, fake = wp_fake()
-    fake.on("POST", MEDIA, (201, {"id": MAX_ID, "source_url": f"{UPLOADS}cong.jpg"}, {}))
+    fake.on(
+        "POST", MEDIA,
+        (201, {"id": MAX_ID, "source_url": f"{UPLOADS}cong.jpg", "post": None}, {}),
+    )
     fake.on("POST", f"{MEDIA}/{MAX_ID}",
             {"id": MAX_ID, "source_url": f"{UPLOADS}cong.jpg", "alt_text": "Cổng"})
     media = client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
