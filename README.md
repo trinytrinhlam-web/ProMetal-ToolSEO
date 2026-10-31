@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11; Hẹn giờ, Đăng ngay đã làm nhưng đang tắt, chờ thử thật). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -132,7 +132,7 @@ App **chỉ tạo bài nháp**: khách không thấy bài cho tới khi bạn t�
 
 ## 7. Viết bài bằng AI
 
-Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Ở bước **Viết & kiểm tra** bạn chọn ảnh cho bài (mục 9); bước **SEO** có AI gợi ý tiêu đề, mô tả cho Google và liên kết nội bộ (mục 10); bước **Xuất bản** gửi được bài nháp kèm ảnh lên website (mục 11). Hai cách **Hẹn giờ**, **Đăng ngay** vẫn là bản demo.
+Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (nghiên cứu từ khóa và các bài đứng đầu Google), **Dàn ý**, **Viết & kiểm tra**. Ở bước **Viết & kiểm tra** bạn chọn ảnh cho bài (mục 9); bước **SEO** có AI gợi ý tiêu đề, mô tả cho Google và liên kết nội bộ (mục 10); bước **Xuất bản** gửi được bài nháp kèm ảnh lên website (mục 11). Hai cách **Hẹn giờ**, **Đăng ngay** đã làm nhưng đang tắt, chờ thử thật trên website (mục 11).
 
 App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và **Gemini** (Google). **Không có hãng mặc định**: bạn có khóa của hãng nào thì dùng hãng đó, và đổi hãng cho từng việc khi cần (xem "Đổi hãng hoặc mô hình" bên dưới). Việc nào trong `config/ai.toml` đang ghi hãng nào thì hãng đó phải có khóa.
 
@@ -198,7 +198,7 @@ Thử mù **không đọc và không ghi** `config/ai.toml` (không có mục `b
 3. Ở bước **Viết & kiểm tra**: viết lại từng phần theo yêu cầu, sửa tay, áp dụng hoặc bỏ qua các gợi ý. Chỗ tô đỏ `[cần bổ sung: ...]` là nơi cần bạn điền số liệu thật.
 4. Cũng ở bước này, mục nào có khung **📷 Chỗ cần ảnh** thì chọn ảnh, viết alt rồi duyệt (mục 9).
 5. Ở bước **SEO**: chọn tiêu đề, mô tả hiện trên Google, đường dẫn của bài, liên kết nội bộ, schema hỏi đáp (mục 10).
-6. Ở bước **Xuất bản**, hình thức **Nháp**, bấm **📤 Gửi nháp** để gửi bài nháp kèm ảnh lên website (mục 11).
+6. Ở bước **Xuất bản**, hình thức **Nháp**, bấm **📤 Gửi nháp** để gửi bài nháp kèm ảnh lên website (mục 11). Hẹn giờ, Đăng ngay hiện đang tắt (mục 11).
 
 Mỗi bước AI mất khoảng 1–4 phút. Bài đang soạn được **tự lưu** sau mỗi thay đổi (vào `data/drafts.sqlite` trên máy, không lên GitHub). Tải lại trang hay tắt app vẫn không mất bài: vào **Soạn bài**, khung **Bài đang soạn dở** ở bước 1 có nút Mở và Xóa.
 
@@ -378,7 +378,7 @@ App lấy danh sách bài đã đăng trên website và so với tiêu đề, m�
 **Xem trước và «Chép sang SiteSEO»** (cột bên phải)
 
 - **Xem trước trên Google**: tiêu đề (đã gắn đuôi), tên website › đường dẫn, mô tả, gần giống cách Google hiện.
-- **Chép sang SiteSEO**: ba khung **Tiêu đề SEO** (đã gắn đuôi), **Mô tả SEO**, **Đường dẫn (slug)**. Bấm biểu tượng ở góc khung để chép. Trong trang sửa bài nháp của WordPress: tiêu đề, mô tả dán vào hộp SiteSEO; đường dẫn dán vào ô đường dẫn (slug) của bài. Ô đang **Chặn** thì khung ghi «…: chưa chép được.» kèm lý do.
+- **Chép sang SiteSEO**: ba khung **Tiêu đề SEO** (đã gắn đuôi), **Mô tả SEO**, **Đường dẫn (slug)**. Bấm biểu tượng ở góc khung để chép. Trong trang sửa bài nháp của WordPress: tiêu đề, mô tả dán vào hộp SiteSEO. Đường dẫn thì app đã gửi kèm bài (mục 11); khung này để xem, hay chép khi muốn sửa tay. Ô đang **Chặn** thì khung ghi «…: chưa chép được.» kèm lý do.
 - Muốn app tự ghi tiêu đề, mô tả thay vì chép tay: xem «Ghi SEO lên website» bên dưới.
 
 **Liên kết nội bộ**
@@ -389,7 +389,7 @@ Cần kết nối WordPress và có bài đã đăng cùng chủ đề.
 2. Bảng **Dùng / Cụm từ trong bài / Trỏ tới bài**: bỏ tick **Dùng** ở dòng không muốn.
 3. Nút mờ thì dòng chữ bên dưới nói lý do: AI chưa dùng được (thiếu khóa), hay chưa có danh sách bài đã đăng. Dòng «Chưa có bài đã đăng nào cùng chủ đề để đặt liên kết.» nghĩa là website chưa có bài phù hợp.
 
-**App chưa chèn các liên kết này vào bài nháp khi gửi** (làm ở Giai đoạn 5). Muốn có link ngay thì tự thêm trong trang sửa bài WordPress, theo bảng này.
+Lúc gửi, app chèn link ở các dòng còn tick **Dùng** vào bài (mục 11). Bài có link nội bộ thì ngay trước khi gửi, app tải lại danh sách bài đã đăng để kiểm link.
 
 **Schema Hỏi đáp (FAQ)**
 
@@ -400,10 +400,10 @@ Schema là đoạn mã giúp Google hiểu phần hỏi đáp của bài. Mở k
 
 **Ghi SEO lên website** (ở bước Xuất bản)
 
-Ở bước **5 · Xuất bản**, hình thức **Nháp**, phía trên nút **📤 Gửi nháp** có công tắc **Ghi SEO lên website**, **mặc định tắt**.
+Ở bước **5 · Xuất bản**, phía trên nút gửi có công tắc **Ghi SEO lên website**, **mặc định tắt**. Gửi **Đăng ngay** thì bắt buộc bật (mục 11).
 
 - **Tắt:** app chỉ tạo bài nháp; bạn chép tay từ khung «Chép sang SiteSEO».
-- **Bật:** ngay sau khi tạo bài nháp, app ghi **tiêu đề SEO** (đã gắn đuôi), **mô tả SEO** và **từ khóa chính** vào hộp SiteSEO của **chính bài nháp app vừa tạo trong lần gửi đó**, rồi hỏi lại website để chắc bài vẫn là nháp. App không ghi SEO vào bài nào khác: bài đã có sẵn trên website, bài nháp tạo ở lần gửi trước, bài đã chuyển sang «Chờ duyệt» hay đã đăng đều không bị đụng tới. Đường dẫn, liên kết nội bộ, schema không ghi.
+- **Bật:** ngay sau khi tạo bài nháp, app ghi **tiêu đề SEO** (đã gắn đuôi), **mô tả SEO** và **từ khóa chính** vào hộp SiteSEO của **chính bài nháp app vừa tạo trong lần gửi đó**, rồi hỏi lại website để chắc bài vẫn là nháp. App không ghi SEO vào bài nào khác: bài đã có sẵn trên website, bài nháp tạo ở lần gửi trước, bài đã chuyển sang «Chờ duyệt» hay đã đăng đều không bị đụng tới. Schema không ghi; đường dẫn, liên kết nội bộ đi cùng bài (mục 11).
 - Cần làm trước trên website: SiteSEO từ bản 1.4.0, bật **AI Abilities** (mục 6, bước 8–10: **Kiểm tra kết nối** thấy «SiteSEO: ghi được»).
 - Ô nào đang **Chặn** ở bước SEO thì không ghi ô đó, các ô còn lại vẫn ghi. Bật công tắc là thấy trước: «Sẽ không ghi …: ở bước SEO đang báo «Chặn» (xem lý do ở đó).»
 - Khung **Kiểm tra trước khi gửi** có dòng «✅ SEO: tiêu đề, mô tả, đường dẫn đã sẵn sàng» hoặc «⚠️ SEO: … chưa dùng được (xem bước SEO)».
@@ -420,35 +420,84 @@ Gửi xong, dưới dòng «Đã tạo bài nháp trên WordPress (mã …)» c�
 | «… Kiểm lại ngay sau khi ghi SEO: …» | Đã ghi, nhưng lúc hỏi lại website có trục trặc. Mở bài trong WordPress xem bài còn là nháp và hộp SiteSEO đã đúng chữ. |
 | «… Không ghi …: ở bước SEO đang báo «Chặn»…» | Các ô bị Chặn không được ghi. Sửa ở bước SEO rồi chép tay vào hộp SiteSEO. |
 
-## 11. Gửi bài nháp lên WordPress
+## 11. Gửi bài lên WordPress: Nháp, Hẹn giờ, Đăng ngay
 
-Cần kết nối WordPress trước (mục 6). Ở bước **Xuất bản** của **Soạn bài**, hình thức **Nháp**:
+Cần kết nối WordPress trước (mục 6). Ở bước **5 · Xuất bản** của **Soạn bài**, ô **Hình thức** có ba cách gửi:
+
+| Hình thức | Bài lên website thế nào | Nút gửi |
+|---|---|---|
+| **Nháp** (mặc định) | Bài nháp: khách chưa thấy cho tới khi bạn tự bấm Đăng trong trang quản trị WordPress. | **📤 Gửi nháp** |
+| **Hẹn giờ** | Bài được hẹn giờ: WordPress tự đăng đúng ngày giờ bạn chọn, không cần mở app lúc đó. | **📅 Gửi và hẹn giờ …** |
+| **Đăng ngay** | Bài hiện công khai ngay khi bấm. | **🚀 Gửi và đăng công khai ngay** |
+
+**Hẹn giờ và Đăng ngay hiện đang tắt.** Chọn hai ô này thì chỉ thấy câu giải thích, không có nút gửi: hãy gửi **Nháp**, rồi hẹn giờ hay đăng bài trong trang quản trị WordPress. Hai cách này **chưa thử trên website thật**; Chỉ Huy sẽ thử cùng bạn trước khi dùng. Sau buổi thử đó, muốn bật thì:
+
+1. Vào **Cài đặt → 📅 Hẹn giờ, đăng**.
+2. Tick **Tôi hiểu: bài sẽ được hẹn giờ/đăng công khai thật trên website**, rồi bật **Bật Hẹn giờ và Đăng ngay**.
+3. Công tắc **chỉ giữ trong lần mở app đó**: tải lại trang (F5), tắt app, lần mở app sau đều tự tắt; bỏ tick «Tôi hiểu…» cũng tắt luôn. Công tắc không lưu vào file nào, nên mỗi lần muốn dùng phải bật lại.
+
+Công tắc bị tắt trong lúc bạn đang ở bước Xuất bản (ví dụ ở tab khác) thì bấm gửi Hẹn giờ / Đăng ngay không gửi gì, app báo «Chưa gửi gì lên website: Hẹn giờ và Đăng ngay đang tắt…».
+
+**Gửi dạng Nháp**
 
 1. Xem khung **Kiểm tra trước khi gửi**, trong đó có dòng «Chỗ cần ảnh đã có ảnh, alt đã duyệt: …». Ảnh nào chưa có alt hay chưa duyệt thì app báo tên mục và khóa nút gửi. Chỗ cần ảnh để trống thì bài gửi đi không có ảnh ở chỗ đó.
-2. Bài có từ 2 ảnh: chọn ảnh ở ô **Ảnh đại diện** (mặc định là ảnh đầu tiên). Bài một ảnh thì ảnh đó là ảnh đại diện.
-3. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh). Đoạn nằm ở **tiêu đề bài** hay **tiêu đề mục** thì chưa sửa được ở bước này: gửi nháp xong, mở bài trong WordPress và xóa đoạn đó **trước khi** bấm Lưu hay Đăng. (Cách khác: sửa tiêu đề ở bước **Dàn ý** rồi duyệt lại để AI viết lại toàn bài; cách này mất phần đã sửa tay và phải chọn lại ảnh.)
-4. Muốn app ghi luôn tiêu đề, mô tả SEO, từ khóa chính vào hộp SiteSEO của bài nháp: bật công tắc **Ghi SEO lên website** (mặc định tắt, xem mục 10).
-5. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem «App nhớ việc đã gửi» bên dưới).
+2. Chuyên mục: bấm **🔄 Tải chuyên mục từ website** rồi chọn ở ô **Chuyên mục**. Không chọn thì bài vào chuyên mục mặc định của website.
+3. Bài có từ 2 ảnh: chọn ảnh ở ô **Ảnh đại diện** (mặc định là ảnh đầu tiên). Bài một ảnh thì ảnh đó là ảnh đại diện.
+4. Nếu có khung vàng **«Có đoạn dạng shortcode»**: app liệt kê các đoạn dạng `[...]` trong tiêu đề, nội dung, alt, chú thích. Lúc gửi, app làm cho chúng không chạy; nhưng nếu sau đó bạn sửa và lưu bài trong trang quản trị WordPress thì WordPress sẽ chạy chúng. **Nên xóa** các đoạn đó rồi mới gửi (ở bước **Viết & kiểm tra**: nội dung bấm **✏️ Sửa** ở từng mục, alt và chú thích sửa ở khung ảnh). Đoạn nằm ở **tiêu đề bài** hay **tiêu đề mục** thì chưa sửa được ở bước này: gửi nháp xong, mở bài trong WordPress và xóa đoạn đó **trước khi** bấm Lưu hay Đăng. (Cách khác: sửa tiêu đề ở bước **Dàn ý** rồi duyệt lại để AI viết lại toàn bài; cách này mất phần đã sửa tay và phải chọn lại ảnh.)
+5. Khung **Xem lại link, địa chỉ trong bài**: bảng mọi link và mọi địa chỉ web còn dạng chữ trong bài, cột «Dấu hiệu lạ» đứng đầu. Dòng nào bị **Chặn** thì nút gửi khóa.
+6. Muốn app ghi luôn tiêu đề, mô tả SEO, từ khóa chính vào hộp SiteSEO của bài nháp: bật công tắc **Ghi SEO lên website** (mặc định tắt, xem mục 10).
+7. Ngay trên nút, app nhắc ảnh xem được công khai (xem «Cần biết khi gửi» bên dưới). Bấm **📤 Gửi nháp**, rồi **đợi app báo kết quả** (xem «App nhớ việc đã gửi» bên dưới).
 
 Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có nút **Mở bài nháp trong WordPress** và danh sách ảnh đã lên thư viện Media (tên file, địa chỉ ảnh). Bật **Ghi SEO lên website** thì có thêm một dòng kết quả SEO (bảng ở mục 10). Nút gửi khóa lại; muốn tạo thêm một bài nháp nữa từ bài này thì tick **Tạo thêm một bài nháp mới** (ảnh sẽ tải lên lần nữa).
 
+**Hẹn giờ, Đăng ngay (khi công tắc đã bật)**
+
+Làm như Nháp, thêm các phần sau:
+
+- **Hẹn giờ:** ô **Ngày đăng** điền sẵn ngày mai; ô **Giờ đăng** điền sẵn giờ ghi ở dòng `default_time` của mục `[plan]` trong `config/content.toml` (đang là `"08:00"`; thiếu hay viết sai dạng như `"2 giờ chiều"`, `"25:00"` thì app dùng 08:00). Bài mở từ dòng kế hoạch có ngày, giờ đăng thì lấy theo dòng đó. Sửa được trước khi gửi. Dưới hai ô ghi «Hẹn đăng: …» kèm thứ, ngày, giờ Việt Nam. Giờ đã qua, chưa tới 10 phút nữa, hay xa hơn một năm thì không gửi được. Không bật «Ghi SEO lên website» thì app nhắc chép tiêu đề, mô tả vào SiteSEO trước giờ đăng.
+- **Đăng ngay:** màn hình ghi «Hiện công khai ngay khi bấm». Phải bật **Ghi SEO lên website**; không bật thì có dòng Chặn «Đăng ngay mà SEO chưa ghi lên website…» và nút gửi khóa.
+- App hỏi website quyền đăng bài và múi giờ (nút **🔄 Kiểm tra lại quyền đăng bài, múi giờ website** để hỏi lại). Tài khoản không có quyền đăng bài thì không gửi được; tài khoản Biên tập viên ở mục 6 có quyền này. Múi giờ của website khác giờ Việt Nam thì app cảnh báo; bài vẫn lên đúng giờ đã chọn.
+- **Màn hình xác nhận «Xem lại trước khi gửi»:** hình thức và giờ hẹn, tiêu đề bài, đường dẫn sẽ có, chuyên mục, tiêu đề SEO, mô tả SEO, từ khóa chính, SEO có ghi lên website không; kèm bảng mọi link, địa chỉ, ảnh (có GPS hay không), đoạn dạng shortcode. Đọc lại rồi tick **Tôi đã đọc lại toàn bài và danh sách trên** thì nút gửi mới bấm được.
+- **Sửa gì sau khi tick thì phải tick lại.** Đổi chữ bài, ảnh, alt, giờ hẹn, chuyên mục hay công tắc «Ghi SEO lên website» (kể cả ở tab khác) thì app tự bỏ tick, báo «Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại.»
+- Thứ tự app làm: tải ảnh và tạo bài nháp, đặt ảnh đại diện, ghi SEO (nếu bật), rồi **cuối cùng** mới hẹn giờ hay đăng.
+
+**Ảnh đại diện hay SEO chưa lên kịp**
+
+- **Đăng ngay chỉ đăng khi đủ:** ảnh đại diện (bài có ảnh) và SEO (khi bật «Ghi SEO lên website») đã lên website. Thiếu phần nào thì app **không đăng**, bài vẫn là nháp, báo «Chưa đăng bài: … chưa lên website lúc gửi nên bài vẫn là nháp (mã …). Sửa phần đó trong trang quản trị WordPress, xem lại bài rồi bấm «Đăng» ở đó.» (chỗ «…» là phần còn thiếu).
+- **Hẹn giờ thì vẫn hẹn**, kèm cảnh báo «Bài đã hẹn giờ nhưng … chưa lên website lúc gửi. Sửa phần đó trong trang quản trị WordPress trước giờ đăng, hoặc chuyển bài về nháp nếu chưa kịp.» Lý do: bài hẹn giờ chưa công khai nên còn thời gian sửa (ít nhất 10 phút, thường là tới hôm sau); còn nếu app giữ bài lại thành nháp thì bạn vẫn phải tự hẹn giờ trong trang quản trị, không an toàn hơn mà thêm việc.
+
+**Kết quả hẹn giờ, đăng**
+
+- Xong: «Đã hẹn giờ đăng bài: …» hoặc «Đã đăng bài công khai trên website.», kèm địa chỉ bài.
+- Website từ chối rõ ràng (bài không còn là nháp, giờ không hợp lệ, đồng hồ máy lệch…): bài vẫn là nháp, câu báo nói lý do.
+- **Chọn Hẹn giờ mà website đăng ngay:** app báo «KHẨN: website báo bài (mã …) đã ĐĂNG CÔNG KHAI NGAY…». Làm đúng như câu báo: chưa muốn đăng thì chuyển bài về **Bản nháp** trong trang quản trị, rồi báo Chỉ Huy.
+- **Không rõ kết quả** (mất mạng hay website chậm đúng lúc hẹn giờ, đăng): app báo «Không biết chắc lệnh … đã chạy trên website chưa… Bài (mã …) có thể đã …» và **khóa gửi lại**. Mở lại bài sau đó vẫn thấy «Lần gửi trước (bài mã …) chưa biết chắc đã hẹn giờ/đăng hay chưa…»; phải kiểm trên trang quản trị rồi tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi** mới gửi được. App không bao giờ tự gửi lại. Bài mở từ dòng kế hoạch thì lúc này app không ghi gì vào dòng đó, báo «Chưa ghi trạng thái vào dòng kế hoạch …»: kiểm xong thì tự sửa ô «Trạng thái» trên Google Sheet.
+
+**Kiểm bài trên trang quản trị WordPress** (khi app báo không rõ kết quả hay khẩn)
+
+1. Câu báo có **mã bài**. Dưới câu báo thường có dòng «Sửa bài trong trang quản trị: …»: chép địa chỉ đó dán vào trình duyệt để mở đúng bài. Hoặc vào **Bài viết → Tất cả bài viết** (Posts → All Posts), tìm theo tiêu đề.
+2. Xem trạng thái bài: còn là **bản nháp** (Draft), đã **lên lịch** (Scheduled, kèm giờ đăng), hay đã **xuất bản** (Published).
+3. Bài đã đúng như ý (đã hẹn giờ, đã đăng) thì **đừng gửi lại**: gửi lại sẽ tạo thêm một bài nữa. Bài vẫn là nháp thì tự hẹn giờ hay bấm Đăng trong trang quản trị; hoặc xóa bài đó rồi mới tick «Tôi đã kiểm tra trang quản trị, vẫn muốn gửi» để gửi lại từ app.
+
 **Cần biết khi gửi**
 
-- **Chỉ tạo bài nháp.** Khách chưa thấy bài cho tới khi bạn tự bấm Đăng trong WordPress. App không sửa bài có sẵn.
-- **Ảnh xem được công khai ngay khi tải lên, kể cả khi bài còn là nháp**: ảnh vào thư viện Media của website, mà WordPress cho **bất kỳ ai, không cần đăng nhập**, xem danh sách Media (kèm địa chỉ ảnh, alt, chú thích). Người lạ tìm được ảnh mà không cần ai gửi đường dẫn, mở ảnh là đọc được vị trí GPS còn trong ảnh. App **không tự xóa** ảnh đã tải lên, kể cả khi bạn xóa bài nháp; muốn gỡ ảnh thì xóa trong **Media → Thư viện** của trang quản trị. Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao.
+- **Nháp không bao giờ tự đăng.** Khách chưa thấy bài nháp cho tới khi bạn tự bấm Đăng trong WordPress. Hẹn giờ, Đăng ngay chỉ có khi công tắc ở Cài đặt đang bật và bạn đã tick xác nhận. App không sửa bài có sẵn trên website: chỉ hẹn giờ, đăng đúng bài nháp vừa tạo trong lần bấm đó.
+- **Ảnh xem được công khai qua đường dẫn trực tiếp ngay khi tải lên, kể cả khi bài còn là nháp**: ai có đường dẫn ảnh là mở được ảnh và đọc được vị trí GPS còn trong ảnh. App gắn ảnh vào bài nháp, nên ảnh không hiện trong danh sách Media công khai của website cho tới khi bài được đăng (gắn không được thì app báo sau khi gửi). App **không tự xóa** ảnh đã tải lên, kể cả khi bạn xóa bài nháp; muốn gỡ ảnh thì xóa trong **Media → Thư viện** của trang quản trị. Xóa chỉ gỡ ảnh khỏi website: ai đã tải ảnh về vẫn còn bản sao.
 - Ảnh được nén WebP, cạnh dài tối đa 1600 px (cỡ và chất lượng đổi được ở mục `[images]` trong `config/content.toml`), giữ vị trí GPS. Tên file do app đặt từ thẻ (thiếu thẻ thì từ alt), không dấu, ví dụ `cong-inox-tan-phu-ct012.webp`; không lấy tên file, tên thư mục trên máy (có thể có tên khách).
-- Bài nháp gồm tiêu đề, các mục (tiêu đề mục, đoạn văn), ảnh kèm alt, chú thích, ảnh đại diện. Chữ đậm, gạch đầu dòng viết bằng dấu `**`, `-` còn hiện nguyên dấu; chuyên mục, đường dẫn (slug), liên kết nội bộ, schema chưa gửi. Tiêu đề, mô tả SEO và từ khóa chính chỉ lên website khi bạn bật **Ghi SEO lên website** (mục 10); không bật thì chép tay vào hộp SiteSEO. Sửa trong WordPress trước khi đăng.
+- Bài gửi đi gồm: tiêu đề, các mục (tiêu đề mục, đoạn văn, giữ chữ đậm, danh sách), link nội bộ còn tick **Dùng** ở bước SEO, đường dẫn (slug), chuyên mục đã chọn, ảnh kèm alt, chú thích, ảnh đại diện. Thẻ (tag) và schema hỏi đáp chưa gửi. Tiêu đề, mô tả SEO và từ khóa chính chỉ lên website khi bạn bật **Ghi SEO lên website** (mục 10); không bật thì chép tay vào hộp SiteSEO.
+- Bài có link nội bộ thì ngay trước khi gửi, app tải lại danh sách bài đã đăng để kiểm link. Tải không được thì app báo «Chưa tải được danh sách bài đã đăng để kiểm link nội bộ…» và chưa gửi gì: thử lại, hoặc bỏ tick «Dùng» các link nội bộ ở bước SEO.
 
 **Khi có lỗi**
 
 - Lỗi trước khi gửi (ảnh vừa đổi hay bị thay bằng ảnh khác cùng tên, ổ đĩa chậm, ảnh hỏng, chưa ghi được trạng thái gửi vào nháp…): app ghi «Chưa gửi gì lên website» kèm lý do. Sửa rồi bấm lại.
+- Bài thay đổi đúng lúc bạn bấm (khác với màn hình bạn vừa xem): app báo «Bài vừa thay đổi sau khi bạn xem lại … Chưa gửi gì lên website…». Xem lại màn hình (Hẹn giờ, Đăng ngay: tick lại) rồi bấm lại.
 - Lỗi giữa chừng: bài nháp và ảnh có thể **đã lên website**. App liệt kê ảnh đã lên thư viện Media và **không tự gửi lại**. Trước khi gửi lại, mở trang quản trị WordPress, kiểm tra **Bài viết → Nháp** và **Media → Thư viện**, xóa bài nháp, ảnh thừa nếu có. Khi app không chắc bài nháp đã có hay chưa, nút gửi khóa tới khi bạn tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**.
 
 **App nhớ việc đã gửi**
 
 App ghi «đang gửi» vào bài nháp trên máy ngay trước khi gửi, và ghi «đã gửi» kèm mã bài nháp khi website trả lời. Vì vậy tải lại trang (F5), đóng tab, mở bài khác rồi mở lại, hay hôm sau mở lại bài, app vẫn nhớ và không cho gửi trùng khi bạn chưa xác nhận:
 
-- **Bài đã gửi:** app ghi «Bài này đã gửi lên WordPress (bài nháp mã …, lúc …). Gửi lại sẽ tạo thêm một bài nháp mới và tải ảnh lên lần nữa.», có nút **Mở bài nháp trong WordPress**. Nút gửi khóa tới khi bạn tick **Tạo thêm một bài nháp mới**.
+- **Bài đã gửi:** app ghi «Bài này đã gửi lên WordPress (bài nháp mã …, lúc …).», hay «Bài này đã gửi và hẹn giờ đăng … (bài mã …).», «Bài này đã gửi và đăng công khai (bài mã …, lúc …).»; Đăng ngay bị giữ lại thì «… nhưng chưa hẹn giờ/đăng: hẹn giờ, đăng bài nháp đó trong trang quản trị WordPress.». Có nút **Mở bài nháp trong WordPress**. Nút gửi khóa tới khi bạn tick ô gửi lại; ô này nói đúng việc sẽ làm theo hình thức đang chọn: **Tạo thêm một bài nháp mới** (Nháp), **Tạo thêm một bài mới và hẹn giờ đăng bài mới đó** (Hẹn giờ), **Tạo thêm một bài mới và đăng công khai ngay bài mới đó** (Đăng ngay). Đổi hình thức thì ô bị bỏ tick, phải tick lại. Gửi lại luôn tải ảnh lên lần nữa.
 - **Lần gửi trước chưa có kết quả** (tải lại trang, đóng tab hay mất mạng đúng lúc đang gửi, hoặc đang gửi ở cửa sổ khác): app nhắc «… **bài nháp có thể đã có trên website**», khóa nút tới khi bạn tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi**. Kiểm **Bài viết → Nháp** và **Media → Thư viện** trước khi tick; đang gửi ở tab khác thì đợi tab đó xong rồi hãy xem.
 - **Lỡ bấm nút khác, bấm đúp, hay sang trang khác rồi quay lại lúc đang gửi:** app không gửi thêm. Lần gửi chưa xong thì trang hiện ô «⏳ Lần gửi nháp vừa bấm vẫn đang chạy, đợi gửi xong rồi mới hiện kết quả…»; xong thì hiện kết quả (có thể kèm dòng «Lần gửi này bị ngắt giữa chừng…»). Nút gửi vẫn khóa, phải tick xác nhận mới gửi tiếp được. Website chậm quá 60 giây thì app báo «Lần gửi nháp trước vẫn đang chạy (website chậm?)…»: đợi thêm rồi bấm lại hoặc tải lại trang.
 - **Cùng một bài mở ở hai tab (hay hai cửa sổ), bấm 📤 Gửi nháp ở cả hai:** chỉ ra **một** bài nháp. Tab bấm sau không gửi gì, báo «Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi (thường do bài vừa được gửi, hoặc đang gửi, ở một tab khác của app)…», và nút gửi khóa theo lời nhắc phía trên nút.
