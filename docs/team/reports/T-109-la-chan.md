@@ -106,3 +106,75 @@ Không điều kiện nào bắt buộc trước khi gộp T-109 vào `main`.
 | 2 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
 
 3 lỗi Thấp đều có lượt sửa, không cần chủ dự án chấp nhận rủi ro; không thêm dòng vào sổ rủi ro (`security.md` mục 6).
+
+## Xem lại lượt 2
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Thợ Máy `82464d4`, `088b1e1`: `seo_app/plan/sync.py` (+18/−7: `_key_of`, `_post_id_of`, `_status_of` đọc ô qua `_reader_text` mới), `seo_app/plan/website.py` (+80/−11), test; gỡ 3 dấu `xfail` SL-T109. Soi Lỗi `635e95f` (ĐẠT, 0 lỗi mới, thêm 53 ca) |
+| Ngày | 2026-10-31 (08:20–08:57 +07, giờ máy) |
+| **Kết luận lượt 2** | **ĐẠT**: SL-T109-1, -2, -3 **đóng thật**. Đổi ba hàm dùng chung trong `sync.py` **không** mở lối ghi nhầm hay ghi rộng nào ở T-100, T-101, T-102: các hàm nay đọc ô đúng như bộ đọc bảng, nên chỉ làm khớp hơn, và nhận ra dòng trùng Mã bài nhiều hơn (dừng ghi). Lá Chắn **0 lỗi mới**. Giới hạn 2.000 ký tự **chấp nhận được** (có câu báo). G7, G8 **không cần làm trước khi gộp**. Gộp `main` được: với `main` trên máy `3cdd096` (có T-102) không xung đột; 18 file test T-100, T-101, T-102, T-109 qua trên cây gộp (1 ca hỏng oan vì quá giờ khi máy bận, chạy lại qua) |
+
+### Tóm tắt (cho chủ dự án)
+
+Ba lỗi nhỏ lượt trước đã sửa tận gốc: phần mềm nay đọc ô Mã bài, Mã bài WordPress, Trạng thái **giống hệt** bảng anh/chị thấy, nên không còn trường hợp xem một dòng mà ghi vào dòng khác. Ô gõ lạ chỉ có cảnh báo, không đề xuất. Một lần kiểm cũ hơn 5 phút thì phải kiểm lại mới ghi. Phần ghi trạng thái sau khi gửi bài (T-100, T-102) cũng được lợi: dòng trùng Mã bài nay luôn bị dừng. Còn một giới hạn đã biết, chỉ xảy ra khi ô bị gõ gần 2.000 dấu cách; khi đó phần mềm có hiện cảnh báo.
+
+### SL-T109-1 → -3
+
+| Mã | Kết quả | Bằng chứng |
+|---|---|---|
+| SL-T109-1 | **Đóng** | `_key_of` (`sync.py:1113`) đọc qua `_reader_text` (`:1123`: cắt đúng 2.000 ký tự như `parse._cell`, rồi mới làm sạch), nên `key_rows` và bộ đọc thấy cùng Mã bài. Thêm hai lớp chặn trong `website.py`: lúc kiểm, dòng mà `key_rows` không trỏ đúng thì chỉ cảnh báo `UNSURE_ROW` (`:275`); lúc ghi, đòi `fresh.find(key).number` trùng dòng tìm được, như `open_row` (`:495`). 3 ca `xfail` cũ qua, Soi Lỗi thêm ca biến thể |
+| SL-T109-2 | **Đóng** | `_post_id_of` (`sync.py:892`) đọc như bộ đọc; `_post_counts` nhận ra một bài nối hai dòng → `SHARED_POST`, không đề xuất |
+| SL-T109-3 | **Đóng** | Trạng thái, Ngày đăng thực tế đọc bằng đúng hàm lúc ghi (`_status_of`, `_moment_of`); ô không đọc được → cảnh báo `ODD_CELL`, không đề xuất |
+
+### Đổi hàm dùng chung: ảnh hưởng tới T-100, T-101, T-102
+
+Nơi gọi `_key_of`, `_post_id_of`, `_status_of`: `parse_sheet` (`key_rows`), `apply_proposals` (`_fresh_row`), `write_status`, `open_row`, `_key_present`, `website.py`.
+- **Trước:** cắt 30 (hay 100) ký tự rồi mới làm sạch, nên ô có ký tự trắng, vô hình ở đầu bị đọc khác bộ đọc.
+- **Nay:** đọc khớp bộ đọc. Hệ quả:
+  - (1) Ô Mã bài có ký tự trắng đầu ô nay vào `key_rows`: dòng trùng Mã bài (một dòng gõ thẳng, một dòng có dấu cách) nay bị nhận là **trùng**, nên `apply_proposals`, `write_status`, `open_row` đều **dừng** (trước đây có thể ghi vào một trong hai). Hướng an toàn hơn.
+  - (2) `write_status` tìm được dòng có Mã bài gõ sau nhiều dấu cách. Đó đúng là dòng bộ đọc nhận và người dùng đã mở bài từ đó (`open_row`), nên ghi vào đó là đúng.
+  - (3) `_status_of` đọc 2.000 ký tự thay vì 100: chữ dài hơn mới thành «không đọc được». Không đổi đường ghi.
+  - (4) Không hàm nào ghi thêm ô hay dòng mới.
+- **Kiểm:** test T-100, T-101, T-102, T-109 trên cây gộp với `main` có T-102 (dưới) đều qua. `parse_sheet` đọc tối đa 1.001 × 26 ô, mỗi ô ≤ 2.000 ký tự, làm sạch tuyến tính.
+
+### Giới hạn 2.000 ký tự: chấp nhận được
+
+Tự thử: ô Mã bài 1.996 dấu cách + «B-070» được đọc thành `B-007`; ô Mã bài WordPress 1.996 dấu cách + «12345» được đọc thành `1234` (một bài khác).
+
+Chấp nhận, vì:
+1. Bộ đọc và đường ghi thấy **cùng** giá trị đó: bảng trên app hiện `B-007`, `1234`, nên thay đổi đề xuất khớp với cái người dùng thấy.
+2. Trang có câu báo cố định «Ô «Mã bài» dài quá 2.000 ký tự, đã cắt (dòng …)».
+3. Trùng với một dòng `B-007` thật hay một dòng nối bài 1234 thật thì bị nhận là trùng, dừng ghi.
+4. Gõ được gần 2.000 dấu cách vào ô thì đã sửa được ô đó thành bất kỳ mã nào; không ai có thêm quyền.
+
+Cách làm chắc hơn, nếu sau này muốn (không bắt buộc): ô Mã bài, Mã bài WordPress dài quá giới hạn thì coi là **không đọc được** (như ô sai dạng), thay vì cắt rồi đọc. Phải sửa ở cả bộ đọc `parse._cell` / `parse._row` và `_reader_text` để hai bên vẫn khớp.
+
+### G7, G8 của Soi Lỗi
+
+| Góp ý | Ý kiến |
+|---|---|
+| G7 (dòng «Bỏ» có ô ngày gõ lạ: mất câu «Bỏ mà bài vẫn còn», thay bằng câu «ô không đọc được») | Không phải bảo mật; vẫn có cảnh báo, không ghi gì. Không cần trước khi gộp |
+| G8 (`MSG_STALE` viết cứng «quá 5 phút», tách khỏi `CHECK_MAX_AGE`) | Không phải bảo mật (chỉ lệch chữ nếu sau này đổi hằng). Không cần trước khi gộp; nên dựng câu từ hằng khi tiện |
+
+### Gỡ `xfail` (R5)
+
+Đúng R5. `git diff a40a107 088b1e1 -- tests/test_soi_loi_t109.py`: xóa 3 dấu `xfail` (12 dòng). Một dòng `assert` đổi `range(401, 407)` → `range(401, 408)` (ca bài 407 «giờ lạ», G6), có ghi chú Chỉ Huy duyệt 31/10 00:45.
+
+### Thử gộp
+
+`main` trên máy `3cdd096` (có T-102: `app/views/plan.py`, `home.py`, `write.py`) + `635e95f`: `git merge-tree --write-tree` **không xung đột** (cây `ce09950`); từ gốc chung `eef13b5`, hai bên không sửa chung file nào. T-102 không đổi `sync.py`, nhưng trang Kế hoạch, Bài viết, Soạn bài của T-101, T-102 gọi các hàm vừa đổi, nên tôi chạy test của cả hai phiếu. Commit tạm `9d5804b` trong worktree riêng (`git commit-tree`, không nhánh, đã gỡ).
+
+Trên cây gộp: `ruff check .` sạch. 18 file (T-109: 2; T-100: `test_plan_sync`, `test_soi_loi_t100`, `test_la_chan_t100`, `test_t100_drafts_plan`; T-101: `test_t101_plan_page`, `test_t101_home_page`, `test_la_chan_t101`, `test_soi_loi_t101`; T-102: `test_t102_publish`, `test_soi_loi_t102`, `test_la_chan_t102`, `test_t102_formula_cells`; `test_plan_model`, `test_plan_parse`, `test_google_sheets`, `test_app_pages`): **1.044 passed, 4 xfailed** (lỗi còn mở có sẵn của T-102: LC-T102-1, 3 ca Soi Lỗi T-102), **1 failed**, 26 phút 56 giây. Ca hỏng là `test_t101_plan_page.py::test_list_reads_sheet_and_shows_plain_text`, vì AppTest chạy trang quá 30 giây (`AppTest script run timed out after 30(s)`) khi máy đang chạy toàn bộ test của Chỉ Huy. Chạy lại trên cùng cây gộp: ca đó **qua** (20 giây), cả file **30 passed**. Hỏng oan vì máy bận, không phải lỗi.
+
+### Điều kiện còn lại cho lượt nối nút (phiếu T-113)
+
+Điều kiện 1 lượt 1 vẫn giữ. Riêng (c) nay lõi đã làm (`CHECK_MAX_AGE` 5 phút, giờ máy lùi, `website.py:441`, chạy trước khi đọc, ghi Sheet), giao diện chỉ phải xử lý lỗi đó. Cụ thể:
+- (a) chỉ chạy khi bấm: một nút **đọc** (`post_statuses` rồi `check_website`), một nút **ghi** riêng với các thay đổi người dùng tick;
+- (b) truyền **thẳng** kết quả `post_statuses` (`dict[int, PostState]`), đúng danh sách mã đã hỏi, `sheet_id=settings.google_sheet_id`, `now=settings.now()`, dùng `website.LATE_AFTER`. **Không** dùng `S.plan_web` (bộ đôi chữ) của cột «Trên website» T-101 (G2);
+- (c) bắt `SheetPlanError` câu `MSG_STALE`, `MSG_OTHER_SHEET`, `MSG_NO_COLUMNS` và hiện bằng chữ thuần, mời bấm kiểm lại; không giữ `WebCheck` qua lần tải trang sau đó lâu;
+- (d) client Google, WordPress tạo mới mỗi lần bấm, không giữ trong phiên;
+- (e) lý do, cảnh báo (cả `ODD_CELL`, `UNSURE_ROW`), xung đột hiện bằng chữ thuần; bảng qua `safe_text` (LC-T101-1);
+- (f) bắt `SheetsError`, `SheetPlanError`, `ValueError`, `WordPressError` thành câu cố định.
+
+Kiểm lại biên bản bằng Claude Fable sau 01/11 (điều kiện 2 lượt 1) vẫn giữ.
