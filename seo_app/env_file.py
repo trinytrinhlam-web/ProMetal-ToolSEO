@@ -4,7 +4,7 @@ Khóa vẫn chỉ nằm trong ``.env`` (quyết định đã chốt); module nà
 toàn hơn sửa file bằng tay:
 
 - Chỉ nhận đúng ba biến ``ALLOWED_KEYS``. Không biến nào khác (ví dụ ``APP_PASSWORD_HASH``)
-  sửa được qua đây.
+  sửa được qua ``set_api_key``, ``clear_api_key``.
 - Giá trị bị kiểm tra chặt (``validate_key_value``): không xuống dòng, không ký tự điều khiển,
   không dấu nháy, ``#``, ``$``, dấu cách… nên không ai chèn thêm được một biến khác vào file.
 - Mọi dòng khác, chú thích và thứ tự trong ``.env`` được giữ nguyên.
@@ -13,6 +13,10 @@ toàn hơn sửa file bằng tay:
 Riêng ``GOOGLE_SHEET_ID`` (T-097, LC-T094-15) có hàm ghi riêng ``set_google_sheet_id`` với bộ
 kiểm riêng ``validate_sheet_id`` (chỉ ``[A-Za-z0-9_-]{25,100}``, chặt hơn khóa AI). Đường dẫn
 file khóa Google (``GOOGLE_SERVICE_ACCOUNT_FILE``) **không** ghi được từ giao diện.
+
+Mã băm mật khẩu ``APP_PASSWORD_HASH`` chỉ ghi qua ``set_password_hash``, cho script
+``set_password`` (T-104), không từ giao diện; ``password_hash_overridden`` cho biết biến môi trường
+của máy có đè ``.env`` không (T-105).
 
 Không hàm nào ở đây trả về, in ra hay ghi log giá trị khóa (security.md 2.1); câu báo về mã
 Sheet cũng không chép mã (mã Sheet là thông tin cần giữ, LC-T094-15).
@@ -80,6 +84,20 @@ class EnvFileWriteError(EnvFileError):
 
 class EnvFileFormatError(EnvFileError):
     """Nội dung mới không khớp cách python-dotenv đọc: không ghi, hoặc đã trả lại bản cũ."""
+
+
+class EnvFileReadBackError(EnvFileError):
+    """Đã thay ``.env`` nhưng **không đọc lại được** để kiểm (``error_name``: tên loại lỗi; ví dụ
+    chương trình khác giữ file đúng lúc đó; SL-T104-1, T-105). Khác ``EnvFileFormatError`` (đọc lại
+    được mà nội dung khác). ``restored``: đã bỏ bản vừa ghi (trả bản cũ, hay xóa file vừa tạo khi
+    trước đó chưa có), ``.env`` như trước khi ghi; ``False``: không bỏ được, ``.env`` có thể đang
+    mang giá trị mới chưa được kiểm."""
+
+    def __init__(self, *, error_name: str, restored: bool) -> None:
+        message = _READBACK_RESTORED if restored else _READBACK_UNSURE
+        super().__init__(message.format(error=error_name))
+        self.error_name = error_name
+        self.restored = restored
 
 
 def _resolve_env_file(env_file: Path | None) -> Path:
@@ -210,6 +228,17 @@ _RESTORE_FAILED = (
     "File .env vừa ghi đọc lại thấy sai và không trả lại được bản cũ ({error}). Hãy mở .env "
     "kiểm tra từng dòng."
 )
+# Không đọc lại được file vừa ghi (SL-T104-1, T-105): nói đúng nguyên nhân, không nói tới định dạng.
+_READBACK_RESTORED = (
+    "Không đọc lại được file .env để kiểm sau khi ghi ({error}) nên đã bỏ bản vừa ghi, file .env "
+    "vẫn như trước khi lưu. Đóng chương trình đang mở file .env (ví dụ phần mềm diệt virus hay "
+    "đồng bộ thư mục) rồi thử lại."
+)
+_READBACK_UNSURE = (
+    "Không đọc lại được file .env để kiểm sau khi ghi ({error}), cũng không bỏ được bản vừa ghi: "
+    "file .env có thể đã mang giá trị mới nhưng chưa được kiểm. Đóng chương trình đang mở file "
+    ".env (ví dụ phần mềm diệt virus hay đồng bộ thư mục) rồi lưu lại lần nữa."
+)
 
 
 def _write_value(
@@ -233,22 +262,48 @@ def _write_value(
 
     _atomic_write(path, content)
 
-    # Đọc lại từ đĩa bằng python-dotenv để chắc chắn; sai thì trả lại bản cũ.
+    # Đọc lại từ đĩa bằng python-dotenv để chắc chắn. Không đọc lại được hay đọc ra khác thì bỏ
+    # bản vừa ghi, rồi báo đúng nguyên nhân: hai trường hợp không gộp (SL-T104-1, T-105).
     try:
         written = _read_env_text(path)
-    except EnvFileError:
-        written = None
-    if written is None or _parse(written) != expected:
+    except EnvFileError as exc:
+        written, read_error = None, _read_error_name(exc)
+    else:
+        read_error = "FileNotFoundError" if written is None else None
+    if written is not None and _parse(written) == expected:
+        return
+    discard_error = _discard_written(path, old_text)
+    if read_error is not None:
+        raise EnvFileReadBackError(error_name=read_error, restored=discard_error is None)
+    if discard_error is not None:
+        # File đã bị thay mà không trả lại được: không được báo «file cũ còn nguyên».
+        raise EnvFileError(_RESTORE_FAILED.format(error=discard_error))
+    raise EnvFileFormatError(_FORMAT_ERROR)
+
+
+def _read_error_name(exc: EnvFileError) -> str:
+    """Tên loại lỗi khi đọc lại ``.env`` (cho câu báo: không đường dẫn, không nội dung)."""
+    if isinstance(exc, EnvFileReadError):
+        if exc.error_name:
+            return exc.error_name
+        if exc.not_utf8:
+            return "UnicodeDecodeError"
+    return type(exc).__name__
+
+
+def _discard_written(path: Path, old_text: str | None) -> str | None:
+    """Bỏ bản vừa ghi: trả bản cũ, hay xóa file vừa tạo (trước đó chưa có ``.env``). Trả tên loại
+    lỗi nếu không bỏ được (khi đó ``.env`` có thể vẫn mang bản vừa ghi), ``None`` nếu bỏ được."""
+    try:
         if old_text is None:
-            with contextlib.suppress(OSError):
-                path.unlink()
+            path.unlink(missing_ok=True)
         else:
-            try:
-                _atomic_write(path, old_text)
-            except EnvFileWriteError as exc:
-                # File đã bị thay mà không trả lại được: không được báo «file cũ còn nguyên».
-                raise EnvFileError(_RESTORE_FAILED.format(error=exc.error_name)) from exc
-        raise EnvFileFormatError(_FORMAT_ERROR)
+            _atomic_write(path, old_text)
+    except EnvFileWriteError as exc:
+        return exc.error_name
+    except OSError as exc:
+        return type(exc).__name__
+    return None
 
 
 def _is_windows() -> bool:
@@ -361,6 +416,18 @@ def overridden_by_os_environ(name: str, environ: Mapping[str, str] | None = None
     _check_name(name)
     env = os.environ if environ is None else environ
     return name in env
+
+
+def password_hash_overridden(environ: Mapping[str, str] | None = None) -> bool:
+    """``APP_PASSWORD_HASH`` có trong biến môi trường hệ điều hành (SL-T104-2, T-105).
+
+    Cùng điều kiện với ``load_settings``: biến có mặt (kể cả rỗng) là app dùng giá trị đó, bỏ qua
+    ``.env``, nên mã băm ``set_password`` ghi vào ``.env`` không có hiệu lực. Hàm riêng vì
+    ``overridden_by_os_environ`` chỉ nhận tên khóa AI. Chỉ trả về đúng/sai, không bao giờ trả về
+    giá trị.
+    """
+    env = os.environ if environ is None else environ
+    return PASSWORD_HASH_VAR in env
 
 
 # ---------------------------------------------------------------------------

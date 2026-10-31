@@ -252,11 +252,6 @@ def test_real_windows_refusal_keeps_env(project_root, tmp_path, monkeypatch, how
 # ================================= SL-T104-1: đọc lại sau khi thay lỗi, câu báo sai nguyên nhân
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T104-1: đọc lại .env ngay sau khi thay bị lỗi (file vừa bị giữ) thì câu báo nói "
-    "«dòng sai định dạng… thiếu dấu nháy đóng», không đúng nguyên nhân",
-)
 def test_readback_failure_message_tells_the_real_cause(project_root, tmp_path, monkeypatch):
     """Bộ ghi thay ``.env`` xong thì đọc lại để kiểm. Lần đọc lại đó lỗi (ví dụ chương trình quét
     virus hay đồng bộ đang giữ file đúng lúc ấy): bộ ghi trả bản cũ (đúng, file còn nguyên), nhưng
@@ -287,11 +282,6 @@ def test_readback_failure_message_tells_the_real_cause(project_root, tmp_path, m
 # =============================== SL-T104-2 (có từ trước): biến môi trường của máy đè lên .env
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T104-2 (có từ trước): máy có biến môi trường APP_PASSWORD_HASH thì app dùng biến "
-    "đó, set_password vẫn báo «Đã lưu mật khẩu mới»: mật khẩu mới không có hiệu lực",
-)
 def test_os_environment_hash_is_reported(project_root, tmp_path, monkeypatch):
     """App đọc ``APP_PASSWORD_HASH`` trong biến môi trường của máy trước ``.env``
     (``load_settings``: biến môi trường đè giá trị file). Máy có biến đó (ví dụ từng đặt tay) thì
