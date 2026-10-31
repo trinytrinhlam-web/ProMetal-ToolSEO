@@ -587,6 +587,11 @@ def _due_of(value: object) -> tuple[datetime | None, bool]:
         moment = datetime.strptime(value, _DATE_GMT).replace(tzinfo=UTC)
     except ValueError:
         return None, True
+    # LC-T113-1: xét năm theo giờ UTC **trước** khi đổi sang giờ Việt Nam: cuối năm 9999 cộng 7 giờ
+    # là năm 10000, ``astimezone`` ném ``OverflowError``. Năm UTC trong khoảng thì đổi múi giờ an
+    # toàn, rồi xét lại theo năm giờ Việt Nam (đúng khoảng ô Sheet đọc lại được).
+    if not model.YEAR_MIN - 1 <= moment.year <= model.YEAR_MAX:
+        return None, True
     if not model.YEAR_MIN <= moment.astimezone(model.TIMEZONE).year <= model.YEAR_MAX:
         return None, True
     return moment, False

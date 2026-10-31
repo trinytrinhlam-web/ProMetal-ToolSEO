@@ -31,13 +31,9 @@ wordpress = t101.wordpress
 fake = t109.fake
 client = t109.client
 
-LC_T113_1 = pytest.mark.xfail(
-    strict=True,
-    reason="LC-T113-1: ngày website cuối năm 9999 làm lõi ném OverflowError (lỗi Python hiện ra)",
-)
 EDGE_OK = "9999-12-31T16:59:59"  # sang +07 vẫn là năm 9999: lõi báo ngày lạ đúng (đối chứng)
 OVERFLOW = ("9999-12-31T17:00:00", "9999-12-31T23:59:59")  # sang +07 là năm 10000: tràn
-DATES = [EDGE_OK, *(pytest.param(value, marks=LC_T113_1) for value in OVERFLOW)]
+DATES = [EDGE_OK, *OVERFLOW]
 
 
 @pytest.mark.parametrize("date_gmt", DATES)

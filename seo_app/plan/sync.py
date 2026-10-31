@@ -1069,7 +1069,11 @@ def _moment_text(moment: datetime) -> str:
     được). Giờ không múi giờ là lỗi lập trình."""
     if moment.tzinfo is None:
         raise ValueError("thời điểm phải có múi giờ")
-    return moment.astimezone(model.TIMEZONE).isoformat(sep=" ", timespec="minutes")
+    try:
+        local = moment.astimezone(model.TIMEZONE)
+    except OverflowError:  # LC-T113-1 cùng kiểu: giờ sát năm 9999 (file nháp bị sửa tay…)
+        raise ValueError("thời điểm ngoài khoảng") from None
+    return local.isoformat(sep=" ", timespec="minutes")
 
 
 def _cell_text(value: CellValue, name: str | None = None) -> str:
