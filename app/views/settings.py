@@ -697,6 +697,64 @@ def prepare_plan_sheet(settings, *, add_missing: bool) -> None:
     S["google-check"] = ("success", result.message)
 
 
+# ================================================================ Hẹn giờ, đăng (T-112)
+
+# Cùng khóa với ``RELEASE_SWITCH`` của ``app/views/write.py``: bước Xuất bản chỉ đọc khóa này.
+RELEASE_SWITCH = "_release_enabled"
+RELEASE_ACK = "release_ack"
+RELEASE_TOGGLE = "release_toggle"
+MSG_RELEASE_ON = (
+    "Hẹn giờ và Đăng ngay đang **bật** trong lần mở app này. Bước Xuất bản của Soạn bài có thêm "
+    "hai hình thức này; mỗi lần gửi vẫn phải xem lại và tick xác nhận. Tắt app hay tải lại trang "
+    "là công tắc tự tắt."
+)
+MSG_RELEASE_OFF_HERE = (
+    "Hẹn giờ và Đăng ngay đang **tắt** (mặc định): bước Xuất bản chỉ gửi bài dạng Nháp. Chỉ bật "
+    "sau buổi thử thật trên website cùng Chỉ Huy. Công tắc không lưu ở đâu cả: mỗi lần mở app, "
+    "tải lại trang là tắt."
+)
+
+
+def _release_ack_changed() -> None:
+    if not S.get(RELEASE_ACK):
+        S[RELEASE_SWITCH] = False  # bỏ tick «Tôi hiểu…» là tắt luôn
+
+
+def _release_toggle_changed() -> None:
+    S[RELEASE_SWITCH] = bool(S.get(RELEASE_TOGGLE)) and bool(S.get(RELEASE_ACK))
+
+
+def release_tab() -> None:
+    """Công tắc Hẹn giờ / Đăng ngay (LC-T094-41; T-112, Chỉ Huy chọn A 31/10): **chỉ trong phiên**
+    (``st.session_state``), không ghi file nào (nháp, ``.env``, ``config/``, ``data/``): tắt app hay
+    tải lại trang là tắt; không tham số địa chỉ, file nháp hay ô nhập nào khác đặt được. Bật phải
+    tick «Tôi hiểu…» trước. Bước Xuất bản xét lại công tắc lúc bấm gửi (G2 Lá Chắn T-102)."""
+    on = S.get(RELEASE_SWITCH) is True
+    # Ô của trang này bị Streamlit dọn khi sang trang khác: dựng lại theo công tắc thật mỗi lần vẽ.
+    S[RELEASE_ACK] = on or S.get(RELEASE_ACK) is True
+    S[RELEASE_TOGGLE] = on
+    st.markdown("#### 📅 Hẹn giờ và Đăng ngay")
+    st.caption(
+        "Hẹn giờ: bài lên website ở dạng hẹn giờ, WordPress tự đăng đúng giờ. Đăng ngay: bài hiện "
+        "công khai ngay khi bấm gửi. Mặc định chỉ có Nháp."
+    )
+    st.checkbox(
+        "Tôi hiểu: bài sẽ được hẹn giờ/đăng công khai thật trên website",
+        key=RELEASE_ACK,
+        on_change=_release_ack_changed,
+    )
+    st.toggle(
+        "Bật Hẹn giờ và Đăng ngay",
+        key=RELEASE_TOGGLE,
+        on_change=_release_toggle_changed,
+        disabled=not S.get(RELEASE_ACK),
+    )
+    if S.get(RELEASE_SWITCH) is True:
+        st.warning(MSG_RELEASE_ON)
+    else:
+        st.info(MSG_RELEASE_OFF_HERE)
+
+
 def google_tab(settings) -> None:
     st.caption(
         "Kế hoạch bài viết nằm trên Google Sheets để hai máy luôn thấy giống nhau. Phần mềm đọc, "
@@ -725,9 +783,9 @@ if logout.button("Đăng xuất", width="stretch"):
     S.clear()
     st.rerun()
 
-# Tab Google đặt cuối: giữ thứ tự các tab đã có (test cũ tìm tab theo vị trí).
-tone, models, images, connections, google = st.tabs(
-    ["✍️ Văn phong", "🤖 Mô hình AI", "🖼️ Ảnh", "🔌 Kết nối", "📗 Google"]
+# Tab mới đặt cuối: giữ thứ tự các tab đã có (test cũ tìm tab theo vị trí).
+tone, models, images, connections, google, release = st.tabs(
+    ["✍️ Văn phong", "🤖 Mô hình AI", "🖼️ Ảnh", "🔌 Kết nối", "📗 Google", "📅 Hẹn giờ, đăng"]
 )
 
 with tone:
@@ -794,3 +852,6 @@ with connections:
 
 with google:
     google_tab(settings)
+
+with release:
+    release_tab()

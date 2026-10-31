@@ -290,13 +290,14 @@ MODE_OF = {MODE_DRAFT: "draft", MODE_FUTURE: "future", MODE_PUBLISH: "publish"}
 # Công tắc Hẹn giờ, Đăng ngay (LC-T094-41): mặc định tắt. Chỉ bật sau lượt thử thật trên website
 # (LC-T094-44) và khi Lá Chắn rà xong Giai đoạn 5; chưa có chỗ bật trên giao diện (phiếu bật sau
 # lượt thử thật nối công tắc ở trang Cài đặt vào khóa này). Test đặt khóa này để thử hai hình thức.
-RELEASE_SWITCH = "_release_enabled"
+RELEASE_SWITCH = "_release_enabled"  # chỉ trong phiên; bật ở Cài đặt (T-112, Chỉ Huy chọn A)
 DEFAULT_PUBLISH_TIME = time(8, 0)  # khi `[plan].default_time` thiếu, sai (Lá Chắn T-103 đk 2c)
 MAX_SHOWN_TEXT = 300  # ký tự tối đa của một ô chữ trên màn hình xác nhận (chữ dài thì cắt «…»)
 MSG_RELEASE_OFF = (
     "Hẹn giờ và Đăng ngay đang **tắt**: chỉ bật sau lượt thử thật trên website (kiểm website trả "
-    "giờ đúng, tài khoản Biên tập viên hẹn giờ được). Bây giờ hãy gửi dạng **Nháp**, rồi hẹn giờ "
-    "hay đăng bài trong trang quản trị WordPress."
+    "giờ đúng, tài khoản Biên tập viên hẹn giờ được), ở **Cài đặt → 📅 Hẹn giờ, đăng** (tắt app là "
+    "tự tắt). Bây giờ hãy gửi dạng **Nháp**, rồi hẹn giờ hay đăng bài trong trang quản trị "
+    "WordPress."
 )
 MSG_CONFIRM_CHANGED = (
     "Bài vừa thay đổi sau khi bạn xem lại (nội dung, ảnh, giờ hẹn, chuyên mục, SEO hay danh sách "
