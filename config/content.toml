@@ -171,18 +171,19 @@ tot = "Minh họa cửa cuốn nhà phố đang mở một nửa"
 xau = "Cửa cuốn nhà chị Lan sau khi Pro-Metal sửa xong"
 vi_sao = "Ảnh AI không được gắn tên khách hay «sau khi sửa»"
 
-# LƯU Ý (T-103, 2026-10-28): mục [plan] dành cho trang Kế hoạch và bước Xuất bản (Giai đoạn 5).
-# Hôm nay phần mềm chưa dùng mục này: phiếu làm bước «Hẹn giờ» (T-102) sẽ đọc. Sửa ở đây lúc này
-# chưa đổi gì trên app.
+# LƯU Ý (T-103, 2026-10-28; nối ở T-102, 2026-10-31): mục [plan] dùng cho bước Xuất bản của Soạn
+# bài (Giai đoạn 5). Phần mềm chỉ đọc default_time ở mục này; các nhãn bên dưới chỉ là chú thích.
 [plan]
-# default_time: giờ đăng mặc định, giờ Việt Nam, kiểu 24 giờ HH:MM (ví dụ "08:00", "19:30"). Dùng
-#   khi dòng kế hoạch để trống ô «Giờ đăng»: phần mềm điền sẵn giờ này vào ô giờ của «Hẹn giờ»,
-#   bạn vẫn sửa được trước khi gửi. Khi phần mềm đã dùng mục này: viết sai dạng (ví dụ
-#   "8 giờ sáng", "25:00") thì phần mềm bỏ qua và dùng "08:00".
+# default_time: giờ đăng mặc định, kiểu 24 giờ HH:MM (ví dụ "08:00", "19:30"), theo múi giờ của
+#   app (mặc định giờ Việt Nam). Phần mềm điền sẵn giờ này vào ô Giờ của «Hẹn giờ» khi bài chưa có
+#   giờ đăng (bài mở từ dòng kế hoạch có ô «Giờ đăng» thì dùng giờ của dòng đó); bạn vẫn sửa được
+#   trước khi gửi. Viết sai dạng (ví dụ "2 giờ chiều", "25:00") thì phần mềm bỏ qua và dùng "08:00".
+#   Công tắc cho phép hẹn giờ và đăng ngay hiện mặc định tắt: khi tắt, ô Giờ không hiện và bài chỉ
+#   gửi được dạng nháp.
 default_time = "08:00"
 #
-# Nhãn trong kế hoạch: cố định trong phần mềm (cũng là danh sách chọn trên Google Sheets), không
-# đổi ở file này. Gõ tay trên Sheet thì dùng đúng các nhãn sau:
+# Nhãn trong kế hoạch: cố định trong phần mềm (cũng là danh sách chọn trên Google Sheets); phần mềm
+# không đọc nhãn từ file này. Gõ tay trên Sheet thì dùng đúng các nhãn sau:
 #   Ý định (người tìm muốn gì):
 #     «Tìm hiểu»: muốn biết nguyên nhân, cách làm, tự sửa được không (cửa kéo bị kẹt ray).
 #     «So sánh trước khi mua»: cân nhắc vật liệu, kiểu cửa, sửa hay thay (cửa cuốn hay cửa kéo).

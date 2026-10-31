@@ -7,10 +7,12 @@ Không gọi AI, Google, WordPress: chỉ dựng lời dặn, đọc file cấu 
 
 from __future__ import annotations
 
+import ast
 import re
 import tomllib
 import unicodedata
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -379,23 +381,100 @@ def test_plan_comments_list_exactly_the_labels_of_the_code():
     assert named <= known, named - known
 
 
-def test_plan_section_note_says_not_used_yet_and_is_true():
-    """Ghi chú «phần mềm chưa dùng mục này» đúng sự thật: không bộ đọc nào của app đọc ``[plan]``
-    (khi phiếu sau nối mục này thì test nhắc sửa ghi chú)."""
-    note = _plan_section_text().strip().splitlines()[0]
-    assert note.startswith("# LƯU Ý (T-103")
-    assert "chưa dùng mục này" in _plan_section_text()
-    from pathlib import Path
+def _plan_comments() -> str:
+    """Chữ của mục ``[plan]`` bỏ dấu ``#`` đầu dòng, nối thành một dòng (tìm được câu vắt dòng)."""
+    lines = (line.lstrip("#").strip() for line in _plan_section_text().splitlines())
+    return " ".join(" ".join(lines).split())
 
-    root = Path(__file__).resolve().parents[1]
-    readers = [
-        path.relative_to(root).as_posix()
-        for folder in ("seo_app", "app")
-        for path in (root / folder).rglob("*.py")
-        if re.search(r"""["']plan["']\s*,\s*path|_table\([^)]*["']plan["']|\["plan"\]""",
-                     path.read_text(encoding="utf-8"))  # fmt: skip
-    ]
-    assert readers == []
+
+ROOT = Path(__file__).resolve().parents[1]
+_TOML_MARKS = {"tomllib", "_load_toml", "CONTENT_CONFIG_FILE"}  # tên dùng khi mở file cấu hình
+_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+_KEY_ARG = {"get": 0, "pop": 0, "setdefault": 0, "_table": 1}  # vị trí khóa trong lời gọi
+
+
+def _own_nodes(scope: ast.AST):
+    """Các nút của một hàm, lớp hay module, không tính hàm, lớp lồng bên trong (xét riêng)."""
+    stack = list(ast.iter_child_nodes(scope))
+    while stack:
+        node = stack.pop()
+        yield node
+        if not isinstance(node, _SCOPES):
+            stack.extend(ast.iter_child_nodes(node))
+
+
+def _text_keys(nodes) -> set[str]:
+    """Khóa chữ được lấy ra: ``x["k"]``, ``x.get("k")``, ``_table(data, "k", path)``…"""
+    keys = set()
+    for node in nodes:
+        key = node.slice if isinstance(node, ast.Subscript) else None
+        if isinstance(node, ast.Call):
+            index = _KEY_ARG.get(getattr(node.func, "attr", getattr(node.func, "id", "")))
+            key = node.args[index] if index is not None and len(node.args) > index else None
+        if isinstance(key, ast.Constant) and isinstance(key.value, str):
+            keys.add(key.value)
+    return keys
+
+
+def _plan_readers() -> dict[str, set[str]]:
+    """Nơi đọc mục ``[plan]`` trong app/, seo_app/: hàm (lớp, module) vừa mở file cấu hình TOML
+    (``tomllib``, ``_load_toml``, ``CONTENT_CONFIG_FILE``) vừa lấy khóa ``"plan"``. Trả
+    {«file::hàm»: mọi khóa chữ hàm đó lấy}. ``holder["plan"]``, ``result.get("plan")`` của bước
+    Xuất bản là dict trong bộ nhớ (hàm không mở file cấu hình) nên không tính; còn
+    ``tomllib.load(file).get("plan", {})`` thì tính. Mẫu dò chữ của lượt 1 bắt nhầm cái trước, sót
+    cái sau."""
+    found: dict[str, set[str]] = {}
+    for folder in ("app", "seo_app"):
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            if '"plan"' not in source and "'plan'" not in source:
+                continue
+            tree = ast.parse(source)
+            for scope in [tree, *(node for node in ast.walk(tree) if isinstance(node, _SCOPES))]:
+                nodes = list(_own_nodes(scope))
+                keys = _text_keys(nodes)
+                names = {node.id for node in nodes if isinstance(node, ast.Name)}
+                if "plan" in keys and names & _TOML_MARKS:
+                    where = f"{path.relative_to(ROOT).as_posix()}::{getattr(scope, 'name', '')}"
+                    found[where] = keys
+    return found
+
+
+def test_plan_section_note_says_in_use_and_is_true():
+    """Sau gộp T-102 (thay test «chưa dùng mục này» của lượt 1): ghi chú ``[plan]`` nói đúng điều
+    phần mềm làm. Nơi duy nhất đọc ``[plan]`` là ``default_publish_time`` (app/views/write.py), chỉ
+    lấy khóa ``default_time``, không đọc nhãn. Giờ ví dụ trong ghi chú đúng với bộ đọc giờ hàm đó
+    dùng (``parse_plan_time``); sai dạng thì về 08:00 (hành vi: test T-102
+    ``test_default_time_from_plan_config``). Phiếu sau đọc thêm khóa, đọc nhãn hay đổi nơi đọc thì
+    test báo để sửa ghi chú."""
+    assert _plan_section_text().strip().startswith("# LƯU Ý (T-103")
+    note = _plan_comments()
+    for stale in ("chưa dùng", "sẽ đọc", "chưa đổi gì", "Khi phần mềm đã dùng"):
+        assert stale not in note, stale
+    for phrase in (
+        "Phần mềm chỉ đọc default_time ở mục này",
+        "Phần mềm điền sẵn giờ này vào ô Giờ của «Hẹn giờ»",
+        "bạn vẫn sửa được trước khi gửi",
+        "Công tắc cho phép hẹn giờ và đăng ngay hiện mặc định tắt",
+        "phần mềm không đọc nhãn từ file này",
+    ):
+        assert phrase in note, phrase
+    assert _plan_readers() == {"app/views/write.py::default_publish_time": {"plan", "default_time"}}
+    good = re.search(r"HH:MM \(ví dụ ([^)]*)\)", note)
+    bad = re.search(r'Viết sai dạng \(ví dụ ([^)]*)\) thì phần mềm bỏ qua và dùng "08:00"', note)
+    assert good and bad, "ghi chú phải có ví dụ giờ đúng dạng và sai dạng"
+    good, bad = re.findall(r'"([^"]+)"', good.group(1)), re.findall(r'"([^"]+)"', bad.group(1))
+    assert good and bad
+    for value in good:
+        assert model.parse_plan_time(value) == value, value
+    for value in bad:
+        with pytest.raises(ValueError):
+            model.parse_plan_time(value)
+    source = (ROOT / "app" / "views" / "write.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    reader = next(node for node in tree.body if getattr(node, "name", "") == "default_publish_time")
+    assert "parse_plan_time" in {node.id for node in ast.walk(reader) if isinstance(node, ast.Name)}
+    assert "\nDEFAULT_PUBLISH_TIME = time(8, 0)" in source
 
 
 def test_plan_section_does_not_change_other_readers(tmp_path):

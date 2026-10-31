@@ -5,7 +5,7 @@
 | Agent | Ngòi Bút (`ngoi-but`) · model: Claude Opus 5.5 |
 | Phiếu | [T-103](../tickets/T-103-loi-dan-ai-doc-ke-hoach.md) |
 | Ngày nộp | 2026-10-28 |
-| Kết quả | Hoàn thành, kể cả [lượt 2](#lượt-2-2026-10-28-góp-ý-g1-của-soi-lỗi) (góp ý G1). Mục `[plan]` chờ phiếu Hẹn giờ T-102 đọc, xem Đề xuất 2 |
+| Kết quả | Hoàn thành, kể cả [lượt 2](#lượt-2-2026-10-28-góp-ý-g1-của-soi-lỗi) (góp ý G1) và [sau gộp T-102](#sau-gộp-t-102-2026-10-31-ghi-chú-plan-đúng-sự-thật) (T-102 đã đọc `[plan]`, ghi chú sửa cho đúng) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -21,6 +21,7 @@
 - **Quy tắc dữ liệu chung** gửi kèm mọi lần gọi AI nay nêu đủ mọi khung dữ liệu, gồm hai khung kế hoạch (góp ý của Soi Lỗi T-098).
 - Anh/chị chưa thấy gì khác trên giao diện: trang Kế hoạch thật làm ở T-101. Muốn thử ngay bằng khóa AI của mình: mục [Cách tự thử](#cách-chủ-dự-án-tự-thử-trên-máy).
 - **Lượt 2 (2026-10-28):** thêm một câu cho dòng kế hoạch chưa có mã bài (góp ý G1 của Soi Lỗi), xem mục [Lượt 2](#lượt-2-2026-10-28-góp-ý-g1-của-soi-lỗi) cuối báo cáo. Bảng «trước / sau», số test, độ dài ở các mục bên dưới là của lượt 1.
+- **Sau gộp T-102 (2026-10-31):** phần mềm nay **đang dùng** giờ mặc định trong `[plan]` để điền sẵn ô Giờ của «Hẹn giờ». Ý «chưa dùng» ở trên đã cũ; ghi chú trong file đã sửa, xem mục [Sau gộp T-102](#sau-gộp-t-102-2026-10-31-ghi-chú-plan-đúng-sự-thật).
 
 ## Đã thay đổi
 
@@ -407,5 +408,127 @@ Test mới `test_row_without_key_is_not_changed_dropped_or_duplicated`:
 5. **T-101 (trang Kế hoạch):** kế hoạch có dòng chưa có mã thì nên báo một câu cố định trước khi đọc ghi chú (AI không đề xuất sửa, bỏ các dòng này). Như vậy anh/chị biết vì sao ghi chú nhắc dòng đó mà không ra đề xuất nào.
 
 ### Câu hỏi cho chủ dự án (lượt 2)
+
+Không có.
+
+## Sau gộp T-102 (2026-10-31): ghi chú `[plan]` đúng sự thật
+
+| Mục | Nội dung |
+|---|---|
+| Lệnh | Chỉ Huy B (31/10 08:40): T-102 đã gộp `main` cục bộ (`3cdd096`), `default_publish_time` (`app/views/write.py`) đọc `[plan].default_time`; ghi chú «phần mềm chưa dùng mục này» nay sai. Đổi test nhắc theo R5, Chỉ Huy duyệt |
+| Nhánh | `team/T-102` (worktree `wt-T-102`); gộp `main` `3cdd096` trước khi sửa (fast-forward từ `9381783`) |
+| Kết quả | Hoàn thành |
+
+### Tóm tắt (cho chủ dự án)
+
+- Ghi chú trên mục `[plan]` trong `config/content.toml` nay nói đúng điều phần mềm làm:
+  - giờ `default_time` **đang được dùng** để điền sẵn ô Giờ của «Hẹn giờ», anh/chị sửa được trước khi gửi;
+  - viết sai dạng thì phần mềm dùng 08:00;
+  - công tắc cho phép hẹn giờ và đăng ngay hiện mặc định tắt (khi tắt, ô Giờ không hiện, bài chỉ gửi được dạng nháp);
+  - nhãn kế hoạch vẫn cố định trong phần mềm, không đọc từ file này.
+- Không đổi giá trị nào: giờ mặc định vẫn 08:00.
+
+### Ghi chú mới
+
+```toml
+# LƯU Ý (T-103, 2026-10-28; nối ở T-102, 2026-10-31): mục [plan] dùng cho bước Xuất bản của Soạn
+# bài (Giai đoạn 5). Phần mềm chỉ đọc default_time ở mục này; các nhãn bên dưới chỉ là chú thích.
+[plan]
+# default_time: giờ đăng mặc định, kiểu 24 giờ HH:MM (ví dụ "08:00", "19:30"), theo múi giờ của
+#   app (mặc định giờ Việt Nam). Phần mềm điền sẵn giờ này vào ô Giờ của «Hẹn giờ» khi bài chưa có
+#   giờ đăng (bài mở từ dòng kế hoạch có ô «Giờ đăng» thì dùng giờ của dòng đó); bạn vẫn sửa được
+#   trước khi gửi. Viết sai dạng (ví dụ "2 giờ chiều", "25:00") thì phần mềm bỏ qua và dùng "08:00".
+#   Công tắc cho phép hẹn giờ và đăng ngay hiện mặc định tắt: khi tắt, ô Giờ không hiện và bài chỉ
+#   gửi được dạng nháp.
+default_time = "08:00"
+#
+# Nhãn trong kế hoạch: cố định trong phần mềm (cũng là danh sách chọn trên Google Sheets); phần mềm
+# không đọc nhãn từ file này. Gõ tay trên Sheet thì dùng đúng các nhãn sau:
+```
+
+Danh sách nhãn bên dưới giữ nguyên.
+
+| Chỗ | Cũ (T-103) | Mới |
+|---|---|---|
+| Dòng LƯU Ý | «Hôm nay phần mềm chưa dùng mục này: phiếu làm bước «Hẹn giờ» (T-102) sẽ đọc. Sửa ở đây lúc này chưa đổi gì trên app.» | Ghi ngày nối ở T-102; «Phần mềm chỉ đọc default_time ở mục này; các nhãn bên dưới chỉ là chú thích.» |
+| Giờ điền sẵn | «Dùng khi dòng kế hoạch để trống ô «Giờ đăng»…» | Điền sẵn **khi bài chưa có giờ đăng**, gồm cả bài không mở từ kế hoạch; dòng kế hoạch có giờ thì dùng giờ đó. Thêm «theo múi giờ của app (mặc định giờ Việt Nam)» |
+| Viết sai dạng | «Khi phần mềm đã dùng mục này: viết sai dạng (ví dụ "8 giờ sáng", "25:00")…» | Câu khẳng định, ví dụ «"2 giờ chiều", "25:00"» |
+| Công tắc | Không có | «Công tắc cho phép hẹn giờ và đăng ngay hiện mặc định tắt: khi tắt, ô Giờ không hiện và bài chỉ gửi được dạng nháp.» |
+| Nhãn | «…, không đổi ở file này» | «…; phần mềm không đọc nhãn từ file này» |
+
+Từng ý đã đối chiếu với code ở `3cdd096`:
+- **Điền sẵn:** `schedule_picker` gán `default_publish_time()` khi `_wp_time` chưa có giờ. Mở bài từ dòng kế hoạch thì `plan_details` đã gán giờ của dòng (cột «Giờ đăng», `planned_time`) trước đó, nên giờ của dòng thắng. `_wp_time` nằm trong `COMPOSE_KEYS`, xóa cùng bài.
+- **Múi giờ:** ô Giờ đọc theo `load_settings().timezone_name` (`APP_TIMEZONE`, mặc định `Asia/Ho_Chi_Minh`).
+- **Sai dạng:** gọi thật `default_publish_time` với file cấu hình tạm:
+  - «2 giờ chiều», «25:00», «8 giờ sáng», «8», số `8`, `true`, thiếu mục, thiếu file, file hỏng → 08:00;
+  - «19:30» → 19:30; «8 PM» → 20:00.
+- **Vì sao đổi ví dụ «8 giờ sáng»:**
+  - «8 giờ sáng» cũng bị bỏ, nhưng kết quả trùng ý người viết (08:00) nên không cho thấy điều cần cảnh báo. «2 giờ chiều» ra 08:00 chứ không phải 14:00.
+  - Bộ đọc nhận cả «8 giờ», «8h30», «8 PM»; ghi chú chỉ khuyên dạng HH:MM.
+- **Công tắc:** `RELEASE_SWITCH` mặc định tắt. `publish_panel` dừng ở câu `MSG_RELEASE_OFF` trước khi gọi `schedule_picker`, nên ô Giờ không hiện. Đã có test sẵn: `tests/test_soi_loi_t102.py` (câu «đang **tắt**»), `tests/test_content_edge_cases.py`.
+- **Nhãn:** không chỗ nào đọc (test mới, dưới).
+- **Viết «đăng ngay» không ngoặc «»:** test `test_plan_comments_list_exactly_the_labels_of_the_code` chỉ cho phép trong «» các nhãn của code và «Giờ đăng», «Hẹn giờ». Viết chữ thường để không phải sửa test đó.
+
+### Test: cũ → mới (R5, Chỉ Huy duyệt 31/10 08:40)
+
+| | Cũ: `test_plan_section_note_says_not_used_yet_and_is_true` | Mới: `test_plan_section_note_says_in_use_and_is_true` |
+|---|---|---|
+| Ghi chú | Đòi có «chưa dùng mục này» | Cấm câu cũ («chưa dùng», «sẽ đọc», «chưa đổi gì», «Khi phần mềm đã dùng»). Đòi 5 ý: chỉ đọc `default_time`; điền sẵn ô Giờ của «Hẹn giờ»; sửa được trước khi gửi; công tắc mặc định tắt; không đọc nhãn |
+| Nơi đọc `[plan]` | Dò bằng mẫu chữ (`["plan"]`, `"plan", path`, `_table(…"plan"…)`), đòi không có nơi nào. Sau gộp T-102 thì bắt nhầm `holder["plan"]`, `result["plan"]` của bước Xuất bản, mà lại sót `tomllib.load(file).get("plan", {})` | Dò theo cây cú pháp: hàm (lớp, module) vừa mở file cấu hình TOML (`tomllib`, `_load_toml`, `CONTENT_CONFIG_FILE`) vừa lấy khóa `"plan"` (`[…]`, `.get`, `.pop`, `.setdefault`, `_table(…, "plan", …)`). Đòi đúng `{"app/views/write.py::default_publish_time": {"plan", "default_time"}}` |
+| Không đọc nhãn | (không có nơi đọc) | Hàm đọc duy nhất chỉ lấy hai khóa `plan`, `default_time` |
+| Ví dụ giờ trong ghi chú | — | Ví dụ đúng dạng: `parse_plan_time` giữ nguyên. Ví dụ sai dạng: `parse_plan_time` từ chối. `default_publish_time` có gọi `parse_plan_time`; giờ dự phòng là `DEFAULT_PUBLISH_TIME = time(8, 0)`. Hành vi «sai dạng thì 08:00» qua trang thật đã có test T-102 `test_default_time_from_plan_config` |
+
+- Giữ nguyên `test_plan_section_does_not_change_other_readers` (bỏ mục `[plan]` thì 4 bộ đọc của `rules.py` cho kết quả y hệt) và mọi test khác của file.
+- Test mới không nạp `app/views/write.py`: nạp trang Streamlit mất khoảng 31 giây khi máy bận. Đọc cây cú pháp thay vào đó: test chạy khoảng 1,3 giây.
+
+Đối chứng (script ngoài repo: sửa tạm từng chỗ trong worktree, chạy đúng test mới, trả file về như cũ; `git status` sau đó chỉ còn 2 file của lượt này):
+
+| Làm hỏng | Test mới |
+|---|---|
+| Không đổi gì | Qua |
+| Ghi chú quay lại câu «chưa dùng mục này» | Bắt được |
+| Ghi chú bỏ câu «không đọc nhãn» | Bắt được |
+| Ví dụ «sai dạng» thật ra đúng dạng («8 giờ») | Bắt được |
+| `rules.py` thêm hàm đọc `[plan]` qua `_table` | Bắt được |
+| Module mới đọc `[plan]` hai bước (`data = tomllib.loads(…)`, rồi `data["plan"]`) | Bắt được |
+| `default_publish_time` đọc thêm khóa nhãn (`intents`) | Bắt được |
+| `default_publish_time` bỏ `parse_plan_time` | Bắt được |
+| Giờ dự phòng đổi sang 09:00 | Bắt được |
+| Module mới có `holder["plan"]`, `result.get("plan")` (dict trong bộ nhớ) | Qua (không bắt nhầm) |
+
+### Bằng chứng
+
+```
+$ git merge main                                   # 9381783 → 3cdd096, fast-forward
+$ uv run pytest tests/test_t103_plan_prompt.py     # trước khi sửa: test nhắc đỏ đúng lúc
+1 failed, 44 passed
+# test_plan_section_note_says_not_used_yet_and_is_true: assert ['app/views/write.py'] == []
+
+$ uv run pytest tests/test_t103_plan_prompt.py     # sau khi sửa
+45 passed in 5.97s
+
+$ uv run pytest $(grep -rlE "content\.toml|CONTENT_CONFIG_FILE|load_meta_rules|load_alt_rules|load_image_settings|load_rules\(" tests)
+1851 passed, 5 xfailed in 1767.51s (0:29:27)
+# 24 file đọc cấu hình nội dung, gồm tests/test_t102_publish.py, tests/test_t103_plan_prompt.py,
+# tests/test_soi_loi_t103.py, các test T-040, T-041, T-051, T-062, T-065. 5 xfail có từ trước,
+# không liên quan: SL-T045-1, SL-T045-2 (bộ lọc hồ sơ doanh nghiệp)
+
+$ uv run ruff check .
+All checks passed!
+
+$ PYTHONUTF8=1 uvx detect-secrets scan config/content.toml tests/test_t103_plan_prompt.py docs/team/reports/T-103-ngoi-but.md
+"results": {}
+# File mồi (chữ Việt + mật khẩu, khóa giả) chép vào worktree: bắt được 4 mục, rồi xóa.
+```
+
+Máy đang chạy toàn bộ test ở thư mục khác, nên lượt này chỉ chạy test chọn lọc.
+
+### Đối chiếu
+
+- **Lá Chắn T-103 điều kiện 2c, LC-T094-42:** T-102 đọc `default_time` qua `parse_plan_time`, sai dạng thì 08:00, không đọc nhãn. Ghi chú nay khớp, và test mới canh cả ba điều.
+- **Đề xuất 2 của lượt 1** («gỡ dòng LƯU Ý, sửa test nhắc»): theo lệnh Chỉ Huy, tôi **viết lại** dòng LƯU Ý chứ không gỡ. Lý do: hai test cắt mục `[plan]` theo dòng «# LƯU Ý (T-103». Đề xuất 2 xong.
+- **Rủi ro lượt 1** «`[plan]` chưa có tác dụng»: nay đã có tác dụng.
+
+### Câu hỏi cho chủ dự án (sau gộp T-102)
 
 Không có.
