@@ -631,3 +631,32 @@ def test_draft_without_date_is_not_odd(fake, client, web_status):
     FakePlanSheet(fake, rows(row("B-099", "cửa cuốn", status="Đang viết", wp_post_id=199)))
     result = check(client, {199: state(199, web_status, "")})
     assert all(n.kind is not Notice.ODD_DATE for n in result.notices)
+
+
+# ================================================= LC-T113-1 (ngày website cuối năm 9999)
+
+
+@pytest.mark.parametrize(
+    ("date_gmt", "accepted"),
+    [
+        ("9999-12-31T16:59:59", False),  # ngoài khoảng năm của kế hoạch
+        ("9999-12-31T17:00:00", False),  # sang +07 là năm 10000: trước đây ném OverflowError
+        ("9999-12-31T23:59:59", False),
+        ("2035-12-31T16:59:00", True),  # 23:59 ngày 31/12/2035 giờ Việt Nam
+        ("2035-12-31T17:00:00", False),  # 00:00 ngày 01/01/2036 giờ Việt Nam: ngoài khoảng
+        ("2019-12-31T17:00:00", True),  # 00:00 ngày 01/01/2020 giờ Việt Nam
+        ("2019-12-31T16:59:00", False),
+        ("0001-01-01T00:00:00", False),
+    ],
+)
+def test_due_of_checks_year_in_utc_before_converting(date_gmt, accepted):
+    due, odd = website._due_of(date_gmt)
+    assert (due is not None) is accepted and odd is not accepted
+
+
+def test_moment_text_out_of_range_is_value_error_not_overflow():
+    """Cùng kiểu LC-T113-1 ở ``sync``: giờ sát năm 9999 (ví dụ file nháp bị sửa tay) thành
+    ``ValueError`` (giao diện đã bắt), không lọt ``OverflowError``."""
+    with pytest.raises(ValueError):
+        sync._moment_text(datetime(9999, 12, 31, 23, 59, tzinfo=UTC))
+    assert sync._moment_text(datetime(2035, 12, 31, 16, 59, tzinfo=UTC)) == "2035-12-31 23:59+07:00"

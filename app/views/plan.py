@@ -17,11 +17,16 @@ An toàn (Lá Chắn T-094 LC-T094-1 → -3, -32 → -35; điều kiện của T
 - Tải file: kiểm cỡ bằng code trước khi đọc byte (≤ 1 MB), chỉ .csv/.tsv/.txt/.md, không ghi đĩa.
 - AI chỉ đọc khi bấm «Gửi AI đọc»; chữ có số điện thoại, email thì cảnh báo trước (A3).
 - «Viết bài» không gửi gì lên WordPress: chỉ mở Soạn bài với từ khóa đã qua ``PlanRow``.
+- «Cập nhật trạng thái từ website» (T-113, lõi T-109 ``seo_app.plan.website``; điều kiện Lá Chắn
+  T-109): nút **đọc** hỏi website (``post_statuses``, chỉ đọc) rồi ``check_website`` với đúng kết
+  quả đó; nút **ghi** riêng, chỉ ghi các thay đổi người dùng tick (không tick sẵn) bằng
+  ``apply_website_changes``; lần kiểm cũ quá ``website.CHECK_MAX_AGE`` thì khóa nút ghi, mời kiểm
+  lại. Không bao giờ gửi gì lên WordPress.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 
 import streamlit as st
 
@@ -34,7 +39,7 @@ from seo_app.content import ContentWriter, load_rules
 from seo_app.content.workflow import PersonalInfoError
 from seo_app.google.service_account import ServiceAccountError, load_service_account
 from seo_app.google.sheets import SheetsClient, SheetsError, sheet_id_from_link
-from seo_app.plan import model, parse, propose, sync
+from seo_app.plan import model, parse, propose, sync, website
 from seo_app.plan.model import FIELD_LABELS, PlanRow
 from seo_app.storage import plan_cache
 from seo_app.storage import site_index as site_storage
@@ -75,7 +80,6 @@ MSG_DRAFTS_MOVED = (
     "File nháp cũ bị hỏng nên đã được cất sang một bên (tên «{name}», cùng thư mục). App bắt "
     "đầu file nháp mới."
 )
-LATE_AFTER = timedelta(minutes=15)  # bài hẹn giờ quá giờ chừng này mà chưa lên: «Lỡ lịch»
 
 MSG_NO_GOOGLE = (
     "Chưa kết nối Google Sheets nên chưa có kế hoạch để so và ghi. Vào Cài đặt → 📗 Google để "
@@ -98,9 +102,17 @@ MSG_AI_COST = "Đây là chữ tự do: AI sẽ đọc và đề xuất thay đ�
 MSG_APPLY_FAILED = "Chưa ghi gì lên Google Sheet."
 MSG_WEB_NONE = "Chưa có dòng nào có Mã bài WordPress để hỏi website."
 MSG_WEB_NOTE = (
-    "Cột «Trên website» chỉ để xem: phần mềm chưa tự đổi cột Trạng thái trên Google Sheet theo "
-    "website. «Lỡ lịch»: bài hẹn giờ đã quá giờ 15 phút mà chưa lên (thường do lịch chạy của "
-    "WordPress chạy trễ); mở trang quản trị WordPress để kiểm tra."
+    "Cột «Trên website»: trạng thái bài trên website lúc kiểm. «Lỡ lịch»: bài hẹn giờ đã quá giờ "
+    "15 phút mà chưa lên (thường do lịch chạy của WordPress chạy trễ); mở trang quản trị WordPress "
+    "để kiểm tra. Muốn sửa cột Trạng thái trên Google Sheet theo website: tick ở khung «Thay đổi "
+    "trạng thái từ website» rồi bấm ghi."
+)
+MSG_WEB_NO_WP = "Chưa kết nối WordPress nên chưa hỏi được website."
+MSG_WEB_ODD = "Không so được trạng thái website với kế hoạch (dữ liệu có chỗ lạ). Thử kiểm lại."
+MSG_WEB_SAME = "Google Sheet đã khớp với website: không có thay đổi nào để ghi."
+MSG_WEB_STALE = (
+    "Lần kiểm này đã cũ (quá 5 phút) nên chưa ghi được: bấm «🌐 Cập nhật trạng thái từ website» "
+    "để kiểm lại."
 )
 
 
@@ -157,9 +169,12 @@ def site_store() -> site_storage.SiteIndexStore:
 
 
 def cached_index() -> site_storage.SiteIndex | None:
-    """Danh sách bài đã đăng từ cache trên máy (không gọi mạng), để đổi «Trang dịch vụ đích»."""
+    """Danh sách bài đã đăng từ cache trên máy (không gọi mạng), để đổi «Trang dịch vụ đích».
+    Chưa có file cache thì không mở kho (mở kho là tạo file): mở trang không ghi gì xuống đĩa."""
     client = wordpress_client()
-    return site_store().load(client.base_url) if client is not None else None
+    if client is None or not site_storage.DEFAULT_SITE_INDEX_FILE.exists():
+        return None
+    return site_store().load(client.base_url)
 
 
 def fresh_index() -> tuple[site_storage.SiteIndex | None, str]:
@@ -618,7 +633,7 @@ def web_label(row: PlanRow, states: dict[int, tuple[str, str]], now: datetime) -
             due = datetime.strptime(date_gmt, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
         except ValueError:
             due = None
-        if due is not None and now - due > LATE_AFTER:
+        if due is not None and now - due > website.LATE_AFTER:  # cùng hằng với lõi (G1 T-109)
             return "Lỡ lịch"
     return WEB_LABELS.get(status, "")
 
@@ -638,16 +653,24 @@ def list_rows(plan: sync.SheetPlan) -> list[dict[str, object]]:
     return rows
 
 
+def forget_web_check() -> None:
+    for name in ("plan_webcheck", "plan_webresult"):
+        S.pop(name, None)
+
+
 def ask_website(plan: sync.SheetPlan) -> None:
-    """«Cập nhật trạng thái từ website»: chỉ **đọc** (``post_statuses``), không ghi Sheet, không
-    sửa bài. Mã bài WordPress đọc từ Sheet (chưa tin cậy) chỉ dùng để hỏi."""
+    """Nút **đọc** «Cập nhật trạng thái từ website» (chỉ khi bấm): hỏi website (``post_statuses``,
+    chỉ đọc, không sửa bài) rồi ``website.check_website`` với **đúng** kết quả đó và đúng các mã đã
+    hỏi (G2 Soi Lỗi T-109: không đưa bộ đôi chữ của cột «Trên website»). Không ghi Sheet. Mã bài
+    WordPress đọc từ Sheet (chưa tin cậy) chỉ dùng để hỏi. Client WordPress tạo mới mỗi lần bấm."""
+    forget_web_check()
     ids = sorted({row.plan.wp_post_id for row in plan.rows if row.plan.wp_post_id})
     if not ids:
         show("info", MSG_WEB_NONE)
         return
     client = wordpress_client()
     if client is None:
-        show("warning", "Chưa kết nối WordPress nên chưa hỏi được website.")
+        show("warning", MSG_WEB_NO_WP)
         return
     try:
         with st.spinner("Đang hỏi trạng thái bài trên website…"):
@@ -655,8 +678,168 @@ def ask_website(plan: sync.SheetPlan) -> None:
     except WordPressError as exc:
         show("error", exc)
         return
+    # Cột «Trên website» của danh sách (chỉ để xem).
     S.plan_web = {post_id: (state.status, state.date_gmt) for post_id, state in states.items()}
     S.plan_web_asked = tuple(ids)
+    try:
+        check = website.check_website(
+            plan, states, ids, sheet_id=settings.google_sheet_id, now=settings.now()
+        )
+    except sync.SheetPlanError as exc:  # Sheet thiếu cột Mã bài, Trạng thái, Mã bài WordPress
+        show("error", exc)
+        return
+    except ValueError:
+        show("error", MSG_WEB_ODD)
+        return
+    S.plan_webcheck = check
+    S.plan_webround = S.get("plan_webround", 0) + 1  # khóa ô tick mới cho lần kiểm mới
+
+
+def web_time(moment: datetime | None) -> str:
+    if moment is None:
+        return "(trống)"
+    return moment.astimezone(model.TIMEZONE).strftime("%d/%m/%Y %H:%M")
+
+
+def web_rows(updates: tuple[website.WebUpdate, ...]) -> list[dict[str, object]]:
+    """Bảng thay đổi đề xuất: dòng, Mã bài, mã bài trên website, ô cũ → mới, lý do (câu cố định
+    của lõi). Nhãn, số, giờ đều do code dựng; vẫn qua ``safe_rows`` như mọi bảng (LC-T101-1)."""
+    rows = []
+    for number, update in enumerate(updates, start=1):
+        status = (
+            f"{update.status_before} → {update.status_after}"
+            if "status" in update.fields
+            else update.status_before
+        )
+        published = (
+            f"{web_time(update.published_before)} → {web_time(update.published_after)}"
+            if "published_at" in update.fields
+            else web_time(update.published_before)
+        )
+        rows.append(
+            {
+                "Số": number,
+                "Dòng trên Sheet": update.row_number,
+                "Mã bài": update.key,
+                "Bài trên website": f"#{update.wp_post_id}",
+                "Trạng thái": status,
+                "Ngày đăng thực tế": published,
+                "Lý do": update.reason,
+            }
+        )
+    return rows
+
+
+def web_pick_key(round_: int, number: int) -> str:
+    return f"plan-web-pick-{round_}-{number}"
+
+
+def pick_all_web(round_: int, count: int) -> None:
+    for number in range(1, count + 1):
+        S[web_pick_key(round_, number)] = True
+
+
+def web_check_box() -> None:
+    """Khung «Thay đổi trạng thái từ website»: cảnh báo, bảng thay đổi, ô tick (không tick sẵn,
+    điều kiện 1a Lá Chắn T-109), nút **ghi** riêng. Lần kiểm cũ quá ``website.CHECK_MAX_AGE`` thì
+    khóa nút ghi, mời kiểm lại (lõi cũng từ chối)."""
+    check: website.WebCheck = S.plan_webcheck
+    round_ = S.get("plan_webround", 0)
+    with st.container(border=True):
+        st.markdown("#### 🌐 Thay đổi trạng thái từ website")
+        when = check.checked_at.astimezone(model.TIMEZONE).strftime("%H:%M")
+        st.caption(
+            f"Kiểm lúc {when}. Tick những dòng muốn ghi vào Google Sheet: phần mềm chỉ đổi ô Trạng "
+            "thái, Ngày đăng thực tế, Cập nhật lúc của dòng đó, không đụng bài trên website."
+        )
+        for notice in check.notices:
+            show("warning", notice.message)
+        if not check.updates:
+            show("info", MSG_WEB_SAME)
+        else:
+            st.dataframe(
+                safe_rows(web_rows(check.updates)),
+                hide_index=True,
+                column_config={"Lý do": st.column_config.TextColumn(width="large")},
+            )
+            columns = st.columns(3)
+            for number, update in enumerate(check.updates, start=1):
+                columns[(number - 1) % 3].checkbox(
+                    f"Dòng {update.row_number}: {update.label}",
+                    value=False,
+                    key=web_pick_key(round_, number),
+                )
+        chosen = [
+            update
+            for number, update in enumerate(check.updates, start=1)
+            if S.get(web_pick_key(round_, number))
+        ]
+        stale = settings.now() - check.checked_at > website.CHECK_MAX_AGE
+        if stale:
+            show("warning", MSG_WEB_STALE)
+        pick_col, write_col, close_col = st.columns([1.2, 1.8, 1])
+        pick_col.button(
+            "Chọn tất cả",
+            key="plan-web-all",
+            width="stretch",
+            disabled=not check.updates,
+            on_click=pick_all_web,
+            args=(round_, len(check.updates)),
+        )
+        if write_col.button(
+            f"✍️ Ghi {len(chosen)} thay đổi vào Google Sheet",
+            key="plan-web-write",
+            type="primary",
+            width="stretch",
+            disabled=not chosen or stale,
+        ):
+            apply_web(check, chosen)
+        if close_col.button("Đóng", key="plan-web-close", width="stretch"):
+            forget_web_check()
+            st.rerun()
+
+
+def apply_web(check: website.WebCheck, chosen: list[website.WebUpdate]) -> None:
+    """Nút **ghi** (chỉ khi bấm): ``website.apply_website_changes`` với đúng các thay đổi đã tick
+    của lần kiểm đang hiện; client Google mới. Lõi so Sheet đã kiểm, đọc lại Sheet, so từng ô với
+    bản đã xem; lần kiểm cũ, Sheet khác: ``SheetPlanError`` câu cố định (chưa ghi gì)."""
+    client, problem = sheets_client()
+    if client is None:
+        show("error", problem or MSG_NO_GOOGLE)
+        return
+    try:
+        with st.spinner("Đang ghi trạng thái lên Google Sheet…"):
+            result = website.apply_website_changes(
+                client, check, chosen, sheet_id=settings.google_sheet_id, now=settings.now()
+            )
+    except sync.SheetPlanError as exc:  # lần kiểm cũ, Sheet khác, thiếu cột: kiểm lại
+        S.pop("plan_webcheck", None)
+        show("error", exc)
+        return
+    except SheetsError as exc:
+        show("error", f"{exc} {MSG_APPLY_FAILED}")
+        return
+    except ValueError:
+        show("error", f"{MSG_WEB_ODD} {MSG_APPLY_FAILED}")
+        return
+    S.plan_webresult = result
+    S.pop("plan_webcheck", None)
+    S._plan_reload = True
+    st.rerun()
+
+
+def web_result_box() -> None:
+    result: website.WebApplyResult = S.plan_webresult
+    with st.container(border=True):
+        st.markdown("#### Kết quả cập nhật trạng thái")
+        bad = result.conflicts or result.unsure or result.error or result.not_written
+        show("warning" if bad else "success", result.message)
+        if result.conflicts:
+            rows = [{"Dòng": c.update.label, "Vì sao chưa ghi": c.reason} for c in result.conflicts]
+            st.dataframe(safe_rows(rows), hide_index=True)
+        if st.button("Đóng", key="plan-webresult-close"):
+            S.pop("plan_webresult", None)
+            st.rerun()
 
 
 def start_writing(key: str) -> None:
@@ -774,13 +957,14 @@ def plan_list(listing: sync.PlanListing | None, client: SheetsClient | None) -> 
     if reload_col.button("🔄 Tải lại", key="plan-reload", width="stretch"):
         S._plan_reload = True
         S.pop("plan_web", None)
+        forget_web_check()
         st.rerun()
     if listing.notice:
         show("warning", listing.notice)
     plan = listing.plan
     if plan is None:
         return
-    if web_col.button("🌐 Trạng thái trên website", key="plan-web", width="stretch"):
+    if web_col.button("🌐 Cập nhật trạng thái từ website", key="plan-web", width="stretch"):
         ask_website(plan)
     when = plan.fetched_at.astimezone(model.TIMEZONE).strftime("%H:%M %d/%m/%Y")
     st.caption(
@@ -803,6 +987,10 @@ def plan_list(listing: sync.PlanListing | None, client: SheetsClient | None) -> 
     )
     if S.get("plan_web"):
         st.caption(MSG_WEB_NOTE)
+    if "plan_webcheck" in S:
+        web_check_box()
+    if "plan_webresult" in S:
+        web_result_box()
     write_picker(plan)
 
 
