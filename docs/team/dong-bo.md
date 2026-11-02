@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-02 17:23 · Chỉ Huy B
+
+- Gộp **T-113**, **T-105** (`935d381`), Windows 22.159 test qua, 0 hỏng, đã đẩy.
+- Fable T-116 nhóm 3 ĐẠT CÓ ĐIỀU KIỆN (0 lỗi mới). Chủ dự án 02/11: lỗi bất ngờ chỉ hiện loại lỗi → **T-118** (dọn Thấp: `showErrorDetails`, LC-T034-1..3, SL-T105-1, LC-T113-2).
+- Hạn mức hết ~15:00, mở lại 17:20; đã nhắn tiếp: Thợ Máy T-118, T-115 lượt 2; Soi Lỗi T-117; Lá Chắn T-116 nhóm 4.
+- Hàng đợi: T-073 (ca khóa T-037), T-092 (sau T-112), Thư Ký: `security.md` §5 cách chạy `pip-audit`, §6 hai ghi nhận lớp AI + 2 giới hạn `modified_gmt` (Soi Lỗi T-115), chú thích `pyproject.toml` về `uvx`; T-116 nhóm 2.
+
 ### 2026-11-02 12:44 · Chỉ Huy B
 
 - Máy tắt từ chiều 31/10 tới sáng 02/11 (lượt toàn bộ test chết ở 90%). Chạy lại: **T-110 lượt 2–3** gộp, Windows 22.083 test qua (ca khóa T-037 hỏng oan, chạy riêng 2/3 qua). **Đóng Giai đoạn 3.** Đã đẩy `4ee27d8`.

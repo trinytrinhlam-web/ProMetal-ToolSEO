@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (bảo mật) |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | Chủ dự án chọn 02/11: «Phần nhạy cảm trước» |
-| Trạng thái | Đang làm (nhóm 3) |
+| Trạng thái | Đang làm (nhóm 4) |
 
 ## Mục tiêu
 
@@ -37,3 +37,4 @@ Từ 2026-10-15 Fable 5.1 bị giới hạn tới 01/11, nên mọi biên bản 
 
 - Lập 2026-11-02 theo quyết định của chủ dự án («Phần nhạy cảm trước»). Bắt đầu nhóm 1 vì không có phiếu nào đang sửa phần ảnh; nhóm 2, 4 làm sau khi T-110, T-112, T-113, T-115 gộp.
 - 2026-11-02 12:44 (Chỉ Huy B): `start_session` không chọn được Fable (rơi về Opus) → dừng, `set_session_model` Fable, chủ dự án tự chuyển trong menu model 08:05; lượt Opus 07:41–08:05 bỏ. Nhóm 1 xong (`3669046`, Fable 5.1): ĐẠT CÓ ĐIỀU KIỆN, 14 biên bản Opus không sai, 1 đổi mức (T-049 N2 → LC-T116-1 Thấp) → T-117 (Chỉ Huy chọn phiếu dọn, không ghi sổ rủi ro). Ghi nhận quy trình: `uvx pip-audit -r` hỏng vì xung đột `pillow<13` ↔ 13.0.0 ép có chủ đích → chạy `uv export` rồi `uvx pip-audit -r … --no-deps --disable-pip` (Thư Ký ghi vào `security.md` §5). Giao nhóm 3.
+- 2026-11-02 17:23 (Chỉ Huy B): nhóm 3 xong (`c73fc21`, Fable 5.1): ĐẠT CÓ ĐIỀU KIỆN, 0 lỗi mới, 20 biên bản Opus (42 phát hiện) không sai; LC-T090-1 lẽ ra Trung bình (đã đóng ở T-104). Điều kiện hành chính: Thấp cũ lớp AI (LC-T034-1..3) → T-118; hai đề nghị «ghi sổ» (T-016-020 #5 `parse_stream`, T-022-024 #3) → Thư Ký `security.md` §6; `client.showErrorDetails` → chủ dự án chọn 02/11 «chỉ hiện loại lỗi» (T-118). Giao nhóm 4.
