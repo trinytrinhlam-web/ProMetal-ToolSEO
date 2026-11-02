@@ -1422,10 +1422,12 @@ class WordPressClient:
                 )
             self._taint_modified(post_id)  # lỗi giữa chừng: có thể đã ghi, không biết giờ sửa
             return _seo_error("meta", exc.status_code)
-        self._remember_modified(post_id, data)
         if not _is_own_draft_answer(data, post_id):
             # Câu trả lời của lệnh ghi nói về bài khác, hay bài không còn nháp: bất thường.
+            # Lệnh có thể đã ghi vào bài: không biết giờ sửa (SL-T115-1).
+            self._taint_modified(post_id)
             return _seo_error("meta", None)
+        self._remember_modified(post_id, data)  # chỉ khi câu trả lời đúng là của nháp này
         saved = data.get("meta")
         if not isinstance(saved, dict) or any(saved.get(k) != v for k, v in send.items()):
             # Máy chủ trả 200 nhưng không lưu (đoạn code mở khóa meta không cho ghi).
@@ -1460,10 +1462,12 @@ class WordPressClient:
         except Exception:
             self._taint_modified(post_id)  # T-115: có thể đã ghi, không biết giờ sửa
             raise
-        self._remember_modified(post_id, data)
         if not _is_own_draft_answer(data, post_id):
             # SL-T042-11: câu trả lời nói về bài khác, hay bài không còn nháp: bất thường.
+            # Lệnh có thể đã ghi vào bài: không biết giờ sửa (SL-T115-1).
+            self._taint_modified(post_id)
             raise WordPressError(_IMAGE_ODD_ANSWER)
+        self._remember_modified(post_id, data)  # chỉ khi câu trả lời đúng là của nháp này
         return self._post_from(data)
 
     # ------------------------------------------------------- hẹn giờ, đăng (T-099)

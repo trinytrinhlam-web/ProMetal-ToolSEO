@@ -489,13 +489,6 @@ def _odd_write(wp_site: _ModSite, key: str, change: dict):
     return hook
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T115-1: lệnh ghi ảnh đại diện/meta trả lời lạ (mã bài sai kiểu, bài khác, không "
-    "còn nháp) thì client vẫn nhớ giờ sửa lấy từ chính câu trả lời đó (_remember_modified trước "
-    "_is_own_draft_answer) thay vì «không biết»: lệnh ghi bị báo hỏng mà vẫn hẹn giờ/đăng được "
-    "(LC-T102-1 chưa chặn hết ở lớp client)",
-)
 @pytest.mark.parametrize("change", ODD_WRITE_ANSWERS.values(), ids=ODD_WRITE_ANSWERS)
 @pytest.mark.parametrize("key", ["featured_media", "meta"], ids=["anh-dai-dien", "meta"])
 def test_sl_t115_1_lenh_ghi_tra_loi_la_thi_khong_biet_khong_chuyen(wp_site, client, key, change):

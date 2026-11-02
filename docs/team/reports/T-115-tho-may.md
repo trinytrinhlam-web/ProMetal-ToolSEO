@@ -131,3 +131,34 @@ Thử trên một bài nháp thử, công tắc Hẹn giờ/Đăng ngay còn t�
   - Không ca XPASS nào khác.
 - `uv run ruff check .`: All checks passed. `ruff format --check`: file mới sạch. `client.py` còn 2 chỗ bị đòi gộp dòng có từ trước (`_RELEASE_NOW_WITH_TIME`, một dòng `SeoWriteResult` trong `_seo_via_meta`; bản `HEAD` cũng vậy), không đụng tới.
 - Quét ký tự vô hình trần và `detect-secrets` (`PYTHONUTF8=1`) trên `client.py`, file test mới, báo cáo. Chỉ có một kết quả «Basic Auth Credentials» ở `client.py:995`, và kết quả này đã có y hệt trên `HEAD` (`:986`, lệch 9 dòng do phần thêm mới), không do phiếu này.
+
+## Lượt 2 · SL-T115-1, gộp `main` (Soi Lỗi `d121d7c`)
+
+Ngày nộp lượt 2: 2026-11-02 13:11 (+07:00, theo lệnh `date`). Chỉ Huy B giao 02/11 13:00.
+
+### Tóm tắt (cho chủ dự án)
+
+- Soi Lỗi tìm một lỗi nhỏ. Nếu website trả lời **lạ** lệnh đặt ảnh đại diện hay lệnh ghi SEO (ví dụ câu trả lời nói về bài khác), phần mềm báo «chưa đặt được» nhưng vẫn có thể hẹn giờ/đăng. Nay câu trả lời lạ được coi là «không biết bài có bị sửa không», nên phần mềm **không hẹn giờ, không đăng**, bài vẫn là nháp.
+- Đã gộp bản mới nhất của phần mềm vào nhánh này (ảnh T-110 lượt 2–3, T-113, T-105); không xung đột.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/wordpress/client.py` | `set_featured_image`, `_seo_via_meta`: kiểm `_is_own_draft_answer` **trước**. Câu trả lời lạ (mã bài sai kiểu, bài khác, không còn nháp, thiếu trạng thái) thì `_taint_modified` («không biết»), rồi mới báo lỗi như cũ. Chỉ `_remember_modified` khi câu trả lời đúng là của nháp này (đúng hướng Soi Lỗi gợi ý) |
+| `tests/test_soi_loi_t115.py` (của Soi Lỗi) | Gỡ dấu `xfail(strict=True)` SL-T115-1: 10 ca XPASS; chỉ xóa dấu (R5) |
+| `tests/test_soi_loi_t110.py` (của Soi Lỗi, đến từ `main`) | **R5, Chỉ Huy duyệt 02/11 13:00** (chủ ca đồng ý): ca `test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields` chỉ thêm `,modified_gmt` vào chuỗi `_fields` mong đợi. Dòng 501: `post = "id,status,title,link,featured_media"` → `…,modified_gmt` (dùng chung cho lệnh tạo nháp và lệnh ảnh đại diện). Dòng 513: lệnh đọc bài `id,status,meta` → `id,status,meta,modified_gmt` (xuống dòng cho vừa 100 ký tự). Không đổi gì khác |
+| Gộp `main` `935d381` | Commit `c984878`, không xung đột; chạy `uv sync` (venv lên `pyasn1` 0.6.5 theo khóa của `main`) |
+
+### Giới hạn ghi sổ rủi ro (Soi Lỗi G2, G3)
+
+Cả hai là giới hạn của cách so `modified_gmt` (LC-T094-23), không sửa được ở client nếu WordPress không có khóa lạc quan (`If-Match`). Đề nghị Lá Chắn ghi vào sổ rủi ro cùng khe «cùng giây» đã ghi ở lượt 1.
+
+1. **Khe giữa lệnh đọc kiểm và lệnh ghi của app.** Trước mỗi lệnh ghi (ảnh đại diện, SEO), app đọc bài để so giờ sửa. Có người lưu bài đúng lúc **giữa** lệnh đọc đó và lệnh ghi của app thì lệnh ghi của app đặt giờ sửa mới. Client nhớ giờ đó, nên lần sửa kia không bị phát hiện; bài có thể được hẹn giờ/đăng với nội dung người kia vừa sửa. Khe chỉ vài trăm mili giây, cùng loại với khe «cùng giây» và khe sau lệnh ghi SEO qua Abilities.
+2. **Sửa chỉ meta không đổi giờ sửa.** `modified_gmt` chỉ đổi khi bài đi qua `wp_update_post`. Sửa chỉ meta thì giờ sửa không đổi, nên lệnh chuyển vẫn đi với thay đổi đó. Ví dụ: đổi ảnh đại diện bằng hộp chọn ảnh của trình soạn **cổ điển** (AJAX `set-post-thumbnail`, chưa bấm Lưu), hay plugin ghi khóa meta riêng. Trình soạn khối (Gutenberg) lưu mọi thứ qua REST nên luôn đổi giờ sửa. Site dùng trình soạn khối thì khe này hẹp.
+
+### Kiểm thử lượt 2
+
+- `tests/test_soi_loi_t110.py`, `tests/test_soi_loi_t115.py`, `tests/test_t115_modified_gmt.py`: **418 qua**. 10 ca SL-T115-1 nay qua thật; ca T-110 đã đổi chuỗi qua.
+- Test chọn lọc trên cây đã gộp `main`: 81 file. Gồm mọi file test dùng `WordPressClient`, `fake_wordpress`, `release_draft` hay `seo_app.wordpress` (client WordPress, T-099, T-102, T-110, T-115), trừ 6 file giao diện chạy chậm đã qua ở lượt 1 và không gặp câu trả lời lạ của lệnh ghi (`test_app_images`, `test_app_pages`, `test_app_wordpress`, `test_soi_loi_t056`, `test_soi_loi_t089`, `test_la_chan_t089`). Kết quả: **11176 qua, 1 bỏ qua, 15 xfail có từ trước, 0 hỏng, không XPASS** (41 phút).
+- `uv run ruff check .`: All checks passed. `ruff format --check` báo 2 file test của Soi Lỗi (`test_soi_loi_t110.py`, `test_soi_loi_t115.py`) theo kiểu viết sẵn có của file (bản trước khi tôi sửa cũng vậy), không do lượt này.
