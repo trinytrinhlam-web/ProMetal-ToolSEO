@@ -53,6 +53,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
+from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link
 from seo_app.images.folders import MAX_REL_PATH_CHARS, ImageFolderError, ImageRef
 from seo_app.images.tags import SOURCE_AI, FolderTags, ImageTags, TagError, tags_for_image
 
@@ -436,9 +437,16 @@ class ImageTagStore:
             ) from None
 
     def _prepare(self) -> None:
-        """Mỗi lần mở: gỡ liên kết ở chỗ đặt file (F1). Lần đầu, hoặc khi file bị xóa hay bị
-        thay khi app đang chạy: tạo thư mục, kiểm file (hỏng, quá lớn), tạo bảng."""
+        """Mỗi lần mở: thư mục chứa file là liên kết thì báo lỗi (T-117); gỡ liên kết ở chỗ đặt
+        file (F1). Lần đầu, hoặc khi file bị xóa hay bị thay khi app đang chạy: tạo thư mục, kiểm
+        file (hỏng, quá lớn), tạo bảng."""
         try:
+            # Thư mục chứa file (data/…, từ ngay dưới gốc dự án) là liên kết thì không tạo thư mục,
+            # không mở SQLite: file sẽ nằm ở nơi liên kết trỏ tới (LC-T116-1, T-117). Không tự gỡ
+            # liên kết thư mục (có thể là của người dùng); báo câu cố định. Kiểm mỗi lần mở.
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                self._ready = False
+                raise ImageTagStoreError(MSG_DATA_DIR_LINK)
             # Kiểm mỗi lần, không chỉ lần đầu (SL-T052-7, -8): liên kết đặt vào sau lần dùng đầu
             # cũng bị gỡ trước khi SQLite mở file. File hay cả data/ bị xóa: tạo lại.
             if self._remove_links() or not self.path.is_file():

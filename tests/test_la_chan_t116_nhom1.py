@@ -72,11 +72,6 @@ def image_root(tmp_path: Path) -> Path:
     return root
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T116-1: thư mục data/ là junction thì PreviewCache vẫn bật và ghi ảnh xem trước "
-    "vào nơi liên kết trỏ tới",
-)
 def test_lc_t116_1_preview_cache_khong_ghi_xuyen_lien_ket(linked_project, image_root) -> None:
     """Mong đợi: ``data/`` là liên kết thì cache không bật (hoặc không ghi gì qua liên kết); ảnh
     xem trước vẫn được dựng và trả về. Thực tế: ``enabled`` là ``True`` và file ``<băm>.jpg`` xuất
@@ -90,11 +85,6 @@ def test_lc_t116_1_preview_cache_khong_ghi_xuyen_lien_ket(linked_project, image_
     assert not written, "cache ảnh xem trước đã ghi xuyên liên kết ra ngoài thư mục dự án"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T116-1: thư mục data/ là junction thì ImageTagStore tạo và ghi file SQLite vào nơi "
-    "liên kết trỏ tới",
-)
 def test_lc_t116_1_kho_the_khong_ghi_xuyen_lien_ket(linked_project) -> None:
     """Mong đợi: ``data/`` là liên kết thì kho thẻ từ chối (``ImageTagStoreError``) hoặc không tạo
     file qua liên kết. Thực tế: ``image_tags.sqlite`` được tạo trong thư mục ngoài dự án."""
