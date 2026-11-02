@@ -58,6 +58,7 @@ from pillow_heif import options as heif_options
 
 from seo_app.config import PROJECT_ROOT
 from seo_app.images import folders
+from seo_app.images.data_dir import dir_has_link, is_link
 from seo_app.images.folders import MAX_IMAGE_BYTES, ImageLibrary, ImageRef
 
 MIN_PILLOW_MAJOR = 13  # T-058: Pillow 13 vá các khuyến cáo của 12.3.0
@@ -997,6 +998,8 @@ class PreviewCache:
     Tên file là mã băm (không chứa tên ảnh hay tên thư mục). Khóa gồm ``ImageRef`` (lấy từ kết
     quả quét, ghi chú Lá Chắn T-048), dung lượng và thời điểm sửa file: ảnh đổi thì tạo lại.
     File đọc từ cache được kiểm lại khuôn JPEG sạch trước khi trả; sai thì tạo lại.
+    Trước mỗi lần đọc, ghi: không tầng nào từ ngay dưới gốc dự án tới file cache là liên kết
+    (LC-T116-1, T-117); có thì không dùng cache lần đó, ảnh xem trước vẫn được dựng.
     """
 
     def __init__(
@@ -1025,6 +1028,15 @@ class PreviewCache:
             )
         )
         return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
+
+    def _no_link(self, path: Path) -> bool:
+        """Thư mục cache (từ ngay dưới gốc dự án) và chính file cache không phải liên kết, nên đọc,
+        ghi không đi ra ngoài dự án (LC-T116-1, T-117). Kiểm mỗi lần: đối tượng này sống suốt phiên
+        app, liên kết có thể được đặt vào sau. Không kiểm được thì coi như có (không dùng cache)."""
+        try:
+            return not (dir_has_link(self._dir, PROJECT_ROOT) or is_link(path))
+        except OSError:
+            return False
 
     def _read(self, path: Path) -> bytes | None:
         try:
@@ -1063,11 +1075,11 @@ class PreviewCache:
         _require_pillow_13()
         entry = library.stat_image(ref)
         path = self._dir / f"{self._key(ref, entry.size, entry.modified)}.jpg"
-        if self.enabled:
+        if self.enabled and self._no_link(path):
             cached = self._read(path)
             if cached is not None:
                 return cached
         preview = make_preview(library.read_image_bytes(ref), max_edge_px=self._max_edge)
-        if self.enabled:
+        if self.enabled and self._no_link(path):  # kiểm lại: dựng ảnh mất thời gian
             self._write(path, preview)
         return preview
