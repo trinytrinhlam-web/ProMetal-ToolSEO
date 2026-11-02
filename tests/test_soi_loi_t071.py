@@ -221,7 +221,7 @@ class Site:
         name = re.fullmatch(r'attachment; filename="([^"]+)"', disposition).group(1)
         media_id, self.next_id = self.next_id, self.next_id + 1
         self.files[media_id] = name
-        return (201, {"id": media_id, "source_url": self.source_url(media_id)}, {})
+        return (201, {"id": media_id, "source_url": self.source_url(media_id), "post": None}, {})
 
     def update_media(self, request):
         self.counts["describe"] += 1

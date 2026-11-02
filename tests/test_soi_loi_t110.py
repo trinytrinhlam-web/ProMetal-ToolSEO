@@ -11,6 +11,18 @@ giao diện cuối, mượn khung «Gửi nháp» của ``test_app_images`` như
 3. Nội dung, ``srcset``, ảnh đại diện; thứ tự lệnh.
 4. ``GPS_PUBLIC_WARNING``; ảnh của lần gửi hỏng trước khi có nháp.
 
+Lượt 2 (LC-T110-1 cách A, SL-T110-1), cuối file:
+
+5. ``post`` ở câu trả lời lệnh tải ảnh, viết tay đúng byte JSON: null/0 gắn; số dương từ chối như
+   mã khác 201 (không ghi alt, không gắn, không tạo nháp); thiếu hay lạ: lượt 2 không gắn, lượt 3
+   (G4) dừng như số dương. Cả ``upload_media``; mọi lệnh tải ảnh đều qua bước xét này.
+6. Câu báo ở mọi lối hỏng (trước, sau lệnh tạo nháp, giữa hai ảnh): đúng ảnh nào đã lên, ảnh đó chưa
+   gắn bài nào, có nói danh sách Media công khai (lời hứa của câu nhắc GPS), không chép lời máy chủ.
+
+Lượt 3 (G4, SL-T110-2, SL-T110-3), cuối file: 29 giá trị ``post`` không trống ở ảnh đầu, ảnh sau,
+``upload_media``, cả khi website trả lại ảnh có sẵn 9; câu báo mọi lối website trả lại ảnh (không
+bảo xóa, không «cần mã 201» khi đã 201); lỗi mạng không nói «ảnh có sẵn»; trang Soạn bài.
+
 Không gọi website thật (bộ chặn mạng của ``tests/conftest.py`` bật suốt).
 """
 
@@ -77,7 +89,8 @@ class _ParentSite(BaseAdapter):
         if request.method == "POST" and path == f"{API}/media":
             media_id, self.next_media = self.next_media, self.next_media + 1
             self.media[media_id] = {"post": int(query["post"][0]) if "post" in query else None}
-            return 201, {"id": media_id, "source_url": self._url(media_id), "alt_text": ""}
+            return 201, {"id": media_id, "source_url": self._url(media_id), "alt_text": "",
+                         "post": None}
         if request.method == "POST" and path.startswith(f"{API}/media/"):
             media_id = int(path.rsplit("/", 1)[1])
             item = self.media.get(media_id)
@@ -426,11 +439,6 @@ def test_gui_hong_truoc_khi_co_nhap_anh_khong_duoc_gan(wp_site, client, webs, cr
     assert wp_site.media[101]["post"] is None and wp_site.media[102]["post"] is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T110-1: gửi hỏng trước khi có nháp, câu báo không nói ảnh còn trong danh sách "
-    "Media công khai (câu nhắc GPS mới hứa «gắn không được thì phần mềm báo»)",
-)
 @pytest.mark.parametrize(
     "create",
     [(400, {"code": "rest_invalid_param", "message": MOI}), (500, {"code": "x", "message": MOI}),
@@ -444,3 +452,515 @@ def test_sl_t110_1_gui_hong_truoc_khi_co_nhap_bao_anh_con_trong_danh_sach_media(
     with pytest.raises(DraftImagesError) as error:
         client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
     assert "danh sách Media" in str(error.value)
+
+
+# ====================================================================== lượt 2: 5. ``post``
+# LC-T110-1, cách A (Chỉ Huy 30/10 20:40). Giá trị ``post`` viết tay đúng byte JSON website gửi
+# (``-0``, ``NaN``, ``1E400``… không dựng được bằng ``json.dumps``).
+POST_EMPTY = {"null": "null", "0": "0", "am-0": "-0"}
+POST_PARENT = {"7": "7", "1": "1", "42": "42", "max": str(wp.MAX_ID)}
+POST_ODD = {
+    "thieu": None,  # không có khóa ``post``
+    "chu-7": '"7"', "chu-rong": '""', "chu-0": '"0"', "chu-null": '"null"',
+    "true": "true", "false": "false", "am-1": "-1", "am-2-63": str(-(2**63)),
+    "thuc-0": "0.0", "thuc-am-0": "-0.0", "thuc-7": "7.0", "mu-1e2": "1e2", "thuc-1-5": "1.5",
+    "qua-max": str(wp.MAX_ID + 1), "2-64": str(2**64), "400-chu-so": "9" * 400,
+    "1e400": "1E400", "nan": "NaN", "inf": "Infinity", "am-inf": "-Infinity",
+    "mang": "[7]", "mang-rong": "[]", "dict": '{"id": 7}', "dict-rong": "{}",
+}
+OLD_9 = {"post": 7, "alt_text": "ảnh cũ"}  # ảnh có sẵn của bài đã đăng 7: không được đổi
+EXISTING_9 = (
+    201,
+    {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh-9.webp", "alt_text": "ảnh cũ",
+     "post": 7},
+)
+
+
+def _upload_post(wp_site: _ParentSite, *tokens: str | None, existing: int | None = None) -> None:
+    """Lệnh tải ảnh thứ n trả 201 kèm ``"post": tokens[n]`` (token cuối dùng cho các lần sau;
+    ``None``: không có khóa). ``existing``: website trả lại ảnh có sẵn mã đó, không tạo ảnh mới."""
+    queue = list(tokens)
+
+    def answer(request):
+        token = queue.pop(0) if len(queue) > 1 else queue[0]
+        media_id = existing
+        if media_id is None:
+            media_id, wp_site.next_media = wp_site.next_media, wp_site.next_media + 1
+            wp_site.media[media_id] = {"post": None}
+        text = json.dumps({"id": media_id, "source_url": wp_site._url(media_id), "alt_text": ""})
+        if token is not None:
+            text = text[:-1] + f', "post": {token}}}'
+        return 201, text.encode()
+
+    wp_site.inject[("POST", f"{API}/media")] = answer
+
+
+def test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields(wp_site, client, webs):
+    client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    upload, alt, attach = "id,source_url,alt_text,post", "id,source_url,alt_text", "id,post"
+    post = "id,status,title,link,featured_media"
+    assert [
+        (r.method, urlsplit(r.url).path, parse_qs(urlsplit(r.url).query))
+        for r in wp_site.requests
+    ] == [
+        ("POST", f"{API}/media", {"_fields": [upload]}),
+        ("POST", f"{API}/media/101", {"_fields": [alt]}),
+        ("POST", f"{API}/media", {"_fields": [upload]}),
+        ("POST", f"{API}/media/102", {"_fields": [alt]}),
+        ("POST", f"{API}/posts", {"_fields": [post]}),
+        ("POST", f"{API}/media/101", {"_fields": [attach]}),
+        ("POST", f"{API}/media/102", {"_fields": [attach]}),
+        ("GET", f"{API}/posts/42", {"context": ["edit"], "_fields": ["id,status,meta"]}),
+        ("POST", f"{API}/posts/42", {"_fields": [post]}),
+    ]
+
+
+@pytest.mark.parametrize("token", POST_EMPTY.values(), ids=POST_EMPTY)
+def test_l2_post_trong_thi_gan_ca_hai_anh(wp_site, client, webs, token):
+    _upload_post(wp_site, token)
+    result = client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert (result.unattached, result.message, result.featured_media) == ((), "", 102)
+    assert [_body(r) for r in wp_site.attaches()] == [{"post": 42}, {"post": 42}]
+    assert (wp_site.media[101]["post"], wp_site.media[102]["post"]) == (42, 42)
+    assert wp_site.media[9] == OLD_9
+
+
+@pytest.mark.parametrize("token", POST_PARENT.values(), ids=POST_PARENT)
+def test_l2_post_so_duong_dung_ngay_khong_ghi_alt_khong_gan_khong_tao(wp_site, client, webs, token):
+    _upload_post(wp_site, token)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi alt, không tạo, không gắn
+    assert error.value.uploaded == () and error.value.maybe_draft is False
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45): câu riêng cho ảnh có bài cha.
+    assert str(error.value).startswith(wp._MEDIA_HAS_PARENT)
+    assert client._uploaded_media_ids == set() and client._created_post_ids == set()
+    assert wp_site.media[101] == {"post": None} and wp_site.media[9] == OLD_9
+
+
+@pytest.mark.parametrize("at_upload", [1, 2], ids=["anh-dau", "anh-sau"])
+def test_l2_website_tra_lai_anh_co_san_9_khong_bi_ghi_alt_doi_bai_cha(
+    wp_site, client, webs, at_upload
+):
+    seen = []
+
+    def answer(request):
+        seen.append(request)
+        return EXISTING_9 if len(seen) == at_upload else None  # None: tạo ảnh mới như thường
+
+    wp_site.inject[("POST", f"{API}/media")] = answer
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.media[9] == OLD_9 and ("POST", f"{API}/media/9") not in wp_site.calls()
+    assert ("POST", f"{API}/posts") not in wp_site.calls() and wp_site.attaches() == []
+    assert [image.id for image in error.value.uploaded] == [101][: at_upload - 1]
+    assert 9 not in client._uploaded_media_ids
+
+
+@pytest.mark.parametrize("token", POST_ODD.values(), ids=POST_ODD)
+def test_l2_post_thieu_hay_la_dung_ngay_khong_ghi_alt_khong_gan_khong_tao(
+    wp_site, client, webs, token
+):
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: thiếu/lạ là ảnh chưa xác nhận của client,
+    # dừng như số dương.
+    _upload_post(wp_site, token)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi alt, không tạo, không gắn
+    assert error.value.uploaded == () and error.value.maybe_draft is False
+    assert str(error.value).startswith(wp._MEDIA_PARENT_UNKNOWN)
+    assert wp_site.media[101] == {"post": None} and wp_site.media[9] == OLD_9
+    assert client._uploaded_media_ids == set() and client._created_post_ids == set()
+
+
+@pytest.mark.parametrize(
+    "token", [None, '"7"', "[7]", str(wp.MAX_ID + 1), "NaN"],
+    ids=["thieu", "chu-7", "mang", "qua-max", "nan"],
+)
+def test_l2_post_la_ma_la_anh_co_san_thi_khong_doi_bai_cha(wp_site, client, webs, token):
+    """Thiếu/lạ mà website trả lại ảnh có sẵn 9: không gắn, bài cha vẫn 7, alt cũng không ghi
+    (T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4)."""
+    _upload_post(wp_site, token, existing=9)
+    with pytest.raises(DraftImagesError):
+        client.create_draft_with_images(
+            "Sửa cổng", ["<p>Mở bài.</p>", DraftImage(webs[0], alt="Cổng inox mới sơn")]
+        )
+    assert wp_site.attaches() == []
+    assert wp_site.media[9] == OLD_9  # bài cha vẫn 7, alt cũ giữ nguyên
+
+
+def test_l2_xet_tung_anh_anh_dau_trong_anh_sau_la(wp_site, client, webs):
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: ảnh sau lạ thì dừng ở ảnh đó
+    # (không ghi alt, không tạo nháp).
+    _upload_post(wp_site, "null", '"x"')
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert [image.id for image in error.value.uploaded] == [101]
+    assert str(error.value).startswith(wp._MEDIA_PARENT_UNKNOWN)
+    assert wp_site.attaches() == []
+    assert (wp_site.media[101]["post"], wp_site.media[102]) == (None, {"post": None})
+
+
+UPLOAD_ALONE = {
+    "null": ("null", "cua-client"), "0": ("0", "cua-client"),
+    "7": ("7", "tu-choi"), "max": (str(wp.MAX_ID), "tu-choi"),
+    "thieu": (None, "khong-ro"), "chu-7": ('"7"', "khong-ro"), "nan": ("NaN", "khong-ro"),
+    "qua-max": (str(wp.MAX_ID + 1), "khong-ro"),
+}
+
+
+@pytest.mark.parametrize("token, kind", UPLOAD_ALONE.values(), ids=UPLOAD_ALONE)
+def test_l2_upload_media_rieng_cung_xet_post(wp_site, client, webs, token, kind):
+    _upload_post(wp_site, token)
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: «khong-ro» cũng dừng.
+    if kind in ("tu-choi", "khong-ro"):
+        with pytest.raises(WordPressError) as error:
+            client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
+        assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi gì vào ảnh đó
+        message = str(error.value)
+        start = wp._MEDIA_HAS_PARENT if kind == "tu-choi" else wp._MEDIA_PARENT_UNKNOWN
+        assert message.startswith(start) and "Media → Thư viện" in message
+        assert "xóa" not in message  # ảnh website vừa trả có thể là ảnh có sẵn
+        return
+    media = client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
+    assert media.id == 101 and wp_site.media[101]["alt_text"] == "Cổng inox"
+    assert wp_site.attaches() == [] and wp_site.media[101]["post"] is None  # không gắn bài nào
+    assert client._uploaded_media_ids == {101}
+
+
+def test_l2_upload_media_website_tra_lai_anh_co_san_9_khong_bi_ghi(wp_site, client, webs):
+    wp_site.inject[("POST", f"{API}/media")] = EXISTING_9
+    with pytest.raises(WordPressError):
+        client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox mới")
+    assert wp_site.calls() == [("POST", f"{API}/media")] and wp_site.media[9] == OLD_9
+
+
+def test_l2_moi_lenh_tai_anh_deu_xet_post():
+    """Chỉ ``_post_media`` gửi ``POST /wp/v2/media``; mọi lần gọi đều ``new_only=True`` (xét
+    ``post``); trang (``app/``) chỉ tải ảnh qua «Gửi nháp» (trang Kết nối không còn ô tải ảnh)."""
+    tree = ast.parse((ROOT / "seo_app" / "wordpress" / "client.py").read_text(encoding="utf-8"))
+    senders, callers = [], []
+    for function in ast.walk(tree):
+        if not isinstance(function, ast.FunctionDef):
+            continue
+        for node in ast.walk(function):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            values = [arg.value for arg in node.args if isinstance(arg, ast.Constant)]
+            if node.func.attr == "_request" and values[:2] == ["POST", "/wp/v2/media"]:
+                senders.append(function.name)
+            if node.func.attr == "_post_media":
+                keywords = [(k.arg, getattr(k.value, "value", None)) for k in node.keywords]
+                callers.append((function.name, keywords))
+    assert senders == ["_post_media"]
+    assert sorted(callers) == [
+        ("create_draft_with_images", [("new_only", True)]),
+        ("upload_media", [("new_only", True)]),
+    ]
+    pages = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "app").rglob("*.py")
+        if any(
+            name in path.read_text(encoding="utf-8")
+            for name in ("upload_media", "_post_media", "create_draft_with_images", "/media")
+        )
+    )
+    assert pages == ["app/views/write.py"]
+
+
+# ====================================================================== lượt 2: 6. câu báo
+def _nth(n: int, answer):
+    """Lần gọi thứ ``n`` (đếm từ 1) trả ``answer``; các lần khác website làm như thường."""
+    seen = []
+
+    def hook(request):
+        seen.append(request)
+        return answer if len(seen) == n else None
+
+    return hook
+
+
+def _alt_write(answer):
+    """Lệnh ghi alt vào ảnh (không phải lệnh gắn) trả ``answer``."""
+    return lambda request: None if "post" in _body(request) else answer
+
+
+_M, _P = f"{API}/media", f"{API}/posts"
+_REFUSED = (400, {"code": "rest_upload_unknown_error", "message": MOI})
+_BROKEN = (500, {"code": "x", "message": MOI})
+_TIMEOUT = requests.exceptions.ReadTimeout(MOI)
+_SAME_ID = (201, {"id": 101, "source_url": f"{BASE}/wp-content/uploads/anh-101.webp", "post": None})
+FAIL_PATHS = {  # tên: (đường hỏng, dựng câu trả lời, ảnh đã lên, ảnh đang tải có thể đã lên,
+    #                    bài nháp có thể đã có)
+    "tai-1-400": (_M, lambda: _nth(1, _REFUSED), [], False, False),
+    "tai-1-500": (_M, lambda: _nth(1, _BROKEN), [], True, False),
+    "tai-1-het-gio": (_M, lambda: _nth(1, _TIMEOUT), [], True, False),
+    "tai-1-mat-mang": (_M, lambda: _nth(1, requests.exceptions.ConnectionError(MOI)), [], True,
+                       False),
+    "tai-1-201-hong": (_M, lambda: _nth(1, (201, MOI.encode())), [], True, False),
+    "tai-1-loi-la": (_M, lambda: _nth(1, ValueError(MOI)), [], True, False),
+    "tai-1-200": (_M, lambda: _nth(1, (200, EXISTING_9[1])), [], True, False),
+    "tai-1-co-cha": (_M, lambda: _nth(1, EXISTING_9), [], True, False),
+    "alt-1-500": (f"{_M}/101", lambda: _alt_write(_BROKEN), [101], False, False),
+    "alt-1-het-gio": (f"{_M}/101", lambda: _alt_write(_TIMEOUT), [101], False, False),
+    "alt-2-loi-la": (f"{_M}/102", lambda: _alt_write(ValueError(MOI)), [101, 102], False, False),
+    "tai-2-400": (_M, lambda: _nth(2, _REFUSED), [101], False, False),
+    "tai-2-503": (_M, lambda: _nth(2, (503, b"")), [101], True, False),
+    "tai-2-cung-ma": (_M, lambda: _nth(2, _SAME_ID), [101], True, False),
+    "tai-2-co-cha": (_M, lambda: _nth(2, EXISTING_9), [101], True, False),
+    "tao-400": (_P, lambda: _REFUSED, [101, 102], False, False),
+    "tao-500": (_P, lambda: _BROKEN, [101, 102], False, True),
+    "tao-het-gio": (_P, lambda: _TIMEOUT, [101, 102], False, True),
+    "tao-loi-la": (_P, lambda: ValueError(MOI), [101, 102], False, True),
+}
+
+
+@pytest.mark.parametrize(
+    "path, make, uploaded, maybe_image, maybe_draft", FAIL_PATHS.values(), ids=FAIL_PATHS
+)
+def test_l2_cau_bao_moi_loi_hong_dung_su_that(
+    wp_site, client, webs, path, make, uploaded, maybe_image, maybe_draft
+):
+    wp_site.inject[("POST", path)] = make()
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    exc, message = error.value, str(error.value)
+    assert [image.id for image in exc.uploaded] == uploaded
+    assert (exc.maybe_uploaded, exc.maybe_draft) == (maybe_image, maybe_draft)
+    # «Ảnh đó chưa gắn vào bài nào» đúng: không lệnh gắn nào, ảnh đã lên không có bài cha;
+    # phần mềm không xóa, không sửa ảnh có sẵn.
+    assert wp_site.attaches() == [] and wp_site.media[9] == OLD_9
+    assert all(wp_site.media[media_id]["post"] is None for media_id in uploaded)
+    assert {r.method for r in wp_site.requests} <= {"GET", "POST"}
+    if uploaded:
+        assert f"Đã có {len(uploaded)} ảnh lên thư viện Media" in message
+    if uploaded or maybe_image:  # lời hứa của câu nhắc GPS: gửi hỏng trước khi có nháp cũng báo
+        assert "danh sách Media" in message and "công khai" in message
+    else:
+        assert "Chưa có ảnh nào lên thư viện Media" in message and "công khai" not in message
+    assert ("Bài nháp có thể vẫn đã được tạo" in message) is maybe_draft
+    for piece in ("MOI-T110", "evil", "<b>", "example.com", "wp-content", "anh-10"):
+        assert piece not in message
+
+
+@pytest.mark.parametrize("answer", [EXISTING_9, (200, EXISTING_9[1])], ids=["201-co-cha", "200"])
+def test_sl_t110_2_website_tra_lai_anh_co_san_cau_bao_khong_xui_xoa(wp_site, client, webs, answer):
+    wp_site.inject[("POST", f"{API}/media")] = answer
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.media[9] == OLD_9  # phần mềm không đụng ảnh 9: phần này đã đúng
+    message = str(error.value)
+    assert "ảnh đó chưa gắn vào bài nào" not in message  # website vừa nói ảnh thuộc bài 7
+    assert "hãy xóa nếu không dùng" not in message or "bài khác" in message
+
+
+def test_l2_cau_bao_cua_trang_noi_anh_chua_gan_hien_cong_khai():
+    from app.views import write  # noqa: PLC0415
+
+    for text in (write.MSG_SEND_UNEXPECTED, write.MSG_SEND_INTERRUPTED):
+        assert "ảnh chưa gắn vào bài nào thì đang hiện công khai trong danh sách Media" in text
+        assert "Bài viết → Nháp" in text and "Media → Thư viện" in text
+    assert "lần gửi hỏng trước khi tạo được nháp cũng báo" in write.GPS_PUBLIC_WARNING
+
+
+def test_l2_trang_soan_bai_tao_nhap_hong_bao_anh_trong_danh_sach_media(
+    project_root, root, fake_ai, site
+):
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    gps = [w.value for w in at.warning if "xem được công khai" in w.value]
+    assert gps and all("lần gửi hỏng trước khi tạo được nháp cũng báo" in text for text in gps)
+    site.fake.on(
+        "POST", ui.POSTS, lambda _r: (400, {"code": "rest_invalid_param", "message": MOI}, {})
+    )
+    ui.send(at)
+    (error,) = [e.value.replace("\\", "") for e in at.error if "thư viện Media" in e.value]
+    assert "Đã có 1 ảnh lên thư viện Media" in error
+    assert "danh sách Media" in error and "công khai" in error
+    assert "MOI-T110" not in error and "evil" not in error
+    assert len(site.uploads()) == 1 and len(site.posts()) == 1
+    assert not [body for body in site.media_writes() if "post" in body]  # không lệnh gắn
+
+
+def test_l2_trang_soan_bai_loi_la_hien_cau_moi(project_root, root, fake_ai, site, monkeypatch):
+    from app.views import write  # noqa: PLC0415
+
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+
+    def broken(self, title, parts, **kwargs):
+        raise RuntimeError(MOI)
+
+    monkeypatch.setattr(WordPressClient, "create_draft_with_images", broken)
+    ui.send(at)
+    shown = [e.value.replace("\\", "") for e in at.error]
+    assert write.MSG_SEND_UNEXPECTED in shown
+    assert not [text for text in shown if "MOI-T110" in text]
+
+
+def test_sl_t110_3_mo_lai_nhap_gui_do_bao_anh_trong_danh_sach_media(
+    project_root, root, fake_ai, site
+):
+    t86.stop_while_uploading(site)
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    ui.send(at)
+    assert len(site.uploads()) == 1 and site.posts() == []  # ảnh đã lên, chưa có bài nháp
+    fresh = t86.reopen(project_root, t86.draft_id(at))  # tải lại trang, đóng tab, mở lại app
+    gps = [w.value for w in fresh.warning if "xem được công khai" in w.value]
+    assert gps and "lần gửi hỏng trước khi tạo được nháp cũng báo" in gps[0]
+    (error,) = [e.value.replace("\\", "") for e in fresh.error if t86.UNSURE in e.value]
+    assert "danh sách Media" in error and "công khai" in error
+
+
+# ====================================================================== lượt 3
+# G4 (Chỉ Huy 31/10): ``post`` thiếu/lạ cũng là ảnh chưa xác nhận của client, dừng như số dương.
+# SL-T110-2: lối website trả lại ảnh (không xác nhận là ảnh mới) chỉ dặn kiểm, không bảo xóa.
+POST_NOT_OWN = {**POST_PARENT, **POST_ODD}  # 29 giá trị không phải trống
+POST_ALL = {**POST_EMPTY, **POST_NOT_OWN}  # 32 giá trị như lượt 2
+_URL_9 = f"{BASE}/wp-content/uploads/anh-9.webp"
+
+
+def _expected_start(token: str | None) -> str:
+    return wp._MEDIA_HAS_PARENT if token in POST_PARENT.values() else wp._MEDIA_PARENT_UNKNOWN
+
+
+def _existing_at(wp_site: _ParentSite, n: int, token: str | None) -> None:
+    """Lệnh tải ảnh thứ ``n`` trả lại ảnh có sẵn 9 kèm ``"post": token`` (``None``: không có
+    khóa); các lần khác website tạo ảnh mới như thường (``post`` null)."""
+    seen = []
+
+    def answer(request):
+        seen.append(request)
+        if len(seen) != n:
+            return None
+        text = json.dumps({"id": 9, "source_url": _URL_9, "alt_text": "ảnh cũ"})
+        if token is not None:
+            text = text[:-1] + f', "post": {token}}}'
+        return 201, text.encode()
+
+    wp_site.inject[("POST", f"{API}/media")] = answer
+
+
+@pytest.mark.parametrize("token", POST_NOT_OWN.values(), ids=POST_NOT_OWN)
+def test_l3_anh_sau_khong_xac_nhan_thi_dung_khong_ghi_anh_do(wp_site, client, webs, token):
+    _upload_post(wp_site, "null", token)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    # Ảnh 102: không ghi alt; không tạo nháp, không đặt ảnh đại diện, không gắn.
+    assert wp_site.calls() == [
+        ("POST", f"{API}/media"), ("POST", f"{API}/media/101"), ("POST", f"{API}/media")
+    ]
+    assert [image.id for image in error.value.uploaded] == [101]
+    assert wp_site.media[102] == {"post": None} and wp_site.media[101]["post"] is None
+    assert wp_site.media[9] == OLD_9 and client._uploaded_media_ids == {101}
+    message = str(error.value)
+    assert message.startswith(_expected_start(token))
+    assert "Đã có 1 ảnh lên thư viện Media" in message  # ảnh 101 của chính lần gửi này
+    assert "hãy xóa nếu không dùng" not in message and "cần mã 201" not in message
+    assert "bài khác" in message and "danh sách Media" in message and "công khai" in message
+
+
+@pytest.mark.parametrize("at_upload", [1, 2], ids=["anh-dau", "anh-sau"])
+@pytest.mark.parametrize("token", POST_NOT_OWN.values(), ids=POST_NOT_OWN)
+def test_l3_website_tra_lai_anh_co_san_9_moi_gia_tri_post_khong_bi_ghi(
+    wp_site, client, webs, token, at_upload
+):
+    _existing_at(wp_site, at_upload, token)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    assert wp_site.media[9] == OLD_9 and ("POST", f"{API}/media/9") not in wp_site.calls()
+    assert ("POST", f"{API}/posts") not in wp_site.calls() and wp_site.attaches() == []
+    assert 9 not in client._uploaded_media_ids
+    assert "hãy xóa nếu không dùng" not in str(error.value)
+
+
+@pytest.mark.parametrize("token", POST_ALL.values(), ids=POST_ALL)
+def test_l3_upload_media_moi_gia_tri_post(wp_site, client, webs, token):
+    _upload_post(wp_site, token)
+    if token in POST_EMPTY.values():
+        media = client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
+        assert media.id == 101 and client._uploaded_media_ids == {101}
+        assert wp_site.calls() == [("POST", f"{API}/media"), ("POST", f"{API}/media/101")]
+        return
+    with pytest.raises(WordPressError) as error:
+        client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox")
+    assert wp_site.calls() == [("POST", f"{API}/media")]  # không ghi alt vào ảnh website trả
+    assert wp_site.media[101] == {"post": None} and client._uploaded_media_ids == set()
+    message = str(error.value)
+    assert message.startswith(_expected_start(token)) and "Media → Thư viện" in message
+    assert "xóa" not in message and "cần mã 201" not in message
+
+
+@pytest.mark.parametrize("token", POST_NOT_OWN.values(), ids=POST_NOT_OWN)
+def test_l3_upload_media_anh_co_san_9_moi_gia_tri_post_khong_bi_ghi(wp_site, client, webs, token):
+    _upload_post(wp_site, token, existing=9)
+    with pytest.raises(WordPressError):
+        client.upload_media(webs[0].data, "cong-inox.webp", alt_text="Cổng inox mới")
+    assert wp_site.calls() == [("POST", f"{API}/media")] and wp_site.media[9] == OLD_9
+
+
+RETURNED = {
+    "200": (200, {"id": 9, "source_url": _URL_9, "post": 7}),
+    "201-co-cha": EXISTING_9,
+    "201-thieu-post": (201, {"id": 9, "source_url": _URL_9}),
+    "201-post-chu": (201, {"id": 9, "source_url": _URL_9, "post": "7"}),
+}
+
+
+@pytest.mark.parametrize("at_upload", [1, 2], ids=["anh-dau", "anh-sau"])
+@pytest.mark.parametrize("answer", RETURNED.values(), ids=RETURNED)
+def test_l3_website_tra_lai_anh_cau_bao_chi_dan_kiem(wp_site, client, webs, answer, at_upload):
+    wp_site.inject[("POST", f"{API}/media")] = _nth(at_upload, answer)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    exc, message = error.value, str(error.value)
+    assert (exc.maybe_uploaded, exc.maybe_draft) == (True, False)
+    assert [image.id for image in exc.uploaded] == [101][: at_upload - 1]
+    assert wp_site.media[9] == OLD_9
+    # Không khẳng định ảnh website trả chưa gắn bài nào, không xui xóa nó; nói ảnh đó có thể
+    # thuộc bài khác; ảnh mới (nếu website đã tạo) đang công khai trong danh sách Media.
+    assert "ảnh đó chưa gắn vào bài nào" not in message
+    assert "hãy xóa nếu không dùng" not in message
+    assert "bài khác" in message and "danh sách Media" in message and "công khai" in message
+    if answer[0] == 201:
+        assert "cần mã 201" not in message
+    for piece in ("MOI-T110", "evil", "example.com", "wp-content", "anh-9"):
+        assert piece not in message
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [(503, b""), _TIMEOUT, requests.exceptions.ConnectionError(MOI), (201, MOI.encode()),
+     ValueError(MOI)],
+    ids=["503", "het-gio", "mat-mang", "201-than-hong", "loi-la"],
+)
+def test_l3_loi_mang_o_lenh_tai_khong_noi_anh_co_san(wp_site, client, webs, answer):
+    """Website chưa trả ảnh nào: câu báo không nói «ảnh website trả về có thể là ảnh có sẵn», giữ ý
+    lượt 2 (ảnh mới có thể đã lên, đang công khai trong danh sách Media)."""
+    wp_site.inject[("POST", f"{API}/media")] = _nth(1, answer)
+    with pytest.raises(DraftImagesError) as error:
+        client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
+    message = str(error.value)
+    assert "có sẵn" not in message
+    assert "danh sách Media" in message and "công khai" in message
+
+
+def test_l3_trang_soan_bai_post_la_thi_dung_chi_dan_kiem(project_root, root, fake_ai, site):
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+
+    def odd_parent(request):
+        site.create_media(request)  # website tạo ảnh 900 như thường, nhưng trả ``post`` lạ
+        return (201, {"id": 900, "source_url": f"{ui.UPLOADS}a.webp", "post": "7"}, {})
+
+    site.fake.on("POST", ui.MEDIA, odd_parent)
+    ui.send(at)
+    errors = [e.value.replace("\\", "") for e in at.error]
+    (error,) = [text for text in errors if text.startswith(wp._MEDIA_PARENT_UNKNOWN)]
+    assert "bài khác" in error and "danh sách Media" in error and "MOI-T110" not in error
+    shown = errors + [w.value.replace("\\", "") for w in at.warning]
+    assert not [text for text in shown if "hãy xóa nếu không dùng" in text]
+    assert len(site.uploads()) == 1 and site.media_writes() == [] and site.posts() == []
+    assert t86.saved_state(at) is None  # chắc chắn chưa có nháp: không khóa «gửi dở»
+    assert not ui.button(at, t86.SEND).disabled

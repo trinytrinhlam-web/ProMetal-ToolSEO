@@ -12,6 +12,7 @@ bài, sau bước làm sạch ảnh (quyết định 2A).
 import streamlit as st
 
 from seo_app.config import load_settings
+from seo_app.plan.sync import safe_text
 from seo_app.text import escape_markdown, paragraphs_to_html
 from seo_app.wordpress import ConnectionInfo, WordPressClient, WordPressError
 
@@ -28,6 +29,14 @@ def plain(value: object) -> str:
     if value is None:
         return ""
     return escape_markdown(value if isinstance(value, str) else str(value))
+
+
+def cell(value: object) -> object:
+    """Ô chữ của bảng chuyên mục/thẻ: mở đầu bằng ``=``, ``+``, ``-``, ``@``, tab, CR thì thêm một
+    dấu cách đầu (``safe_text``), để bảng tải về CSV (nút trên thanh công cụ của ``st.dataframe``)
+    mở bằng Excel không thành công thức (như LC-T101-1, Lá Chắn T-102 Ghi nhận 3). Giá trị không
+    phải chữ giữ nguyên."""
+    return safe_text(value) if isinstance(value, str) else value
 
 
 def unfiltered_html_note(info: ConnectionInfo) -> tuple[str, str] | None:
@@ -147,7 +156,10 @@ if categories is not None and tags is not None:
             st.subheader(f"{label} ({len(terms)})")
             if terms:
                 st.dataframe(
-                    [{"ID": t.id, "Tên": t.name, "Slug": t.slug, "Số bài": t.count} for t in terms],
+                    [
+                        {"ID": t.id, "Tên": cell(t.name), "Slug": cell(t.slug), "Số bài": t.count}
+                        for t in terms
+                    ],
                     hide_index=True,
                 )
             else:

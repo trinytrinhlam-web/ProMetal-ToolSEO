@@ -59,6 +59,21 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-02 12:44 · Chỉ Huy B
+
+- Máy tắt từ chiều 31/10 tới sáng 02/11 (lượt toàn bộ test chết ở 90%). Chạy lại: **T-110 lượt 2–3** gộp, Windows 22.083 test qua (ca khóa T-037 hỏng oan, chạy riêng 2/3 qua). **Đóng Giai đoạn 3.** Đã đẩy `4ee27d8`.
+- Chủ dự án 02/11 chọn kiểm lại bằng Fable «phần nhạy cảm trước» → **T-116** (4 nhóm). Nhóm 1 (ảnh) ĐẠT CÓ ĐIỀU KIỆN → **T-117** (LC-T116-1). Mở phiên Fable: `start_session` rơi về Opus; phải `set_session_model` / chủ dự án chọn trong menu.
+- Sẵn gộp: T-113 (`e14c0ec`), T-105 (`a295a6e`). Đang chạy: Soi Lỗi T-115, Lá Chắn T-116 nhóm 3, Thợ Máy T-117. Chờ: T-112 (chờ T-115).
+- Hàng đợi: T-073 (ổn định ca khóa T-037, hỏng oan lần nữa), T-092 (sau T-112), LC-T113-2, SL-T105-1 (Thấp, gom phiếu dọn), Thư Ký: `security.md` §5 cách chạy `pip-audit`, chú thích `pyproject.toml` về `uvx`; T-116 nhóm 2, 4.
+
+### 2026-10-31 13:32 · Chỉ Huy B
+
+- Gộp **T-102** (+ ghi chú `[plan]` Ngòi Bút), **T-109**, **T-078**, **T-114** (`bb25dde`). Windows 21.819 test qua, 0 hỏng. Lượt toàn bộ test đêm 30/10 chết ở 16% vì máy ngủ ~00:45; lượt 07:40 trên `3cdd096` hỏng đúng 1 ca đã biết (ghi chú `[plan]`).
+- Chủ dự án 31/10: nâng `pyasn1` ngay (T-114 xong); lập phiên **Giám Sát** (`local_bed15da7-2a29-4f16-bebd-017948d87d38`, đã tách lên cấp trên cùng; cron 10 phút, hết hạn ~07/11); chỉ báo chủ dự án khi cần quyết.
+- Lập T-112 (chuẩn bị bật Hẹn giờ/Đăng ngay; công tắc chỉ trong phiên — Chỉ Huy chọn A), T-113 (nối nút T-109), T-114, T-115 (`modified_gmt`, tách từ T-112).
+- Đang chạy: Lá Chắn T-110 lượt 2–3 (việc cuối đóng GĐ3), Soi Lỗi T-113, Thợ Máy T-115 (rồi gộp vào T-112 → Soi Lỗi, Lá Chắn đầy đủ T-112).
+- Hàng đợi: T-105 (Thợ Máy), T-092 (Họa Sĩ), test `test_soi_loi_t102.py` ghi `data/site_index.sqlite` vào thư mục dự án (Soi Lỗi dọn), chú thích `pyproject.toml` về `uvx`; sau T-112/T-115: thử thật LC-T094-44 với chủ dự án, Lá Chắn rà soát GĐ5.
+
 ### 2026-10-30 22:24 · Chỉ Huy B
 
 - Gộp **T-107 lượt 3** (T-107 xong; HEIC tạm tắt), **T-110 lượt 1**, **T-101** (`eef13b5`). Windows 21.539 test qua, 0 hỏng. Sau gộp phải bỏ `import pytest` thừa ở `test_la_chan_t093.py` (mỗi nhánh gỡ một dấu `xfail` cuối, đứng riêng thì không lỗi).

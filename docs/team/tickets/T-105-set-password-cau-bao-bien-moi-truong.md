@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 0 (đăng nhập app) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-104 đã gộp (cùng `scripts/hash_password.py`, `seo_app/env_file.py`) |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Đã qua Lá Chắn; chờ gộp |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ U3, F3.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-29 theo đề xuất Soi Lỗi, Lá Chắn T-104 và chỉ đạo «vấn đề nào có đề xuất thì làm theo đề xuất».
+- 2026-11-02 12:44 (Chỉ Huy B): Thợ Máy (`1ca123a`, `4f8c31a`); Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`4771521`, SL-T105-1 Thấp: chương trình khác sửa `.env` đúng lúc vừa lưu → câu báo vẫn «dòng sai định dạng»); Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`a295a6e`), không cần sửa trước khi gộp.

@@ -405,7 +405,7 @@ def test_tai_anh_bi_tu_choi_4xx_khong_doa_anh_da_len(fake_wp, wp_client, status)
 
 
 def test_tai_anh_thanh_cong_khong_doi(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": f"{UPLOADS}cu.jpg"}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": f"{UPLOADS}cu.jpg", "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/9",
                lambda r: {"id": 9, "source_url": f"{UPLOADS}a.jpg", **body(r)})
     media = wp_client.upload_media(PHOTO, "cong.jpg", alt_text="Cổng")

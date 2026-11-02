@@ -8,7 +8,7 @@ lên WordPress: chỉ mở Soạn bài (LC-T094-35). Khung «Đang viết» vẫ
 """
 
 import html
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 
 import streamlit as st
 
@@ -17,7 +17,7 @@ from seo_app import demo, ui
 from seo_app.config import ConfigError, load_settings
 from seo_app.google.service_account import ServiceAccountError
 from seo_app.google.sheets import SheetsClient, SheetsError
-from seo_app.plan import model, sync
+from seo_app.plan import model, sync, website
 from seo_app.plan.model import PlanRow
 from seo_app.storage import plan_cache
 from seo_app.storage.drafts import DraftError, DraftStore
@@ -29,7 +29,6 @@ S = st.session_state
 
 UPCOMING = 3  # số bài «Chưa viết» gần nhất hiện ở «Tiếp theo trong kế hoạch»
 SENT_SHOWN = 8  # số bài đã gửi hiện ở «Đã gửi WordPress»
-LATE_AFTER = timedelta(minutes=15)  # bài hẹn giờ quá giờ chừng này mà chưa lên: «Lỡ lịch»
 MODE_LABELS = {"draft": "Đã gửi nháp", "future": "Đã hẹn giờ", "publish": "Đã đăng"}
 WEB_LABELS = {
     "draft": ("Nháp trên website", "gray"),
@@ -208,7 +207,8 @@ def web_badge(post_id: int) -> str:
             due = datetime.strptime(date_gmt, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
         except ValueError:
             due = None
-        if due is not None and datetime.now(UTC) - due > LATE_AFTER:
+        # Cùng hằng, cùng giờ với lõi và trang Kế hoạch (G1 Soi Lỗi T-109).
+        if due is not None and settings.now() - due > website.LATE_AFTER:
             return ":red-badge[Lỡ lịch]"
     label, color = WEB_LABELS.get(status, ("", "gray"))
     return f":{color}-badge[{label}]" if label else ""

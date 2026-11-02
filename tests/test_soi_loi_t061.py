@@ -163,7 +163,8 @@ def site(fake_wp):
     def create_media(_request):
         media_id = state["next"]
         state["next"] += 1
-        return (201, {"id": media_id, "source_url": f"{UPLOADS}anh-{media_id}.webp"}, {})
+        answer = {"id": media_id, "source_url": f"{UPLOADS}anh-{media_id}.webp", "post": None}
+        return (201, answer, {})
 
     def update_media(request):
         media_id = int(path(request).rsplit("/", 1)[1])
@@ -315,7 +316,8 @@ def test_lenh_ghi_dung_nguyen_dia_chi_ke_ca_truy_van(fake_wp, wp_client, site, w
     post_fields = "?_fields=id%2Cstatus%2Ctitle%2Clink%2Cfeatured_media%2Cmodified_gmt"  # T-115
     media_fields = "?_fields=id%2Csource_url%2Calt_text"
     assert [(r.method, r.path_url) for r in fake_wp.requests] == [
-        ("POST", MEDIA + media_fields),
+        # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh xin thêm ``post``.
+        ("POST", MEDIA + media_fields + "%2Cpost"),
         ("POST", f"{MEDIA}/101" + media_fields),
         ("POST", POSTS + post_fields),
         # T-110 (Chỉ Huy duyệt 30/10): gắn ảnh vào bài nháp.
@@ -462,7 +464,7 @@ def media_site(fake_wp):
             caption=meta["caption"],
             alt_text=wp_sanitize_text_field(meta["alt"]),
         )
-        return (201, {"id": 101, "source_url": f"{UPLOADS}cong.jpg", **stored}, {})
+        return (201, {"id": 101, "source_url": f"{UPLOADS}cong.jpg", **stored, "post": None}, {})
 
     def update(request):
         for key in ("title", "caption", "alt_text"):

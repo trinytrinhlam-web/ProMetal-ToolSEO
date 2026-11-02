@@ -136,3 +136,208 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <4 file của phiếu>
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+---
+
+## Lượt 2 (2026-10-30): LC-T110-1, SL-T110-1
+
+Theo biên bản Lá Chắn `T-110-la-chan.md` (ĐẠT CÓ ĐIỀU KIỆN, `7497a4f`) và Soi Lỗi `T-110-soi-loi.md` (ĐẠT CÓ ĐIỀU KIỆN, `f85b2bb`), làm trước khi đóng Giai đoạn 3. Nhánh đã gộp `main` cục bộ `eef13b5` trước khi sửa (fast-forward: có T-099 lượt 2, T-107 lượt 3, T-101). Chỉ Huy chọn cách **A** lúc 20:40: chỉ gắn khi website trả `post` null/0; thiếu hay lạ thì không gắn.
+
+### Tóm tắt (cho chủ dự án)
+
+- Lệnh tải ảnh nay hỏi website thêm một thông tin: ảnh đó đã thuộc bài nào chưa. Ảnh mới tải thì chưa thuộc bài nào: phần mềm gắn vào bài nháp như lượt 1.
+- Nếu website trả lại một ảnh **có sẵn**, đang thuộc bài khác (chỉ xảy ra khi plugin lạ trả lời sai), phần mềm **không đụng** tới ảnh đó: không ghi alt, không chuyển ảnh sang bài nháp, dừng gửi và báo lỗi như khi website không xác nhận tạo ảnh mới.
+- Website không nói rõ ảnh thuộc bài nào: phần mềm không gắn và báo «chưa gắn được» kèm cách kiểm.
+- Lần gửi hỏng trước khi tạo được nháp: câu báo nay nói rõ ảnh đã tải đang hiện công khai trong danh sách Media của website, và cách kiểm, xóa (Media → Thư viện). Câu nhắc trên nút «Gửi nháp» cũng nói điều này.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/wordpress/client.py` | **LC-T110-1:** `_MEDIA_UPLOAD_FIELDS = "id,source_url,alt_text,post"` (riêng cho lệnh tải ảnh; lệnh ghi alt vẫn `_MEDIA_FIELDS`). `_post_media` (khi `new_only`): `post` là số nguyên dương (`_positive_id`, ≤ 2⁶³−1) → `WordPressError(_MEDIA_NOT_CREATED)`, như mã khác 201: không ghi alt, không gắn, không tạo nháp; `post` là `None` hay số nguyên `0` → ảnh của client (`_uploaded_media_ids`); thiếu khóa (`_NO_PARENT_FIELD`) hay giá trị lạ (chữ, `bool`, âm, số thực, quá 2⁶³−1, mảng…) → không vào tập, các bước khác như cũ, lệnh gắn bị `_attach_media`/`_owns_attach` từ chối, kết quả có `unattached` và câu `_IMAGES_NOT_ATTACHED`. **SL-T110-1:** `_DRAFT_IMAGES_LEFT` nói ảnh chưa gắn vào bài nào nên đang hiện công khai trong danh sách Media (kể cả GPS), không tự xóa, cách xóa; `_DRAFT_IMAGE_MAYBE` thêm «nếu có, ảnh đó … đang hiện công khai trong danh sách Media, hãy xóa nếu không dùng» |
+| `app/views/write.py` | **Chỉ** 3 câu: `MSG_SEND_UNEXPECTED`, `MSG_SEND_INTERRUPTED` thêm «ảnh chưa gắn vào bài nào thì đang hiện công khai trong danh sách Media (kể cả vị trí GPS)… (xóa ảnh không dùng)»; `GPS_PUBLIC_WARNING` thêm «lần gửi hỏng trước khi tạo được nháp cũng báo, vì ảnh đã tải khi đó chưa gắn vào bài nào nên hiện trong danh sách này». Giữ nguyên mọi cụm chữ test cũ đang tìm («xem được công khai», «Lần gửi trước bị ngắt giữa chừng», «có thể vẫn đã lên thư viện Media», «gắn không được thì phần mềm báo»…), nên **không** phải đổi test nào ghim câu báo |
+| `tests/test_la_chan_t110.py` | Gỡ 1 dấu `xfail` (LC-T110-1), chỉ xóa dòng dấu |
+| `tests/test_soi_loi_t110.py` | Gỡ 1 dấu `xfail` phủ 3 ca (SL-T110-1), chỉ xóa dòng dấu; thêm `"post": None` ở site giả (bảng dưới) |
+| `tests/test_t110_gan_anh_vao_bai_nhap.py` | Thêm 19 ca (mục «Test mới») |
+| 10 file test khác | Thêm `"post": None` ở câu trả lời tải ảnh của site giả; 4 file đổi chuỗi `_fields` của lệnh tải ảnh (hai bảng dưới) |
+
+Trước khi gỡ dấu: chạy `-rX`, đủ 4 ca XPASS(strict) (1 LC-T110-1, 3 SL-T110-1).
+
+### Test cũ đã đổi: site giả trả `"post": None` (Chỉ Huy duyệt 30/10 20:40, cách A)
+
+WordPress thật, khi `_fields` có `post`, trả `"post": null` cho ảnh vừa tải. Mỗi chỗ chỉ thêm khóa đó vào câu trả lời lệnh tải ảnh (`POST /wp/v2/media`); không đổi hay bỏ kiểm nào. Các site chỉ dùng cho `upload_media` đứng riêng (không gắn ảnh) không phải sửa.
+
+| File | Dòng | Cũ → mới |
+|---|---|---|
+| `tests/test_app_images.py` | 1012 (`Site.create_media`) | `{"id": media_id, "source_url": f"{UPLOADS}{name}"}` → thêm `"post": None` |
+| `tests/test_soi_loi_t054.py` | 185 (`Site.create_media`, dùng chung cho T-093, T-110…) | `{"id": media_id, "source_url": self.source_url(media_id)}` → thêm `"post": None` |
+| `tests/test_soi_loi_t071.py` | 224 (`Site.create_media`) | như trên |
+| `tests/test_shortcode_t061.py` | 324–325 (`create_media` trong `site`) | `return (201, {"id": …, "source_url": …}, {})` → `answer = {…, "post": None}`; `return (201, answer, {})` (tách dòng vì độ dài) |
+| `tests/test_soi_loi_t061.py` | 166–167 (`create_media` trong `site`) | như trên |
+| `tests/test_t081_alt_gach_cheo.py` | 93 (`create_media`) | thêm `"post": None` |
+| `tests/test_wordpress_images.py` | 199–201 (`Site.create_media`) | `answer = {"id", "source_url", "mime_type"}` → thêm `"post": None` (tách dòng) |
+| `tests/test_soi_loi_t081.py` | 293 (`site`) | `(201, {"id": FIRST_ID, "source_url": url}, {})` → thêm `"post": None` |
+| `tests/test_soi_loi_t083.py` | 338 (`site`) | như trên |
+| `tests/test_soi_loi_t060.py` | 656 (`real_site.created_media`) | thêm `"post": None` |
+| `tests/test_soi_loi_t110.py` | 80–81 (`_ParentSite._answer`, lệnh tải) | `201, {"id", "source_url", "alt_text": ""}` → thêm `"post": None` |
+
+### Test cũ đã đổi: `_fields` của lệnh tải ảnh (Chỉ Huy duyệt 30/10 20:25)
+
+Chỉ đổi chuỗi mong đợi của **lệnh tải** (`POST /wp/v2/media`) từ `id,source_url,alt_text` thành `id,source_url,alt_text,post`; lệnh ghi alt (`/media/<mã>`) giữ chuỗi cũ. Các file khác có chuỗi `_fields` của Media (ghim lệnh ghi alt, hay gọi thẳng `_request` với `_fields` tự đặt) vẫn qua, không sửa.
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_la_chan_t060.py::test_lc_t060_doi_chung_than_json_va_fields_that_cua_app_van_gui` | `("POST", "/wp/v2/media", None, [_MEDIA_FIELDS])` | `… [_MEDIA_UPLOAD_FIELDS]` (thêm nhập `_MEDIA_UPLOAD_FIELDS`) |
+| `test_shortcode_t061.py::test_upload_media_truong_media_khong_con_shortcode` | `assert query(upload) == MEDIA_FIELDS` | `== UPLOAD_FIELDS` (hằng mới `{"_fields": ["id,source_url,alt_text,post"]}`); `query(update) == MEDIA_FIELDS` giữ |
+| `test_shortcode_t061.py::test_moi_lenh_ghi_co_fields_co_dinh_khong_dung_noi_dung` | `("POST", MEDIA, MEDIA_FIELDS)` | `("POST", MEDIA, UPLOAD_FIELDS)` |
+| `test_soi_loi_t054.py::test_moi_lenh_deu_qua_danh_sach_duong_khong_tham_so_la` | nhánh `path.startswith(MEDIA)` → `id,source_url,alt_text` cho cả lệnh tải | thêm nhánh trước: `path == MEDIA` → `id,source_url,alt_text,post`; nhánh lệnh ghi alt giữ |
+| `test_soi_loi_t061.py::test_lenh_ghi_dung_nguyen_dia_chi_ke_ca_truy_van` | `("POST", MEDIA + media_fields)` | `("POST", MEDIA + media_fields + "%2Cpost")` |
+
+### Test mới (lượt 2), trong `tests/test_t110_gan_anh_vao_bai_nhap.py`
+
+| Test | Kiểm |
+|---|---|
+| `test_lenh_tai_anh_xin_them_post` | Mọi lệnh tải ảnh có `_fields=id,source_url,alt_text,post` |
+| `test_post_null_hay_0_thi_gan` (2 ca) | `post` `None`, `0`: gắn đủ 2 ảnh vào bài 42, không câu báo |
+| `test_thieu_post_thi_khong_gan_bao_cau_co_dinh` | Thiếu `post`: 0 lệnh gắn; bài nháp, ảnh đại diện, lệnh ghi alt như cũ; `unattached == (101, 102)`; câu `_IMAGES_NOT_ATTACHED` |
+| `test_post_so_duong_la_anh_co_san_tu_choi_nhu_ma_khac_201` (3 ca: 7, 1, 2⁶³−1) | `DraftImagesError` bắt đầu bằng `_MEDIA_NOT_CREATED`; 0 lệnh ghi alt, 0 lệnh tạo nháp, dừng ngay ảnh đầu |
+| `test_post_so_duong_o_upload_media_rieng_cung_tu_choi` | `upload_media` đứng riêng: ảnh có bài cha 7 → lỗi, không lệnh nào ghi vào ảnh đó |
+| `test_post_sai_kieu_thi_khong_gan` (11 ca) | `"7"`, `""`, `"0"`, `True`, `False`, `-1`, `1.5`, `0.0`, 2⁶³, `[7]`, `{"id": 7}`: 0 lệnh gắn, câu báo cố định |
+
+### Bằng chứng (lượt 2)
+
+```
+$ uv run pytest -q -p no:cacheprovider -rX tests/test_la_chan_t110.py tests/test_soi_loi_t110.py \
+      tests/test_t110_gan_anh_vao_bai_nhap.py                      # trước khi gỡ dấu
+4 XPASS(strict): 1 LC-T110-1, 3 SL-T110-1
+
+$ uv run pytest -q -p no:cacheprovider tests/test_t110_gan_anh_vao_bai_nhap.py \
+      tests/test_la_chan_t110.py tests/test_soi_loi_t110.py tests/test_la_chan_t093.py
+142 passed
+
+$ uv run pytest -q -p no:cacheprovider <85 file chọn lọc>        # 30/10 22:27 → 23:19
+5 failed, 8724 passed, 1 skipped, 3 xfailed in 3116.96s (0:51:56)
+                                       # 5 ca đều ghim `_fields` lệnh tải ảnh (bảng trên)
+$ uv run pytest -q -p no:cacheprovider tests/test_la_chan_t060.py tests/test_shortcode_t061.py \
+      tests/test_soi_loi_t054.py tests/test_soi_loi_t061.py      # sau khi đổi chuỗi `_fields`
+311 passed
+
+$ uv run ruff check .
+All checks passed!
+```
+
+85 file chọn lọc: mọi file test có `create_draft_with_images`, `send_draft`, «Gửi nháp», `upload_media`, `_post_media`, `/wp/v2/media`, `fake_wp`, `FakeWordPress`, `wordpress.client`, `GPS_PUBLIC_WARNING`, `MSG_SEND_`, cộng `test_wordpress_release.py`, `test_la_chan_t099.py`, `test_soi_loi_t099.py`, `test_t089_send_draft.py`, `test_t086_send_state.py`. Gồm client WordPress, «Gửi nháp», T-054, T-059, T-060, T-071, T-085, T-086, T-088, T-089, T-091, T-099, T-110 (T-102 chưa có ở `main`). 3 xfail có từ trước (SL-T106-1 ×2, SL-T108-1), không thuộc phiếu.
+
+Thử «làm hỏng» code (sửa tạm, chạy 3 file test T-110, trả nguyên file; script so lại: giống hệt):
+
+| Làm hỏng | Số test đỏ |
+|---|---|
+| Lệnh tải không xin `post` | 1 |
+| Nhận ảnh có bài cha (bỏ lệnh từ chối) | 4 |
+| Thiếu `post` coi như `null` (cách B) | 1 |
+| Nhận mọi giá trị `post` lạ | 12 |
+| Nhận `False` như `0` | 2 |
+
+### Còn lại
+
+- Ghi nhận G2 của Soi Lỗi (giữa lúc tải ảnh và lúc gắn, vài giây tới vài phút, ảnh vẫn trong danh sách công khai): không đổi, như biên bản.
+- Kiểm trên website thật như «Rủi ro» 1 của lượt 1: thêm một ý, trang `wp-json/wp/v2/media` mở ở cửa sổ ẩn danh sau khi gửi nháp không có ảnh vừa gửi.
+
+---
+
+## Lượt 3 (2026-10-31): SL-T110-2, SL-T110-3, G4
+
+Theo mục «Lượt 2» trong `T-110-soi-loi.md` (Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN, `f0ff53a`) và quyết định G4 của Chỉ Huy (chặt hơn). Nhánh đã gộp `main` cục bộ `3cdd096` trước khi sửa (có T-102), không xung đột.
+
+### Tóm tắt (cho chủ dự án)
+
+- Website trả lại một ảnh có thể là ảnh **có sẵn** (thuộc bài khác) thay vì ảnh mới: câu báo nay chỉ dặn **kiểm tra** Media → Thư viện, nói rõ ảnh đó có thể đang thuộc bài khác nên để nguyên. Trước đây câu báo bảo «xóa nếu không dùng», dễ làm xóa nhầm ảnh của bài đã đăng.
+- Website không cho biết ảnh vừa tải là ảnh mới hay ảnh có sẵn: phần mềm nay **dừng**, không ghi gì vào ảnh đó (trước đây vẫn ghi alt). WordPress chuẩn luôn cho biết, nên lúc gửi bình thường không đổi gì.
+- Mở lại một bài «gửi dở» ở lần mở app sau: câu khóa nay nói thêm ảnh đã tải mà chưa gắn vào bài nào đang hiện công khai trong danh sách Media, và cách kiểm, xóa.
+
+### Đã thay đổi (lượt 3)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/wordpress/client.py` | **G4:** `_post_media` (khi `new_only`) nay chỉ nhận `post` là `None` hay số nguyên `0`; thiếu khóa hay giá trị lạ → `_ReturnedMediaError(_MEDIA_PARENT_UNKNOWN)`, như số dương: không ghi alt, không gắn, không tạo nháp. Áp cho cả «Gửi nháp» (`create_draft_with_images`) lẫn `upload_media` đứng riêng (Chỉ Huy chọn cách A 31/10 08:55: hai đường không lệch nhau). **SL-T110-2:** lớp lỗi riêng `_ReturnedMediaError` cho mọi trường hợp lệnh tải ảnh không xác nhận được là ảnh mới (mã khác 201: `_MEDIA_NOT_CREATED` giữ nguyên chữ; ảnh có bài cha: câu mới `_MEDIA_HAS_PARENT`, không còn «cần mã 201»; không rõ bài cha: `_MEDIA_PARENT_UNKNOWN`). `_draft_images_error(…, returned_media=…)`: lỗi loại này nối đuôi mới `_DRAFT_IMAGE_RETURNED` (chỉ dặn kiểm, ảnh đang thuộc bài khác thì để nguyên, ảnh mới chưa gắn nếu có thì đang hiện công khai trong danh sách Media; không có chữ «xóa»). Lỗi mạng, 5xx, câu trả lời hỏng ở lệnh tải ảnh giữ đuôi `_DRAFT_IMAGE_MAYBE` của lượt 2 |
+| `app/views/write.py` | **Chỉ** câu `unsure_message` (khóa «gửi dở», SL-T110-3): thêm «Ảnh đã tải lên mà chưa gắn vào bài nào thì đang hiện công khai trong danh sách Media (kể cả vị trí GPS)… (xóa ảnh không dùng)». Giữ cụm «bài nháp có thể đã có trên website» mà các test T-086, T-089 tìm |
+| `tests/test_soi_loi_t110.py` | Gỡ 2 dấu `xfail` (SL-T110-2 phủ 2 ca, SL-T110-3), chỉ xóa dòng dấu; đổi kỳ vọng 5 hàm ghim «thiếu/lạ `post` vẫn ghi alt» và chữ cũ (bảng dưới) |
+| `tests/test_t110_gan_anh_vao_bai_nhap.py` | Đổi kỳ vọng 4 hàm của tôi (lượt 2) theo G4 và câu mới; thêm 4 ca (mục «Test mới») |
+| 17 file test cũ | Thêm `"post": None` vào câu trả lời lệnh tải ảnh của site giả (27 chỗ, bảng dưới); `test_wordpress_images.py` đổi thêm 1 chữ câu báo ở lối mã khác 201 |
+
+Trước khi gỡ dấu: 3 ca XPASS(strict) (SL-T110-2 ×2, SL-T110-3).
+
+### Test cũ đã đổi: kỳ vọng «thiếu/lạ `post`» và chữ câu báo (Chỉ Huy duyệt 31/10 00:45)
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_soi_loi_t110.py::test_l2_post_so_duong_dung_ngay_khong_ghi_alt_khong_gan_khong_tao` (4 ca) | `startswith(wp._MEDIA_NOT_CREATED)` | `startswith(wp._MEDIA_HAS_PARENT)` |
+| `test_soi_loi_t110.py::test_l2_post_thieu_hay_la_thi_khong_gan_bai_van_tao` (25 ca) → đổi tên `test_l2_post_thieu_hay_la_dung_ngay_khong_ghi_alt_khong_gan_khong_tao` | bài 42 vẫn tạo, `unattached == (101, 102)`, câu `_IMAGES_NOT_ATTACHED` | `DraftImagesError` bắt đầu bằng `_MEDIA_PARENT_UNKNOWN`; chỉ 1 lệnh (tải ảnh); không ghi alt (`media[101] == {"post": None}`), không tạo, không gắn; ảnh 9 nguyên |
+| `test_soi_loi_t110.py::test_l2_post_la_ma_la_anh_co_san_thi_khong_doi_bai_cha` (5 ca) | `unattached == (9,)`, bài cha 7 (alt vẫn bị ghi) | `DraftImagesError`; `media[9] == OLD_9` (bài cha 7, alt cũ giữ nguyên) |
+| `test_soi_loi_t110.py::test_l2_xet_tung_anh_anh_dau_trong_anh_sau_la` | ảnh 101 gắn, ảnh 102 chưa gắn, bài vẫn tạo | dừng ở ảnh 102: `uploaded == [101]`, câu `_MEDIA_PARENT_UNKNOWN`, 0 lệnh gắn, ảnh 102 không bị ghi alt |
+| `test_soi_loi_t110.py::test_l2_upload_media_rieng_cung_xet_post` (8 ca) | «khong-ro» (thiếu, `"7"`, `NaN`, quá 2⁶³−1) vẫn tải và ghi alt; «tu-choi» bắt đầu bằng `_MEDIA_NOT_CREATED` | «khong-ro» dừng như «tu-choi», bắt đầu bằng `_MEDIA_PARENT_UNKNOWN`; «tu-choi» bắt đầu bằng `_MEDIA_HAS_PARENT`; nhánh còn lại (null, 0) `_uploaded_media_ids == {101}`. Kiểm «không chữ "xóa"», «Media → Thư viện» giữ |
+| `test_t110_gan_anh_vao_bai_nhap.py::test_thieu_post_thi_khong_gan_bao_cau_co_dinh` → `test_thieu_post_thi_dung_khong_ghi_alt_khong_gan` | bài vẫn tạo, ảnh không gắn | dừng: câu `_MEDIA_PARENT_UNKNOWN` + `_DRAFT_IMAGE_RETURNED`, 0 lệnh ghi alt, 0 lệnh tạo |
+| `test_t110_gan_anh_vao_bai_nhap.py::test_post_sai_kieu_thi_khong_gan` (11 ca) → `test_post_sai_kieu_thi_dung_khong_ghi_alt_khong_gan` | như trên | như trên |
+| `test_t110_gan_anh_vao_bai_nhap.py::test_post_so_duong_la_anh_co_san_tu_choi_nhu_ma_khac_201` (3 ca), `::test_post_so_duong_o_upload_media_rieng_cung_tu_choi` | `_MEDIA_NOT_CREATED` | `_MEDIA_HAS_PARENT` |
+| `test_wordpress_images.py::test_t071_tai_anh_khong_phai_201_thi_dung_khong_ghi_alt` (3 ca) | `"có thể vẫn đã lên" in str(err)` | `"có thể là ảnh có sẵn" in str(err)` (đuôi `_DRAFT_IMAGE_RETURNED`); `"201" in str(err)` giữ |
+
+### Test cũ đã đổi: site giả trả `"post": None` (Chỉ Huy duyệt 31/10 08:55, cách A)
+
+Mỗi chỗ chỉ thêm khóa `"post": None` vào câu trả lời lệnh tải ảnh (`POST /wp/v2/media`); vài dòng phải ngắt cho đủ 100 ký tự. Không đổi hay bỏ kiểm nào. Chỉ sửa chỗ làm ca đỏ vì thiếu `post`: chạy lại 17 file, 3.587 qua, không ca nào đỏ vì lý do khác.
+
+| File | Dòng (sau khi sửa) |
+|---|---|
+| `tests/test_la_chan_t060.py` | 164, 224, 233 |
+| `tests/test_la_chan_t071.py` | 55 |
+| `tests/test_la_chan_t085.py` | 39 |
+| `tests/test_soi_loi_t054.py` | 833, 851, 861 |
+| `tests/test_soi_loi_t060.py` | 342, 607 |
+| `tests/test_soi_loi_t061.py` | 466 (`media_site.create`) |
+| `tests/test_soi_loi_t085.py` | 364, 383 |
+| `tests/test_soi_loi_t088.py` | 408 |
+| `tests/test_soi_loi_t091.py` | 268 (`created`), 405 |
+| `tests/test_soi_loi_t099.py` | 751 (`_media_site`) |
+| `tests/test_wordpress_client.py` | 288, 311, 328 |
+| `tests/test_wordpress_images.py` | 1003 (`same_id`) |
+| `tests/test_wordpress_round2_t042.py` | 89 |
+| `tests/test_wordpress_routes_t042.py` | 186 |
+| `tests/test_wordpress_t060.py` | 216, 409 (`media_site`) |
+| `tests/test_wordpress_t085.py` | 311 (`uploaded`) |
+| `tests/test_wordpress_t088.py` | 197 (`uploaded`) |
+
+### Test mới (lượt 3), trong `tests/test_t110_gan_anh_vao_bai_nhap.py`
+
+| Test | Kiểm |
+|---|---|
+| `test_anh_website_tra_lai_chi_dan_kiem_khong_bao_xoa` (3 ca: mã 200, 201 có bài cha, 201 thiếu `post`) | Câu bắt đầu đúng hằng, kết thúc bằng `_DRAFT_IMAGE_RETURNED`; không có «xóa»; không «cần mã 201» ở hai lối 201; `maybe_uploaded`, 0 lệnh ghi vào ảnh 9 |
+| `test_loi_may_chu_o_lenh_tai_anh_giu_cau_cu` | Lỗi 502 ở lệnh tải ảnh: vẫn đuôi `_DRAFT_IMAGE_MAYBE` (ảnh mới có thể đã lên) |
+
+### Bằng chứng (lượt 3)
+
+```
+# 2026-10-31 09:05–10:17, worktree wt-T-110 (đã gộp main 3cdd096), chỉ chạy test chọn lọc
+$ uv run pytest -q tests/test_t110_gan_anh_vao_bai_nhap.py tests/test_la_chan_t110.py \
+    tests/test_soi_loi_t110.py
+222 passed
+$ uv run pytest -q <17 file thêm "post": None>
+3587 passed
+$ uv run pytest -q <88 file: client WordPress, Gửi nháp, write.py, mọi file ghim câu báo hay site giả tải ảnh, cùng test T-102>
+8874 passed, 1 skipped, 7 xfailed in 4290.47s (1:11:30)   # máy đang bận chạy toàn bộ test; 7 xfailed, 1 skipped là của phiếu khác
+$ uv run ruff check .
+All checks passed!
+```
+
+Thử «làm hỏng» code (sửa tạm, chạy 3 file test T-110, trả nguyên file; script so lại: giống hệt):
+
+| Làm hỏng | Số test đỏ |
+|---|---|
+| Thiếu/lạ `post` vẫn nhận (bỏ G4) | 48 |
+| Ảnh có bài cha dùng lại câu «cần mã 201» | 11 |
+| Lối ảnh website trả lại dùng đuôi cũ xui xóa | 6 |
+| Mọi lỗi tải ảnh dùng đuôi mới (cả 5xx) | 1 |
+| Câu khóa «gửi dở» bỏ ý danh sách Media | 1 |
+
+### Còn lại
+
+- Ghi nhận G5 của Soi Lỗi (một ảnh lạ thì ảnh sau cũng không gắn): nay một ảnh lạ là dừng cả lần gửi trước khi tạo nháp, nên G5 không còn ý nghĩa.
+- Lượt thử thật (G3): xem câu trả lời lệnh tải ảnh có `"post": null`. Website có plugin tự gắn ảnh mới vào một bài, hay lược bỏ trường `post`, thì «Gửi nháp» sẽ dừng ở ảnh đầu với câu báo cố định.

@@ -90,7 +90,7 @@ def site(fake_wp):
     def create_media(request):
         media_id = FIRST_ID + len(files)
         files[media_id] = request.headers["Content-Disposition"]
-        return (201, {"id": media_id, "source_url": f"{UPLOADS}{media_id}.webp"}, {})
+        return (201, {"id": media_id, "source_url": f"{UPLOADS}{media_id}.webp", "post": None}, {})
 
     def update_media(request):
         media_id = int(_path(request).rsplit("/", 1)[1])
