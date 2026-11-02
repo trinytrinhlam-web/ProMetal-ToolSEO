@@ -7,6 +7,9 @@
 - Lệnh chuyển không rõ kết quả: không ghi trạng thái vào dòng kế hoạch (G1 Lá Chắn T-102).
 - Ô «gửi lại» nói đúng việc sẽ làm khi đang chọn Hẹn giờ / Đăng ngay.
 - Lúc bấm gửi xét lại công tắc (G2 Lá Chắn T-102).
+- T-115 (LC-T094-23): bài nháp bị sửa ngoài app sau lần ghi cuối của phần mềm thì client không
+  chuyển (``ReleaseError``, không «không rõ»): trang báo câu cố định, bài vẫn là nháp, không khóa
+  «có thể đã gửi», dòng kế hoạch không mang trạng thái chuyển.
 
 Khung test (WordPress giả ``live``, Google Sheet giả ``plan``, công tắc bật trong test) mượn của
 ``tests/test_t102_publish.py``. Không gọi WordPress, Google, AI thật.
@@ -14,6 +17,9 @@ Khung test (WordPress giả ``live``, Google Sheet giả ``plan``, công tắc b
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
 import streamlit as st
 import test_app_images as ui
 import test_t102_publish as t102
@@ -211,3 +217,64 @@ def test_switch_turned_off_at_click_sends_nothing(project_root, root, fake_ai, l
     t102.run_ok(at.run())
     assert live.site.fake.requests == []
     assert any("Hẹn giờ và Đăng ngay đang tắt" in e.value for e in at.error)
+
+
+# ============================================================ T-115: bài bị sửa ngoài app
+
+CHANGED = "2026-10-31T02:00:00"  # giờ sửa mới: ai đó vừa «Lưu nháp» trong trang quản trị
+RELEASE_CHANGED = "Chưa hẹn giờ, chưa đăng: bài vẫn là nháp."
+
+
+def edited_outside(live) -> None:
+    """Lệnh kiểm nháp ngay trước lệnh chuyển (``_fields=id,status,modified_gmt``) thấy giờ sửa
+    khác giờ website trả ở lần ghi cuối của phần mềm; các lệnh đọc khác thấy giờ cũ."""
+
+    def get_post(request):
+        fields = parse_qs(urlsplit(request.url).query).get("_fields", [""])[0]
+        modified = CHANGED if fields == "id,status,modified_gmt" else ui.MODIFIED
+        body = {"id": t102.POST_ID, "status": "draft", "modified_gmt": modified}
+        return (200, body, {"Date": t102.http_date()})
+
+    live.site.fake.on("GET", t102.POST, get_post)
+
+
+def assert_still_draft_not_locked(at, live) -> None:
+    assert t102.release_bodies(live.site) == []
+    assert escape_markdown(RELEASE_CHANGED) in warnings(at)
+    assert not any("có thể đã" in e.value for e in at.error)
+    saved = ui.store().load_send_state(at.session_state["draft_id"])
+    assert (saved.released, saved.release_unknown, saved.pending) == (False, False, False)
+    assert saved.post_id == t102.POST_ID
+    t102.run_ok(at.run())
+    assert any("chưa hẹn giờ/đăng" in i.value for i in at.info)
+    assert not any("có thể đã" in e.value for e in at.error)
+
+
+@pytest.mark.parametrize("mode", [SCHEDULE, PUBLISH])
+def test_post_edited_outside_after_last_write_is_not_released(
+    project_root, root, fake_ai, live, monkeypatch, mode
+):
+    """T-115 (LC-T094-23): bài nháp bị sửa ngoài app sau lần ghi cuối: Hẹn giờ, Đăng ngay đều
+    không gửi lệnh chuyển; câu cố định của client (không lời máy chủ); bài vẫn là nháp, nháp ghi
+    «đã gửi nháp, chưa hẹn giờ/đăng», không khóa «có thể đã gửi»."""
+    seo_answer(monkeypatch, written=True)
+    edited_outside(live)
+    at = send(project_root, mode, seo_write=mode == PUBLISH)
+    assert_still_draft_not_locked(at, live)
+    assert not any(t102.BAIT in text for text in ui.texts(at))
+
+
+def test_post_edited_outside_plan_row_gets_no_release_status(project_root, live, plan):
+    """Dòng kế hoạch không mang trạng thái chuyển («Đã hẹn giờ», «Đã đăng») khi lệnh chuyển bị
+    từ chối vì bài bị sửa ngoài app: bài thật sự vẫn là nháp nên dòng ghi đúng «Đã gửi nháp» kèm
+    Mã bài WordPress (G1 chỉ không ghi khi lệnh chuyển **không rõ** kết quả)."""
+    edited_outside(live)
+    at = t102.open_snap(project_root, t102.plan_article("b" * 31 + "9"))
+    t102.to_mode(at, SCHEDULE)
+    t102.confirm(at)
+    t102.run_ok(t102.send_button(at).click().run())
+    assert t102.release_bodies(live.site) == []
+    status = plan.cell(2, t102.COL["status"])
+    assert status == t102.plan_model.STATUS_DRAFT_SENT
+    assert status not in (t102.plan_model.STATUS_SCHEDULED, t102.plan_model.STATUS_PUBLISHED)
+    assert plan.cell(2, t102.COL["wp_post_id"]) == t102.POST_ID
