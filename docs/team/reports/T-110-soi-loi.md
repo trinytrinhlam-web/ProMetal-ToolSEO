@@ -132,3 +132,239 @@ T2, T3: hai lớp chặn trùng nhau là đúng thiết kế (lớp dạng lện
 - Đột biến: 13/15 bị bắt, 2 tương đương.
 - `uv run ruff check .`: sạch. `detect-secrets` (`PYTHONUTF8=1`) trên file test, báo cáo: sạch.
 - Script: thư mục ghi chú chung `T-110-soi-loi-scripts/mutate110.py`.
+
+## Lượt 2 (2026-10-31): LC-T110-1 (cách A), SL-T110-1
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `team/T-110`, đầu nhánh `f8e8815` (lượt 2 của Thợ Máy, trên `eef13b5`); thử gộp với `main` `a416e74`, thêm cả `team/T-102` `7dec772` |
+| Kết quả | **ĐẠT CÓ ĐIỀU KIỆN.** **LC-T110-1 đóng**: đủ 4 nhánh `post` đúng cách A, ảnh có sẵn không bị đổi bài cha. **SL-T110-1 đóng**: 3 câu đã nêu cùng `_DRAFT_IMAGE_MAYBE` nói ảnh chưa gắn đang hiện công khai trong danh sách Media. **2 lỗi mới, đều Thấp, đều chỉ ở chữ câu báo:** SL-T110-2 (website trả lại ảnh có sẵn mà câu báo xui xóa ảnh «chưa gắn vào bài nào»), SL-T110-3 (mở lại nháp «gửi dở» ở phiên mới: câu khóa chưa nói ảnh đang hiện trong danh sách Media). 0 Nghiêm trọng, 0 Cao, 0 Trung bình. R5 đúng phần duyệt. Gộp `main` và gộp thêm T-102: không xung đột, test chọn lọc 0 hỏng |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Lỗi nhỏ LC-T110-1 đã sửa đúng.** Nếu website trả lời «đã tạo ảnh mới» mà thật ra trả lại một ảnh **có sẵn** đang thuộc bài khác, phần mềm nay dừng ngay: không ghi alt, không gắn ảnh, không tạo bài nháp; ảnh có sẵn giữ nguyên bài cũ. Tôi thử 32 kiểu giá trị website có thể trả cho ô «bài cha» (trống, số 0, số dương, chữ, đúng/sai, số âm, số thực, số quá lớn, NaN, danh sách…): đều đi đúng nhánh đã chọn.
+- **Lỗi nhỏ SL-T110-1 đã sửa đúng.** Gửi hỏng trước lúc có bài nháp thì câu báo nay nói ảnh đã tải **đang hiện công khai trong danh sách Media** và dặn kiểm, xóa ảnh không dùng. Tôi thử 19 chỗ hỏng (trước, giữa hai ảnh, lúc tạo nháp): câu báo đúng ảnh nào đã lên, không chép lời máy chủ hay địa chỉ.
+- **2 lỗi nhỏ mới (Thấp), chỉ là chữ trong câu báo, sửa nhanh:**
+  1. Khi website trả lại ảnh **có sẵn** (chỉ gặp khi website có plugin trả lời sai, như LC-T110-1), câu báo lại bảo ảnh «chưa gắn vào bài nào… hãy xóa nếu không dùng». Người dùng vào thư viện Media dễ thấy đúng hình đó (là ảnh của bài đã đăng) và xóa nhầm. Câu này mới có từ lượt 2.
+  2. Lần gửi bị ngắt giữa chừng (tải lại trang, đóng tab, tắt app) rồi mở lại bài: câu nhắc «gửi dở» chưa nói ảnh đã tải đang hiện công khai trong danh sách Media, trong khi câu nhắc trên nút gửi hứa có báo. Lượt 1 tôi bỏ sót câu này.
+- **Việc của bạn:** không có.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t110.py` | Thêm mục «Lượt 2»: 76 ca (73 qua, 3 `xfail(strict=True)`: SL-T110-2 × 2, SL-T110-3). Thợ Máy đã gỡ dấu `xfail` SL-T110-1 và thêm `"post": None` vào câu trả lời tải ảnh của `_ParentSite` (xem R5). Cả file: 141 ca, 138 qua, 3 xfail |
+| `docs/team/reports/T-110-soi-loi.md` | Mục này |
+
+Không sửa code ứng dụng, không sửa test của agent khác, không commit file phiếu, không gọi website thật.
+
+### 1. Bốn nhánh `post` (LC-T110-1)
+
+Website giả `_ParentSite` nhớ bài cha từng ảnh, có sẵn ảnh 9 thuộc bài đã đăng 7. Giá trị `post` trong câu trả lời lệnh tải ảnh viết tay **đúng byte JSON** (để có `-0`, `NaN`, `1E400`, số 400 chữ số…).
+
+| Nhánh | Giá trị thử | Kết quả |
+|---|---|---|
+| Trống: gắn | `null`, `0`, `-0` | 2 lệnh gắn `{"post": 42}`, ảnh 101, 102 thuộc bài 42, không câu báo, ảnh 9 không đổi |
+| Số dương: từ chối như mã khác 201 | `7`, `1`, `42`, 2⁶³−1 | Dừng ngay ở ảnh đầu: **chỉ 1 lệnh** (lệnh tải), không ghi alt, không tạo nháp, không gắn; `DraftImagesError` bắt đầu bằng `_MEDIA_NOT_CREATED`, `uploaded` rỗng; `_uploaded_media_ids`, `_created_post_ids` rỗng |
+| Thiếu hay lạ: không gắn | thiếu khóa; `"7"`, `""`, `"0"`, `"null"`; `true`, `false`; `-1`, −2⁶³; `0.0`, `-0.0`, `7.0`, `1e2`, `1.5`; 2⁶³, 2⁶⁴, số 400 chữ số, `1E400`, `NaN`, `Infinity`, `-Infinity`; `[7]`, `[]`, `{"id": 7}`, `{}` (25) | Bài nháp 42 tạo, ảnh đại diện đặt; **0 lệnh gắn** (chặn trước khi gửi); `unattached == (101, 102)`; câu báo đúng `_IMAGES_NOT_ATTACHED` (2 ảnh); ảnh 101, 102 không bài cha |
+
+- **Website trả lại đúng ảnh có sẵn 9** (`201`, `post: 7`) ở ảnh đầu hay ảnh thứ hai: ảnh 9 giữ nguyên bài cha 7 và alt cũ, không lệnh nào tới `/media/9`, không tạo nháp, không gắn; ảnh thứ hai thì `uploaded` chỉ có 101.
+- **Xét từng ảnh:** ảnh đầu `null`, ảnh sau `"x"`: gắn ảnh đầu, báo «chưa gắn được 1 ảnh».
+- **`upload_media` đứng riêng** (8 ca + ảnh 9): trống thì nhận là ảnh của client; số dương thì lỗi, chỉ 1 lệnh, câu không xui xóa; thiếu/lạ thì vẫn ghi alt như trước, không vào tập ảnh của client; không lệnh gắn nào.
+- **Đường tải ảnh khác:** chỉ `_post_media` gửi `POST /wp/v2/media`; hai nơi gọi (`create_draft_with_images`, `upload_media`) đều `new_only=True` nên đều qua bước xét `post`. Trong `app/` chỉ `write.py` (nút «Gửi nháp») tải ảnh; trang Kết nối không còn ô tải ảnh (T-106). Ảnh đại diện không tải ảnh mới, chỉ đặt một ảnh vừa tải ở lần gửi đó vào bài nháp vừa tạo.
+- **`_fields`:** lệnh tải xin `id,source_url,alt_text,post`; lệnh ghi alt giữ `id,source_url,alt_text`; lệnh gắn `id,post`; lệnh tạo nháp, kiểm nháp, ảnh đại diện như cũ (so cả chuỗi 9 lệnh).
+
+### 2. Câu báo (SL-T110-1)
+
+19 chỗ hỏng, mỗi chỗ kiểm: đúng danh sách ảnh đã lên; ảnh đó thật chưa có bài cha (câu «chưa gắn vào bài nào» đúng sự thật); có ảnh đã lên hay có thể đã lên thì câu nói **«danh sách Media»** và **«công khai»**, không có thì nói «Chưa có ảnh nào lên thư viện Media» và không nói «công khai»; «bài nháp có thể vẫn đã được tạo» đúng khi lỗi không rõ ở lệnh tạo nháp; không chép lời máy chủ, địa chỉ, tên file; không lệnh xóa nào.
+
+| Chỗ hỏng | Ảnh đã lên | Ảnh đang tải có thể đã lên | Nháp có thể đã có |
+|---|---|---|---|
+| Tải ảnh 1: 400 | — | không | không |
+| Tải ảnh 1: 500, hết giờ, mất mạng, `201` thân hỏng, lỗi lạ | — | có | không |
+| Tải ảnh 1: `200` ảnh 9, `201` ảnh 9 kèm bài cha 7 | — | có (xem SL-T110-2) | không |
+| Ghi alt ảnh 1: 500, hết giờ | 101 | không | không |
+| Ghi alt ảnh 2: lỗi lạ | 101, 102 | không | không |
+| Tải ảnh 2: 400 | 101 | không | không |
+| Tải ảnh 2: 503, cùng mã 101, ảnh 9 kèm bài cha | 101 | có | không |
+| Tạo nháp: 400 | 101, 102 | không | không («Chưa tạo bài nháp») |
+| Tạo nháp: 500, hết giờ, lỗi lạ | 101, 102 | không | có |
+
+- **Trên trang Soạn bài:** tạo nháp bị từ chối 400 → khung lỗi có câu mới («Đã có 1 ảnh…», «danh sách Media», «công khai»), không chép lời máy chủ, 0 lệnh gắn; lỗi lạ trong lúc gửi → đúng `MSG_SEND_UNEXPECTED` mới. Câu nhắc GPS có ý mới «lần gửi hỏng trước khi tạo được nháp cũng báo». Lần gửi bị ngắt, **cùng phiên**: hiện `MSG_SEND_INTERRUPTED` mới (có ý danh sách Media).
+- **Lời hứa của câu nhắc GPS** giữ ở mọi chỗ trên, trừ khi mở lại nháp «gửi dở» ở **phiên mới**: SL-T110-3.
+- Ở hai lối website trả lại ảnh có sẵn, câu `_DRAFT_IMAGE_MAYBE` mới khẳng định «chưa gắn vào bài nào» và xui xóa: SL-T110-2.
+
+### 3. R5
+
+`git diff eef13b5..f8e8815 -- tests/`: 13 file test cũ, đúng bảng Chỉ Huy duyệt, không ca nào nới.
+
+| Duyệt | File: dòng (ở `f8e8815`) |
+|---|---|
+| `"post": None` ở câu trả lời tải ảnh của site giả (20:40), 11 file | `test_app_images.py:1012`, `test_soi_loi_t054.py:185`, `test_soi_loi_t071.py:224`, `test_shortcode_t061.py:324-325`, `test_soi_loi_t061.py:166-167`, `test_t081_alt_gach_cheo.py:93`, `test_wordpress_images.py:199-201`, `test_soi_loi_t081.py:293`, `test_soi_loi_t083.py:338`, `test_soi_loi_t060.py:656`, `test_soi_loi_t110.py:80-81` (của tôi). Chỉ thêm khóa, không đổi gì khác |
+| Chuỗi `_fields` lệnh tải ảnh (20:25), 5 chỗ / 4 file | `test_la_chan_t060.py:184-185` (thêm nhập `_MEDIA_UPLOAD_FIELDS` dòng 35); `test_shortcode_t061.py:452`, `:528` (hằng `UPLOAD_FIELDS` dòng 275-276); `test_soi_loi_t054.py:625-626` (nhánh riêng cho đúng đường `/media`, so **nguyên** chuỗi mới; `/media/<mã>` vẫn so chuỗi cũ, nên chặt như trước); `test_soi_loi_t061.py:318-319` |
+| Gỡ 4 `xfail` (chỉ xóa dấu) | `test_la_chan_t110.py` (5 dòng dấu LC-T110-1), `test_soi_loi_t110.py` (5 dòng dấu SL-T110-1, 3 ca). Thân ca giữ nguyên |
+
+`tests/test_t110_gan_anh_vao_bai_nhap.py` của Thợ Máy chỉ thêm ca (19 ca mới). Không file test nào khác đổi.
+
+### 4. Không lùi, gộp thử
+
+- **`main` `a416e74`:** `git merge-tree` không xung đột (cây `759ec5b`; sau `eef13b5` `main` chỉ thêm ghi việc). Chạy chọn lọc trên bản sao cây gộp, bộ «85 file» Chỉ Huy dặn: tiêu chí grep của Thợ Máy cho 77 file test (bỏ `conftest.py`, `fake_wordpress.py`, `fake_google.py`), thêm `test_app_pages.py`, `test_soi_loi_t031.py` (mở trang Soạn bài), rồi thêm 10 file khi nới tiêu chí (`from seo_app.wordpress`, không phân biệt hoa thường): **89 file, 5 phần song song: 10.431 passed, 1 skipped, 5 xfailed, 0 failed** (2.954 + 1.326 + 1.979 + 3.215 + 957). 5 xfail: SL-T110-2 × 2 (của tôi), SL-T106-1 × 2, SL-T108-1 (có sẵn ở `main`, phiếu khác); 1 skipped có sẵn (Thợ Máy cũng gặp). Bản sao này chạy file của tôi trước khi thêm ca SL-T110-3; bản cuối chạy lại riêng trên cây gộp: 138 passed, 3 xfailed. Gồm client WordPress, «Gửi nháp», T-054 → T-110 (T-059, T-060, T-061, T-071, T-081, T-083, T-085, T-086, T-088, T-089, T-091, T-093, T-099 cả lượt 2 SL-T099-1, T-110 lượt 1).
+- **Thêm `team/T-102` `7dec772`** (chưa vào `main`; T-102 cũng sửa `write.py`, `client.py`): gộp không xung đột (cây `7494b3c`). 29 file (test của T-102, T-101, T-099, T-110, «Gửi nháp» T-086/T-089, các file ghim `_fields` lệnh tải ảnh): **1.611 passed, 6 xfailed, 0 failed** (23 phút). 6 xfail: SL-T110-2 × 2, SL-T102-1 × 3, LC-T102-1 (có chủ đích, của T-102). File của tôi bản cuối trên cây này: 138 passed, 3 xfailed. Không test T-102 nào ghim chuỗi `_fields` cũ của lệnh tải ảnh.
+- Mục lượt 2 chạy trên code lượt 1 (`eef13b5`): 66 ca hỏng, tức test nhắm đúng phần sửa. Riêng ca SL-T110-2 «mã 200» **qua** trên code lượt 1: câu xui xóa ở lối này mới có từ lượt 2.
+
+### Đột biến (lượt 2)
+
+14 đột biến (script `mutate110r2.py`; câu báo «về bản cũ» lấy nguyên khối hằng ở `eef13b5`), mỗi lần chạy `tests/test_soi_loi_t110.py`: **14/14 bị bắt.**
+
+| Đột biến | Ca bắt đầu tiên |
+|---|---|
+| M1 lệnh tải không xin `post` | `test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields` |
+| M2 nhận ảnh có bài cha | `test_l2_post_so_duong_…[7]` |
+| M3 thiếu `post` coi như `null` | `test_l2_post_thieu_hay_la_…[thieu]` |
+| M4 nhận mọi giá trị rỗng (`if not parent`) | `…[chu-rong]` |
+| M5 so 0 không xét kiểu (`parent == 0`) | `…[false]` |
+| M6 số dương theo `isinstance` (nhận `True`, số quá lớn) | `…[true]` |
+| M7 nhận mọi giá trị lạ | `…[thieu]` |
+| M8 `_DRAFT_IMAGES_LEFT` bản cũ | `test_sl_t110_1_…[tu-choi-400]` |
+| M9 `_DRAFT_IMAGE_MAYBE` bản cũ | `test_l2_cau_bao_moi_loi_hong_…[tai-1-500]` |
+| M10 «ảnh đang tải có thể đã lên» cả khi lỗi ở lệnh ghi alt | `…[alt-1-500]` |
+| M11 `upload_media` không xét `201`, `post` | `test_l2_upload_media_rieng_…[null]` |
+| W1, W2, W3 `MSG_SEND_UNEXPECTED`, `MSG_SEND_INTERRUPTED`, `GPS_PUBLIC_WARNING` bản cũ | `test_l2_cau_bao_cua_trang_…` |
+
+### Lỗi tìm ra (lượt 2)
+
+#### SL-T110-2 · Thấp · Website trả lại ảnh có sẵn: câu báo khẳng định ảnh «chưa gắn vào bài nào» và xui xóa
+
+- **Chỗ:** `seo_app/wordpress/client.py`, `_DRAFT_IMAGE_MAYBE`. Lượt 2 thêm «nếu có, ảnh đó chưa gắn vào bài nào nên đang hiện công khai trong danh sách Media, hãy xóa nếu không dùng». Câu này nối vào mọi lỗi ở lệnh tải ảnh mà không phải 4xx (`maybe_uploaded`), **kể cả** hai lối website trả lại ảnh có sẵn: `201` kèm bài cha (LC-T110-1, mới) và mã khác `201` (LC-T071-1).
+- **Thử:** lệnh tải ảnh đầu trả `201` `{"id": 9, "post": 7}` (ảnh 9 của bài đã đăng 7), hay `200` cùng thân. Câu báo: «WordPress không xác nhận đã tạo ảnh mới trong thư viện Media (cần mã 201 Created). Chưa ghi alt cho ảnh này, chưa tạo bài nháp. Ảnh đang tải lúc lỗi có thể vẫn đã lên thư viện Media: kiểm tra Media → Thư viện trong trang quản trị; nếu có, ảnh đó chưa gắn vào bài nào nên đang hiện công khai trong danh sách Media, hãy xóa nếu không dùng.» Phần mềm không đụng ảnh 9 (đúng).
+- **Hậu quả:** website vừa trả lời ảnh đó thuộc bài 7, câu báo lại khẳng định «chưa gắn vào bài nào» và bảo xóa. Plugin chống trùng thì trả lại ảnh **cùng hình**: người dùng vào Media → Thư viện thấy đúng hình vừa gửi (thật ra là ảnh 9 của bài đã đăng) và dễ xóa nhầm, bài 7 mất ảnh (W2: phần mềm không xóa nhưng xui người dùng xóa dữ liệu có sẵn). Trước lượt 2, lối `200` chỉ dặn «kiểm tra» (ca này qua trên `eef13b5`). Nhánh `201` kèm bài cha còn nói «(cần mã 201 Created)» dù website đã trả `201`. Chỉ gặp khi website trả lời sai như LC-T110-1 (WordPress lõi luôn tạo ảnh mới, chưa có bài cha), nên **Thấp**.
+- **Test:** `test_sl_t110_2_website_tra_lai_anh_co_san_cau_bao_khong_xui_xoa` (2 xfail: `201` kèm bài cha, `200`).
+- **Gợi ý:** lỗi «website không xác nhận ảnh mới» (`_MEDIA_NOT_CREATED`, cả nhánh bài cha) dùng câu riêng: không khẳng định «chưa gắn», không xui xóa; nếu dặn xóa thì chỉ ảnh **mới** chưa gắn bài nào, không xóa ảnh đang thuộc bài khác. Lối hết giờ, 5xx giữ câu lượt 2.
+
+#### SL-T110-3 · Thấp · Mở lại nháp «gửi dở» ở phiên mới: câu khóa không nói ảnh đang hiện trong danh sách Media công khai
+
+- **Chỗ:** `app/views/write.py`, `unsure_message` («…**bài nháp có thể đã có trên website**. Mở trang quản trị WordPress, kiểm tra Bài viết → Nháp và Media → Thư viện trước khi gửi lại. App không tự gửi lại.»).
+- **Thử:** lần gửi dừng ngay lúc đang tải ảnh (ảnh đã lên, chưa có nháp; cách dừng của `test_t086_send_state.stop_while_uploading`), rồi mở lại nháp ở **phiên mới** (tải lại trang, đóng tab, tắt app rồi mở lại). Trang chỉ hiện câu khóa «gửi dở» trên; câu nhắc GPS ngay đó hứa «lần gửi hỏng trước khi tạo được nháp cũng báo». Cùng phiên thì có thêm `MSG_SEND_INTERRUPTED` (đã có ý danh sách Media), phiên mới thì không.
+- **Hậu quả:** như SL-T110-1 (ảnh còn GPS liệt kê công khai mà không được nói), ở lối hiếm hơn: gửi bị ngắt rồi mở lại ở phiên khác. **Thấp.**
+- **Test:** `test_sl_t110_3_mo_lai_nhap_gui_do_bao_anh_trong_danh_sach_media` (xfail).
+- **Gợi ý:** thêm vào `unsure_message` cùng ý của `MSG_SEND_INTERRUPTED` («ảnh chưa gắn vào bài nào thì đang hiện công khai trong danh sách Media…, xóa ảnh không dùng»). Lượt 1 tôi bỏ sót câu này (SL-T110-1 chỉ nêu 3 câu).
+
+### Ghi nhận (lượt 2, không tính lỗi)
+
+- **G4 · Nhánh thiếu/lạ vẫn ghi alt như trước T-110.** Website trả lại ảnh có sẵn 9 kèm `post` thiếu, `"7"`, `[7]`, `NaN`: ảnh 9 **không đổi bài cha** (đúng cách A) nhưng alt bị ghi «Cổng inox mới sơn»; `post: 7` thì không đụng. Cách A cố ý chỉ bỏ bước gắn ở nhánh này (đề xuất gốc của Lá Chắn là «không trống thì như mã khác 201»). Vậy «không ảnh có sẵn nào bị ghi alt» (mục 1 Chỉ Huy hỏi) chỉ chắc ở nhánh số dương. WordPress lõi luôn trả `post` số nguyên hay `null`, nên chỉ gặp khi website vừa trả ảnh có sẵn vừa trả `post` hỏng. Muốn chặt hơn: giá trị **lạ** (có khóa mà không phải `null`, 0, số dương) đi như số dương; giữ «thiếu» như hiện nay để website lược bớt trường vẫn gửi được bài. Chỉ Huy quyết.
+- **G5 · Một ảnh `post` lạ thì ảnh sau cũng không gắn.** Vòng gắn dừng ở lỗi đầu, kể cả lỗi chặn trước khi gửi (`_ATTACH_NOT_OWN`): ảnh đầu lạ, ảnh sau `null` thì cả hai chưa gắn; câu báo vẫn đúng số. WordPress lõi trả cùng kiểu cho mọi ảnh nên hầu như không gặp.
+- **G3 (lượt 1) thêm một ý:** ở lượt thử thật, xem câu trả lời lệnh tải ảnh có `"post": null`. Website có plugin tự gắn ảnh mới vào bài nào đó thì cách A làm «Gửi nháp» luôn dừng ở ảnh đầu (câu `_MEDIA_NOT_CREATED`).
+
+### Lệnh đã chạy (lượt 2)
+
+- `pytest tests/test_soi_loi_t110.py`: 138 passed, 3 xfailed; `--runxfail`: SL-T110-2 (2 ca) hỏng ở dòng kiểm «chưa gắn vào bài nào», SL-T110-3 hỏng ở dòng kiểm «danh sách Media».
+- Mục lượt 2 trên code lượt 1 (`eef13b5`): 66 failed, 8 passed, 2 xfailed.
+- Bản gộp `main` `a416e74`: 89 file, 10.431 passed, 1 skipped, 5 xfailed, 0 failed. Bản gộp thêm T-102: 29 file, 1.611 passed, 6 xfailed, 0 failed.
+- Đột biến: 14/14 bị bắt.
+- `uv run ruff check .`: sạch. `detect-secrets` (`PYTHONUTF8=1`) trên file test, báo cáo: sạch (có file mồi tiếng Việt trong cùng lần quét: chỉ mồi bị báo).
+- Script: thư mục ghi chú chung `T-110-soi-loi-scripts/mutate110r2.py`, `shard.py`.
+
+## Lượt 3 (2026-10-31): SL-T110-2, SL-T110-3, G4
+
+| Mục | Nội dung |
+|---|---|
+| Nhánh | `team/T-110`, đầu nhánh `94c19e2` (lượt 3 của Thợ Máy, trên `87c2fb4` gộp `main` cục bộ `3cdd096` có T-102); gộp thử thêm `team/T-112` `6ef1a4c` (đã chứa `team/T-115` `d6df633`) |
+| Kết quả | **ĐẠT.** SL-T110-2, SL-T110-3 đóng (3 ca `xfail` qua thật). G4 đúng ở mọi đường tải ảnh với cả 32 giá trị `post`; không ảnh có sẵn nào bị ghi alt hay đổi bài cha; câu báo đúng sự thật ở mọi lối, không bảo xóa ảnh có thể của bài khác. **0 lỗi mới** (0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp); 2 ghi nhận chữ nhỏ (G6, G7). R5 đúng phạm vi. Gộp thử `team/T-112`, `team/T-115`: không xung đột; test chọn lọc 0 hỏng |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Hai lỗi nhỏ của lượt trước đã sửa đúng:**
+  - website trả lại một ảnh có sẵn: câu báo nay chỉ dặn kiểm thư viện Media, nói ảnh đang thuộc bài khác thì để nguyên, không còn bảo xóa;
+  - mở lại một bài «gửi dở»: câu nhắc nay nói ảnh đã tải mà chưa gắn vào bài nào đang hiện công khai trong danh sách Media.
+- **Quyết định chặt hơn của Chỉ Huy (G4) chạy đúng:** website không cho biết rõ ảnh vừa tải là ảnh mới thì phần mềm dừng, không ghi gì vào ảnh đó, không tạo bài nháp. Tôi thử 29 kiểu trả lời ở ảnh đầu, ở ảnh thứ hai và ở lệnh tải ảnh riêng: ảnh có sẵn trên website không bị đụng lần nào. Gửi bình thường (WordPress chuẩn) không đổi.
+- **Gộp thử** với phần đang làm của T-112 (công tắc Hẹn giờ/Đăng ngay) và T-115: không đụng nhau, test qua hết.
+- **Việc của bạn:** không có.
+
+### Đã thay đổi (lượt 3)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t110.py` | Thêm mục «Lượt 3»: 162 ca, tất cả qua. Thợ Máy đã gỡ 2 dấu `xfail` (3 ca) và đổi kỳ vọng 5 hàm theo G4 (xem R5). Cả file: 303 ca qua |
+| `docs/team/reports/T-110-soi-loi.md` | Mục này |
+
+Không sửa code ứng dụng, không sửa test của agent khác, không commit file phiếu, không gọi website thật.
+
+### 1. Ba ca `xfail` qua thật
+
+`test_sl_t110_2_website_tra_lai_anh_co_san_cau_bao_khong_xui_xoa` (`201` kèm bài cha, `200`) và `test_sl_t110_3_mo_lai_nhap_gui_do_bao_anh_trong_danh_sach_media` qua trên `94c19e2`. Thân ca giữ nguyên, chỉ xóa 2 khối dấu (6 dòng mỗi khối). Trên code trước khi sửa (`87c2fb4`) cả 3 hỏng; đột biến N5, N7 (lối ảnh website trả lại dùng đuôi cũ) và N11 (câu khóa bản lượt 2) làm chúng hỏng lại.
+
+### 2. G4 ở mọi đường tải ảnh
+
+32 giá trị `post` như lượt 2 (3 trống, 4 số dương, 25 thiếu/lạ), viết tay đúng byte JSON.
+
+| Đường | Ca | Kết quả |
+|---|---|---|
+| «Gửi nháp», ảnh đầu | 32 (mục lượt 2, Thợ Máy đổi kỳ vọng theo G4) | Trống: gắn đủ. 29 không trống: **chỉ 1 lệnh** (tải ảnh); không ghi alt, không tạo nháp, không gắn; câu bắt đầu bằng `_MEDIA_HAS_PARENT` (số dương) hay `_MEDIA_PARENT_UNKNOWN` (thiếu/lạ) |
+| «Gửi nháp», ảnh thứ hai | 29 | Dừng ở ảnh 102: đúng 3 lệnh (tải 101, ghi alt 101, tải 102); ảnh 102 không bị ghi alt; không tạo nháp, không đặt ảnh đại diện, không gắn; `uploaded == [101]`. Câu: đúng hằng, «Đã có 1 ảnh…» (ảnh 101 của lần gửi này), có «bài khác», «danh sách Media», «công khai»; không «hãy xóa nếu không dùng», không «cần mã 201» |
+| Website trả lại **ảnh có sẵn 9** | 29 × (ảnh đầu, ảnh sau) = 58 | Ảnh 9 giữ nguyên bài cha 7 và alt cũ; không lệnh nào tới `/media/9`; không tạo nháp, không gắn; 9 không vào tập ảnh của client |
+| `upload_media` | 32 | 3 trống: tải, ghi alt, là ảnh của client. 29 còn lại: chỉ 1 lệnh, không ghi alt, không vào tập ảnh của client; câu đúng hằng, có «Media → Thư viện», không «xóa», không «cần mã 201» |
+| `upload_media`, ảnh có sẵn 9 | 29 | Ảnh 9 không bị đụng, chỉ 1 lệnh |
+| Ảnh đại diện | — | Không có lệnh tải riêng: chỉ đặt một ảnh vừa tải ở chính lần gửi đó vào bài nháp vừa tạo. Lối dừng không gửi lệnh ảnh đại diện (so cả chuỗi lệnh) |
+| Trang Soạn bài (bước Xuất bản T-102) | `post: "7"` | Khung lỗi bắt đầu đúng `_MEDIA_PARENT_UNKNOWN`, có «bài khác», «danh sách Media»; không câu nào trên trang có «hãy xóa nếu không dùng»; 1 lệnh tải, 0 lệnh ghi alt hay gắn, 0 bài; nháp không giữ «đang gửi» (chắc chắn chưa có nháp), nút «Gửi nháp» mở |
+
+Trong `app/` chỉ `write.py` (bước Xuất bản) gọi `create_draft_with_images`; không trang nào gọi `upload_media`; trang Kết nối không tải ảnh (ca cấu trúc lượt 2 vẫn qua trên cây có T-102).
+
+### 3. Câu báo
+
+- **Lối website trả lại ảnh** (8 ca: `200`, `201` kèm bài cha, `201` thiếu `post`, `201` `post` chữ; ở ảnh đầu và ảnh thứ hai): không «ảnh đó chưa gắn vào bài nào», không «hãy xóa nếu không dùng»; có «bài khác» (ảnh đó có thể thuộc bài khác, để nguyên), «danh sách Media», «công khai» (ảnh mới, nếu website đã tạo); không «cần mã 201» ở lối `201`; không chép lời máy chủ, địa chỉ, tên file. `maybe_uploaded` đúng.
+- **Lỗi mạng ở lệnh tải** (503, hết giờ, mất mạng, `201` thân hỏng, lỗi lạ): website chưa trả ảnh nào nên câu **không** nói «có sẵn»; giữ ý lượt 2 (ảnh mới có thể đã lên, công khai trong danh sách Media). Mã 3xx đi lỗi chuyển hướng của `_request` (câu lượt 2), không vào nhánh «ảnh website trả lại»: đúng.
+- 19 chỗ hỏng của lượt 2 vẫn đúng như cũ.
+- `unsure_message`: có «danh sách Media», «công khai», giữ cụm «bài nháp có thể đã có trên website» mà các ca T-086, T-089 tìm. Lời hứa của câu nhắc GPS giữ ở mọi lối.
+
+### 4. R5
+
+`git diff 87c2fb4..94c19e2 -- tests/`: đúng hai phần duyệt, không ca nào nới.
+
+| Duyệt | File: dòng (ở `94c19e2`) |
+|---|---|
+| Đổi kỳ vọng «thiếu/lạ vẫn ghi alt» và chữ cũ 2 câu báo (00:45) | `test_soi_loi_t110.py` (của tôi), 5 hàm: `test_l2_post_so_duong_…` (`_MEDIA_NOT_CREATED` → `_MEDIA_HAS_PARENT`), `test_l2_post_thieu_hay_la_…` (đổi tên, dừng như số dương), `test_l2_post_la_ma_la_anh_co_san_…`, `test_l2_xet_tung_anh_…`, `test_l2_upload_media_rieng_…`: các ca này nay kiểm **thêm** (1 lệnh, không ghi alt, không tạo, ảnh 9 nguyên alt), không bỏ kiểm nào. `test_wordpress_images.py:972-973`: «có thể vẫn đã lên» → «có thể là ảnh có sẵn», giữ kiểm «201». File của Thợ Máy `test_t110_gan_anh_vao_bai_nhap.py`: 4 hàm đổi theo G4, thêm 4 ca |
+| Gỡ `xfail` | `test_soi_loi_t110.py`: 2 khối dấu (SL-T110-2 phủ 2 ca, SL-T110-3), chỉ xóa dòng dấu |
+| `"post": None` ở câu trả lời tải ảnh của site giả (08:55), 17 file, **27 chỗ** | `test_la_chan_t060.py:164, 224, 233`; `test_la_chan_t071.py:55`; `test_la_chan_t085.py:39`; `test_soi_loi_t054.py:833, 851, 861`; `test_soi_loi_t060.py:342, 607`; `test_soi_loi_t061.py:466`; `test_soi_loi_t085.py:364, 383`; `test_soi_loi_t088.py:408`; `test_soi_loi_t091.py:268, 405`; `test_soi_loi_t099.py:751`; `test_wordpress_client.py:288, 311, 328`; `test_wordpress_images.py:1003`; `test_wordpress_round2_t042.py:89`; `test_wordpress_routes_t042.py:186`; `test_wordpress_t060.py:216, 409`; `test_wordpress_t085.py:311`; `test_wordpress_t088.py:197`. Khớp bảng của Thợ Máy từng dòng. Mỗi chỗ chỉ thêm khóa (vài chỗ ngắt dòng cho đủ 100 ký tự), không đổi hay bỏ kiểm nào; cả 27 chỗ đều là câu trả lời lệnh `POST /wp/v2/media` |
+
+Không file test nào khác đổi. Còn 2 file có site giả trả ảnh thiếu `post` (`test_soi_loi_t044.py`, `test_soi_loi_t106.py`): đều là ca kiểm trang Kết nối **không** gửi lệnh tải ảnh nào, nên không cần thêm.
+
+### 5. Không lùi, gộp thử
+
+- Gộp `main` cục bộ `3cdd096` vào nhánh (`87c2fb4`): không sửa tay (`git show --remerge-diff` rỗng). `origin/main` vẫn `a416e74` (`3cdd096` chưa push).
+- **Cây nhánh `94c19e2`**, bộ chọn lọc 95 file (89 file của lượt 2 cùng 6 file T-101, T-102 nay đã ở `main`: `test_t102_publish.py`, `test_t102_formula_cells.py`, `test_soi_loi_t102.py`, `test_la_chan_t102.py`, `test_la_chan_t101.py`, `test_t101_settings_google.py`), 2 phần (máy đang chạy toàn bộ test): **10.683 passed, 1 skipped, 7 xfailed, 0 failed** (5.824 + 4.859, 39 phút). 7 xfail của phiếu khác: SL-T106-1 × 2, SL-T108-1, SL-T102-1 × 3, LC-T102-1; 1 skipped vì máy không cho tạo symlink (`test_site_index.py`), như Thợ Máy gặp.
+- **Gộp thử `team/T-112` `6ef1a4c`** (đã chứa `team/T-115` `d6df633`; cùng sửa `write.py`): **không xung đột** (cây `015d614`). Riêng `team/T-115`: không xung đột (cây `f667905`). 31 file (T-112, T-115, T-102, T-110, «Gửi nháp» T-086/T-089, Cài đặt, T-099, T-041/T-059, trang mở mọi bước): **1.682 passed, 0 failed** (49 phút). Không còn xfail: T-112 sửa SL-T102-1, LC-T102-1 và đã gỡ dấu ở `test_soi_loi_t102.py`, `test_la_chan_t102.py`.
+- Mục lượt 3 trên code trước khi sửa (`87c2fb4`): 153 hỏng, 12 qua (lỗi mạng 5, `upload_media` trống 3, `upload_media` ảnh 9 kèm số dương 4: hai nhánh này đã đúng từ lượt 2), tức test nhắm đúng phần sửa.
+
+### Đột biến (lượt 3)
+
+11 đột biến (script `mutate110r3.py`), mỗi lần chạy `tests/test_soi_loi_t110.py`: **11/11 bị bắt.**
+
+| Đột biến | Ca bắt đầu tiên |
+|---|---|
+| N1 bỏ G4 (thiếu/lạ coi như ảnh của client) | `test_l2_post_thieu_hay_la_…[thieu]` |
+| N2 G4 chỉ chặn thiếu khóa | `…[chu-7]` |
+| N3 thiếu khóa coi như `null` | `…[thieu]` |
+| N4 ảnh có bài cha dùng lại câu «cần mã 201» | `test_l2_post_so_duong_…[7]` |
+| N5 lối ảnh website trả lại dùng đuôi cũ (xui xóa) | `test_sl_t110_2_…[201-co-cha]` |
+| N6 mọi lỗi lệnh tải dùng đuôi mới (cả 5xx, hết giờ) | `test_l3_loi_mang_o_lenh_tai_khong_noi_anh_co_san[503]` (chỉ ca lượt 3 bắt) |
+| N7 mã khác 201 là lỗi thường (đuôi cũ) | `test_sl_t110_2_…[200]` |
+| N8 đuôi mới bỏ ý «ảnh mới công khai trong danh sách Media» | `test_l2_cau_bao_moi_loi_hong_…[tai-1-200]` |
+| N9 nhận ảnh vào tập của client trước khi xét bài cha | `test_l2_post_so_duong_…[7]` |
+| N10 `upload_media` không xét `201`, `post` | `test_l2_upload_media_rieng_…[null]` |
+| N11 câu khóa «gửi dở» bản lượt 2 | `test_sl_t110_3_…` |
+
+### Ghi nhận (lượt 3, không tính lỗi)
+
+- **G6 · `_MEDIA_HAS_PARENT` khẳng định «không phải ảnh mới vừa tải».** Website có plugin tự gắn ảnh mới vào một bài thì ảnh website trả **là** ảnh mới (đã có bài cha). Đuôi câu đã nói «có thể là ảnh có sẵn» và hướng dẫn an toàn (để nguyên ảnh thuộc bài khác), nên chỉ ghi nhận; nếu sửa chữ thì «có thể không phải ảnh mới». Lượt thử thật (G3) sẽ cho biết website có `"post": null` hay không.
+- **G7 · `_MEDIA_PARENT_UNKNOWN` ghi «(thiếu thông tin bài cha)» cả khi website trả giá trị sai dạng** (`"7"`, `true`, `[7]`…). «thiếu hay sai dạng» đúng hơn; chữ nhỏ.
+- **G5 (lượt 2) không còn:** một ảnh lạ là dừng cả lần gửi trước khi tạo nháp (Thợ Máy nêu đúng).
+- **Giới hạn còn lại (như mọi lượt):** website trả ảnh có sẵn mà nói `post: null` thì không phân biệt được với ảnh mới (WordPress lõi không làm vậy).
+
+### Lệnh đã chạy (lượt 3)
+
+- `pytest tests/test_soi_loi_t110.py` trên `94c19e2`: 303 passed (3 ca trước là `xfail` nay qua).
+- Mục lượt 3 trên `87c2fb4` (trước khi sửa): 153 failed, 12 passed.
+- Cây nhánh: 95 file, 10.683 passed, 1 skipped, 7 xfailed, 0 failed. Gộp thử T-112 (có T-115): 31 file, 1.682 passed, 0 failed.
+- Đột biến: 11/11 bị bắt.
+- `uv run ruff check .`: sạch. `detect-secrets` (`PYTHONUTF8=1`) trên file test, báo cáo: sạch (có file mồi tiếng Việt trong cùng lần quét: chỉ mồi bị báo).
+- Script: thư mục ghi chú chung `T-110-soi-loi-scripts/mutate110r3.py`.

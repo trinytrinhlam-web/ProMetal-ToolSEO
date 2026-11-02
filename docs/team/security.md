@@ -126,6 +126,8 @@ Biên bản bảo mật phải đi qua đủ các dòng này.
 
 Chạy bằng `uvx` (chạy tạm, **không thêm vào thư viện của dự án**):
 
+**Trước khi chạy `uvx` / `uv tool run`:** chạy `uv --version`, phải từ **0.13.4** trở lên (T-078, GHSA-hq85-5cpj-mr62: bản cũ còn tin chứng chỉ bị lộ, mà `uvx` tải công cụ không ghim mã băm). Thấp hơn thì **không chạy**, dừng và báo Chỉ Huy. `required-version` của dự án (`pyproject.toml`) chỉ chặn lệnh dự án (`uv sync`, `uv run`…), **không chặn `uvx`**.
+
 ```bash
 uvx pip-audit                       # lỗ hổng đã biết trong thư viện (đọc môi trường uv)
 uvx bandit -r seo_app app scripts   # lỗi bảo mật phổ biến trong code Python

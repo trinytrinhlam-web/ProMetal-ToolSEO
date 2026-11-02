@@ -56,9 +56,10 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 # quét trước). ``process.py`` đọc công tắc này lúc mở ảnh.
 HEIC_ENABLED = False
 HEIC_EXTENSIONS = frozenset({".heic", ".heif"})
-# JPEG, PNG, WebP, AVIF; HEIC/HEIF (iPhone, quyết định 1A) khi ``HEIC_ENABLED``. Không nhận GIF,
-# BMP, TIFF, .lnk.
-IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp", ".avif"}) | (
+# JPEG, PNG, WebP; HEIC/HEIF (iPhone, quyết định 1A) khi ``HEIC_ENABLED``. Không nhận GIF, BMP,
+# TIFF, .lnk. Không nhận AVIF (T-078): ``process.py`` không mở AVIF (``ALLOWED_FORMATS``) nên
+# khung chọn ảnh không liệt kê ``.avif``.
+IMAGE_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".webp"}) | (
     HEIC_EXTENSIONS if HEIC_ENABLED else frozenset()
 )
 MAX_IMAGE_BYTES = 40 * 1024 * 1024  # 40 MB/file (thiết kế T-046 mục 1)
@@ -519,9 +520,9 @@ class ImageRef:
         parts = _parse_rel(self.rel_path, allow_empty=False)
         if not _is_image_name(parts[-1]):
             raise ImageFolderError(
-                "Chỉ nhận ảnh JPEG, PNG, WebP, HEIC/HEIF hoặc AVIF."
+                "Chỉ nhận ảnh JPEG, PNG, WebP hoặc HEIC/HEIF."
                 if HEIC_ENABLED
-                else "Chỉ nhận ảnh JPEG, PNG, WebP hoặc AVIF (tạm chưa nhận ảnh HEIC của iPhone)."
+                else "Chỉ nhận ảnh JPEG, PNG hoặc WebP (tạm chưa nhận ảnh HEIC của iPhone)."
             )
 
     @property

@@ -65,11 +65,6 @@ def _writes_to_9(fake_wp) -> list[dict]:
     return [sl54.body(r) for r in fake_wp.requests if r.method == "POST" and sl54.path(r) == target]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="LC-T110-1: lệnh gắn tin mã 201; site trả 201 kèm ảnh có sẵn thuộc bài khác thì ảnh đó "
-    "bị chuyển sang bài nháp",
-)
 def test_lc_t110_1_anh_co_san_site_tra_201_khong_bi_chuyen_bai_cha(fake_wp, wp_client):
     site = _ExistingMediaSite(fake_wp, status=201)
     with contextlib.suppress(DraftImagesError):  # cách sửa từ chối ảnh ngay lúc tải cũng được

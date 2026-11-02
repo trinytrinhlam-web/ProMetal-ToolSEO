@@ -213,7 +213,7 @@ def test_tham_so_dung_danh_sach_van_gui_nguyen_ven(fake_wp, wp_client, method, p
 
 
 def test_tai_anh_van_gui_loai_file_va_ten_file(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/9", {"id": 9, "source_url": SOURCE_URL})
     wp_client.upload_media(JPEG, "cong.jpg", alt_text="Cổng")
     upload = fake_wp.requests[0]
@@ -406,7 +406,7 @@ def test_mau_shortcode_dung_chung_voi_t056_khong_doi():
 
 
 def media_site(fake, *, status=201):
-    fake.on("POST", MEDIA, (status, {"id": 9, "source_url": SOURCE_URL}, {}))
+    fake.on("POST", MEDIA, (status, {"id": 9, "source_url": SOURCE_URL, "post": None}, {}))
     fake.on("POST", f"{MEDIA}/9", lambda r: {"id": 9, "source_url": SOURCE_URL, **body(r)})
 
 

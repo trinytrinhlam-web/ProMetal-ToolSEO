@@ -113,3 +113,59 @@ Nâng thành LC-T110-1 (Thấp). Chỉ gặp khi website trả lời sai `201` c
 3. **Lần thử thật tới** (Chỉ Huy, chủ dự án): gửi một nháp kèm ảnh, mở danh sách Media bằng cửa sổ ẩn danh, ảnh vừa gửi không có trong danh sách; tài khoản Biên tập viên gắn được ảnh (không lỗi 403).
 
 **Kết luận:** **ĐẠT CÓ ĐIỀU KIỆN.** 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 2 Thấp (LC-T110-1 mới, nâng từ G1; SL-T110-1 giữ Thấp). **Gộp `main` được ngay** (giữ cả hai hàm khi giải xung đột). LC-T093-2 đóng. LC-T110-1, SL-T110-1 sửa trước khi đóng Giai đoạn 3.
+
+## Xem lại lượt 2–3 (rút gọn) · 2026-10-31
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Thợ Máy lượt 2 `f8e8815` (gốc `main` `eef13b5`), lượt 3 `94c19e2` (sau khi gộp `main` `3cdd096` có T-102, `87c2fb4`); Soi Lỗi lượt 2 `f0ff53a`, lượt 3 `b7c018b`. Code: `seo_app/wordpress/client.py` (`_MEDIA_UPLOAD_FIELDS` xin thêm `post`; `_post_media` với `new_only`: chỉ mã 201 **và** `post` trống (`null`, `0`) mới là ảnh của client, `post` số dương → `_MEDIA_HAS_PARENT`, thiếu hay lạ → `_MEDIA_PARENT_UNKNOWN`, cả hai qua lớp lỗi riêng `_ReturnedMediaError`; câu `_DRAFT_IMAGE_RETURNED`; sửa `_DRAFT_IMAGES_LEFT`, `_DRAFT_IMAGE_MAYBE`), `app/views/write.py` (chỉ chữ `MSG_SEND_UNEXPECTED`, `MSG_SEND_INTERRUPTED`, `GPS_PUBLIC_WARNING`, `unsure_message`). R5: site giả trả thêm `"post": None` (11 file lượt 2, 17 file lượt 3), chuỗi `_fields` của lệnh tải, chữ câu báo cũ, ca ghim «thiếu/lạ vẫn ghi alt» |
+| Ngày | 2026-10-31 (Chỉ Huy giao 11:10; làm 11:32 → 13:32 +07, giờ máy đo bằng `date`; dừng 11:33 → 12:32 vì hết hạn mức; test cây gộp 52 phút vì máy tải 100%) |
+| **Kết luận lượt 2–3** | **ĐẠT**, gộp `main` được ngay (với `main` cục bộ `bb25dde` không xung đột). **LC-T110-1 đóng**; SL-T110-1, -2, -3 đóng (đồng ý Soi Lỗi). 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp còn mở; Lá Chắn không có lỗi mới. **Đóng Giai đoạn 3 về phía T-110 được** (về bảo mật); nên có một lần gửi nháp kèm ảnh trên website thật để chắc website trả `"post": null` (mục «Ghi nhận lượt 2–3»). Gộp với phần T-115 đang làm: không xung đột chữ, **1 ca test sẽ đỏ** (mục 5) |
+
+### Tóm tắt (cho chủ dự án)
+
+- Điểm nhỏ tôi báo ở lượt 1 **đã sửa thật**: nếu website trả lời sai «đã tạo ảnh mới» mà thật ra trả lại một ảnh **có sẵn**, phần mềm nay nhận ra (hỏi thêm «ảnh này thuộc bài nào») và **không đụng** vào ảnh đó: không ghi alt, không gắn sang bài nháp, không tạo bài nháp. Tôi thử gần 1.000 kiểu trả lời: không lần nào ảnh có sẵn bị sửa.
+- Các câu báo khi gửi hỏng nay nói đúng: ảnh đã tải mà chưa gắn bài thì đang hiện trong danh sách Media công khai; ảnh website trả lại (có thể của bài khác) thì chỉ dặn kiểm, **không** bảo xóa.
+- Phần gắn ảnh của Giai đoạn 3 đã xong về bảo mật. **Việc của bạn:** không có; lần thử thật tới sẽ gửi một bài nháp kèm ảnh để xem website trả lời đúng như phần mềm chờ.
+
+### 1. LC-T110-1 đóng
+
+- `_post_media` (`client.py:1792-1812`): `new_only` (cả hai nơi gọi: `upload_media`, `create_draft_with_images`) thì mã khác 201, `post` số dương, `post` thiếu hay lạ đều ném `_ReturnedMediaError` **trước** khi mã ảnh vào `_uploaded_media_ids`, trước mọi lệnh ghi alt, gắn ảnh. Chỉ `post` là `None` hay số nguyên `0` (không `False`, `0.0`, `"0"`) mới là ảnh của client. WordPress lõi trả `post: null` cho ảnh mới tải qua REST (`WP_REST_Attachments_Controller::prepare_item_for_response`: `post_parent` rỗng thì `null`).
+- `probe_t110_l3.py` (cây gộp `main` + T-110, **946 ca, 0 hỏng**): mã 200, 201, 202 × 19 giá trị `post` (thiếu, `null`, `0`, `7`, `1`, 2⁶³−1, 2⁶³, `"7"`, `"0"`, `""`, `True`, `False`, `0.0`, `7.5`, `-1`, `[]`, `{}`, `[7]`, `"null"`): ảnh là của client **đúng và chỉ** khi 201 + `null`/`0`; mỗi ca đúng 1 lệnh, lệnh tải xin `_fields=id,source_url,alt_text,post`. `upload_media` 36 ca ảnh có sẵn 9 (bài cha 7): **0 lệnh ghi** vào ảnh 9, ảnh 9 giữ alt và bài cha, báo lỗi. «Gửi nháp» 72 ca (ảnh có sẵn đứng đầu, hay sau một ảnh mới): 0 lệnh ghi ảnh 9, không tạo nháp, không lệnh gắn, `DraftImagesError` liệt kê đúng ảnh đã lên (101 hay không ảnh nào).
+- Ca xfail của tôi `test_lc_t110_1_anh_co_san_site_tra_201_khong_bi_chuyen_bai_cha` nay qua (R5: lượt 2 chỉ xóa 5 dòng dấu, lượt 3 không đụng file của tôi). `probe_t110.py` lượt 1 chạy lại trên cây gộp: 262/263 ca như cũ; ca còn lại là ca ghi «hiện trạng G1» (chờ có lệnh ghi vào ảnh 9): nay **không còn** lệnh ghi nào, đúng là lỗi đã sửa.
+
+### 2. Không ảnh có sẵn nào bị ghi alt, đổi bài cha ở mọi đường
+
+- Lệnh ghi vào ảnh (`POST /wp/v2/media/<mã>`) chỉ có ở: ghi alt, tiêu đề, chú thích sau khi tải (`upload_media`, `_describe_draft_media`), chạy **sau** `_post_media(new_only=True)` đã xác nhận ảnh mới; gắn ảnh (`_attach_media`) chỉ cho mã trong `_uploaded_media_ids`, lớp `_request` kiểm lại (`_owns_attach`). `app/` không gọi `_request` thẳng (grep). Trang Kết nối WordPress không còn tải ảnh (T-106).
+- Giới hạn còn lại (không xếp lỗi, mục «Ghi nhận lượt 2–3»): website trả 201 + `post: null` cho một ảnh **có sẵn nhưng chưa gắn bài nào** thì không phân biệt được với ảnh mới (đã thử: client ghi alt vào ảnh đó).
+
+### 3. Câu báo
+
+- Câu mới cố định, không chép lời máy chủ, không địa chỉ (probe gài mồi trong câu trả lời và địa chỉ ảnh: không lọt câu nào). Lối website trả lại ảnh (`_DRAFT_IMAGE_RETURNED`): «có thể là ảnh có sẵn, đang thuộc bài khác… để nguyên», không «hãy xóa». «Hãy tự xóa nếu không dùng» chỉ còn ở `_DRAFT_IMAGES_LEFT` (ảnh **chính lần gửi này** đã tải, đã xác nhận là ảnh mới) và ở các câu chung của trang (`MSG_SEND_UNEXPECTED`, `MSG_SEND_INTERRUPTED`, `unsure_message`: «xóa ảnh không dùng» sau khi tự kiểm, không khẳng định ảnh nào). Câu nhắc GPS nói đúng cả lối gửi hỏng trước khi có nháp. Hiển thị vẫn qua `escape_markdown`.
+
+### 4. W2, W3, F1
+
+- **W2: đạt** (mục 1, 2). **W3: đạt, không đổi** (lượt 2–3 không đụng nội dung bài, chỉ trường hỏi khi tải ảnh và chữ câu báo). **F1: đạt, không đổi** (không đụng đọc/ghi file).
+
+### 5. Gộp thử
+
+- `main` cục bộ `bb25dde` (T-078, T-109, T-114, ghi chú `[plan]`): `git merge-tree --write-tree` **không xung đột** (cây `7c519a9`); `client.py` của cây gộp đúng bằng của nhánh (`main` sau `d6df633` không đụng file T-110 sửa). Test chọn lọc trên cây gộp, 2 lô song song, **51 file** (mọi file test có chạm tải ảnh, «Gửi nháp», Media, câu báo gửi hỏng, cùng T-099, T-102): **6.866 ca: 6.858 passed, 7 xfailed, 1 failed** (lô a 3.741 + 4 xfailed, 34 phút; lô b 3.117 + 3 xfailed, 52 phút). 7 xfailed là lỗi đã biết của `main` (SL-T102-1 × 3, LC-T102-1, SL-T106-1 × 2, SL-T108-1). Ca hỏng `tests/test_app_wordpress.py::test_create_draft_from_form` là **hỏng oan**: `RuntimeError: AppTest script run timed out after 30(s)` lúc máy tải 100% (phiên khác chạy toàn bộ test); chạy riêng qua cả trên cây gộp (49 giây) lẫn trên nhánh (42 giây); ca này không đụng đường tải ảnh (trang Kết nối WordPress tạo nháp thử chỉ có chữ). Không chạy `test_pyasn1_version.py` (venv của worktree còn pyasn1 cũ, không liên quan).
+- `team/T-115`: nhánh **chưa có commit nào** (đầu nhánh `d6df633` là `main`), nên gộp nhánh thì không có gì xung đột. Phần Thợ Máy đang làm dở trong `wt-T-115` (chưa commit, 12 file, đọc lúc 12:4x, chỉ đọc): 6 file chung với T-110 (`client.py`, `test_app_images.py`, `test_shortcode_t061.py`, `test_soi_loi_t054.py`, `test_soi_loi_t061.py`, `test_soi_loi_t099.py`), `git merge-file` 3 bên (gốc `d6df633`) **không xung đột chữ** cả 6. Chồng phần đó lên cây gộp rồi chạy 3 file test T-110: **1 ca đỏ, 380 qua**: `tests/test_soi_loi_t110.py::test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields` (Soi Lỗi lượt 2) ghim nguyên dãy `_fields` của lệnh tạo nháp, kiểm nháp, ảnh đại diện mà T-115 thêm `modified_gmt`. **Khi gộp T-115 (sau T-110), Thợ Máy T-115 đổi các chuỗi `_fields` trong ca này theo R5**, không đổi thứ tự lệnh hay chuỗi `_fields` của lệnh tải, gắn ảnh.
+- Thứ tự lệnh khi có cả hai phiếu: lệnh gắn ảnh (T-110) chạy giữa lệnh tạo nháp và lệnh ảnh đại diện. WordPress lõi không đổi `modified_gmt` của bài khi đổi bài cha của ảnh, nên không vướng cách so giờ sửa của T-115; nếu website (plugin) có đổi thì T-115 chỉ dừng lệnh chuyển (hướng an toàn). Nên xem ở lượt thử thật.
+
+### Ghi nhận lượt 2–3 (không xếp lỗi)
+
+1. **Giới hạn đã biết:** ảnh có sẵn **chưa gắn bài nào** mà website trả 201 + `post: null` thì client coi là ảnh mới (ghi alt, gắn vào nháp). Câu trả lời không có gì để phân biệt; WordPress lõi luôn tạo ảnh mới, chỉ plugin trả lời sai mới gặp; ảnh đó không thuộc bài nào nên hại nhỏ hơn ca LC-T110-1 đã sửa. Không cần ghi sổ rủi ro.
+2. **G4 chặt:** website (plugin bảo mật, bộ lọc trường REST) không trả khóa `post` thì **mọi** lần tải ảnh dừng (an toàn nhưng «Gửi nháp kèm ảnh» không dùng được). Lần thử thật tới nên gửi một nháp kèm ảnh, xem lệnh tải trả `"post": null` (cùng G3 của Soi Lỗi: mở danh sách Media bằng cửa sổ ẩn danh, ảnh vừa gửi không có trong danh sách).
+3. G6, G7 của Soi Lỗi (câu `_MEDIA_HAS_PARENT` khẳng định «không phải ảnh mới», `_MEDIA_PARENT_UNKNOWN` nói «thiếu» cả khi sai dạng): đồng ý không xếp lỗi, hướng dẫn vẫn an toàn.
+
+### Kết quả công cụ quét (lượt 2–3)
+
+| Công cụ | Kết quả |
+|---|---|
+| ruff | `ruff check .` trên nhánh: sạch |
+| bandit (`PYTHONUTF8=1`) | `client.py`, `write.py`: 0 |
+| detect-secrets (`PYTHONUTF8=1`, mồi tiếng Việt cùng lần quét: bắt được) | 7 file của lượt 2–3: 2 mục «Basic Auth Credentials», đều là chữ mẫu địa chỉ có tên và mật khẩu giả có từ trước (chú thích LC-T042-4 trong `client.py`, docstring `site_host` trong `write.py`); không phải bí mật |
+| Script dò | `probe_t110_l3.py` 946 ca, 0 hỏng; `probe_t110.py` 263 ca (1 ca «hiện trạng» nay đúng như đã sửa) |
+
+**Kết luận lượt 2–3:** **ĐẠT.** LC-T110-1 đóng; SL-T110-1, -2, -3 đóng; 0 lỗi mới, 0 lỗi còn mở. Gộp `main` được ngay. Đóng Giai đoạn 3 về phía T-110 được (về bảo mật); lần thử thật xem website trả `"post": null`. Khi gộp T-115: đổi chuỗi `_fields` ở 1 ca của `test_soi_loi_t110.py` theo R5.
