@@ -50,3 +50,4 @@ W2, W3; LC-T094-23.
 
 - Lập 2026-10-31, tách từ T-112 yêu cầu 3 theo đề xuất Họa Sĩ.
 - 2026-10-31 13:32 (Chỉ Huy B): giao Thợ Máy (phiên T-094) 09:55, nhánh từ `d6df633`. R5 duyệt 10:55 (thêm `,modified_gmt` vào chuỗi `_fields` mong đợi; thêm `modified_gmt` vào câu trả lời giả tạo/kiểm nháp), 13:20 (gỡ `xfail` LC-T102-1: T-115 chặn ở lớp client).
+- 2026-11-02 12:44 (Chỉ Huy B): Thợ Máy xong (`496e8da`, `00bad96`; Chỉ Huy xác nhận 14:20 31/10 hai chỗ đổi test rộng hơn lời duyệt). Soi Lỗi rút gọn đang làm (dừng vì hết hạn mức 31/10, 02/11; chạy tiếp).
