@@ -18,7 +18,7 @@
   - phải làm gì khi lộ file khóa, bảng lỗi thường gặp.
 
   Trước đây README chưa có mục này, dù trong app đã có câu báo chỉ tới «README mục «Kế hoạch và Google Sheets»».
-- Sổ rủi ro (`security.md` mục 6) thêm 2 dòng mức Thấp của lớp `.env` và lớp lọc hồ sơ, theo đề nghị Lá Chắn. Cột «người quyết định» ghi **chờ anh/chị xác nhận**, vì tôi không thấy anh/chị đã duyệt hai dòng này.
+- Sổ rủi ro (`security.md` mục 6) thêm 2 dòng mức Thấp của lớp `.env` và lớp lọc hồ sơ, theo đề nghị Lá Chắn. Anh/chị đã đồng ý ngày 02/11 (Chỉ Huy B báo lúc 18:55).
 - `security.md` mục 5 thêm cách chạy công cụ quét lỗ hổng thư viện (`pip-audit`) chạy được với dự án này. Đã chạy thử: 69 thư viện, không có lỗ hổng đã biết.
 - Chú thích `required-version` trong `pyproject.toml` nói rõ dòng này không chặn `uvx`.
 
@@ -102,7 +102,7 @@ README: số mục 1–14, mọi «mục N» trỏ tới mục có thật; «m�
 
 ## Rủi ro và điểm cần chú ý
 
-- **Hai dòng sổ rủi ro chưa có chủ dự án duyệt.** Mục 6 là «rủi ro chủ dự án đã quyết định chấp nhận», và `rules.md` mục 4 xếp việc chấp nhận rủi ro vào việc phải hỏi chủ dự án. Vì vậy cột người quyết định ghi «Chỉ Huy B giao ghi theo đề nghị Lá Chắn (T-119, 02/11); chờ chủ dự án xác nhận». Chủ dự án đồng ý thì đổi thành «Chủ dự án (ngày)».
+- **Hai dòng sổ rủi ro:** lúc đầu cột người quyết định ghi «chờ chủ dự án xác nhận», vì `rules.md` mục 4 xếp việc chấp nhận rủi ro vào việc phải hỏi chủ dự án. Chủ dự án đồng ý ngày 02/11 (tin Chỉ Huy B 18:55), nên cả hai dòng nay ghi «Chủ dự án đồng ý 2026-11-02».
 - **Tên mục trên Google Cloud** (APIs & Services → Library, IAM & Admin → Service Accounts, Keys → Add key → Create new key → JSON) viết theo giao diện tiếng Anh thường gặp. Tôi chưa mở Google Cloud để đối chiếu.
 - **Mục 14 nằm sau «Xử lý sự cố».** Cách này giữ số mục cũ, nhưng thứ tự đọc chưa thật tự nhiên. Khi nào README được sắp lại (ví dụ sau khi gộp T-112), có thể dời mục này lên gần mục 6 «Kết nối WordPress».
 - LC-T094-44 (thử thật trên Sheet bản sao, cần chủ dự án) không thuộc phiếu này.
@@ -110,4 +110,4 @@ README: số mục 1–14, mọi «mục N» trỏ tới mục có thật; «m�
 
 ## Câu hỏi cho chủ dự án
 
-Có đồng ý ghi hai rủi ro Thấp ở `security.md` mục 6 (dòng 02/11: `parse_stream` của python-dotenv; lọc thừa đoạn thụt lề trong hồ sơ doanh nghiệp) vào sổ rủi ro đã chấp nhận không? Đề xuất của Lá Chắn: **đồng ý** (cả hai lỗi theo hướng an toàn, không lộ gì).
+~~Có đồng ý ghi hai rủi ro Thấp ở `security.md` mục 6 (dòng 02/11: `parse_stream` của python-dotenv; lọc thừa đoạn thụt lề trong hồ sơ doanh nghiệp) vào sổ rủi ro đã chấp nhận không?~~ **Đã trả lời:** chủ dự án **đồng ý** ghi sổ cả hai dòng (2026-11-02, Chỉ Huy B báo lúc 18:55). Cột người quyết định đã đổi thành «Chủ dự án đồng ý 2026-11-02».
