@@ -52,7 +52,7 @@ def test_lc_t071_1_upload_media_khong_ghi_vao_anh_website_khong_xac_nhan_vua_tao
 
 
 def test_lc_t071_1_doi_chung_upload_media_201_van_tai_va_ghi_alt(fake_wp, wp_client):
-    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": NEW_ID, "source_url": SOURCE_URL, "post": None}, {}))
     fake_wp.on(
         "POST", f"{MEDIA}/{NEW_ID}", {"id": NEW_ID, "source_url": SOURCE_URL, "alt_text": "Alt mới"}
     )

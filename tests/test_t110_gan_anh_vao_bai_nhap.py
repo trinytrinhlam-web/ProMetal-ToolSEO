@@ -31,11 +31,18 @@ from seo_app.images.tags import ImageTags
 from seo_app.wordpress import WordPressClient, WordPressError
 from seo_app.wordpress import client as client_module
 from seo_app.wordpress.client import (
+    _DRAFT_IMAGE_MAYBE,
+    _DRAFT_IMAGE_RETURNED,
     _FEATURED_NOT_SET,
     _IMAGES_NOT_ATTACHED,
+    _MEDIA_HAS_PARENT,
+    _MEDIA_NOT_CREATED,
     _MEDIA_PARENT_FIELDS,
+    _MEDIA_PARENT_UNKNOWN,
+    _MEDIA_UPLOAD_FIELDS,
     _ROUTE_BLOCKED,
     DraftImage,
+    DraftImagesError,
 )
 
 MEDIA = sl54.MEDIA
@@ -352,6 +359,128 @@ def test_chi_attach_media_gui_khoa_post():
             ):
                 found.add(function.name)
     assert found == {"_attach_media"}
+
+
+# ====================================================================== lượt 2: LC-T110-1
+# Lệnh tải ảnh xin thêm ``post`` (bài cha). Chỉ ảnh website trả ``post`` null/0 (ảnh mới, chưa có
+# bài cha) mới là ảnh của client, được gắn; thiếu hay lạ: không gắn (câu báo); số dương (ảnh có
+# sẵn thuộc bài khác): từ chối như mã khác 201 (Chỉ Huy duyệt 30/10 20:40, cách A).
+
+
+def _upload_parent(fake_wp, site, parent, *, drop=False):
+    """Lệnh tải ảnh của site T-054, đổi ``post`` thành ``parent`` (``drop``: bỏ hẳn khóa)."""
+    create = site.create_media
+
+    def answer(request):
+        status, data, headers = create(request)
+        data = dict(data)
+        if drop:
+            data.pop("post", None)
+        else:
+            data["post"] = parent
+        return status, data, headers
+
+    fake_wp.on("POST", MEDIA, answer)
+
+
+def _describes_only(fake_wp) -> list[dict]:
+    return [sl54.body(r) for r in sl54.describes(fake_wp) if "post" not in (sl54.body(r) or {})]
+
+
+def test_lenh_tai_anh_xin_them_post(site, fake_wp, wp_client):
+    send(wp_client)
+    for upload in sl54.uploads(fake_wp):
+        assert query(upload) == {"_fields": [_MEDIA_UPLOAD_FIELDS]}
+    assert _MEDIA_UPLOAD_FIELDS == "id,source_url,alt_text,post"
+
+
+@pytest.mark.parametrize("parent", [None, 0])
+def test_post_null_hay_0_thi_gan(site, fake_wp, wp_client, parent):
+    _upload_parent(fake_wp, site, parent)
+    result = send(wp_client)
+    assert result.unattached == () and result.message == ""
+    assert [sl54.body(r) for r in attaches(fake_wp)] == [{"post": 42}, {"post": 42}]
+
+
+def test_thieu_post_thi_dung_khong_ghi_alt_khong_gan(site, fake_wp, wp_client):
+    """T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: thiếu ``post`` là ảnh chưa xác nhận của
+    client, dừng như số dương."""
+    _upload_parent(fake_wp, site, None, drop=True)
+    with pytest.raises(DraftImagesError) as caught:
+        send(wp_client)
+    message = str(caught.value)
+    assert message.startswith(_MEDIA_PARENT_UNKNOWN) and _DRAFT_IMAGE_RETURNED in message
+    assert sl54.describes(fake_wp) == [] and sl54.creates(fake_wp) == []
+    assert len(sl54.uploads(fake_wp)) == 1 and wp_client._uploaded_media_ids == set()
+
+
+@pytest.mark.parametrize("parent", [7, 1, client_module.MAX_ID])
+def test_post_so_duong_la_anh_co_san_tu_choi_nhu_ma_khac_201(site, fake_wp, wp_client, parent):
+    """Ảnh website trả về đã thuộc bài ``parent``: không ghi alt, không gắn, không tạo nháp."""
+    _upload_parent(fake_wp, site, parent)
+    with pytest.raises(DraftImagesError) as caught:
+        send(wp_client)
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45): câu riêng cho ảnh có bài cha.
+    assert str(caught.value).startswith(_MEDIA_HAS_PARENT)
+    assert sl54.describes(fake_wp) == [] and sl54.creates(fake_wp) == []
+    assert len(sl54.uploads(fake_wp)) == 1  # dừng ngay ở ảnh đầu
+    assert wp_client._uploaded_media_ids == set()
+
+
+def test_post_so_duong_o_upload_media_rieng_cung_tu_choi(fake_wp, wp_client):
+    fake_wp.on("POST", MEDIA, (201, {"id": 9, "source_url": f"{sl54.UPLOADS}a.jpg", "post": 7}, {}))
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45): câu riêng cho ảnh có bài cha.
+    with pytest.raises(WordPressError, match=re.escape(_MEDIA_HAS_PARENT.split(".")[0])):
+        wp_client.upload_media(b"\xff\xd8 anh", "a.jpg", alt_text="A")
+    assert [sl54.path(r) for r in fake_wp.requests] == [MEDIA]  # không ghi gì vào ảnh 9
+
+
+@pytest.mark.parametrize(
+    "parent",
+    ["7", "", "0", True, False, -1, 1.5, 0.0, 2**63, [7], {"id": 7}],
+    ids=["chu", "chu-rong", "chu-0", "true", "false", "am", "so-thuc", "0-thuc", "qua-2-63", "mang",
+         "dict"],
+)
+def test_post_sai_kieu_thi_dung_khong_ghi_alt_khong_gan(site, fake_wp, wp_client, parent):
+    # T-110 lượt 3 (Chỉ Huy duyệt 31/10 00:45), G4: giá trị lạ dừng như số dương.
+    _upload_parent(fake_wp, site, parent)
+    with pytest.raises(DraftImagesError) as caught:
+        send(wp_client)
+    assert str(caught.value).startswith(_MEDIA_PARENT_UNKNOWN)
+    assert attaches(fake_wp) == [] and sl54.describes(fake_wp) == []
+    assert sl54.creates(fake_wp) == [] and wp_client._uploaded_media_ids == set()
+
+
+# ====================================================================== lượt 3: SL-T110-2
+# Website trả lại ảnh không xác nhận là ảnh mới: câu báo chỉ dặn kiểm, không bảo xóa (ảnh có thể
+# là ảnh có sẵn của bài khác). Lỗi mạng, 5xx ở lệnh tải ảnh giữ câu cũ (ảnh mới có thể đã lên).
+
+
+@pytest.mark.parametrize(
+    ("answer", "start"),
+    [
+        pytest.param((200, {"id": 9, "post": 7}), _MEDIA_NOT_CREATED, id="200"),
+        pytest.param((201, {"id": 9, "post": 7}), _MEDIA_HAS_PARENT, id="201-co-cha"),
+        pytest.param((201, {"id": 9}), _MEDIA_PARENT_UNKNOWN, id="201-thieu-post"),
+    ],
+)
+def test_anh_website_tra_lai_chi_dan_kiem_khong_bao_xoa(fake_wp, wp_client, answer, start):
+    status, data = answer
+    fake_wp.on("POST", MEDIA, (status, {**data, "source_url": f"{sl54.UPLOADS}a.webp"}, {}))
+    with pytest.raises(DraftImagesError) as caught:
+        send(wp_client)
+    message = str(caught.value)
+    assert message.startswith(start) and message.endswith(_DRAFT_IMAGE_RETURNED)
+    assert "xóa" not in message and "cần mã 201" not in message.replace(_MEDIA_NOT_CREATED, "")
+    assert caught.value.maybe_uploaded is True and caught.value.uploaded == ()
+    assert [sl54.path(r) for r in fake_wp.requests] == [MEDIA]  # không ghi gì vào ảnh 9
+
+
+def test_loi_may_chu_o_lenh_tai_anh_giu_cau_cu(fake_wp, wp_client):
+    fake_wp.on("POST", MEDIA, (502, {"code": "x"}, {}))
+    with pytest.raises(DraftImagesError) as caught:
+        send(wp_client)
+    assert str(caught.value).endswith(_DRAFT_IMAGE_MAYBE)
 
 
 # ====================================================================== câu nhắc GPS

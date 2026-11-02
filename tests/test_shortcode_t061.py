@@ -272,6 +272,8 @@ ABILITY = "/wp-json/wp-abilities/v1/abilities/siteseo-posts/seo-data-update"
 UPLOADS = f"{BASE_URL}/wp-content/uploads/2026/10/"
 POST_FIELDS = {"_fields": ["id,status,title,link,featured_media"]}
 MEDIA_FIELDS = {"_fields": ["id,source_url,alt_text"]}
+# T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh xin thêm ``post``.
+UPLOAD_FIELDS = {"_fields": ["id,source_url,alt_text,post"]}
 _PILLOW_REGISTRIES = ("ID", "OPEN", "MIME", "SAVE", "SAVE_ALL", "EXTENSION")
 _HEIF_OPTIONS = ("THUMBNAILS", "DEPTH_IMAGES", "AUX_IMAGES", "DISABLE_SECURITY_LIMITS")
 
@@ -319,7 +321,8 @@ def site(fake_wp):
     def create_media(_request):
         media_id = state["next"]
         state["next"] += 1
-        return (201, {"id": media_id, "source_url": f"{UPLOADS}anh-{media_id}.webp"}, {})
+        answer = {"id": media_id, "source_url": f"{UPLOADS}anh-{media_id}.webp", "post": None}
+        return (201, answer, {})
 
     def update_media(request):
         media_id = int(path(request).rsplit("/", 1)[1])
@@ -446,7 +449,7 @@ def test_upload_media_truong_media_khong_con_shortcode(fake_wp, wp_client, site)
         assert_disarmed(sent[field])
         assert html.unescape(sent[field]) == text
     assert html.unescape(media.alt_text) == texts["alt_text"]
-    assert query(upload) == MEDIA_FIELDS
+    assert query(upload) == UPLOAD_FIELDS  # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25)
     assert query(update) == MEDIA_FIELDS
 
 
@@ -522,7 +525,7 @@ def test_moi_lenh_ghi_co_fields_co_dinh_khong_dung_noi_dung(fake_wp, wp_client, 
 
     # Danh sách thay cho dict: ảnh 101 có hai lệnh khác ``_fields`` (T-110 (Chỉ Huy duyệt 30/10)).
     expected = [
-        ("POST", MEDIA, MEDIA_FIELDS),
+        ("POST", MEDIA, UPLOAD_FIELDS),  # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25)
         ("POST", f"{MEDIA}/101", MEDIA_FIELDS),
         ("POST", POSTS, POST_FIELDS),
         ("POST", f"{MEDIA}/101", {"_fields": ["id,post"]}),  # gắn ảnh vào bài nháp

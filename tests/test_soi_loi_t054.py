@@ -182,7 +182,7 @@ class Site:
         media_id = self.next_id
         self.next_id += 1
         self.files[media_id] = name
-        return (201, {"id": media_id, "source_url": self.source_url(media_id)}, {})
+        return (201, {"id": media_id, "source_url": self.source_url(media_id), "post": None}, {})
 
     def update_media(self, request):
         media_id = int(path(request).rsplit("/", 1)[1])
@@ -622,6 +622,8 @@ def test_moi_lenh_deu_qua_danh_sach_duong_khong_tham_so_la(
         elif path(request).startswith(MEDIA + "/") and body(request) == {"post": 42}:
             # T-110 (Chỉ Huy duyệt 30/10): lệnh gắn ảnh vào bài nháp.
             assert query == {"_fields": ["id,post"]}
+        elif path(request) == MEDIA:  # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh
+            assert query == {"_fields": ["id,source_url,alt_text,post"]}
         elif path(request).startswith(MEDIA):  # T-061: ``_fields`` cố định, không ``description``
             assert query == {"_fields": ["id,source_url,alt_text"]}
         else:  # T-061: ``_fields`` cố định, không ``content``, ``excerpt``
@@ -828,7 +830,7 @@ def test_sl_t054_3_loi_sau_lenh_tao_nhap_phai_bao_bai_nhap_co_the_da_co(
     ],
 )
 def test_source_url_ngoai_site_thi_dung_truoc_khi_tao_nhap(fake_wp, wp_client, site, web, url):
-    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{FIRST_ID}", {"id": FIRST_ID, "source_url": url})
     with pytest.raises(DraftImagesError) as error:
         send(wp_client, [DraftImage(web, alt="Cổng")])
@@ -846,7 +848,7 @@ def test_source_url_ngoai_site_thi_dung_truoc_khi_tao_nhap(fake_wp, wp_client, s
     ],
 )
 def test_source_url_hop_le_dang_la_vao_src_nguyen_van(fake_wp, wp_client, site, web, url):
-    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{FIRST_ID}", {"id": FIRST_ID, "source_url": url})
     send(wp_client, [DraftImage(web, alt="Cổng")])
     assert _Figures(sent_content(fake_wp)).imgs[0]["src"] == url
@@ -856,7 +858,7 @@ def test_source_url_https_chu_hoa_dung_lai_khong_tao_nhap(fake_wp, wp_client, si
     # is_site_link nhận «HTTPS://» nhưng figure_html chỉ nhận «https://»: dừng an toàn, chỉ
     # muộn hơn (sau khi đã tải hết ảnh). Ghi nhận G4 trong báo cáo.
     url = "HTTPS://example.com/wp-content/uploads/a.webp"
-    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url}, {}))
+    fake_wp.on("POST", MEDIA, (201, {"id": FIRST_ID, "source_url": url, "post": None}, {}))
     fake_wp.on("POST", f"{MEDIA}/{FIRST_ID}", {"id": FIRST_ID, "source_url": url})
     with pytest.raises(DraftImagesError) as error:
         send(wp_client, [DraftImage(web, alt="Cổng")])

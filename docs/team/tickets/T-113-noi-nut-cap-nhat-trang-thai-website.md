@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-109 (lõi `seo_app/plan/website.py`) đã gộp `main` |
-| Trạng thái | Đang kiểm (Soi Lỗi) |
+| Trạng thái | Đã qua Lá Chắn; chờ gộp |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ Theo `docs/team/reports/T-094-la-chan.md` mục «Chung», điều kiện trong 
 
 - Lập 2026-10-31 theo điều kiện Lá Chắn T-109 và ghi nhận Lá Chắn T-102.
 - 2026-10-31 13:32 (Chỉ Huy B): giao Họa Sĩ (phiên T-084) 10:40, nhánh từ `main` `bb25dde`. Họa Sĩ xong (`7b93af1`). Giao Soi Lỗi rút gọn.
+- 2026-11-02 12:44 (Chỉ Huy B): Soi Lỗi ĐẠT (`44d2a8a`); Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (`d67fb32`, LC-T113-1 trong lõi T-109 → Thợ Máy sửa `c1852c0`, Chỉ Huy cho phép sửa `seo_app/plan/`; xem lại `e14c0ec`: đóng). Còn LC-T113-2 (Thấp, có từ trước: sửa tay `fetched_at` trong `data/plan_cache.sqlite`) → phiếu dọn sau.

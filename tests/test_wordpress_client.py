@@ -283,7 +283,9 @@ def test_set_featured_image(fake_wp, wp_client):
 
 def test_upload_media_with_alt(fake_wp, wp_client):
     fake_wp.on(
-        "POST", "/wp-json/wp/v2/media", (201, {"id": 9, "source_url": "https://x/a.jpg"}, {})
+        "POST",
+        "/wp-json/wp/v2/media",
+        (201, {"id": 9, "source_url": "https://x/a.jpg", "post": None}, {}),
     )
     fake_wp.on(
         "POST",
@@ -304,7 +306,10 @@ def test_upload_media_with_alt(fake_wp, wp_client):
 
 
 def test_upload_media_without_metadata_still_overwrites_fields(fake_wp, wp_client):
-    fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 5, "source_url": "u"}, {}))
+    fake_wp.on(
+        "POST", "/wp-json/wp/v2/media",
+        (201, {"id": 5, "source_url": "u", "post": None}, {}),
+    )
     fake_wp.on("POST", "/wp-json/wp/v2/media/5", {"id": 5, "source_url": "u"})
     media = wp_client.upload_media(b"x", "!!!.webp")
     # LC-T061-3 (T-060): ô trống vẫn ghi đè, để WordPress không lấy chữ nằm trong file ảnh.
@@ -318,7 +323,10 @@ def test_upload_media_without_metadata_still_overwrites_fields(fake_wp, wp_clien
 def test_upload_media_file(tmp_path, fake_wp, wp_client):
     image = tmp_path / "cổng inox.png"
     image.write_bytes(b"PNGDATA")
-    fake_wp.on("POST", "/wp-json/wp/v2/media", (201, {"id": 6, "source_url": "u"}, {}))
+    fake_wp.on(
+        "POST", "/wp-json/wp/v2/media",
+        (201, {"id": 6, "source_url": "u", "post": None}, {}),
+    )
     fake_wp.on("POST", "/wp-json/wp/v2/media/6", {"id": 6, "source_url": "u"})  # LC-T061-3
     wp_client.upload_media_file(image)
     assert fake_wp.requests[0].body == b"PNGDATA"

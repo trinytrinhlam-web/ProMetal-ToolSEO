@@ -747,7 +747,9 @@ def test_luot2_lenh_tai_anh_sai_khuon_bi_chan(site, client, options):
 
 def _media_site(site: _WpSite) -> None:
     site.inject[("POST", f"{API}/media")] = (
-        201, {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh.jpg", "alt_text": ""})
+        201,
+        {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh.jpg", "alt_text": "", "post": None},
+    )
     site.inject[("POST", f"{API}/media/9")] = (
         200, {"id": 9, "source_url": f"{BASE}/wp-content/uploads/anh.jpg", "alt_text": "Cổng"})
 
