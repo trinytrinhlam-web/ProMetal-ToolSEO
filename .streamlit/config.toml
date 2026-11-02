@@ -13,6 +13,10 @@ gatherUsageStats = false
 [client]
 # Ẩn nút "Deploy" và menu dành cho lập trình viên trên thanh công cụ.
 toolbarMode = "minimal"
+# Lỗi bất ngờ (lỗi app chưa bắt) chỉ hiện loại lỗi và một câu chung trên trang: không hiện câu lỗi
+# gốc, traceback hay đường dẫn thư mục trên máy. Chi tiết vẫn in ở cửa sổ dòng lệnh đang chạy app.
+# Chủ dự án chọn 2026-11-02 (Lá Chắn T-001 #8, T-116 nhóm 3; phiếu T-118).
+showErrorDetails = "type"
 
 [theme]
 # Font tiếng Việt Be Vietnam Pro (tải từ Google Fonts; mất mạng thì dùng font hệ thống).

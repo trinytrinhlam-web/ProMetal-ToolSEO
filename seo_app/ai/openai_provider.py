@@ -40,6 +40,7 @@ from seo_app.ai.base import (
     caused_by_decoding,
     ignoring_custom_headers,
     library_error,
+    model_label,
     prepare_images,
     token_limit_error,
     unreadable_error,
@@ -131,10 +132,13 @@ class OpenAIProvider:
         except openai.AuthenticationError as exc:
             raise AIError("Khóa OPENAI_API_KEY trong file .env không đúng.") from exc
         except openai.PermissionDeniedError as exc:
-            raise AIError(f"Tài khoản OpenAI không được dùng mô hình «{task.model}».") from exc
+            raise AIError(
+                f"Tài khoản OpenAI không được dùng mô hình «{model_label(task.model)}»."
+            ) from exc
         except openai.NotFoundError as exc:
             raise AIError(
-                f"Không có mô hình «{task.model}». Kiểm tra lại tên trong config/ai.toml."
+                f"Không có mô hình «{model_label(task.model)}». "
+                "Kiểm tra lại tên trong config/ai.toml."
             ) from exc
         except openai.RateLimitError as exc:
             if exc.code == "insufficient_quota":

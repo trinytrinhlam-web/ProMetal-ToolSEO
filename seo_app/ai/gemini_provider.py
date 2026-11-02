@@ -51,6 +51,7 @@ from seo_app.ai.base import (
     bad_request_error,
     bad_response_message,
     library_error,
+    model_label,
     prepare_images,
     token_limit_error,
 )
@@ -289,9 +290,11 @@ def _api_error(exc: errors.APIError, task: TaskConfig) -> AIError:
     if code == 401 or status == "UNAUTHENTICATED" or _bad_key(exc):
         return AIError("Khóa GEMINI_API_KEY trong file .env không đúng.")
     if code == 403 or status == "PERMISSION_DENIED":
-        return AIError(f"Tài khoản Gemini không được dùng mô hình «{task.model}».")
+        return AIError(f"Tài khoản Gemini không được dùng mô hình «{model_label(task.model)}».")
     if code == 404 or status == "NOT_FOUND":
-        return AIError(f"Không có mô hình «{task.model}». Kiểm tra lại tên trong config/ai.toml.")
+        return AIError(
+            f"Không có mô hình «{model_label(task.model)}». Kiểm tra lại tên trong config/ai.toml."
+        )
     if code == 429 or status == "RESOURCE_EXHAUSTED":
         if "billing" in lower or "credit" in lower or "prepayment" in lower:
             return AIError("Tài khoản Gemini đã hết tiền hoặc hết hạn mức (quota) trong ngày.")

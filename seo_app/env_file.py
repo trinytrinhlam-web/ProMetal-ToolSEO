@@ -86,6 +86,13 @@ class EnvFileFormatError(EnvFileError):
     """Nội dung mới không khớp cách python-dotenv đọc: không ghi, hoặc đã trả lại bản cũ."""
 
 
+class EnvFileChangedError(EnvFileError):
+    """Đọc lại ``.env`` được ngay sau khi thay, nhưng chữ trên ổ đã khác chữ vừa ghi: thường do
+    chương trình khác ghi vào đúng lúc đó (phần mềm đồng bộ thư mục…), hoặc ổ đĩa ghi không trọn;
+    bộ ghi không phân biệt được hai ca. Bản cũ đã được trả lại (SL-T105-1, T-118). Khác
+    ``EnvFileFormatError``: không có dòng nào sai định dạng để sửa."""
+
+
 class EnvFileReadBackError(EnvFileError):
     """Đã thay ``.env`` nhưng **không đọc lại được** để kiểm (``error_name``: tên loại lỗi; ví dụ
     chương trình khác giữ file đúng lúc đó; SL-T104-1, T-105). Khác ``EnvFileFormatError`` (đọc lại
@@ -239,6 +246,14 @@ _READBACK_UNSURE = (
     "file .env có thể đã mang giá trị mới nhưng chưa được kiểm. Đóng chương trình đang mở file "
     ".env (ví dụ phần mềm diệt virus hay đồng bộ thư mục) rồi lưu lại lần nữa."
 )
+# Đọc lại được mà chữ trên ổ khác chữ vừa ghi (SL-T105-1, T-118): không nói tới định dạng. Một
+# trạng thái ứng với hai nguyên nhân, nên câu không khẳng định chắc (Chỉ Huy duyệt 02/11 17:55).
+_CHANGED_RESTORED = (
+    "File .env đọc lại ngay sau khi lưu đã khác bản vừa ghi (thường do chương trình khác ghi vào "
+    "đúng lúc đó, như phần mềm đồng bộ thư mục hay trình soạn thảo đang mở file, hoặc ổ đĩa ghi "
+    "không trọn) nên chưa lưu được; file .env đã được trả về bản trước khi lưu. Đóng chương trình "
+    "đang mở file .env (nếu có) rồi thử lại."
+)
 
 
 def _write_value(
@@ -278,6 +293,12 @@ def _write_value(
     if discard_error is not None:
         # File đã bị thay mà không trả lại được: không được báo «file cũ còn nguyên».
         raise EnvFileError(_RESTORE_FAILED.format(error=discard_error))
+    if written != content:
+        # Chữ trên ổ khác chữ vừa ghi: chương trình khác ghi vào đúng lúc lưu, hay ổ ghi không
+        # trọn (không phân biệt được); không phải dòng sai định dạng (SL-T105-1, T-118).
+        raise EnvFileChangedError(_CHANGED_RESTORED)
+    # Chữ giống hệt mà đọc ra khác (không thể xảy ra vì nội dung đã được kiểm trước khi ghi): phòng
+    # xa, coi như định dạng lạ.
     raise EnvFileFormatError(_FORMAT_ERROR)
 
 

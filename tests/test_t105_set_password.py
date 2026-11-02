@@ -3,7 +3,8 @@
 - SL-T104-1: bộ ghi ``.env`` thay file xong thì đọc lại để kiểm. **Không đọc lại được** (chương
   trình khác giữ file đúng lúc đó, file vừa ghi biến mất…) thì báo đúng là không đọc lại được để
   kiểm, không nói tới «dòng sai định dạng». Bỏ được bản vừa ghi thì nói file cũ còn nguyên; không bỏ
-  được thì nói chưa chắc đã lưu. **Đọc lại được mà khác** thì vẫn báo «định dạng lạ» như cũ.
+  được thì nói chưa chắc đã lưu. **Đọc lại được mà khác** chữ vừa ghi thì báo «đã khác bản vừa
+  ghi», không nói tới định dạng (T-118, SL-T105-1; Chỉ Huy duyệt 02/11 17:55).
 - SL-T104-2: máy có biến môi trường ``APP_PASSWORD_HASH`` (app dùng biến đó trước ``.env``, kể cả
   khi rỗng) thì ``set_password`` dừng trước khi hỏi mật khẩu, giải thích cách gỡ biến, không in giá
   trị biến, không đụng ``.env``. ``--print`` (không ghi file) vẫn in mã băm, kèm lời lưu ý.
@@ -191,9 +192,10 @@ def test_readback_and_restore_both_fail_never_claims_old_file_kept(
     assert leftovers(tmp_path) == []
 
 
-def test_readback_mismatch_still_reported_as_format(project_root, tmp_path, monkeypatch, capsys):
-    """Canh: đọc lại **được** mà nội dung khác (đĩa ghi sai) thì vẫn là câu «dòng sai định dạng» như
-    cũ, file trả về bản cũ. Hai trường hợp không bị gộp lại."""
+def test_readback_mismatch_reported_as_changed(project_root, tmp_path, monkeypatch, capsys):
+    """Canh: đọc lại **được** mà nội dung khác (đĩa ghi sai, hay chương trình khác ghi vào) thì là
+    câu «đã khác bản vừa ghi» (``MSG_ENV_CHANGED``, T-118), không phải «dòng sai định dạng»; file
+    trả về bản cũ. Khác ca đọc lại **không** được (câu riêng)."""
     env = make_env(tmp_path)
     real = env_file._atomic_write
     calls: list[int] = []
@@ -206,7 +208,7 @@ def test_readback_mismatch_still_reported_as_format(project_root, tmp_path, monk
     code, script = run_set_password(project_root, monkeypatch, env)
     out = capsys.readouterr().out
     assert code == 1
-    assert out.strip() == f"Chưa lưu mật khẩu mới. {script.MSG_ENV_FORMAT}"
+    assert out.strip() == f"Chưa lưu mật khẩu mới. {script.MSG_ENV_CHANGED}"
     assert env.read_bytes() == OTHER.encode()
 
 

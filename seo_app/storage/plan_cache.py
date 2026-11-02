@@ -323,7 +323,12 @@ def _parse_time(value: str, timezone: str) -> datetime:
         raise _Corrupt from None
     if parsed.tzinfo is None:
         raise _Corrupt
-    return parsed.astimezone(ZoneInfo(timezone))
+    try:
+        return parsed.astimezone(ZoneInfo(timezone))
+    except (OverflowError, ValueError):
+        # Giờ sửa tay tràn khi đổi múi giờ (sang năm 10000, năm 0): coi như file hỏng, không để
+        # lọt lỗi Python ra trang (Lá Chắn LC-T113-2, T-118).
+        raise _Corrupt from None
 
 
 def _parse_count(value: str) -> int:

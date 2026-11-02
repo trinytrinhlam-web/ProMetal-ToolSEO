@@ -44,14 +44,6 @@ def _overwritten_after_replace(monkeypatch) -> None:
     monkeypatch.setattr(env_file, "_atomic_write", write_then_other_program)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T105-1 (soi-loi, có từ T-104): chương trình khác ghi đè .env ngay sau khi bộ ghi thay "
-        "file; đọc lại được mà khác chữ vừa ghi, set_password vẫn báo «dòng sai định dạng … thiếu "
-        "dấu nháy đóng» (không đúng nguyên nhân)"
-    ),
-)
 def test_sl_t105_1_set_password_other_program_changed_env(
     project_root, tmp_path, monkeypatch, capsys
 ):
@@ -70,13 +62,6 @@ def test_sl_t105_1_set_password_other_program_changed_env(
     assert str(tmp_path) not in out and "Traceback" not in out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T105-1 (soi-loi, có từ T-104): trang Cài đặt lưu khóa AI đúng lúc chương trình khác "
-        "ghi đè .env; câu báo «File .env có định dạng lạ … sửa tay» (không đúng nguyên nhân)"
-    ),
-)
 def test_sl_t105_1_settings_writer_other_program_changed_env(tmp_path, monkeypatch):
     env = tmp_path / ".env"
     env.write_bytes(OTHER.encode("utf-8"))

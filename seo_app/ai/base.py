@@ -14,6 +14,8 @@ from typing import Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from seo_app.sanitize import escape_link_syntax
+
 T = TypeVar("T", bound=BaseModel)
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -291,15 +293,48 @@ class _EnvironWithoutIgnored(Mapping[str, str]):
         return dict(self)
 
 
+def _ignored_bytes(name: object) -> bool:
+    return isinstance(name, bytes) and os.fsdecode(name) in IGNORED_ENV
+
+
+class _EnvironbWithoutIgnored(Mapping[bytes, bytes]):
+    """``os.environb`` (tên, giá trị dạng byte; chỉ có trên Mac/Linux) nhìn qua cùng lớp lọc:
+    không thấy ``IGNORED_ENV`` (Lá Chắn LC-T034-2, T-118). Chỉ đọc, mỗi lần đọc hỏi ``os`` thật.
+    """
+
+    def __getitem__(self, name: bytes) -> bytes:
+        if _ignored_bytes(name):
+            raise KeyError(name)
+        return os.environb[name]
+
+    def __iter__(self) -> Iterator[bytes]:
+        return (name for name in list(os.environb) if not _ignored_bytes(name))
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def copy(self) -> dict[bytes, bytes]:
+        return dict(self)
+
+
+_ENVIRONB_WITHOUT_IGNORED = _EnvironbWithoutIgnored()
+
+
 class _OsWithoutIgnored:
     """Thay cho module ``os`` bên trong module tạo client của thư viện: mọi thứ như ``os`` thật,
-    riêng ``environ`` là ``_EnvironWithoutIgnored``.
+    riêng ``environ``, ``getenv`` (và ``environb``, ``getenvb`` khi ``os`` thật có) đi qua lớp lọc.
     """
 
     environ = _EnvironWithoutIgnored()
 
     def __getattr__(self, name: str) -> object:
-        return getattr(os, name)
+        # Tên ``os`` thật không có (``environb``, ``getenvb`` trên Windows) thì lỗi y như thật.
+        value = getattr(os, name)
+        if name == "environb":
+            return _ENVIRONB_WITHOUT_IGNORED
+        if name == "getenvb":
+            return _ENVIRONB_WITHOUT_IGNORED.get
+        return value
 
     def getenv(self, name: str, default: str | None = None) -> str | None:
         return self.environ.get(name, default)
@@ -328,34 +363,36 @@ def ignoring_custom_headers() -> Iterator[None]:
 
     with _ENV_LOCK:
         patched: list[tuple[object, object]] = []
-        fallback = False
-        for module_name in _CLIENT_MODULES:
-            module = sys.modules.get(module_name)
-            if module is None:
-                try:
-                    module = importlib.import_module(module_name)
-                except ImportError:
-                    # Gói chưa cài: không có client nào của nó được tạo. Gói vẫn cài mà mất
-                    # module ``_client`` (thư viện đổi cấu trúc): không biết nó đọc biến ở đâu,
-                    # nên gỡ biến như cách cũ (Soi Lỗi SL-T034-2).
-                    try:
-                        importlib.import_module(module_name.split(".")[0])
-                    except ImportError:
-                        continue
-                    fallback = True
-                    continue
-            current = getattr(module, "os", None)
-            if current is os or current is _OS_WITHOUT_IGNORED:
-                patched.append((module, current))
-                module.os = _OS_WITHOUT_IGNORED  # type: ignore[attr-defined]
-            else:
-                fallback = True
-        saved = (
-            {name: os.environ.pop(name) for name in IGNORED_ENV if name in os.environ}
-            if fallback
-            else {}
-        )
+        saved: dict[str, str] = {}
+        # Cả vòng trỏ ``os`` lẫn bước gỡ biến nằm trong ``try`` (Lá Chắn LC-T034-3, T-118): nạp
+        # module thứ hai lỗi lạ (gói hỏng) thì module đã trỏ vẫn được trả lại ``os`` thật.
         try:
+            fallback = False
+            for module_name in _CLIENT_MODULES:
+                module = sys.modules.get(module_name)
+                if module is None:
+                    try:
+                        module = importlib.import_module(module_name)
+                    except ImportError:
+                        # Gói chưa cài: không có client nào của nó được tạo. Gói vẫn cài mà mất
+                        # module ``_client`` (thư viện đổi cấu trúc): không biết nó đọc biến ở
+                        # đâu, nên gỡ biến như cách cũ (Soi Lỗi SL-T034-2).
+                        try:
+                            importlib.import_module(module_name.split(".")[0])
+                        except ImportError:
+                            continue
+                        fallback = True
+                        continue
+                current = getattr(module, "os", None)
+                if current is os or current is _OS_WITHOUT_IGNORED:
+                    patched.append((module, current))
+                    module.os = _OS_WITHOUT_IGNORED  # type: ignore[attr-defined]
+                else:
+                    fallback = True
+            if fallback:
+                for name in IGNORED_ENV:
+                    if name in os.environ:
+                        saved[name] = os.environ.pop(name)
             yield
         finally:
             os.environ.update(saved)
@@ -424,8 +461,17 @@ def bad_request_error(
         f"«{task.name}» trong config/ai.toml rồi thử lại."
     )
     return AIError(
-        f"{vendor} không nhận yêu cầu (lỗi 400{note}) với mô hình «{task.model}». {advice}"
+        f"{vendor} không nhận yêu cầu (lỗi 400{note}) với mô hình «{model_label(task.model)}». "
+        f"{advice}"
     )
+
+
+def model_label(model: str) -> str:
+    """Tên mô hình để chèn vào câu báo (trang hiện bằng ``st.error``, là Markdown): không bao giờ
+    thành link, dù tên viết dạng ``https://…``, ``www.…``, email hay ``[chữ](…)`` (Lá Chắn
+    LC-T034-1, T-118). Tên thật của 3 hãng đi qua không đổi. Chạy lại không đổi gì, nên trang có
+    làm sạch cả câu thêm lần nữa (``escape_link_syntax``) cũng không sao."""
+    return escape_link_syntax(model)
 
 
 @dataclass(frozen=True)

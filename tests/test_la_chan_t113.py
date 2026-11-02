@@ -87,17 +87,13 @@ def test_far_future_website_date_on_page_is_fixed_text(project_root, google, wor
 
 # ======================================== LC-T113-2 (giờ tải trong cache trên máy bị sửa tay)
 
-LC_T113_2 = pytest.mark.xfail(
-    strict=True,
-    reason="LC-T113-2: giờ tải sửa tay trong cache trên máy làm load() ném OverflowError",
-)
 CACHE_TIME_OK = "9999-12-31T16:59:59+00:00"  # đổi sang +07 vẫn được: kho đọc như cũ (đối chứng)
 CACHE_TIME_BAD = (
     "9999-12-31T17:00:00+00:00",  # sang +07 là năm 10000
     "9999-12-31T23:59:59-05:00",  # tính ra UTC đã là năm 10000
     "0001-01-01T00:00:00+05:00",  # tính ra UTC là năm 0
 )
-CACHE_TIMES = [CACHE_TIME_OK, *(pytest.param(value, marks=LC_T113_2) for value in CACHE_TIME_BAD)]
+CACHE_TIMES = [CACHE_TIME_OK, *CACHE_TIME_BAD]
 SITE = "https://vi-du.test"
 
 
@@ -150,7 +146,7 @@ def test_site_index_odd_fetch_time_never_raises(tmp_path, value):
     assert store.load(SITE) is not None
 
 
-PAGE_TIMES = [CACHE_TIME_OK, pytest.param(CACHE_TIME_BAD[0], marks=LC_T113_2)]
+PAGE_TIMES = [CACHE_TIME_OK, CACHE_TIME_BAD[0]]
 
 
 @pytest.mark.parametrize("value", PAGE_TIMES)
