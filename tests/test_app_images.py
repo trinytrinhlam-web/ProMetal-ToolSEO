@@ -61,6 +61,7 @@ MEDIA = "/wp-json/wp/v2/media"
 POSTS = "/wp-json/wp/v2/posts"
 POST_ID = 501
 UPLOADS = f"{BASE_URL}/wp-content/uploads/2026/10/"
+MODIFIED = "2026-10-31T01:00:00"  # T-115: ``modified_gmt`` giả của bài nháp (Chỉ Huy duyệt 31/10)
 IS_WINDOWS = os.name == "nt"
 
 
@@ -999,9 +1000,12 @@ class Site:
         for media_id in range(900, 920):
             fake.on("POST", f"{MEDIA}/{media_id}", self.update_media)
         fake.on("POST", POSTS, self.create_post)
-        fake.on("GET", f"{POSTS}/{POST_ID}", lambda _r: {"id": POST_ID, "status": "draft"})
+        fake.on("GET", f"{POSTS}/{POST_ID}",
+                lambda _r: {"id": POST_ID, "status": "draft", "modified_gmt": MODIFIED})  # T-115
         fake.on(
-            "POST", f"{POSTS}/{POST_ID}", lambda r: {"id": POST_ID, "status": "draft", **body_of(r)}
+            "POST",
+            f"{POSTS}/{POST_ID}",
+            lambda r: {"id": POST_ID, "status": "draft", "modified_gmt": MODIFIED, **body_of(r)},
         )
 
     def create_media(self, request):
@@ -1020,7 +1024,8 @@ class Site:
         }
 
     def create_post(self, _request):
-        return (201, {"id": POST_ID, "status": self.post_status, "title": {"raw": "T"}}, {})
+        return (201, {"id": POST_ID, "status": self.post_status, "title": {"raw": "T"},
+                      "modified_gmt": MODIFIED}, {})  # T-115
 
     def uploads(self) -> list:
         return [r for r in self.fake.requests if (r.method, path_of(r)) == ("POST", MEDIA)]

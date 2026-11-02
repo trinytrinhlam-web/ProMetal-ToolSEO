@@ -270,7 +270,7 @@ POST_42 = f"{POSTS}/42"
 MEDIA = "/wp-json/wp/v2/media"
 ABILITY = "/wp-json/wp-abilities/v1/abilities/siteseo-posts/seo-data-update"
 UPLOADS = f"{BASE_URL}/wp-content/uploads/2026/10/"
-POST_FIELDS = {"_fields": ["id,status,title,link,featured_media"]}
+POST_FIELDS = {"_fields": ["id,status,title,link,featured_media,modified_gmt"]}  # T-115
 MEDIA_FIELDS = {"_fields": ["id,source_url,alt_text"]}
 # T-110 lượt 2 (Chỉ Huy duyệt 30/10 20:25): lệnh tải ảnh xin thêm ``post``.
 UPLOAD_FIELDS = {"_fields": ["id,source_url,alt_text,post"]}
@@ -508,7 +508,7 @@ def test_chu_seo_ngoac_vuong_ghi_qua_meta_du_phong(fake_wp, wp_client, site):
     assert result.written
     [write] = posts_of(fake_wp, "POST", POST_42)
     assert body(write)["meta"][client_module.SITESEO_TITLE_KEY] == "Giá [ 2026 ] cửa sắt"
-    assert query(write) == {"_fields": ["id,status,meta"]}
+    assert query(write) == {"_fields": ["id,status,meta,modified_gmt"]}  # T-115
 
 
 def test_kiem_dang_shortcode_chay_tuyen_tinh():
@@ -529,7 +529,7 @@ def test_moi_lenh_ghi_co_fields_co_dinh_khong_dung_noi_dung(fake_wp, wp_client, 
         ("POST", f"{MEDIA}/101", MEDIA_FIELDS),
         ("POST", POSTS, POST_FIELDS),
         ("POST", f"{MEDIA}/101", {"_fields": ["id,post"]}),  # gắn ảnh vào bài nháp
-        ("GET", POST_42, {"context": ["edit"], "_fields": ["id,status,meta"]}),
+        ("GET", POST_42, {"context": ["edit"], "_fields": ["id,status,meta,modified_gmt"]}),
         ("POST", POST_42, POST_FIELDS),  # đặt ảnh đại diện
     ]
     assert [(r.method, path(r), query(r)) for r in fake_wp.requests] == expected

@@ -46,7 +46,7 @@ def _featured_answer(live, status: int) -> None:
         body = ui.body_of(request) or {}
         if "featured_media" in body and status != 200:
             return (status, {"code": "internal_server_error", "message": "MỒI"}, {})
-        return {"id": t102.POST_ID, "status": "draft", **body}
+        return {"id": t102.POST_ID, "status": "draft", "modified_gmt": ui.MODIFIED, **body}
 
     live.site.fake.on("POST", t102.POST, post_post)
 
