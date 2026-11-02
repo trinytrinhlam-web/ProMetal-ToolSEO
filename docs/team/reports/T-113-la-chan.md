@@ -119,3 +119,78 @@ Không điều kiện nào bắt buộc trước khi gộp T-113 vào `main`.
 | 1 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
 
 LC-T113-1 có lượt sửa, không cần chủ dự án chấp nhận rủi ro; không thêm dòng vào sổ rủi ro (`security.md` mục 6).
+
+## Xem lại LC-T113-1
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Thợ Máy `c1852c0` (từ `d67fb32`; Chỉ Huy cho sửa `seo_app/plan/` lúc 31/10 14:20): `seo_app/plan/website.py` (+5: `_due_of`), `seo_app/plan/sync.py` (+5/−1: `_moment_text`), `tests/test_la_chan_t113.py` (gỡ dấu `xfail` LC-T113-1), `tests/test_t109_website_status.py` (+9 ca), báo cáo `T-113-tho-may.md`. Đọc thêm mọi chỗ đổi múi giờ, ngày trong `website.py`, `sync.py`, `plan.py` và các hàm trang Kế hoạch, trang Bài viết gọi tới (`plan_cache`, `site_index`, `home.py`) |
+| Ngày | 2026-11-02 (07:28–07:58 +07, giờ máy) |
+| **Kết luận lượt này** | **ĐẠT CÓ ĐIỀU KIỆN. LC-T113-1 đóng.** Trong `website.py`, `sync.py`, `plan.py` không còn chỗ đổi múi giờ, ngày nào ném lỗi lạ lên trang. Rà các nơi trang gọi tới, tôi tìm thêm **LC-T113-2 (Thấp, có từ trước T-113)**: ô giờ tải `fetched_at` của `data/plan_cache.sqlite`, `data/site_index.sqlite` bị sửa tay thành giờ sát biên năm thì `load()` ném `OverflowError`, nên trang Bài viết, trang Kế hoạch hiện lỗi Python mỗi lần mở. Cần quyền vào máy; không ghi gì. **Không bắt buộc sửa trước khi gộp. T-113 gộp được.** Gộp thử `main` cục bộ `4ee27d8`: không xung đột, không sửa chung file; trên cây gộp `ruff` sạch, 18 file test chọn lọc **853 passed**, 1 skipped (máy không cho tạo symlink), 9 xfailed (LC-T113-2), **0 failed** |
+
+### Tóm tắt (cho chủ dự án)
+
+- Lỗi nhỏ lần trước đã sửa xong: bài trên website có ngày vô lý (cuối năm 9999) nay chỉ làm hiện cảnh báo «giờ không đọc được», nút «Cập nhật trạng thái từ website» vẫn chạy bình thường.
+- Tôi tìm thêm một lỗi nhỏ cùng kiểu, có từ trước. Nếu ai đó sửa tay file lưu tạm trên máy (thư mục `data`) thành giờ vô lý, trang Bài viết và trang Kế hoạch hiện lỗi kỹ thuật mỗi lần mở, tới khi xóa file đó. Phải vào được máy mới làm được; không mất dữ liệu, không ảnh hưởng website hay Google Sheet. Sửa ở một phiếu dọn sau, không cần chờ mới gộp.
+
+### LC-T113-1: đóng
+
+| Kiểm | Kết quả |
+|---|---|
+| Sửa đúng gốc | `_due_of` (`website.py:579-597`): `strptime` lỗi → `ValueError` (đã bắt) → xét năm **theo giờ UTC** trong `YEAR_MIN − 1 … YEAR_MAX` (2019–2035) **trước** khi đổi múi giờ → chỉ khi đó mới `astimezone(+07)` (lớn nhất là 06:59 ngày 01/01/2036, không tràn) → xét lại năm giờ Việt Nam 2020–2035 như cũ. Ngoài khoảng: `(None, True)`: cảnh báo `ODD_DATE`, vẫn đề xuất đổi Trạng thái, không đổi ngày, đúng hợp đồng test T-109 |
+| Test | 4 ca LC-T113-1 của tôi nay qua thật: 2 ở lõi; 2 qua trang (không traceback, bài 501 có cảnh báo ngày lạ, 0 lệnh ghi Sheet, chỉ lệnh GET). 9 ca Thợ Máy thêm: biên năm 2019/2020 và 2035/2036 theo giờ Việt Nam, năm 1, cuối năm 9999; `_moment_text` tràn → `ValueError` |
+| R5 | Đúng: `git diff d67fb32 c1852c0 -- tests/test_la_chan_t113.py` chỉ bỏ hằng `LC_T113_1` và dấu ở `DATES`; thân test không đổi |
+| Sửa thêm `sync._moment_text` | Đúng: `astimezone` tràn → `ValueError` (`sync.py:1072-1076`). Lỗi xảy ra lúc dựng lệnh ghi, trước `update_cells`, nên không ghi nửa chừng. Trên trang Kế hoạch, `pending_box` bắt `ValueError` quanh `retry_pending` (`plan.py:943`) |
+
+### Còn chỗ đổi múi giờ, ngày nào ném lỗi lạ lên trang?
+
+| Chỗ | Đầu vào | Kết luận |
+|---|---|---|
+| `website._due_of` | `date_gmt` của website | Đã sửa (LC-T113-1) |
+| `website._moment_of` → `model.parse_plan_datetime` | ô «Ngày đăng thực tế» trên Sheet | An toàn: chỉ ném `ValueError` (đã bắt); năm 2020–2035 xét trước mọi phép đổi múi giờ. Phía Sheet `parse_plan_date` cũng an toàn (`_serial_date` bắt `OverflowError`) |
+| `website._same_moment`, `_close`, `_time_text`, `now - due`, `now - checked_at` | giờ đã qua `_due_of` hay `_moment_of`; giờ máy | An toàn |
+| `sync._moment_text` | giờ máy, giờ hẹn, giờ website đã kiểm, giờ đọc từ `drafts.sqlite` | Đã sửa (tràn → `ValueError`) |
+| `plan.py:210` (`cell`), `:701` (`web_time`), `:750` | trường giờ của `PlanRow`; giờ đã kiểm; giờ máy | An toàn |
+| `plan.py:633` (`web_label`), `home.py:207` | `date_gmt` của website | An toàn: `strptime` sai khuôn thì `ValueError` (đã bắt); chỉ trừ hai mốc giờ, không đổi múi giờ |
+| `sync._cached_at` (`sync.py:362`), `plan.py:969` | `fetched_at` của cache trên máy | Đi kèm LC-T113-2: giờ cache sửa tay đã làm `load()` ném trước khi tới đây. Riêng khi `APP_TIMEZONE` khác giờ Việt Nam, một giờ sửa tay có thể qua `load()` rồi mới tràn ở hai chỗ này |
+| `plan_cache._parse_time` (`plan_cache.py:326`), `site_index._parse_time` (`site_index.py:391`): trang Kế hoạch, trang Bài viết gọi khi mở | `fetched_at` trong file cache | **LC-T113-2** |
+
+### LC-T113-2 (Thấp, mới tìm, có từ trước)
+
+| # | Mức | Mô tả | Vị trí | Hạn |
+|---|---|---|---|---|
+| LC-T113-2 | **Thấp** | Giờ tải `fetched_at` sửa tay trong cache trên máy làm `load()` ném `OverflowError` (trái lời hứa «hỏng hay lạ: None, không ném lỗi» và LC-T094-29), file không bị bỏ: trang Bài viết, trang Kế hoạch hiện lỗi Python có traceback mỗi lần mở. Không ghi gì | `seo_app/storage/plan_cache.py:326` (T-100), `seo_app/storage/site_index.py:391` (T-037); lộ ra ở `app/views/home.py:78`, `sync.py:334` (`get_plan`), `plan.py:177` (`cached_index`) | Trước khi đóng Giai đoạn 5 (không bắt buộc trước khi gộp T-113) |
+
+- **Đường đi thật.** Người có quyền vào máy sửa ô `fetched_at` trong bảng `info` của `data/plan_cache.sqlite` hay `data/site_index.sqlite`. Ô này không nằm trong mã băm `values_hash`. Giá trị sửa thành `9999-12-31T17:00:00+00:00`, `9999-12-31T23:59:59-05:00` hay `0001-01-01T00:00:00+05:00`. `_parse_time` chỉ bọc `fromisoformat` trong `try`; `parsed.astimezone(ZoneInfo(timezone))` nằm ngoài → `OverflowError`. `load()` chỉ bắt `_Corrupt`, `sqlite3.DatabaseError`, `PlanCacheError` hay `SiteIndexError`, `OSError` → lỗi lọt, file giữ nguyên.
+- **Hậu quả (đã thử).**
+  - Script `probe_cache_time.py` (thư mục ghi chú chung): cả hai kho ném `OverflowError` với 3 giá trị trên; mốc `9999-12-31T16:59:59+00:00` đọc được.
+  - AppTest: trang **Bài viết** (`cached_plan`, `home.py:78`, chỉ bắt `PlanCacheError`, `PlanKeyError`, `ValueError`) và trang **Kế hoạch** (`get_plan` gọi `store.load` đầu tiên; `cached_index` đọc kho bài đã đăng) hiện lỗi Python **mỗi lần mở**, tới khi xóa file.
+  - Trang Soạn bài cũng đọc hai kho (`write.py:727`, `:2274`), chưa thử.
+  - Không ghi Sheet, website; không lộ bí mật.
+- **Vì sao Thấp.** Cần quyền ghi vào thư mục `data/` trên máy; người có quyền đó làm được nhiều điều tệ hơn. Không tự xảy ra: app chỉ ghi giờ máy lúc tải. Nhưng dự án đã đặt yêu cầu «cache sửa tay thì bỏ cache» (LC-T094-29, cách làm của T-074).
+- **Cùng kiểu, chưa thử.** Kho nháp `drafts.sqlite` có nhiều trường giờ `AwareDatetime` không giới hạn năm (`drafts.py:589`–`:815`: `opened_at`, `published_at`, `created_at`, `saved_at`, `updated_at`, `scheduled_for`). Trang Bài viết đổi múi giờ `state.scheduled_for or state.updated_at` ở `day_text` (`home.py:217-220`), ngoài khối `try` (`:307`). Phiếu sửa nên rà luôn kho này.
+- **Cách sửa.** `_parse_time` của hai kho: xét năm theo giờ UTC trước khi đổi múi giờ (như `_due_of`); ngoài khoảng, hay `OverflowError` → `_Corrupt`, tức bỏ cache, lần ghi sau tạo lại. Nên xét năm, không chỉ bắt `OverflowError`, để `sync._cached_at`, `plan.py:969` cũng an toàn khi `APP_TIMEZONE` khác giờ Việt Nam. Chỗ sửa nằm ở `seo_app/storage/`, ngoài phạm vi T-113.
+- **Test.** `tests/test_la_chan_t113.py`: 9 ca `xfail(strict=True)` (6 ở mức kho, 3 qua trang Bài viết và trang Kế hoạch) và 5 ca đối chứng mốc `16:59:59+00:00` (qua). `--runxfail`: 9 ca hỏng đúng vì `OverflowError: date value out of range`. Sửa xong gỡ dấu (R5).
+- Thợ Máy đã nêu `plan_cache._parse_time` trong báo cáo (mục «Rà các chỗ đổi múi giờ khác»). Tôi xác nhận bằng thử thật và thêm `site_index`, ảnh hưởng tới trang Bài viết, và kho nháp.
+
+### Thử gộp, công cụ
+
+| Việc | Kết quả |
+|---|---|
+| Thử gộp | `main` cục bộ `4ee27d8` + `c1852c0`: `git merge-tree --write-tree` **không xung đột** (cây `f3cd387`); từ gốc chung `bb25dde` hai bên không sửa chung file. Commit tạm `2018b97` (`git commit-tree`, không nhánh) trong worktree tạm `wt-T113-lc-gop`, kèm bản mới của `tests/test_la_chan_t113.py`; đã gỡ. Trên cây gộp: `ruff check .` sạch; 18 file (T-113: `test_la_chan_t113`, `test_t113_website_status`, `test_soi_loi_t113`; T-109: `test_t109_website_status`, `test_soi_loi_t109`; T-100, nơi gọi `_moment_text` và hai kho: `test_plan_sync`, `test_plan_cache`, `test_site_index`, `test_t100_drafts_plan`, `test_soi_loi_t100`, `test_la_chan_t100`; T-101: `test_t101_plan_page`, `test_t101_home_page`, `test_la_chan_t101`; `test_app_pages`; T-102: `test_t102_publish`; T-110: `test_t110_gan_anh_vao_bai_nhap`, `test_la_chan_t110`): **853 passed, 1 skipped** (`test_site_index.py:321`: máy không cho tạo symlink), **9 xfailed** (LC-T113-2), **0 failed**, 10 phút 48 giây. Không sinh thư mục `data/` |
+| Test trên nhánh | `tests/test_la_chan_t113.py` (bản mới): **11 passed, 9 xfailed**, 4 phút 50 giây. Một lượt `--runxfail` có thêm ca đối chứng `test_plan_page_opens_with_odd_cache_time[plan_cache-9999-12-31T16:59:59+00:00]` hỏng; chạy riêng thì qua (26,8 giây, sát mức chờ 30 giây của AppTest), nên nhiều khả năng quá giờ chờ khi máy bận |
+| detect-secrets 1.5.0 | `PYTHONUTF8=1`, `--all-files` trên bản sao `website.py`, `sync.py`, 2 file test, báo cáo Thợ Máy, bản vá `d67fb32..c1852c0` và file mồi tiếng Việt: mồi bắt 2/2, file thật 0 mục. Đã xóa file mồi |
+| bandit 1.9.4 | `website.py`, `sync.py` (1.600 dòng): không có mục nào |
+| Soát lịch sử git | `git log -p d67fb32..c1852c0`: 0 dạng khóa |
+
+### Điều kiện (cập nhật)
+
+Không điều kiện nào bắt buộc trước khi gộp T-113 vào `main`.
+
+| # | Điều kiện | Phiếu nhận | Hạn |
+|---|---|---|---|
+| 0 | LC-T113-1 | Đã đóng ở `c1852c0` | — |
+| 1 | **LC-T113-2**: `_parse_time` của `plan_cache`, `site_index` xét năm theo giờ UTC trước khi đổi múi giờ, ngoài khoảng hay tràn thì bỏ cache; rà kho nháp `drafts.sqlite` cùng kiểu; gỡ 9 dấu `xfail` khi XPASS (R5); chạy test `plan_cache`, `site_index`, T-100, T-101, T-113 | Thợ Máy (phiếu dọn) | Trước khi đóng Giai đoạn 5 |
+| 2 | Kiểm lại biên bản này bằng Claude Fable sau 01/11 | Chỉ Huy | Sau 01/11 |
+
+LC-T113-2 có lượt sửa, không cần chủ dự án chấp nhận rủi ro; không thêm dòng vào sổ rủi ro.
