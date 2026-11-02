@@ -6,7 +6,7 @@
 | Phiếu | T-112 (Chỉ Huy B giao 31/10 09:40) |
 | Ngày nộp | 2026-10-31 |
 | Nhánh | `team/T-112` (từ `d6df633`: `main` cục bộ `3cdd096` có T-102 + ghi chú `[plan]` của Ngòi Bút). Không gộp `main` |
-| Kết quả | Xong yêu cầu 1, 2, 4, 5, 6 của phiếu; yêu cầu 3 (so `modified_gmt`) Chỉ Huy chuyển sang T-115 (Thợ Máy). Công tắc Hẹn giờ/Đăng ngay **vẫn mặc định tắt**, nay có nút ở Cài đặt (chỉ trong phiên, phương án A Chỉ Huy chọn). 16 ca test mới, gỡ 4 dấu `xfail` (SL-T102-1 ×3, LC-T102-1) |
+| Kết quả | Xong yêu cầu 1, 2, 4, 5, 6 của phiếu; yêu cầu 3 (so `modified_gmt`) Chỉ Huy chuyển sang T-115 (Thợ Máy). Công tắc Hẹn giờ/Đăng ngay **vẫn mặc định tắt**, nay có nút ở Cài đặt (chỉ trong phiên, phương án A Chỉ Huy chọn). 16 ca test mới, gỡ 4 dấu `xfail` (SL-T102-1 ×3, LC-T102-1). **Lượt 2 (02/11):** gộp `main` và `team/T-115`, thêm 3 ca test giao diện cho đường «bài bị sửa ngoài app» của T-115 (mục 8) |
 
 ## 1. Tóm tắt (cho chủ dự án)
 
@@ -85,7 +85,7 @@ Phải sửa `seo_app/wordpress/**`, nên Chỉ Huy giao Thợ Máy ở phiếu 
 
 ## 5. Test
 
-- `tests/test_t112_release_rules.py` (mới, 9 ca):
+- `tests/test_t112_release_rules.py` (mới, 9 ca ở lượt 1; lượt 2 thêm 4 ca, mục 8):
   - Đăng ngay thiếu cả hai phần: câu nêu đủ phần chưa lên, nháp không khóa «có thể đã gửi».
   - Chỉ thiếu SEO.
   - Đối chứng: đủ thì vẫn đăng.
@@ -111,3 +111,54 @@ Phải sửa `seo_app/wordpress/**`, nên Chỉ Huy giao Thợ Máy ở phiếu 
 
 - `1a7bcf7` yêu cầu 1, 4, 5 và G2; gỡ 4 dấu `xfail`; test T-112.
 - `6ef1a4c` công tắc ở Cài đặt (phương án A); câu «đang tắt» chỉ chỗ bật; test.
+- `f598cef` báo cáo lượt 1.
+
+## 8. Lượt 2 (Chỉ Huy B giao 02/11 17:50): gộp `main`, `team/T-115`; test giao diện cho T-115
+
+### 8.1 Gộp
+
+- Đầu nhánh lúc nhận việc: `245e199` (có thêm README bước Xuất bản của Thư Ký).
+- `git merge origin/main`: lúc chạy `origin/main` đã là `7485b94`, mới hơn `935d381` anh ghi; phần thêm chỉ là tài liệu điều phối (`board.md`, `dong-bo.md`, phiếu). Có T-110 lượt 2–3, T-113, T-105. Commit gộp `5445028`, không xung đột.
+- `git merge origin/team/T-115` (`a7572f7`): commit gộp `ff420d4`, không xung đột. Dấu `xfail` LC-T102-1 hai bên gỡ y hệt. `write.py` không đụng nhau: T-115 không sửa `app/**`.
+- `uv sync` (`uv.lock` của `main` đổi).
+
+### 8.2 Test giao diện cho đường `ReleaseError` của T-115
+
+T-115 (client): lệnh kiểm nháp ngay trước lệnh chuyển so `modified_gmt` với giá trị website trả ở lần ghi cuối của chính client. Khác, thiếu hay «không biết» thì `ReleaseError(_RELEASE_CHANGED)`: không `unsure`, không gửi lệnh chuyển.
+
+App không cần sửa: T-102 đã có sẵn đường hiện `ReleaseError` «bài vẫn là nháp». `tests/test_t112_release_rules.py`, mục «T-115», 3 ca, công tắc bật trong test:
+
+| Ca | Kiểm |
+|---|---|
+| `test_post_edited_outside_after_last_write_is_not_released[Hẹn giờ]`, `[Đăng ngay]` | Lệnh kiểm nháp (`_fields=id,status,modified_gmt`) thấy giờ sửa mới hơn, như có người vừa «Lưu nháp» trong trang quản trị. Kết quả: không lệnh chuyển nào; câu cố định của client hiện bằng cảnh báo, không có lời máy chủ; bài vẫn là nháp; nháp ghi «đã gửi nháp, chưa hẹn giờ/đăng» (`released`, `release_unknown`, `pending` đều tắt), **không** khóa «có thể đã gửi»; mở lại vẫn vậy |
+| `test_post_edited_outside_plan_row_gets_no_release_status` | Dòng kế hoạch **không** mang trạng thái chuyển («Đã hẹn giờ», «Đã đăng»). Bài thật sự vẫn là nháp nên dòng ghi đúng «Đã gửi nháp» kèm Mã bài WordPress |
+
+**Dòng kế hoạch ở ca này: Chỉ Huy B giữ cách hiện có (02/11 19:00), Lá Chắn đầy đủ xét lại.**
+
+- G1 (Lá Chắn T-102) chỉ áp cho lệnh chuyển **không rõ** kết quả: lúc đó bài có thể đã công khai mà Sheet lại nói «nháp», nên app không ghi gì.
+- Ở đường T-115 thì kết quả **rõ**: website từ chối lệnh chuyển, bài **chắc chắn** vẫn là nháp đã có trên website (có mã bài).
+- Vì vậy dòng ghi «Đã gửi nháp» kèm Mã bài WordPress, đúng sự thật, và không ghi trạng thái chuyển («Đã hẹn giờ», «Đã đăng»).
+- Không ghi gì thì dòng còn «Đang viết» và mất mã bài, tức là sai hơn.
+
+**T-115 làm luật Hẹn giờ chặt hơn ở một chỗ.** Lệnh đặt ảnh đại diện lỗi (500) thì client «không biết chắc» bài có bị sửa không (SL-T115-1), nên từ chối lệnh chuyển. Vì vậy với lỗi ảnh đại diện, Hẹn giờ cũng không còn «vẫn hẹn giờ, cảnh báo» như T-112 lượt 1 (mục 2.1): bài vẫn là nháp, câu cố định của client, không khóa «có thể đã gửi».
+
+- Ca test `test_schedule_goes_on_but_warns_what_is_missing` của tôi (T-112, chưa lên `main`) đổi sang lỗi **SEO**: client không biết lỗi ghi SEO nên vẫn hẹn giờ, app cảnh báo phần SEO.
+- Thêm ca `test_schedule_with_featured_failure_is_refused_by_client` cho lỗi ảnh đại diện.
+- Lượt chạy chọn lọc đầu tiên sau khi gộp bị ngắt giữa chừng (phiên dừng) đã bắt đúng ca này hỏng; nay qua.
+
+### 8.3 Test lượt 2
+
+Chạy chọn lọc trên nhánh đã gộp, 20 file:
+
+- T-112: `test_t112_release_rules` (13 ca), `test_t112_settings_switch`;
+- T-102: `test_t102_publish`, `test_la_chan_t102`, `test_soi_loi_t102`, `test_t102_formula_cells`;
+- T-110: `test_la_chan_t110`, `test_soi_loi_t110`, `test_t110_gan_anh_vao_bai_nhap`;
+- T-115: `test_t115_modified_gmt`, `test_soi_loi_t115`;
+- `test_wordpress_release`, `test_app_pages`;
+- luồng gửi: `test_app_images`, `test_content_edge_cases`, `test_t086_send_state`, `test_t089_send_draft`, `test_la_chan_t089`, `test_t041_seo_ui`, `test_soi_loi_t041`.
+
+Kết quả: **1.193 qua, 0 hỏng**. `ruff check .` sạch.
+
+### 8.4 Commit lượt 2
+
+- `5445028` gộp `main` `7485b94`; `ff420d4` gộp `team/T-115` `a7572f7`; `a1edee0` test giao diện T-115; `ac85c1b` test Hẹn giờ theo hành vi sau T-115; commit cuối: báo cáo mục 8.
