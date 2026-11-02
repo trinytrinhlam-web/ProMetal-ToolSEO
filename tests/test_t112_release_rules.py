@@ -130,17 +130,33 @@ def test_publish_goes_when_everything_landed(project_root, root, fake_ai, live, 
 # ============================================================ Hẹn giờ: cảnh báo, người dùng quyết
 
 
-def test_schedule_goes_on_but_warns_what_is_missing(project_root, root, fake_ai, live):
-    """Hẹn giờ mà ảnh đại diện hỏng: vẫn hẹn giờ (còn sửa được trước giờ đăng), cảnh báo rõ phần
-    chưa lên và việc cần làm trước giờ đăng."""
-    featured_answer(live, 500)
-    at = send(project_root, SCHEDULE)
+def test_schedule_goes_on_but_warns_what_is_missing(project_root, root, fake_ai, live, monkeypatch):
+    """Hẹn giờ mà SEO chưa ghi lên được (SiteSEO chưa cho ghi): vẫn hẹn giờ (còn sửa được trước giờ
+    đăng), cảnh báo rõ phần chưa lên và việc cần làm trước giờ đăng."""
+    seo_answer(monkeypatch, written=False)
+    at = send(project_root, SCHEDULE, seo_write=True)
     when = t102.tomorrow_8am_utc()
     assert t102.release_bodies(live.site) == [
         {"status": "future", "date_gmt": t102.date_gmt_text(when)}
     ]
     assert any("Đã hẹn giờ đăng bài" in s.value for s in at.success)
-    assert escape_markdown(f"Bài đã hẹn giờ nhưng {FEATURED} chưa lên website") in warnings(at)
+    assert escape_markdown(f"Bài đã hẹn giờ nhưng {SEO} chưa lên website") in warnings(at)
+
+
+def test_schedule_with_featured_failure_is_refused_by_client(project_root, root, fake_ai, live):
+    """Sau T-115: lệnh đặt ảnh đại diện lỗi (500) thì client không biết chắc bài nháp có bị sửa
+    không nên **không** hẹn giờ (chặt hơn luật «Hẹn giờ vẫn hẹn, cảnh báo» của T-112): bài vẫn là
+    nháp, câu cố định của client, không khóa «có thể đã gửi», không lời máy chủ."""
+    featured_answer(live, 500)
+    at = send(project_root, SCHEDULE)
+    assert t102.release_bodies(live.site) == []
+    shown = warnings(at)
+    assert escape_markdown("Chưa hẹn giờ, chưa đăng: bài vẫn là nháp.") in shown
+    assert "Bài đã hẹn giờ nhưng" not in shown
+    assert not any("có thể đã" in e.value for e in at.error)
+    assert not any(t102.BAIT in text for text in ui.texts(at))
+    saved = ui.store().load_send_state(at.session_state["draft_id"])
+    assert (saved.released, saved.release_unknown, saved.pending) == (False, False, False)
 
 
 def test_schedule_without_missing_parts_has_no_extra_warning(project_root, root, fake_ai, live):
