@@ -12,7 +12,7 @@
 
 Trước đây, nếu một bài đang mở ở hai tab mà bạn xóa nháp ở tab này, thì tab kia tự lưu và **lặng lẽ tạo lại** nháp. Nháp tạo lại đã quên việc bài đã gửi lên website, nên nút «Gửi nháp» mở lại, bấm là ra bài trùng. Nay tab kia không tự tạo lại nữa: đầu trang hiện khung vàng «**Nháp của bài này không còn trong kho nháp** (có thể vừa bị xóa ở tab khác)…» kèm hai nút **💾 Lưu lại thành nháp** và **🗑️ Bỏ bài này**. Bấm lưu lại thì nháp có lại đúng nội dung đang có ở tab đó; nếu tab đó biết bài đã gửi (hay gửi dở) thì nháp vẫn nhớ, nút gửi vẫn khóa như trước. Tab chưa từng thấy bài được gửi thì khung nói rõ: gửi ở tab khác thì tab này không biết, lưu lại rồi gửi nữa sẽ tạo thêm một bài.
 
-Kèm theo ba việc nhỏ: câu báo từ khóa chính có biểu tượng cảm xúc rất mới nay nói đúng «phần mềm chưa nhận ra» (không còn nói «không nhìn thấy»); chú thích khung «Chép sang SiteSEO» nói rõ tiêu đề, mô tả dán vào hộp SiteSEO còn đường dẫn dán vào **ô đường dẫn (slug) của bài**; file mẫu `.env.example` ghi rõ tên đăng nhập là của **tài khoản Biên tập viên riêng** và mật khẩu ứng dụng **tạo trên chính tài khoản đó**.
+Kèm theo ba việc nhỏ: câu báo từ khóa chính có biểu tượng cảm xúc rất mới nay nói đúng «phần mềm chưa nhận ra» (không còn nói «không nhìn thấy»); chú thích khung «Chép sang SiteSEO» nói rõ tiêu đề, mô tả dán vào hộp SiteSEO, còn đường dẫn thì phần mềm đã gửi kèm bài (muốn sửa tay thì dán vào **ô đường dẫn của bài**, không phải hộp SiteSEO); file mẫu `.env.example` ghi rõ tên đăng nhập là của **tài khoản Biên tập viên riêng** và mật khẩu ứng dụng **tạo trên chính tài khoản đó**.
 
 ## Yêu cầu → cách làm → test
 
@@ -22,7 +22,7 @@ Kèm theo ba việc nhỏ: câu báo từ khóa chính có biểu tượng cảm
 | 2 | Không lùi T-086, T-089 (hai tab, ngắt giữa chừng, gửi dở, băm ảnh) | Không sửa luồng gửi (`send_and_record`, `record_outcome`, `finish_send`, `apply_send`, `publish_panel` giữ nguyên); chỉ **đọc** `_wp_seen`, `_wp_sent`, `_wp_maybe_draft`, `_wp_result`. Hai tab cùng sửa một nháp **còn** trong kho vẫn ghi đè như trước (tab lưu sau thắng) | `test_two_tabs_editing_same_draft_still_autosave`; mọi file test gửi nháp, kho nháp, hai tab của T-056/T-086/T-089/T-100/T-102 (mục «Bằng chứng») |
 | 3 | Nháp cũ vẫn mở được; test cho ca mới | Đường mở nháp (`load`, `open_draft`) không đổi; lần lưu so rồi đặt chỉ cần nháp còn trong kho, không quan tâm khuôn | `test_old_draft_still_opens_and_saves` (khuôn 1, trước T-055: mở, sửa, lưu, nâng lên khuôn 3); `test_new_draft_first_save_still_creates`; `tests/test_drafts_images.py`, `tests/test_t100_drafts_plan.py` (khuôn 1, 2) vẫn qua |
 | 4 | `client.showErrorDetails = "type"` | Đã có ở `.streamlit/config.toml:19` (T-118). **Không sửa** | `tests/test_t118_don_thap.py`, `tests/test_app_pages.py` qua |
-| 5 | Chú thích «Chép sang SiteSEO»; chú thích `.env.example` | `siteseo_panel` (`app/views/write.py:2647`): «… Trong trang sửa bài nháp của WordPress: tiêu đề, mô tả dán vào hộp SiteSEO; đường dẫn dán vào ô đường dẫn (slug) của bài. Muốn phần mềm tự ghi tiêu đề, mô tả: bật «Ghi SEO lên website» ở bước Xuất bản.» (đúng câu README mục 10, `README.md:401`; «tự ghi» nói rõ chỉ tiêu đề, mô tả vì đường dẫn không được ghi). `.env.example:23-28`: «Tên đăng nhập của tài khoản Biên tập viên riêng cho app (không dùng tài khoản quản trị), không phải tên đặt cho Application Password. Xem README mục 6.»; «Application Password (mật khẩu ứng dụng) tạo trên chính tài khoản đó: đăng nhập bằng tài khoản Biên tập viên, vào Hồ sơ > Application Passwords. …» | `test_siteseo_caption_says_where_each_box_goes` (so cả với README), `test_env_example_names_the_editor_account`; `tests/test_config.py` (đủ biến, không giá trị thật) qua |
+| 5 | Chú thích «Chép sang SiteSEO»; chú thích `.env.example` | `siteseo_panel` (`app/views/write.py:2647`): «Bấm biểu tượng ở góc từng khung để chép. Trong trang sửa bài nháp của WordPress: tiêu đề, mô tả dán vào hộp SiteSEO. Đường dẫn thì phần mềm đã gửi kèm bài; muốn sửa tay thì dán vào ô đường dẫn (slug) của bài, không phải hộp SiteSEO. Muốn phần mềm tự ghi tiêu đề, mô tả: bật «Ghi SEO lên website» ở bước Xuất bản.» Lá Chắn T-095 đề xuất theo README lúc đó («đường dẫn dán vào ô đường dẫn (slug) của bài»). Nhưng từ T-102 phần mềm **đã gửi đường dẫn kèm bài** (`create_draft_with_images(..., slug=package.slug)`, `app/views/write.py:3690`); README trên `main` (`README.md:401`) còn câu cũ, README của T-112 (chưa gộp) đã sửa thành «Đường dẫn thì app đã gửi kèm bài (mục 11); khung này để xem, hay chép khi muốn sửa tay». Chú thích theo đúng hành vi và README của T-112, giữ ý chính của đề xuất (đường dẫn vào ô của bài, không vào hộp SiteSEO). Không sửa README (ngoài phạm vi, T-112 đã sửa). `.env.example:23-28`: «Tên đăng nhập của tài khoản Biên tập viên riêng cho app (không dùng tài khoản quản trị), không phải tên đặt cho Application Password. Xem README mục 6.»; «Application Password (mật khẩu ứng dụng) tạo trên chính tài khoản đó: đăng nhập bằng tài khoản Biên tập viên, vào Hồ sơ > Application Passwords. …» | `test_siteseo_caption_says_where_each_box_goes` (so với README phần chung của README cũ và README T-112: «tiêu đề, mô tả dán vào hộp SiteSEO»), `test_env_example_names_the_editor_account`; `tests/test_config.py` (đủ biến, không giá trị thật) qua |
 | 6 | Câu báo từ khóa chính có emoji mới dùng `odd_char_messages` | `keyword_problem` (`app/views/write.py:2598`): `" ".join(onpage_meta.odd_char_messages(KEYWORD_LABEL, text))` đúng như đề xuất Thợ Máy T-090; bỏ hằng `MSG_KEYWORD_ODD` không còn dùng. Vẫn Chặn đúng các ký tự như trước (`has_odd_chars` giữ làm điều kiện) | `tests/test_t041_seo_ui.py::test_bad_keyword_is_flagged_on_seo_and_publish_steps` (đổi câu ở `:711`, thêm ca `emoji-moi` U+1FAE9: bước SEO «Chặn» + câu «chưa nhận ra», bước Xuất bản «⚠️ SEO: … Từ khóa chính») |
 
 ## Thiết kế: vì sao thế này
@@ -115,6 +115,13 @@ $ PYTHONUTF8=1 uv run pytest -q -rxXf tests/test_app_drafts.py tests/test_app_im
 $ PYTHONUTF8=1 uv run pytest -q tests/test_t092_nhap_bi_xoa.py
 23 passed in 65.28s
 
+# Sau đó đổi câu chú thích «Chép sang SiteSEO» (đường dẫn đã gửi kèm bài, mục yêu cầu 5) và test
+# chú thích; chạy lại phần liên quan, đột biến M16 vẫn bị bắt:
+$ PYTHONUTF8=1 uv run pytest -q \
+    tests/test_t092_nhap_bi_xoa.py::test_siteseo_caption_says_where_each_box_goes \
+    tests/test_t041_seo_ui.py
+51 passed in 109.25s
+
 $ uv run ruff check .
 All checks passed!
 $ uv run ruff format --check app/views/write.py seo_app/storage/drafts.py \
@@ -130,7 +137,7 @@ $ uv run ruff format --check app/views/write.py seo_app/storage/drafts.py \
 - [x] Yêu cầu 2: không lùi T-086, T-089 (40 file test liên quan qua; luồng gửi không sửa; `test_two_tabs_editing_same_draft_still_autosave`).
 - [x] Yêu cầu 3: nháp cũ vẫn mở được (`test_old_draft_still_opens_and_saves`; test khuôn 1, 2 của T-055, T-100 vẫn qua); test cho các ca mới.
 - [x] Yêu cầu 4: đã có từ T-118 (`.streamlit/config.toml:19`), không sửa; `tests/test_t118_don_thap.py`, `tests/test_app_pages.py` qua.
-- [x] Yêu cầu 5: chú thích «Chép sang SiteSEO» khớp README; `.env.example` ghi rõ tài khoản Biên tập viên riêng, mật khẩu ứng dụng tạo trên chính tài khoản đó (2 test mới; `tests/test_config.py` qua).
+- [x] Yêu cầu 5: chú thích «Chép sang SiteSEO» đúng hành vi (đường dẫn đã gửi kèm bài từ T-102) và khớp README của T-112; `.env.example` ghi rõ tài khoản Biên tập viên riêng, mật khẩu ứng dụng tạo trên chính tài khoản đó (2 test mới; `tests/test_config.py` qua).
 - [x] Yêu cầu 6: câu báo từ khóa dùng `odd_char_messages`; `tests/test_t041_seo_ui.py:711` đổi theo (R5, Chỉ Huy đã duyệt), thêm ca emoji mới.
 - [x] Mọi test luồng gửi nháp và kho nháp + `uv run ruff check .` (toàn bộ test do Chỉ Huy chạy khi gộp).
 - [x] Thử gỡ chỗ sửa: 16/16 đột biến bị bắt.

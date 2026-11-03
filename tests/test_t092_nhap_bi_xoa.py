@@ -501,13 +501,17 @@ def test_old_draft_still_opens_and_saves(project_root):
 
 
 def test_siteseo_caption_says_where_each_box_goes(project_root):
-    """Chú thích «Chép sang SiteSEO» (Lá Chắn T-095): tiêu đề, mô tả dán vào hộp SiteSEO; đường dẫn
-    dán vào ô đường dẫn (slug) của bài, khớp README mục 10."""
+    """Chú thích «Chép sang SiteSEO» (Lá Chắn T-095): tiêu đề, mô tả dán vào hộp SiteSEO (như README
+    mục 10); đường dẫn phần mềm đã gửi kèm bài (T-102: ``create_draft_with_images(slug=…)``), sửa
+    tay thì dán vào ô đường dẫn (slug) của bài, không phải hộp SiteSEO."""
     at = t41.to_seo(project_root)
     caption = next(c.value for c in at.caption if c.value.startswith("Bấm biểu tượng ở góc"))
-    where = "tiêu đề, mô tả dán vào hộp SiteSEO; đường dẫn dán vào ô đường dẫn (slug) của bài"
-    assert where in caption
-    assert where in (project_root / "README.md").read_text(encoding="utf-8")
+    assert "tiêu đề, mô tả dán vào hộp SiteSEO" in caption
+    assert "tiêu đề, mô tả dán vào hộp SiteSEO" in (project_root / "README.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Đường dẫn thì phần mềm đã gửi kèm bài" in caption
+    assert "dán vào ô đường dẫn (slug) của bài, không phải hộp SiteSEO" in caption
     assert "dán vào hộp SiteSEO của bài nháp" not in caption
 
 

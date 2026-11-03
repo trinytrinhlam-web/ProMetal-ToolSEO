@@ -2650,8 +2650,9 @@ def siteseo_panel(posts: list, suffix: str | None) -> None:
     st.markdown("**Chép sang SiteSEO**")
     st.caption(
         "Bấm biểu tượng ở góc từng khung để chép. Trong trang sửa bài nháp của WordPress: tiêu đề, "
-        "mô tả dán vào hộp SiteSEO; đường dẫn dán vào ô đường dẫn (slug) của bài. Muốn phần mềm tự "
-        "ghi tiêu đề, mô tả: bật «Ghi SEO lên website» ở bước Xuất bản."
+        "mô tả dán vào hộp SiteSEO. Đường dẫn thì phần mềm đã gửi kèm bài; muốn sửa tay thì dán "
+        "vào ô đường dẫn (slug) của bài, không phải hộp SiteSEO. Muốn phần mềm tự ghi tiêu đề, mô "
+        "tả: bật «Ghi SEO lên website» ở bước Xuất bản."
     )
     for label, value, reason in final_seo(posts, suffix):
         if label not in COPY_LABELS:
