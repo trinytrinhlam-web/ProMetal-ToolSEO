@@ -4,8 +4,8 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-118](../tickets/T-118-don-thap-sau-fable.md) |
-| Nhánh | `team/T-118`, từ `main` `935d381` (đã có T-105, T-113); commit mã và test `bb3f51f`, lượt 2 `3339360` |
-| Ngày nộp | 2026-11-02 (giờ máy, +07); lượt 2: 2026-11-03 |
+| Nhánh | `team/T-118`, từ `main` `935d381` (đã có T-105, T-113); commit mã và test `bb3f51f`, lượt 2 `3339360`; lượt 3: gộp `main` `29499dd`, sửa một test cũ (commit cùng mục «Lượt 3» này) |
+| Ngày nộp | 2026-11-02 (giờ máy, +07); lượt 2: 2026-11-03; lượt 3: 2026-11-03 22:38 |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -15,6 +15,7 @@
 - **Công cụ đặt mật khẩu và trang Cài đặt:** khi file `.env` vừa lưu đọc lại đã khác bản vừa ghi (thường do chương trình khác ghi vào đúng lúc đó, hoặc ổ đĩa ghi không trọn), câu báo nói đúng như vậy, không còn bảo đi tìm một dòng sai định dạng không có. File vẫn được trả về bản cũ như trước.
 - **Trang Bài viết, trang Kế hoạch không còn lỗi** khi giờ tải trong file cache trên máy bị sửa tay thành giờ lạ. Cache đó bị bỏ, phần mềm đọc lại từ Google Sheets, website như lần đầu.
 - Hai chỗ nhỏ bên trong lớp AI cũng đã sửa (che thêm biến môi trường dạng byte; trả lại đúng khi gói thư viện hỏng). Người dùng không thấy gì khác.
+- Lượt 3: sửa một bài kiểm tra cũ vẫn chờ câu lỗi gốc hiện trên trang. Nay nó kiểm điều ngược lại: câu lỗi gốc **không** hiện. Phần mềm không đổi gì.
 
 ## Đã thay đổi
 
@@ -196,6 +197,52 @@ seo_app/ai/base.py:30  Basic Auth Credentials   (có từ trước, như lượt
 **21 file:** `test_soi_loi_t118.py`, `test_t118_don_thap.py`, `test_ai.py`, `test_ai_images.py`, `test_ai_openai_gemini.py`, `test_ai_openai_gemini_soi_loi.py`, `test_ai_t026.py`, `test_ai_t028.py`, `test_ai_t034.py`, `test_soi_loi_t026.py`, `test_soi_loi_t028.py`, `test_soi_loi_t034.py`, `test_blind_test.py`, `test_soi_loi_t019.py`, `test_soi_loi_t019_luot2.py`, `test_app_t044_safe_text.py`, `test_soi_loi_t044.py`, `test_settings_blind.py`, `test_t101_plan_page.py`, `test_t101_home_page.py`, `test_app_pages.py`.
 
 **Chưa sửa ở lượt này (ngoài chỗ LC-T034-1), ghi đề xuất:** Soi Lỗi nêu bộ làm sạch chung `escape_link_syntax` (T-031) cũng dùng cho chữ AI hiện trên trang, nên chữ AI có `<https:…>` cũng thành link ở trang xem. Sửa ở hàm chung thì phải giữ được phép đảo `unescape_link_syntax` (gỡ lớp làm sạch trước khi gửi WordPress, T-031) và kiểm lại mọi nơi gọi. Nên làm ở một phiếu riêng (Đề xuất 4).
+
+## Lượt 3 · test cũ hỏng sau khi ẩn chi tiết lỗi (Chỉ Huy B, 03/11)
+
+| Mục | Nội dung |
+|---|---|
+| Việc | Lần chạy toàn bộ test trên `main` cục bộ `29499dd` (đã gộp T-118, T-073): 22.456 qua, 2 hỏng. `tests/test_link_escape.py::test_timing_helper_has_absolute_limit` hỏng oan vì máy bận (chạy lại qua, không sửa). `tests/test_soi_loi_t058.py::test_st_image_bytes_rac_bao_loi_ro_rang` hỏng thật, chạy riêng vẫn hỏng |
+| Nguyên nhân | T-118 đặt `client.showErrorDetails = "type"`. Trang nay chỉ hiện loại lỗi và câu chung của Streamlit («This app has encountered an error. The original error message is redacted…»), dấu vết lỗi rỗng. Dòng 305 cũ lại chờ câu lỗi gốc của Pillow hiện trên trang. Thử trên mã đã gộp: phần tử lỗi chỉ có 3 trường `type`, `message`, `width_config`; `message` là câu chung, không có «cannot identify image file» |
+| Gộp | `git merge main`: tua thẳng `9ed433b` → `29499dd` (nhánh đã nằm trong `main`, không có commit gộp). `uv sync`: chỉ cài lại gói của dự án (`pyproject.toml` đổi chú thích `[tool.uv]` của T-078, `uv.lock` không đổi) |
+
+**Sửa test cũ (R5, Chỉ Huy duyệt 03/11):**
+
+| Chỗ | Cũ | Mới |
+|---|---|---|
+| `tests/test_soi_loi_t058.py:304` | `assert [loi.proto.type for loi in at.exception] == ["PIL.UnidentifiedImageError"]` | Giữ nguyên |
+| `tests/test_soi_loi_t058.py:305` | `assert "cannot identify image file" in at.exception[0].message` | Ghép `str(loi.proto)` của **mọi** phần tử lỗi trên trang (câu báo, dấu vết lỗi và mọi trường khác), kiểm **không** có «cannot identify image file» và **không** có «BytesIO» (câu gốc của Pillow là «cannot identify image file <_io.BytesIO object at 0x…>»), kèm 3 dòng chú thích ghi lý do và lần duyệt |
+
+Ý cũ của test vẫn giữ: Pillow 13 báo đúng loại lỗi, không treo, không sập tiến trình, không đưa bytes rác ra trình duyệt. Ý mới là quyết định của chủ dự án ngày 02/11: câu lỗi gốc không lộ ra trang. Tên test, thân trang thử, dòng 304 không đổi.
+
+**Đối chứng** (chạy trong thư mục nháp, không sửa repo): cùng trang đó, đặt `client.showErrorDetails` = `type` thì cả hai chữ đều không có; đặt `full` (mặc định của Streamlit) thì cả hai chữ đều có. Nghĩa là test mới sẽ đỏ nếu sau này ai bỏ dòng `showErrorDetails = "type"`, không qua oan.
+
+**Rà test khác đọc lỗi trên trang** (`grep -rn "\.exception\b" tests/`, 155 dòng ngoài `test_t118_don_thap.py`): 23 dòng không phải dạng `assert not at.exception` trần, đã xem từng dòng.
+
+- `test_soi_loi_t058.py:82`: chỉ so loại lỗi (`DeprecationWarning`), không đọc câu báo.
+- `test_la_chan_t086.py:52`, `:54`; `test_soi_loi_t021_t017.py:490`; `test_soi_loi_t041.py:634`, `:665`, `:790`; `test_soi_loi_t051.py:471-473`; `test_soi_loi_t084.py:341`; `test_soi_loi_t090.py:188`, `:242`; `test_t041_seo_ui.py:622`, `:652`, `:737`; `test_t090_env_bang_ma.py:144`, `:151`, `:155`: kiểm **không có** lỗi. Câu lỗi chỉ dùng làm chữ in ra khi test hỏng (nay in câu chung, vẫn đúng loại lỗi).
+- `test_t101_home_page.py:94`, `test_la_chan_t113.py:77`: đi qua `assert_plain` (`test_t101_plan_page.py:226`), cũng chỉ kiểm không có lỗi.
+- `test_app_images.py:611`: chỉ là chuỗi mô tả của test.
+
+Không test nào khác đọc `stack_trace`, so câu chung của Streamlit, hay tự đặt `client.showErrorDetails` (ngoài `test_t118_don_thap.py`, đã có bộ đặt và trả lại giá trị riêng). Trong `app/`, `seo_app/` không có `st.exception(`. Kết luận: chỉ ca dòng 305 lệch theo `showErrorDetails`, đúng như lần chạy toàn bộ.
+
+**Lưu ý:** như mọi test `AppTest`, ca này đọc cấu hình từ `.streamlit/config.toml` của thư mục đang chạy (gốc dự án), đúng cách app thật chạy. `test_t118_don_thap.py::test_config_shows_only_error_type` ghim giá trị `type` trong file đó.
+
+**Kiểm thử** (không chạy toàn bộ pytest, theo dặn dò):
+
+```
+$ uv run pytest tests/test_soi_loi_t058.py -q -k bytes_rac
+1 passed, 59 deselected in 4.11s
+
+$ uv run pytest tests/test_soi_loi_t058.py tests/test_t118_don_thap.py tests/test_app_pages.py -q
+218 passed, 1 skipped in 115.04s (0:01:55)   (bỏ qua: ca environb thật, chỉ có trên Mac/Linux)
+   mã băm test_soi_loi_t058.py eb2fe307… giống nhau lúc bắt đầu và lúc xong lượt chạy
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check tests/test_soi_loi_t058.py
+1 file already formatted
+```
 
 ## Câu hỏi cho chủ dự án
 
