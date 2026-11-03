@@ -23,6 +23,7 @@ from seo_app.ai.base import (
     ignoring_custom_headers,
     is_bad_response,
     library_error,
+    model_label,
     prepare_images,
     token_limit_error,
     unreadable_error,
@@ -120,10 +121,13 @@ class AnthropicProvider:
         except anthropic.AuthenticationError as exc:
             raise AIError("Khóa ANTHROPIC_API_KEY trong file .env không đúng.") from exc
         except anthropic.PermissionDeniedError as exc:
-            raise AIError(f"Tài khoản Anthropic không được dùng mô hình «{task.model}».") from exc
+            raise AIError(
+                f"Tài khoản Anthropic không được dùng mô hình «{model_label(task.model)}»."
+            ) from exc
         except anthropic.NotFoundError as exc:
             raise AIError(
-                f"Không có mô hình «{task.model}». Kiểm tra lại tên trong config/ai.toml."
+                f"Không có mô hình «{model_label(task.model)}». "
+                "Kiểm tra lại tên trong config/ai.toml."
             ) from exc
         except anthropic.RateLimitError as exc:
             raise AIError("Anthropic đang giới hạn số lần gọi. Đợi một phút rồi thử lại.") from exc

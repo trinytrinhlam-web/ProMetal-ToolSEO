@@ -15,6 +15,7 @@ from seo_app import env_file
 from seo_app.env_file import (
     ALLOWED_KEYS,
     MAX_VALUE_LENGTH,
+    EnvFileChangedError,
     EnvFileError,
     check_api_key,
     clear_api_key,
@@ -552,7 +553,8 @@ def test_every_other_variable_unchanged_after_save(env_path):
 
 
 def test_mismatch_after_write_restores_old_file(env_path, monkeypatch):
-    # Giả lỗi đĩa: lần ghi đầu ghi ra nội dung sai. App phải trả lại bản cũ và báo lỗi.
+    # Giả lỗi đĩa: lần ghi đầu ghi ra nội dung sai. App phải trả lại bản cũ và báo lỗi. Câu báo:
+    # «đã khác bản vừa ghi», không còn «định dạng lạ» (T-118, SL-T105-1; Chỉ Huy duyệt 02/11 17:55).
     original = "ANTHROPIC_API_KEY=cu\n" + SECRETS_AFTER
     write(env_path, original)
     real_write = env_file._atomic_write
@@ -563,7 +565,7 @@ def test_mismatch_after_write_restores_old_file(env_path, monkeypatch):
         real_write(path, "HONG=1\n" if len(calls) == 1 else content)
 
     monkeypatch.setattr(env_file, "_atomic_write", flaky)
-    with pytest.raises(EnvFileError, match="định dạng lạ"):
+    with pytest.raises(EnvFileChangedError, match="khác bản vừa ghi"):
         set_api_key("ANTHROPIC_API_KEY", KEY)
     assert read(env_path) == original
     assert len(calls) == 2

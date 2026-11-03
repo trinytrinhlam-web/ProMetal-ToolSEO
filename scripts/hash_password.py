@@ -24,6 +24,7 @@ from seo_app.auth import hash_password
 from seo_app.config import DEFAULT_ENV_FILE, ENV_RESAVE_UTF8, PROJECT_ROOT, ConfigError
 from seo_app.env_file import (
     PASSWORD_HASH_VAR,
+    EnvFileChangedError,
     EnvFileError,
     EnvFileFormatError,
     EnvFileReadBackError,
@@ -69,6 +70,15 @@ MSG_ENV_READBACK_UNSURE = (
     "Không đọc lại được file .env để kiểm sau khi ghi ({error}), cũng không bỏ được bản vừa ghi: "
     "file .env có thể đã mang mật khẩu mới nhưng chưa được kiểm. Đóng chương trình đang mở file "
     "(ví dụ phần mềm diệt virus hay đồng bộ thư mục) rồi chạy lại set_password để ghi lại cho chắc."
+)
+# Đọc lại được mà chữ trên ổ khác chữ vừa ghi (chương trình khác ghi vào đúng lúc đó, hay ổ đĩa ghi
+# không trọn), bộ ghi đã trả bản cũ (SL-T105-1, T-118; Chỉ Huy duyệt 02/11 17:55). Không nói tới
+# dòng sai định dạng, không khẳng định chắc một nguyên nhân.
+MSG_ENV_CHANGED = (
+    "File .env đọc lại ngay sau khi lưu đã khác bản vừa ghi (thường do chương trình khác ghi vào "
+    "đúng lúc đó, như phần mềm đồng bộ thư mục hay trình soạn thảo đang mở file, hoặc ổ đĩa ghi "
+    "không trọn); file .env đã được trả về bản trước khi lưu. Đóng chương trình đang mở file .env "
+    "(nếu có) rồi chạy lại set_password."
 )
 # Biến môi trường APP_PASSWORD_HASH của máy đè .env (``load_settings``; SL-T104-2, T-105): dừng
 # trước khi hỏi mật khẩu. Câu cố định, không in giá trị biến. Phải tắt hẳn app vì app đang chạy
@@ -145,6 +155,8 @@ def set_env_value(env_file: Path, key: str, value: str, template: Path | None = 
         raise ConfigError(MSG_ENV_UNREADABLE.format(error=exc.error_name)) from exc
     except EnvFileFormatError as exc:
         raise ConfigError(MSG_ENV_FORMAT) from exc
+    except EnvFileChangedError as exc:
+        raise ConfigError(MSG_ENV_CHANGED) from exc
     except EnvFileReadBackError as exc:
         if exc.restored:
             raise ConfigError(MSG_ENV_READBACK.format(error=exc.error_name)) from exc
