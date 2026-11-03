@@ -4,9 +4,9 @@
 |---|---|
 | Agent | Họa Sĩ (`hoa-si`) · model: Claude Opus 5.5 |
 | Phiếu | T-112 (Chỉ Huy B giao 31/10 09:40) |
-| Ngày nộp | 2026-10-31 |
+| Ngày nộp | 2026-10-31 (lượt 2: 02/11; lượt 3: 03/11) |
 | Nhánh | `team/T-112` (từ `d6df633`: `main` cục bộ `3cdd096` có T-102 + ghi chú `[plan]` của Ngòi Bút). Không gộp `main` |
-| Kết quả | Xong yêu cầu 1, 2, 4, 5, 6 của phiếu; yêu cầu 3 (so `modified_gmt`) Chỉ Huy chuyển sang T-115 (Thợ Máy). Công tắc Hẹn giờ/Đăng ngay **vẫn mặc định tắt**, nay có nút ở Cài đặt (chỉ trong phiên, phương án A Chỉ Huy chọn). 16 ca test mới, gỡ 4 dấu `xfail` (SL-T102-1 ×3, LC-T102-1). **Lượt 2 (02/11):** gộp `main` và `team/T-115`, thêm 3 ca test giao diện cho đường «bài bị sửa ngoài app» của T-115 (mục 8) |
+| Kết quả | Xong yêu cầu 1, 2, 4, 5, 6 của phiếu; yêu cầu 3 (so `modified_gmt`) Chỉ Huy chuyển sang T-115 (Thợ Máy). Công tắc Hẹn giờ/Đăng ngay **vẫn mặc định tắt**, nay có nút ở Cài đặt (chỉ trong phiên, phương án A Chỉ Huy chọn). 16 ca test mới, gỡ 4 dấu `xfail` (SL-T102-1 ×3, LC-T102-1). **Lượt 2 (02/11):** gộp `main` và `team/T-115`, thêm 3 ca test giao diện cho đường «bài bị sửa ngoài app» của T-115 (mục 8). **Lượt 3 (03/11):** gộp `main` `33dd87f`; sửa SL-T112-1 (dòng Chặn ở màn hình xác nhận + chốt thứ hai ở `release_missing`), 7 ca test mới, gỡ 2 `xfail` SL-T112-1 và đổi 9 ca cũ theo R5 Chỉ Huy duyệt (mục 9); khuyến nghị «ghi dấu SEO chưa lên» của Lá Chắn chưa làm, nêu lý do (mục 9.5) |
 
 ## 1. Tóm tắt (cho chủ dự án)
 
@@ -17,6 +17,7 @@
   - Bài đã gửi mà bạn muốn gửi thêm một bài nữa: ô tick nói đúng việc sẽ làm («tạo thêm một bài mới và đăng công khai ngay» khi đang chọn Đăng ngay).
 - Trang **Cài đặt** có tab mới «📅 Hẹn giờ, đăng» để bật Hẹn giờ / Đăng ngay: mặc định tắt, phải tick «Tôi hiểu…» trước; công tắc chỉ có hiệu lực trong lần mở app đó (tắt app, tải lại trang là tự tắt). Chỉ bật sau buổi thử thật trên website.
 - Việc so «giờ sửa bài» trên website ngay trước khi đăng (ai đó vừa sửa nháp trong trang quản trị thì không đăng) cần sửa phần kết nối WordPress: Thợ Máy làm ở phiếu T-115.
+- **Lượt 3:** bật «Ghi SEO lên website» mà tiêu đề hay mô tả SEO đang trống hoặc bị «Chặn» ở bước SEO thì **Đăng ngay bị khóa nút** ngay ở màn hình xác nhận, kèm dòng nói rõ trường nào (trước đây bài vẫn lên công khai với tiêu đề, mô tả SEO mặc định). **Hẹn giờ** thì chỉ cảnh báo, vì còn sửa được trước giờ đăng.
 
 ## 2. Việc đã làm
 
@@ -162,3 +163,76 @@ Kết quả: **1.193 qua, 0 hỏng**. `ruff check .` sạch.
 ### 8.4 Commit lượt 2
 
 - `5445028` gộp `main` `7485b94`; `ff420d4` gộp `team/T-115` `a7572f7`; `a1edee0` test giao diện T-115; `ac85c1b` test Hẹn giờ theo hành vi sau T-115; commit cuối: báo cáo mục 8.
+
+## 9. Lượt 3 (Chỉ Huy B giao 03/11 12:50): SL-T112-1, khuyến nghị Lá Chắn
+
+### 9.1 Gộp
+
+- Đầu nhánh lúc nhận việc: `7e8af87` (báo cáo Soi Lỗi `b4f7900`, Lá Chắn đầy đủ `7e8af87`).
+- `git merge origin/main` (`33dd87f`: T-115, T-117, T-119, biên bản T-116): commit gộp `df4ba4a`, không xung đột. `uv.lock` không đổi (`pyproject.toml` chỉ đổi chú thích `required-version`).
+
+### 9.2 SL-T112-1: Đăng ngay khi tiêu đề hay mô tả SEO trống hoặc «Chặn»
+
+Cơ chế lỗi (Soi Lỗi, Lá Chắn): bật «Ghi SEO» mà tiêu đề hay mô tả SEO đang «Chặn» ở bước SEO thì `seo_request` bỏ trường đó (chuỗi rỗng). Client ghi phần còn lại vẫn báo `written=True`, nên `release_missing` coi SEO đã lên và Đăng ngay vẫn đăng công khai với tiêu đề, mô tả SEO mặc định.
+
+Sửa ở `app/views/write.py`, hai chốt. Không sửa bộ dựng `seo_app/publish/render.py` (Lá Chắn gợi ý đặt dòng Chặn ở đó, nhưng file này ngoài phạm vi của tôi; kết quả trên màn hình như nhau).
+
+| Chốt | Chỗ làm |
+|---|---|
+| 1. Dòng **Chặn** ở màn hình xác nhận | `seo_left_out(seo)`: tiêu đề, mô tả SEO **trong gói sẽ gửi** (`built.seo`, cùng mã băm với ô tick) trống khi bật «Ghi SEO». `seo_notices(seo, mode)`: Đăng ngay là `Notice(BLOCK)` (`MSG_PUBLISH_SEO_LEFT_OUT`, nêu đúng trường), Hẹn giờ là `Notice(WARN)` (`MSG_SCHEDULE_SEO_LEFT_OUT`), Nháp thì không. `publish_panel` thêm vào `notices` ngay trước `review_panel`: dòng hiện cùng chỗ các dòng Chặn khác. `allowed` tắt nên nút khóa; cú bấm lọt qua nút khóa (bấm đúp) cũng bị `if clicked and allowed` chặn |
+| 2. `release_missing` | SEO ghi được (`seo_ok`) mà lệnh ghi đã bỏ tiêu đề hay mô tả (`holder["seo"]["fields"]` trống) thì vẫn là «chưa lên», nêu đúng tên trường (`MISSING_SEO_FIELDS`: «tiêu đề SEO», «mô tả SEO»). Đăng ngay giữ nháp (`MSG_PUBLISH_HELD`), Hẹn giờ cảnh báo (`MSG_SCHEDULE_MISSING`) |
+
+- Từ khóa chính bị bỏ (ký tự lạ, quá dài): **không** Chặn, không tính là thiếu. Lá Chắn: từ khóa chính không hiện công khai; bước SEO và chú thích dưới công tắc đã báo.
+- Tắt «Ghi SEO»: giữ luật cũ của bộ dựng (Đăng ngay là Chặn, Hẹn giờ cảnh báo).
+- Chốt 2 không tới được qua giao diện khi chốt 1 còn đứng: gói và lệnh ghi dùng cùng chữ SEO, mã băm khóa. Đây là chốt phòng hờ, có test qua đường Hẹn giờ (cùng hàm).
+
+### 9.3 Đổi test cũ (R5): Chỉ Huy duyệt 03/11 12:45, (a)/(b)
+
+Vì sao phải đổi:
+
+1. 2 ca `xfail` SL-T112-1 không thể XPASS nguyên văn. `send_publish` của Soi Lỗi kiểm nút **mở** rồi mới bấm, mà sửa đúng thì nút **khóa** (chạy `--runxfail`: hỏng đúng ở `assert not send_button(at).disabled`).
+2. Bài mẫu của test chưa có chữ SEO. Mọi ca cũ «Đăng ngay + bật Ghi SEO» nay bị khóa nút ở màn hình xác nhận. Lô chạy code mới với test cũ: 13 hỏng, đều thuộc loại này (7 ca cũ, 6 ca T-112 của tôi), 83 qua.
+
+| Ca | Cũ | Mới | Duyệt |
+|---|---|---|---|
+| `test_soi_loi_t112::test_sl_t112_1_dang_ngay_khi_truong_seo_dang_chan_thi_khong_dang` `[tieu-de-chan]`, `[mo-ta-chan]` | `xfail` strict; `send_publish` kiểm nút mở, bấm; chờ lệnh ghi SEO có trường Chặn để trống, không lệnh đăng, nháp «chưa đăng» | Gỡ `xfail`, thêm docstring. Tick xác nhận → có dòng Chặn nêu đúng trường + nút khóa → cú bấm lọt vẫn không gửi gì: không lệnh ghi SEO (`calls == []`), không lệnh ghi nào (mọi yêu cầu là `GET`), `release_bodies == []`, nháp không có trạng thái gửi (`load_send_state` là `None`). Ý «trường Chặn không ghi, phần còn lại vẫn ghi» giữ ở ca Hẹn giờ mới của tôi (mục 9.4) | (b) |
+| `test_t102_publish::test_publish_now_with_seo_written` | Bài mẫu chưa có chữ SEO | +4 dòng `session_state` (tiêu đề, mô tả SEO hợp lệ, như `send_publish` của Soi Lỗi) trước khi chọn Đăng ngay; mọi kiểm giữ nguyên | (a) |
+| `test_la_chan_t102::_publish_now` (3 ca LC-T102-1) | như trên | như trên | (a) |
+| `test_soi_loi_t102::test_sl_t102_1_dang_ngay_ma_seo_ghi_hong_thi_khong_dang` (3 ca) | như trên | như trên: lại đi tới lệnh ghi SEO, giữ đúng ý «ghi SEO lỗi thì không đăng» | (a) |
+| `test_soi_loi_t102::test_sua_sau_khi_tick_thi_bo_tick` `[tieu-de]`, `[slug]` | như trên; sau sửa vẫn qua nhưng nút đã khóa sẵn vì dòng Chặn, nên kiểm «nút khóa» mất ý | như trên: nút khóa lại là do bỏ tick | (a), ca cùng loại tôi tìm ra khi đọc (không hỏng) |
+
+- AppTest không cho bấm nút đang khóa (`AppTestError: Cannot update a disabled button widget`). Nên «cú bấm lọt» giả bằng `st.button` trả «đã bấm» cho nút `wp-send`, như ca G2 có sẵn (`test_switch_turned_off_at_click_sends_nothing`). Cách này đi đúng nhánh `if clicked and allowed` của trang.
+- Ca của tôi (T-112, chưa lên `main`): `send(…, seo_write=True)` và `test_held_publish_writes_draft_sent_to_plan` nay đặt chữ SEO hợp lệ (`seo_texts`). Ý các ca giữ nguyên: SEO có chữ, lệnh ghi hỏng hay được.
+- `ruff format --check` báo 3 file test cũ (`test_soi_loi_t102`, `test_soi_loi_t112`, `test_t102_publish`) có đoạn chưa đúng khuôn **từ trước**, không phải dòng tôi thêm: để nguyên.
+
+### 9.4 Ca test mới (7, `tests/test_t112_release_rules.py`, mục «SL-T112-1»)
+
+| Ca | Kiểm |
+|---|---|
+| `test_publish_blocked_when_seo_field_left_out` `[tieu-de-chan]`, `[mo-ta-chan]`, `[tieu-de-trong]`, `[mo-ta-trong]` | Đăng ngay: dòng Chặn nêu đúng trường, nút khóa dù đã tick; cú bấm lọt: không lệnh ghi nào, không lệnh ghi SEO, nháp không có trạng thái gửi |
+| `test_publish_names_both_seo_fields_left_out` | Cả hai trường: một dòng Chặn nêu «tiêu đề SEO, mô tả SEO» |
+| `test_schedule_with_seo_field_left_out_warns_and_goes_on` | Hẹn giờ: màn hình xác nhận chỉ cảnh báo (không Chặn); gửi thì ghi phần SEO còn lại (tiêu đề trống, mô tả đủ), vẫn hẹn giờ đúng giờ; kết quả cảnh báo «Bài đã hẹn giờ nhưng tiêu đề SEO chưa lên website lúc gửi» (chốt 2, client báo đã ghi một phần) |
+| `test_publish_goes_when_only_focus_keyword_left_out` | Từ khóa chính có ký tự riêng (bước SEO báo «Chặn», lệnh ghi bỏ): Đăng ngay vẫn đăng, không chặn oan |
+
+### 9.5 Khuyến nghị Lá Chắn (ghi dấu «SEO chưa lên» khi Hẹn giờ): chưa làm, không nhỏ trong phạm vi
+
+- Ghi vào nháp: `SendState` (`seo_app/storage/drafts.py`) không có trường nào cho việc này, khuôn chặt. Thêm trường là việc của kho nháp (Thợ Máy); sau đó trang Bài viết mới nhắc được.
+- Ghi vào dòng kế hoạch: chỉ có ô «Ghi chú của thợ», là chữ của người dùng. App chỉ được ghi 4 ô qua `record_status` (LC-T094-40); ghi ô ghi chú là đè chữ của thợ và phải đổi `seo_app/plan/`.
+- Đề xuất phiếu sau: `SendState.seo_missing` (Thợ Máy), dòng nhắc ở bước Xuất bản và trang Bài viết (Họa Sĩ).
+- Hiện tại cảnh báo hiện ở kết quả gửi, và từ lượt này hiện cả ở màn hình xác nhận trước khi bấm Hẹn giờ (dòng Cảnh báo, mục 9.2).
+
+### 9.6 README (để Thư Ký làm cùng SL-T112-2, -3)
+
+Tôi không sửa README. Mục 11 nên thêm một ý: bật «Ghi SEO» mà tiêu đề hay mô tả SEO trống hoặc «Chặn» thì Đăng ngay bị Chặn ở màn hình xác nhận (nút khóa), Hẹn giờ chỉ cảnh báo, từ khóa chính bị bỏ thì không chặn.
+
+### 9.7 Test lượt 3
+
+- Lô 1, 5 file bước Xuất bản (`test_t102_publish`, `test_la_chan_t102`, `test_soi_loi_t102`, `test_t112_release_rules`, `test_soi_loi_t112`): **105 qua, 2 xfail** (SL-T112-2, -3: README, của Thư Ký), 0 hỏng, 0 XPASS; 8 phút 48.
+- Lô 2, 16 file (T-112 `test_t112_settings_switch`; T-102 `test_t102_formula_cells`; T-110 `test_la_chan_t110`, `test_soi_loi_t110`, `test_t110_gan_anh_vao_bai_nhap`; T-115 `test_t115_modified_gmt`, `test_soi_loi_t115`; `test_wordpress_release`, `test_app_pages`; luồng gửi `test_app_images`, `test_content_edge_cases`, `test_t086_send_state`, `test_t089_send_draft`, `test_la_chan_t089`, `test_t041_seo_ui`, `test_soi_loi_t041`): **1.111 qua, 0 hỏng**; 15 phút 05.
+- Cộng hai lô: **1.216 qua, 2 xfail, 0 hỏng, 0 XPASS**.
+- `ruff check` 6 file đổi: sạch.
+- `detect-secrets` (`PYTHONUTF8=1`): file mồi tiếng Việt bắt được, đã xóa. Báo 1 chỗ có từ trước (`write.py`, docstring ví dụ `tên:mật-khẩu@` của T-041), không có gì mới.
+
+### 9.8 Commit lượt 3
+
+- `df4ba4a` gộp `main` `33dd87f`; `58d5326` sửa SL-T112-1 + test (gồm R5); commit cuối: báo cáo mục 9.
