@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (bắt buộc trước khi bật công tắc) |
 | Phụ thuộc | T-102 đã gộp `main` |
-| Trạng thái | Đang làm (chờ T-115) |
+| Trạng thái | Đang kiểm (Lá Chắn đầy đủ) |
 
 ## Mục tiêu
 
@@ -54,3 +54,4 @@ LC-T094-23, -39, -41, -44; điều kiện trong `docs/team/reports/T-102-la-chan
 
 - Lập 2026-10-31 theo biên bản Lá Chắn đầy đủ T-102. Sau phiếu này: thử thật LC-T094-44 với chủ dự án (cần chủ dự án đồng ý và có mặt), rồi Lá Chắn rà soát Giai đoạn 5.
 - 2026-10-31 13:32 (Chỉ Huy B): giao Họa Sĩ 09:40 (nhánh từ `d6df633`). Chỉ Huy chọn **A** cho công tắc: chỉ trong phiên (`st.session_state`), tick «Tôi hiểu…», tắt khi tải lại/tắt app, không ghi file; Lá Chắn đầy đủ T-112 xác nhận. Yêu cầu 3 (`modified_gmt`) tách sang T-115. Họa Sĩ xong (`f598cef`: Đăng ngay chỉ khi ảnh đại diện và SEO đã lên; Hẹn giờ cảnh báo; tab «📅 Hẹn giờ, đăng»; G1; nhãn gửi lại), Thư Ký README mục 11 (`245e199`).
+- 2026-11-03 12:33 (Chỉ Huy B): Họa Sĩ lượt 2 (`ef582ff`: gộp `main`, T-115; 3 test giao diện; bị từ chối rõ thì ghi «Đã gửi nháp» — Chỉ Huy đồng ý). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`b4f7900`): SL-T112-1 (Trung bình), SL-T112-2, -3 (Thấp, README); sửa trước khi bật công tắc. Lá Chắn đầy đủ bằng Fable, kiêm T-116 nhóm 2.

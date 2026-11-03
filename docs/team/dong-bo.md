@@ -59,6 +59,14 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-03 12:33 · Chỉ Huy B
+
+- Máy tắt tối 02/11 (lượt toàn bộ test chết ở 78%). Sáng 03/11 gộp thêm T-115, T-119; **`33dd87f`** (T-115, T-117, T-119, biên bản T-116 nhóm 1, 3, 4): Windows 22.300 test qua, 0 hỏng, đã đẩy.
+- Gộp cục bộ T-118, T-073 (`9701820`), đang chạy toàn bộ test. Lá Chắn Fable đang làm Lá Chắn đầy đủ T-112 kiêm T-116 nhóm 2.
+- Đã cập nhật bảng tiến độ Google Docs cho chủ dự án (03/11, cả dự án ~89%).
+- Giám Sát: job cron còn mà không bắn sau khi máy ngủ; cài lại `e6ab2cfe` 08:39. Mỗi nhịp kiểm `lastActivityAt` của phiên Giám Sát.
+- Sau T-112 Lá Chắn: Họa Sĩ sửa SL-T112-1..3 + điều kiện Lá Chắn; Thư Ký ghi sổ rủi ro 3 giới hạn `modified_gmt` (chờ chủ dự án). Hàng đợi: T-092 (sau T-112), T-111 (chờ pillow-heif mới).
+
 ### 2026-11-02 17:23 · Chỉ Huy B
 
 - Gộp **T-113**, **T-105** (`935d381`), Windows 22.159 test qua, 0 hỏng, đã đẩy.

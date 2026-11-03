@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (trước khi bật công tắc Hẹn giờ/Đăng ngay) |
 | Phụ thuộc | T-099, T-102 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-03, đủ 2 lượt) |
 
 ## Mục tiêu
 
@@ -51,3 +51,4 @@ W2, W3; LC-T094-23.
 - Lập 2026-10-31, tách từ T-112 yêu cầu 3 theo đề xuất Họa Sĩ.
 - 2026-10-31 13:32 (Chỉ Huy B): giao Thợ Máy (phiên T-094) 09:55, nhánh từ `d6df633`. R5 duyệt 10:55 (thêm `,modified_gmt` vào chuỗi `_fields` mong đợi; thêm `modified_gmt` vào câu trả lời giả tạo/kiểm nháp), 13:20 (gỡ `xfail` LC-T102-1: T-115 chặn ở lớp client).
 - 2026-11-02 12:44 (Chỉ Huy B): Thợ Máy xong (`496e8da`, `00bad96`; Chỉ Huy xác nhận 14:20 31/10 hai chỗ đổi test rộng hơn lời duyệt). Soi Lỗi rút gọn đang làm (dừng vì hết hạn mức 31/10, 02/11; chạy tiếp).
+- 2026-11-03 12:33 (Chỉ Huy B): lượt 2 (`a7572f7`: SL-T115-1, gộp `main` `935d381`). Lá Chắn ĐẠT (`b9da4b3`): LC-T094-23 đóng đủ; 3 giới hạn (cùng giây; khe giữa lệnh đọc và ghi; sửa chỉ meta) đề nghị ghi sổ rủi ro. Gộp `main` (`33dd87f`), Windows 22.300 test qua, 0 hỏng, đã đẩy.

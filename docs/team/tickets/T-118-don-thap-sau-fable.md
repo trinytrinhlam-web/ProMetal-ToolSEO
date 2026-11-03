@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (bảo mật, dọn) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-105, T-113 đã gộp `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Đã qua Lá Chắn; đang chạy toàn bộ test |
 
 ## Mục tiêu
 
@@ -52,3 +52,4 @@ U2, U3, F3.
 
 - Lập 2026-11-02 theo T-116 nhóm 3 (Fable) và quyết định của chủ dự án về hiện lỗi.
 - 2026-11-02 17:23 (Chỉ Huy B): giao Thợ Máy (phiên T-075) 13:20, nhánh `team/T-118` từ `main` `935d381`.
+- 2026-11-03 12:33 (Chỉ Huy B): lượt 2 (`3339360`, `73d4205`: SL-T118-1). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`2d52065`), Lá Chắn ĐẠT (`9ed433b`). R5 Chỉ Huy duyệt 02/11 đổi câu mong đợi 2 test (SL-T105-1). Gộp `main` cục bộ (`9701820`, cùng T-073), đang chạy toàn bộ test.

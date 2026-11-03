@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 (dọn sau rà soát Fable) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-03) |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ F1, F2.
 
 - Lập 2026-11-02 theo LC-T116-1; Chỉ Huy chọn phiếu dọn nhỏ thay vì ghi sổ rủi ro (đề xuất của Lá Chắn, sửa rẻ).
 - 2026-11-02 12:44 (Chỉ Huy B): giao Thợ Máy (phiên T-075) 08:35, nhánh `team/T-117` từ `origin/main` + T-116 nhóm 1 (`3669046`).
+- 2026-11-03 12:33 (Chỉ Huy B): Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`8c0190d`), Lá Chắn (Fable) ĐẠT CÓ ĐIỀU KIỆN (`bb5b463`, LC-T116-1 đóng). Gộp `main` (cùng biên bản T-116 nhóm 1, 3, 4), Windows 22.300 test qua, 0 hỏng, đã đẩy.
