@@ -318,10 +318,6 @@ def test_sl_t106_1_trang_khong_khuyen_nang_len_quan_tri(project_root, site, role
     assert [value for _kind, value in texts(at) if "Quản trị viên (Administrator)" in value] == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T108-1: README dòng Trạng thái còn nói trang Kết nối tạo bài nháp có ảnh đại diện",
-)
 def test_sl_t108_1_readme_trang_thai_khop_trang_ket_noi():
     """README dòng 7 (Trạng thái): «kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo
     bài nháp có ảnh đại diện)». Sau T-108 trang Kết nối chỉ tạo bài nháp chữ."""

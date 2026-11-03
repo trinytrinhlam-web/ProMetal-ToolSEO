@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo bài nháp có ảnh đại diện), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11; Hẹn giờ, Đăng ngay đã làm nhưng đang tắt, chờ thử thật). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp chữ), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11; Hẹn giờ, Đăng ngay đã làm nhưng đang tắt, chờ thử thật). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -454,9 +454,10 @@ Cần kết nối WordPress trước (mục 6). Ở bước **5 · Xuất bản*
 
 1. Vào **Cài đặt → 📅 Hẹn giờ, đăng**.
 2. Tick **Tôi hiểu: bài sẽ được hẹn giờ/đăng công khai thật trên website**, rồi bật **Bật Hẹn giờ và Đăng ngay**.
-3. Công tắc **chỉ giữ trong lần mở app đó**: tải lại trang (F5), tắt app, lần mở app sau đều tự tắt; bỏ tick «Tôi hiểu…» cũng tắt luôn. Công tắc không lưu vào file nào, nên mỗi lần muốn dùng phải bật lại.
+3. Công tắc **chỉ giữ trong tab trình duyệt đó, trong lần mở app đó**: tải lại trang (F5), tắt app, lần mở app sau đều tự tắt; bỏ tick «Tôi hiểu…» cũng tắt luôn. Công tắc không lưu vào file nào, nên mỗi lần muốn dùng phải bật lại.
+4. **Mỗi tab trình duyệt có công tắc riêng**: bật ở tab này không bật tab khác (tab mới mở luôn tắt), và tắt ở tab khác **không** tắt tab này. Xong việc thì tắt ở chính tab đã bật, hoặc tải lại trang tab đó.
 
-Công tắc bị tắt trong lúc bạn đang ở bước Xuất bản (ví dụ ở tab khác) thì bấm gửi Hẹn giờ / Đăng ngay không gửi gì, app báo «Chưa gửi gì lên website: Hẹn giờ và Đăng ngay đang tắt…».
+Công tắc bị tắt (ở Cài đặt của cùng tab, hay tải lại trang) thì bước Xuất bản chỉ còn gửi Nháp; một lần bấm gửi Hẹn giờ / Đăng ngay lỡ lọt sau lúc tắt cũng không gửi gì, app báo «Chưa gửi gì lên website: Hẹn giờ và Đăng ngay đang tắt…».
 
 **Gửi dạng Nháp**
 
@@ -474,22 +475,23 @@ Gửi xong, app báo «Đã tạo bài nháp trên WordPress (mã …)», có n�
 
 Làm như Nháp, thêm các phần sau:
 
-- **Hẹn giờ:** ô **Ngày đăng** điền sẵn ngày mai; ô **Giờ đăng** điền sẵn giờ ghi ở dòng `default_time` của mục `[plan]` trong `config/content.toml` (đang là `"08:00"`; thiếu hay viết sai dạng như `"2 giờ chiều"`, `"25:00"` thì app dùng 08:00). Bài mở từ dòng kế hoạch có ngày, giờ đăng thì lấy theo dòng đó. Sửa được trước khi gửi. Dưới hai ô ghi «Hẹn đăng: …» kèm thứ, ngày, giờ Việt Nam. Giờ đã qua, chưa tới 10 phút nữa, hay xa hơn một năm thì không gửi được. Không bật «Ghi SEO lên website» thì app nhắc chép tiêu đề, mô tả vào SiteSEO trước giờ đăng.
-- **Đăng ngay:** màn hình ghi «Hiện công khai ngay khi bấm». Phải bật **Ghi SEO lên website**; không bật thì có dòng Chặn «Đăng ngay mà SEO chưa ghi lên website…» và nút gửi khóa.
+- **Hẹn giờ:** ô **Ngày đăng** điền sẵn ngày mai; ô **Giờ đăng** điền sẵn giờ ghi ở dòng `default_time` của mục `[plan]` trong `config/content.toml` (đang là `"08:00"`; thiếu hay viết sai dạng như `"2 giờ chiều"`, `"25:00"` thì app dùng 08:00). Bài mở từ dòng kế hoạch có ngày, giờ đăng thì lấy theo dòng đó. Sửa được trước khi gửi. Dưới hai ô ghi «Hẹn đăng: …» kèm thứ, ngày, giờ Việt Nam. Giờ đã qua, chưa tới 10 phút nữa, hay xa hơn một năm thì không gửi được. Không bật «Ghi SEO lên website» thì app nhắc chép tiêu đề, mô tả vào SiteSEO trước giờ đăng. Bật mà tiêu đề hay mô tả SEO đang trống hoặc báo «Chặn» ở bước SEO thì app cảnh báo «Hẹn giờ mà … sẽ không ghi lên website…» (vẫn gửi được; sửa ở bước SEO, hoặc điền hộp SiteSEO trước giờ đăng).
+- **Đăng ngay:** màn hình ghi «Hiện công khai ngay khi bấm». Phải bật **Ghi SEO lên website**; không bật thì có dòng Chặn «Đăng ngay mà SEO chưa ghi lên website…» và nút gửi khóa. Bật rồi mà **tiêu đề hay mô tả SEO đang trống hoặc báo «Chặn»** ở bước SEO thì cũng có dòng Chặn «Đăng ngay mà … sẽ không ghi lên website (đang trống hoặc báo «Chặn» ở bước SEO)…» và nút gửi khóa: sửa ở bước SEO trước (hoặc gửi Nháp / Hẹn giờ). Chỉ từ khóa chính có vấn đề thì không chặn.
 - App hỏi website quyền đăng bài và múi giờ (nút **🔄 Kiểm tra lại quyền đăng bài, múi giờ website** để hỏi lại). Tài khoản không có quyền đăng bài thì không gửi được; tài khoản Biên tập viên ở mục 6 có quyền này. Múi giờ của website khác giờ Việt Nam thì app cảnh báo; bài vẫn lên đúng giờ đã chọn.
 - **Màn hình xác nhận «Xem lại trước khi gửi»:** hình thức và giờ hẹn, tiêu đề bài, đường dẫn sẽ có, chuyên mục, tiêu đề SEO, mô tả SEO, từ khóa chính, SEO có ghi lên website không; kèm bảng mọi link, địa chỉ, ảnh (có GPS hay không), đoạn dạng shortcode. Đọc lại rồi tick **Tôi đã đọc lại toàn bài và danh sách trên** thì nút gửi mới bấm được.
-- **Sửa gì sau khi tick thì phải tick lại.** Đổi chữ bài, ảnh, alt, giờ hẹn, chuyên mục hay công tắc «Ghi SEO lên website» (kể cả ở tab khác) thì app tự bỏ tick, báo «Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại.»
+- **Sửa gì sau khi tick thì phải tick lại.** Đổi chữ bài, ảnh, alt, giờ hẹn, chuyên mục hay công tắc «Ghi SEO lên website» thì app tự bỏ tick, báo «Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại.»
 - Thứ tự app làm: tải ảnh và tạo bài nháp, đặt ảnh đại diện, ghi SEO (nếu bật), rồi **cuối cùng** mới hẹn giờ hay đăng.
 
 **Ảnh đại diện hay SEO chưa lên kịp**
 
 - **Đăng ngay chỉ đăng khi đủ:** ảnh đại diện (bài có ảnh) và SEO (khi bật «Ghi SEO lên website») đã lên website. Thiếu phần nào thì app **không đăng**, bài vẫn là nháp, báo «Chưa đăng bài: … chưa lên website lúc gửi nên bài vẫn là nháp (mã …). Sửa phần đó trong trang quản trị WordPress, xem lại bài rồi bấm «Đăng» ở đó.» (chỗ «…» là phần còn thiếu).
-- **Hẹn giờ thì vẫn hẹn**, kèm cảnh báo «Bài đã hẹn giờ nhưng … chưa lên website lúc gửi. Sửa phần đó trong trang quản trị WordPress trước giờ đăng, hoặc chuyển bài về nháp nếu chưa kịp.» Lý do: bài hẹn giờ chưa công khai nên còn thời gian sửa (ít nhất 10 phút, thường là tới hôm sau); còn nếu app giữ bài lại thành nháp thì bạn vẫn phải tự hẹn giờ trong trang quản trị, không an toàn hơn mà thêm việc.
+- **Hẹn giờ thì vẫn hẹn khi chỉ thiếu SEO**, kèm cảnh báo «Bài đã hẹn giờ nhưng … chưa lên website lúc gửi. Sửa phần đó trong trang quản trị WordPress trước giờ đăng, hoặc chuyển bài về nháp nếu chưa kịp.» Lý do: bài hẹn giờ chưa công khai nên còn thời gian sửa (ít nhất 10 phút, thường là tới hôm sau). Riêng **ảnh đại diện** chưa lên (lệnh đặt ảnh đại diện lỗi) thì app **không hẹn giờ**: lúc đó app không biết chắc bài nháp trên website có bị đổi không, nên bài vẫn là nháp, báo «… Chưa hẹn giờ, chưa đăng: bài vẫn là nháp…» (xem «Bài bị sửa ngoài app» bên dưới).
 
 **Kết quả hẹn giờ, đăng**
 
 - Xong: «Đã hẹn giờ đăng bài: …» hoặc «Đã đăng bài công khai trên website.», kèm địa chỉ bài.
-- Website từ chối rõ ràng (bài không còn là nháp, giờ không hợp lệ, đồng hồ máy lệch…): bài vẫn là nháp, câu báo nói lý do.
+- **Bài bị sửa ngoài app:** ngay trước khi hẹn giờ, đăng, app hỏi lại website giờ sửa bài cuối cùng. Bài nháp đã bị sửa sau lần app ghi cuối (trong trang quản trị, do plugin hay người khác), hoặc app không biết chắc (ví dụ lệnh đặt ảnh đại diện vừa lỗi), thì app **không hẹn giờ, không đăng**, bài vẫn là nháp, báo «Bài nháp trên website đã bị sửa sau lần phần mềm ghi cuối (…), hoặc phần mềm không biết chắc bài có bị sửa không. Chưa hẹn giờ, chưa đăng: bài vẫn là nháp. Mở trang quản trị WordPress xem lại bài rồi hẹn giờ hay đăng ở đó.» Cách làm tiếp, chọn một: (a) mở bài trong trang quản trị, xem lại rồi tự hẹn giờ hay bấm Đăng ở đó; (b) gửi lại từ app: tick ô gửi lại (sẽ tạo **thêm một bài mới**), rồi xóa bài nháp cũ trong trang quản trị để khỏi trùng.
+- App hay website từ chối rõ ràng vì lý do khác (bài không còn là nháp, giờ không hợp lệ, đồng hồ máy lệch…): bài vẫn là nháp, câu báo nói lý do.
 - **Chọn Hẹn giờ mà website đăng ngay:** app báo «KHẨN: website báo bài (mã …) đã ĐĂNG CÔNG KHAI NGAY…». Làm đúng như câu báo: chưa muốn đăng thì chuyển bài về **Bản nháp** trong trang quản trị, rồi báo Chỉ Huy.
 - **Không rõ kết quả** (mất mạng hay website chậm đúng lúc hẹn giờ, đăng): app báo «Không biết chắc lệnh … đã chạy trên website chưa… Bài (mã …) có thể đã …» và **khóa gửi lại**. Mở lại bài sau đó vẫn thấy «Lần gửi trước (bài mã …) chưa biết chắc đã hẹn giờ/đăng hay chưa…»; phải kiểm trên trang quản trị rồi tick **Tôi đã kiểm tra trang quản trị, vẫn muốn gửi** mới gửi được. App không bao giờ tự gửi lại. Bài mở từ dòng kế hoạch thì lúc này app không ghi gì vào dòng đó, báo «Chưa ghi trạng thái vào dòng kế hoạch …»: kiểm xong thì tự sửa ô «Trạng thái» trên Google Sheet.
 

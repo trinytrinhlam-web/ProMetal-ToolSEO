@@ -250,23 +250,12 @@ def readme_section_11() -> str:
     return text[start:text.index("\n## 12.", start)]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T112-2: README mục 11 nói «Hẹn giờ thì vẫn hẹn» khi ảnh đại diện hay SEO chưa lên; "
-    "sau khi gộp T-115, ảnh đại diện hỏng thì client không hẹn giờ (bài vẫn là nháp, câu "
-    "«…Chưa hẹn giờ, chưa đăng: bài vẫn là nháp…»)",
-)
 def test_sl_t112_2_readme_hen_gio_anh_dai_dien_hong_khong_hen():
     section = readme_section_11()
     (bullet,) = [line for line in section.splitlines() if line.startswith("- **Hẹn giờ thì vẫn")]
     assert "ảnh đại diện" in bullet  # phải nói riêng ca ảnh đại diện hỏng: không hẹn giờ
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T112-3: README mục 11 nói công tắc bị tắt «ví dụ ở tab khác» thì bấm gửi không gửi "
-    "gì; công tắc chỉ trong phiên, mỗi tab một phiên: tắt ở tab khác không tắt tab đang mở",
-)
 def test_sl_t112_3_readme_khong_noi_tat_o_tab_khac_la_tat_tab_nay():
     section = readme_section_11()
     (sentence,) = [line for line in section.splitlines() if line.startswith("Công tắc bị tắt")]

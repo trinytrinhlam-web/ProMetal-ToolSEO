@@ -99,3 +99,73 @@ Không chạy pytest, ruff: chỉ đổi `README.md` và báo cáo.
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (2026-11-03 13:18, +07:00)
+
+Theo tin Chỉ Huy B 03/11, sau Soi Lỗi (`T-112-soi-loi.md`), Lá Chắn Fable (`T-112-la-chan.md`, `T-116-la-chan-nhom-2.md`), T-115 đã gộp và lượt 3 của Họa Sĩ (SL-T112-1). Nhánh từ `3f29c74`. Chỉ sửa `README.md`, cộng gỡ 3 dấu `xfail` ghim README (chỉ xóa dòng dấu, theo tin giao việc).
+
+### Tóm tắt (cho chủ dự án)
+
+- **Công tắc Hẹn giờ / Đăng ngay theo từng tab.** Mỗi tab trình duyệt có công tắc riêng: bật ở tab này không bật tab khác, tắt ở tab khác không tắt tab này. Xong việc thì tắt ở chính tab đã bật hoặc tải lại trang tab đó. Trước đây README nói ngược.
+- **Hẹn giờ khi ảnh đại diện chưa lên:** app **không** hẹn giờ, bài vẫn là nháp. Chỉ khi thiếu SEO thì app vẫn hẹn giờ và cảnh báo.
+- **Bài bị sửa trong trang quản trị** (hay do plugin, người khác) sau lần app ghi cuối: app không hẹn giờ, không đăng, bài vẫn là nháp. README dặn hai cách làm tiếp: tự hẹn giờ/đăng trong trang quản trị, hoặc gửi lại từ app rồi xóa bài nháp cũ.
+- **Đăng ngay khi tiêu đề hay mô tả SEO trống hoặc «Chặn»:** nút gửi khóa ngay ở màn hình xác nhận, phải sửa ở bước SEO trước. Hẹn giờ thì chỉ cảnh báo.
+- Dòng Trạng thái đầu README: trang Kết nối WordPress nay chỉ «tạo thử bài nháp chữ», không còn ảnh.
+
+### Đã thay đổi
+
+| Lỗi / việc | Chỗ (`README.md`) | Thay đổi |
+|---|---|---|
+| SL-T112-3 | `:457-460` | Bước 3: công tắc «chỉ giữ trong tab trình duyệt đó, trong lần mở app đó». Bước 4 mới: «**Mỗi tab trình duyệt có công tắc riêng**: bật ở tab này không bật tab khác (tab mới mở luôn tắt), và tắt ở tab khác **không** tắt tab này. Xong việc thì tắt ở chính tab đã bật, hoặc tải lại trang tab đó.» Câu «Công tắc bị tắt (ví dụ ở tab khác)…» → «Công tắc bị tắt (ở Cài đặt của cùng tab, hay tải lại trang) thì bước Xuất bản chỉ còn gửi Nháp; một lần bấm … lỡ lọt sau lúc tắt cũng không gửi gì…» |
+| SL-T112-3 (cùng loại) | `:482` | Bỏ «(kể cả ở tab khác)» ở dòng «Sửa gì sau khi tick thì phải tick lại» (công tắc «Ghi SEO» cũng chỉ trong phiên) |
+| SL-T112-1 (lượt 3 Họa Sĩ) | `:478`, `:479` | Hẹn giờ: bật «Ghi SEO» mà tiêu đề/mô tả SEO trống hay «Chặn» → cảnh báo «Hẹn giờ mà … sẽ không ghi lên website…», vẫn gửi được. Đăng ngay: cùng ca → dòng Chặn «Đăng ngay mà … sẽ không ghi lên website (đang trống hoặc báo «Chặn» ở bước SEO)…», nút khóa, sửa ở bước SEO trước; chỉ từ khóa chính có vấn đề thì không chặn |
+| SL-T112-2 | `:488` | «**Hẹn giờ thì vẫn hẹn**» → «**Hẹn giờ thì vẫn hẹn khi chỉ thiếu SEO**» (giữ lý do); thêm: «Riêng **ảnh đại diện** chưa lên… app **không hẹn giờ**… bài vẫn là nháp, báo «… Chưa hẹn giờ, chưa đăng: bài vẫn là nháp…»» |
+| Ca T-115 (G1 Soi Lỗi) | `:493-494` | Gạch mới «**Bài bị sửa ngoài app:**»: app hỏi lại giờ sửa bài ngay trước khi hẹn giờ/đăng; bị sửa sau lần app ghi cuối (hay không biết chắc, ví dụ ảnh đại diện vừa lỗi) thì không hẹn giờ/đăng, câu `_RELEASE_CHANGED` trích đủ; cách làm tiếp (a) tự làm trong trang quản trị, (b) gửi lại từ app (tạo thêm bài mới) rồi xóa nháp cũ. Câu «Website từ chối rõ ràng…» → «App hay website từ chối rõ ràng vì lý do khác…» |
+| SL-T108-1 | `:7` | «tạo bài nháp có ảnh đại diện» → «tạo thử bài nháp chữ» (trang Kết nối sau T-108: mục «3. Tạo thử một bài nháp», chỉ chữ; README `:135`) |
+| SL-T106-1 | — | **Không sửa:** câu khuyên «Quản trị viên (Administrator)» nằm ở `app/views/wordpress.py` (code), không phải README; 2 `xfail` của ca này giữ nguyên. Cần phiếu Họa Sĩ (bỏ «hoặc Quản trị viên (Administrator)») |
+
+Không đổi số mục (## 1 … ## 14), không thêm mục.
+
+### Gỡ dấu `xfail` (chỉ xóa dòng dấu)
+
+| Ca | Trước khi gỡ | Diff |
+|---|---|---|
+| `tests/test_soi_loi_t112.py::test_sl_t112_2_readme_hen_gio_anh_dai_dien_hong_khong_hen` | `--runxfail`: qua | 6 dòng xóa |
+| `tests/test_soi_loi_t112.py::test_sl_t112_3_readme_khong_noi_tat_o_tab_khac_la_tat_tab_nay` | `--runxfail`: qua | 5 dòng xóa |
+| `tests/test_soi_loi_t106.py::test_sl_t108_1_readme_trang_thai_khop_trang_ket_noi` | `--runxfail`: qua | 4 dòng xóa |
+
+`git diff --numstat -- tests/`: `0 4 tests/test_soi_loi_t106.py`, `0 11 tests/test_soi_loi_t112.py` (chỉ xóa, 0 dòng thêm).
+
+### Đối chiếu với code
+
+| README nói | Code |
+|---|---|
+| Công tắc chỉ trong phiên (mỗi tab một phiên) | `RELEASE_SWITCH` trong `st.session_state` (`app/views/write.py`, `app/views/settings.py` `release_tab`); ca Soi Lỗi `test_moi_phien_mot_cong_tac_tat_o_tab_khac_khong_tat_tab_nay` |
+| Đăng ngay/Hẹn giờ khi tiêu đề, mô tả SEO bị bỏ | `MSG_PUBLISH_SEO_LEFT_OUT`, `MSG_SCHEDULE_SEO_LEFT_OUT` `write.py:376-383` (Họa Sĩ lượt 3, báo cáo mục 9.2) |
+| Ảnh đại diện lỗi → Hẹn giờ bị client từ chối | `seo_app/wordpress/client.py:1545-1550` (`self._modified` không có mã bài → `_RELEASE_CHANGED`); ca `test_t112_release_rules.py::test_schedule_with_featured_failure_is_refused_by_client` |
+| Bài bị sửa ngoài app → không hẹn giờ/đăng, câu báo | `_RELEASE_CHANGED` `client.py:618-622`, so `modified_gmt` `:1539-1550` (T-115) |
+| Trang Kết nối chỉ tạo thử bài nháp chữ | `app/views/wordpress.py` mục «3. Tạo thử một bài nháp» (`:169`); README `:135` |
+
+7 câu trích mới kiểm bằng Python (đọc UTF-8, nối chuỗi viết tách dòng): đều có trong code.
+
+### Kiểm tra lượt 2
+
+```
+$ uv run pytest --runxfail <3 ca README ở trên>
+3 passed
+$ uv run pytest tests/test_soi_loi_t112.py tests/test_soi_loi_t106.py      (sau khi gỡ dấu)
+42 passed, 2 xfailed          # 2 xfail còn lại = SL-T106-1 (code, ngoài phạm vi)
+$ uv run ruff check .
+All checks passed!
+$ uv --version            # trước khi chạy uvx (T-078)
+uv 0.13.4 (…)
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-112-thu-ky.md tests/test_soi_loi_t112.py tests/test_soi_loi_t106.py
+  "results": {}
+```
+
+Dẫn chiếu «mục N»: 2, 3, 5 (`security.md`), 6, 7, 7.1, 7.2, 7.5, 8, 9, 10, 11, 13, 14. Đều có thật.
+
+### Còn để ngỏ
+
+- **SL-T106-1** (Thấp, code `app/views/wordpress.py`): cần phiếu cho Họa Sĩ.
+- Hẹn giờ/Đăng ngay vẫn chưa thử trên website thật (LC-T094-44). Sau buổi thử nên đọc lại mục 11.
