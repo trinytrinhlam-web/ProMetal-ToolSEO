@@ -199,7 +199,7 @@ def test_draft_check_reads_edit_context_only(fake_wp, client):
     check = next(r for r in fake_wp.requests if r.method == "GET" and r.path_url.startswith(
         POST_42))
     assert query(check)["context"] == ["edit"]
-    assert query(check)["_fields"] == ["id,status,meta"]
+    assert query(check)["_fields"] == ["id,status,meta,modified_gmt"]  # T-115
     assert check.body is None
 
 

@@ -498,7 +498,7 @@ def _upload_post(wp_site: _ParentSite, *tokens: str | None, existing: int | None
 def test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields(wp_site, client, webs):
     client.create_draft_with_images("Sửa cổng", _parts(webs)[0])
     upload, alt, attach = "id,source_url,alt_text,post", "id,source_url,alt_text", "id,post"
-    post = "id,status,title,link,featured_media"
+    post = "id,status,title,link,featured_media,modified_gmt"  # T-115 (Chỉ Huy duyệt 02/11 13:00)
     assert [
         (r.method, urlsplit(r.url).path, parse_qs(urlsplit(r.url).query))
         for r in wp_site.requests
@@ -510,7 +510,8 @@ def test_l2_lenh_tai_anh_xin_post_lenh_khac_giu_fields(wp_site, client, webs):
         ("POST", f"{API}/posts", {"_fields": [post]}),
         ("POST", f"{API}/media/101", {"_fields": [attach]}),
         ("POST", f"{API}/media/102", {"_fields": [attach]}),
-        ("GET", f"{API}/posts/42", {"context": ["edit"], "_fields": ["id,status,meta"]}),
+        ("GET", f"{API}/posts/42",
+         {"context": ["edit"], "_fields": ["id,status,meta,modified_gmt"]}),  # T-115
         ("POST", f"{API}/posts/42", {"_fields": [post]}),
     ]
 
