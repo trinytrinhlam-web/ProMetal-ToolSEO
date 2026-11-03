@@ -45,14 +45,6 @@ def test_autolink_pattern_matches_markdown():
     assert not AUTOLINK.search(r"\<https:evil.example>")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T118-1 (soi-loi, có từ trước ở escape_link_syntax T-031): tên mô hình dạng "
-        "<https:evil.example/x> qua model_label vẫn là link tự động của Markdown, st.error hiện "
-        "thành link mở được https://evil.example/x"
-    ),
-)
 @pytest.mark.parametrize("model", ANGLE_MODELS)
 def test_sl_t118_1_angle_bracket_model_never_becomes_a_link(model):
     task = TaskConfig(name="write", provider="openai", model=model, effort="high")

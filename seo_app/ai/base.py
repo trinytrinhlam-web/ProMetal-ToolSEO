@@ -468,10 +468,16 @@ def bad_request_error(
 
 def model_label(model: str) -> str:
     """Tên mô hình để chèn vào câu báo (trang hiện bằng ``st.error``, là Markdown): không bao giờ
-    thành link, dù tên viết dạng ``https://…``, ``www.…``, email hay ``[chữ](…)`` (Lá Chắn
-    LC-T034-1, T-118). Tên thật của 3 hãng đi qua không đổi. Chạy lại không đổi gì, nên trang có
-    làm sạch cả câu thêm lần nữa (``escape_link_syntax``) cũng không sao."""
-    return escape_link_syntax(model)
+    thành link, dù tên viết dạng ``https://…``, ``www.…``, email, ``[chữ](…)`` hay ngoặc nhọn
+    ``<scheme:…>`` (Lá Chắn LC-T034-1; Soi Lỗi SL-T118-1, T-118 lượt 2). Tên thật của 3 hãng đi
+    qua không đổi; chạy lại không đổi gì.
+
+    Dấu «<» thành «&lt;»: Markdown vẫn hiện «<» nhưng không còn link tự động ``<…>`` hay thẻ HTML
+    (``escape_link_syntax`` không gỡ dấu này). Không dùng ``escape_markdown``: nhiều trang đã
+    escape cả câu bằng hàm đó (trang Kế hoạch, trang Bài viết), chạy hai lần thì dấu «\\» hiện ra
+    trong tên thật. «&lt;» thì hiện đúng ở mọi kiểu: hiện thẳng, qua ``escape_link_syntax`` hay
+    ``escape_markdown`` (hàm này không escape «&», «;»)."""
+    return escape_link_syntax(model).replace("<", "&lt;")
 
 
 @dataclass(frozen=True)

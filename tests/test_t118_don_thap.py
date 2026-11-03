@@ -4,6 +4,8 @@
   2026-11-02): không câu lỗi gốc, không traceback, không đường dẫn trên máy.
 - LC-T034-1: tên mô hình chèn vào câu báo của lớp AI (``st.error``, Markdown) không bao giờ thành
   link, dù viết dạng ``https://…``, ``www.…``, email hay ``[chữ](…)``. Đo bằng bộ dò link của T-044.
+  Lượt 2 (Soi Lỗi SL-T118-1): cả dạng ngoặc nhọn ``<scheme:…>`` và thẻ HTML, ở 3 kiểu trang hiện
+  câu báo (hiện thẳng, ``escape_link_syntax``, ``escape_markdown``).
 - LC-T034-2: khung nhìn ``os`` đã lọc che cả ``environb``, ``getenvb`` (Mac/Linux); trên Windows
   (``os`` thật không có hai tên này) thì lỗi y như ``os`` thật.
 - LC-T034-3: nạp module thứ hai lỗi lạ thì module thứ nhất vẫn được trả lại ``os`` thật.
@@ -18,8 +20,10 @@ Không gọi AI, WordPress, Google thật: client AI giả của ``test_ai.py``,
 
 from __future__ import annotations
 
+import html
 import importlib
 import os
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -50,7 +54,8 @@ from seo_app.ai.base import TaskConfig, bad_request_error, model_label
 from seo_app.auth import hash_password
 from seo_app.config import PROJECT_ROOT
 from seo_app.env_file import EnvFileChangedError, EnvFileFormatError, set_api_key
-from seo_app.sanitize import escape_link_syntax
+from seo_app.sanitize import AUTOLINK_BREAK, escape_link_syntax
+from seo_app.text import escape_markdown
 
 # ======================================================== lỗi bất ngờ: chỉ hiện loại lỗi
 
@@ -157,6 +162,41 @@ def test_real_model_names_unchanged(case, model):
 @pytest.mark.parametrize("model", HOSTILE_MODELS + REAL_MODELS)
 def test_model_label_is_idempotent(model):
     assert model_label(model_label(model)) == model_label(model)
+
+
+# Lượt 2, SL-T118-1 (Soi Lỗi): link tự động «ngoặc nhọn» của CommonMark, ``<scheme:…>`` (không cần
+# «//»), và thẻ HTML. Mẫu dò giống ``tests/test_soi_loi_t118.py``.
+AUTOLINK = re.compile(r"(?<!\\)<[A-Za-z][A-Za-z0-9+.\-]{1,31}:[^\x00-\x20<>]*>")
+ANGLE_MODELS = (
+    "<https:evil.example/khong-gach>",
+    "<https://evil.example/goc>",
+    "<mailto:ban@evil.example>",
+    "<b>đậm</b>",
+)
+
+
+@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize("model", ANGLE_MODELS)
+def test_angle_bracket_model_never_becomes_a_link_on_any_page(case, model):
+    """Ba kiểu trang hiện câu báo: hiện thẳng (``st.error(str(exc))``), qua ``escape_link_syntax``
+    (Cài đặt), qua ``escape_markdown`` (trang Kế hoạch, Bài viết). Không kiểu nào còn dấu «<» thật,
+    nên không thành link tự động hay thẻ HTML."""
+    message = _message(case, model)
+    for shown in (message, escape_link_syntax(message), escape_markdown(message)):
+        assert "<" not in shown and not AUTOLINK.search(shown), shown
+        assert link_problems(shown) == [], shown
+
+
+@pytest.mark.parametrize("model", ANGLE_MODELS + HOSTILE_MODELS + REAL_MODELS)
+def test_model_label_still_reads_as_the_name(model):
+    """Người đọc vẫn thấy đúng tên đã ghi: giải mã «&lt;», bỏ ký tự rộng 0 và dấu «\\» mà
+    ``escape_link_syntax`` thêm trước «(» thì ra tên gốc. Tên thật của 3 hãng không đổi chút nào."""
+    label = model_label(model)
+    shown = html.unescape(label).replace(AUTOLINK_BREAK, "").replace("]\\(", "](")
+    assert shown == model
+    if model in REAL_MODELS:
+        assert label == model
+    assert model_label(label) == label  # chạy lại không đổi gì
 
 
 # ======================================================== LC-T034-2: environb, getenvb
