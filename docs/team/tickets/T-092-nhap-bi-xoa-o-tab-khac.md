@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-089 đã gộp |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ W1, W2, U1.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
+- 2026-11-03 23:10 (Chỉ Huy B): giao Họa Sĩ trên `team/T-092` (từ `main` `29499dd`). Yêu cầu 4 (`showErrorDetails`) đã làm ở T-118, chỉ kiểm; yêu cầu 5, 6 kiểm phần T-090, T-095 đã làm. R5 `tests/test_t041_seo_ui.py:711` đã duyệt. T-112 gộp trước thì gộp `main` vào nhánh trước khi nộp.
