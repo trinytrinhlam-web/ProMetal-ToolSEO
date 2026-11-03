@@ -17,9 +17,13 @@ Sheets (``SheetsClient.from_settings``) app kiểm lại từ đầu:
   ``https://oauth2.googleapis.com/token`` và ``universe_domain`` trống hoặc ``googleapis.com``
   (``google-auth`` gửi lệnh xin mã tới ``token_uri`` lấy nguyên văn từ file, không kiểm).
 - Xác thực **chỉ** bằng ``Credentials.from_service_account_info`` với dict đã kiểm (chỉ các
-  trường cần) và đúng một phạm vi ``SHEETS_SCOPE``. Không ``google.auth.default()`` (không đọc
-  ``GOOGLE_APPLICATION_CREDENTIALS``, cấu hình ``gcloud``, máy chủ metadata), không
-  ``with_subject``, không phạm vi Drive.
+  trường cần) và **đúng một** phạm vi: ``SHEETS_SCOPE`` (mặc định, client Sheets) hoặc
+  ``SEARCH_CONSOLE_SCOPE`` (chỉ đọc, client Search Console, T-121). Phạm vi chỉ lấy từ hằng
+  ``ALLOWED_SCOPES`` của module này, không bao giờ từ ``.env``, ``config/`` hay giao diện
+  (LC-T120-1); mỗi client một đối tượng xác thực, một mã truy cập. Không ``google.auth.default()``
+  (không đọc ``GOOGLE_APPLICATION_CREDENTIALS``, cấu hình ``gcloud``, máy chủ metadata), không
+  ``with_subject`` (ủy quyền toàn miền), không phạm vi Drive, phạm vi toàn dự án Google Cloud hay
+  phạm vi đọc-ghi của Search Console (LC-T120-16).
 
 Mọi câu báo là câu cố định: không chép nội dung file, đường dẫn đầy đủ hay lời của thư viện
 (``from None``). Đối tượng ``ServiceAccount`` chỉ lộ email dịch vụ (cần để chia sẻ Sheet) và
@@ -42,6 +46,9 @@ from typing import Any
 from seo_app import config
 
 SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
+# Search Console chỉ đọc (thiết kế T-120 mục 2.1). Không bao giờ ".../auth/webmasters" (đọc-ghi).
+SEARCH_CONSOLE_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
+ALLOWED_SCOPES = (SHEETS_SCOPE, SEARCH_CONSOLE_SCOPE)
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 UNIVERSE_DOMAIN = "googleapis.com"
 SERVICE_ACCOUNT_TYPE = "service_account"
@@ -115,6 +122,7 @@ _MSG_BAD_UNIVERSE = (
     "tải lại file khóa JSON từ Google Cloud."
 )
 _MSG_LIBRARY = "Thiếu thư viện google-auth hoặc sai phiên bản. Chạy lại run.bat / run.command."
+_MSG_BAD_SCOPE = "Phạm vi quyền Google không nằm trong danh sách được phép, phần mềm không dùng."
 _WARN_SYNC = (
     "File khóa Google đang nằm trong thư mục đồng bộ lên mây (Google Drive, OneDrive, Dropbox, "
     "iCloud). Nên chuyển ra một thư mục chỉ có trên máy này."
@@ -132,9 +140,10 @@ class ServiceAccountError(ValueError):
 
 @dataclass(frozen=True, repr=False)
 class ServiceAccount:
-    """Tài khoản dịch vụ đã kiểm. ``credentials``: đối tượng của ``google-auth`` (chỉ client Sheets
-    dùng, không in, không lưu). ``in_sync_folder``: file khóa nằm trong thư mục đồng bộ lên mây
-    (dấu hiệu cho giao diện; câu Cảnh báo tương ứng có trong ``warnings``, SL-T097-4)."""
+    """Tài khoản dịch vụ đã kiểm. ``credentials``: đối tượng của ``google-auth`` với đúng một
+    phạm vi đã xin ở ``load_service_account`` (chỉ client Google tương ứng dùng, không in, không
+    lưu). ``in_sync_folder``: file khóa nằm trong thư mục đồng bộ lên mây (dấu hiệu cho giao diện;
+    câu Cảnh báo tương ứng có trong ``warnings``, SL-T097-4)."""
 
     email: str
     file_name: str
@@ -150,14 +159,19 @@ class ServiceAccount:
 def load_service_account(
     path: Path | str | None,
     *,
+    scope: str = SHEETS_SCOPE,
     image_folders: Iterable[Path | str] = (),
     project_root: Path | None = None,
 ) -> ServiceAccount:
     """Đọc và kiểm file khóa ``path``; trả ``ServiceAccount`` hoặc ném ``ServiceAccountError``.
 
-    ``image_folders``: gốc các thư mục ảnh (``Settings.image_folders``). ``project_root``: thư mục
-    dự án (mặc định ``config.PROJECT_ROOT``, test đổi được).
+    ``scope``: đúng **một** phạm vi trong ``ALLOWED_SCOPES`` (mặc định ``SHEETS_SCOPE``); chuỗi
+    khác, danh sách, chuỗi rỗng đều bị từ chối trước khi đọc file (LC-T120-1). ``image_folders``:
+    gốc các thư mục ảnh (``Settings.image_folders``). ``project_root``: thư mục dự án (mặc định
+    ``config.PROJECT_ROOT``, test đổi được).
     """
+    if type(scope) is not str or scope not in ALLOWED_SCOPES:
+        raise ServiceAccountError(_MSG_BAD_SCOPE)
     if path is None or not str(path).strip():
         raise ServiceAccountError(_MSG_MISSING)
     given = Path(str(path).strip()).expanduser()
@@ -186,7 +200,7 @@ def load_service_account(
     if os.name != "nt" and mode & 0o077:
         warnings.append(_WARN_MODE.format(name=real.name))
     info = _parse_key(data)
-    credentials = _credentials(info)
+    credentials = _credentials(info, scope)
     return ServiceAccount(
         email=info["client_email"],
         file_name=real.name,
@@ -369,16 +383,17 @@ def _looks_like_pem(key: object) -> bool:
     return body.startswith(_PEM_BEGIN) and body.endswith(_PEM_END)
 
 
-def _credentials(info: dict[str, str]) -> Any:
-    """Đối tượng xác thực của ``google-auth`` từ dict đã kiểm, đúng một phạm vi Sheets."""
+def _credentials(info: dict[str, str], scope: str) -> Any:
+    """Đối tượng xác thực của ``google-auth`` từ dict đã kiểm, đúng một phạm vi ``scope`` (đã kiểm
+    thuộc ``ALLOWED_SCOPES`` ở ``load_service_account``; kiểm lại ở đây cho chắc)."""
+    if scope not in ALLOWED_SCOPES:
+        raise ServiceAccountError(_MSG_BAD_SCOPE)
     try:
         from google.oauth2 import service_account
     except ImportError:
         raise ServiceAccountError(_MSG_LIBRARY) from None
     try:
-        credentials = service_account.Credentials.from_service_account_info(
-            info, scopes=[SHEETS_SCOPE]
-        )
+        credentials = service_account.Credentials.from_service_account_info(info, scopes=[scope])
     except Exception:  # khóa PEM hỏng, thư viện lệch phiên bản…: lời thư viện có thể chép dữ liệu
         raise ServiceAccountError(_MSG_BAD_KEY) from None
     if getattr(credentials, "service_account_email", None) != info["client_email"]:
