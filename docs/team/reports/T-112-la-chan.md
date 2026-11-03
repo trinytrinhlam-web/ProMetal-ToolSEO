@@ -1,6 +1,8 @@
 # Biên bản bảo mật T-112 · Chuẩn bị bật Hẹn giờ / Đăng ngay: luật Đăng ngay, công tắc ở Cài đặt (phương án A), so `modified_gmt` (T-115) · đầy đủ
 
 > **Model:** lượt này **chạy Fable 5.1** (dòng «You are powered by» của lời nhắc hệ thống: Fable 5.1, kiểm theo luật 08:05 của Chỉ Huy B). Quy trình và mức độ lỗi: `docs/team/security.md`. Phần đối chiếu toàn vùng client WordPress + đăng bài (T-116 nhóm 2) ở biên bản riêng [`T-116-la-chan-nhom-2.md`](T-116-la-chan-nhom-2.md); biên bản này trả lời các câu về **T-112** (kể cả T-115 đã gộp vào nhánh).
+>
+> **Lượt 3 (03/11 tối, Opus tạm):** SL-T112-1 đã sửa và **đóng**; kết luận vẫn ĐẠT CÓ ĐIỀU KIỆN, gộp `main` được ngay. Xem mục [«Lượt 3»](#lượt-3-rút-gọn--opus-tạm) cuối biên bản; danh sách «trước khi bật» mới ở mục 5 của lượt đó.
 
 | Mục | Nội dung |
 |---|---|
@@ -121,3 +123,87 @@ Không có lỗi mới của Lá Chắn. Đánh giá lỗi Soi Lỗi ở mục d
 6. **Nên gộp T-118 (`client.showErrorDetails = "type"`) trước khi bật**: lỗi bất ngờ đúng lúc đăng thì trang chỉ hiện loại lỗi, không đường dẫn (chủ dự án chọn 02/11). Khuyến nghị, không bắt buộc.
 
 **C.** Kiểm lại toàn vùng bằng Fable (T-116 nhóm 2): xong, biên bản riêng; 0 lỗi mới.
+
+---
+
+## Lượt 3 (rút gọn) · Opus tạm
+
+> **Model:** **Opus 5.5 tạm** (dòng «You are powered by»: Opus 5.5). Chỉ Huy B giao chạy Opus vì Fable hết hạn mức tuần (mở lại 04/11 10:00). Các mục trên là lượt 2 (Fable); mục này chỉ xét phần đổi sau `7e8af87`.
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | diff `7e8af87..7186974` trên `team/T-112`. Code T-112 đổi **chỉ** `app/views/write.py` (47 dòng, Họa Sĩ `58d5326`: `MISSING_SEO_FIELDS`, `MSG_PUBLISH_SEO_LEFT_OUT`, `MSG_SCHEDULE_SEO_LEFT_OUT`, `seo_left_out`, `seo_notices`, `publish_panel` thêm dòng, chốt hai ở `release_missing`). Test: `test_t112_release_rules.py` (+7 ca), `test_soi_loi_t112.py` (Soi Lỗi lượt 3, 30 ca), R5 ở `test_t102_publish.py`, `test_la_chan_t102.py`, `test_soi_loi_t102.py`, gỡ dấu `xfail` README (`test_soi_loi_t112.py`, `test_soi_loi_t106.py`). `README.md` mục 11 (Thư Ký `746ba9d`). Phần còn lại là `main` `33dd87f` gộp ở `df4ba4a` (T-115, T-117, T-119, biên bản T-116): đã qua Lá Chắn riêng, không đụng bước Xuất bản |
+| Báo cáo đã đọc | [Họa Sĩ](T-112-hoa-si.md) mục 9, [Thư Ký](T-112-thu-ky.md) lượt 2, [Soi Lỗi](T-112-soi-loi.md) lượt 3 (ĐẠT CÓ ĐIỀU KIỆN: SL-T112-1, -2, -3 đóng; **SL-T112-4** Thấp mới, README; đột biến 9/9; gộp thử `main` `29499dd`: 641 qua, 0 hỏng) |
+| Ngày | 2026-11-03 (22:39–23:15, giờ máy +07). Máy đang chạy 3 agent khác: chỉ chạy test T-112, T-102, T-115. Không gọi website thật |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **0 lỗi mới** của Lá Chắn. **SL-T112-1 đóng** (đồng ý Soi Lỗi). Đồng ý **SL-T112-4 Thấp**, sửa trước khi bật. **Gộp `main` được ngay** (công tắc vẫn tắt). Trước khi bật: mục 5 |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Lỗi Trung bình của lượt trước đã sửa đúng, có hai lớp chặn.** Bật «Ghi SEO lên website» mà tiêu đề hay mô tả SEO đang trống hoặc «Chặn» thì nút Đăng ngay **khóa ngay ở màn hình xem lại**, kèm dòng nói rõ ô nào. Nếu có cách nào lọt qua nút, lúc gửi app vẫn **giữ bài ở dạng nháp**. Tôi tự thử thêm hai cách lách (sửa SEO đúng lúc bấm; đổi Hẹn giờ sang Đăng ngay đúng lúc bấm): không lần nào bài bị đăng.
+- **Hẹn giờ mà thiếu SEO chỉ cảnh báo: hợp lý.** Bài hẹn giờ chưa công khai, còn thời gian sửa; nay cảnh báo hiện cả trên màn hình xem lại, trước khi bấm.
+- **Gộp vào bản chính được ngay.** Công tắc Hẹn giờ / Đăng ngay vẫn tắt nên với bạn chưa có gì thay đổi.
+- **Trước khi bật công tắc** còn: sửa một câu README (lỗi nhỏ), buổi thử thật trên website cùng Chỉ Huy (danh sách cũ), và bạn quyết việc ghi sổ rủi ro.
+- **Việc của bạn lúc này:** không có.
+
+### 1. Còn đường nào ra `publish` khi SEO chưa lên website? **Không**
+
+Đọc mã `58d5326`:
+
+- **Chốt 1, màn hình xác nhận.** `seo_left_out` (`write.py:3036`) xét **chữ trong gói** `built.seo`: chính chữ được băm vào mã băm mà ô tick nhớ (LC-T094-38), và chính chữ `seo_holder` (`:3021`) đưa cho lệnh ghi. Trường bị Chặn đã thành `""` từ `seo_request` (`:2743`), nên chốt bắt **mọi** lý do Chặn (ký tự lạ, trùng bài đã đăng, trống) mà không phải dò lại chữ. `seo_notices` (`:3046`): Đăng ngay là `BLOCK`; `publish_panel` (`:4173`) thêm vào `notices` → `allowed` sai (`:4181`) → nút khóa; cú bấm lọt bị `if clicked and allowed` (`:4213`) chặn, xét **trong cùng lần chạy** với cú bấm.
+- **Chốt 2, lúc gửi.** `release_missing` (`:3801`): `seo_ok` đúng mà `holder["seo"]["fields"]` thiếu tiêu đề hay mô tả thì nêu tên ô → `release_post` (`:3743`) giữ nháp (`MSG_PUBLISH_HELD`), không gọi `release_draft`. `seo_holder` chỉ trả `None` khi tắt «Ghi SEO», lúc đó bộ dựng đã Chặn Đăng ngay («SEO chưa ghi lên website»), nên không có ca «bật ghi mà không có yêu cầu SEO» lọt chốt 2.
+- **Lớp có sẵn:** `send_draft` dựng lại gói với danh sách bài **tải lại** rồi so mã băm; chữ SEO đổi giữa lúc vẽ và lúc bấm (kể cả tiêu đề vừa thành «trùng bài đã đăng») thì mã băm khác, không gửi gì.
+- **Câu báo mới** (U1, U2): `{fields}` chỉ ghép tên ô cố định của `MISSING_SEO_FIELDS`; không chữ người dùng, không đường dẫn, không lời máy chủ.
+
+| Đường lách | Kết quả | Ai thử |
+|---|---|---|
+| Bấm lọt nút khóa (bấm đúp, SL-T056-1) | 0 lệnh ghi (không cả tạo nháp); **đối chứng** cùng cách giả `st.button` với SEO hợp lệ thì gửi thật, nên «0 lệnh» là có nghĩa | Họa Sĩ (4 ca), Soi Lỗi (đối chứng mới), tôi |
+| Sửa SEO sau khi tick | Bỏ tick, dòng Chặn nêu đúng ô; tick lại vẫn khóa | Soi Lỗi |
+| Sửa SEO **trong cùng lần chạy** có cú bấm (xóa tiêu đề rồi bấm lọt) | 0 lệnh ghi, 0 lệnh ghi SEO, nháp không có trạng thái gửi | tôi |
+| Đổi Hẹn giờ → Đăng ngay **trong cùng lần chạy** có cú bấm, tiêu đề trống (Hẹn giờ chỉ cảnh báo nên nút đang mở) | 0 lệnh ghi, 0 lệnh chuyển | tôi |
+| Hai tab cùng một bài | Chữ SEO, ô tick, dòng Chặn là của từng phiên; tab có ô Chặn không gửi, tab kia gửi đúng chữ của nó | Soi Lỗi |
+| Chữ lạ: 13 kiểu qua giao diện, 29 kiểu × 2 ô qua hàm | 0 lọt. Chữ bước SEO cho qua thì client ghi được; riêng tiêu đề trên 200 ký tự thì client từ chối **cả** lệnh ghi → `seo_ok` sai → Đăng ngay giữ nháp (G3 Soi Lỗi) | Soi Lỗi; tôi đọc `seo_request`, `final_seo` |
+| Đột biến 9 chỗ của code lượt 3 | 9/9 bị bắt | Soi Lỗi |
+
+G4 của Soi Lỗi (U+2800, dấu kết hợp đứng một mình không bị coi là trống, nên mô tả «trông như trống» vẫn được ghi và Đăng ngay đi): chữ người dùng tự gõ/dán, đi qua cùng bộ lọc như mọi chữ SEO khác, không mở thêm quyền hay đường nào. Không phải khe bảo mật; đồng ý để phiếu dọn ký tự sau.
+
+Probe của tôi: 3 ca AppTest trên bản sao `git archive 7186974` ở thư mục nháp (mượn khung `test_t112_release_rules`, `test_t102_publish`; không commit): `test_xoa_tieu_de_seo_cung_lan_bam_thi_khong_gui`, `test_doi_chung_khong_sua_thi_gui_dang` (đối chứng: gửi và đăng thật trên WordPress giả), `test_doi_hen_gio_sang_dang_ngay_cung_lan_bam_khi_tieu_de_trong`. **3/3 qua.**
+
+### 2. Hẹn giờ chỉ cảnh báo: **hợp lý** (giữ kết luận mục 1d)
+
+- Nay cảnh báo hiện **hai lần**: màn hình xác nhận trước khi bấm (`MSG_SCHEDULE_SEO_LEFT_OUT`, mức Cảnh báo, không khóa nút) và kết quả gửi (`MSG_SCHEDULE_MISSING`, chốt 2). Bài hẹn giờ chưa công khai, còn ít nhất 10 phút để sửa trong trang quản trị.
+- **SL-T112-4 (README):** Soi Lỗi đúng. Đọc `client.py`: `_taint_modified` (không hẹn, không đăng) chạy khi lệnh ghi **có thể đã ghi** mà lỗi: ghi SEO đường meta lỗi 5xx hay mất mạng (`:1423`), trả lời lạ (`:1428`), đặt ảnh đại diện lỗi giữa chừng (`:1463`, `:1468`), bài bị sửa ngoài app (`:1362`). Còn `_own_draft` hỏi bài lỗi (chỉ đọc, chưa ghi gì) thì không đánh dấu, nên Hẹn giờ vẫn đi kèm cảnh báo. Luật thật theo «lệnh ghi lỗi giữa chừng», không theo loại phần như README viết. Cả hai hướng an toàn (không hẹn thì bài là nháp, có câu nói rõ; hẹn thì có cảnh báo). **Thấp**, sửa README trước khi bật.
+- **Khuyến nghị cũ** (ghi dấu «SEO chưa lên» để còn nhắc tới giờ đăng): Họa Sĩ chưa làm, lý do đúng (mục 9.5: `SendState` khuôn chặt, là việc của kho nháp; ô ghi chú của dòng kế hoạch là chữ của thợ, LC-T094-40 chỉ cho app ghi 4 ô). Tôi đồng ý **không** ghi vào ô ghi chú. Giữ khuyến nghị cho phiếu sau (`SendState.seo_missing`), không chặn bật công tắc.
+
+### 3. R5 có làm yếu test không? **Không**
+
+- **(a)** `test_t102_publish.py::test_publish_now_with_seo_written`, `test_la_chan_t102.py::_publish_now` (file của tôi, 3 ca LC-T102-1), `test_soi_loi_t102.py` (5 ca: 3 SL-T102-1, 2 «sửa sau khi tick»): chỉ thêm 4 dòng `session_state` đặt tiêu đề, mô tả SEO hợp lệ trước khi chọn Đăng ngay; không bỏ hay đổi kiểm nào. Không thêm thì 7 ca hỏng (nút bị dòng Chặn mới khóa nên không bấm được, không còn tới lệnh ảnh đại diện 500 hay lệnh ghi SEO hỏng mà ca muốn thử) và 2 ca «sửa sau khi tick» qua **vì lý do sai** (nút khóa sẵn, không phải vì bỏ tick). Đây là đổi tiền đề (bài mẫu chưa có chữ SEO), không phải nới kiểm; thêm vào là giữ đúng ý ca.
+- **(b)** `test_soi_loi_t112.py::test_sl_t112_1_…` gỡ `xfail`, thay «nút mở rồi bấm» bằng: dòng Chặn nêu đúng ô, nút khóa, cú bấm lọt thì 0 lệnh ghi SEO, 0 lệnh ghi nào, 0 lệnh chuyển, nháp không có trạng thái gửi. **Mạnh hơn** bản cũ. Ý phụ «ô Chặn không ghi, ô còn lại vẫn ghi» chuyển sang ca Hẹn giờ `test_schedule_with_seo_field_left_out_warns_and_goes_on` và ca «Gửi nháp» của Soi Lỗi.
+- Gỡ 3 dấu `xfail` README (SL-T112-2, -3, SL-T108-1): chỉ xóa dòng dấu, ca qua thật trong lô dưới. Dấu `xfail` SL-T106-1 (code) còn nguyên. Đọc cả diff test `7e8af87..7186974`: không ca nào bị tắt, bỏ qua hay nới kiểm.
+
+### 4. Gộp `main`: **được ngay**, công tắc vẫn tắt
+
+- `origin/main` `33dd87f` đã có trong nhánh (`df4ba4a`). `main` cục bộ `29499dd` (T-118, T-073, ghi việc): `git merge-tree --write-tree main 7186974` **không xung đột**, cây `c63c129`; từ gốc chung `33dd87f` hai bên **không chung file nào**, nên kết quả test trên nhánh dùng được cho cây gộp. Chỉ Huy chạy toàn bộ test khi gộp.
+- Lượt 3 không đụng `settings.py`, `release_enabled`, `client.py`: kết luận 1a, 1c (công tắc chỉ trong phiên, mặc định tắt, xét lại lúc bấm) giữ nguyên.
+
+### 5. Còn phải làm trước khi bật công tắc (cập nhật danh sách B)
+
+| Mục B | Trạng thái |
+|---|---|
+| 1. Sửa SL-T112-1 | **Xong** (lượt 3) |
+| 2. README: SL-T112-2, -3, G1 | **Xong** (Thư Ký `746ba9d`). **Còn SL-T112-4** (`README.md:488`, câu gợi ý ở biên bản Soi Lỗi): Thư Ký sửa, gỡ dấu `xfail` khi XPASS (R5, chỉ xóa dấu) |
+| 3. Ghi dấu «SEO chưa lên» | Khuyến nghị, không chặn: phiếu sau |
+| 4. Buổi thử thật LC-T094-44, mục (a)–(g) | **Chưa, bắt buộc.** Lá Chắn đọc báo cáo buổi thử trước khi bật. Nhất là (b): ghi SEO qua Abilities mà đổi `modified_gmt` thì Đăng ngay, Hẹn giờ kèm «Ghi SEO» sẽ luôn bị `_RELEASE_CHANGED` (an toàn, nhưng phải có phiếu client đọc lại giờ sửa sau lệnh SEO rồi mới dùng được) |
+| 5. Sổ rủi ro: ba giới hạn `modified_gmt` | Chưa: chủ dự án quyết, Thư Ký ghi |
+| 6. T-118 (`showErrorDetails = "type"`) | Đã ở `main` cục bộ (`1a3dd77`); gộp T-112 sau T-118 là đủ |
+| Mới · kiểm lại phần code lượt 3 bằng Fable | Khuyến nghị (lượt này Opus tạm): 47 dòng `write.py`, đọc khi Fable mở lại, trước khi bật. Không chặn gộp |
+
+### 6. Kết quả công cụ (lượt 3)
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pytest chọn lọc 9 file trên nhánh `7186974`: `test_soi_loi_t112`, `test_t112_release_rules`, `test_t112_settings_switch`, `test_t102_publish`, `test_t102_formula_cells`, `test_soi_loi_t102`, `test_la_chan_t102`, `test_t115_modified_gmt`, `test_soi_loi_t115` | **259 qua / 1 xfail (= SL-T112-4) / 0 hỏng / 0 XPASS**, 15 phút 12 (22:46–23:01) | ✔ |
+| Probe 3 ca (bản sao, mục 1) | 3/3 qua | ✔ |
+| ruff (file đổi của lượt 3) | sạch | ✔ |
+| bandit `app/views/write.py` (`PYTHONUTF8=1`) | 0 | ✔ |
+| detect-secrets (`PYTHONUTF8=1`, `write.py`; biên bản này quét bản sao ngoài git kèm file mồi) | 1 «Basic Auth Credentials» báo nhầm đã biết: `write.py:2505` (docstring `site_host`, ví dụ địa chỉ có tên và mật khẩu; lượt 2 là dòng `:2493`, dời xuống vì 12 dòng hằng mới). Biên bản: chỉ dòng báo nhầm cũ của lượt 2 (mục công cụ quét), mồi bị bắt | ✔ |
+| D1 | `uv.lock` không đổi; `pyproject.toml` chỉ đổi chú thích (từ `main`) | ✔ |
