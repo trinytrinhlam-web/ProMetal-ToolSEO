@@ -686,7 +686,10 @@ def test_draft_deleted_elsewhere_while_sending_comes_back_locked(project_root, r
     trạng thái gửi). Tab 1 tạo xong bài 501 nhưng không ghi được kết quả (so rồi đặt thấy không còn
     dòng nào; câu báo nói «một tab khác vừa ghi trạng thái gửi mới», không đúng). Tab 1 làm tiếp:
     lần tự lưu tạo lại nháp, **không** kèm «đã gửi 501». Phiên mới mở nháp: nút bật, không nhắc.
-    Lượt 1 ghi «đã gửi 501» nên nháp tạo lại vẫn khóa. Mong đợi: như lượt 1."""
+    Lượt 1 ghi «đã gửi 501» nên nháp tạo lại vẫn khóa. Mong đợi: như lượt 1.
+
+    T-092 (Họa Sĩ, đổi theo R5, xem báo cáo T-092): lần tự lưu không còn lặng lẽ tạo lại nháp;
+    tab 1 báo nháp không còn, người dùng bấm «💾 Lưu lại thành nháp» thì nháp mới được tạo lại."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     draft = draft_id(at)
@@ -699,8 +702,11 @@ def test_draft_deleted_elsewhere_while_sending_comes_back_locked(project_root, r
     site.fake.on("POST", ui.POSTS, create_post)
     ui.send(at)
     assert any(f"mã {ui.POST_ID}" in s.value for s in at.success)
-    at.session_state["step"] = 2  # tab 1 làm tiếp: lần tự lưu tạo lại nháp
+    at.session_state["step"] = 2  # tab 1 làm tiếp: không lặng lẽ tạo lại nháp (T-092)
     run_ok(at.run())
+    assert draft not in [d.id for d in ui.store().list_drafts().drafts]
+    assert any("không còn trong kho nháp" in w.value for w in at.warning)
+    run_ok(button(at, "💾 Lưu lại thành nháp", key="draft-recreate").click().run())
     assert draft in [d.id for d in ui.store().list_drafts().drafts]
     state = ui.store().load_send_state(draft)
     assert state is not None and state.post_id == ui.POST_ID

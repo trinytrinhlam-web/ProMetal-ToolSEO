@@ -127,6 +127,7 @@ from seo_app.storage import image_tags as tag_storage
 from seo_app.storage import site_index as site_storage
 from seo_app.storage.drafts import (
     CheckedImage,
+    DraftGoneError,
     DraftImage,
     DraftLink,
     DraftMetaVersions,
@@ -211,7 +212,29 @@ KEEP_KEYS = (
     "_wp_time",
     "_wp_cats",
 )
-DRAFT_FLAGS = ("draft_id", "_draft_saved_json", "_draft_saved_at", "_draft_baseline")
+DRAFT_FLAGS = (
+    "draft_id",
+    "_draft_saved_json",
+    "_draft_saved_at",
+    "_draft_baseline",
+    # T-092: trạng thái gửi tab này đọc lần cuối khi nháp còn, cờ «Lưu lại thành nháp» vừa bấm
+    "_draft_send_known",
+    "_draft_recreate",
+)
+# Nháp đang mở không còn trong kho (T-092): tab khác bấm «Xóa hẳn», kho đầy bỏ bớt, file nháp bị
+# xóa. Không tự lưu cho tới khi người dùng chọn.
+MSG_DRAFT_GONE = (
+    "**Nháp của bài này không còn trong kho nháp** (có thể vừa bị xóa ở tab khác). Những gì đang "
+    "soạn ở tab này chưa được lưu: bấm «💾 Lưu lại thành nháp» để giữ, hoặc «🗑️ Bỏ bài này»."
+)
+MSG_GONE_SENT = (
+    "Tab này biết bài đã gửi (hoặc gửi dở) lên website: lưu lại thì nháp vẫn nhớ việc đó, nút gửi "
+    "vẫn khóa như trước."
+)
+MSG_GONE_UNKNOWN = (
+    "Nếu bài đã được gửi lên website ở tab khác thì tab này không biết: lưu lại rồi gửi nữa sẽ tạo "
+    "thêm một bài trên website."
+)
 
 # Chỗ cần ảnh (T-056). Nhãn của segmented_control cố định giữa các lần chạy.
 REAL, AI_KIND = "Ảnh thật", "Ảnh AI"
@@ -803,30 +826,132 @@ def delete_draft(draft_id: str) -> None:
         S._draft_error = str(exc)
         return
     if S.get("draft_id") == draft_id:
-        # Xóa đúng bài đang mở: xóa trắng trang, nếu không lần tự lưu sau sẽ tạo lại nháp.
+        # Xóa đúng bài đang mở: xóa trắng trang (người dùng vừa chọn xóa, không hỏi lưu lại như
+        # tab khác còn mở bài này, T-092).
         clear_compose()
         forget_draft()
     st.toast("Đã xóa nháp", icon="🗑️")
 
 
+def ask_recreate() -> None:
+    S._draft_recreate = True
+
+
+def discard_gone_draft() -> None:
+    """«Bỏ hẳn» bài có nháp không còn trong kho (T-092): xóa trắng trang như khi xóa đúng nháp
+    đang mở (``delete_draft``)."""
+    clear_compose()
+    forget_draft()
+    st.toast("Đã bỏ bài đang soạn ở tab này", icon="🗑️")
+
+
+def known_send_state() -> SendState | None:
+    """Trạng thái gửi tab này biết lần cuối cho nháp đang mở (T-092), để giữ khi tạo lại nháp.
+
+    - Các lần đọc kho: lúc tự lưu (``_draft_send_known``: lần đọc cuối khi nháp còn, gộp thêm
+      những gì tab biết lúc thấy nháp không còn) và ở bước Xuất bản (``_wp_seen``: gửi xong trang
+      chạy lại ngay, lần tự lưu của lần gửi không chạy). Lấy dòng ghi muộn nhất (``updated_at``).
+      Có lần đọc thấy dòng hỏng thì coi như lần gửi trước chưa rõ kết quả: khóa «gửi dở», giữ mã
+      bài nếu biết.
+    - Không lần đọc nào thấy gì mà chính tab này đã gửi (``_wp_sent``, ``_wp_maybe_draft``: nháp
+      bị xóa ngay sau lần gửi, trước lần đọc kế tiếp): «đã gửi» kèm mã bài của lần đó; không rõ
+      kết quả hay không có mã thì «gửi dở»."""
+    reads = [read for read in (S.get("_draft_send_known"), S.get("_wp_seen")) if read is not None]
+    states = [state for state, _broken in reads if state is not None]
+    latest = max(states, key=lambda state: state.updated_at, default=None)
+    if any(broken for _state, broken in reads):
+        return SendState.now(pending=True, post_id=latest.post_id if latest else None)
+    if latest is not None or not (S.get("_wp_sent") or S.get("_wp_maybe_draft")):
+        return latest
+    result = S.get("_wp_result")
+    post_id = result.get("post_id") if isinstance(result, dict) else None
+    unsure = bool(S.get("_wp_maybe_draft")) or post_id is None
+    try:
+        return SendState.now(pending=unsure, post_id=post_id)
+    except ValueError:  # mã bài lạ, không ghi được: vẫn khóa «gửi dở»
+        return SendState.now(pending=True, post_id=None)
+
+
+def recreate_draft(store: DraftStore, snap: DraftSnapshot, current: str) -> None:
+    """«Lưu lại thành nháp» (T-092): tạo lại nháp đang mở đã không còn trong kho, giữ trạng thái
+    gửi tab này biết (``known_send_state``).
+
+    Ghi trạng thái gửi **trước**, chỉ khi kho chưa có dòng nào cho nháp này (so rồi đặt với «chưa
+    gửi»): dòng có sẵn được ghi sau lúc xóa (kết quả lần gửi đang chạy, SL-T089-2) nên mới hơn,
+    giữ nguyên. Rồi mới tạo lại nháp: dừng giữa hai bước thì chỉ còn dòng trạng thái gửi không có
+    nháp đi kèm (vô hại), không bao giờ có nháp tạo lại thiếu khóa gửi trùng."""
+    state = known_send_state()
+    if state is not None:
+        store.save_send_state(snap.id, state, expected=(None, False))
+    saved = store.save(snap)
+    S._draft_saved_json = current
+    S._draft_saved_at = saved.saved_at
+    S.pop("_draft_baseline", None)
+    st.toast("Đã lưu lại nháp", icon="💾")
+
+
+def gone_notice(slot, problem: str) -> None:
+    """Nháp đang mở không còn trong kho (T-092): báo rõ, hỏi lưu lại hay bỏ. Chữ cố định, câu lỗi
+    của kho nháp qua ``escape_markdown`` (U1)."""
+    lines = [MSG_DRAFT_GONE, MSG_GONE_UNKNOWN if known_send_state() is None else MSG_GONE_SENT]
+    if problem:
+        lines.append(f"Chưa lưu lại được: {escape_markdown(problem)}")
+    with slot.container():
+        st.warning(" ".join(lines), icon="⚠️")
+        row = st.container(horizontal=True, gap="small")
+        row.button(
+            "💾 Lưu lại thành nháp", key="draft-recreate", type="primary", on_click=ask_recreate
+        )
+        with row.popover("🗑️ Bỏ bài này"):
+            st.markdown("Bỏ hẳn bài đang soạn ở tab này? Không lấy lại được.")
+            st.button("Bỏ hẳn", key="draft-discard", type="primary", on_click=discard_gone_draft)
+
+
 def autosave(slot) -> None:
-    """Cuối mỗi lần chạy: bài khác bản đã lưu thì lưu. Không bao giờ làm sập trang."""
+    """Cuối mỗi lần chạy: bài khác bản đã lưu thì lưu. Không bao giờ làm sập trang.
+
+    Nháp đã có trong kho (đã lưu, vừa mở) phải **còn** đó (T-092): mỗi lần chạy kiểm nháp còn và
+    đọc trạng thái gửi của nó trong một giao dịch (``send_state_if_exists``, nhớ vào
+    ``_draft_send_known``), lần lưu thì so rồi đặt (``save(must_exist=True)``). Nháp bị xóa ở tab
+    khác (hay kho đầy bỏ bớt, file nháp bị xóa) thì không lặng lẽ tạo lại: nháp tạo lại không còn
+    trạng thái gửi, mất khóa gửi trùng. Trang báo rõ và hỏi (``gone_notice``); người dùng chọn tạo
+    lại thì ghi lại trạng thái gửi tab này biết (``recreate_draft``)."""
     if "draft_id" not in S and not (keyword() or S.research is not None):
         return  # trang còn trống, chưa có gì để lưu
+    recreate = S.pop("_draft_recreate", False)  # vừa bấm «Lưu lại thành nháp»
+    gone, problem = False, ""
     try:
         snap = snapshot()
         current = snap.model_dump_json(exclude={"saved_at"})
-        if S.pop("_draft_baseline", False):
-            S._draft_saved_json = current
-        elif current != S.get("_draft_saved_json"):
-            saved = draft_store().save(snap)
-            S._draft_saved_json = current
-            S._draft_saved_at = saved.saved_at
+        store = draft_store()
+        stored = S.get("_draft_saved_at") is not None  # nháp đã có trong kho
+        known = store.send_state_if_exists(snap.id) if stored else None
+        if stored and known is None:
+            gone = True
+            # Gộp ngay những gì tab biết: các lần vẽ sau ở bước Xuất bản đọc ra «chưa gửi» (dòng
+            # đã bị xóa cùng nháp) và ghi đè ``_wp_seen``.
+            S._draft_send_known = (known_send_state(), False)
+            if recreate:
+                recreate_draft(store, snap, current)
+                gone = False
+        else:
+            if known is not None:
+                S._draft_send_known = known
+            if S.pop("_draft_baseline", False):
+                S._draft_saved_json = current
+            elif current != S.get("_draft_saved_json"):
+                saved = store.save(snap, must_exist=stored)
+                S._draft_saved_json = current
+                S._draft_saved_at = saved.saved_at
+    except DraftGoneError:  # bị xóa ngay giữa lần kiểm trên và lần lưu
+        gone = True
     except (DraftError, ValueError, KeyError) as exc:  # ValidationError là một dạng ValueError
-        message = str(exc) if isinstance(exc, DraftError) else "dữ liệu bài chưa đầy đủ."
-        slot.caption(f"⚠️ Chưa lưu được nháp: {message}")
-        return
-    if S.get("_draft_saved_at") is not None:
+        problem = str(exc) if isinstance(exc, DraftError) else "dữ liệu bài chưa đầy đủ."
+    if gone:
+        gone_notice(slot, problem)
+    elif problem:
+        slot.caption(f"⚠️ Chưa lưu được nháp: {problem}")
+    elif S.get("_draft_saved_at") is not None:
         slot.caption(f"💾 Đã lưu lúc {S._draft_saved_at.strftime('%H:%M')}")
 
 
@@ -2238,9 +2363,6 @@ LEVEL_BADGES = {
 NO_ORDER_NOTICE = "Bài hướng dẫn chưa có trang dịch vụ đích (ghi trong phiếu giao bài)."
 COPY_LABELS = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
 KEYWORD_LABEL = "Từ khóa chính"
-MSG_KEYWORD_ODD = (
-    "Từ khóa chính có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác)."
-)
 MSG_KEYWORD_FIX = "Sửa từ khóa ở bước 1 · Chuẩn bị."
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
 MSG_SEO_WILL_SKIP = "Sẽ không ghi {fields}: ở bước SEO đang báo «Chặn» (xem lý do ở đó)."
@@ -2466,12 +2588,14 @@ def keyword_problem() -> str:
     """Lý do từ khóa chính không ghi được vào SiteSEO; chuỗi rỗng là ghi được (SL-T041-9). Từ khóa
     gõ ở bước Chuẩn bị, không qua bộ kiểm meta: kiểm ở đây bằng các hàm có sẵn, như client sẽ kiểm
     (``seo_write_problem``, giới hạn độ dài của client) và cả ký tự lạ client lặng lẽ bỏ
-    (``has_odd_chars``: ký tự riêng, chưa gán)."""
+    (``has_odd_chars``: ký tự riêng, chưa gán). Câu báo ký tự lạ theo loại như ô meta
+    (``odd_char_messages``, T-092): emoji rất mới là ký tự «phần mềm chưa nhận ra», không phải
+    «không nhìn thấy»."""
     text = keyword()
     if not text:
         return f"Chưa có từ khóa chính. {MSG_KEYWORD_FIX}"
     if onpage_meta.has_odd_chars(text):
-        problem = MSG_KEYWORD_ODD
+        problem = " ".join(onpage_meta.odd_char_messages(KEYWORD_LABEL, text))
     else:
         problem = onpage_meta.seo_write_problem(KEYWORD_LABEL, text)
     if not problem and len(onpage_meta.normalize_meta(text)) > MAX_SEO_KEYWORD_CHARS:
@@ -2525,8 +2649,9 @@ def siteseo_panel(posts: list, suffix: str | None) -> None:
     Trường bị Chặn không cho chép, hiện câu báo (có thể có tên bài trên website: chữ thuần)."""
     st.markdown("**Chép sang SiteSEO**")
     st.caption(
-        "Bấm biểu tượng ở góc từng khung để chép, rồi dán vào hộp SiteSEO của bài nháp. Muốn phần "
-        "mềm tự ghi: bật «Ghi SEO lên website» ở bước Xuất bản."
+        "Bấm biểu tượng ở góc từng khung để chép. Trong trang sửa bài nháp của WordPress: tiêu đề, "
+        "mô tả dán vào hộp SiteSEO; đường dẫn dán vào ô đường dẫn (slug) của bài. Muốn phần mềm tự "
+        "ghi tiêu đề, mô tả: bật «Ghi SEO lên website» ở bước Xuất bản."
     )
     for label, value, reason in final_seo(posts, suffix):
         if label not in COPY_LABELS:
