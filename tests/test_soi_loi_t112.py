@@ -17,6 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import streamlit as st
 import test_app_images as ui
 import test_app_pages as pages
 import test_t102_publish as t102
@@ -156,24 +157,39 @@ def test_doi_chung_seo_du_thi_dang(project_root, root, fake_ai, live, monkeypatc
     assert any("Đã đăng bài công khai" in s.value for s in at.success)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T112-1: bật «Ghi SEO lên website», tiêu đề hay mô tả SEO đang «Chặn» ở bước SEO "
-    "(bị bỏ khỏi lệnh ghi): app ghi phần còn lại, coi SEO đã lên (seo_ok) và Đăng ngay vẫn đăng "
-    "công khai với tiêu đề/mô tả SEO mặc định (trái LC-T094-39, yêu cầu 1 T-112)",
-)
 @pytest.mark.parametrize("blocked", ["title", "description"], ids=["tieu-de-chan", "mo-ta-chan"])
 def test_sl_t112_1_dang_ngay_khi_truong_seo_dang_chan_thi_khong_dang(
     project_root, root, fake_ai, live, monkeypatch, blocked
 ):
+    """SL-T112-1 (đã sửa ở T-112 lượt 3; R5 Chỉ Huy 03/11 12:45 (b)): bật «Ghi SEO lên website»,
+    tiêu đề hay mô tả SEO đang «Chặn» ở bước SEO (bị bỏ khỏi lệnh ghi) thì màn hình xác nhận có
+    dòng Chặn, nút khóa dù đã tick; cú bấm lọt qua nút khóa cũng không gửi gì (LC-T094-39)."""
     calls: list = []
     seo_like_client(monkeypatch, calls)
     texts = {"title": TITLE_OK, "description": DESC_OK, blocked: BLOCKED}
-    at = send_publish(project_root, **texts)
-    assert calls and calls[0][blocked] == ""  # trường «Chặn» không được ghi
+    at, _pid = ui.ready_image(project_root)
+    at.session_state["seo_title_versions"] = [texts["title"]]
+    at.session_state["seo_title_ver"] = 0
+    at.session_state["seo_description_versions"] = [texts["description"]]
+    at.session_state["seo_description_ver"] = 0
+    t102.to_mode(at, PUBLISH)
+    t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    t102.confirm(at)
+    field = {"title": "tiêu đề SEO", "description": "mô tả SEO"}[blocked]
+    assert any(f"Đăng ngay mà {field} sẽ không ghi lên website" in e.value for e in at.error)
+    assert t102.send_button(at).disabled
+    original = st.button  # cú bấm lọt qua nút khóa (bấm đúp, SL-T056-1): AppTest không cho bấm
+
+    def button(label, *args, **kwargs):
+        clicked = original(label, *args, **kwargs)
+        return True if kwargs.get("key") == "wp-send" else clicked
+
+    monkeypatch.setattr(st, "button", button)
+    t102.run_ok(at.run())
+    assert calls == []  # không lệnh ghi SEO nào
+    assert [r for r in live.site.fake.requests if r.method != "GET"] == []  # không lệnh ghi nào
     assert t102.release_bodies(live.site) == []
-    saved = ui.store().load_send_state(at.session_state["draft_id"])
-    assert (saved.released, saved.release_unknown) == (False, False)
+    assert ui.store().load_send_state(at.session_state["draft_id"]) is None  # chưa gửi lần nào
 
 
 def test_anh_dai_dien_tra_loi_la_thi_khong_dang(project_root, root, fake_ai, live, monkeypatch):

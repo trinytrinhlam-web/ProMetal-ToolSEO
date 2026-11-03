@@ -369,6 +369,18 @@ MSG_SCHEDULE_MISSING = (
     "Bài đã hẹn giờ nhưng {parts} chưa lên website lúc gửi. Sửa phần đó trong trang quản trị "
     "WordPress trước giờ đăng, hoặc chuyển bài về nháp nếu chưa kịp."
 )
+# T-112 (SL-T112-1): bật «Ghi SEO» mà tiêu đề, mô tả SEO trống hay đang «Chặn» ở bước SEO thì lệnh
+# ghi bỏ trường đó (``seo_request``): bài lên công khai với tiêu đề, mô tả SEO mặc định. Từ khóa
+# chính không hiện công khai nên không xét.
+MISSING_SEO_FIELDS = {"title": "tiêu đề SEO", "description": "mô tả SEO"}
+MSG_PUBLISH_SEO_LEFT_OUT = (
+    "Đăng ngay mà {fields} sẽ không ghi lên website (đang trống hoặc báo «Chặn» ở bước SEO): bài "
+    "lên công khai với {fields} mặc định. Sửa ở bước SEO, hoặc gửi dạng Nháp / Hẹn giờ."
+)
+MSG_SCHEDULE_SEO_LEFT_OUT = (
+    "Hẹn giờ mà {fields} sẽ không ghi lên website (đang trống hoặc báo «Chặn» ở bước SEO): sửa ở "
+    "bước SEO, hoặc điền vào hộp SiteSEO trong trang quản trị WordPress trước giờ đăng."
+)
 MSG_PLAN_RELEASE_UNSURE = (
     "Chưa ghi trạng thái vào dòng kế hoạch {key}: chưa rõ bài đã hẹn giờ/đăng hay chưa. Kiểm bài "
     "trong trang quản trị WordPress rồi sửa ô «Trạng thái» trên Google Sheet."
@@ -3021,6 +3033,29 @@ def seo_holder(seo: SeoFields) -> dict | None:
     }
 
 
+def seo_left_out(seo: SeoFields) -> list[str]:
+    """Tiêu đề, mô tả SEO (hiện công khai) sẽ **không** ghi lên website dù bật «Ghi SEO»: trống
+    hoặc đang «Chặn» ở bước SEO (``seo_request`` để trống, SL-T112-1). Tắt «Ghi SEO» thì rỗng: bộ
+    dựng đã xét (Đăng ngay là Chặn, Hẹn giờ cảnh báo)."""
+    if not seo.write:
+        return []
+    values = {"title": seo.title, "description": seo.description}
+    return [name for field, name in MISSING_SEO_FIELDS.items() if not values[field]]
+
+
+def seo_notices(seo: SeoFields, mode: str) -> list[Notice]:
+    """Dòng ở màn hình xác nhận cho tiêu đề, mô tả SEO sẽ không ghi (SL-T112-1): Đăng ngay là
+    **Chặn** (nút khóa: bài lên công khai ngay với SEO mặc định, LC-T094-39), Hẹn giờ là Cảnh báo
+    (còn sửa được trước giờ đăng), Nháp thì không."""
+    left_out = seo_left_out(seo)
+    if not left_out or mode == "draft":
+        return []
+    fields = ", ".join(left_out)
+    if mode == "publish":
+        return [Notice(onpage_meta.Level.BLOCK, MSG_PUBLISH_SEO_LEFT_OUT.format(fields=fields))]
+    return [Notice(onpage_meta.Level.WARN, MSG_SCHEDULE_SEO_LEFT_OUT.format(fields=fields))]
+
+
 def build_package(
     client: WordPressClient | None,
     mode: str,
@@ -3766,12 +3801,18 @@ def release_post(client: WordPressClient, store: DraftStore, holder: dict) -> No
 def release_missing(holder: dict, result: dict) -> str:
     """Phần người dùng đã xác nhận mà lúc gửi chưa lên website (T-112: SL-T102-1, LC-T102-1): ảnh
     đại diện (bài có ảnh mà lệnh đặt hỏng), SEO (bật «Ghi SEO lên website» mà lệnh ghi hỏng, website
-    từ chối, SiteSEO chưa cho ghi, hay bài không còn là nháp sau khi ghi). Chữ cố định, rỗng: đủ."""
+    từ chối, SiteSEO chưa cho ghi, hay bài không còn là nháp sau khi ghi), tiêu đề hay mô tả SEO bị
+    bỏ khỏi lệnh ghi vì trống hoặc đang «Chặn» (SL-T112-1: client ghi phần còn lại vẫn báo đã ghi;
+    chốt thứ hai sau dòng Chặn ở màn hình xác nhận). Chữ cố định, rỗng: đủ."""
     missing = []
     if result.get("featured_missing"):
         missing.append(MISSING_FEATURED)
-    if holder.get("seo") and not result.get("seo_ok"):
+    seo = holder.get("seo")
+    if seo and not result.get("seo_ok"):
         missing.append(MISSING_SEO)
+    elif seo:
+        fields = seo.get("fields") or {}
+        missing += [name for field, name in MISSING_SEO_FIELDS.items() if not fields.get(field)]
     return ", ".join(missing)
 
 
@@ -4128,6 +4169,8 @@ def publish_panel(mode: str) -> None:
             built, build_problem = build_package(
                 client, mode, when_utc, categories, images, fresh=False
             )
+    if built is not None:
+        notices.extend(seo_notices(built.seo, mode))  # SL-T112-1: SEO đúng như gói sẽ gửi
     review_panel(built, mode, when_utc, timezone, notices, build_problem)
     allowed = (
         client is not None
