@@ -129,12 +129,23 @@ Chạy bằng `uvx` (chạy tạm, **không thêm vào thư viện của dự á
 **Trước khi chạy `uvx` / `uv tool run`:** chạy `uv --version`, phải từ **0.13.4** trở lên (T-078, GHSA-hq85-5cpj-mr62: bản cũ còn tin chứng chỉ bị lộ, mà `uvx` tải công cụ không ghim mã băm). Thấp hơn thì **không chạy**, dừng và báo Chỉ Huy. `required-version` của dự án (`pyproject.toml`) chỉ chặn lệnh dự án (`uv sync`, `uv run`…), **không chặn `uvx`**.
 
 ```bash
-uvx pip-audit                       # lỗ hổng đã biết trong thư viện (đọc môi trường uv)
+uvx pip-audit -r <tạm>/req.txt --no-deps --disable-pip   # lỗ hổng đã biết trong thư viện (cách chạy: xem ngay dưới)
 uvx bandit -r seo_app app scripts   # lỗi bảo mật phổ biến trong code Python
 uvx detect-secrets scan --all-files # tìm chuỗi giống bí mật
 git log -p | grep -inE "api[_-]?key|password|secret|token" | head   # soát nhanh lịch sử git
 uv run pytest <test liên quan tới phiếu> && uv run ruff check .   # toàn bộ pytest do Chỉ Huy chạy khi gộp (chốt 2026-10-20)
 ```
+
+**Chạy `pip-audit`** (Lá Chắn T-116 nhóm 1). Dự án ép `pillow` bản 13 dù Streamlit khai báo `pillow<13` (T-058, `override-dependencies` trong `pyproject.toml`). Vì vậy `uvx pip-audit -r req.txt`, kể cả thêm `--no-deps`, **hỏng**: pip-audit nhờ pip giải lại thư viện và pip vấp đúng xung đột cố ý này. Đây là lỗi công cụ, không phải lỗ hổng. `uvx pip-audit` trần (đọc môi trường) cũng không chạy được: môi trường của uv không có pip. Cách chạy:
+
+1. `uv --version` phải từ 0.13.4 (đoạn trên).
+2. Xuất danh sách thư viện đã ghim ra một file tạm **ngoài repo** (thư mục tạm của phiên):
+   `uv export --format requirements-txt --no-hashes --no-emit-project -q -o <tạm>/req.txt`
+3. Quét đúng các bản đã ghim, không giải lại:
+   `uvx pip-audit -r <tạm>/req.txt --no-deps --disable-pip --progress-spinner off`
+   Hai dòng `WARNING` khuyên dùng mã băm là bình thường. Kết quả đúng: «No known vulnerabilities found» hoặc danh sách khuyến cáo (ngày 02/11: 69 gói, sạch).
+
+pip-audit **không** thấy lỗ hổng của thư viện C đóng gói sẵn trong wheel (ví dụ libheif trong `pillow-heif`): phần đó tra riêng và theo dõi ở sổ rủi ro mục 6.
 
 **Trên Windows** (Lá Chắn T-049, LC-T049-4): `detect-secrets` đọc file bằng bảng mã của máy (cp1252) nên **bỏ qua lặng lẽ** mọi file có chữ tiếng Việt mà vẫn báo "0 phát hiện". Luôn chạy với `PYTHONUTF8=1`:
 
@@ -162,6 +173,8 @@ Rủi ro chủ dự án đã quyết định chấp nhận thay vì sửa. Mỗi
 | 2026-10-30 | Thư viện đọc ảnh HEIC (libheif trong pillow-heif) còn 2 lỗi OSS-Fuzz chưa có bản sửa (OSV-2020-2308, OSV-2023-1129; cả 1.23.7 vẫn ảnh hưởng): file HEIC dựng cố ý có thể làm app sập (T-047 lỗi số 2) | App chỉ đọc ảnh trong thư mục người dùng khai báo; giải mã một luồng, kiểm lưới ô trước khi giải mã (T-107); xem lại mỗi cuối giai đoạn; nâng pillow-heif khi có bản vá (chủ dự án duyệt trước 30/10) (Lá Chắn T-093, N2) | Chủ dự án (30/10) |
 | 2026-10-30 | Gói pillow-heif mang mã chịu giấy phép GPLv2 (bộ mã hóa x265) (T-047 lỗi số 3) | App dùng nội bộ, không phát hành ra ngoài; chỉ là lưu ý giấy phép, xem lại nếu sau này phát hành (Lá Chắn T-093, N3) | Chủ dự án (30/10) |
 | 2026-10-30 | Kho thẻ ảnh sửa tay trên máy (`data/image_tags.sqlite`): khe nhỏ quanh file `-journal` của SQLite (LC-T052-5) và SL-T070-4 (`xfail`, hoãn) | Mức Thấp, chỉ trên máy người dùng; kho thẻ là dữ liệu phụ, xóa đi tạo lại được (Lá Chắn T-093, N5) | Chủ dự án (30/10) |
+| 2026-11-02 | Ghi `.env` (`seo_app/env_file.py`: khóa AI, mã băm mật khẩu, mã Sheet) tách file bằng `dotenv.parser.parse_stream`, một module con **không ghi trong tài liệu chính thức** của python-dotenv (bản ghim 1.2.4 trong `uv.lock`). Bản python-dotenv sau đổi cách đọc thì app từ chối ghi `.env`; bỏ hẳn module thì trang Cài đặt và `set_password` không chạy (Lá Chắn T-016-020 #5, Thấp; Fable T-116 nhóm 3 xác nhận còn đúng) | Rủi ro bảo trì, không phải đường tấn công. Bản ghim trong `uv.lock`, `uv sync` không tự nâng. Lỗi theo hướng an toàn: trước và sau khi ghi, app so lại bằng bộ đọc công khai `dotenv_values` (`_parse`, `env_file.py:258-273`) và từ chối ghi khi khác, nên không làm hỏng `.env`, không lộ gì; module mất thì test bắt ngay. Mỗi lần nâng python-dotenv: chạy lại `tests/test_env_file.py` trước khi commit `uv.lock` mới; Lá Chắn soát lại mỗi lần `uv.lock` đổi | Chủ dự án đồng ý 2026-11-02 |
+| 2026-11-02 | Bộ lọc hồ sơ doanh nghiệp (`seo_app/content/rules.py`, nhãn `[CẦN XÁC NHẬN]`): đoạn **thụt lề** ngay sau dòng trống được coi là cùng ý với đoạn trên (`rules.py:131-132`), nên đoạn trên có nhãn thì đoạn thụt lề bên dưới, dù đã đúng, cũng bị giấu khỏi AI (**lọc thừa**) (Lá Chắn T-022-024 #3, Thấp; Fable T-116 nhóm 3 xác nhận còn đúng) | Lọc thừa là hướng an toàn: không có ý chưa xác nhận nào tới AI, chỉ mất bớt ý đúng. Sửa theo hướng ngược lại (chỉ nối dòng thụt lề vào khối gạch đầu dòng) thì đoạn thường có đoạn thụt lề mang nhãn bên dưới lại để lọt đoạn đầu. Hồ sơ hiện tại không có đoạn thụt lề nào ngay sau dòng trống (kiểm 02/11). Cách tránh: viết đoạn mới không thụt lề, xóa nhãn khi đã xác nhận | Chủ dự án đồng ý 2026-11-02 |
 
 ## 7. Khi có sự cố
 

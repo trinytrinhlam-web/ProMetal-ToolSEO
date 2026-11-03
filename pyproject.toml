@@ -38,8 +38,10 @@ dev = [
 
 [tool.uv]
 # T-078 (Lá Chắn LC-T075-1, GHSA-hq85-5cpj-mr62): uv dưới 0.13.4 còn tin một gốc chứng chỉ đã bị
-# lộ khóa, kẻ giả kho gói Python có thể cài mã độc. uv cũ hơn thì từ chối chạy, báo «Required uv
-# version … Update `uv` by running `uv self update`»: chạy `uv self update` rồi mở lại app.
+# lộ khóa, kẻ giả kho gói Python có thể cài mã độc. uv cũ hơn thì từ chối chạy lệnh của dự án
+# (`uv sync`, `uv run`, `uv lock`…), báo «Required uv version … Update `uv` by running `uv self
+# update`»: chạy `uv self update` rồi mở lại app. Dòng này KHÔNG áp cho `uvx` / `uv tool run`
+# (LC-T078-1): trước khi dùng `uvx`, tự kiểm `uv --version` ≥ 0.13.4 (docs/team/security.md mục 5).
 required-version = ">=0.13.4"
 # T-058 (chủ dự án chốt 2026-10-20, lựa chọn A): ép Pillow 13 dù Streamlit khai báo pillow<13.
 # Quay về bản cũ: xóa dòng này, đổi khai báo trên về "pillow>=12.3", chạy `uv lock` rồi `uv sync`.

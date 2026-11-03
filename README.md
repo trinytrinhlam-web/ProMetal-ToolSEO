@@ -62,7 +62,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Tắt app:** đóng cửa sổ đen / Terminal. Đóng tab trình duyệt thì app chưa tắt.
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
 - Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
-- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào), **Cài đặt**, **Kết nối WordPress**.
+- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào, mục 14), **Cài đặt**, **Kết nối WordPress**.
 - Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng. Ba bước đầu của **Soạn bài** đã dùng AI thật (xem mục 7); chọn ảnh, bước SEO và gửi bài nháp cũng đã chạy thật (mục 9, 10, 11).
 
 ## 5. File cấu hình `.env`
@@ -75,7 +75,7 @@ Khóa API, mật khẩu WordPress, đường dẫn thư mục ảnh… đều n�
 - Sửa `.env` xong thì tắt app rồi mở lại.
 - **Bảo mật:**
   - Không gửi `.env` qua email hay chat, không đưa lên GitHub (dự án đã chặn sẵn).
-  - File JSON service account của Google nên để ngoài thư mục dự án.
+  - File khóa JSON (service account) của Google phải để ngoài thư mục dự án và ngoài thư mục ảnh (mục 14).
 - **Dùng trên hai máy:**
   - Mỗi máy cần một file `.env` riêng. Có thể chép bằng USB.
   - Bài viết, kế hoạch và thứ hạng nằm trên WordPress / Google, nên hai máy luôn thấy cùng dữ liệu.
@@ -499,6 +499,56 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 | Trình duyệt không tự mở | Tự mở trình duyệt và vào địa chỉ in trong cửa sổ đen (thường là `http://localhost:8501`). |
 | Lỡ mở app hai lần | Lần thứ hai sẽ dùng cổng khác (8502…). Nên đóng bớt một cửa sổ. |
 | App báo "Múi giờ APP_TIMEZONE không hợp lệ" | Sửa dòng `APP_TIMEZONE` trong `.env` thành `Asia/Ho_Chi_Minh`. |
+
+## 14. Kế hoạch và Google Sheets
+
+Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái từng bài) nằm trên một **Google Sheet**, để hai máy luôn thấy giống nhau. Phần mềm đọc, ghi Sheet bằng một **tài khoản dịch vụ** (service account) của Google: một «tài khoản máy» chỉ làm việc được với Sheet bạn chia sẻ cho nó, không vào được Gmail hay Drive của bạn.
+
+**Tạo tài khoản dịch vụ (làm một lần)**
+
+1. Vào https://console.cloud.google.com, tạo một **project riêng** cho phần mềm (ví dụ `seo-app`), đừng dùng chung project với việc khác.
+2. Trong project đó, bật **Google Sheets API** (APIs & Services → Library, tìm «Google Sheets API» → Enable). Chỉ cần bật API này.
+3. Vào **IAM & Admin → Service Accounts → Create service account**, đặt tên (ví dụ `seo-app-ke-hoach`). Ở bước cấp vai trò (role): **để trống, không chọn vai trò nào**. Tài khoản chỉ cần quyền trên đúng Sheet bạn chia sẻ ở bước sau.
+4. Mở tài khoản vừa tạo → thẻ **Keys** → **Add key → Create new key → JSON**. Trình duyệt tải về một file `.json`: đây là **file khóa**, giữ như mật khẩu.
+
+**Cất file khóa**
+
+- Để file **ngoài thư mục phần mềm** và **ngoài thư mục ảnh**: app từ chối file nằm trong hai chỗ này. Cũng đừng để trong thư mục đồng bộ lên mây (Google Drive, OneDrive, Dropbox, iCloud): app sẽ cảnh báo. Ví dụ một thư mục `bi-mat` riêng trên ổ máy.
+- Không gửi file qua email, Zalo. Máy thứ hai thì chép bằng USB, chép xong xóa khỏi USB.
+- Mac: chỉ để mình bạn đọc được file. Mở Terminal, gõ `chmod 600 ` (có dấu cách ở cuối), kéo file khóa vào cửa sổ, nhấn Enter. Người khác trên máy đọc được file thì app cảnh báo.
+
+**Khai báo trong app**
+
+1. Mở `.env`, điền đường dẫn **đầy đủ** của file khóa vào dòng `GOOGLE_SERVICE_ACCOUNT_FILE` (ví dụ `C:/Users/ten-ban/bi-mat/khoa-google.json`). Dòng này chỉ sửa tay trong `.env`, app không ghi. Tắt app rồi mở lại.
+2. Vào **Cài đặt → 📗 Google**. Khung **🔑 Tài khoản dịch vụ Google (file khóa)** hiện «✅ Đã khai báo», tên file và **email của tài khoản dịch vụ** (đuôi `.iam.gserviceaccount.com`). Thấy «⚠️ Đã khai báo nhưng chưa dùng được» thì đọc câu báo đỏ bên dưới (file nằm sai chỗ, không phải file khóa…).
+3. Tạo (hoặc mở) Google Sheet kế hoạch, bấm **Chia sẻ** (Share), dán **email của tài khoản dịch vụ**, chọn quyền **Người chỉnh sửa** (Editor), rồi chia sẻ. **Chỉ chia sẻ đúng Sheet này** cho email đó, và **không** bật «Bất kỳ ai có đường liên kết» (Anyone with the link).
+4. Chép link Sheet ở thanh địa chỉ trình duyệt, dán vào ô **Link Google Sheet kế hoạch**, bấm **Lưu**. App chỉ lấy mã Sheet trong link (ghi vào dòng `GOOGLE_SHEET_ID` của `.env`), không mở link. Muốn bỏ thì bấm **Bỏ Sheet** (Sheet trên Google vẫn còn).
+5. Ở khung **🔎 Kiểm tra và chuẩn bị**, bấm **Kiểm tra kết nối**: thấy «Kết nối được Google Sheet «…». Trang tính «KeHoach»: …» là được.
+6. Lần đầu (trang tính «KeHoach» chưa có): bấm **Chuẩn bị trang tính**. App tạo trang tính «KeHoach», ghi dòng tiêu đề cột, cố định dòng tiêu đề, định dạng cột ngày và danh sách chọn; không xóa, không dời cột có sẵn. Sheet cũ thiếu cột thì có thêm nút **Thêm cột còn thiếu**.
+
+**Trang Kế hoạch**
+
+- **Danh sách bài theo kế hoạch**: đọc từ trang tính «KeHoach». App giữ một bản lưu trên máy và dùng lại trong 5 phút; nút **🔄 Tải lại** đọc lại ngay từ Google. Không đọc được Google thì app hiện bản lưu kèm câu báo (dòng trên bảng ghi «bản lưu trên máy»).
+- **📥 Cung cấp kế hoạch**: ba thẻ **Tải file** (CSV, TSV, TXT, MD; tối đa 1 MB), **Dán nội dung**, **Google Sheets** (link một Sheet khác đã chia sẻ cho tài khoản dịch vụ, có trang tính «KeHoach»). Bấm **🧠 Đọc kế hoạch và đề xuất cập nhật**. Bảng có cột «Từ khóa chính» thì app tự đọc; chữ tự do thì AI đọc (bấm **🤖 Gửi AI đọc**; gọi AI một lần, có tốn tiền). App hiện **Đề xuất thay đổi**: tick dòng muốn dùng rồi bấm **✅ Áp dụng thay đổi (…)** thì mới ghi lên Sheet.
+- **✍️ Viết bài**: chọn một dòng ở ô **Chọn bài để viết** rồi bấm. App mở **Soạn bài** điền sẵn từ khóa và các ô của dòng đó (số điện thoại, email trong ghi chú được che). Gửi bài xong, app ghi vào dòng: «Đã gửi nháp» (hay «Đã hẹn giờ», «Đã đăng»), Mã bài WordPress. Ghi Sheet lỗi (mất mạng) thì bài **không** bị gửi lại lên website; việc ghi còn nợ hiện ở trang này, có nút **Thử ghi lại**.
+- **🌐 Cập nhật trạng thái từ website** (cần kết nối WordPress, mục 6): app hỏi website trạng thái các bài có «Mã bài WordPress», rồi hiện khung **🌐 Thay đổi trạng thái từ website**: bảng thay đổi, mỗi dòng một ô tick (không tick sẵn). Tick dòng muốn ghi (hay bấm **Chọn tất cả**), rồi bấm **✍️ Ghi … thay đổi vào Google Sheet**. App chỉ đổi ô Trạng thái, Ngày đăng thực tế, Cập nhật lúc của dòng đó, không đụng bài trên website. Lần kiểm đã quá 5 phút thì phải bấm kiểm lại mới ghi được. Cột «Trên website» ghi «Lỡ lịch» khi bài hẹn giờ đã quá giờ 15 phút mà chưa lên (thường do lịch chạy của WordPress chạy trễ): mở trang quản trị WordPress kiểm tra.
+
+**Giữ an toàn**
+
+- **Lộ file khóa** (gửi nhầm, mất máy, mất USB): vào Google Cloud → **IAM & Admin → Service Accounts** → tài khoản đó → **Keys**, **xóa khóa** cũ. Tạo khóa mới (bước 4 ở trên), sửa `GOOGLE_SERVICE_ACCOUNT_FILE` trên **cả hai máy**.
+- Thỉnh thoảng mở nút **Chia sẻ** của Sheet xem: chỉ có bạn, người cùng làm và email tài khoản dịch vụ; không có «Bất kỳ ai có đường liên kết».
+- Tải Sheet về máy (CSV, Excel) rồi mở bằng Excel: ô bắt đầu bằng `=`, `+`, `-`, `@` có thể bị Excel hiểu là công thức. Excel hỏi bật nội dung, cập nhật liên kết hay chạy macro thì chọn **không**.
+- Hẹn giờ đăng: WordPress chỉ đăng bài hẹn giờ khi lịch chạy của nó chạy (thường lúc có người vào website), nên có thể trễ vài phút. Đặt múi giờ của WordPress (**Cài đặt → Tổng quan → Múi giờ**) là «Hồ Chí Minh».
+
+| App báo | Cách xử lý |
+|---|---|
+| "Tài khoản dịch vụ chưa có quyền mở Google Sheet này (mã 403)…" | Chia sẻ Sheet cho email tài khoản dịch vụ, quyền **Người chỉnh sửa** (bước 3); kiểm đã bật Google Sheets API (bước 2 phần tạo tài khoản). |
+| "Không tìm thấy Google Sheet (mã 404)…" | Link sai hoặc Sheet đã bị xóa: dán lại link ở **Cài đặt → 📗 Google**. |
+| "File khóa Google đang nằm trong thư mục phần mềm…" hoặc "…trong thư mục ảnh…" | Chuyển file ra ngoài, sửa `GOOGLE_SERVICE_ACCOUNT_FILE`, tắt app rồi mở lại. |
+| "Đường dẫn file khóa Google phải là đường dẫn đầy đủ…" | Ghi đủ từ ổ đĩa (Windows `C:/…`, Mac `/Users/…`). |
+| "File không phải khóa tài khoản dịch vụ Google…" | Tải khóa JSON của tài khoản dịch vụ (bước 4), không dùng file JSON khác. |
+| "Google đang giới hạn số lần gọi (mã 429)…" | Đợi một phút rồi thử lại. |
+| "Chưa kết nối Google Sheets nên chưa có kế hoạch để so và ghi…" | Làm phần «Khai báo trong app» ở trên. |
 
 ---
 
