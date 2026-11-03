@@ -825,24 +825,43 @@ def test_r2_short_lock_in_other_thread_is_waited_out(store):
     assert store.reset_count == 0
 
 
+# Giới hạn chờ của các luồng giữ khóa trong test: chỉ để test không treo khi có gì sai, không phải
+# chỗ đợi bình thường (T-073).
+_HOLD_LIMIT = 120
+
+
 def test_r2_long_lock_in_other_thread_is_busy_not_deleted(store, monkeypatch):
+    """Luồng khác giữ khóa suốt lúc phía chính kiểm: đọc, ghi đều báo «bận», không xóa kho.
+
+    T-073: luồng giữ khóa chỉ nhả khi phía chính đã kiểm xong (``release``), không tự nhả sau
+    10 giây như trước. Năm lần chờ khóa của phía chính (mỗi lần chờ ``_HEALTH_TIMEOUT``) đo được
+    khoảng 9 giây ngay cả lúc máy bận vừa, máy bận nặng thì quá 10 giây: khóa tự nhả giữa chừng và
+    ca hỏng oan («DID NOT RAISE SiteIndexError»)."""
     store.refresh(Source([published(1)]))
     monkeypatch.setattr(site_index, "_SQLITE_TIMEOUT", 0.1)
     locked, release = threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+    gave_up: list[bool] = []
 
     def hold():
         conn = sqlite3.connect(store.path, isolation_level=None)
-        conn.execute("BEGIN EXCLUSIVE")
-        conn.execute("DELETE FROM pages")
-        locked.set()
-        release.wait(10)
-        conn.execute("ROLLBACK")
-        conn.close()
+        try:
+            conn.execute("BEGIN EXCLUSIVE")
+            conn.execute("DELETE FROM pages")
+            locked.set()
+            gave_up.append(not release.wait(_HOLD_LIMIT))
+            conn.execute("ROLLBACK")
+        except BaseException as exc:  # pragma: no cover - chỉ để báo
+            errors.append(exc)
+        finally:
+            conn.close()
+            locked.set()
 
     thread = threading.Thread(target=hold)
     thread.start()
     try:
-        assert locked.wait(10)
+        assert locked.wait(_HOLD_LIMIT)
+        assert errors == []
         assert store.load(BASE_URL) is None
         assert store.is_stale(BASE_URL) is True
         assert "bận" in store.refresh(Source([published(2)])).cache_error
@@ -850,7 +869,9 @@ def test_r2_long_lock_in_other_thread_is_busy_not_deleted(store, monkeypatch):
             store.save(store.refresh(Source([published(3)])))
     finally:
         release.set()
-        thread.join(10)
+        thread.join(_HOLD_LIMIT)
+    assert not thread.is_alive() and errors == []
+    assert gave_up == [False]  # khóa được giữ tới khi phía chính kiểm xong
     assert store.reset_count == 0
     assert [i.id for i in store.load(BASE_URL).items] == [1]
 
