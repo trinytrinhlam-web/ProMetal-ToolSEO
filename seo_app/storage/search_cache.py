@@ -29,7 +29,8 @@ An toàn (F1, F3; Lá Chắn LC-T120-9, LC-T120-10):
   các bảng app tạo, kiểm trong cùng giao dịch với thao tác; ``trusted_schema = OFF``; giới hạn số
   bước và độ dài giá trị; file lạ, hỏng (``quick_check``), quá lớn thì bỏ.
 - Dữ liệu đọc ra chưa tin cậy: mỗi dòng kiểm lại như lúc nhận từ Google (thiết kế 2.4): ngày đúng
-  dạng trong khoảng năm, địa chỉ qua ``is_site_link`` và tiền tố ``WORDPRESS_URL``, số nguyên thật,
+  dạng trong khoảng năm, địa chỉ qua ``is_site_link`` và tiền tố ``WORDPRESS_URL`` đã chuẩn hóa
+  (``site_base``: scheme, tên máy viết thường, bỏ cổng 443), số nguyên thật,
   ``0 ≤ click ≤ hiển thị ≤ 10⁹``, vị trí 1 … 10.000, từ khóa đã làm sạch ≤ 200 ký tự, ``final``
   khớp ``first_provisional``. **Một dòng sai**, hay mã băm phạm vi khác (đổi thuộc tính Search
   Console hay ``WORDPRESS_URL``), là bỏ cả cache (LC-T120-9).
@@ -58,6 +59,7 @@ from datetime import date, datetime, timedelta
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
@@ -180,8 +182,8 @@ class CacheScope:
 
     @property
     def base(self) -> str:
-        """``WORDPRESS_URL`` không có «/» cuối (như ``config.py`` đọc)."""
-        return self.wordpress_url.rstrip("/")
+        """``WORDPRESS_URL`` dạng chuẩn (``site_base``); địa chỉ trang bắt đầu bằng nó + «/»."""
+        return site_base(self.wordpress_url)
 
     @property
     def digest(self) -> str:
@@ -577,13 +579,44 @@ class _BadRange(Exception):
     """Đoạn ngày mới không nối liền phần đã lưu (nội bộ)."""
 
 
+def site_base(wordpress_url: str) -> str:
+    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố địa chỉ trang (SL-T122-1): scheme và tên máy viết
+    thường (tên máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định và «/»
+    cuối; phần đường dẫn giữ nguyên chữ hoa, chữ thường. **Cùng luật** với ``site_prefix`` của
+    client Search Console (T-121) và ``site_base`` của gói tính toán (T-123), có chung bảng ca test;
+    ba bản nên gom về một hàm dùng chung ở T-124. Chỉ ``WORDPRESS_URL`` được chuẩn hóa: địa chỉ từ
+    Google vẫn phải viết đúng như tiền tố này. Không tách được tên máy thì chỉ bỏ «/» cuối."""
+    base = wordpress_url.rstrip("/")
+    try:
+        parts = urlsplit(base)
+        port = parts.port
+    except ValueError:
+        return base
+    host = parts.hostname
+    if not parts.scheme or not host:
+        return base
+    netloc = f"[{host}]" if ":" in host else host
+    if port is not None and not (parts.scheme == "https" and port == 443):
+        netloc = f"{netloc}:{port}"
+    return f"{parts.scheme}://{netloc}{parts.path.rstrip('/')}"
+
+
+def _utf8_ok(text: str) -> bool:
+    """Chữ mã hóa được UTF-8: không có surrogate lẻ (SQLite, mã băm đều cần UTF-8; SL-T122-3)."""
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def _check_scope(scope: object) -> None:
     if not isinstance(scope, CacheScope):
         raise SearchCacheError(MSG_BAD_SCOPE)
     for value in (scope.site_url, scope.wordpress_url):
         if not isinstance(value, str) or not value or len(value) > MAX_PAGE_CHARS:
             raise SearchCacheError(MSG_BAD_SCOPE)
-        if any(ord(ch) < 32 or ord(ch) == 127 for ch in value):
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in value) or not _utf8_ok(value):
             raise SearchCacheError(MSG_BAD_SCOPE)
 
 
@@ -616,15 +649,20 @@ def _chunk_provisional(value: object, start: date, end: date) -> date | None:
 
 
 def _stamp(moment: object, timezone: str) -> str:
-    """``fetched_at`` có múi giờ, đổi sang giờ Việt Nam để lưu (năm kiểm trước khi đổi)."""
+    """``fetched_at`` có múi giờ, đổi sang giờ Việt Nam để lưu. Năm kiểm trước khi đổi (không tràn)
+    **và** sau khi đổi: đọc lại kiểm năm của đúng mốc đã lưu, nên mốc nào ghi được thì đọc lại được
+    (năm 2000 múi +14 thành 1999 giờ Việt Nam: từ chối ngay khi ghi; SL-T122-2)."""
     if not isinstance(moment, datetime) or moment.tzinfo is None:
         raise SearchCacheError(MSG_BAD_DATA)
     try:
         if moment.utcoffset() is None or not YEAR_MIN <= moment.year <= YEAR_MAX:
             raise SearchCacheError(MSG_BAD_DATA)
-        return moment.astimezone(ZoneInfo(timezone)).isoformat()
+        stored = moment.astimezone(ZoneInfo(timezone))
     except (OverflowError, ValueError, TypeError):
         raise SearchCacheError(MSG_BAD_DATA) from None
+    if not YEAR_MIN <= stored.year <= YEAR_MAX:
+        raise SearchCacheError(MSG_BAD_DATA)
+    return stored.isoformat()
 
 
 def _numbers_ok(clicks: object, impressions: object, position_sum: object) -> bool:
@@ -641,8 +679,9 @@ def _numbers_ok(clicks: object, impressions: object, position_sum: object) -> bo
 
 
 def _page(value: object, base: str) -> str | None:
-    """Địa chỉ trang đã kiểm (``#…`` đã bỏ); ``None``: không phải trang của website ``base``."""
-    if not isinstance(value, str) or len(value) > MAX_PAGE_CHARS:
+    """Địa chỉ trang đã kiểm (``#…`` đã bỏ); ``None``: không phải trang của website ``base``, hay có
+    surrogate lẻ (``is_site_link`` không chặn, SQLite không ghi được: SL-T122-3)."""
+    if not isinstance(value, str) or len(value) > MAX_PAGE_CHARS or not _utf8_ok(value):
         return None
     page = value.split("#", 1)[0]
     if not page.startswith(base + "/") or not is_site_link(page, base):
@@ -1138,4 +1177,5 @@ __all__ = [
     "SearchCache",
     "SearchCacheError",
     "SearchCacheStore",
+    "site_base",
 ]

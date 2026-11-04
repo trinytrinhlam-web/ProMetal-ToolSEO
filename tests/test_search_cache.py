@@ -21,7 +21,7 @@ import dataclasses
 import os
 import sqlite3
 from contextlib import closing
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -42,6 +42,7 @@ from seo_app.storage.search_cache import (
     CacheScope,
     SearchCacheError,
     SearchCacheStore,
+    site_base,
 )
 
 IS_WINDOWS = os.name == "nt"
@@ -797,3 +798,70 @@ def test_sql_only_uses_constant_text_and_parameters():
         assert isinstance(first, ast.Constant | ast.Name), ast.unparse(first)
         if isinstance(first, ast.Name):  # vòng lặp qua ``_CREATE_TABLES``, ``_WIPE``
             assert first.id in ("sql", "_MASTER_SQL"), first.id
+
+
+# ============================================= lượt 2: SL-T122-1 (chuẩn hóa WORDPRESS_URL)
+
+# Bảng ca chung: giống hệt bảng ``test_site_base_lowercases_scheme_and_host_only`` của gói tính
+# toán T-123 (``seo_app.tracking.match.site_base``) và luật ``site_prefix`` của client T-121 (bỏ «/»
+# cuối). Ba bản chuẩn hóa ``WORDPRESS_URL`` phải cho cùng kết quả; khi gom về một hàm (đề xuất cho
+# T-124) thì bảng này dùng lại được.
+SITE_BASE_CASES = {
+    "hoa-dau": ("https://Suachuacuasat.com", SITE),
+    "hoa-het": ("HTTPS://SUACHUACUASAT.COM/", SITE),
+    "cong-443": ("https://suachuacuasat.com:443", SITE),
+    "duong-dan-hoa": ("https://Example.com/Blog/", "https://example.com/Blog"),
+    "cong-khac": ("https://example.com:8443/", "https://example.com:8443"),
+    "rong": ("", ""),
+    "chu-la": ("khong-phai-dia-chi", "khong-phai-dia-chi"),
+}
+
+
+@pytest.mark.parametrize(
+    ("wordpress_url", "base"), list(SITE_BASE_CASES.values()), ids=list(SITE_BASE_CASES)
+)
+def test_site_base_same_table_as_tracking(wordpress_url, base):
+    assert site_base(wordpress_url) == base
+    assert CacheScope(SCOPE.site_url, wordpress_url).base == base
+
+
+def test_same_website_spelled_differently_is_one_cache(store):
+    """``WORDPRESS_URL`` viết hoa tên máy, có cổng 443 hay «/» cuối vẫn là cùng website: cùng mã
+    băm phạm vi, lưu bằng cách viết này đọc lại bằng cách viết kia (không bỏ cache)."""
+    spellings = ["https://Suachuacuasat.com", "https://suachuacuasat.com:443", SITE + "/"]
+    digests = {CacheScope(SCOPE.site_url, url).digest for url in spellings}
+    assert digests == {SCOPE.digest}
+    store.save_days(
+        CacheScope(SCOPE.site_url, spellings[0]),
+        days_between(*OCT),
+        start=OCT[0],
+        end=OCT[1],
+        first_provisional=None,
+        fetched_at=NOW,
+        today=TODAY,
+    )
+    assert len(store.load(SCOPE).days) == 28 and store.reset_count == 0
+
+
+def test_query_fetched_at_on_year_edge_is_refused_when_saving(store):
+    """Lượt 2, SL-T122-2 (đường ``save_queries`` riêng): mốc năm 2000 múi +14 là năm 1999 giờ Việt
+    Nam, nên từ chối ngay khi ghi, không ghi rồi đọc lại bỏ cả cache."""
+    edge = datetime(2000, 1, 1, 0, 0, tzinfo=timezone(timedelta(hours=14)))
+    with pytest.raises(SearchCacheError) as caught:
+        store.save_queries(SCOPE, [], start=OCT[0], end=OCT[1], fetched_at=edge, truncated=False)
+    assert str(caught.value) == MSG_BAD_DATA
+    later = datetime(2000, 1, 1, 10, 0, tzinfo=timezone(timedelta(hours=14)))  # 2000 giờ Việt Nam
+    store.save_queries(SCOPE, [], start=OCT[0], end=OCT[1], fetched_at=later, truncated=False)
+    assert store.load(SCOPE).ranges[0].fetched_at.year == 2000
+
+
+def test_lone_surrogate_in_search_console_property_is_refused(store):
+    """Lượt 2, SL-T122-3 (thuộc tính Search Console; ca của Soi Lỗi thử ``WORDPRESS_URL``)."""
+    for action in ("load", "save"):
+        scope = CacheScope("sc-domain:suachuacuasat.com" + chr(0xD800), SITE)
+        with pytest.raises(SearchCacheError) as caught:
+            if action == "load":
+                store.load(scope)
+            else:
+                store.save_post_dates(scope, {12: TODAY})
+        assert str(caught.value) == MSG_BAD_SCOPE

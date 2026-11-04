@@ -455,14 +455,6 @@ def test_seventh_query_range_written_by_hand_drops_cache(store):
 # ================================================ SL-T122-1: WORDPRESS_URL chữ hoa, cổng 443
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T122-1: _page so tiền tố với WORDPRESS_URL nguyên văn (CacheScope.base chỉ bỏ «/» "
-        "cuối), còn client T-121 (site_prefix) và gói T-123 lượt 2 (site_base) viết thường "
-        "scheme, tên máy, bỏ cổng 443: mọi dòng client trả về đều bị cache từ chối"
-    ),
-)
 @pytest.mark.parametrize(
     "wordpress_url",
     ["https://Suachuacuasat.com", "https://suachuacuasat.com:443", "HTTPS://suachuacuasat.com/"],
@@ -532,13 +524,6 @@ EDGE_STAMPS = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T122-2: _stamp kiểm năm theo múi giờ của mốc rồi lưu theo giờ Việt Nam (1999, 2201); "
-        "_parse_time đọc lại thấy năm ngoài 2000–2200 nên bỏ cả cache vừa ghi"
-    ),
-)
 @pytest.mark.parametrize(("moment", "today"), list(EDGE_STAMPS.values()), ids=list(EDGE_STAMPS))
 def test_sl_t122_2_fetched_at_that_was_saved_can_be_read_back(store, moment, today):
     """Ghi được thì đọc lại được; không được thì phải từ chối ngay lúc ghi (câu cố định)."""
@@ -562,13 +547,6 @@ def test_sl_t122_2_fetched_at_that_was_saved_can_be_read_back(store, moment, tod
 # ======================================================= SL-T122-3: surrogate lẻ lọt lỗi Python
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T122-3: địa chỉ trang, phạm vi có surrogate lẻ qua được is_site_link, _check_scope; "
-        "SQLite (hay .encode() của mã băm) ném UnicodeEncodeError thay vì SearchCacheError"
-    ),
-)
 @pytest.mark.parametrize("case", ["ngay", "tu-khoa", "doc-pham-vi", "ghi-pham-vi"])
 def test_sl_t122_3_lone_surrogate_gives_the_fixed_message(store, case):
     page = SITE + "/a" + SURROGATE + "/"
