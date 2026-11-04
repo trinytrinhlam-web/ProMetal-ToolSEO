@@ -52,3 +52,4 @@ Một báo cáo thiết kế đủ để chia Giai đoạn 6 thành các phiếu
 
 - Lập 2026-11-03 theo chỉ đạo của chủ dự án «tạm thời mở mức tối đa cho các Agent để dùng hết hạn mức 5h» và Lộ trình Giai đoạn 6. Làm trong worktree `wt-T-120` (nhánh `team/T-120` từ `main` `29499dd`).
 - 2026-11-03 23:10 (Chỉ Huy B): Thợ Máy `3a2e9f7`; Lá Chắn rút gọn (Opus tạm, Fable hết hạn mức tuần) **ĐẠT** (`334edf1`), 24 điều kiện LC-T120-1 → -24 đã chép vào T-121, T-122, T-123 (T-124 → T-127 chép khi lập). Gộp `main`. Lập đợt 1: T-121, T-123 giao ngay, T-122 khi máy rảnh. 7 câu hỏi gửi chủ dự án; trong lúc chờ làm theo khuyến nghị. Ghi nhận FAQ (kết quả FAQ không còn hiện trên Google từ 05/2026) hỏi chủ dự án.
+- 2026-11-04 13:05 (Chỉ Huy B): chủ dự án trả lời 04/11: **câu 1 A** (trang mới «📈 Theo dõi» giữa Kế hoạch và Cài đặt), **câu 7 B** (nút «Đưa vào kế hoạch», T-127), câu 2–6 làm theo khuyến nghị A tới khi chủ dự án đổi; **giữ schema FAQ** như hiện tại.

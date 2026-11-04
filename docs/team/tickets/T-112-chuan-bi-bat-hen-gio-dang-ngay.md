@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (bắt buộc trước khi bật công tắc) |
 | Phụ thuộc | T-102 đã gộp `main` |
-| Trạng thái | Đang kiểm (Lá Chắn lượt 3) |
+| Trạng thái | Xong (gộp `main` 2026-11-04; công tắc vẫn tắt tới buổi thử thật) |
 
 ## Mục tiêu
 
@@ -56,3 +56,4 @@ LC-T094-23, -39, -41, -44; điều kiện trong `docs/team/reports/T-102-la-chan
 - 2026-10-31 13:32 (Chỉ Huy B): giao Họa Sĩ 09:40 (nhánh từ `d6df633`). Chỉ Huy chọn **A** cho công tắc: chỉ trong phiên (`st.session_state`), tick «Tôi hiểu…», tắt khi tải lại/tắt app, không ghi file; Lá Chắn đầy đủ T-112 xác nhận. Yêu cầu 3 (`modified_gmt`) tách sang T-115. Họa Sĩ xong (`f598cef`: Đăng ngay chỉ khi ảnh đại diện và SEO đã lên; Hẹn giờ cảnh báo; tab «📅 Hẹn giờ, đăng»; G1; nhãn gửi lại), Thư Ký README mục 11 (`245e199`).
 - 2026-11-03 12:33 (Chỉ Huy B): Họa Sĩ lượt 2 (`ef582ff`: gộp `main`, T-115; 3 test giao diện; bị từ chối rõ thì ghi «Đã gửi nháp» — Chỉ Huy đồng ý). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`b4f7900`): SL-T112-1 (Trung bình), SL-T112-2, -3 (Thấp, README); sửa trước khi bật công tắc. Lá Chắn đầy đủ bằng Fable, kiêm T-116 nhóm 2.
 - 2026-11-03 23:10 (Chỉ Huy B): Lá Chắn đầy đủ (Fable, `7e8af87`) ĐẠT CÓ ĐIỀU KIỆN: gộp `main` được khi công tắc tắt; SL-T112-1 sửa trước khi bật. Lượt 3: Họa Sĩ `58d5326` (SL-T112-1, R5), Thư Ký `746ba9d`. Soi Lỗi lượt 3 ĐẠT CÓ ĐIỀU KIỆN (`7186974`): SL-T112-1, -2, -3 đóng; SL-T112-4 (Thấp, README) sửa trước khi bật công tắc. Lá Chắn lượt 3 chạy **Opus tạm** (hạn mức Fable tuần hết tới 04/11 10:00).
+- 2026-11-04 13:05 (Chỉ Huy B): Lá Chắn lượt 3 (Opus tạm, `c48617a`) ĐẠT CÓ ĐIỀU KIỆN, gộp được ngay. Gộp `main` (`33bac10`), Windows 22.536 test qua, 0 hỏng. Thư Ký lượt 4 (`97d0bc4`): README SL-T112-4, gỡ xfail; gộp `main`, chạy lại `test_soi_loi_t112` + test README: 72 qua, 2 xfail. Còn trước khi bật công tắc: buổi thử thật LC-T094-44 cùng chủ dự án; Lá Chắn Fable đọc lại phần code lượt 3 (khuyến nghị).

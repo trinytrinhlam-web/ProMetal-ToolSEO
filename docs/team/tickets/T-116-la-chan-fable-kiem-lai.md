@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (bảo mật) |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | Chủ dự án chọn 02/11: «Phần nhạy cảm trước» |
-| Trạng thái | Đang làm (nhóm 5, chờ hạn mức Fable) |
+| Trạng thái | Xong (2026-11-04, 5 nhóm) |
 
 ## Mục tiêu
 
@@ -40,3 +40,4 @@ Từ 2026-10-15 Fable 5.1 bị giới hạn tới 01/11, nên mọi biên bản 
 - 2026-11-02 17:23 (Chỉ Huy B): nhóm 3 xong (`c73fc21`, Fable 5.1): ĐẠT CÓ ĐIỀU KIỆN, 0 lỗi mới, 20 biên bản Opus (42 phát hiện) không sai; LC-T090-1 lẽ ra Trung bình (đã đóng ở T-104). Điều kiện hành chính: Thấp cũ lớp AI (LC-T034-1..3) → T-118; hai đề nghị «ghi sổ» (T-016-020 #5 `parse_stream`, T-022-024 #3) → Thư Ký `security.md` §6; `client.showErrorDetails` → chủ dự án chọn 02/11 «chỉ hiện loại lỗi» (T-118). Giao nhóm 4.
 - 2026-11-03 12:33 (Chỉ Huy B): nhóm 4 xong (`5fe5c4d`): ĐẠT CÓ ĐIỀU KIỆN, 0 lỗi mới, 13 biên bản Opus không sai; LC-T113-2 → T-118. Biên bản nhóm 1, 3, 4 đã gộp `main` (`33dd87f`). Nhóm 2 (WordPress, đăng bài) giao cùng Lá Chắn đầy đủ T-112 (nhánh T-112 chứa T-102, T-110, T-115).
 - 2026-11-03 23:10 (Chỉ Huy B): nhóm 2 xong cùng Lá Chắn đầy đủ T-112 (`7e8af87`, nhánh `team/T-112`): ĐẠT CÓ ĐIỀU KIỆN, 0 lỗi mới, Opus không sai. Giao **nhóm 5** (phần «còn lại»: `seo_app/content/**`, `seo_app/onpage/**`, `text.py`, `ui.py`, kho nháp ngoài `SendState`, `write.py` bước 1–4, `config/*.toml`, bộ chặn mạng của test). Biên bản gần xong (chưa thấy lỗi mới) thì hết hạn mức Fable tuần (18:15); chạy tiếp sau 04/11 10:00, không đổi model giữa biên bản.
+- 2026-11-04 13:05 (Chỉ Huy B): nhóm 5 xong (`0989d36`): ĐẠT CÓ ĐIỀU KIỆN, 0 lỗi mới, 30 biên bản Opus (36 LC, 44 SL) giữ cả. Phần đọc mã, probe, bộ chặn mạng chạy Fable 03/11; phần đối chiếu, test, kết luận chạy **Opus 5.5** theo chủ dự án 04/11 08:20 («Sử dụng opus 5.5 đi»). Việc cũ còn mở (đã có chỗ theo dõi): SL-T045-1, -2 (T-057 hoãn), T-059 ĐK3 srcset (buổi thử thật), Mac (T-063, uv), T-053, schema FAQ lên website (T-041 ĐK3). Gộp `main`.
