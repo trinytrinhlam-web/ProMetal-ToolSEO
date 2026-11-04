@@ -30,6 +30,13 @@ Client tạo mới cho **mỗi** thao tác (``from_settings`` kiểm lại file 
 không giữ qua các lần bấm (không ``st.cache_resource``). Dữ liệu đọc từ Sheet là **chưa tin
 cậy**: client chỉ kiểm khuôn (≤ 1.001 dòng, ≤ 26 cột, ô là chữ/số/đúng-sai); nơi dùng phải qua
 ``PlanRow`` (T-098, T-100).
+
+**Lớp vận chuyển dùng chung** (T-121, LC-T120-18): client Search Console
+(``seo_app/google/search_console.py``) nhập từ module này ``_TokenRequest`` (gắn sẵn ``_NoAuth``),
+``_refuse_redirect``, ``_read_limited``, ``_Bearer``, ``_Redirected``, ``_TooLarge``,
+``_close_and_status``, ``_refresh_message``, ``_TOKEN``, ``_MSG_AUTH``, ``_MSG_AUTH_NETWORK``. Sửa
+một trong các phần đó phải chạy test của **cả hai** client: ``tests/test_google_sheets.py`` và
+``tests/test_google_search_console.py``.
 """
 
 from __future__ import annotations

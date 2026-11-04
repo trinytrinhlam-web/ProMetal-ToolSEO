@@ -1,4 +1,5 @@
-"""Google giả cho test (T-097): máy chủ mã ``oauth2.googleapis.com`` và Sheets REST v4.
+"""Google giả cho test (T-097): máy chủ mã ``oauth2.googleapis.com``, Sheets REST v4 và (T-121)
+Search Console REST (``www.googleapis.com/webmasters/v3``).
 
 Gắn vào ``requests.Session`` như ``FakeWordPress``; không gọi mạng thật (bộ chặn mạng của
 ``tests/conftest.py`` vẫn bật). Khác ``FakeWordPress``: tìm đường theo **địa chỉ đầy đủ** (máy chủ
@@ -25,6 +26,8 @@ from requests.structures import CaseInsensitiveDict
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SHEETS = "https://sheets.googleapis.com/v4/spreadsheets/"
 SHEET_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-xyz"  # mã giả, đúng dạng
+SEARCH_CONSOLE = "https://www.googleapis.com/webmasters/v3/"  # T-121
+SC_SITES = SEARCH_CONSOLE + "sites"
 EMAIL = "seo-app@du-an-thu.iam.gserviceaccount.com"  # email giả
 ACCESS_TOKEN = "ya29.ma-truy-cap-gia"
 
@@ -100,6 +103,9 @@ class FakeGoogle(BaseAdapter):
 
     def token_requests(self) -> list[requests.PreparedRequest]:
         return [r for r in self.requests if r.url == TOKEN_URL]
+
+    def search_console_requests(self) -> list[requests.PreparedRequest]:
+        return [r for r in self.requests if r.url.startswith(SEARCH_CONSOLE)]
 
     def on(self, method: str, url: str, handler: Handler | Any) -> None:
         self.routes[(method, url)] = handler if callable(handler) else (lambda _r: handler)
