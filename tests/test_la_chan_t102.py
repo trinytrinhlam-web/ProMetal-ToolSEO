@@ -53,6 +53,11 @@ def _featured_answer(live, status: int) -> None:
 
 def _publish_now(project_root):
     at, _pid = ui.ready_image(project_root)
+    # R5 SL-T112-1 (Chỉ Huy 03/11): chữ SEO hợp lệ; bài mẫu chưa có thì Đăng ngay bị Chặn.
+    at.session_state["seo_title_versions"] = ["Sửa cổng inox tại nhà, thợ tới tận nơi"]
+    at.session_state["seo_title_ver"] = 0
+    at.session_state["seo_description_versions"] = ["Thợ tới tận nơi, báo giá trước."]
+    at.session_state["seo_description_ver"] = 0
     t102.to_mode(at, "Đăng ngay")
     t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
     t102.confirm(at)

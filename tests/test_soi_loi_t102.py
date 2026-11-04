@@ -150,6 +150,12 @@ def test_sua_roi_bam_trong_cung_lan_chay_khong_gui(project_root, root, fake_ai, 
 def test_sua_sau_khi_tick_thi_bo_tick(project_root, root, fake_ai, live, monkeypatch, what):
     calls = spy_release(monkeypatch)
     at, _pid = ui.ready_image(project_root)
+    # R5 SL-T112-1 (Chỉ Huy 03/11): chữ SEO hợp lệ để nút khóa là do bỏ tick (bài mẫu chưa có
+    # thì Đăng ngay bị Chặn sẵn).
+    at.session_state["seo_title_versions"] = ["Sửa cổng inox tại nhà, thợ tới tận nơi"]
+    at.session_state["seo_title_ver"] = 0
+    at.session_state["seo_description_versions"] = ["Thợ tới tận nơi, báo giá trước."]
+    at.session_state["seo_description_ver"] = 0
     t102.to_mode(at, PUBLISH)
     ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
     t102.confirm(at)
@@ -225,10 +231,6 @@ def test_lenh_chuyen_la_lenh_cuoi_sau_moi_lenh_anh(project_root, root, fake_ai, 
 
 
 # ================================================================ 5. SL-T102-1
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T102-1: Đăng ngay mà lệnh ghi SEO hỏng lúc gửi vẫn đăng công khai (LC-T094-39)",
-)
 @pytest.mark.parametrize("failure", ["loi-500", "khong-ghi-duoc", "chua-bat-abilities"])
 def test_sl_t102_1_dang_ngay_ma_seo_ghi_hong_thi_khong_dang(project_root, root, fake_ai, live,
                                                            monkeypatch, failure):
@@ -246,6 +248,12 @@ def test_sl_t102_1_dang_ngay_ma_seo_ghi_hong_thi_khong_dang(project_root, root, 
 
     monkeypatch.setattr(WordPressClient, "set_seo_meta", seo)
     at, _pid = ui.ready_image(project_root)
+    # R5 SL-T112-1 (Chỉ Huy 03/11): chữ SEO hợp lệ để còn đi tới lệnh ghi SEO (bài mẫu chưa có
+    # thì Đăng ngay bị Chặn ngay ở màn hình xác nhận).
+    at.session_state["seo_title_versions"] = ["Sửa cổng inox tại nhà, thợ tới tận nơi"]
+    at.session_state["seo_title_ver"] = 0
+    at.session_state["seo_description_versions"] = ["Thợ tới tận nơi, báo giá trước."]
+    at.session_state["seo_description_ver"] = 0
     t102.to_mode(at, PUBLISH)
     ui.run_ok(at.toggle(key="seo_write").set_value(True).run())
     t102.confirm(at)

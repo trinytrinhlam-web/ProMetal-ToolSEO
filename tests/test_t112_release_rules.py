@@ -1,0 +1,422 @@
+"""T-112 (Họa Sĩ): chuẩn bị bật Hẹn giờ / Đăng ngay (công tắc vẫn mặc định tắt).
+
+- Một luật chung cho SL-T102-1 và LC-T102-1 (LC-T094-38, -39): **Đăng ngay** chỉ gửi lệnh đăng khi
+  ảnh đại diện (bài có ảnh) và SEO (bật «Ghi SEO lên website») đã lên website; thiếu thì bài vẫn là
+  nháp, câu báo cố định nói phần nào chưa lên. **Hẹn giờ**: vẫn hẹn giờ, cảnh báo rõ (còn sửa được
+  trước giờ đăng). Ca hỏng gốc: ``tests/test_la_chan_t102.py``, ``tests/test_soi_loi_t102.py``.
+- Lệnh chuyển không rõ kết quả: không ghi trạng thái vào dòng kế hoạch (G1 Lá Chắn T-102).
+- Ô «gửi lại» nói đúng việc sẽ làm khi đang chọn Hẹn giờ / Đăng ngay.
+- Lúc bấm gửi xét lại công tắc (G2 Lá Chắn T-102).
+- T-115 (LC-T094-23): bài nháp bị sửa ngoài app sau lần ghi cuối của phần mềm thì client không
+  chuyển (``ReleaseError``, không «không rõ»): trang báo câu cố định, bài vẫn là nháp, không khóa
+  «có thể đã gửi», dòng kế hoạch không mang trạng thái chuyển.
+- SL-T112-1: bật «Ghi SEO» mà tiêu đề hay mô tả SEO trống hoặc đang «Chặn» (lệnh ghi bỏ trường
+  đó): Đăng ngay có dòng **Chặn** ở màn hình xác nhận (nút khóa), Hẹn giờ cảnh báo; chốt thứ hai
+  ``release_missing`` coi trường bị bỏ là SEO chưa lên. Từ khóa chính bị bỏ thì không chặn.
+
+Khung test (WordPress giả ``live``, Google Sheet giả ``plan``, công tắc bật trong test) mượn của
+``tests/test_t102_publish.py``. Không gọi WordPress, Google, AI thật.
+"""
+
+from __future__ import annotations
+
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
+import streamlit as st
+import test_app_images as ui
+import test_t102_publish as t102
+
+from seo_app.storage.plan_cache import sheet_hash
+from seo_app.text import escape_markdown
+from seo_app.wordpress.client import SeoWriteResult, WordPressClient
+
+# Fixture dùng chung (mật khẩu thử, ảnh, AI giả, WordPress giả, Google Sheet giả).
+env = ui.env
+previews = ui.previews
+fake_ai = ui.fake_ai
+root = ui.root
+site = ui.site
+live = t102.live
+site_cache = t102.site_cache
+private_key = t102.private_key
+plan = t102.plan
+
+SCHEDULE, PUBLISH = "Hẹn giờ", "Đăng ngay"
+HELD = "Chưa đăng bài: "
+FEATURED = "ảnh đại diện"
+SEO = "SEO (tiêu đề, mô tả, từ khóa chính trong hộp SiteSEO)"
+TITLE_OK, DESC_OK = "Sửa cổng inox tại nhà, thợ tới tận nơi", "Thợ tới tận nơi, báo giá trước."
+BLOCKED = "Sửa cổng [gallery] inox tại nhà"  # dạng shortcode: bước SEO báo «Chặn» (T-061)
+LEFT_OUT = {"title": "tiêu đề SEO", "description": "mô tả SEO"}
+
+
+def seo_texts(at, *, title: str = TITLE_OK, description: str = DESC_OK) -> None:
+    """Chữ SEO đang dùng ở bước SEO (bài mẫu chưa có: bật «Ghi SEO» là trống, SL-T112-1)."""
+    at.session_state["seo_title_versions"] = [title]
+    at.session_state["seo_title_ver"] = 0
+    at.session_state["seo_description_versions"] = [description]
+    at.session_state["seo_description_ver"] = 0
+
+
+def seo_like_client(monkeypatch, calls: list) -> None:
+    """``set_seo_meta`` như client thật: ghi các trường còn chữ, báo đã ghi các trường đó."""
+
+    def seo(self, post_id, **fields):
+        calls.append(fields)
+        sent = tuple(name for name, value in fields.items() if value)
+        return SeoWriteResult(bool(sent), "meta", sent, message="Đã ghi SEO vào hộp SiteSEO.")
+
+    monkeypatch.setattr(WordPressClient, "set_seo_meta", seo)
+
+
+def seo_answer(monkeypatch, written: bool) -> None:
+    def seo(self, post_id, **fields):
+        if written:
+            return SeoWriteResult(True, route="meta", message="Đã ghi SEO vào hộp SiteSEO.")
+        return SeoWriteResult(False, reason="unavailable", message="SiteSEO chưa cho ghi SEO.")
+
+    monkeypatch.setattr(WordPressClient, "set_seo_meta", seo)
+
+
+def featured_answer(live, status: int) -> None:
+    """Lệnh đặt ảnh đại diện trả ``status``; lệnh khác vào bài 501 (đăng, hẹn giờ) như site giả."""
+
+    def post_post(request):
+        body = ui.body_of(request) or {}
+        if "featured_media" in body and status != 200:
+            return (status, {"code": "internal_server_error", "message": t102.BAIT}, {})
+        return {"id": t102.POST_ID, "status": "draft", **body}
+
+    live.site.fake.on("POST", t102.POST, post_post)
+
+
+def send(project_root, mode: str, *, seo_write: bool = False):
+    at, _pid = ui.ready_image(project_root)
+    if seo_write:
+        seo_texts(at)
+    t102.to_mode(at, mode)
+    if seo_write:
+        t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    t102.confirm(at)
+    assert not t102.send_button(at).disabled
+    return t102.run_ok(t102.send_button(at).click().run())
+
+
+def warnings(at) -> str:
+    return "\n".join(w.value for w in at.warning)
+
+
+# ============================================================ Đăng ngay: luật chung
+
+
+def test_publish_held_when_featured_and_seo_missing_names_both(
+    project_root, root, fake_ai, live, monkeypatch
+):
+    """Ảnh đại diện hỏng **và** SEO không ghi được: không lệnh đăng; câu báo nêu cả hai phần, bài
+    vẫn là nháp; nháp ghi «đã gửi nháp, chưa đăng» (không khóa «không rõ»), không lời lỗi gốc."""
+    seo_answer(monkeypatch, written=False)
+    featured_answer(live, 500)
+    at = send(project_root, PUBLISH, seo_write=True)
+    assert t102.release_bodies(live.site) == []
+    shown = warnings(at)
+    held = escape_markdown(f"{HELD}{FEATURED}, {SEO} chưa lên website lúc gửi")
+    assert held in shown and f"mã {t102.POST_ID}" in shown
+    assert not any(t102.BAIT in text for text in ui.texts(at))
+    saved = ui.store().load_send_state(at.session_state["draft_id"])
+    assert (saved.mode, saved.released, saved.release_unknown, saved.pending) == (
+        "publish",
+        False,
+        False,
+        False,
+    )
+    t102.run_ok(at.run())
+    assert any("chưa hẹn giờ/đăng" in i.value for i in at.info)
+    assert not any("có thể đã" in e.value for e in at.error)
+
+
+def test_publish_held_when_only_seo_missing(project_root, root, fake_ai, live, monkeypatch):
+    """SEO không ghi được, ảnh đại diện đặt được: không đăng, câu báo chỉ nêu phần SEO."""
+    seo_answer(monkeypatch, written=False)
+    at = send(project_root, PUBLISH, seo_write=True)
+    assert t102.release_bodies(live.site) == []
+    shown = warnings(at)
+    assert escape_markdown(f"{HELD}{SEO} chưa lên website") in shown
+    assert escape_markdown(f"{HELD}{FEATURED}") not in shown
+
+
+def test_publish_goes_when_everything_landed(project_root, root, fake_ai, live, monkeypatch):
+    """Đối chứng: ảnh đại diện đặt được, SEO ghi được thì vẫn đăng (không chặn oan)."""
+    seo_answer(monkeypatch, written=True)
+    at = send(project_root, PUBLISH, seo_write=True)
+    assert t102.release_bodies(live.site) == [{"status": "publish"}]
+    assert any("Đã đăng bài công khai" in s.value for s in at.success)
+    assert HELD not in warnings(at)
+
+
+# ============================================================ Hẹn giờ: cảnh báo, người dùng quyết
+
+
+def test_schedule_goes_on_but_warns_what_is_missing(project_root, root, fake_ai, live, monkeypatch):
+    """Hẹn giờ mà SEO chưa ghi lên được (SiteSEO chưa cho ghi): vẫn hẹn giờ (còn sửa được trước giờ
+    đăng), cảnh báo rõ phần chưa lên và việc cần làm trước giờ đăng."""
+    seo_answer(monkeypatch, written=False)
+    at = send(project_root, SCHEDULE, seo_write=True)
+    when = t102.tomorrow_8am_utc()
+    assert t102.release_bodies(live.site) == [
+        {"status": "future", "date_gmt": t102.date_gmt_text(when)}
+    ]
+    assert any("Đã hẹn giờ đăng bài" in s.value for s in at.success)
+    assert escape_markdown(f"Bài đã hẹn giờ nhưng {SEO} chưa lên website") in warnings(at)
+
+
+def test_schedule_with_featured_failure_is_refused_by_client(project_root, root, fake_ai, live):
+    """Sau T-115: lệnh đặt ảnh đại diện lỗi (500) thì client không biết chắc bài nháp có bị sửa
+    không nên **không** hẹn giờ (chặt hơn luật «Hẹn giờ vẫn hẹn, cảnh báo» của T-112): bài vẫn là
+    nháp, câu cố định của client, không khóa «có thể đã gửi», không lời máy chủ."""
+    featured_answer(live, 500)
+    at = send(project_root, SCHEDULE)
+    assert t102.release_bodies(live.site) == []
+    shown = warnings(at)
+    assert escape_markdown("Chưa hẹn giờ, chưa đăng: bài vẫn là nháp.") in shown
+    assert "Bài đã hẹn giờ nhưng" not in shown
+    assert not any("có thể đã" in e.value for e in at.error)
+    assert not any(t102.BAIT in text for text in ui.texts(at))
+    saved = ui.store().load_send_state(at.session_state["draft_id"])
+    assert (saved.released, saved.release_unknown, saved.pending) == (False, False, False)
+
+
+def test_schedule_without_missing_parts_has_no_extra_warning(project_root, root, fake_ai, live):
+    at = send(project_root, SCHEDULE)
+    assert len(t102.release_bodies(live.site)) == 1
+    assert "Bài đã hẹn giờ nhưng" not in warnings(at)
+
+
+# ============================================================ SL-T112-1: trường SEO bị bỏ khỏi lệnh
+
+
+def to_confirmed(project_root, mode: str, **texts):
+    """Bài có chữ SEO ``texts``, bật «Ghi SEO», chọn ``mode``, đã tick xác nhận."""
+    at, _pid = ui.ready_image(project_root)
+    seo_texts(at, **texts)
+    t102.to_mode(at, mode)
+    t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    return t102.confirm(at)
+
+
+def click_through_lock(monkeypatch) -> None:
+    """Cú bấm lọt qua nút gửi đang khóa (bấm đúp đúng lúc nút vừa khóa, SL-T056-1): Streamlit vẫn
+    báo nút đã bấm. AppTest không cho bấm nút khóa nên giả ở ``st.button``."""
+    original = st.button
+
+    def button(label, *args, **kwargs):
+        clicked = original(label, *args, **kwargs)
+        return True if kwargs.get("key") == "wp-send" else clicked
+
+    monkeypatch.setattr(st, "button", button)
+
+
+@pytest.mark.parametrize(
+    ("field", "text"),
+    [("title", BLOCKED), ("description", BLOCKED), ("title", ""), ("description", "")],
+    ids=["tieu-de-chan", "mo-ta-chan", "tieu-de-trong", "mo-ta-trong"],
+)
+def test_publish_blocked_when_seo_field_left_out(
+    project_root, root, fake_ai, live, monkeypatch, field, text
+):
+    """Bật «Ghi SEO» mà tiêu đề hay mô tả SEO đang «Chặn» (hay trống): lệnh ghi bỏ trường đó nên
+    bài sẽ lên công khai với SEO mặc định. Đăng ngay có dòng **Chặn** ở màn hình xác nhận, nút khóa
+    dù đã tick; cú bấm lọt qua nút khóa (bấm đúp) cũng không gửi gì lên website."""
+    calls: list = []
+    seo_like_client(monkeypatch, calls)
+    at = to_confirmed(project_root, PUBLISH, **{field: text})
+    blocked = escape_markdown(f"Đăng ngay mà {LEFT_OUT[field]} sẽ không ghi lên website")
+    assert any(blocked in e.value for e in at.error)
+    assert t102.send_button(at).disabled
+    click_through_lock(monkeypatch)
+    t102.run_ok(at.run())
+    assert [r for r in live.site.fake.requests if r.method != "GET"] == [] and calls == []
+    assert ui.store().load_send_state(at.session_state["draft_id"]) is None
+
+
+def test_publish_names_both_seo_fields_left_out(project_root, root, fake_ai, live):
+    at = to_confirmed(project_root, PUBLISH, title=BLOCKED, description="")
+    both = escape_markdown("Đăng ngay mà tiêu đề SEO, mô tả SEO sẽ không ghi lên website")
+    assert any(both in e.value for e in at.error)
+    assert t102.send_button(at).disabled
+
+
+def test_schedule_with_seo_field_left_out_warns_and_goes_on(
+    project_root, root, fake_ai, live, monkeypatch
+):
+    """Hẹn giờ (Lá Chắn T-112: giữ cảnh báo): tiêu đề SEO đang «Chặn» thì màn hình xác nhận chỉ
+    cảnh báo; gửi thì ghi phần SEO còn lại (bỏ tiêu đề), vẫn hẹn giờ, rồi cảnh báo tiêu đề SEO
+    chưa lên website: client báo đã ghi (ghi một phần) nhưng ``release_missing`` xét cả trường bị
+    bỏ (chốt thứ hai)."""
+    calls: list = []
+    seo_like_client(monkeypatch, calls)
+    at = to_confirmed(project_root, SCHEDULE, title=BLOCKED)
+    left_out = escape_markdown("Hẹn giờ mà tiêu đề SEO sẽ không ghi lên website")
+    assert any(left_out in w.value for w in at.warning)
+    assert not any("sẽ không ghi lên website" in e.value for e in at.error)
+    assert not t102.send_button(at).disabled
+    at = t102.run_ok(t102.send_button(at).click().run())
+    assert calls and calls[0]["title"] == "" and calls[0]["description"] == DESC_OK
+    when = t102.tomorrow_8am_utc()
+    assert t102.release_bodies(live.site) == [
+        {"status": "future", "date_gmt": t102.date_gmt_text(when)}
+    ]
+    shown = warnings(at)
+    assert escape_markdown("Bài đã hẹn giờ nhưng tiêu đề SEO chưa lên website lúc gửi") in shown
+
+
+def test_publish_goes_when_only_focus_keyword_left_out(
+    project_root, root, fake_ai, live, monkeypatch
+):
+    """Từ khóa chính không hiện công khai: bị bỏ khỏi lệnh ghi (ký tự lạ, bước SEO báo «Chặn»)
+    thì không chặn Đăng ngay (Lá Chắn T-112), tiêu đề, mô tả đủ thì vẫn đăng."""
+    calls: list = []
+    seo_like_client(monkeypatch, calls)
+    at, _pid = ui.ready_image(project_root)
+    seo_texts(at)
+    at.session_state["keyword"] = "sửa cổng inox" + chr(0xE000)  # ký tự riêng: không ghi được
+    t102.to_mode(at, PUBLISH)
+    t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    t102.confirm(at)
+    assert not t102.send_button(at).disabled
+    at = t102.run_ok(t102.send_button(at).click().run())
+    assert calls and calls[0]["focus_keyword"] == "" and calls[0]["title"]
+    assert t102.release_bodies(live.site) == [{"status": "publish"}]
+    assert any("Đã đăng bài công khai" in s.value for s in at.success)
+
+
+# ============================================================ dòng kế hoạch (G1)
+
+
+def test_unsure_release_does_not_write_plan_status(project_root, live, plan):
+    """G1 Lá Chắn T-102: lệnh hẹn giờ không rõ kết quả (504): không ghi gì vào dòng kế hoạch (cả
+    «Đã gửi nháp»), không để việc còn nợ; câu báo cố định."""
+    live.answers = [t102.answer(504, {"code": "gateway_timeout", "message": t102.BAIT})]
+    at = t102.open_snap(project_root, t102.plan_article("9" * 32))
+    t102.to_mode(at, SCHEDULE)
+    t102.confirm(at)
+    t102.run_ok(t102.send_button(at).click().run())
+    assert len(t102.release_bodies(live.site)) == 1
+    assert plan.reads == 0 and plan.updates == []
+    assert ui.store().list_plan_writes() == []
+    message = escape_markdown("Chưa ghi trạng thái vào dòng kế hoạch B-001: chưa rõ bài")
+    assert any(message in i.value for i in at.info)
+    assert at.session_state["_plan_ref"].sheet_hash == sheet_hash(t102.SHEET_ID)
+
+
+def test_held_publish_writes_draft_sent_to_plan(project_root, live, plan, monkeypatch):
+    """Đăng ngay bị giữ là nháp (SEO chưa lên): dòng kế hoạch ghi đúng «Đã gửi nháp»."""
+    seo_answer(monkeypatch, written=False)
+    at = t102.open_snap(project_root, t102.plan_article("a" * 31 + "9"))
+    seo_texts(at)
+    t102.to_mode(at, PUBLISH)
+    t102.run_ok(at.toggle(key="seo_write").set_value(True).run())
+    t102.confirm(at)
+    t102.run_ok(t102.send_button(at).click().run())
+    assert t102.release_bodies(live.site) == []
+    assert plan.cell(2, t102.COL["status"]) == t102.plan_model.STATUS_DRAFT_SENT
+
+
+# ============================================================ ô «gửi lại», công tắc lúc bấm
+
+
+def test_again_box_says_what_it_will_do(project_root, root, fake_ai, live, monkeypatch):
+    """Ghi nhận 2 Lá Chắn T-102: bài đã gửi, đang chọn Đăng ngay thì ô «gửi lại» nói rõ sẽ tạo bài
+    mới **và đăng công khai ngay**; chọn Hẹn giờ thì nói hẹn giờ; Nháp giữ chữ cũ."""
+    seo_answer(monkeypatch, written=True)
+    at = send(project_root, PUBLISH, seo_write=True)
+    box = at.checkbox(key="_wp_again")
+    assert box.label == "Tạo thêm một bài mới và đăng công khai ngay bài mới đó"
+    assert any("**đăng công khai ngay** bài đó" in i.value for i in at.info)
+    t102.run_ok(at.segmented_control(key="_wp_mode").set_value(SCHEDULE).run())
+    assert at.checkbox(key="_wp_again").label == "Tạo thêm một bài mới và hẹn giờ đăng bài mới đó"
+    t102.run_ok(at.segmented_control(key="_wp_mode").set_value("Nháp").run())
+    assert at.checkbox(key="_wp_again").label == "Tạo thêm một bài nháp mới"
+
+
+def test_switch_turned_off_at_click_sends_nothing(project_root, root, fake_ai, live, monkeypatch):
+    """G2 Lá Chắn T-102: công tắc bị tắt đúng lúc bấm (tab khác, Cài đặt) sau khi màn hình xác nhận
+    đã hiện: ``send_draft`` xét lại công tắc, không gửi gì lên website, báo rõ."""
+    at, _pid = ui.ready_image(project_root)
+    t102.to_mode(at, SCHEDULE)
+    t102.confirm(at)
+    label = t102.send_button(at).label
+    original = st.button
+
+    def click_after_switch_off(text, *args, **kwargs):
+        clicked = original(text, *args, **kwargs)
+        if text == label:
+            st.session_state[t102.SWITCH] = False  # tab khác vừa tắt công tắc
+            return True
+        return clicked
+
+    monkeypatch.setattr(st, "button", click_after_switch_off)
+    t102.run_ok(at.run())
+    assert live.site.fake.requests == []
+    assert any("Hẹn giờ và Đăng ngay đang tắt" in e.value for e in at.error)
+
+
+# ============================================================ T-115: bài bị sửa ngoài app
+
+CHANGED = "2026-10-31T02:00:00"  # giờ sửa mới: ai đó vừa «Lưu nháp» trong trang quản trị
+RELEASE_CHANGED = "Chưa hẹn giờ, chưa đăng: bài vẫn là nháp."
+
+
+def edited_outside(live) -> None:
+    """Lệnh kiểm nháp ngay trước lệnh chuyển (``_fields=id,status,modified_gmt``) thấy giờ sửa
+    khác giờ website trả ở lần ghi cuối của phần mềm; các lệnh đọc khác thấy giờ cũ."""
+
+    def get_post(request):
+        fields = parse_qs(urlsplit(request.url).query).get("_fields", [""])[0]
+        modified = CHANGED if fields == "id,status,modified_gmt" else ui.MODIFIED
+        body = {"id": t102.POST_ID, "status": "draft", "modified_gmt": modified}
+        return (200, body, {"Date": t102.http_date()})
+
+    live.site.fake.on("GET", t102.POST, get_post)
+
+
+def assert_still_draft_not_locked(at, live) -> None:
+    assert t102.release_bodies(live.site) == []
+    assert escape_markdown(RELEASE_CHANGED) in warnings(at)
+    assert not any("có thể đã" in e.value for e in at.error)
+    saved = ui.store().load_send_state(at.session_state["draft_id"])
+    assert (saved.released, saved.release_unknown, saved.pending) == (False, False, False)
+    assert saved.post_id == t102.POST_ID
+    t102.run_ok(at.run())
+    assert any("chưa hẹn giờ/đăng" in i.value for i in at.info)
+    assert not any("có thể đã" in e.value for e in at.error)
+
+
+@pytest.mark.parametrize("mode", [SCHEDULE, PUBLISH])
+def test_post_edited_outside_after_last_write_is_not_released(
+    project_root, root, fake_ai, live, monkeypatch, mode
+):
+    """T-115 (LC-T094-23): bài nháp bị sửa ngoài app sau lần ghi cuối: Hẹn giờ, Đăng ngay đều
+    không gửi lệnh chuyển; câu cố định của client (không lời máy chủ); bài vẫn là nháp, nháp ghi
+    «đã gửi nháp, chưa hẹn giờ/đăng», không khóa «có thể đã gửi»."""
+    seo_answer(monkeypatch, written=True)
+    edited_outside(live)
+    at = send(project_root, mode, seo_write=mode == PUBLISH)
+    assert_still_draft_not_locked(at, live)
+    assert not any(t102.BAIT in text for text in ui.texts(at))
+
+
+def test_post_edited_outside_plan_row_gets_no_release_status(project_root, live, plan):
+    """Dòng kế hoạch không mang trạng thái chuyển («Đã hẹn giờ», «Đã đăng») khi lệnh chuyển bị
+    từ chối vì bài bị sửa ngoài app: bài thật sự vẫn là nháp nên dòng ghi đúng «Đã gửi nháp» kèm
+    Mã bài WordPress (G1 chỉ không ghi khi lệnh chuyển **không rõ** kết quả)."""
+    edited_outside(live)
+    at = t102.open_snap(project_root, t102.plan_article("b" * 31 + "9"))
+    t102.to_mode(at, SCHEDULE)
+    t102.confirm(at)
+    t102.run_ok(t102.send_button(at).click().run())
+    assert t102.release_bodies(live.site) == []
+    status = plan.cell(2, t102.COL["status"])
+    assert status == t102.plan_model.STATUS_DRAFT_SENT
+    assert status not in (t102.plan_model.STATUS_SCHEDULED, t102.plan_model.STATUS_PUBLISHED)
+    assert plan.cell(2, t102.COL["wp_post_id"]) == t102.POST_ID
