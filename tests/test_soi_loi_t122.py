@@ -655,3 +655,77 @@ def test_cache_rows_go_through_t123_without_being_dropped(store):
     cuon = next(page for page in tracking.pages if page.item.id == 12)
     rows = keywords.page_queries(cache.queries, site=SITE, key=cuon.key, period=period)
     assert len(rows) == 3 and keywords.keyword_table(rows).skipped == 0
+
+
+# ============================ lượt 2: chuẩn hóa WORDPRESS_URL không nới lớp chặn (SL-T122-1 đã sửa)
+
+SPELLINGS = [
+    "https://suachuacuasat.com",
+    "https://Suachuacuasat.com",
+    "HTTPS://SUACHUACUASAT.COM/",
+    "https://suachuacuasat.com:443",
+    "https://SuaChuaCuaSat.com:443/",
+    "Https://suachuacuasat.com//",
+]
+OFF_SITE = [
+    "https://www.staging-m.suachuacuasat.com/a/",  # staging
+    "https://staging.suachuacuasat.com/a/",
+    "https://www.suachuacuasat.com/a/",  # www.
+    "http://suachuacuasat.com/a/",
+    "HTTP://suachuacuasat.com/a/",
+    "https://suachuacuasat.com:8443/a/",  # cổng khác
+    "https://suachuacuasat.com:80/a/",
+    "https://suachuacuasat.com:443/a/",  # Google không viết cổng; client T-121 cũng bỏ
+    "https://user@suachuacuasat.com/a/",  # tên người dùng
+    "https://user:"
+    + "pw@suachuacuasat.com/a/",  # tách chuỗi: mật khẩu giả, detect-secrets khỏi báo
+    "https://suachuacuasat.com@evil.example/a/",
+    "https://evilsuachuacuasat.com/a/",  # tên miền giống
+    "https://suachuacuasat.com.evil.example/a/",
+    "https://suachuacuasat.com-evil.com/a/",
+    "https://suachuacuas" + chr(0x0430) + "t.com/a/",  # chữ «а» Kirin
+    "https://SUACHUACUASAT.com/a/",  # Google luôn viết thường; client T-121 cũng bỏ
+]
+
+
+def saves(store: SearchCacheStore, wordpress_url: str, page: str) -> bool:
+    """Cache nhận địa chỉ ``page`` khi ``WORDPRESS_URL`` viết là ``wordpress_url`` không."""
+    try:
+        store.save_days(
+            CacheScope(SCOPE.site_url, wordpress_url),
+            [CachedDay(OCT[0], page, 1, 10, 20.0, True)],
+            start=OCT[0],
+            end=OCT[0],
+            first_provisional=None,
+            fetched_at=NOW,
+            today=TODAY,
+        )
+    except SearchCacheError as exc:
+        assert str(exc) == MSG_BAD_DATA
+        return False
+    return True
+
+
+def test_lan_2_off_site_pages_stay_refused_for_every_spelling(store):
+    """Lượt 2: với mọi cách viết ``WORDPRESS_URL`` của website thật, cache vẫn loại staging,
+    ``www.``, ``http://``, cổng khác, tên người dùng, tên miền giống; trang thật thì lưu được."""
+    taken = [(wp, page) for wp in SPELLINGS for page in OFF_SITE if saves(store, wp, page)]
+    assert taken == []
+    assert [wp for wp in SPELLINGS if not saves(store, wp, SITE + "/a/")] == []
+
+
+def test_lan_2_site_rules_match_t121_and_t123(store):
+    """Lượt 2: ba bản chuẩn hóa ``WORDPRESS_URL`` (``site_prefix`` của client T-121,
+    ``site_base`` của gói T-123, của cache) cho cùng tiền tố; địa chỉ T-123 nhận thì cache nhận và
+    ngược lại. Chạy khi nhánh đã có cả ``seo_app.google.search_console`` và ``seo_app.tracking``
+    (đã chạy trên bản gộp tạm T-121 + T-122 + T-123); thiếu gói nào thì bỏ qua. Gom ba bản về một
+    hàm (T-124) thì ca vẫn đúng."""
+    console = pytest.importorskip("seo_app.google.search_console")
+    match = pytest.importorskip("seo_app.tracking.match")
+    pages = [*OFF_SITE, SITE + "/a/", SITE + "/", SITE + "/blog/a/", SITE + "/Blog/a/"]
+    pages += [SITE + "/a/#x", SITE + "/?s=x"]
+    for wp in [*SPELLINGS, "https://suachuacuasat.com/blog", "https://Suachuacuasat.com/Blog/"]:
+        base = CacheScope(SCOPE.site_url, wp).base
+        assert base == match.site_base(wp) and base + "/" == console.site_prefix(wp), wp
+        for page in pages:
+            assert saves(store, wp, page) == (match.page_key(page, wp) is not None), (wp, page)

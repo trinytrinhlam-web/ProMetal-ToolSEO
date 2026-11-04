@@ -136,3 +136,80 @@ Gộp thử với `main`: `origin/main` vẫn là `a499a13`, đúng gốc nhánh
 - **Thợ Máy (lượt 2 T-122):** sửa SL-T122-1 (trước T-124), SL-T122-2, SL-T122-3; gỡ đúng 9 dấu `xfail` (R5), không đổi thân test.
 - **T-124:** dồn ba bản chuẩn hóa `WORDPRESS_URL` về một hàm (SL-T122-1); giữ ca `test_cache_rows_go_through_t123_without_being_dropped` chạy được (nó tự bỏ qua khi thiếu `seo_app.tracking`, nên sau khi gộp đợt 1 phải thấy nó **qua**, không bỏ qua); xử lý `fetched_at` ở tương lai (GN-2).
 - **T-125:** không đưa `SearchCache` qua `st.cache_data` (GN-1).
+
+## Lượt 2 · kiểm lại rút gọn (2026-11-04 13:08 +07:00)
+
+| Mục | Nội dung |
+|---|---|
+| Kiểm | Thợ Máy lượt 2: mã `356e58e`, báo cáo `2f8aec4` |
+| **Kết luận** | **ĐẠT**: SL-T122-1, -2, -3 đóng đúng; 0 lỗi mới. `site_base` mới **không nới** lớp chặn: staging, `www.`, `http://`, cổng khác 443, tên người dùng, tên miền giống đều bị loại với mọi cách viết `WORDPRESS_URL`; luật trùng hệt `site_prefix` T-121 và `site_base` T-123. R5 đúng: chỉ gỡ 3 khối dấu `xfail`, không ca nào yếu đi. Gộp thử với `main` (`33bac10`, và `c6bbf19` mới hơn) cùng `team/T-123`: không xung đột, test liên quan qua hết |
+
+**Tóm tắt (cho chủ dự án):** ba lỗi đã sửa đúng. Địa chỉ website gõ có chữ hoa hay có `:443` nay lưu được số liệu. Tôi kiểm thêm: hơn 10.000 địa chỉ giả (bản staging, `www.`, tên miền na ná, có tên đăng nhập, cổng lạ…) vẫn bị chặn như trước. Phần lưu, phần lấy số liệu (T-121) và phần tính toán (T-123) nay dùng đúng một luật.
+
+### 1. Ba lỗi đã đóng
+
+| Lỗi | Sửa | Kiểm |
+|---|---|---|
+| SL-T122-1 | Hàm `site_base` (giống từng dòng `site_base` của T-123); `CacheScope.base` và mã băm phạm vi dùng nó | 3 ca của Soi Lỗi qua (chữ hoa ở tên máy, `:443`, `HTTPS://`); 4 ca đối chứng vẫn qua. Thêm so chéo, mục 2 |
+| SL-T122-2 | `_stamp` kiểm năm cả **sau** khi đổi sang giờ Việt Nam, ngoài khoảng thì từ chối ngay khi ghi | 2 ca qua; ca `save_queries` của Thợ Máy qua (2000 lúc 10:00 múi +14 là năm 2000 giờ Việt Nam: vẫn ghi được) |
+| SL-T122-3 | `_utf8_ok` ở `_page` và `_check_scope` | 4 ca qua; ca thuộc tính có surrogate lẻ của Thợ Máy qua |
+
+### 2. `site_base` không nới lớp chặn, khớp T-121 và T-123
+
+So chéo trên bản gộp tạm T-122 lượt 2 + `main` `33bac10` + `team/T-123` `15ccf1b` + `team/T-121` `482cdea`. Địa chỉ thử: 10.725 địa chỉ (5 scheme × 11 kiểu `netloc` gồm cổng 443, 8443, 80, 444, `:` rỗng, `user@`, `user:pw@`, `…@evil.example` × 13 tên máy gồm staging, `www.`, tên miền giống, chữ «а» Kirin, dấu chấm cuối × 15 đường dẫn). `WORDPRESS_URL`: 21 cách viết, gồm 7 cách viết website thật và các cấu hình sai.
+
+| So | Ca lệch |
+|---|---|
+| `site_base` T-122 với `site_base` T-123 (21 cách viết) | **0** |
+| `site_base` T-122 + «/» với `site_prefix` T-121 (mọi cách viết T-121 nhận) | **0** |
+| Địa chỉ cache nhận (`_page`) với địa chỉ client T-121 nhận (`SearchConsoleClient._page`), kể cả chuỗi lưu lại | **0** |
+| T-123 nhận (`page_key`) mà cache bỏ | **0** |
+| Cache nhận mà T-123 bỏ | 15, đều là `%C3` (UTF-8 hỏng): T-123 cố ý coi là «dòng lạ» và đếm; T-121 cũng nhận, nên vẫn khớp đường lấy số liệu |
+| Cache nhận địa chỉ ngoài website (khác tên máy, khác cổng của `WORDPRESS_URL`, có tên người dùng, không bắt đầu bằng tiền tố) | **0** |
+
+Theo đúng danh sách Chỉ Huy hỏi, với 7 cách viết website thật: staging 14 ca, `www.` 7, `http://` 14, cổng khác (gồm `:443` viết ra, `:` rỗng) 28, tên người dùng 21, tên miền giống (`evilsuachuacuasat.com`, `….evil.example`, `-evil.com`, `.co`, chữ Kirin) 35: **nhận 0**. Trang thật lưu được với cả 7 cách viết.
+
+`WORDPRESS_URL` có tên người dùng, `?…`, cổng khác 443: `site_base` bỏ phần thừa như T-123, còn T-121 từ chối hẳn cấu hình đó, nên không có số liệu nào tới cache. Địa chỉ **trang** có tên người dùng vẫn bị `is_site_link` loại. Không phải nới lớp chặn.
+
+### 3. R5: gỡ dấu `xfail`
+
+- `tests/test_soi_loi_t122.py`: chỉ xóa đúng 3 khối `@pytest.mark.xfail(strict=True, …)` (22 dòng) của SL-T122-1, -2, -3. Thân test, tham số, `ids=` giữ nguyên.
+- `tests/test_search_cache.py`: chỉ thêm, không sửa ca cũ: nhập `site_base`, bảng `SITE_BASE_CASES` 7 ca, 3 ca mới.
+
+### 4. Ca mới của lượt này
+
+Thêm vào `tests/test_soi_loi_t122.py`, nay 70 ca:
+- `test_lan_2_off_site_pages_stay_refused_for_every_spelling`: chạy trên nhánh. 6 cách viết × 16 địa chỉ ngoài website, cộng trang thật với mọi cách viết.
+- `test_lan_2_site_rules_match_t121_and_t123`: so tiền tố của ba bản; địa chỉ T-123 nhận thì cache nhận và ngược lại. Ca này tự bỏ qua khi thiếu `seo_app.google.search_console` hay `seo_app.tracking`. Đã chạy qua trên bản gộp có cả T-121, T-123. Khi gộp xong đợt 1 phải thấy ca này **qua**.
+
+Thử đột biến «bỏ phép so tiền tố, chỉ còn `is_site_link`» trên mã lượt 2: 3 ca bắt được, gồm ca mới.
+
+### 5. Gộp thử, bằng chứng
+
+```
+# Nhánh team/T-122 2f8aec4 + file test Soi Lỗi mới
+$ uv run pytest tests/test_search_cache.py tests/test_soi_loi_t122.py -q -rs
+210 passed, 3 skipped        # symlink file (Windows); 2 ca ghép cần T-121 / T-123
+$ uv run ruff check .        # All checks passed!
+
+# Gộp tạm 2f8aec4 + main 33bac10 + team/T-123 15ccf1b: không xung đột
+# 9 file: test_search_cache, test_soi_loi_t122, test_soi_loi_t123, test_tracking_{flags,keywords,match,model,periods,stats}
+527 passed, 1 skipped        # chỉ ca symlink; ca ghép T-123 chạy thật, qua; ruff sạch
+
+# main cục bộ đã lên c6bbf19 (chỉ tài liệu, README, test T-112): gộp lại 2f8aec4 + c6bbf19 + team/T-123, không xung đột
+# cùng 9 file, file test Soi Lỗi mới
+528 passed, 2 skipped        # symlink; ca so chéo cần T-121; ruff sạch
+
+# Bản gộp thêm team/T-121 482cdea: không xung đột
+$ pytest tests/test_soi_loi_t122.py tests/test_search_cache.py -q
+212 passed, 1 skipped        # cả hai ca ghép (T-123, so chéo T-121/T-123) chạy thật, qua
+```
+
+Mọi lần chạy đã kiểm `seo_app` nạp từ chính bản gộp. Các worktree tạm (`gop`, `gop2`) đã gỡ; commit gộp tạm không đẩy.
+
+Quét ký tự ẩn hai file của Soi Lỗi: sạch. Quét bí mật (`PYTHONUTF8=1 uvx detect-secrets scan`): `results: {}`. Lần quét đầu báo «Basic Auth Credentials» ở địa chỉ giả `https://user:pw@…` của ca mới. Đã tách chuỗi để quét sạch; giá trị thử không đổi. Đối chứng: bản sao thêm khóa giả, đặt trong thư mục đang quét, bị bắt (`Secret Keyword`).
+
+### 6. Ghi nhận
+
+- **GN-7 · Dòng lặp nguyên văn (SL-T121-1 của T-121):** cache cộng dồn dòng cùng (ngày, trang) sau khi bỏ `#…`, như đã chọn (chỗ #5 của Thợ Máy). Nên dòng mà Google lặp lại do lật trang cũng bị cộng nếu client đưa tới. Cache không phân biệt được hai trường hợp này, nên phải chặn ở client T-121 như báo cáo Soi Lỗi T-121 đề nghị. T-122 không cần sửa.
+- GN-1, GN-2 của lượt 1 vẫn để T-124, T-125 như Thợ Máy đã chuyển.
