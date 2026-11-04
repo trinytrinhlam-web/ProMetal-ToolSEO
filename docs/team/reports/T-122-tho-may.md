@@ -4,8 +4,8 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-122](../tickets/T-122-cache-so-lieu-search-console.md) |
-| Nhánh | `team/T-122`, từ `main` `a499a13`; commit mã và test `b9514f7` |
-| Ngày nộp | 2026-11-04 (giờ máy, +07) |
+| Nhánh | `team/T-122`, từ `main` `a499a13`; commit mã và test `b9514f7`, lượt 2 `356e58e` |
+| Ngày nộp | 2026-11-04 (giờ máy, +07); lượt 2 cùng ngày |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -152,3 +152,61 @@ dòng ngày 299,862; dòng từ khóa 250,000; file 60.1 MB
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 · SL-T122-1, -2, -3 (Soi Lỗi `959dfb2`, 04/11)
+
+**Tóm tắt (cho chủ dự án):** sửa ba lỗi Soi Lỗi tìm ra ở phần lưu tạm số liệu Google.
+- Địa chỉ website trong `.env` gõ có chữ hoa, có `:443` hay viết `HTTPS://` thì nay vẫn lưu được số liệu. Trước đây phần lưu từ chối hết, trang theo dõi sẽ luôn trống.
+- Hai lỗi nhỏ còn lại nay đều ra câu báo tiếng Việt cố định:
+  - đồng hồ máy chỉ đúng ngày 01/01/2000 hay 31/12/2200;
+  - Google trả một ký tự hỏng kiểu đặc biệt.
+
+| Lỗi | Sửa (`seo_app/storage/search_cache.py`) | Test |
+|---|---|---|
+| **SL-T122-1** (Trung bình): `CacheScope.base` chỉ bỏ «/» cuối, `_page` so tiền tố nguyên văn. `WORDPRESS_URL` có chữ hoa ở tên máy, `:443` hay `HTTPS://` thì mọi dòng Google trả (viết thường, không cổng) đều bị từ chối | Hàm mới `site_base(wordpress_url)`, **cùng luật** với `site_prefix` của T-121 và `site_base` của T-123: scheme, tên máy viết thường, bỏ cổng 443 và «/» cuối, đường dẫn giữ nguyên. `CacheScope.base` và mã băm phạm vi dùng nó, nên một website viết khác kiểu vẫn là **một** cache. Địa chỉ từ Google vẫn so nguyên văn | 3 ca XPASS. 4 ca canh LC-T120-6 của Soi Lỗi (`www.`, `http://`, cổng khác, đường dẫn khác chữ hoa) vẫn qua. Thêm `test_site_base_same_table_as_tracking` (7 ca, **bảng giống hệt** bảng của T-123) và `test_same_website_spelled_differently_is_one_cache` |
+| **SL-T122-2** (Thấp): `_stamp` kiểm năm theo múi giờ của mốc rồi lưu theo giờ Việt Nam. Năm 2000 múi +14 thành 1999: ghi được, đọc lại bỏ cả cache | `_stamp` kiểm thêm năm **sau khi** đổi sang giờ lưu, tức đúng mốc mà lúc đọc sẽ kiểm. Ngoài khoảng thì từ chối ngay khi ghi, câu `MSG_BAD_DATA`. Phép kiểm trước khi đổi (chống tràn, LC-T120-10) giữ nguyên | 2 ca XPASS. Thêm `test_query_fetched_at_on_year_edge_is_refused_when_saving` (đường `save_queries` riêng; mốc 2000 múi +14 lúc 10 giờ là năm 2000 giờ Việt Nam thì vẫn ghi được) |
+| **SL-T122-3** (Thấp): địa chỉ trang hay phạm vi có surrogate lẻ qua được `is_site_link`, `_check_scope`; SQLite và mã băm ném `UnicodeEncodeError` | `_page`, `_check_scope` từ chối chữ không mã hóa được UTF-8 (`_utf8_ok`). Ra câu cố định `MSG_BAD_DATA`, `MSG_BAD_SCOPE`; giao dịch không bắt đầu, cache cũ nguyên | 4 ca XPASS. Thêm `test_lone_surrogate_in_search_console_property_is_refused` (Soi Lỗi thử ở `WORDPRESS_URL`, ca này thử ở thuộc tính) |
+
+- **Dấu `xfail`:** 9 ca `xfail(strict=True)` của Soi Lỗi XPASS trên mã mới, rồi gỡ dấu (chỉ xóa 3 khối dấu, 22 dòng; R5). Thêm 10 ca của tôi; không đổi kỳ vọng ca cũ nào.
+- **Mã băm phạm vi:** với `WORDPRESS_URL` đã viết thường như hiện nay, mã băm không đổi, nên cache đang có không bị bỏ. Chỉ `WORDPRESS_URL` viết khác chuẩn mới có mã băm mới, tức đúng những cache trước đây không ghi được gì.
+
+```
+# Bản gốc còn dấu của tests/test_soi_loi_t122.py (git show 959dfb2:…, chép ra thư mục nháp), mã mới
+$ uv run pytest <bản gốc> -q --tb=short
+[XPASS(strict)] SL-T122-1 ×3 · [XPASS(strict)] SL-T122-2 ×2 · [XPASS(strict)] SL-T122-3 ×4
+9 failed, 58 passed, 1 skipped in 32.62s     (9 «hỏng» = XPASS strict, đúng mong đợi)
+
+# Đã gỡ dấu, trên đúng commit 356e58e (git status sạch)
+$ uv run pytest tests/test_search_cache.py tests/test_soi_loi_t122.py -q -rs
+SKIPPED tests\test_search_cache.py:755: symlink file (Windows cần quyền Developer Mode)
+SKIPPED tests\test_soi_loi_t122.py:605: could not import 'seo_app.tracking.match' (nhánh chưa có T-123)
+209 passed, 2 skipped in 41.95s
+
+$ uv run ruff check .                        # ruff 0.16.10, toàn repo
+All checks passed!
+
+# Bản gộp tạm tách rời: T-122 356e58e + T-123 lượt 2 d71c9ad (seo_app nạp từ chính bản gộp; đã gỡ)
+hai site_base (storage.search_cache, tracking.match) khác nhau ở: không ca nào (9 ca, gồm IPv6,
+  tên người dùng, đường dẫn hoa, cổng 443, cổng khác)
+$ pytest tests/test_soi_loi_t122.py tests/test_search_cache.py tests/test_tracking_match.py \
+    tests/test_tracking_model.py -q
+296 passed, 1 skipped                        (ca ghép test_cache_rows_go_through_t123_… chạy thật, qua)
+```
+
+- Quét ký tự ẩn trên 3 file đổi: sạch. File của Soi Lỗi có sẵn một chuỗi chữ `\u` trong lời giải thích, không phải ký tự ẩn.
+- Hàm đổi chỉ được gọi trong `search_cache.py`; module chưa gộp `main`, chưa nơi nào khác nhập. Nên test mọi nơi gọi là 2 file trên.
+
+**Đề xuất cho T-124 (Chỉ Huy đưa vào phiếu): gom ba bản chuẩn hóa `WORDPRESS_URL` về một hàm.**
+- **Ba bản hiện có:**
+  - `site_prefix` của T-121 (`seo_app/google/search_console.py`): có thêm `/` cuối, từ chối `WORDPRESS_URL` sai dạng;
+  - `site_base` của T-123 (`seo_app/tracking/match.py`);
+  - `site_base` của T-122 (`seo_app/storage/search_cache.py`).
+  Đã đo cùng kết quả ở mọi ca (bảng ở trên, và lượt 2 của T-123 đã so với T-121).
+- **Cách gom:**
+  - Một hàm `site_base(url)` đặt cạnh `is_site_link` trong `seo_app/wordpress/client.py`, vì hai hàm cùng định nghĩa «địa chỉ thuộc website».
+  - T-122, T-123 nhập hàm đó thay bản riêng. `site_prefix` của T-121 giữ phần kiểm dạng, gọi `site_base(...) + "/"`.
+  - Giữ bảng ca chung (`SITE_BASE_CASES` ở `tests/test_search_cache.py`, bảng cùng ca ở `tests/test_tracking_match.py`) làm test cho hàm chung.
+  - Sửa hàm dùng chung thì chạy test mọi nơi gọi: test Google, cache, tracking và `test_soi_loi_t121`, `t122`, `t123`.
+- **Hai ghi nhận của Soi Lỗi cũng thuộc T-124, T-125:**
+  - GN-2: `fetched_at` ở tương lai (đồng hồ từng chạy nhanh) phải coi là cũ khi chặn bấm lại < 10 phút;
+  - GN-1: không trả `SearchCache` qua `st.cache_data` (không pickle được), giữ trong `st.session_state`.
