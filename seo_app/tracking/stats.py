@@ -11,8 +11,9 @@
 - Tổng toàn website cộng theo từng trang, nên có thể cao hơn chút so với biểu đồ của Search Console
   (tính theo website: một lượt tìm có hai trang của site chỉ tính một lượt hiển thị).
 - Số viết kiểu Việt Nam: ``9.800``, ``4,2%``; chênh lệch «+12 (+30%)», «+0,3 điểm», «lên 2,1 bậc».
-  Làm tròn kiểu 5 lên (``round_half_up``: 0,25% hiện «0,3%»). Chênh CTR, vị trí tính trên số đã
-  làm tròn như khi hiện (1 chữ số thập phân), để chữ khớp số người dùng thấy.
+  Làm tròn kiểu 5 lên (``round_half_up``: 0,25% hiện «0,3%»); phần trăm nhân 100 trên số thập
+  phân, không trên số thực (SL-T123-1). Chênh CTR, vị trí tính trên số đã làm tròn như khi hiện
+  (1 chữ số thập phân), để chữ khớp số người dùng thấy.
 
 Dòng có số sai dạng (``bool``, số thực ở chỗ số nguyên, ``NaN``, số âm, click lớn hơn lượt hiển thị,
 vị trí ngoài 1 … 10.000) không được cộng (``numbers_ok``). Cache và client đã kiểm từng dòng; đây là
@@ -121,8 +122,19 @@ def round_half_up(value: float, digits: int = DIGITS) -> float:
     (``repr``), nên ``4.35`` → ``4.4``."""
     if not math.isfinite(value):
         return value
-    step = Decimal(1).scaleb(-digits)
-    return float(Decimal(repr(value)).quantize(step, rounding=ROUND_HALF_UP))
+    return _half_up(Decimal(repr(value)), digits)
+
+
+def _half_up(value: Decimal, digits: int) -> float:
+    return float(value.quantize(Decimal(1).scaleb(-digits), rounding=ROUND_HALF_UP))
+
+
+def _percent(ratio: float) -> float:
+    """Tỉ lệ thành phần trăm, nhân 100 trên số thập phân (chữ số viết ra của tỉ lệ): ``0.2875`` →
+    ``28.75``. Nhân bằng số thực ra ``28.749999…``, làm tròn thành «28,7%» (SL-T123-1)."""
+    if not math.isfinite(ratio):
+        return ratio * 100
+    return float(Decimal(repr(ratio)) * 100)
 
 
 def number_text(value: int) -> str:
@@ -137,8 +149,8 @@ def decimal_text(value: float, digits: int = DIGITS) -> str:
 
 
 def percent_text(ratio: float, digits: int = DIGITS) -> str:
-    """Tỉ lệ 0 … 1 thành phần trăm kiểu Việt Nam: ``0.042`` → ``4,2%``."""
-    return decimal_text(ratio * 100, digits) + "%"
+    """Tỉ lệ 0 … 1 thành phần trăm kiểu Việt Nam: ``0.042`` → ``4,2%``; ``0.2875`` → ``28,8%``."""
+    return decimal_text(_percent(ratio), digits) + "%"
 
 
 def shown_position(stats: PageStats) -> float | None:
@@ -148,9 +160,11 @@ def shown_position(stats: PageStats) -> float | None:
 
 
 def shown_ctr_percent(stats: PageStats) -> float | None:
-    """CTR theo phần trăm, làm tròn như khi hiện (``None``: không có lượt hiển thị)."""
-    ctr = stats.ctr
-    return None if ctr is None else round_half_up(ctr * 100)
+    """CTR theo phần trăm, làm tròn như khi hiện (``None``: không có lượt hiển thị). Tính đúng từ
+    hai số nguyên trên số thập phân rồi mới làm tròn 5 lên: 23/80 = 28,75% → 28,8 (SL-T123-1)."""
+    if not stats.impressions:
+        return None
+    return _half_up(Decimal(stats.clicks) * 100 / Decimal(stats.impressions), DIGITS)
 
 
 def signed_number_text(delta: int) -> str:

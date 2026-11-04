@@ -162,3 +162,26 @@ def test_weekly_blocks_cover_the_period():
     assert weeks[-1][0].end == E
     before = previous_period(quarter)
     assert aggregate(rows, before) == PageStats()  # kỳ trước không có dòng nào: 0
+
+
+@pytest.mark.parametrize(
+    ("clicks", "impressions", "shown", "text"),
+    [
+        (23, 80, 28.8, "28,8%"),
+        (41, 80, 51.3, "51,3%"),
+        (1, 400, 0.3, "0,3%"),
+        (1, 3, 33.3, "33,3%"),
+    ],
+    ids=["28,75", "51,25", "0,25", "mot-phan-ba"],
+)
+def test_ctr_percent_rounds_exact_halves_up(clicks, impressions, shown, text):
+    """Lượt 2, SL-T123-1: CTR nhân 100 trên số thập phân, không trên số thực (23/80 × 100 bằng số
+    thực là 28,749999…)."""
+    page = PageStats(clicks, impressions, float(impressions))
+    assert stats.shown_ctr_percent(page) == shown
+    assert percent_text(page.ctr) == text
+
+
+def test_ctr_change_uses_the_shown_half_up_numbers():
+    now, before = PageStats(23, 80, 80.0), PageStats(0, 80, 80.0)
+    assert ctr_change_text(compare(now, before)) == "+28,8 điểm"  # 28,8% − 0,0%

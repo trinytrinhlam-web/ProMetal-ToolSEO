@@ -4,8 +4,9 @@ kế T-120 mục 1.4).
 ``page_key`` dựng khóa so khớp theo 5 bước:
 
 1. Địa chỉ phải qua ``is_site_link`` (``https://``, đúng tên máy và cổng của ``WORDPRESS_URL``)
-   **và** bắt đầu bằng ``WORDPRESS_URL`` + ``/``. Sai thì là «dòng lạ», bị bỏ dù Google có trả
-   (staging, ``www.``, ``http://``, tên miền khác; LC-T120-6).
+   **và** bắt đầu bằng tiền tố của website (``site_base`` + ``/``: ``WORDPRESS_URL`` với scheme,
+   tên máy viết thường, như bộ lọc client Search Console T-121 gửi Google). Sai thì là «dòng lạ»,
+   bị bỏ dù Google có trả (staging, ``www.``, ``http://``, tên miền khác; LC-T120-6).
 2. Bỏ phần ``#…`` (vẫn là cùng một trang); các dòng trùng khóa sau khi bỏ được cộng dồn.
 3. Có ``?…`` (``?s=``, ``?p=``…): giữ riêng, xếp vào «Trang khác», không gán cho bài.
 4. Đường dẫn giải mã ``%`` (UTF-8 hỏng là dòng lạ), chuẩn NFC, bỏ một «/» cuối (trừ trang chủ),
@@ -29,7 +30,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import date
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 from seo_app.plan import model as plan_model
 from seo_app.plan.model import PlanRow, clean_text
@@ -65,12 +66,34 @@ MATCH_TEXT = {
 }
 
 
+def site_base(site: str) -> str:
+    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố (SL-T123-2): scheme và tên máy viết thường (tên
+    máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định và «/» cuối; phần
+    đường dẫn giữ nguyên chữ hoa, chữ thường. Trùng tiền tố ``site_prefix`` của client Search
+    Console (T-121), nên dòng client nhận thì ở đây cũng nhận. Chỉ ``WORDPRESS_URL`` được chuẩn
+    hóa: địa chỉ từ Google, WordPress vẫn phải viết đúng như tiền tố này (như bộ lọc phía Google).
+    Không tách được tên máy thì chỉ bỏ «/» cuối."""
+    base = site.rstrip("/")
+    try:
+        parts = urlsplit(base)
+        port = parts.port
+    except ValueError:
+        return base
+    host = parts.hostname
+    if not parts.scheme or not host:
+        return base
+    netloc = f"[{host}]" if ":" in host else host
+    if port is not None and not (parts.scheme == "https" and port == 443):
+        netloc = f"{netloc}:{port}"
+    return f"{parts.scheme}://{netloc}{parts.path.rstrip('/')}"
+
+
 def page_key(url: object, site: str) -> PageKey | None:
     """Khóa so khớp của địa chỉ ``url`` trên website ``site`` (``WORDPRESS_URL``); ``None``: dòng
     lạ (ngoài website, quá dài, ``%`` giải mã ra UTF-8 hỏng)."""
     if not isinstance(url, str) or not isinstance(site, str) or len(url) > MAX_PAGE_CHARS:
         return None
-    base = site.rstrip("/")
+    base = site_base(site)
     prefix = base + "/"
     if not url.startswith(prefix) or not is_site_link(url, base):
         return None

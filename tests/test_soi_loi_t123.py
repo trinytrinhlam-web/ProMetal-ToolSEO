@@ -31,10 +31,6 @@ ZW = "".join(chr(code) for code in (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0x20
 # ====================================================================== lỗi mới (xfail)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T123-1: CTR đúng nửa có lúc làm tròn xuống (28,75% hiện 28,7%), trái «5 lên»",
-)
 @pytest.mark.parametrize(
     ("clicks", "impressions", "shown", "text"),
     [(23, 80, 28.8, "28,8%"), (41, 80, 51.3, "51,3%"), (57, 400, 14.3, "14,3%")],
@@ -48,7 +44,6 @@ def test_ctr_exact_half_always_rounds_up(clicks, impressions, shown, text):
     assert stats.percent_text(page.ctr) == text
 
 
-@pytest.mark.xfail(strict=True, reason="SL-T123-1: 229/3.400 ca CTR đúng nửa bị làm tròn xuống")
 def test_every_exact_half_ctr_rounds_up():
     """Mọi CTR đúng nửa ở chữ số thứ hai (lượt hiển thị ≤ 400) hiện theo «5 lên»."""
     wrong = []
@@ -65,10 +60,6 @@ def test_every_exact_half_ctr_rounds_up():
     assert wrong == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T123-2: WORDPRESS_URL có chữ hoa ở tên máy: mọi bài, mọi dòng bị bỏ",
-)
 @pytest.mark.parametrize(
     "site",
     ["https://Suachuacuasat.com", "https://SUACHUACUASAT.COM", "HTTPS://suachuacuasat.com"],

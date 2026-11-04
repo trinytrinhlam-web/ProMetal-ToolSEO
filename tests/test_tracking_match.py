@@ -25,6 +25,7 @@ from seo_app.tracking.match import (
     match_plan,
     page_key,
     page_label,
+    site_base,
 )
 from seo_app.tracking.model import DayTotal, MatchStatus, PageKey
 from seo_app.wordpress.client import PublishedItem
@@ -334,3 +335,49 @@ def test_match_plan_one_post_one_row():
 def test_match_text_covers_every_status():
     assert set(MATCH_TEXT) == set(MatchStatus)
     assert MATCH_TEXT[MatchStatus.NOT_LIVE] == "Chưa lên website"
+
+
+# ------------------------------------------------------ lượt 2: SL-T123-2 (chữ hoa ở tên máy)
+
+
+@pytest.mark.parametrize(
+    ("site", "base"),
+    [
+        ("https://Suachuacuasat.com", SITE),
+        ("HTTPS://SUACHUACUASAT.COM/", SITE),
+        ("https://suachuacuasat.com:443", SITE),  # cổng mặc định: như site_prefix của T-121
+        ("https://Example.com/Blog/", "https://example.com/Blog"),  # đường dẫn giữ nguyên
+        ("https://example.com:8443/", "https://example.com:8443"),
+        ("", ""),
+        ("khong-phai-dia-chi", "khong-phai-dia-chi"),
+    ],
+    ids=["hoa-dau", "hoa-het", "cong-443", "duong-dan-hoa", "cong-khac", "rong", "chu-la"],
+)
+def test_site_base_lowercases_scheme_and_host_only(site, base):
+    assert site_base(site) == base
+
+
+@pytest.mark.parametrize(
+    "site",
+    ["https://Suachuacuasat.com", "HTTPS://SUACHUACUASAT.COM/", "https://suachuacuasat.com:443"],
+    ids=["hoa-dau", "hoa-het", "cong-443"],
+)
+def test_wordpress_url_spelling_does_not_empty_the_table(site):
+    """``WORDPRESS_URL`` gõ chữ hoa hay có cổng 443 (app vẫn kết nối WordPress bình thường): bảng
+    theo dõi vẫn đủ bài và số liệu; dòng ngoài website vẫn bị bỏ."""
+    rows = [
+        day_row(D1, "/sua-cua-sat/", 2, 10),
+        Day(D1, "https://www.suachuacuasat.com/x/", 1, 5, 5.0),
+    ]
+    tracking = build_tracking(site, [item(10, "/sua-cua-sat/")], rows)
+    assert tracking.pages[0].days == (DayTotal(D1, 2, 10, 10.0, True),)
+    assert tracking.skipped_rows == 1 and tracking.skipped_items == 0
+    assert page_key(SITE + "/Sua-Cua/", site) == PageKey("/Sua-Cua")
+
+
+def test_google_url_spelling_is_still_compared_verbatim():
+    """Chỉ ``WORDPRESS_URL`` được chuẩn hóa; địa chỉ từ Google viết hoa tên máy (bộ lọc phía Google
+    đã không trả) vẫn là dòng lạ, như ca cũ ``test_page_key_rejects_rows_outside_website``."""
+    for site in (SITE, "https://Suachuacuasat.com"):
+        assert page_key("https://SUACHUACUASAT.com/sua-cua-sat/", site) is None
+        assert page_key("HTTPS://suachuacuasat.com/sua-cua-sat/", site) is None
