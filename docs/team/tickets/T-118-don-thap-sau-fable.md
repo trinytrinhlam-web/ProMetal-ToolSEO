@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (bảo mật, dọn) |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-105, T-113 đã gộp `main` |
-| Trạng thái | Đã qua Lá Chắn; đang chạy toàn bộ test |
+| Trạng thái | Xong (gộp `main` 2026-11-03, 3 lượt) |
 
 ## Mục tiêu
 
@@ -53,3 +53,4 @@ U2, U3, F3.
 - Lập 2026-11-02 theo T-116 nhóm 3 (Fable) và quyết định của chủ dự án về hiện lỗi.
 - 2026-11-02 17:23 (Chỉ Huy B): giao Thợ Máy (phiên T-075) 13:20, nhánh `team/T-118` từ `main` `935d381`.
 - 2026-11-03 12:33 (Chỉ Huy B): lượt 2 (`3339360`, `73d4205`: SL-T118-1). Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`2d52065`), Lá Chắn ĐẠT (`9ed433b`). R5 Chỉ Huy duyệt 02/11 đổi câu mong đợi 2 test (SL-T105-1). Gộp `main` cục bộ (`9701820`, cùng T-073), đang chạy toàn bộ test.
+- 2026-11-03 23:10 (Chỉ Huy B): toàn bộ test trên `main` cục bộ `29499dd`: 22.456 qua, 2 hỏng. `test_soi_loi_t058.py:305` chờ câu lỗi gốc của Pillow mà `showErrorDetails = "type"` đã che → lượt 3 (`eecadb2`, Thợ Máy; Chỉ Huy duyệt R5: kiểm câu lỗi gốc **không** lộ ra trang). Ca đo thời gian `test_link_escape.py` hỏng oan khi máy bận, chạy lại qua. Chạy lại 3 file trên `main`: 319 qua. Đã gộp, đẩy.

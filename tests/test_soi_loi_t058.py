@@ -302,7 +302,12 @@ def test_st_image_bytes_rac_bao_loi_ro_rang():
     # Pillow 13 vẫn báo UnidentifiedImageError (không treo, không sập tiến trình); Streamlit hiện
     # lỗi trên trang, không đưa bytes rác ra trình duyệt.
     assert [loi.proto.type for loi in at.exception] == ["PIL.UnidentifiedImageError"]
-    assert "cannot identify image file" in at.exception[0].message
+    # T-118 lượt 3 (Chỉ Huy duyệt R5 03/11): trang chỉ hiện loại lỗi (``client.showErrorDetails =
+    # "type"``), câu lỗi gốc của Pillow («cannot identify image file <_io.BytesIO …>») không lộ ra
+    # ở câu báo, dấu vết lỗi hay trường nào khác của phần tử lỗi.
+    trang = "".join(str(loi.proto) for loi in at.exception)
+    for lo in ("cannot identify image file", "BytesIO"):
+        assert lo not in trang
 
 
 # --- 1c. st.image với numpy ---------------------------------------------------------------------

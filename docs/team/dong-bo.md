@@ -59,6 +59,20 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-04 13:05 · Chỉ Huy B
+
+- Gộp T-112 (+ lượt 4 README) và T-116 nhóm 5: Windows 22.536 test qua, 0 hỏng; đã đẩy. T-116 xong 5 nhóm.
+- Chủ dự án 04/11: GĐ6 trang mới «📈 Theo dõi», nút «Đưa vào kế hoạch», giữ schema FAQ; hết Fable thì dùng Opus 5.5; khóa Gemini lộ (`SU-CO-2026-11-04`) → chủ dự án đổi khóa.
+- GĐ6 đợt 1: T-123 qua Lá Chắn (gộp sau toàn bộ test); T-121 lượt 2 rồi Lá Chắn đầy đủ (Fable); T-122 Soi Lỗi kiểm lại lượt 2. T-124 phải gom `site_prefix`/`site_base` (3 nơi) về một hàm.
+- T-092 Soi Lỗi rút gọn đang làm. Lá Chắn Fable đọc lại phần code T-112 lượt 3.
+
+### 2026-11-03 23:10 · Chỉ Huy B
+
+- Chủ dự án 03/11: «tạm mở mức tối đa cho các agent để dùng hết hạn mức 5h», chọn «4 agent + dọn RAM»: đã lưu trữ 43 phiên con cũ; chạy tối đa 4 agent + 1 lượt toàn bộ test.
+- Toàn bộ test `main` `29499dd` (T-118, T-073): 22.456 qua, 2 hỏng (1 oan; 1 do T-118 che câu lỗi → T-118 lượt 3 `eecadb2`). Gộp T-118 lượt 3 + T-120 (thiết kế GĐ6), chạy lại 3 file: 319 qua; đã đẩy.
+- Hạn mức Fable tuần hết 18:15 (reset 04/11 10:00): T-116 nhóm 5 dừng (biên bản gần xong). Lá Chắn T-112 lượt 3 và T-120 chạy Opus tạm.
+- Đang chạy: Lá Chắn T-112 lượt 3, Họa Sĩ T-092, Thợ Máy T-121, T-123. Chờ: T-122 (máy rảnh), Thư Ký SL-T112-4 sau Lá Chắn T-112, toàn bộ test khi gộp T-112.
+
 ### 2026-11-03 12:33 · Chỉ Huy B
 
 - Máy tắt tối 02/11 (lượt toàn bộ test chết ở 78%). Sáng 03/11 gộp thêm T-115, T-119; **`33dd87f`** (T-115, T-117, T-119, biên bản T-116 nhóm 1, 3, 4): Windows 22.300 test qua, 0 hỏng, đã đẩy.

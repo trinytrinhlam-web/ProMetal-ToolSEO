@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 (test của T-037) |
 | Mức ưu tiên | Trung bình (test hỏng oan làm Chỉ Huy mất thời gian mỗi lần gộp) |
 | Phụ thuộc | Không |
-| Trạng thái | Đã qua Lá Chắn; đang chạy toàn bộ test |
+| Trạng thái | Xong (gộp `main` 2026-11-03) |
 
 ## Mục tiêu
 
@@ -48,3 +48,4 @@ Không có (chỉ test).
 
 - Lập theo ghi nhận ngày 20/10 (dong-bo 17:05, 18:24). Làm trên nhánh tạm `team/T-073`, tạo từ `main`.
 - 2026-11-03 12:33 (Chỉ Huy B): Soi Lỗi (`9824f8a`): nguyên nhân là mỗi lần gọi kho lúc bị khóa chờ đủ `_HEALTH_TIMEOUT`; sửa test giữ khóa tới khi phía chính kiểm xong; 20/20 qua dưới tải. Lá Chắn ĐẠT (`f8f0cc5`, không làm yếu test). Gộp `main` cục bộ, đang chạy toàn bộ test.
+- 2026-11-03 23:10 (Chỉ Huy B): gộp `main` cùng T-118; Windows 22.456 test qua, 2 hỏng (1 ca đo thời gian hỏng oan khi máy bận, chạy lại qua; 1 ca `test_soi_loi_t058` đọc câu lỗi bị T-118 che → T-118 lượt 3 sửa, R5); chạy lại 3 file: 319 qua. Đã đẩy.
