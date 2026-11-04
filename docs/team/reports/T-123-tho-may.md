@@ -4,8 +4,8 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-123](../tickets/T-123-loi-tinh-toan-theo-doi.md) |
-| Nhánh | `team/T-123`, từ `main` `a499a13`; commit mã và test `a895d6d` |
-| Ngày nộp | 2026-11-03 (giờ máy, +07) |
+| Nhánh | `team/T-123`, từ `main` `a499a13`; commit mã và test `a895d6d`, lượt 2 `d8fe3f7` |
+| Ngày nộp | 2026-11-03 (giờ máy, +07); lượt 2: 2026-11-04 |
 | Kết quả | Hoàn thành |
 
 ## Tóm tắt (cho chủ dự án)
@@ -163,3 +163,59 @@ results: {}
 ## Câu hỏi cho chủ dự án
 
 Không có. Câu 3 và câu 5 của T-120 đang theo khuyến nghị A. Anh chọn khác thì chỉ sửa hằng: `stats.SHOW_PROVISIONAL` và các ngưỡng đầu file `seo_app/tracking/flags.py`.
+
+## Lượt 2 · SL-T123-2, SL-T123-1 (Soi Lỗi, 04/11)
+
+**Tóm tắt (cho chủ dự án):** sửa hai lỗi Soi Lỗi tìm ra.
+- Địa chỉ website trong `.env` gõ có chữ hoa (ví dụ `https://SuaChuaCuaSat.com`) thì trang theo dõi không còn trống nữa.
+- Tỉ lệ click đúng «x,x5%» nay luôn làm tròn lên (28,75% hiện «28,8%»).
+
+| Mục | Nội dung |
+|---|---|
+| SL-T123-2 (Trung bình) | `page_key` so `url.startswith(WORDPRESS_URL + "/")` có phân biệt hoa thường. `WORDPRESS_URL` có chữ hoa ở tên máy (`config.py` chỉ bỏ «/» cuối) thì mọi bài, mọi dòng thành «dòng lạ», bảng trống |
+| Sửa SL-T123-2 | `seo_app/tracking/match.py`: hàm mới `site_base(site)` chuẩn hóa **riêng** `WORDPRESS_URL`: scheme và tên máy viết thường, bỏ cổng 443 mặc định và «/» cuối, đường dẫn giữ nguyên. `page_key` so tiền tố với `site_base(site) + "/"` |
+| Vì sao đúng chiều | Địa chỉ từ Google, WordPress vẫn so **nguyên văn**, như bộ lọc phía Google (RE2 phân biệt hoa thường). Lớp chặn của LC-T120-6 giữ nguyên: staging, `www.`, `http://`, tên miền khác, cổng khác, tên người dùng, địa chỉ Google viết hoa tên máy (ca cũ `test_page_key_rejects_rows_outside_website` không đổi). Soi Lỗi có 12 ca canh, đều qua |
+| Cổng 443 | Cùng nguyên nhân, cùng hàm: `https://suachuacuasat.com:443` (`is_site_link` coi là đúng website) cũng làm bảng trống. Tôi sửa luôn cho trùng tiền tố của client T-121, có ca test |
+| SL-T123-1 (Thấp) | `shown_ctr_percent`, `percent_text` nhân 100 bằng số thực: 23/80 × 100 = 28,749999… → «28,7%». Soi Lỗi đếm 229/3.400 ca đúng nửa bị làm tròn xuống |
+| Sửa SL-T123-1 | `seo_app/tracking/stats.py`: `shown_ctr_percent` tính từ hai số nguyên trên `Decimal` (`clicks × 100 / impressions`) rồi làm tròn 5 lên. `percent_text` nhân 100 trên `Decimal(repr(tỉ lệ))`. Vị trí, chênh vị trí, phần trăm chênh click không bị lỗi này (Soi Lỗi đã thử), nên không đổi |
+| Test | 7 ca `xfail(strict=True)` của Soi Lỗi XPASS trên mã mới, rồi gỡ dấu (chỉ xóa 3 khối dấu, 9 dòng; R5). Thêm 16 ca: `test_site_base_lowercases_scheme_and_host_only` (7), `test_wordpress_url_spelling_does_not_empty_the_table` (3), `test_google_url_spelling_is_still_compared_verbatim`, `test_ctr_percent_rounds_exact_halves_up` (4), `test_ctr_change_uses_the_shown_half_up_numbers`. Không đổi kỳ vọng ca cũ nào |
+
+**Kiểm T-121 (đọc code `origin/team/T-121` `eb05747`, không sửa):** client T-121 **không** có lỗi chữ hoa.
+- `site_prefix(WORDPRESS_URL)` dựng `https://<tên máy viết thường><đường dẫn>/` từ `urlsplit`, vì `urlsplit` tự viết thường scheme và `hostname`. Hàm cũng bỏ cổng 443 và từ chối cổng khác, `http://`, tên người dùng.
+- Bộ lọc gửi Google (`page_filter_expression`) và bước kiểm từng dòng (`_page`) đều dùng tiền tố đã chuẩn hóa này.
+- Tôi so thật bằng một worktree tạm tách rời của nhánh T-121 (đã gỡ ngay sau đó). Với mọi `WORDPRESS_URL` T-121 nhận, tiền tố của T-121 và `site_base + "/"` của T-123 **trùng nhau**: chữ hoa, cổng 443, đường dẫn con có chữ hoa.
+
+```
+# Bản gốc còn dấu của tests/test_soi_loi_t123.py (git show HEAD:…, chép ra thư mục nháp), mã mới
+$ uv run pytest <bản gốc> -q -rf
+FAILED test_ctr_exact_half_always_rounds_up[28,75|51,25|14,25] - [XPASS(strict)] SL-T123-1 …
+FAILED test_every_exact_half_ctr_rounds_up - [XPASS(strict)] SL-T123-1 …
+FAILED test_site_url_case_does_not_drop_everything[hoa-dau|hoa-het|scheme-hoa] - [XPASS(strict)] SL-T123-2 …
+7 failed, 87 passed in 12.36s       (7 «hỏng» = XPASS strict, đúng mong đợi)
+
+# Đã gỡ dấu, trên đúng commit d8fe3f7 (git status sạch): 7 file test liên quan
+$ uv run pytest tests/test_tracking_model.py tests/test_tracking_periods.py tests/test_tracking_match.py \
+    tests/test_tracking_stats.py tests/test_tracking_flags.py tests/test_tracking_keywords.py \
+    tests/test_soi_loi_t123.py -q
+317 passed in 8.93s                 (207 ca lượt 1 + 16 ca lượt 2 + 94 ca Soi Lỗi)
+
+$ uv run ruff check .                        # ruff 0.16.10, toàn repo
+All checks passed!
+
+# So tiền tố T-121 (worktree tạm tách rời eb05747) với T-123
+'https://Suachuacuasat.com'      T-121 'https://suachuacuasat.com/'   T-123 'https://suachuacuasat.com/'   trùng
+'HTTPS://SUACHUACUASAT.COM/'     T-121 'https://suachuacuasat.com/'   T-123 'https://suachuacuasat.com/'   trùng
+'https://suachuacuasat.com:443'  T-121 'https://suachuacuasat.com/'   T-123 'https://suachuacuasat.com/'   trùng
+'https://Example.com/Blog/'      T-121 'https://example.com/Blog/'    T-123 'https://example.com/Blog/'    trùng
+'https://example.com:8443' và 'http://suachuacuasat.com': T-121 từ chối WORDPRESS_URL (không lấy số liệu)
+```
+
+- Hàm `site_base`, `percent_text`, `shown_ctr_percent` chỉ được gọi trong gói `seo_app/tracking` (`grep` cả `seo_app/`). Gói chưa gộp `main`, nên test mọi nơi gọi là đúng 7 file trên.
+- Quét ký tự ẩn trên 5 file đổi: sạch. `ruff format --check` file của Soi Lỗi sau khi gỡ dấu: sạch.
+
+**Chưa làm ở lượt này, ghi đề xuất** (góp ý của Soi Lỗi, không xếp lỗi):
+- **G1, rủi ro ghép nối:** khi có dòng sai khuôn (sai kiểu), mọi bài có thể hiện 👻.
+  - T-122 đã khóa kiểu đọc ra (`b9514f7`: `final` là `bool`, `day` là `date`, có test).
+  - Còn hai việc nên làm ở T-124: ca ghép nối với dataclass thật của T-122; đếm riêng «dòng sai khuôn» với «dòng ngoài website», để T-125 không gắn 👻 khi có dòng sai khuôn.
+- **G3:** giao diện ghi «trạng thái trên Sheet chưa cập nhật» khi dòng kế hoạch khớp theo mã mà trạng thái chưa là «Đã đăng». Việc của T-125.
+- **G5:** `round_half_up` với số từ 10²⁷ trở lên ném lỗi. Trần 10⁹ lượt hiển thị một dòng không chạm tới mức đó. Ghi là giới hạn đã biết.
