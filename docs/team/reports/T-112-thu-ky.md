@@ -169,3 +169,61 @@ Dẫn chiếu «mục N»: 2, 3, 5 (`security.md`), 6, 7, 7.1, 7.2, 7.5, 8, 9, 1
 
 - **SL-T106-1** (Thấp, code `app/views/wordpress.py`): cần phiếu cho Họa Sĩ.
 - Hẹn giờ/Đăng ngay vẫn chưa thử trên website thật (LC-T094-44). Sau buổi thử nên đọc lại mục 11.
+
+## Lượt 4 (2026-11-04 07:37, +07:00)
+
+Theo tin Chỉ Huy B: sửa README theo **SL-T112-4** (Thấp, Soi Lỗi lượt 3; Lá Chắn lượt 3 đồng ý). Phải xong trước khi bật công tắc. Trước khi sửa đã gộp `main` cục bộ `33bac10` vào nhánh (tua thẳng, không xung đột).
+
+### Tóm tắt (cho chủ dự án)
+
+README trước đây chia luật Hẹn giờ theo **loại phần thiếu**: thiếu SEO thì vẫn hẹn, thiếu ảnh đại diện thì không. Luật thật của app theo **lệnh ghi có bị lỗi giữa chừng không**:
+
+- **Phần thiếu chưa hề được ghi lên website:** app **vẫn hẹn giờ**, kèm cảnh báo. Ví dụ: SiteSEO chưa cho ghi SEO; SiteSEO báo lỗi khi ghi qua AI Abilities (cách website đang dùng); website báo lỗi ngay lúc app hỏi lại bài trước khi đặt ảnh đại diện.
+- **Lệnh ghi bị lỗi giữa chừng** (lệnh đặt ảnh đại diện, hay ghi SEO bằng đường dự phòng khi website chưa bật AI Abilities): lệnh có thể đã ghi một phần, app không biết chắc bài nháp đã đổi chưa nên **không hẹn giờ**. Bài vẫn là nháp, kèm câu báo.
+
+Cả hai hướng đều an toàn. Không hẹn thì bài vẫn là nháp; hẹn thì có cảnh báo rõ phần thiếu.
+
+### Đã thay đổi
+
+| Chỗ (`README.md`) | Câu cũ | Câu mới |
+|---|---|---|
+| `:488` | «**Hẹn giờ thì vẫn hẹn khi chỉ thiếu SEO** … Riêng **ảnh đại diện** chưa lên (lệnh đặt ảnh đại diện lỗi) thì app **không hẹn giờ**…» | «**Hẹn giờ thì vẫn hẹn khi phần thiếu chưa hề được ghi lên website**, kèm cảnh báo «…». Ví dụ: SiteSEO chưa cho ghi SEO, SiteSEO báo lỗi khi ghi SEO qua AI Abilities (cách website đang dùng), hay website báo lỗi ngay lúc app hỏi lại bài trước khi đặt ảnh đại diện. Lý do: … Còn lệnh đặt ảnh đại diện, hay lệnh ghi SEO bằng đường dự phòng (khi website chưa bật AI Abilities), **bị lỗi giữa chừng** (website báo lỗi máy chủ, mất mạng, hay trả lời lạ đúng lúc đang ghi) thì lệnh đó có thể đã ghi một phần, app không biết chắc bài nháp trên website đã đổi chưa nên **không hẹn giờ**: bài vẫn là nháp, báo «… Chưa hẹn giờ, chưa đăng: bài vẫn là nháp…»» |
+| `:493` («Bài bị sửa ngoài app») | «(ví dụ lệnh đặt ảnh đại diện vừa lỗi)» | «(ví dụ một lệnh ghi ảnh đại diện hay SEO vừa lỗi giữa chừng, xem trên)» |
+
+Theo câu gợi ý của Soi Lỗi (`T-112-soi-loi.md`, SL-T112-4), viết rõ thêm đường chính / đường dự phòng của SEO.
+
+### Đối chiếu với `seo_app/wordpress/client.py` (`_taint_modified`, `:2148-2151`)
+
+| README nói | Code |
+|---|---|
+| Ghi SEO đường dự phòng lỗi giữa chừng → không hẹn | `_seo_via_meta`: lỗi khác 400/401/403 (5xx, mất mạng) → `_taint_modified` `:1423`; trả lời lạ → `:1428` |
+| Website chưa cho ghi khóa meta (400/401/403), SiteSEO chưa cho ghi → vẫn hẹn | `_seo_via_meta` trả `unavailable`, không đánh dấu (`:1419-1422`, `:1405-1408`) |
+| SiteSEO báo lỗi khi ghi qua Abilities → vẫn hẹn | `_seo_via_abilities` trả `_seo_error`, **không** gọi `_taint_modified` |
+| Đặt ảnh đại diện lỗi giữa chừng → không hẹn | `set_featured_image`: lỗi lệnh ghi → `:1463`; trả lời lạ → `:1468` |
+| Lỗi lúc hỏi lại bài trước khi đặt ảnh (chưa ghi gì) → vẫn hẹn, cảnh báo | `_own_draft(post_id, failed=_IMAGE_CHECK_FAILED)` ném lỗi trước lệnh ghi, không đánh dấu; ca `test_l3_hen_gio_chua_hoi_duoc_bai_de_dat_anh_dai_dien_thi_van_hen` |
+| Bị đánh dấu thì không hẹn giờ, câu «… Chưa hẹn giờ, chưa đăng…» | `release_draft` `:1545-1550` (`known is None` → `_RELEASE_CHANGED`) |
+
+### Gỡ dấu `xfail` (chỉ xóa dòng dấu, R5 Chỉ Huy đã duyệt)
+
+`tests/test_soi_loi_t112.py::test_sl_t112_4_readme_hen_gio_ghi_seo_loi_giua_chung_khong_hen`: `--runxfail` qua trước khi gỡ. `git diff --numstat -- tests/`: `0 7 tests/test_soi_loi_t112.py` (7 dòng xóa, 0 dòng thêm).
+
+### Kiểm tra lượt 4
+
+```
+$ uv run pytest --runxfail <SL-T112-4 + 2 ca README SL-T112-2, -3>
+3 passed
+$ uv run pytest tests/test_soi_loi_t112.py tests/test_soi_loi_t106.py::test_sl_t108_1_readme_trang_thai_khop_trang_ket_noi
+49 passed in 371.74s          # 0 xfail còn lại trong file T-112
+$ uv run ruff check .
+All checks passed!
+$ uv --version                # trước khi chạy uvx (T-078)
+uv 0.13.4 (…)
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/reports/T-112-thu-ky.md tests/test_soi_loi_t112.py
+  "results": {}
+```
+
+Không chạy toàn bộ pytest (theo tin giao việc). Số mục README không đổi.
+
+### Còn để ngỏ
+
+- **Đường Abilities trên website thật** (ghi chú T-115): chưa biết lệnh ghi SEO qua Abilities có làm đổi «giờ sửa bài» trên website không. Nếu có, lần hỏi lại sau khi ghi sẽ đánh dấu và app không hẹn giờ. README hiện viết theo code; sau buổi thử thật LC-T094-44 nên đọc lại gạch này.

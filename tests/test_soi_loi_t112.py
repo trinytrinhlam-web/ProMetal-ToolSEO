@@ -625,13 +625,6 @@ def test_l3_readme_cau_bai_bi_sua_ngoai_app_khop_client():
     assert quoted == expected
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T112-4: README mục 11 chia luật Hẹn giờ theo loại phần thiếu («vẫn hẹn khi chỉ "
-    "thiếu SEO», ảnh đại diện thì không); thật ra theo lệnh ghi có lỗi giữa chừng không: ghi SEO "
-    "lỗi giữa chừng (đường meta) thì không hẹn, ảnh đại diện hỏng lúc hỏi bài (chưa ghi) thì "
-    "vẫn hẹn",
-)
 def test_sl_t112_4_readme_hen_gio_ghi_seo_loi_giua_chung_khong_hen():
     section = readme_section_11()
     start = section.index("**Ảnh đại diện hay SEO chưa lên kịp**")
