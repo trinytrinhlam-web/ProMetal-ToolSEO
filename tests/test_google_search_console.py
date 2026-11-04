@@ -19,6 +19,7 @@ from __future__ import annotations
 import ast
 import copy
 import io
+import itertools
 import json
 import os
 import unicodedata
@@ -957,9 +958,20 @@ def test_429_hai_lan_thi_bao_loi(fake, client, sleeps):
     assert len(sleeps) == 1
 
 
+def distinct_query_pages(count=5_000):
+    """Mỗi lần gọi trả một trang đầy, từ khóa không trùng trang trước (lượt 2: dòng lặp nguyên văn
+    giữa hai trang bị bỏ, SL-T121-1, nên trang lặp y hệt không còn dùng để thử lật trang)."""
+    pages = itertools.count()
+
+    def handler(_request):
+        number = next(pages)
+        return answer(*[query_row(f"tu khoa {number}-{i}") for i in range(count)])
+
+    return handler
+
+
 def test_toi_da_so_lenh_moi_client(fake, account):
-    full = answer(*[query_row(f"tu khoa {i}") for i in range(5_000)])
-    fake.on("POST", QUERY_URL, full)
+    fake.on("POST", QUERY_URL, distinct_query_pages())
     client = make_client(account, fake, max_requests=2)
     with pytest.raises(SearchConsoleError, match="Đã gửi đủ 2 lệnh") as error:
         client.fetch_page_query(TODAY - timedelta(days=27), TODAY)
@@ -1210,13 +1222,134 @@ def test_lat_trang_dung_khi_trang_sau_rong(fake, client):
 
 
 def test_tran_so_dong_thi_dung_va_bao_co_the_thieu(fake, client):
-    full = answer(*[query_row(f"tu khoa {i}") for i in range(5_000)])
-    fake.on("POST", QUERY_URL, full)
+    # Lượt 2 (SL-T121-1, R5): mỗi trang dòng riêng. Bản lượt 1 cho 10 trang giống hệt nhau và ghim
+    # đúng hành vi lỗi (dòng lặp cộng dồn thành 100 lượt hiển thị); trang lặp nay ở
+    # test_trang_lap_lai_bo_ca_lan_lay.
+    fake.on("POST", QUERY_URL, distinct_query_pages())
     result = client.fetch_page_query(TODAY - timedelta(days=27), TODAY)
     assert result.truncated is True
     assert [b["startRow"] for b in sent_bodies(fake)] == list(range(0, 50_000, 5_000))
-    assert len(result.rows) == 5_000  # 10 trang giống hệt nhau: dòng trùng được cộng dồn
-    assert result.rows[0].impressions == 100
+    assert len(result.rows) == 50_000 and result.dropped == 0
+    assert {r.impressions for r in result.rows} == {10}  # không dòng nào bị cộng gấp
+
+
+# ================================================================ lượt 2: dòng lặp, surrogate, GN
+
+
+def test_dong_lap_nguyen_van_bi_bo_va_dem(fake, client):
+    rows = [row(page=f"{PREFIX}bai-{i}/") for i in range(20)] + [row(), row()]
+    fake.on("POST", QUERY_URL, answer(*rows))
+    result = client.fetch_day_page(date(2026, 10, 30), TODAY)
+    shown = {r.page: r for r in result.rows}
+    assert (shown[PAGE].clicks, shown[PAGE].impressions) == (1, 10)
+    assert result.dropped == 1 and len(result.rows) == 21
+
+
+def test_dong_lap_giua_hai_trang_bi_bo(fake, client):
+    """Số liệu dịch giữa hai lệnh lật trang: dòng cuối trang 1 hiện lại ở đầu trang 2."""
+    first = [query_row(f"a{i}") for i in range(5_000)]
+    second = [query_row("a4999"), *[query_row(f"b{i}") for i in range(30)]]
+    pages = iter([answer(*first), answer(*second)])
+    fake.on("POST", QUERY_URL, lambda _r: next(pages))
+    result = client.fetch_page_query(TODAY - timedelta(days=27), TODAY)
+    assert len(result.rows) == 5_030 and result.dropped == 1
+    assert {r.impressions for r in result.rows} == {10}
+
+
+def test_trang_lap_lai_bo_ca_lan_lay(fake, client):
+    fake.on("POST", QUERY_URL, answer(*[query_row(f"tu khoa {i}") for i in range(5_000)]))
+    with pytest.raises(SearchConsoleError, match="lặp lại") as error:
+        client.fetch_page_query(TODAY - timedelta(days=27), TODAY)
+    assert_fixed(error)
+    assert "không đúng dạng" in str(error.value) and "Thử lại sau" not in str(error.value)
+    assert len(fake.search_console_requests()) == 2  # dừng ngay ở trang lặp, không lật tiếp
+
+
+def test_dong_chi_khac_phan_thang_van_cong_don_khi_co_dong_lap(fake, client):
+    """Dòng lặp nguyên văn bị bỏ; dòng khác nhau ở «#…» vẫn cộng dồn (thiết kế 1.4)."""
+    rows = [row(page=f"{PREFIX}bai-{i}/") for i in range(20)] + [
+        row(page=PAGE, clicks=1, impressions=10),
+        row(page=PAGE + "#a", clicks=0, impressions=5),
+        row(page=PAGE + "#a", clicks=0, impressions=5),  # lặp nguyên văn: bỏ
+    ]
+    fake.on("POST", QUERY_URL, answer(*rows))
+    result = client.fetch_day_page(date(2026, 10, 30), TODAY)
+    shown = {r.page: r for r in result.rows}
+    assert (shown[PAGE].clicks, shown[PAGE].impressions) == (1, 15) and result.dropped == 1
+
+
+def test_kiem_tra_bo_dong_lap(fake, client):
+    def host_row(page, impressions):
+        return {"keys": [page], "clicks": 0, "impressions": impressions, "position": 4.0}
+
+    staging = "https://www.staging-m.suachuacuasat.com/x/"
+    rows = [host_row(f"{PREFIX}p{i}/", 1) for i in range(20)] + [host_row(staging, 5)] * 2
+    fake.on("POST", QUERY_URL, answer(*rows))
+    result = client.check_hosts(date(2026, 10, 7), TODAY)
+    assert (result.inside_impressions, result.outside_impressions) == (20, 5)
+    assert result.hosts == (("www.staging-m.suachuacuasat.com", 5),) and result.dropped == 1
+
+
+LONE = chr(0xD800)  # surrogate lẻ: JSON "\ud800" đọc ra chữ này, không mã hóa được UTF-8
+
+
+@pytest.mark.parametrize(
+    "page",
+    [PREFIX + "a" + LONE + "/", PREFIX + LONE, PAGE + "#" + LONE],
+    ids=["giua-duong-dan", "cuoi-duong-dan", "phan-thang"],
+)
+def test_dia_chi_co_surrogate_le_bi_bo(fake, client, page):
+    rows = [row(page=f"{PREFIX}bai-{i}/") for i in range(20)] + [row(page=page)]
+    fake.on("POST", QUERY_URL, answer(*rows))  # Google giả ghi JSON kiểu "\ud800"
+    result = client.fetch_day_page(date(2026, 10, 30), TODAY)
+    assert result.dropped == 1 and len(result.rows) == 20
+    for shown in result.rows:
+        shown.page.encode("utf-8")  # mọi địa chỉ trả về đều mã hóa được (cache, mã băm, giao diện)
+
+
+def test_tu_khoa_co_surrogate_le_duoc_lam_sach(fake, client):
+    rows = [query_row(f"q{i}") for i in range(20)] + [query_row("sửa" + LONE + " cửa")]
+    fake.on("POST", QUERY_URL, answer(*rows))
+    result = client.fetch_page_query(TODAY - timedelta(days=27), TODAY)
+    assert "sửa cửa" in {r.query for r in result.rows} and result.dropped == 0
+
+
+def test_kiem_tra_dia_chi_surrogate_khong_tinh_trong_website(fake, client):
+    def host_row(page, impressions):
+        return {"keys": [page], "clicks": 0, "impressions": impressions, "position": 4.0}
+
+    rows = [host_row(f"{PREFIX}p{i}/", 1) for i in range(20)] + [host_row(PREFIX + LONE, 3)]
+    fake.on("POST", QUERY_URL, answer(*rows))
+    result = client.check_hosts(date(2026, 10, 7), TODAY)
+    assert (result.inside_impressions, result.outside_impressions) == (20, 3)
+    assert result.hosts == (("suachuacuasat.com", 3),)
+
+
+@pytest.mark.parametrize(
+    "reason", ["rateLimitExceeded", "userRateLimitExceeded", "dailyLimitExceeded", "quotaExceeded"]
+)
+def test_403_han_muc_bao_doi_15_phut(fake, client, sleeps, reason):
+    body = {"error": {"code": 403, "message": MOI, "errors": [{"reason": reason, "message": MOI}]}}
+    fake.on("POST", QUERY_URL, (403, body, {}))
+    with pytest.raises(SearchConsoleError, match="15 phút") as error:
+        client.fetch_days(TODAY - timedelta(days=9), TODAY)
+    assert_fixed(error)
+    assert error.value.status_code == 403
+    assert len(fake.search_console_requests()) == 1 and sleeps == []  # 403 không tự thử lại
+
+
+def test_than_long_qua_sau_bi_chan_bang_cau_co_dinh(fake, client):
+    """GN-7 Soi Lỗi: thân lồng sâu không làm lọt ``RecursionError`` ở ``_known_body``."""
+    body = client._body(SHAPES["day_page"], date(2026, 10, 30), TODAY, 0)
+    nested: list = []
+    cursor = nested
+    for _ in range(100_000):
+        cursor.append([])
+        cursor = cursor[0]
+    body["x"] = nested
+    with pytest.raises(SearchConsoleError, match="không nằm trong danh sách"):
+        client._send("POST", QUERY_URL, body)
+    assert fake.requests == []
 
 
 # ================================================================ «Kiểm tra», thuộc tính

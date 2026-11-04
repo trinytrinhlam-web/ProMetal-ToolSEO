@@ -28,9 +28,10 @@ LC-T120-1 → -8, -15 → -18 (``docs/team/reports/T-120-la-chan.md``).
 - Câu trả lời là dữ liệu **chưa tin cậy** (thiết kế 2.4, LC-T120-5): JSON không ``NaN``/``Infinity``
   (chặn ngay ở bộ đọc của module này), không trùng khóa; từng dòng kiểm số (số thật, không
   ``bool``, số nguyên, 0 ≤ click ≤ hiển thị ≤ 10⁹; vị trí 1 … 10.000), ngày trong khoảng đã hỏi,
-  trang qua ``is_site_link`` và tiền tố website (bỏ phần ``#…``; dòng trùng sau khi bỏ thì cộng
-  dồn), từ khóa qua ``clean_text`` rồi cắt 200 ký tự. Dòng sai bị bỏ và đếm; quá 10% số dòng của
-  một câu trả lời thì bỏ cả câu trả lời.
+  trang qua ``is_site_link``, tiền tố website và mã hóa được UTF-8 (bỏ phần ``#…``; dòng trùng
+  sau khi bỏ thì cộng dồn), từ khóa qua ``clean_text`` rồi cắt 200 ký tự. Dòng lặp **nguyên văn**
+  (cùng khóa thô, kể cả khi trang sau lặp trang trước) là dữ liệu lạ: bỏ, không cộng (SL-T121-1).
+  Dòng sai hay lặp bị bỏ và đếm; quá 10% số dòng của một câu trả lời thì bỏ cả câu trả lời.
 - Câu lỗi cố định (thiết kế 2.8, LC-T120-4): không chép lời Google, thuộc tính, đường dẫn trang,
   từ khóa; mã lý do của Google chỉ đọc khi thuộc danh sách ASCII cố định, chỉ để chọn câu.
 
@@ -132,6 +133,9 @@ _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _RE2_SPECIAL = re.compile(r"([\\.^$|?*+()\[\]{}])")
 _REASON = re.compile(r"[A-Za-z_]{1,64}")
 _API_DISABLED = frozenset({"accessNotConfigured", "SERVICE_DISABLED"})
+_QUOTA_REASONS = frozenset(
+    {"rateLimitExceeded", "userRateLimitExceeded", "dailyLimitExceeded", "quotaExceeded"}
+)
 
 # ---------------------------------------------------------------- câu báo cố định
 _MSG_BAD_PROPERTY = (
@@ -173,6 +177,11 @@ _MSG_TOO_BIG = (
     "hơn."
 )
 _MSG_BAD_DATA = "Search Console trả về dữ liệu không đúng dạng (mã {code}). Thử lại sau."
+_MSG_ODD_ROWS = (
+    "Search Console trả về nhiều dòng không đúng dạng hoặc lặp lại (quá 10% số dòng của một lần "
+    "gọi), phần mềm bỏ cả lần lấy này để không dùng số sai. Nếu bấm lại vẫn báo câu này, hãy báo "
+    "người hỗ trợ phần mềm."
+)
 _MSG_API_OFF = (
     "Chưa bật Google Search Console API trong Google Cloud (mã 403). Bật API này trong project "
     "của tài khoản dịch vụ rồi thử lại."
@@ -498,6 +507,7 @@ class SearchConsoleClient:
         raw_rows = self._raw_rows(answer, shape)
         inside = outside = dropped = 0
         hosts: dict[str, int] = {}
+        seen: set[str] = set()  # địa chỉ thô đã gặp: dòng lặp nguyên văn là dữ liệu lạ (SL-T121-1)
         for raw in raw_rows:
             numbers = _numbers(raw)
             keys = raw.get("keys") if isinstance(raw, dict) else None
@@ -507,9 +517,11 @@ class SearchConsoleClient:
                 or len(keys) != 1
                 or not isinstance(keys[0], str)
                 or len(keys[0]) > MAX_LINK_CHARS
+                or keys[0] in seen
             ):
                 dropped += 1
                 continue
+            seen.add(keys[0])
             impressions = numbers[1]
             if self._page(keys[0]) is not None:
                 inside += impressions
@@ -537,16 +549,23 @@ class SearchConsoleClient:
         metadata = "missing"
         truncated = False
         start_row = 0
+        # Khóa thô (``keys`` nguyên văn, trước khi bỏ «#…») đã gặp trong cả lần lấy, qua mọi trang.
+        # Google không trả hai dòng cùng khóa: dòng lặp (trang sau lặp trang trước, số liệu dịch
+        # giữa hai lệnh lật trang) bị bỏ và đếm như dòng sai, không cộng dồn (SL-T121-1). Cả trang
+        # bị lặp thì quá 10% dòng sai: bỏ cả lần lấy.
+        seen: set[tuple[str, ...]] = set()
         while True:
             answer = self._send("POST", url, self._body(shape, start, end, start_row))
             raw_rows = self._raw_rows(answer, shape)
             page_dropped = 0
             for raw in raw_rows:
                 row = self._row(raw, shape, start, end)
-                if row is None:
+                key = tuple(raw["keys"]) if row is not None else ()
+                if row is None or key in seen:
                     page_dropped += 1
-                else:
-                    rows.append(row)
+                    continue
+                seen.add(key)
+                rows.append(row)
             _check_share(page_dropped, len(raw_rows))
             dropped += page_dropped
             if start_row == 0 and shape.data_state == "all":
@@ -632,7 +651,7 @@ class SearchConsoleClient:
             return False
         try:
             sent = json.dumps(body, sort_keys=True, allow_nan=False)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, RecursionError):  # RecursionError: GN-7 Soi Lỗi T-121
             return False
         start, end = _iso_day(body.get("startDate")), _iso_day(body.get("endDate"))
         if start is None or end is None:
@@ -766,8 +785,12 @@ class SearchConsoleClient:
         return SearchRow(clicks=clicks, impressions=impressions, position=position, **fields)
 
     def _page(self, value: str) -> str | None:
-        """Địa chỉ trang trên đúng website (``is_site_link`` + tiền tố), đã bỏ phần ``#…``."""
-        if len(value) > MAX_LINK_CHARS:
+        """Địa chỉ trang trên đúng website (``is_site_link`` + tiền tố), đã bỏ phần ``#…``.
+
+        Địa chỉ có surrogate lẻ (JSON ``"\\ud800"``) bị bỏ: ``is_site_link`` không chặn loại Cs, mà
+        chữ đó không mã hóa được UTF-8 nên cache SQLite, mã băm, giao diện đều hỏng ở sau
+        (SL-T122-3, GN-3 Soi Lỗi T-122)."""
+        if len(value) > MAX_LINK_CHARS or not _utf8_ok(value):
             return None
         page = value.split("#", 1)[0]
         if not page.startswith(self._prefix) or not is_site_link(page, self._wordpress_url):
@@ -853,9 +876,19 @@ def _numbers(raw: object) -> tuple[int, int, float] | None:
 
 
 def _check_share(dropped: int, total: int) -> None:
-    """Quá 10% số dòng của một câu trả lời sai khuôn: bỏ cả câu trả lời (dữ liệu lạ)."""
+    """Quá 10% số dòng của một câu trả lời sai khuôn hay lặp lại: bỏ cả câu trả lời (dữ liệu lạ).
+    Câu báo riêng (GN-4 Soi Lỗi T-121): lỗi này bấm lại thường vẫn vậy, không phải «thử lại sau»."""
     if total and dropped / total > MAX_BAD_ROW_SHARE:
-        raise SearchConsoleError(_MSG_BAD_DATA.format(code=200))
+        raise SearchConsoleError(_MSG_ODD_ROWS)
+
+
+def _utf8_ok(text: str) -> bool:
+    """Chữ mã hóa được UTF-8 (không có surrogate lẻ)."""
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def _iso_day(value: object, start: date | None = None, end: date | None = None) -> date | None:
@@ -892,8 +925,9 @@ def _host_of(page: str) -> str | None:
 
 
 def _merge(rows: list[SearchRow]) -> list[SearchRow]:
-    """Gộp dòng trùng khóa (cùng ngày, trang, từ khóa; xảy ra khi bỏ phần ``#…`` của địa chỉ):
-    cộng click, lượt hiển thị; vị trí trung bình theo lượt hiển thị. Giữ thứ tự gặp đầu tiên."""
+    """Gộp dòng trùng khóa sau khi bỏ phần ``#…`` của địa chỉ (cùng ngày, trang, từ khóa; khóa thô
+    khác nhau ở ``#…``): cộng click, lượt hiển thị; vị trí trung bình theo lượt hiển thị. Giữ thứ
+    tự gặp đầu tiên. Dòng lặp **nguyên văn** không tới đây: ``_fetch`` đã bỏ (SL-T121-1)."""
     totals: dict[tuple[Any, ...], list[float]] = {}
     for row in rows:
         key = (row.day, row.page, row.query)
@@ -984,8 +1018,12 @@ def _answer(status: int, data: bytes) -> dict[str, Any]:
     if status >= 500:
         raise SearchConsoleError(_MSG_SERVER.format(code=status), status_code=status)
     if status >= 400:
-        if status == 403 and _reasons(data) & _API_DISABLED:
-            raise SearchConsoleError(_MSG_API_OFF, status_code=status)
+        if status == 403:
+            reasons = _reasons(data)
+            if reasons & _API_DISABLED:
+                raise SearchConsoleError(_MSG_API_OFF, status_code=status)
+            if reasons & _QUOTA_REASONS:  # API kiểu v3 báo hạn mức bằng 403 (GN-2 Soi Lỗi T-121)
+                raise SearchConsoleError(_MSG_BY_STATUS[429], status_code=status)
         message = _MSG_BY_STATUS.get(status, _MSG_REJECTED.format(code=status))
         raise SearchConsoleError(message, status_code=status)
     if status != 200:

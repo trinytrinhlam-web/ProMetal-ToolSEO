@@ -814,11 +814,6 @@ def test_hai_tai_khoan_hai_ma_rieng(fake, key_file, tmp_path):
 
 
 # ================================================================ lỗi mới (xfail strict)
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T121-1: dòng trùng nguyên văn (cùng khóa, kể cả #…) bị cộng dồn: trang lặp làm "
-    "click/lượt hiển thị gấp bội mà không báo",
-)
 def test_sl_t121_1_dong_trung_nguyen_van_trong_mot_cau_tra_loi_khong_cong_don(fake, client):
     """Một (ngày, trang) chỉ có **một** dòng trong câu trả lời của Google. Dòng lặp lại nguyên văn
     là dữ liệu lạ: bỏ (đếm ``dropped``) hoặc bỏ cả câu trả lời đều được; cộng dồn thành 20 lượt
@@ -833,11 +828,6 @@ def test_sl_t121_1_dong_trung_nguyen_van_trong_mot_cau_tra_loi_khong_cong_don(fa
     assert shown[PAGE].impressions == 10 and shown[PAGE].clicks == 1
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T121-1: trang sau lặp lại trang trước (Google bỏ qua startRow, hay số liệu dịch "
-    "giữa hai lệnh) thì số liệu bị cộng gấp đôi",
-)
 def test_sl_t121_1_trang_sau_lap_lai_trang_truoc_khong_cong_gap_doi(fake, client):
     page = _page_bytes(5_000, query=True)
     answers = iter([(200, page, {}), (200, page, {}), (200, _page_bytes(0, query=True), {})])

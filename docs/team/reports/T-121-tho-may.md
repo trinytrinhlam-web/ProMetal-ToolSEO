@@ -5,8 +5,8 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-121](../tickets/T-121-client-search-console.md) |
 | Nhánh | `team/T-121` (từ `main` `a499a13`) |
-| Ngày nộp | 2026-11-03 23:42 (+07:00, theo lệnh `date`) |
-| Kết quả | Hoàn thành |
+| Ngày nộp | 2026-11-03 23:42 (+07:00, theo lệnh `date`); lượt 2: 2026-11-04 13:07 |
+| Kết quả | Hoàn thành (lượt 2: SL-T121-1 đã sửa) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -17,6 +17,7 @@
 - Số liệu Google trả về được **kiểm từng dòng**. Dòng lạ bị bỏ; quá 10% dòng lạ thì bỏ cả lần lấy. Từ khóa người lạ gõ được làm sạch (bỏ ký tự vô hình, ký tự đảo chiều chữ).
 - Mỗi lần bấm gửi tối đa 20 lệnh. Google báo đang giới hạn thì thử lại đúng một lần, rồi báo «đợi 15 phút».
 - Không thêm thư viện. Test không gọi Google thật.
+- **Lượt 2** sửa lỗi nhỏ Soi Lỗi tìm ra: nếu Google trả một dòng hai lần (ví dụ trang sau lặp lại trang trước), phần mềm từng cộng cả hai, nên click và lượt hiển thị bị gấp đôi mà không báo. Nay dòng lặp bị bỏ. Cả trang bị lặp thì bỏ cả lần lấy, với câu báo riêng. Cũng sửa thêm ba chỗ nhỏ khác (mục «Lượt 2»).
 
 ## Đã thay đổi
 
@@ -137,3 +138,92 @@ $ PYTHONUTF8=1 uvx detect-secrets scan <6 file của phiếu>      # uv 0.13.4
 - **T-124:** dùng `today_pacific()`; một client mỗi lần bấm (`from_settings`); khóa cấp module để chỉ một lần lấy chạy cùng lúc (LC-T120-22); xử lý `SearchConsoleError` «đã gửi đủ 20 lệnh» (giữ phần đã ghi); quy tắc 3 ngày tạm khi `metadata` thiếu/sai ở đoạn mới nhất; `truncated` → «có thể thiếu dòng». Câu lỗi của client là câu cố định, hiện qua `escape_markdown`.
 - **T-123:** `page_key` chuẩn hóa từ `SearchRow.page` (đã bỏ `#…`, chưa giải mã `%`).
 - **Soi Lỗi:** thử thêm ca thân lệnh dựng tay với kiểu dữ liệu lạ. `Decimal` bị chặn (`json.dumps` khi so thân báo lỗi), lớp con của `int` ở `startRow` bị chặn (`type(...) is int` ở `_body`). Lớp con của `str` cùng nội dung thì được nhận, vì gửi đi y hệt thân đúng.
+
+## Lượt 2 · SL-T121-1 và ghi nhận của Soi Lỗi (Chỉ Huy B, 04/11)
+
+Soi Lỗi (`docs/team/reports/T-121-soi-loi.md`, `482cdea`): ĐẠT CÓ ĐIỀU KIỆN, 1 lỗi Thấp mới.
+
+### SL-T121-1: dòng lặp nguyên văn bị cộng dồn
+
+| Mục | Nội dung |
+|---|---|
+| Lỗi | `_merge` cộng mọi dòng cùng (ngày, trang, từ khóa). Ý thiết kế 1.4 là chỉ cộng các dòng **khác nhau ở `#…`**, nhưng dòng lặp **nguyên văn** cũng bị cộng. Google lặp trang (bỏ qua `startRow`), hay số liệu `dataState = all` dịch giữa hai lệnh lật trang, thì click và lượt hiển thị bị gấp bội mà không báo |
+| Sửa | `_fetch` nhớ **khóa thô** (`keys` nguyên văn, trước khi bỏ `#…`) đã gặp qua mọi trang của một lần lấy. Dòng lặp bị bỏ và đếm vào `dropped` như dòng sai (theo gợi ý của Soi Lỗi). Cả trang bị lặp là 100% dòng sai, nên quy tắc 10% có sẵn bỏ cả lần lấy. `check_hosts` (một trang) cũng bỏ dòng lặp. `_merge` vẫn cộng các dòng chỉ khác `#…` |
+| Câu báo | Khi bỏ cả lần lấy vì dòng sai hay lặp: câu riêng `_MSG_ODD_ROWS` («…nhiều dòng không đúng dạng hoặc lặp lại (quá 10% số dòng của một lần gọi)… Nếu bấm lại vẫn báo câu này, hãy báo người hỗ trợ phần mềm»), thay câu chung «…không đúng dạng (mã 200). Thử lại sau.» (GN-4). Câu mới vẫn có chữ «không đúng dạng», nên ca của Soi Lỗi và của tôi so chữ này vẫn đúng |
+| Test của Soi Lỗi | 2 ca `xfail(strict=True)` SL-T121-1. Chạy bản gốc còn dấu (lấy bằng `git show HEAD:…`, đặt tạm trong `tests/` rồi xóa) trên mã mới: `[XPASS(strict)]` × 2. Gỡ hai khối trang trí `@pytest.mark.xfail(…)` (chỉ xóa dấu, R5 Chỉ Huy duyệt); thân test không đổi |
+| Ca mới của tôi | `test_dong_lap_nguyen_van_bi_bo_va_dem` (lặp trong một trang: giữ dòng đầu, `dropped` = 1), `test_dong_lap_giua_hai_trang_bi_bo` (dòng cuối trang 1 hiện lại đầu trang 2), `test_trang_lap_lai_bo_ca_lan_lay` (cả trang lặp: báo câu mới, dừng sau 2 lệnh, không lật tiếp), `test_dong_chi_khac_phan_thang_van_cong_don_khi_co_dong_lap`, `test_kiem_tra_bo_dong_lap` |
+
+**Đổi test lượt 1 của tôi** (R5; cả hai ca dùng trang giống hệt nhau, nay trang lặp bị bỏ):
+
+| Test | Cũ | Mới |
+|---|---|---|
+| `test_tran_so_dong_thi_dung_va_bao_co_the_thieu` | 10 trang giống hệt; `len(result.rows) == 5_000` và `result.rows[0].impressions == 100`: ghim đúng hành vi lỗi SL-T121-1 | Mỗi trang dòng riêng (`distinct_query_pages`); giữ nguyên hai kỳ vọng chính (`truncated is True`, `startRow` 0 → 45.000); hai dòng cuối thành `len(result.rows) == 50_000 and result.dropped == 0`, `{r.impressions …} == {10}`. Soi Lỗi đã đề nghị đúng cách này ở mục SL-T121-1 |
+| `test_toi_da_so_lenh_moi_client` | Mỗi trang 5.000 dòng giống hệt nhau | Chỉ đổi dữ liệu (mỗi trang dòng riêng); kỳ vọng giữ nguyên («Đã gửi đủ 2 lệnh», đúng 2 lệnh) |
+
+### Các ghi nhận GN của Soi Lỗi
+
+| GN | Quyết định | Lý do / cách làm |
+|---|---|---|
+| GN-1 · lệnh xin mã tự thử lại 3 lần (google-auth) | **Để lại** | Hành vi bên trong `google-auth` ở lớp vận chuyển dùng chung với Sheets (có từ T-097); thư viện không có tùy chọn công khai để tắt; lệnh xin mã không phải lệnh Search Console (LC-T120-8 tính lệnh Search Console). Ghi cho T-124: khi máy chủ mã lỗi, phần mềm có thể chờ thêm khoảng 3 giây trước khi báo |
+| GN-2 · 403 vì hạn mức | **Sửa** | API kiểu `webmasters/v3` có thể báo hạn mức bằng 403 kèm mã lý do. `_QUOTA_REASONS` (`rateLimitExceeded`, `userRateLimitExceeded`, `dailyLimitExceeded`, `quotaExceeded`) → câu «đang giới hạn… đợi 15 phút» thay cho «chưa có quyền». 403 không tự thử lại. Test `test_403_han_muc_bao_doi_15_phut` (4 ca) |
+| GN-3 · cỡ câu trả lời Q1 khi website lớn | **Để lại** | Hỏng theo hướng an toàn («lớn bất thường… khoảng ngày ngắn hơn»); đo cỡ thật ở lượt thử thật |
+| GN-4 · quy tắc 10% với lần gọi ít dòng | **Sửa một phần** | Giữ quy tắc 10% của thiết kế 2.4. Câu báo riêng, không khuyên «thử lại sau» (dòng trên). Lượt thử thật xem `dropped`; nếu Google trả địa chỉ hợp lệ mà `is_site_link` từ chối, sẽ xét lại ở T-124 |
+| GN-5 · «Tìm thuộc tính» giữ mục không đúng dạng | **Để lại** (có chủ đích) | Giữ để người dùng thấy vì sao thuộc tính `http://` không chọn được (`usable = False`); T-125 hiện `site_url` bằng chữ thuần |
+| GN-6 · «Kiểm tra» hiện tên máy trùng website | **Để lại** cho T-124/T-125 | Việc chữ trên giao diện: khi tên máy trùng website thì ghi «(địa chỉ http:// hoặc lạ)» |
+| GN-7 · `_known_body` không bắt `RecursionError` | **Sửa** | Bắt cùng `TypeError`, `ValueError`: thân lồng sâu bị chặn bằng câu cố định. Test `test_than_long_qua_sau_bi_chan_bang_cau_co_dinh` (100.000 tầng) |
+
+### Surrogate lẻ (SL-T122-3, GN-3 của Soi Lỗi T-122)
+
+JSON của Google có thể chứa `"\ud800"`; `json.loads` đọc ra một surrogate lẻ, không mã hóa được UTF-8. **Sửa:** `_page` bỏ địa chỉ không mã hóa được UTF-8 (`_utf8_ok`), trước cả phép kiểm `is_site_link` (hàm này không chặn ký tự loại Cs). Rà mọi chữ từ Google hay `.env` mà client trả ra:
+
+| Chữ | Trước lượt 2 | Sau lượt 2 |
+|---|---|---|
+| `SearchRow.page` (Q1, Q2) | Lọt (chỉ `is_site_link`) | Bỏ dòng, đếm `dropped`. Test `test_dia_chi_co_surrogate_le_bi_bo` (3 chỗ: giữa, cuối đường dẫn, phần `#…`) |
+| Trang ở «Kiểm tra» (`check_hosts`) | Không tính «trong website»; tên máy chỉ nhận chữ ASCII | Như cũ, nay qua `_page` mới. Test `test_kiem_tra_dia_chi_surrogate_khong_tinh_trong_website` |
+| `SearchRow.query` | `clean_text` bỏ loại Cs | Như cũ. Test `test_tu_khoa_co_surrogate_le_duoc_lam_sach` |
+| `SiteEntry.site_url` | `isascii()`: bỏ mục | Như cũ |
+| Tên máy trong `HostCheck.hosts` | Biểu thức tên miền ASCII | Như cũ |
+| Ngày, `metadata` | Biểu thức chữ số ASCII | Như cũ |
+| `WORDPRESS_URL`, `GSC_SITE_URL` | `isascii()` ở `site_prefix`, `parse_property` | Như cũ (biến môi trường Windows có thể chứa surrogate lẻ, nhưng bị từ chối ở đây) |
+
+### Cho T-124: gom 3 hàm chuẩn hóa `WORDPRESS_URL` về một chỗ
+
+Lá Chắn T-123 xác nhận client T-121 không có lỗi chữ hoa. Hiện có 3 hàm cùng luật:
+
+| Hàm | Nhánh | Kiểu |
+|---|---|---|
+| `seo_app/google/search_console.py: site_prefix` | T-121 | Chặt: sai dạng thì `SearchConsoleError`; trả `https://<tên máy>[/<đường con>]/` |
+| `seo_app/storage/search_cache.py: site_base` | T-122 lượt 2 | Nới: chỉ chuẩn hóa, không báo lỗi; trả không có `/` cuối |
+| `seo_app/tracking/match.py: site_base` | T-123 lượt 2 | Như T-122 (cùng mã) |
+
+So bằng script (lấy mã hai bản `site_base` từ nhánh từ xa, chạy trên 15 địa chỉ). 9 địa chỉ client nhận (chữ hoa, `HTTPS://`, `:443`, `/` cuối, đường con có chữ hoa…) cho **cùng** tiền tố ở cả ba hàm. 6 địa chỉ client từ chối (`:8443`, `http://`, có tên/mật khẩu, có `?…`, địa chỉ IPv4/IPv6) thì hai bản `site_base` vẫn chuẩn hóa, và lặng lẽ bỏ phần tên/mật khẩu, `?…`.
+
+Đề xuất cho T-124:
+- Một hàm `site_base` (nới) đặt cạnh `is_site_link` trong `seo_app/wordpress/client.py`, hoặc một module nhỏ riêng. `site_prefix` = kiểm chặt + `site_base(…) + "/"`. T-122, T-123 nhập hàm chung, bỏ bản chép.
+- Giữ phép kiểm chặt ở cửa vào (`SearchConsoleClient.from_settings`): cache và lõi không bao giờ gặp địa chỉ client từ chối.
+- Gom ba bảng ca test về một bảng, kèm ca «mọi địa chỉ `site_prefix` nhận thì `site_prefix(u) == site_base(u) + "/"`».
+
+### Kiểm thử lượt 2
+
+Không chạy toàn bộ pytest (theo dặn dò).
+
+```
+# Bản gốc test Soi Lỗi (còn dấu xfail) chạy trên mã mới
+$ uv run pytest tests/test_tmp_sl121_goc.py -k sl_t121_1 -rxX       # file tạm, đã xóa
+[XPASS(strict)] SL-T121-1 … × 2            (2 failed = XPASS strict, đúng mong đợi)
+
+$ uv run pytest tests/test_google_search_console.py tests/test_soi_loi_t121.py -q
+482 passed in 86.11s (0:01:26)              (của tôi 324 = 309 + 15 ca mới; Soi Lỗi 158, hết xfail)
+
+# Các file Google khác có quét mã cả gói seo_app/google hay dùng lớp vận chuyển chung
+$ uv run pytest tests/test_google_service_account.py tests/test_google_sheets.py \
+      tests/test_soi_loi_t097.py tests/test_la_chan_t097.py tests/test_t100_google_identity.py -q
+696 passed, 3 skipped in 90.06s (0:01:30)   (3 bỏ qua có từ trước: symlink, chmod)
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check <3 file sửa>
+3 files already formatted
+```
+
+Kiểm mã nguồn không có surrogate thật lọt vào (công cụ đôi khi đổi chuỗi `\u…`): 0 ký tự surrogate trong `search_console.py`.
