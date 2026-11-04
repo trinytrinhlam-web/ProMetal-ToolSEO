@@ -2,7 +2,7 @@
 
 > **Model:** lượt này **chạy Fable 5.1** (dòng «You are powered by» của lời nhắc hệ thống: Fable 5.1, kiểm theo luật 08:05 của Chỉ Huy B). Quy trình và mức độ lỗi: `docs/team/security.md`. Phần đối chiếu toàn vùng client WordPress + đăng bài (T-116 nhóm 2) ở biên bản riêng [`T-116-la-chan-nhom-2.md`](T-116-la-chan-nhom-2.md); biên bản này trả lời các câu về **T-112** (kể cả T-115 đã gộp vào nhánh).
 >
-> **Lượt 3 (03/11 tối, Opus tạm):** SL-T112-1 đã sửa và **đóng**; kết luận vẫn ĐẠT CÓ ĐIỀU KIỆN, gộp `main` được ngay. Xem mục [«Lượt 3»](#lượt-3-rút-gọn--opus-tạm) cuối biên bản; danh sách «trước khi bật» mới ở mục 5 của lượt đó.
+> **Lượt 3 (03/11 tối, Opus tạm):** SL-T112-1 đã sửa và **đóng**; kết luận vẫn ĐẠT CÓ ĐIỀU KIỆN, gộp `main` được ngay. Xem mục [«Lượt 3»](#lượt-3-rút-gọn--opus-tạm) cuối biên bản; danh sách «trước khi bật» mới ở mục 5 của lượt đó. **Lượt 3 · Fable (04/11):** đọc lại 47 dòng code của lượt 3 bằng Fable 5.1 theo khuyến nghị của lượt Opus: **Opus không bỏ sót gì**, 0 lỗi mới; xem mục cuối.
 
 | Mục | Nội dung |
 |---|---|
@@ -207,3 +207,66 @@ Probe của tôi: 3 ca AppTest trên bản sao `git archive 7186974` ở thư m�
 | bandit `app/views/write.py` (`PYTHONUTF8=1`) | 0 | ✔ |
 | detect-secrets (`PYTHONUTF8=1`, `write.py`; biên bản này quét bản sao ngoài git kèm file mồi) | 1 «Basic Auth Credentials» báo nhầm đã biết: `write.py:2505` (docstring `site_host`, ví dụ địa chỉ có tên và mật khẩu; lượt 2 là dòng `:2493`, dời xuống vì 12 dòng hằng mới). Biên bản: chỉ dòng báo nhầm cũ của lượt 2 (mục công cụ quét), mồi bị bắt | ✔ |
 | D1 | `uv.lock` không đổi; `pyproject.toml` chỉ đổi chú thích (từ `main`) | ✔ |
+
+---
+
+## Lượt 3 · Fable: đọc lại phần code lượt 3
+
+> **Model:** **Fable 5.1** (dòng «You are powered by»: Fable 5.1, kiểm đầu lượt). Chỉ Huy B giao 04/11 sau khi hạn mức Fable tuần mở lại (10:00), theo khuyến nghị ở mục 5 của lượt 3 (Opus tạm). Lượt này chỉ **đọc lại và thử lại** code lượt 3; không có yêu cầu mới nào của phiếu.
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | 47 dòng `app/views/write.py` của `58d5326` (hằng `MISSING_SEO_FIELDS`, hai câu báo, `seo_left_out` `:3036`, `seo_notices` `:3046`, hai dòng trong `publish_panel` `:4172-4173`, chốt hai trong `release_missing` `:3801-3816`), đọc cùng các hàm quanh nó không đổi: `seo_request` `:2743`, `package_seo` `:3002`, `seo_holder` `:3021`, `send_draft` `:3369-3537`, `send_and_record` `:3578-3677`, `write_seo` `:2797-2827`, `release_post` `:3727-3798`; bộ dựng `seo_app/publish/render.py` (`build_article` `:385-512`, `_review` `:628-642`); client `set_seo_meta` `:1293-1334`, `_seo_text` `:2401-2420`. Cây: `team/T-112` `97d0bc4` (lượt 4 README của Thư Ký, không đụng code); T-112 đã gộp `main` (`1bc0792`, toàn bộ test 22.536 qua theo Chỉ Huy; `main` cục bộ `bad6db7` chứa `97d0bc4`) |
+| Ngày | 2026-11-04 13:04–13:32 (giờ máy +07). Chỉ chạy test liên quan, không chạy toàn bộ. Không gọi website thật |
+| **Kết luận** | **Opus không bỏ sót gì.** 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **0 lỗi mới**. SL-T112-1 **đóng đúng** (hai chốt, đọc lại cả hai); kết luận lượt 3 giữ nguyên. Khuyến nghị «kiểm lại phần code lượt 3 bằng Fable» ở danh sách B: **xong**. Danh sách B cập nhật ở mục 4 |
+
+### 1. Đọc mã: điều tôi xét thêm ngoài bảng của lượt Opus
+
+Bảng mục 1 của lượt 3 (Opus) đúng từng dòng; tôi đọc lại và không sửa dòng nào. Các điểm dưới là chỗ tôi soi thêm:
+
+1. **Ba nơi cùng một chữ.** Chốt 1 xét `built.seo`, là đúng `SeoFields` mà `package_seo()` dựng từ `seo_request()["fields"]` (trường Chặn đã thành `""`, `:2757-2759`); `build_article` đưa **chính đối tượng đó** vào mã băm (`render.py:492-497`) và trả lại nguyên trong `BuiltArticle.seo` (`:507`); lúc gửi, `send_draft` dựng lại gói rồi lấy `seo_holder(package.seo)` (`:3515`) cho lệnh ghi. Không có bản sao nào khác của chữ SEO để lệch nhau.
+2. **Lúc gửi không xét lại `seo_notices`**: dòng Chặn chỉ nằm ở `notices` của giao diện, không nằm trong `package.review.problems`, nên `send_draft` (`:3490`) không thấy nó. Chốt lúc gửi vì thế là ba lớp khác: `if clicked and allowed` xét **trong cùng lần chạy** với cú bấm (`:4213`, `allowed` tính sau khi đã thêm dòng, `:4175-4182`); mã băm (`package.matches`, `:3502`: chữ SEO và công tắc đều nằm trong mã băm, nên đổi gì giữa lúc tick và lúc bấm là không gửi); và chốt 2. Tôi thử hai cách lách **cùng lần chạy** với cú bấm lọt (mục 2, B1 và B2): 0 lệnh ghi. **Ghi nhận cho phiếu sau** (không phải lỗi): phiếu nào thêm một đường gửi khác không qua `publish_panel` thì phải tự gọi `seo_notices`; chốt 2 vẫn giữ.
+3. **Chốt 2 đứng được một mình.** Gọi thẳng `release_post` (hàm chạy lúc gửi, không `st.*`) với `seo_ok` đúng mà `fields["title"]` trống: không gọi `release_draft`, kết quả `ok=False`, `went_public=False`, không «không rõ», câu báo nêu «tiêu đề SEO» và mã bài, nháp ghi `pending=False, released=False` (A1; đối chứng cùng khung: đủ chữ thì lệnh đăng đi). Hẹn giờ cùng ca: vẫn hẹn, `missing` nêu đúng ô (A2). Đột biến Q7 của Soi Lỗi (bỏ `allowed` ở cú bấm) cũng cho thấy chốt 2 giữ bài ở nháp khi chốt 1 bị vượt.
+4. **Mọi trường trống** (tắt hết chữ mà vẫn bật «Ghi SEO»): client ném `_SEO_EMPTY` (`client.py:1327-1328`) → `seo_ok` sai → đường `MISSING_SEO` (A5). Hai đường (`seo_ok` sai / trường bị bỏ) đều về cùng một chỗ giữ nháp; không có đường thứ ba.
+5. **Chữ «trông như trống»** (chỉ khoảng trắng, ký tự rộng 0, dấu cách không ngắt, U+3164): `siteseo_copy` trả `None` với «Meta title đang trống» (A4; Soi Lỗi cũng có 9 kiểu ở `ODD_TEXTS`), nên không có tiêu đề nào vừa «có chữ» với chốt 1 vừa bị client bỏ: chữ hợp lệ của bước SEO đã qua `normalize_meta`, client chuẩn hóa lại bằng **cùng** hàm (`_seo_text`, `:2418`) nên không bao giờ lặng lẽ bỏ một trường còn chữ. Vì vậy `seo_ok` đúng **và** `fields` có chữ là đủ để nói chữ đó đã lên (phần kiểm xác nhận của client là lượt 2, Fable, không đổi).
+6. **Mã băm đổi theo chữ SEO và công tắc**: cùng bài, ba gói (đủ chữ / tiêu đề trống / tắt «Ghi SEO») ra ba mã băm khác nhau (A3), nên ô tick gắn đúng cái người dùng đã thấy (LC-T094-38).
+7. **Câu báo mới**: `{fields}` chỉ ghép tên ô cố định; qua `escape_markdown(shown_text(…, 600))` ở `review_notices` (`:3179`) như mọi dòng khác (U1, U2).
+8. **Từ khóa chính bị bỏ không chặn, Nháp không có dòng**: đồng ý (từ khóa không hiện công khai; bài nháp chưa công khai; `MSG_SEO_SKIPPED` vẫn báo trường bị bỏ ở kết quả gửi và chú thích dưới công tắc).
+9. **R5**: đọc lại diff test của `58d5326`: 9 ca cũ chỉ thêm 4 dòng chữ SEO hợp lệ; hai ca `xfail` SL-T112-1 thay bằng kiểm dòng Chặn, nút khóa, cú bấm lọt 0 lệnh ghi, nháp không có trạng thái gửi. Không nới kiểm nào (đồng ý mục 3 của lượt Opus).
+
+### 2. Thử độc lập (Fable)
+
+File tạm `tests/test_zz_la_chan_t112_l3_tam.py` mượn khung `test_t112_release_rules` (WordPress giả, không mạng); **không commit, đã xóa** (bản lưu ở thư mục nháp của phiên). 7 ca, **7/7 qua** (A2 lần đầu hỏng vì tôi dựng `SendState` hẹn giờ thiếu giờ hẹn: lỗi của probe, không phải của app).
+
+| Ca | Kiểm | Kết quả |
+|---|---|---|
+| A1 `release_post` giữ nháp khi tiêu đề bị bỏ | gọi thẳng hàm lúc gửi, client giả ghi lại lệnh chuyển; kèm đối chứng đủ chữ | qua (0 lệnh chuyển; đối chứng có lệnh `publish`) |
+| A2 Hẹn giờ qua `release_post` | vẫn hẹn, `missing` = «mô tả SEO» | qua |
+| A3 mã băm | 3 gói khác chữ SEO / công tắc → 3 mã băm | qua |
+| A4 chữ trông như trống | 4 kiểu → `siteseo_copy().title` là `None` | qua |
+| A5 mọi trường trống | `write_seo` với client ném lỗi rỗng → `seo_ok` sai → `MISSING_SEO` | qua |
+| B1 tắt «Ghi SEO» **cùng lần chạy** với cú bấm lọt (tick lúc bật, chữ đủ, nút mở) | 0 lệnh ghi, 0 lệnh ghi SEO; dòng Chặn của bộ dựng hiện; nháp không có trạng thái gửi | qua |
+| B2 tick ở Hẹn giờ với «Ghi SEO» tắt (nút mở), rồi **cùng lần chạy** với cú bấm lọt: bật «Ghi SEO» (tiêu đề trống) và đổi sang Đăng ngay | 0 lệnh ghi; dòng Chặn SL-T112-1 nêu «tiêu đề SEO»; nút khóa; nháp không có trạng thái gửi | qua |
+
+### 3. Kết quả công cụ (lượt 3 · Fable)
+
+| Công cụ | Kết quả | Đã xác minh |
+|---|---|---|
+| pytest 5 file liên quan trên `97d0bc4`: `test_t112_release_rules`, `test_soi_loi_t112`, `test_t102_publish`, `test_la_chan_t102`, `test_soi_loi_t102` | **137 qua, 0 xfail, 0 hỏng, 0 XPASS**, 20 phút 17 (13:10–13:30; chậm vì máy chạy cùng lúc lô test T-121 và probe). Dấu `xfail` SL-T112-4 đã gỡ ở lượt 4 nên lô không còn xfail | ✔ |
+| Probe 7 ca (mục 2) | 7/7 qua | ✔ |
+| ruff `app/views/write.py`, file probe | sạch | ✔ |
+| bandit `app/views/write.py` (`PYTHONUTF8=1`) | 0 | ✔ |
+| detect-secrets (`PYTHONUTF8=1`) biên bản này | 1 báo nhầm đã biết từ lượt 2 (dòng 101, ví dụ địa chỉ có tên và mật khẩu trong mục công cụ quét), không có gì mới; phần mới không bị báo | ✔ |
+| D1 | `git diff 7e8af87..97d0bc4`: `uv.lock` không đổi; `pyproject.toml` chỉ đổi chú thích `required-version` | ✔ |
+
+### 4. Danh sách B sau lượt này (trước khi bật công tắc)
+
+| Mục B | Trạng thái |
+|---|---|
+| 1. Sửa SL-T112-1 | Xong (lượt 3); **Fable đọc lại: đúng** |
+| 2. README: SL-T112-2, -3, G1, **SL-T112-4** | **Xong** (Thư Ký lượt 4 `97d0bc4`: README luật Hẹn giờ theo lệnh ghi lỗi giữa chừng; `test_soi_loi_t112` không còn dấu `xfail`) |
+| 3. Ghi dấu «SEO chưa lên» | Khuyến nghị, không chặn: phiếu sau (`SendState.seo_missing`) |
+| 4. Buổi thử thật LC-T094-44, mục (a)–(g) | **Chưa, bắt buộc** trước khi bật. Lá Chắn đọc báo cáo buổi thử |
+| 5. Sổ rủi ro: ba giới hạn `modified_gmt` | Chưa: chủ dự án quyết, Thư Ký ghi |
+| 6. T-118 (`showErrorDetails = "type"`) | Đã gộp `main` trước T-112 |
+| Kiểm lại phần code lượt 3 bằng Fable | **Xong** (lượt này) |
