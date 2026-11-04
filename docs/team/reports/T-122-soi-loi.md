@@ -207,7 +207,7 @@ $ pytest tests/test_soi_loi_t122.py tests/test_search_cache.py -q
 
 Mọi lần chạy đã kiểm `seo_app` nạp từ chính bản gộp. Các worktree tạm (`gop`, `gop2`) đã gỡ; commit gộp tạm không đẩy.
 
-Quét ký tự ẩn hai file của Soi Lỗi: sạch. Quét bí mật (`PYTHONUTF8=1 uvx detect-secrets scan`): `results: {}`. Lần quét đầu báo «Basic Auth Credentials» ở địa chỉ giả `https://user:pw@…` của ca mới. Đã tách chuỗi để quét sạch; giá trị thử không đổi. Đối chứng: bản sao thêm khóa giả, đặt trong thư mục đang quét, bị bắt (`Secret Keyword`).
+Quét ký tự ẩn hai file của Soi Lỗi: sạch. Quét bí mật (`PYTHONUTF8=1 uvx detect-secrets scan`): `results: {}`. Lần quét đầu báo «Basic Auth Credentials» ở địa chỉ giả có tên người dùng và mật khẩu (`user`, `pw`) của ca mới. Đã tách chuỗi để quét sạch; giá trị thử không đổi. Đối chứng: bản sao thêm khóa giả, đặt trong thư mục đang quét, bị bắt (`Secret Keyword`).
 
 ### 6. Ghi nhận
 
