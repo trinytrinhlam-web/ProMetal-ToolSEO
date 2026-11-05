@@ -10,7 +10,7 @@
 | Phiếu được kiểm | [T-126](../tickets/T-126-readme-theo-doi-google.md) phần 1 · [báo cáo Thư Ký](T-126-thu-ky.md) |
 | Phạm vi | Rút gọn, chỉ đọc: `team/T-126` tại `cbe3114` (từ `main` cục bộ `8caab2f`), 3 file tài liệu: `README.md` (mục 15 mới `:604-659`; mục 14 `:556`, `:561`), `.env.example` (chú thích `GSC_SITE_URL` `:53-59`), báo cáo Thư Ký. Đối chiếu: `seo_app/google/search_console.py` (`parse_property`, `covers_site`, câu báo), `seo_app/google/service_account.py` (phạm vi), `app/views/settings.py` (khung tài khoản dịch vụ), thiết kế T-120 (`T-120-tho-may.md`), biên bản Lá Chắn T-120, T-121 |
 | Máy | Windows 11 Pro, uv 0.13.4 (đạt ngưỡng `uvx`, T-078). Không gọi Google, không gọi website |
-| Ngày | 2026-11-05 (11:12–11:25, giờ máy +07) |
+| Ngày | 2026-11-05 (11:12–11:18, giờ máy +07) |
 | **Kết luận** | **ĐẠT** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp. Cả 4 điểm Chỉ Huy hỏi đều đạt. 4 ghi nhận nhỏ về chữ, không bắt buộc (mục 5), có thể làm cùng phần 2. **Gộp `main` được ngay** |
 
 ### Tóm tắt (cho chủ dự án)
