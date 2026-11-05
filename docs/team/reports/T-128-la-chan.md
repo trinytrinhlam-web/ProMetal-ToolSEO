@@ -1,6 +1,8 @@
 # Biên bản bảo mật T-128 · Sổ rủi ro 3 giới hạn `modified_gmt` và kịch bản buổi thử thật Hẹn giờ / Đăng ngay · rút gọn
 
 > **Model:** Claude **Opus 5.5** (dòng «You are powered by»: Opus 5.5). Chỉ Huy B giao chạy Opus 5.5; chủ dự án 04/11: hết hạn mức Fable thì Lá Chắn chạy Opus 5.5, ghi rõ model.
+>
+> **Lượt 2 (05/11 trưa, Opus 5.5):** LC-T128-1, -2, -3 đã sửa và **đóng**; kết luận **ĐẠT**, kịch bản dùng được cho buổi thử. Xem mục [«Lượt 2»](#lượt-2-kiểm-lại-ngắn--opus-55) cuối biên bản.
 
 | Mục | Nội dung |
 |---|---|
@@ -152,3 +154,44 @@ Cần thêm: dòng tác giả (LC-T128-2), số lần gửi có ghi SEO ở dòn
 1. **Gộp `main`: được ngay.** Phiếu chỉ có tài liệu; sổ rủi ro đã đúng.
 2. **Trước buổi thử** (Thư Ký, vài dòng trong kịch bản): sửa LC-T128-1, -2, -3 theo các gợi ý ở mục 3; N1–N5 nên sửa cùng lúc. Lá Chắn đọc lại các chỗ sửa (rút gọn, vài phút), hoặc Chỉ Huy tự đối chiếu theo gợi ý.
 3. **Sau buổi thử:** Lá Chắn đọc bảng mục 7 (như mục 8 của kịch bản), kể cả dòng tác giả mới, rồi kết luận có cho dùng Hẹn giờ / Đăng ngay không.
+
+---
+
+## Lượt 2 (kiểm lại ngắn) · Opus 5.5
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | `0ad9c7b` (Thư Ký lượt 2) so với `952aaca`: chỉ `T-128-kich-ban-thu-that.md` (nay 308 dòng) và mục «Lượt 2» của `T-128-thu-ky.md`. `security.md` không đổi |
+| Ngày | 2026-11-05 (12:43–12:50, giờ máy +07) |
+| **Kết luận** | **ĐẠT** · LC-T128-1, -2, -3 **đóng**; N1–N5 đã làm; 0 lỗi mới. Đồng ý cả ba chỗ Thư Ký thêm ngoài gợi ý. Không lộ bí mật. **Gộp `main` được ngay; kịch bản dùng được cho buổi thử** |
+
+### Đối chiếu chỗ sửa
+
+| Mã | Đã sửa (kịch bản) | Ý kiến |
+|---|---|---|
+| LC-T128-1 | «Luật đọc (b)» `:160-167`; ca 3 `:169-180`, ca 4 `:186-190`, ca 5 `:202-210`; mục 2 `:50`; mục 7 `:277` | **Đóng.** Đúng ý biên bản:<br>• CÓ ĐỔI cần cả «Đã ghi SEO…» lẫn câu «Bài nháp … đã bị sửa…», và ca 2 phải đã qua.<br>• KHÔNG ĐỔI chỉ khi ít nhất 3 lần gửi bật «Ghi SEO» đều qua; thiếu thì lặp ca 3, mỗi lần chuyển bài về nháp.<br>• Lần gửi không có «Đã ghi SEO…» thì không tính.<br>• Ca 4 bị chặn vì (b) thì làm lại với «Ghi SEO» tắt để vẫn kiểm được (e), rồi bỏ ca 5.<br>• Ca 5 bị chặn thì bài vẫn là nháp: `release_draft` từ chối trước lệnh chuyển |
+| LC-T128-2 | Mục 4.1 `:221-226`; mục 7 «Tác giả công khai» `:287`; mục 8 `:300-305`; quy tắc 1 `:31`; ca 0 `:102` | **Đóng.** Kiểm đủ ba chỗ (tên trên bài, trang tác giả, `/wp-json/wp/v2/users`), chỉ ghi có/không. Trước khi dùng thật, chủ dự án quyết tên hiển thị, mật khẩu đăng nhập, chặn liệt kê người dùng |
+| LC-T128-3 (i) | Mục 6 bước 3 `:257-258` (xóa ảnh trước, nhận ảnh theo cột «Đã tải lên»), bước 4 `:259` (rồi mới xóa hẳn bài); quy tắc 3 `:34`; mục 7 «Ảnh thử» `:288` | **Đóng** |
+| LC-T128-3 (ii) | Mục 3.1 `:66` (dịch vụ cập nhật), `:69-71` (pingback: tắt tạm hay chấp nhận); mục 3.3 `:84` (không link ra website khác); mục 6 bước 5 `:260` (Bình luận → Pings → xóa), bước 6 `:261` (bật lại) | **Đóng** |
+| N1–N5 | `:83`; `:151`; `:308`; `:191-199` (cùng `:53`, `:280`); `:134`, `:227` | Đã làm đúng |
+
+**Ba chỗ Thư Ký thêm ngoài gợi ý: đồng ý cả ba.**
+
+1. **Ca 0 không chép tên sau «Tài khoản:».** Đúng. Dòng kết quả kiểm tra in `name` của `users/me` (`client.py:1121`, `wordpress.py:123`), tức là tên hiển thị. Tài khoản chưa đặt tên hiển thị thì tên này chính là tên đăng nhập.
+2. **Ca 5 và ca S bước 3 không làm trong lúc chờ ca 4.** Đúng, và quan trọng cho (e). Mã WordPress 6.9.4 cho thấy từ bản 6.9.0, `_wp_cron` gắn vào `shutdown` (`cron.php:987-1002`, trừ khi bật `ALTERNATE_WP_CRON`). Nên **mọi** lượt tải không qua cache đều kích lịch chạy, kể cả lệnh của app và nhịp `heartbeat` của trang quản trị đang mở. Làm ca khác trong lúc chờ thì (e) có thể «đạt» nhờ chính buổi thử. Cũng vì gắn ở `shutdown` nên lần mở trang quản trị đầu tiên còn hiện trạng thái **trước** khi chính nó kích lịch chạy (ca 4 bước 4). Cách đọc (e) mới là đúng.
+3. **Lỗi ghi SEO lặp lại thì (b) «chưa kết luận», báo Lá Chắn.** Đồng ý.
+
+### Bí mật
+
+- detect-secrets (`PYTHONUTF8=1`; chép 2 file đổi ra thư mục ngoài git cùng file mồi tiếng Việt): 0 kết quả; file mồi bị bắt.
+- Grep phần thêm của diff: không email, không tên đăng nhập, không link Sheet, không chuỗi dạng mật khẩu ứng dụng, không tên miền thật. Địa chỉ chỉ có dạng `https://<tên-miền>/…`.
+
+### Ghi nhận (không bắt buộc)
+
+- **G1:** trang Kết nối WordPress luôn in ở đầu trang dòng chú thích «Website: … · Tài khoản: <tên đăng nhập trong `.env`>» (`app/views/wordpress.py:95-98`). Quy tắc 1 đã cấm chép tên đăng nhập; chụp trang này thì nên che dòng đó. Có thể thêm nửa câu vào quy tắc 1 hay vào bước dọn 11.
+- **G2:** gợi ý chữ cho `security.md:178-180` (lượt 1, mục 1) chưa làm. Chỉ Huy quyết, không bắt buộc.
+- **G3:** nếu website bật `ALTERNATE_WP_CRON` (khai trong `wp-config.php`, tôi không đọc file này), lịch chạy được kích **trước** khi in trang. Khi đó lần mở đầu có thể đã thấy bài xuất bản nhờ chính lần mở ấy. Khe rất nhỏ, Thư Ký đã ghi ở mục rủi ro; Lá Chắn lưu ý khi đọc dòng (e).
+
+### Kết luận lượt 2
+
+**ĐẠT.** LC-T128-1, -2, -3 đóng. Gộp `main` được ngay; kịch bản dùng được cho buổi thử. Sau buổi thử, Lá Chắn đọc bảng mục 7 (điều kiện 3 của lượt 1 giữ nguyên).
