@@ -30,7 +30,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import date
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote
 
 from seo_app.plan import model as plan_model
 from seo_app.plan.model import PlanRow, clean_text
@@ -45,7 +45,13 @@ from seo_app.tracking.model import (
 )
 from seo_app.tracking.periods import is_day
 from seo_app.tracking.stats import row_numbers_ok
-from seo_app.wordpress.client import MAX_LINK_CHARS, PublishedItem, is_site_link
+from seo_app.wordpress.client import (
+    MAX_LINK_CHARS,
+    PublishedItem,
+    is_site_link,
+    site_base,
+    site_link,
+)
 
 MAX_PAGE_CHARS = MAX_LINK_CHARS  # 2.000 ký tự, như kiểm câu trả lời Google (thiết kế 2.4)
 LABEL_CHARS = 120
@@ -64,28 +70,6 @@ MATCH_TEXT = {
     MatchStatus.DUPLICATE: "Nhiều dòng kế hoạch cùng một bài: chưa nối",
     MatchStatus.DROPPED: "Dòng «Bỏ»: không theo dõi",
 }
-
-
-def site_base(site: str) -> str:
-    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố (SL-T123-2): scheme và tên máy viết thường (tên
-    máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định và «/» cuối; phần
-    đường dẫn giữ nguyên chữ hoa, chữ thường. Trùng tiền tố ``site_prefix`` của client Search
-    Console (T-121), nên dòng client nhận thì ở đây cũng nhận. Chỉ ``WORDPRESS_URL`` được chuẩn
-    hóa: địa chỉ từ Google, WordPress vẫn phải viết đúng như tiền tố này (như bộ lọc phía Google).
-    Không tách được tên máy thì chỉ bỏ «/» cuối."""
-    base = site.rstrip("/")
-    try:
-        parts = urlsplit(base)
-        port = parts.port
-    except ValueError:
-        return base
-    host = parts.hostname
-    if not parts.scheme or not host:
-        return base
-    netloc = f"[{host}]" if ":" in host else host
-    if port is not None and not (parts.scheme == "https" and port == 443):
-        netloc = f"{netloc}:{port}"
-    return f"{parts.scheme}://{netloc}{parts.path.rstrip('/')}"
 
 
 def page_key(url: object, site: str) -> PageKey | None:
@@ -180,7 +164,12 @@ def build_tracking(
     tracked: dict[PageKey, PublishedItem] = {}
     skipped_items = 0
     for item in sorted(items, key=lambda entry: entry.id):
-        key = page_key(item.link, site)
+        link = item.link
+        if is_site_link(link, site):
+            # LC-T123-1: ô «Địa chỉ trang» của WordPress gõ chữ hoa thì link bài viết hoa tên máy.
+            # ``is_site_link`` đã chứng minh cùng tên máy, cùng cổng: viết thường để so tiền tố.
+            link = site_link(link)
+        key = page_key(link, site)
         # WordPress không cho hai bài cùng địa chỉ; dữ liệu lạ có trùng thì mã nhỏ hơn giữ khóa.
         if key is None or key.query is not None or key in tracked:
             skipped_items += 1
