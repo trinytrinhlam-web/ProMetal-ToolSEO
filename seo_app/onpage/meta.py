@@ -544,10 +544,13 @@ MAX_TITLE_SUGGESTIONS = 3
 MAX_DESCRIPTION_SUGGESTIONS = 2
 
 # Link hay địa chỉ: giao thức ("https:", "javascript:", "x://"), "www.", link Markdown, email,
-# tên miền trần ("suachuacuasat.com"). Xét trên chữ đã NFKC ("ｗｗｗ．" cũng là "www.").
+# tên miền trần ("suachuacuasat.com"). Xét trên chữ đã NFKC ("ｗｗｗ．" cũng là "www."). T-132
+# (LC-T036-2): thêm dấu chấm kiểu né ("evil[.]com", "evil(dot)com", liền chữ hai bên) và nhãn
+# punycode ("evil.xn--p1ai").
 _LINK = re.compile(
     r"[a-z][a-z0-9+.\-]*://|\b(?:https?|javascript|data|vbscript|file|mailto|tel|zalo):"
-    r"|www\.|\]\s*[(\[]|@[\w-]+\.|\b[\w-]+\.(?:com|vn|net|org|info|io|me|biz|xyz|co|site|link)\b",
+    r"|www\.|\]\s*[(\[]|@[\w-]+\.|\b[\w-]+\.(?:com|vn|net|org|info|io|me|biz|xyz|co|site|link)\b"
+    r"|\w[\[(](?:\.|dot)[\])]\w|(?<![\w-])xn--",
     re.IGNORECASE,
 )
 # Nêu giá dưới mọi dạng (BAN-GIAO.md 7.4: không nói giá, kể cả rẻ/đắt; "báo giá qua Zalo" thì
@@ -563,6 +566,14 @@ _MONEY_UNIT = (
 _NUMBER_WORD = (
     r"(?:một|hai|ba|bốn|tư|năm|lăm|sáu|bảy|bẩy|tám|chín|mười|mươi|trăm|chục|vài|mấy|rưỡi|nửa)"
 )
+# T-132 (SL-T036-11): chữ số + «trăm» nói trống («chỉ 5 trăm» là 500 nghìn) là giá, trừ khi ngay
+# sau là đơn vị đo, thời gian hay danh từ đếm («hơn 5 trăm công trình», «cách 3 trăm mét»). Danh
+# từ ngoài danh sách thì bị coi là giá: lệch về phía an toàn (bỏ gợi ý), như ``_MONEY_UNIT``.
+_NOT_MONEY_AFTER_HUNDRED = (
+    r"(?:mét|m|m2|mm|cm|km|kg|ký|kí|tấn|lít|khối|công\s+trình|khách|người|lượt|nhà|căn|bộ|cái"
+    r"|cánh|cửa|cổng|mẫu|sản\s+phẩm|thợ|dự\s+án|đơn|hộ|năm|tháng|tuần|ngày|giờ|phút|giây|lần"
+    r"|chiếc|con|tầng|bài)"
+)
 _PRICE = re.compile(
     r"\d[\d.,]*\s*" + _MONEY_UNIT + r"\d*(?!\w)"
     r"|\b" + _NUMBER_WORD + r"\s+" + _MONEY_UNIT + r"(?!\w)"
@@ -571,6 +582,11 @@ _PRICE = re.compile(
     r"|\b(?:giá|chi phí)\s+(?:rẻ|tốt|chỉ|từ|gốc|sỉ|ưu đãi|cạnh tranh|hợp lý|phải chăng|thấp"
     r"|mềm|bình dân|bao nhiêu)\b"
     r"|\b(?:rẻ|đắt|bảng giá|giảm giá|khuyến mãi|miễn phí|ưu đãi|trọn gói)\b"
+    # T-132 (SL-T036-11): «5 trăm» nói trống; «triệu rưỡi», «trăm rưỡi»; tên tiền đứng riêng
+    # («giá tính bằng VNĐ», «đô la»).
+    r"|\d[\d.,]*\s*trăm(?!\w)(?!\s+" + _NOT_MONEY_AFTER_HUNDRED + r"(?!\w))"
+    r"|\b(?:trăm|nghìn|ngàn|triệu|tỷ|tỉ)\s+rưỡi(?!\w)"
+    r"|(?<!\w)(?:vnđ|vnd|usd|đô\s+la)(?!\w)"
 )
 
 
@@ -590,10 +606,17 @@ def has_keyword(text: str, keyword: str) -> bool:
 # Tên miền trần có đuôi bất kỳ ("bit.ly/abc", "pro-metal.shop", "abc.asia", SL-T036-6). Phân
 # biệt hoa thường (đuôi chữ thường) để "TP.HCM" không bị coi là tên miền; nhãn phải có chữ cái
 # để "1.2mm" không bị bắt; chữ ngay sau đuôi không được là chữ cái (kể cả chữ có dấu), để câu
-# thiếu dấu cách kiểu "xong.tiếp" không bị bắt.
+# thiếu dấu cách kiểu "xong.tiếp" không bị bắt. T-132 (LC-T036-2): thêm dạng toàn chữ HOA
+# ("EVIL.SHOP") khi nhãn cũng toàn chữ HOA và dài từ 3 ký tự, để viết tắt địa danh ("TP.HCM",
+# "TP.HN", "Q.GV", "TP.BMT") không bị bắt; đuôi viết hoa chữ đầu ("sat.Xem") vẫn không tính.
 _BARE_DOMAIN = re.compile(
     r"(?<![\w.])(?=[A-Za-z0-9-]*[A-Za-z])[A-Za-z0-9-]+\.(?!hcm(?![\w-]))[a-z]{2,12}(?![\w-])"
+    r"|(?<![\w.])(?=[A-Z0-9-]*[A-Z])[A-Z0-9-]{3,}\.[A-Z]{2,12}(?![\w-])"
 )
+# Tên miền có đuôi chữ không phải Latin ("evil.рф", "ví-dụ.中国"; T-132 LC-T036-2): bắt mọi đuôi
+# toàn chữ cái, rồi ``_foreign_tld`` giữ lại đuôi không có chữ Latin nào (chữ Việt có dấu là chữ
+# Latin, nên "xong.tiếp" không bị bắt).
+_ANY_TLD = re.compile(r"(?<![\w.])[\w-]+\.([^\W\d_]{2,63})(?![\w-])")
 # Mã ký tự HTML ("&amp;", "&#38;", "&#x26;"): SiteSEO/WordPress có thể in nguyên văn (SL-T036-7).
 _ENTITY = re.compile(r"&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);", re.IGNORECASE)
 
@@ -615,11 +638,26 @@ def _scan_text(text: str) -> str | None:
     return folded if len(folded) <= MAX_SCAN_CHARS else None
 
 
+def _foreign_tld(text: str) -> bool:
+    """Có tên miền mà đuôi không có chữ Latin nào ("evil.рф")."""
+    return any(
+        not any(unicodedata.name(ch, "").startswith("LATIN") for ch in found.group(1))
+        for found in _ANY_TLD.finditer(text)
+    )
+
+
 def has_link(text: str) -> bool:
     visible = _scan_text(text)
     if visible is None:
         return True
-    return _LINK.search(visible) is not None or _BARE_DOMAIN.search(visible) is not None
+    # LC-T036-2 (T-132): trình duyệt coi dấu chấm Hán «。» là dấu chấm của tên miền ("evil。com";
+    # NFKC đã đổi «｡» nửa khổ thành «。», «．» toàn khổ thành «.»).
+    visible = visible.replace("\N{IDEOGRAPHIC FULL STOP}", ".")
+    return (
+        _LINK.search(visible) is not None
+        or _BARE_DOMAIN.search(visible) is not None
+        or _foreign_tld(visible)
+    )
 
 
 @functools.lru_cache(maxsize=4096)

@@ -463,6 +463,13 @@ _SEO_CHECK_FAILED = (
     "Không kiểm được bài nháp trên WordPress trước khi ghi SEO{code}. Chưa ghi gì; bài nháp "
     "vẫn còn. Thử lại sau, hoặc chép tay tiêu đề, mô tả SEO vào hộp SiteSEO của bài nháp."
 )
+# T-132: hỏi lại bài SAU lệnh ghi (``recheck_draft``): không dùng câu «trước khi ghi SEO… Chưa
+# ghi gì» của ``_SEO_CHECK_FAILED``, vì lúc này SEO đã ghi xong.
+_RECHECK_NOT_OWN = "Chỉ hỏi lại được bài nháp app vừa tạo trong lần làm việc này."
+_RECHECK_FAILED = (
+    "Không hỏi lại được bài trên WordPress{code} nên chưa biết bài còn là nháp không. Mở bài "
+    "trong trang quản trị WordPress, xem trạng thái bài và hộp SiteSEO."
+)
 _SEO_EMPTY = "Chưa có tiêu đề, mô tả hay từ khóa chính SEO nào để ghi."
 _SEO_DISABLED = (
     "Chưa bật ghi SEO lên website: hãy chép tiêu đề, mô tả SEO vào hộp SiteSEO của bài nháp."
@@ -1332,6 +1339,20 @@ class WordPressClient:
         if abilities:
             return self._seo_via_abilities(post_id, fields)
         return self._seo_via_meta(post_id, fields, draft)
+
+    def recheck_draft(self, post_id: int) -> None:
+        """Hỏi lại website bài ``post_id`` còn là nháp không, ngay sau một lệnh ghi (LC-T042-2: ghi
+        SEO qua Abilities xong). Hàm công khai cho app thay chỗ gọi ``_own_draft`` (T-132).
+
+        Chỉ cho bài nháp chính client này tạo (như ``set_seo_meta``); chỉ đọc: một lệnh ``GET``
+        của ``_own_draft``, cùng xử lý: bài không còn là nháp thì ``WordPressError`` câu
+        ``_SEO_NOT_DRAFT`` và client thôi coi bài là của app; bài bị sửa ngoài app thì đánh dấu
+        «không biết» (``release_draft`` không chuyển bài). Không hỏi được thì câu
+        ``_RECHECK_FAILED``.
+        """
+        if type(post_id) is not int or post_id not in self._created_post_ids:
+            raise WordPressError(_RECHECK_NOT_OWN)
+        self._own_draft(post_id, failed=_RECHECK_FAILED)
 
     def _own_draft(self, post_id: int, *, failed: str = "") -> dict[str, Any]:
         """Hỏi site bài ``post_id`` còn là nháp không (chỉ đọc). Không phải nháp: từ chối.
