@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 3 |
 | Mức ưu tiên | Thấp |
 | Phụ thuộc | T-089 đã gộp |
-| Trạng thái | Đang làm |
+| Trạng thái | Đang kiểm (Lá Chắn) |
 
 ## Mục tiêu
 
@@ -50,3 +50,4 @@ W1, W2, U1.
 
 - Lập 2026-10-27 theo chỉ đạo «cứ làm liên tục, không cần hỏi».
 - 2026-11-03 23:10 (Chỉ Huy B): giao Họa Sĩ trên `team/T-092` (từ `main` `29499dd`). Yêu cầu 4 (`showErrorDetails`) đã làm ở T-118, chỉ kiểm; yêu cầu 5, 6 kiểm phần T-090, T-095 đã làm. R5 `tests/test_t041_seo_ui.py:711` đã duyệt. T-112 gộp trước thì gộp `main` vào nhánh trước khi nộp.
+- 2026-11-05 12:37 (Chỉ Huy B): Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`c82c82e`, SL-T092-1 Thấp); Họa Sĩ lượt 2 (`bd03af9`) sửa. Lá Chắn rút gọn bằng Fable.

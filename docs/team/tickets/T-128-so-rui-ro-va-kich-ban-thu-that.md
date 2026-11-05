@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Cao (2 việc cuối trước khi bật công tắc) |
 | Phụ thuộc | T-112, T-115 đã gộp `main`; chủ dự án đồng ý ghi sổ 04/11 |
-| Trạng thái | Đang làm |
+| Trạng thái | Đang làm (lượt 2) |
 
 ## Mục tiêu
 
@@ -35,3 +35,4 @@ Xong hai việc giấy tờ còn lại trước khi bật công tắc Hẹn gi�
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-04. Chủ dự án 04/11: **đồng ý ghi sổ** 3 giới hạn; buổi thử thật **làm khi chủ dự án báo rảnh** (Chỉ Huy soạn sẵn kịch bản). Worktree `wt-T-128`, nhánh `team/T-128`.
+- 2026-11-05 12:37 (Chỉ Huy B): Thư Ký `fb1dece` (3 dòng sổ rủi ro, kịch bản); Lá Chắn rút gọn ĐẠT CÓ ĐIỀU KIỆN (`952aaca`): sổ rủi ro đúng, 3 Thấp trong kịch bản sửa trước buổi thử → lượt 2.

@@ -553,12 +553,12 @@ Thử **một bài, một ảnh, một tab**, chọn ảnh app báo «📍 Ảnh
 
 ## 14. Kế hoạch và Google Sheets
 
-Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái từng bài) nằm trên một **Google Sheet**, để hai máy luôn thấy giống nhau. Phần mềm đọc, ghi Sheet bằng một **tài khoản dịch vụ** (service account) của Google: một «tài khoản máy» chỉ làm việc được với Sheet bạn chia sẻ cho nó, không vào được Gmail hay Drive của bạn.
+Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái từng bài) nằm trên một **Google Sheet**, để hai máy luôn thấy giống nhau. Phần mềm đọc, ghi Sheet bằng một **tài khoản dịch vụ** (service account) của Google: một «tài khoản máy» chỉ làm việc được với Sheet bạn chia sẻ cho nó (và thuộc tính Search Console bạn thêm nó vào, mục 15), không vào được Gmail hay Drive của bạn.
 
 **Tạo tài khoản dịch vụ (làm một lần)**
 
 1. Vào https://console.cloud.google.com, tạo một **project riêng** cho phần mềm (ví dụ `seo-app`), đừng dùng chung project với việc khác.
-2. Trong project đó, bật **Google Sheets API** (APIs & Services → Library, tìm «Google Sheets API» → Enable). Chỉ cần bật API này.
+2. Trong project đó, bật **Google Sheets API** (APIs & Services → Library, tìm «Google Sheets API» → Enable). Phần kế hoạch chỉ cần API này; phần theo dõi Google (mục 15) bật thêm Google Search Console API trong cùng project.
 3. Vào **IAM & Admin → Service Accounts → Create service account**, đặt tên (ví dụ `seo-app-ke-hoach`). Ở bước cấp vai trò (role): **để trống, không chọn vai trò nào**. Tài khoản chỉ cần quyền trên đúng Sheet bạn chia sẻ ở bước sau.
 4. Mở tài khoản vừa tạo → thẻ **Keys** → **Add key → Create new key → JSON**. Trình duyệt tải về một file `.json`: đây là **file khóa**, giữ như mật khẩu.
 
@@ -600,6 +600,63 @@ Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái t�
 | "File không phải khóa tài khoản dịch vụ Google…" | Tải khóa JSON của tài khoản dịch vụ (bước 4), không dùng file JSON khác. |
 | "Google đang giới hạn số lần gọi (mã 429)…" | Đợi một phút rồi thử lại. |
 | "Chưa kết nối Google Sheets nên chưa có kế hoạch để so và ghi…" | Làm phần «Khai báo trong app» ở trên. |
+
+## 15. Theo dõi trên Google (Search Console)
+
+Phần mềm sẽ có trang **📈 Theo dõi** để xem mỗi bài được Google hiển thị bao nhiêu lần, được bấm bao nhiêu lần, đứng vị trí trung bình nào và khách tìm bằng từ khóa gì. Số liệu lấy từ **Google Search Console**. Phần mềm **chỉ đọc** số liệu, không sửa gì trên Search Console, và dùng lại tài khoản dịch vụ, file khóa ở mục 14 (không cần khóa mới).
+
+> **Hiện tại:** trang 📈 Theo dõi và phần chọn thuộc tính trong Cài đặt **chưa làm xong**. Bạn làm trước phần phía Google dưới đây (bước 1–3) để sẵn sàng cho buổi thử thật. Cách dùng trong app và cách đọc số sẽ viết thêm khi làm xong. Chưa cần sửa dòng `GSC_SITE_URL` trong `.env`.
+
+**Trước khi bắt đầu**
+
+- Đã có tài khoản dịch vụ và file khóa: làm xong phần «Tạo tài khoản dịch vụ», «Cất file khóa» và bước 1–2 của «Khai báo trong app» ở mục 14. Phần theo dõi không cần Google Sheet.
+- Đăng nhập https://search.google.com/search-console bằng tài khoản Google là **chủ sở hữu** website trong Search Console (thường là tài khoản đã xác minh website). Chỉ chủ sở hữu mới thêm được người dùng ở bước 3.
+- Search Console gọi website đã khai báo là **thuộc tính** (bản tiếng Việt có chỗ ghi «tài sản», tiếng Anh *property*).
+- Bước 1–3 làm **một lần**, dùng cho cả hai máy.
+
+**Bước 1. Bật Google Search Console API**
+
+1. Vào https://console.cloud.google.com, chọn **đúng project** có tài khoản dịch vụ ở mục 14 (project đang dùng cho Google Sheets). Không tạo project mới.
+2. **APIs & Services → Library**, tìm «Google Search Console API» → **Enable**.
+3. Không cấp thêm vai trò (role) nào cho tài khoản dịch vụ trong project. Quyền xem số liệu cấp ở bước 3, ngay trong Search Console.
+
+**Bước 2. Chép email của tài khoản dịch vụ**
+
+Trong app: **Cài đặt → 📗 Google**, khung **🔑 Tài khoản dịch vụ Google (file khóa)**, chép email trong ô dưới dòng «Email của tài khoản dịch vụ…» (đuôi `.iam.gserviceaccount.com`). Đây cũng là email bạn chia sẻ Sheet. Dòng chú thích ghi «quyền Người chỉnh sửa» là nói về Sheet; ở Search Console chỉ cấp quyền **Hạn chế** (bước 3).
+
+**Bước 3. Thêm email vào Search Console với quyền «Hạn chế»**
+
+1. Ở ô chọn thuộc tính (góc trên bên trái Search Console), chọn thuộc tính của **website chính**. Có nhiều thuộc tính thì xem «Chọn thuộc tính nào» ngay dưới đây.
+2. Bấm **Cài đặt** (Settings) → **Người dùng và quyền** (Users and permissions) → **Thêm người dùng** (Add user).
+3. Dán email tài khoản dịch vụ, chọn quyền **Hạn chế** (Restricted), bấm **Thêm** (Add).
+   - **Không** chọn **Toàn quyền** (Full), **không** thêm làm chủ sở hữu (Owner). Phần mềm chỉ đọc danh sách thuộc tính và báo cáo Hiệu suất (lượt hiển thị, lượt bấm, vị trí, từ khóa). Quyền «Hạn chế» xem được báo cáo này, còn cài đặt của Search Console thì chỉ xem, không sửa được.
+   - Search Console không nhận email này, hoặc báo chỉ thêm được làm chủ sở hữu: dừng lại và báo Chỉ Huy, đừng thử cách khác.
+4. Lỡ chọn quyền cao hơn: bấm biểu tượng trình đơn cạnh email → **Thay đổi quyền** → chọn **Hạn chế**.
+
+**Chọn thuộc tính nào**
+
+| Loại thuộc tính | Nhận ra trong Search Console | App lưu thành | Dùng với app |
+|---|---|---|---|
+| Tiền tố URL (URL prefix) | Tên bắt đầu bằng `https://`, ví dụ `https://ten-mien-cua-ban/` | `https://ten-mien-cua-ban/` | **Nên chọn** nếu có: tài khoản dịch vụ chỉ thấy đúng website. Tên miền phải giống hệt `WORDPRESS_URL` (có hay không có `www.` cũng phải giống) |
+| Tên miền (Domain) | Chỉ có tên miền, ví dụ `ten-mien-cua-ban` | `sc-domain:ten-mien-cua-ban` | Dùng khi không có loại trên. Loại này gồm mọi địa chỉ của tên miền: `www.`, `http://`, tên miền con (thường có cả bản thử staging); app chỉ lấy số liệu của đúng địa chỉ trong `WORDPRESS_URL` |
+
+- **Không dùng thuộc tính của bản thử website** (staging, địa chỉ thường có chữ `staging`): không thêm email vào thuộc tính đó. Chọn nhầm thì app từ chối, không lấy số.
+- App không nhận thuộc tính `http://…` (website chạy `https://`).
+
+**Khi app báo lỗi** (các câu này hiện khi phần theo dõi trong app làm xong)
+
+| App báo | Cách xử lý |
+|---|---|
+| "Chưa bật Google Search Console API trong Google Cloud (mã 403)…" | Làm bước 1, đúng project của tài khoản dịch vụ. |
+| "Tài khoản dịch vụ chưa có quyền xem thuộc tính này (mã 403)…" | Kiểm lại bước 1 và bước 3: đúng thuộc tính, đúng email, quyền «Hạn chế». **Đừng nâng lên «Toàn quyền» hay chủ sở hữu** để thử: «Hạn chế» là đủ. Làm đúng mà vẫn báo thì báo Chỉ Huy. |
+| "Thuộc tính Search Console đã chọn không phải của website trong WORDPRESS_URL (ví dụ thuộc tính staging)…" | Chọn lại thuộc tính của website chính (bảng «Chọn thuộc tính nào»). |
+| "Thuộc tính Search Console chưa khai báo hoặc sai dạng…" | Chọn lại thuộc tính; hai dạng app nhận ở bảng «Chọn thuộc tính nào». |
+
+**Giữ an toàn**
+
+- Thỉnh thoảng mở **Người dùng và quyền** của thuộc tính: email tài khoản dịch vụ vẫn ở quyền «Hạn chế», không có ai lạ.
+- **Lộ file khóa:** đổi khóa như phần «Giữ an toàn» của mục 14. Đổi khóa không đổi email của tài khoản dịch vụ, nên không phải thêm lại vào Search Console.
+- **Không muốn phần mềm đọc số liệu nữa:** **Người dùng và quyền** → biểu tượng trình đơn cạnh email → **Xoá quyền truy cập**.
 
 ---
 

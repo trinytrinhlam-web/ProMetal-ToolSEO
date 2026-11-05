@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | Phần 1: T-121 đã gộp; phần 2: sau T-125 |
-| Trạng thái | Chờ (phần 1 giao sau T-128) |
+| Trạng thái | Đang làm (phần 1 xong; phần 3 sau T-125) |
 
 ## Mục tiêu
 
@@ -39,3 +39,4 @@ Không ghi email tài khoản dịch vụ đầy đủ, mã project, đường d
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-04 theo thiết kế T-120. Phần 1 giúp chủ dự án làm sớm hai việc phía Google cho buổi thử thật.
+- 2026-11-05 12:37 (Chỉ Huy B): phần 1 (`cbe3114`): README mục 15, chú thích `GSC_SITE_URL`; Lá Chắn rút gọn ĐẠT (`9ead565`). Gộp `main`, chạy lại test README/`.env.example`: 134 qua, 2 xfail.
