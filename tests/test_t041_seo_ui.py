@@ -707,8 +707,10 @@ def test_links_hint_when_button_works(project_root, seo_ai, wordpress):
 
 # ============================================================ lượt 3: SL-T041-9, -10, -11
 
+# Câu theo loại ký tự (``odd_char_messages``, T-092 yêu cầu 6; Chỉ Huy duyệt đổi theo R5).
 ODD_KEYWORD_MESSAGE = (
-    "Từ khóa chính có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi khác)."
+    "Từ khóa chính có ký tự điều khiển hoặc ký tự lạ (không nhìn thấy, thường do dán từ nơi "
+    "khác). Xóa ô rồi gõ lại chữ thường."
 )
 BAD_KEYWORDS = {
     "ESC": ("sửa cổng\x1b inox", ODD_KEYWORD_MESSAGE),
@@ -718,6 +720,12 @@ BAD_KEYWORDS = {
         onpage_meta.seo_write_problem("Từ khóa chính", "cổng inox <2m"),
     ),
     "qua-dai": ("cổng inox " * 25, "Từ khóa chính quá dài (tối đa 200 ký tự)."),
+    # T-092 yêu cầu 6: emoji Unicode 16 (Python 3.12 chưa biết) vẫn Chặn, câu nói đúng
+    "emoji-moi": (
+        f"sửa cổng inox {chr(0x1FAE9)}",
+        "Từ khóa chính có ký tự phần mềm chưa nhận ra nên không ghi được (có thể là biểu tượng "
+        "cảm xúc rất mới). Xóa ký tự đó hoặc thay bằng chữ thường, biểu tượng quen thuộc.",
+    ),
 }
 
 

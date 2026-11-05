@@ -140,6 +140,7 @@ _MSG_FOLDER_NAME = (
 # Trạng thái gửi (T-086): một dòng JSON vài chục byte; lớn hơn mức này là bị sửa tay, hỏng.
 MAX_SEND_STATE_BYTES = 4096
 _MSG_SEND_STATE_BROKEN = "Trạng thái gửi ghi trong nháp bị hỏng nên không đọc được."
+_MSG_DRAFT_GONE = "Nháp này không còn trong kho nháp (có thể vừa bị xóa ở tab khác)."
 # Việc ghi Google Sheet còn nợ (T-100): một dòng JSON vài trăm byte; giữ tối đa chừng này việc.
 MAX_PLAN_WRITE_BYTES = 4096
 MAX_PLAN_WRITES = 200
@@ -153,6 +154,10 @@ _category = unicodedata.category
 
 class DraftError(Exception):
     """Lỗi kho nháp; thông báo tiếng Việt, hiện thẳng được cho người dùng."""
+
+
+class DraftGoneError(DraftError):
+    """Nháp cần ghi đè không còn trong kho (``save(..., must_exist=True)``, T-092)."""
 
 
 _UNSET = object()  # ``save_plan_write``: không so rồi đặt
@@ -868,8 +873,14 @@ class DraftStore:
 
     # ------------------------------------------------------------ thao tác
 
-    def save(self, snapshot: DraftSnapshot) -> DraftSnapshot:
-        """Tạo mới hoặc ghi đè nháp cùng mã. Trả về bản đã đặt ``saved_at``."""
+    def save(self, snapshot: DraftSnapshot, *, must_exist: bool = False) -> DraftSnapshot:
+        """Tạo mới hoặc ghi đè nháp cùng mã. Trả về bản đã đặt ``saved_at``.
+
+        ``must_exist`` (so rồi đặt, T-092): chỉ ghi đè nháp **còn** trong kho. Kiểm và ghi trong
+        một giao dịch giữ khóa ghi từ đầu (``BEGIN IMMEDIATE``, như ``save_send_state``): nháp đã
+        bị xóa (tab khác bấm «Xóa hẳn», kho đầy bỏ bớt, file nháp bị xóa) thì không ghi gì, báo
+        ``DraftGoneError``. Tự lưu của tab còn mở bài đó dùng cách này: ``delete`` xóa cả trạng
+        thái gửi, nên lặng lẽ tạo lại nháp là mất khóa gửi trùng."""
         saved = snapshot.model_copy(update={"saved_at": datetime.now(ZoneInfo(self.timezone))})
         # Kiểm khuôn lại toàn bộ: model_copy không kiểm, và giao diện có thể đã sửa trường.
         try:
@@ -893,6 +904,11 @@ class DraftStore:
             )
         assert saved.saved_at is not None
         with self._connect() as conn:
+            if must_exist:
+                conn.execute("BEGIN IMMEDIATE")  # lần xóa ở tab khác phải đợi giao dịch này xong
+                found = conn.execute("SELECT 1 FROM drafts WHERE id = ?", (saved.id,)).fetchone()
+                if found is None:
+                    raise DraftGoneError(_MSG_DRAFT_GONE)
             conn.execute(
                 "INSERT OR REPLACE INTO drafts (id, title, keyword, saved_at, saved_ts, data) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
@@ -991,6 +1007,22 @@ class DraftStore:
         _check_id(draft_id)
         with self._connect() as conn:
             return _read_send_state(conn, draft_id)
+
+    def send_state_if_exists(self, draft_id: str) -> tuple[SendState | None, bool] | None:
+        """Nháp còn trong kho thì trạng thái gửi của nó, dạng ``(trạng thái, hỏng)`` như
+        ``expected`` của ``save_send_state`` (``hỏng``: dòng không đọc được); ``None`` khi nháp
+        không còn (T-092). Kiểm nháp và đọc trạng thái trong **một** giao dịch đọc: lần xóa ở tab
+        khác (xóa cả hai) không chen được vào giữa, nên không lẫn «nháp còn, chưa gửi» với «nháp
+        vừa bị xóa»."""
+        _check_id(draft_id)
+        with self._connect() as conn:
+            conn.execute("BEGIN")  # giữ khóa đọc tới hết các lần đọc dưới
+            if conn.execute("SELECT 1 FROM drafts WHERE id = ?", (draft_id,)).fetchone() is None:
+                return None
+            try:
+                return _read_send_state(conn, draft_id), False
+            except DraftError:
+                return None, True
 
     def save_send_state(
         self,
