@@ -6,8 +6,8 @@
 |---|---|
 | Người kiểm định | Lá Chắn (`la-chan`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu được kiểm | [T-129](../tickets/T-129-la-chan-ra-soat-giai-doan-4.md) · rà soát cả giai đoạn (việc 1–4), như T-093 đã làm cho Giai đoạn 3 |
-| Phạm vi | <ul><li>**Mã:** `main` máy `9952ba1`, checkout `D:\ProMetal-ToolSEO\ProMetal-ToolSEO` (chỉ đọc); nhánh `team/T-129` tạo từ `main`, cùng commit.</li><li>**Nền, không kiểm lại từ đầu:** biên bản Fable [T-116 nhóm 5](T-116-la-chan-nhom-5.md) (on-page, bước SEO: T-036 → T-042, T-059, T-095) và [nhóm 2](T-116-la-chan-nhom-2.md) (WordPress, đăng bài: T-060, T-061, T-085, T-088, T-091, T-106, T-108).</li><li>**Đối chiếu thêm:** thiết kế [T-033](T-033-tho-may.md); Lộ trình trong `CLAUDE.md`; biên bản Lá Chắn T-112, T-092, T-117, T-118, T-122; sổ rủi ro `docs/team/security.md` mục 6; `TIEN-DO.md` mục 4; `docs/team/board.md`.</li><li>**Đổi từ mốc nhóm 5 (`29499dd`):** mã lõi Giai đoạn 4 (`seo_app/onpage/`, `site_index.py`, client WordPress, lời dặn, `config/`) **không đổi dòng nào**. Chỉ `write.py`, `drafts.py`, README, `.env.example` đổi (T-112, T-092, đã có Lá Chắn riêng); tôi đọc lại các đoạn chạm bước SEO.</li><li>Không gọi website thật, không sửa mã.</li></ul> |
-| Ngày | 2026-11-05 (12:38–13:08, giờ máy +07) |
+| Phạm vi | <ul><li>**Mã:** `main` máy `9952ba1`, checkout `D:\ProMetal-ToolSEO\ProMetal-ToolSEO` (chỉ đọc); nhánh `team/T-129` tạo từ `main`, cùng commit.</li><li>**Nền, không kiểm lại từ đầu:** biên bản Fable [T-116 nhóm 5](T-116-la-chan-nhom-5.md) (on-page, bước SEO: T-036 → T-042, T-059, T-095) và [nhóm 2](T-116-la-chan-nhom-2.md) (WordPress, đăng bài: T-060, T-061, T-085, T-088, T-091, T-106, T-108).</li><li>**Đối chiếu thêm:** thiết kế [T-033](T-033-tho-may.md); Lộ trình trong `CLAUDE.md`; biên bản Lá Chắn T-112, T-092, T-117, T-118, T-122; sổ rủi ro `docs/team/security.md` mục 6; `TIEN-DO.md` mục 4; `docs/team/board.md`.</li><li>**Đổi từ mốc nhóm 5 (`29499dd`):** mã lõi Giai đoạn 4 (`seo_app/onpage/`, `site_index.py`, client WordPress, lời dặn, `config/`) **không đổi dòng nào**. Chỉ `write.py`, `drafts.py`, README, `.env.example` đổi (T-112, T-092, đã có Lá Chắn riêng); tôi đọc lại các đoạn chạm bước SEO.</li><li>**Trong lúc kiểm**, `main` máy lên `09ac0ab`: gộp T-128 (sổ rủi ro `modified_gmt`, kịch bản buổi thử thật) và lập phiếu T-130. `git diff 9952ba1 09ac0ab` không đổi file nào trong vùng Giai đoạn 4.</li><li>Không gọi website thật, không sửa mã.</li></ul> |
+| Ngày | 2026-11-05 (12:38–13:15, giờ máy +07) |
 | **Kết luận** | **ĐÓNG CÓ ĐIỀU KIỆN.** <ul><li>Mọi hạng mục của thiết kế T-033 đã có trên `main` (riêng schema FAQ chỉ hiện trong app, đúng thiết kế và quyết định 04/11); đã thử thật trên website 27–28/10.</li><li>0 Nghiêm trọng, 0 Cao, 0 Trung bình. **1 Thấp mới**: LC-T129-1, cache danh sách bài kiểm cấu trúc file theo kiểu cũ.</li><li>Còn mở từ trước: SL-T106-1 (Thấp: trang Kết nối còn khuyên «Quản trị viên»), SL-T117-1 (Thấp, chưa có phiếu), vài mục «sửa khi tiện».</li><li>**3 điều kiện để đánh dấu xong** (mục 5): sửa SL-T106-1; lập phiếu dọn kho dữ liệu phụ; cập nhật tài liệu. Việc thử thật còn nợ và việc phía website đã có chỗ theo dõi, không chặn.</li></ul> |
 
 ## Tóm tắt (cho chủ dự án)
@@ -160,12 +160,12 @@ Phần mềm làm đủ các hạng mục Giai đoạn 4 của thiết kế, an 
 - FAQPage lên website (cách d, qua Lá Chắn; áp T-041 ĐK 3);
 - YC-501 rà 29 URL.
 
-**Đề xuất phiếu** (số tạm, Chỉ Huy đánh lại):
+**Đề xuất phiếu** (Chỉ Huy cấp số; số T-130 đã dùng cho phiếu giữ trạng thái gửi khi xóa nháp, lập trong lúc tôi kiểm):
 
 | Phiếu | Việc | Agent | Lá Chắn |
 |---|---|---|---|
-| T-130 · Dọn kho dữ liệu phụ | <ul><li>(1) `site_index`, `drafts`: kiểm file như `search_cache` (LC-T129-1).</li><li>(2) `site_index`, `drafts`, `plan_cache`: `dir_has_link` ngay từ đầu (SL-T117-1).</li><li>(3) `plan_cache._is_healthy`: lỗi giải mã, «unsupported file format» là file lạ (cùng mẫu LC-T122-1).</li><li>Test ghim từng phần; chạy test mọi nơi gọi.</li></ul> | Thợ Máy | Rút gọn; **đầy đủ** nếu đụng `drafts.py` (kho giữ khóa chống gửi trùng) |
-| T-131 · Dọn chữ Giai đoạn 4 | <ul><li>**Bắt buộc:** SL-T106-1.</li><li>**Tùy chọn:** LC-T036-2, SL-T036-11 (`meta.py`); một dòng chú thích dưới ô «Dùng schema FAQ» («app chưa gửi schema lên website»); mở hàm công khai thay `client._own_draft`.</li></ul> | Họa Sĩ (Thợ Máy cho `meta.py`, client) | Rút gọn |
+| Phiếu A · Dọn kho dữ liệu phụ | <ul><li>(1) `site_index`, `drafts`: kiểm file như `search_cache` (LC-T129-1).</li><li>(2) `site_index`, `drafts`, `plan_cache`: `dir_has_link` ngay từ đầu (SL-T117-1).</li><li>(3) `plan_cache._is_healthy`: lỗi giải mã, «unsupported file format» là file lạ (cùng mẫu LC-T122-1).</li><li>Test ghim từng phần; chạy test mọi nơi gọi.</li></ul> | Thợ Máy | Rút gọn; **đầy đủ** nếu đụng `drafts.py` (kho giữ khóa chống gửi trùng) |
+| Phiếu B · Dọn chữ Giai đoạn 4 | <ul><li>**Bắt buộc:** SL-T106-1.</li><li>**Tùy chọn:** LC-T036-2, SL-T036-11 (`meta.py`); một dòng chú thích dưới ô «Dùng schema FAQ» («app chưa gửi schema lên website»); mở hàm công khai thay `client._own_draft`.</li></ul> | Họa Sĩ (Thợ Máy cho `meta.py`, client) | Rút gọn |
 
 ## 6. Kết quả công cụ quét, test
 
@@ -211,7 +211,7 @@ Phần mềm làm đủ các hạng mục Giai đoạn 4 của thiết kế, an 
 
 ## Ghi nhận (không phải lỗi)
 
-1. **`write_seo` gọi hàm riêng `client._own_draft`.** Chú thích trong mã đã ghi phải mở hàm công khai ở phiếu sửa client sau. Không đổi hành vi; gom vào T-131 nếu tiện.
+1. **`write_seo` gọi hàm riêng `client._own_draft`.** Chú thích trong mã đã ghi phải mở hàm công khai ở phiếu sửa client sau. Không đổi hành vi; gom vào phiếu B nếu tiện.
 2. **Bảng tiến độ ghi Giai đoạn 4 «khoảng 98%».** Phần còn lại đúng bằng 3 điều kiện ở mục 5.
 
 ## Phụ lục · Kiểm kê biên bản Lá Chắn các phiếu Giai đoạn 4
