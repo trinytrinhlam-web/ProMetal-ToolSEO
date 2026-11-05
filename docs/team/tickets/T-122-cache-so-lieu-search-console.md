@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-120 (thiết kế, đã gộp `main`) |
-| Trạng thái | Chờ (giao khi máy rảnh) |
+| Trạng thái | Xong (gộp `main` 2026-11-05) |
 
 ## Mục tiêu
 
@@ -61,3 +61,4 @@ Nguyên văn từ biên bản Lá Chắn T-120 (`docs/team/reports/T-120-la-chan
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-03 theo thiết kế T-120 (Lá Chắn rút gọn ĐẠT, Opus tạm) và chỉ đạo «làm liên tục, không cần hỏi». Đợt 1 gồm T-121, T-122, T-123, chạy song song được (thư mục riêng). Worktree `wt-T-122`, nhánh `team/T-122`.
+- 2026-11-05 12:37 (Chỉ Huy B): gộp `main` cùng đợt 1 Giai đoạn 6 (T-121, T-122, T-123); Windows 23.548 test qua, 0 hỏng. Đã đẩy. Điều kiện Lá Chắn cho phiếu sau đã chép vào T-124.

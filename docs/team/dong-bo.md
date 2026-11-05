@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-05 12:37 · Chỉ Huy B
+
+- 04/11 chiều chủ dự án «Dừng lại»: dừng mọi phiên, cron Chỉ Huy và Giám Sát xóa. 05/11 10:13 «tiếp tục»: cài lại cron (Chỉ Huy `da1a5aaf`, Giám Sát `5eea69d1`).
+- Gộp GĐ6 đợt 1 (T-121, T-122, T-123) + T-112 Fable đọc lại + T-126 phần 1: Windows 23.548 test qua, 0 hỏng; đã đẩy.
+- Đang: T-124 (Thợ Máy), T-092 Lá Chắn Fable, T-128 lượt 2 (Thư Ký). Kế: Soi Lỗi T-124, rồi T-125 giao diện «📈 Theo dõi» (Họa Sĩ), T-127.
+- Chủ dự án hỏi «khi nào đóng gói»: đã trả lời ước 9–10/11 cho bản 1.0 Windows (cần 2 buổi thử thật); hỏi có cần bộ cài .exe không (chờ trả lời).
+
 ### 2026-11-04 13:05 · Chỉ Huy B
 
 - Gộp T-112 (+ lượt 4 README) và T-116 nhóm 5: Windows 22.536 test qua, 0 hỏng; đã đẩy. T-116 xong 5 nhóm.

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | T-121, T-122, T-123 đã gộp `main` |
-| Trạng thái | Chờ (giao khi T-122 gộp `main`) |
+| Trạng thái | Đang làm |
 
 ## Mục tiêu
 
@@ -70,3 +70,4 @@ Thêm từ Lá Chắn T-121 (`docs/team/reports/T-121-la-chan.md`, mục điều
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-04 theo thiết kế T-120 và các biên bản đợt 1. Worktree `wt-T-124`, nhánh `team/T-124` từ `main` có T-121, T-122, T-123.
+- 2026-11-05 12:37 (Chỉ Huy B): giao 05/11 10:15 (Thợ Máy, `wt-T-124` từ `8caab2f`); mã `ac6a53a`, đang viết báo cáo.
