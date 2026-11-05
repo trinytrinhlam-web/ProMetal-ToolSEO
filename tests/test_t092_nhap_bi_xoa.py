@@ -19,6 +19,7 @@ from contextlib import closing, contextmanager
 from types import SimpleNamespace
 
 import pytest
+import streamlit as st
 import test_app_images as ui
 import test_drafts_images as old_drafts
 import test_t041_seo_ui as t41
@@ -495,6 +496,128 @@ def test_old_draft_still_opens_and_saves(project_root):
     stored = json.loads(old_drafts.read_row(ui.store(), data["id"]))
     assert stored["schema_version"] == SCHEMA_VERSION and stored["step"] == 1
     assert notice(at) == "" and saved_captions(at)
+
+
+# ============================================================ lượt 2: SL-T092-1, G1
+
+AGAIN = "Tạo thêm một bài nháp mới"
+CHECKED = "Tôi đã kiểm tra trang quản trị, vẫn muốn gửi"
+
+
+def box(at, label: str):
+    """Ô tick có đúng nhãn ``label`` (``None``: không hiện)."""
+    return next((b for b in at.checkbox if b.label == label), None)
+
+
+def seen_sent_elsewhere(at, post_id: int = 777) -> str:
+    """Tab khác gửi xong (bài ``post_id``); tab này (ở bước Xuất bản) vẽ lại, thấy «đã gửi»."""
+    draft = at.session_state["draft_id"]
+    ui.store().save_send_state(draft, SendState.now(pending=False, post_id=post_id))
+    run_ok(at.run())
+    assert box(at, AGAIN) is not None and button(at, SEND).disabled
+    return draft
+
+
+def test_known_sent_stays_locked_until_confirmed_while_gone(project_root, root, fake_ai, site):
+    """SL-T092-1: tab biết «đã gửi 777», nháp bị xóa ở tab khác: bước Xuất bản vẫn khóa «đã gửi
+    777» qua nhiều lần vẽ (kho đọc ra «chưa gửi»). Người dùng chủ động xác nhận gửi lại (tick «Tạo
+    thêm một bài nháp mới») thì gửi được: website có đúng một bài mới, kho ghi «đã gửi» bài đó
+    (dòng chưa có nháp đi kèm, trang vẫn báo nháp không còn); lưu lại thì nháp giữ đúng dòng đó."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = seen_sent_elsewhere(at)
+    assert ui.store().delete(draft)
+    for _ in range(3):
+        run_ok(at.run())
+        assert KNOWN_SENT in notice(at)
+        assert box(at, AGAIN) is not None and button(at, SEND).disabled
+        assert any("mã 777" in i.value for i in at.info)
+    run_ok(at.checkbox(key="_wp_again").check().run())
+    assert not button(at, SEND).disabled
+    ui.send(at)
+    assert len(site.posts()) == 1  # chỉ bài người dùng chủ động gửi
+    state = ui.store().load_send_state(draft)
+    assert state is not None and state.post_id == ui.POST_ID and not state.pending
+    assert draft not in saved_ids() and notice(at)
+    run_ok(button(at, RECREATE, key="draft-recreate").click().run())
+    assert draft in saved_ids()
+    assert ui.store().load_send_state(draft) == state
+    assert button(t86.reopen(project_root, draft), SEND).disabled
+
+
+def test_draft_saved_back_without_state_keeps_this_tab_locked(project_root, root, fake_ai, site):
+    """G1 (Soi Lỗi T-092): tab này biết «đã gửi 777»; nháp bị xóa, rồi tab khác (không biết bài đã
+    gửi) lưu lại nháp không kèm trạng thái gửi. Tab này hết khung báo (nháp đã có lại) nhưng vẫn
+    khóa «đã gửi 777» qua nhiều lần vẽ và lần tự lưu: lần đọc «chưa gửi» không xóa bài tab đã
+    biết. Tick «Tạo thêm…» thì gửi được."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = seen_sent_elsewhere(at)
+    snap = ui.store().load(draft)
+    assert ui.store().delete(draft)
+    run_ok(at.run())
+    assert KNOWN_SENT in notice(at)
+    ui.store().save(snap)  # tab khác bấm «Lưu lại thành nháp», không biết bài đã gửi
+    for _ in range(3):
+        run_ok(at.run())
+        assert notice(at) == ""
+        assert box(at, AGAIN) is not None and button(at, SEND).disabled
+    assert ui.store().load_send_state(draft) is None  # kho vẫn «chưa gửi»: chỉ tab này biết
+    run_ok(at.checkbox(key="_wp_again").check().run())
+    ui.send(at)
+    assert len(site.posts()) == 1
+
+
+def click_through_lock(monkeypatch) -> None:
+    """Cú bấm lọt qua nút gửi đang khóa (bấm đúp đúng lúc nút vừa khóa, SL-T056-1): AppTest không
+    cho bấm nút khóa nên giả ở ``st.button`` theo khóa ``wp-send`` (như test T-112)."""
+    original = st.button
+
+    def button(label, *args, **kwargs):
+        clicked = original(label, *args, **kwargs)
+        return True if kwargs.get("key") == "wp-send" else clicked
+
+    monkeypatch.setattr(st, "button", button)
+
+
+@pytest.mark.parametrize("confirmed", [False, True], ids=["chua-tick", "doi-chung-da-tick"])
+def test_click_through_lock_while_gone_sends_nothing(
+    project_root, root, fake_ai, site, monkeypatch, confirmed
+):
+    """Cú bấm lọt qua nút đang khóa khi nháp bị xóa và tab biết «đã gửi 777»: lần chạy đó xét lại
+    khóa theo điều tab biết, không gửi gì. Đối chứng: đã tick «Tạo thêm…» thì cùng cú bấm gửi
+    thật, đúng một bài (cú bấm ở lần chạy sau bị chặn vì ô tick đã bỏ)."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = seen_sent_elsewhere(at)
+    assert ui.store().delete(draft)
+    run_ok(at.run())
+    if confirmed:
+        run_ok(at.checkbox(key="_wp_again").check().run())
+    click_through_lock(monkeypatch)
+    run_ok(at.run())
+    assert len(site.posts()) == (1 if confirmed else 0)
+
+
+@pytest.mark.parametrize("gone", [True, False], ids=["nhap-bi-xoa", "nhap-con"])
+def test_unsure_knowledge_locks_only_when_draft_gone(project_root, root, fake_ai, site, gone):
+    """Tab thấy «gửi dở» chưa có mã bài (lần gửi ở tab khác đang chạy hay bị ngắt). Nháp bị xóa:
+    bước Xuất bản vẫn khóa «gửi dở» (phải tick «Tôi đã kiểm tra trang quản trị…»). Nháp còn mà kho
+    về «chưa gửi» (lần gửi đó xong mà chưa tạo gì): mở khóa ngay, không khóa oan."""
+    at, _pid = ui.ready_image(project_root)
+    ui.to_publish(at)
+    draft = at.session_state["draft_id"]
+    ui.store().save_send_state(draft, SendState.now(pending=True, post_id=None))
+    run_ok(at.run())
+    assert box(at, CHECKED) is not None and button(at, SEND).disabled
+    if gone:
+        assert ui.store().delete(draft)
+    else:
+        assert ui.store().save_send_state(draft, None)  # lần gửi đó xong, chưa tạo gì
+    run_ok(at.run())
+    assert (box(at, CHECKED) is not None) is gone
+    assert button(at, SEND).disabled is gone
+    assert any(UNSURE in e.value for e in at.error) is gone
 
 
 # ============================================================ yêu cầu 5

@@ -217,7 +217,8 @@ DRAFT_FLAGS = (
     "_draft_saved_json",
     "_draft_saved_at",
     "_draft_baseline",
-    # T-092: trạng thái gửi tab này đọc lần cuối khi nháp còn, cờ «Lưu lại thành nháp» vừa bấm
+    # T-092: trạng thái gửi tab này biết (lần đọc kho cuối khi nháp còn; bài có mã không bị lần
+    # đọc «chưa gửi» xóa), cờ «Lưu lại thành nháp» vừa bấm
     "_draft_send_known",
     "_draft_recreate",
 )
@@ -894,23 +895,25 @@ def discard_gone_draft() -> None:
     st.toast("Đã bỏ bài đang soạn ở tab này", icon="🗑️")
 
 
-def known_send_state() -> SendState | None:
-    """Trạng thái gửi tab này biết lần cuối cho nháp đang mở (T-092), để giữ khi tạo lại nháp.
+def known_send_state(*, own_send: bool = True) -> SendState | None:
+    """Trạng thái gửi tab này biết lần cuối cho nháp đang mở (T-092): giữ khi tạo lại nháp, và
+    khóa bước Xuất bản khi kho đọc ra «chưa gửi» (SL-T092-1).
 
-    - Các lần đọc kho: lúc tự lưu (``_draft_send_known``: lần đọc cuối khi nháp còn, gộp thêm
-      những gì tab biết lúc thấy nháp không còn) và ở bước Xuất bản (``_wp_seen``: gửi xong trang
-      chạy lại ngay, lần tự lưu của lần gửi không chạy). Lấy dòng ghi muộn nhất (``updated_at``).
-      Có lần đọc thấy dòng hỏng thì coi như lần gửi trước chưa rõ kết quả: khóa «gửi dở», giữ mã
-      bài nếu biết.
-    - Không lần đọc nào thấy gì mà chính tab này đã gửi (``_wp_sent``, ``_wp_maybe_draft``: nháp
-      bị xóa ngay sau lần gửi, trước lần đọc kế tiếp): «đã gửi» kèm mã bài của lần đó; không rõ
-      kết quả hay không có mã thì «gửi dở»."""
+    - Các lần đọc kho: lúc tự lưu (``_draft_send_known``: lần đọc cuối khi nháp còn, bài có mã
+      không bị lần đọc «chưa gửi» xóa (``kept_send_knowledge``), gộp thêm những gì tab biết lúc
+      thấy nháp không còn) và ở bước Xuất bản (``_wp_seen``: gửi xong trang chạy lại ngay, lần
+      tự lưu của lần gửi không chạy). Lấy dòng ghi muộn nhất (``updated_at``). Có lần đọc thấy
+      dòng hỏng thì coi như lần gửi trước chưa rõ kết quả: khóa «gửi dở», giữ mã bài nếu biết.
+    - ``own_send``: không lần đọc nào thấy gì mà chính tab này đã gửi (``_wp_sent``,
+      ``_wp_maybe_draft``: nháp bị xóa ngay sau lần gửi, trước lần đọc kế tiếp): «đã gửi» kèm mã
+      bài của lần đó; không rõ kết quả hay không có mã thì «gửi dở». Bước Xuất bản tự khóa theo
+      các cờ này (``own_send=False``), không dựng trạng thái mang giờ của lần vẽ."""
     reads = [read for read in (S.get("_draft_send_known"), S.get("_wp_seen")) if read is not None]
     states = [state for state, _broken in reads if state is not None]
     latest = max(states, key=lambda state: state.updated_at, default=None)
     if any(broken for _state, broken in reads):
         return SendState.now(pending=True, post_id=latest.post_id if latest else None)
-    if latest is not None or not (S.get("_wp_sent") or S.get("_wp_maybe_draft")):
+    if latest is not None or not own_send or not (S.get("_wp_sent") or S.get("_wp_maybe_draft")):
         return latest
     result = S.get("_wp_result")
     post_id = result.get("post_id") if isinstance(result, dict) else None
@@ -919,6 +922,21 @@ def known_send_state() -> SendState | None:
         return SendState.now(pending=unsure, post_id=post_id)
     except ValueError:  # mã bài lạ, không ghi được: vẫn khóa «gửi dở»
         return SendState.now(pending=True, post_id=None)
+
+
+def kept_send_knowledge(read: tuple[SendState | None, bool]) -> tuple[SendState | None, bool]:
+    """Lần đọc kho khi nháp còn → điều tab biết (``_draft_send_known``), chỉ lên không xuống với
+    bài đã có trên website (Soi Lỗi T-092, G1): kho đọc ra «chưa gửi» không xóa bài có mã tab đã
+    biết. Luồng gửi không đưa nháp đã có bài về «chưa gửi» (lần gửi hỏng trả về đúng trạng thái
+    trước nó, LC-T089-1), nên kho «chưa gửi» ở đây là nháp bị xóa rồi được lưu lại không kèm
+    trạng thái gửi (tab lưu lại không biết bài đã gửi)."""
+    state, broken = read
+    previous = S.get("_draft_send_known")
+    if state is None and not broken and previous is not None:
+        known, _broken = previous
+        if known is not None and known.post_id is not None:
+            return previous
+    return read
 
 
 def recreate_draft(store: DraftStore, snap: DraftSnapshot, current: str) -> None:
@@ -985,7 +1003,7 @@ def autosave(slot) -> None:
                 gone = False
         else:
             if known is not None:
-                S._draft_send_known = known
+                S._draft_send_known = kept_send_knowledge(known)
             if S.pop("_draft_baseline", False):
                 S._draft_saved_json = current
             elif current != S.get("_draft_saved_json"):
@@ -4088,6 +4106,28 @@ def saved_send_state() -> tuple[SendState | None, str]:
         return None, str(exc)
 
 
+def send_lock_state(saved: SendState | None, saved_error: str) -> SendState | None:
+    """Trạng thái khóa gửi trùng ở bước Xuất bản: trạng thái trong kho (T-086); kho đọc ra «chưa
+    gửi» thì điều tab biết (``known_send_state``, T-092, SL-T092-1). Bài có mã luôn khóa: kho chỉ
+    về «chưa gửi» khi nháp bị xóa ở tab khác, có thể đã được lưu lại không kèm trạng thái gửi.
+    «Gửi dở» chưa có mã chỉ khóa khi nháp không còn trong kho: nháp còn mà kho «chưa gửi» là lần
+    gửi đó đã xong mà chưa tạo gì (trả về «chưa gửi»), không khóa oan. Khóa tới khi người dùng
+    «Lưu lại thành nháp» (kho có lại trạng thái gửi) hay tick xác nhận gửi tiếp."""
+    if saved is not None or saved_error:
+        return saved
+    known = known_send_state(own_send=False)
+    if known is None or known.post_id is not None:
+        return known
+    draft_id = S.get("draft_id")
+    if not draft_id or S.get("_draft_saved_at") is None:
+        return None
+    try:
+        gone = draft_store().send_state_if_exists(draft_id) is None
+    except DraftError:
+        gone = True  # không kiểm được: khóa (hướng an toàn)
+    return known if gone else None
+
+
 def unsure_message(saved: SendState | None, saved_error: str) -> str:
     """Khóa «gửi dở»: lần gửi trước có thể đã tạo bài nháp (hay đã hẹn giờ, đăng) mà app không
     chắc."""
@@ -4306,14 +4346,17 @@ def publish_panel(mode: str) -> None:
         and not built.review.blocked
         and not any(notice.level is onpage_meta.Level.BLOCK for notice in notices)
     )
-    post_id = saved.post_id if saved is not None else None
-    locked = saved is not None and (saved.pending or saved.release_unknown)
+    # Khóa theo kho, hay theo điều tab biết khi kho đọc ra «chưa gửi» (T-092, SL-T092-1). Lần gửi
+    # vẫn so rồi đặt với đúng trạng thái trong kho (``seen``).
+    lock = send_lock_state(saved, saved_error)
+    post_id = lock.post_id if lock is not None else None
+    locked = lock is not None and (lock.pending or lock.release_unknown)
     if S.get("_wp_maybe_draft") or saved_error or locked:
-        st.error(unsure_message(saved, saved_error))
+        st.error(unsure_message(lock, saved_error))
         checked = st.checkbox("Tôi đã kiểm tra trang quản trị, vẫn muốn gửi", key="_wp_checked")
         allowed = allowed and checked
     elif S.get("_wp_sent") or post_id is not None:
-        st.info(sent_message(saved, mode))
+        st.info(sent_message(lock, mode))
         if post_id is not None and client is not None and not S.get("_wp_result"):
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox(AGAIN_LABELS.get(mode, AGAIN_LABELS["draft"]), key="_wp_again")

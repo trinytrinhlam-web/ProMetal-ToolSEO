@@ -6,7 +6,76 @@
 | Phiếu | [T-092](../tickets/T-092-nhap-bi-xoa-o-tab-khac.md) |
 | Ngày nộp | 2026-11-03 |
 | Nhánh | `team/T-092` (từ `main` `29499dd`) |
-| Kết quả | Hoàn thành: yêu cầu 1–3 (trọng tâm), 5, 6; yêu cầu 4 đã có từ T-118, chỉ kiểm. Đổi 2 test cũ theo R5 (bảng «Đổi test cũ»): một test Chỉ Huy đã duyệt (yêu cầu 6), một test **xin duyệt** khi gộp (hệ quả trực tiếp của yêu cầu 1) |
+| Kết quả | Hoàn thành: yêu cầu 1–3 (trọng tâm), 5, 6; yêu cầu 4 đã có từ T-118, chỉ kiểm. Đổi 2 test cũ theo R5 (bảng «Đổi test cũ»): một test Chỉ Huy đã duyệt (yêu cầu 6), một test **xin duyệt** khi gộp (hệ quả trực tiếp của yêu cầu 1). **Lượt 2 (2026-11-04):** SL-T092-1 đã sửa (bước Xuất bản giữ khóa theo điều tab biết khi nháp bị xóa ở tab khác), kèm Ghi nhận G1 của Soi Lỗi; gỡ 2 `xfail`; gộp `main` `bad6db7` trước (mục «Lượt 2») |
+
+## Lượt 2 (2026-11-04): SL-T092-1
+
+Theo biên bản Soi Lỗi T-092 (`docs/team/reports/T-092-soi-loi.md`: SL-T092-1, Ghi nhận G1) và tin giao việc của Chỉ Huy B. Gộp `main` cục bộ `bad6db7` (đã có T-112, T-123) vào nhánh trước khi sửa: merge commit `16894d1`, không xung đột.
+
+**Tóm tắt (cho chủ dự án):** Soi Lỗi tìm ra một chỗ hở còn lại. Cùng một bài mở ở hai tab, tab này đang ở bước Xuất bản và đã thấy bài được gửi (ví dụ bài mã 777); bạn xóa nháp ở tab kia; tab này hiện đúng khung vàng «Tab này biết bài đã gửi…» nhưng nút «Gửi nháp» lại mở, bấm là ra bài thứ hai trên website (Hẹn giờ cũng vậy). Nay nút gửi, ở mọi hình thức (Nháp, Hẹn giờ, Đăng ngay), vẫn khóa theo điều tab biết, tới khi bạn bấm «💾 Lưu lại thành nháp» (nháp có lại trạng thái gửi) hoặc chủ động tick «Tạo thêm một bài nháp mới» để gửi tiếp. Thêm một trường hợp Soi Lỗi ghi nhận: nếu một tab thứ ba lưu lại nháp mà không biết bài đã gửi, tab đã biết vẫn giữ khóa.
+
+| # | Việc | Cách làm | Test |
+|---|---|---|---|
+| 1 | SL-T092-1: bước Xuất bản khóa theo điều tab biết khi kho đọc ra «chưa gửi» | `send_lock_state` (`app/views/write.py:4109`), dùng ở `publish_panel` (`:4351`). Kho có trạng thái gửi (hay dòng hỏng): như cũ. Kho «chưa gửi»: lấy điều tab biết (`known_send_state(own_send=False)`, `:898`). Bài có mã thì khóa «đã gửi» (ô «Tạo thêm…»). «Gửi dở» chưa có mã thì khóa «gửi dở» (ô «Tôi đã kiểm tra trang quản trị…») **chỉ khi nháp không còn trong kho** (kiểm bằng `send_state_if_exists`): nháp còn mà kho «chưa gửi» là lần gửi đó đã xong mà chưa tạo gì, không khóa oan. Lần gửi vẫn so rồi đặt với **đúng trạng thái trong kho** (`seen` không đổi), nên tick xác nhận rồi gửi thì gửi được, không kẹt ở «trạng thái gửi vừa thay đổi»; mã bài tab biết đi vào «đang gửi» như mã bài trước (`previous_post`). `own_send=False`: các cờ của chính tab (`_wp_sent`, `_wp_maybe_draft`) đã có nhánh khóa riêng, không dựng trạng thái mang giờ của lần vẽ | Soi Lỗi: `test_sl_t092_1_tab_biet_da_gui_nhap_bi_xoa_khong_gui_trung`, `test_sl_t092_1_hen_gio_cung_mo_khoa` (gỡ `xfail`); mới: `test_known_sent_stays_locked_until_confirmed_while_gone` (khóa qua 3 lần vẽ; tick «Tạo thêm…» thì gửi đúng một bài; lưu lại giữ dòng mới; phiên mới vẫn khóa), `test_click_through_lock_while_gone_sends_nothing` (2 ca: cú bấm lọt qua nút khóa không gửi gì; đối chứng đã tick thì gửi thật một bài), `test_unsure_knowledge_locks_only_when_draft_gone` (2 ca: nháp bị xóa thì khóa «gửi dở»; nháp còn thì mở ngay) |
+| 2 | G1 (Ghi nhận của Soi Lỗi): tab thứ ba lưu lại nháp không kèm trạng thái gửi | `kept_send_knowledge` (`:927`), dùng trong `autosave` (`:1006`): điều tab biết chỉ lên không xuống với bài có mã, lần đọc kho «chưa gửi» khi nháp còn không xóa nó. An toàn vì luồng gửi không đưa nháp đã có bài về «chưa gửi» (lần gửi hỏng trả về đúng trạng thái trước nó, LC-T089-1); «gửi dở» chưa có mã thì không giữ (lý do ở dòng trên). Mở bài khác, bắt đầu bài mới, «Bỏ hẳn» thì điều tab biết xóa theo (`DRAFT_FLAGS`) | mới: `test_draft_saved_back_without_state_keeps_this_tab_locked` (khung báo hết vì nháp đã có lại, vẫn khóa «đã gửi 777» qua 3 lần vẽ; kho vẫn «chưa gửi»; tick thì gửi được) |
+| 3 | Gỡ `xfail` | `tests/test_soi_loi_t092.py`: xóa 2 dấu `@pytest.mark.xfail(...)` và dòng `import pytest` không còn dùng (ruff F401); thân test không đổi. Trước khi gỡ: cả hai `[XPASS(strict)]` | mục «Bằng chứng lượt 2» |
+
+Ảnh hưởng tới luồng thường (đã kiểm bằng test): nháp còn và kho có trạng thái gửi: khóa theo kho như cũ. Kho «chưa gửi» và tab chưa từng thấy trạng thái gửi nào: mở như cũ (T-086 `test_error_before_any_draft_clears_pending`, T-089 hai phiên luân phiên vẫn qua). Chỉ tốn thêm một lần đọc SQLite nhỏ khi tab biết «gửi dở» chưa có mã mà kho «chưa gửi».
+
+**Còn lại (không đổi, đã nêu ở Rủi ro 1, Đề xuất 1):** tab **không** biết gì (bài gửi rồi xóa luôn ở tab khác trong lúc tab này không chạy lần nào) thì không có gì để khóa. Ca G1 cũng vậy với một **phiên mới** mở nháp đã được lưu lại không kèm trạng thái gửi: chỉ tab đã biết giữ khóa. Chặn hẳn cần giữ trạng thái gửi khi xóa nháp đã gửi (Đề xuất 1).
+
+**Thử gỡ chỗ sửa lượt 2** (cùng script, chạy lại cả 16 đột biến lượt 1 cùng 4 đột biến mới; script ở thư mục nháp của phiên):
+
+| Đột biến | Kết quả |
+|---|---|
+| M17 bước Xuất bản chỉ khóa theo kho (như trước lượt 2) | bắt được (7 ca, gồm 2 ca của Soi Lỗi) |
+| M18 điều tab biết bị lần đọc «chưa gửi» xóa (G1) | bắt được (`…_saved_back_without_state_…`) |
+| M19 «gửi dở» chưa có mã luôn khóa (không kiểm nháp còn) | bắt được (`…_unsure_knowledge_…[nhap-con]`: khóa oan) |
+| M20 «gửi dở» chưa có mã không bao giờ khóa | bắt được (`…_unsure_knowledge_…[nhap-bi-xoa]`) |
+| M1–M16 lượt 1 (M11 đổi chuỗi đích theo dòng mới) | cả 16 vẫn bị bắt |
+
+**Soát R5 lượt 2:** `tests/test_soi_loi_t092.py` chỉ xóa 2 dấu `xfail` và `import pytest` thừa (Chỉ Huy đã duyệt trong tin giao lượt 2); `tests/test_t092_nhap_bi_xoa.py` thêm 4 test (6 ca), không sửa test cũ. Không `skip`, không xóa test.
+
+**Bảo mật (W1, W2, U1):** W1: chỉ khóa thêm (khi kho «chưa gửi» mà tab biết bài đã gửi), không mở thêm đường gửi nào; gửi tiếp vẫn phải tick xác nhận như T-086. W2: không thêm lệnh nào lên website. U1: không có chữ mới; câu khóa dùng lại `sent_message`, `unsure_message` có sẵn (mã bài là số, chữ qua `escape_markdown`).
+
+**Bằng chứng lượt 2:**
+
+```
+# Trước khi gỡ dấu (cây đã sửa):
+$ uv run pytest tests/test_soi_loi_t092.py -rxX
+[XPASS(strict)] SL-T092-1: tab thấy «đã gửi 777» trong kho, nháp bị xóa ở tab khác: …
+[XPASS(strict)] SL-T092-1 (Hẹn giờ, công tắc bật): cùng đường, tick xác nhận là gửi được; …
+# Lần chạy đầu ngay sau khi gộp main, ca Hẹn giờ còn XFAIL một lần; chạy riêng với --runxfail:
+# qua; chạy lại riêng và cả file: XPASS cả hai. Ca có dấu xfail nuốt mọi lỗi (kể cả quá giờ chờ
+# của AppTest khi máy bận ngay sau khi gộp); lần chạy lớn dưới, ca này qua như mọi ca khác.
+
+# Các file test liên quan (Chỉ Huy dặn không chạy toàn bộ pytest): 40 file như lượt 1, thêm
+# tests/test_soi_loi_t092.py và 3 file T-112 vừa gộp (test_t112_release_rules.py,
+# test_soi_loi_t112.py, test_t112_settings_switch.py): 44 file
+$ PYTHONUTF8=1 uv run pytest -q -rxXf <44 file>
+2789 passed, 8 skipped, 4 xfailed in 2950.50s (0:49:10)
+# 2026-11-05 10:14:56 → 11:04:15 (máy chạy song song một lượt test khác). Không ca nào hỏng,
+# không XPASS. 4 xfail đều có sẵn trên main: SL-T107-3 (1), SL-T117-1 (3). 3 xfail SL-T102-1 của
+# lượt 1 đã hết vì T-112 (đã gộp vào nhánh) sửa.
+
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check app/views/write.py tests/test_t092_nhap_bi_xoa.py tests/test_soi_loi_t092.py
+3 files already formatted
+```
+
+Quét: `PYTHONUTF8=1 uvx detect-secrets scan` 4 file đổi ở lượt 2: chỉ ví dụ `https://tên:mật-khẩu@…` có sẵn trong docstring `app/views/write.py` và câu báo cáo lượt 1 nhắc lại ví dụ đó (không phải bí mật); `PYTHONUTF8=1 uvx bandit app/views/write.py`: 0 lỗi.
+
+`main` cục bộ nay là `8caab2f` (thêm T-122: cache Search Console, `seo_app/google/`, `seo_app/storage/search_cache.py`): `git merge-tree` với nhánh không xung đột, không đụng file nào của phiếu này; chưa gộp vào nhánh (tin giao chỉ dặn gộp `bad6db7`).
+
+**Đối chiếu việc lượt 2:**
+
+- [x] Gộp `main` `bad6db7` (T-112, T-123) trước khi sửa (`16894d1`, không xung đột).
+- [x] SL-T092-1: tab biết bài đã gửi thì nút gửi (Nháp, Hẹn giờ, Đăng ngay) giữ khóa tới khi người dùng «Lưu lại thành nháp» hoặc tick xác nhận gửi lại; cú bấm lọt qua nút khóa cũng không gửi.
+- [x] G1 (Ghi nhận Soi Lỗi): tab đã biết giữ khóa khi tab khác lưu lại nháp không kèm trạng thái gửi.
+- [x] Gỡ 2 `xfail` SL-T092-1 (chỉ xóa dấu và `import pytest` thừa); thêm 4 test (6 ca).
+- [x] Test liên quan: 2789 qua, 0 hỏng; `uv run ruff check .` sạch; đột biến 20/20 bị bắt.
+- [ ] Lá Chắn rút gọn (chưa tới lượt).
 
 ## Tóm tắt (cho chủ dự án)
 

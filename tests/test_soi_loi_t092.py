@@ -12,7 +12,6 @@ WordPress, Google, AI thật.
 
 from __future__ import annotations
 
-import pytest
 import test_app_images as ui
 import test_t041_seo_ui as t41
 import test_t102_publish as t102
@@ -65,12 +64,6 @@ def sent_elsewhere_then_deleted(at) -> str:
 
 
 # ====================================================================== 1. khóa gửi trùng
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T092-1: tab thấy «đã gửi 777» trong kho, nháp bị xóa ở tab khác: khung báo nói "
-    "«Tab này biết bài đã gửi», nhưng bước Xuất bản đọc kho ra «chưa gửi» nên nút «Gửi nháp» mở, "
-    "bấm là tạo bài thứ hai trên website (khóa gửi trùng chỉ còn ở tab tự gửi, _wp_sent)",
-)
 def test_sl_t092_1_tab_biet_da_gui_nhap_bi_xoa_khong_gui_trung(project_root, root, fake_ai, site):
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
@@ -80,11 +73,6 @@ def test_sl_t092_1_tab_biet_da_gui_nhap_bi_xoa_khong_gui_trung(project_root, roo
     assert site.posts() == []  # không tạo bài thứ hai trên website
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T092-1 (Hẹn giờ, công tắc bật): cùng đường, tick xác nhận là gửi được; bài thứ hai "
-    "được tạo và hẹn giờ đăng công khai",
-)
 def test_sl_t092_1_hen_gio_cung_mo_khoa(project_root, root, fake_ai, live):
     at, _pid = ui.ready_image(project_root)
     t102.to_mode(at, "Hẹn giờ")
