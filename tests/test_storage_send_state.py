@@ -1,8 +1,8 @@
 """T-086: kho nháp nhớ trạng thái «Gửi nháp» (``SendState``, bảng riêng ``send_states``).
 
 Lần tự lưu nháp không ghi đè trạng thái gửi; file nháp cũ (chưa có bảng) vẫn mở được; dòng trạng
-thái hỏng là lỗi, không đoán; xóa hay dọn nháp thì bỏ trạng thái theo. Giao diện dùng trạng thái
-này: ``tests/test_t086_send_state.py``.
+thái hỏng là lỗi, không đoán; xóa hay dọn nháp thì giữ trạng thái thành dòng mồ côi (T-130, trước
+đây bỏ theo). Giao diện dùng trạng thái này: ``tests/test_t086_send_state.py``.
 """
 
 from __future__ import annotations
@@ -84,20 +84,27 @@ def test_broken_send_state_is_an_error_not_a_guess(store, data):
     assert str(caught.value) == "Trạng thái gửi ghi trong nháp bị hỏng nên không đọc được."
 
 
-def test_send_state_removed_with_its_draft(tmp_path):
-    """Xóa nháp, hay nháp bị dọn (quá ``max_drafts``): trạng thái gửi của đúng nháp đó bỏ theo;
-    trạng thái của nháp còn lại giữ nguyên."""
+def test_send_state_kept_as_orphan_when_its_draft_goes(tmp_path):
+    """Xóa nháp, hay nháp bị dọn (quá ``max_drafts``): trạng thái gửi của đúng nháp đó **giữ lại**
+    thành dòng mồ côi (T-130; T-086 bỏ theo, Chỉ Huy duyệt đổi R5): bài trên website vẫn còn, nháp
+    được lưu lại thì có lại khóa. Trạng thái của nháp còn lại giữ nguyên."""
     store = DraftStore(path=tmp_path / "drafts.sqlite", max_drafts=2)
     first = store.save(DraftSnapshot(keyword="một"))
     second = store.save(DraftSnapshot(keyword="hai"))
+    states = {}
     for snap in (first, second):
-        store.save_send_state(snap.id, SendState.now(pending=False, post_id=9))
+        states[snap.id] = SendState.now(pending=False, post_id=9)
+        store.save_send_state(snap.id, states[snap.id])
     store.save(DraftSnapshot(keyword="ba"))  # dọn «một»
+    assert first.id not in {d.id for d in store.list_drafts().drafts}
     with closing(sqlite3.connect(store.path)) as conn:
         kept = {row[0] for row in conn.execute("SELECT id FROM send_states")}
-    assert kept == {second.id}
+    assert kept == {first.id, second.id}
+    assert store.load_send_state(first.id) == states[first.id]
     assert store.delete(second.id)
-    assert store.load_send_state(second.id) is None
+    assert store.load_send_state(second.id) == states[second.id]
+    store.save(first)  # một tab còn mở «một» bấm «Lưu lại thành nháp»: có lại khóa
+    assert store.send_state_if_exists(first.id) == (states[first.id], False)
 
 
 def test_wrong_send_states_table_moves_file_aside(tmp_path):
