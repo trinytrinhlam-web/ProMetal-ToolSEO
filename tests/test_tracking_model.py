@@ -168,23 +168,24 @@ def _imports(tree: ast.AST) -> set[str]:
     return names
 
 
+_CORE = ("__init__.py", "model.py", "periods.py", "match.py", "stats.py", "flags.py", "keywords.py")
+# T-124 (R5): ``refresh.py`` là lớp nối của gói (thiết kế T-120 mục 6: client T-121, cache T-122,
+# ``.env``), không phải hàm thuần. Phép kiểm riêng của nó ở ``tests/test_tracking_refresh.py``
+# (không nhập Streamlit, AI, Google Sheets; nạp module không gọi gì ngoài hằng). File mới trong gói
+# phải được xếp vào lõi hay lớp nối ở đây, không lọt qua phép kiểm.
+_IO_MODULES = ("refresh.py",)
+
+
 def test_package_is_pure_functions():
     files = sorted(_PACKAGE.glob("*.py"))
-    assert {path.name for path in files} >= {
-        "__init__.py",
-        "model.py",
-        "periods.py",
-        "match.py",
-        "stats.py",
-        "flags.py",
-        "keywords.py",
-    }
+    assert set(_CORE) <= {path.name for path in files} <= set(_CORE) | set(_IO_MODULES)
     for path in files:
         tree = ast.parse(path.read_text(encoding="utf-8"))
+        forbidden = (
+            () if path.name in _IO_MODULES else (*_FORBIDDEN_IMPORTS, "seo_app.tracking.refresh")
+        )
         for name in _imports(tree):
-            assert not any(
-                name == bad or name.startswith(bad + ".") for bad in _FORBIDDEN_IMPORTS
-            ), (
+            assert not any(name == bad or name.startswith(bad + ".") for bad in forbidden), (
                 path.name,
                 name,
             )
