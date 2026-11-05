@@ -1,4 +1,4 @@
-"""Cài đặt: văn phong, mô hình AI (có thử mù), ảnh, kết nối, Google Sheets."""
+"""Cài đặt: văn phong, mô hình AI (có thử mù), ảnh, kết nối, Google Sheets, Search Console."""
 
 import os
 import unicodedata
@@ -12,12 +12,15 @@ from seo_app.ai.base import EFFORTS, redact_secrets
 from seo_app.ai.registry import PROVIDERS
 from seo_app.config import ConfigError, load_settings
 from seo_app.content import blind_test, load_rules
+from seo_app.google.search_console import SearchConsoleError, covers_site, parse_property
 from seo_app.google.service_account import ServiceAccountError, load_service_account
 from seo_app.google.sheets import SheetsClient, SheetsError, mask_sheet_id, sheet_id_from_link
 from seo_app.images.folders import ImageLibrary
 from seo_app.plan import sync as plan_sync
 from seo_app.sanitize import escape_link_syntax
 from seo_app.text import escape_markdown
+from seo_app.tracking import refresh as tracking_refresh
+from seo_app.tracking.stats import number_text
 
 S = st.session_state
 
@@ -697,6 +700,188 @@ def prepare_plan_sheet(settings, *, add_missing: bool) -> None:
     S["google-check"] = ("success", result.message)
 
 
+# ------------------------------------------------------------------ Search Console (T-125)
+# Cài đặt → Google → Search Console (thiết kế T-120 mục 1.2, 4.4; Lá Chắn T-124 B.1; LC-T120-12,
+# -19, -21, -23): «Tìm thuộc tính», «Kiểm tra» chỉ chạy khi bấm (mở trang không gọi mạng). Kết quả
+# «Tìm thuộc tính» giữ trong phiên (``GSC_FOUND``) và **đúng đối tượng đó** được truyền vào
+# ``save_property``: chỉ chọn được mục dùng được của lần tìm này, không dựng danh sách từ chữ người
+# dùng. Chữ từ Google (thuộc tính, tên máy) hiện chữ thuần (ô bảng qua ``safe_text``, ô chọn,
+# ``st.code``); câu của lõi qua ``escape_markdown``.
+
+GSC_FOUND = "gsc-found"  # PropertyList của lần bấm «Tìm thuộc tính» gần nhất
+GSC_CHOICE = "gsc-choice"
+GSC_CHECK = "gsc-check"  # ConnectionCheck của lần bấm «Kiểm tra» gần nhất
+GSC_FLASH = "gsc-flash"
+HIGH_PERMISSIONS = ("siteOwner", "siteFullUser")
+MSG_GSC_ABOUT = (
+    "Trang 📈 Theo dõi đọc số liệu Google Search Console (chỉ đọc) bằng cùng tài khoản dịch vụ ở "
+    "trên. Cách thêm: Search Console → Cài đặt → Người dùng và quyền → Thêm người dùng → dán email "
+    "tài khoản dịch vụ → quyền «Hạn chế». Chỉ chủ sở hữu thuộc tính làm được bước này."
+)
+MSG_GSC_OVERRIDDEN = (
+    "Thuộc tính Search Console đang được đặt trong biến môi trường GSC_SITE_URL của máy (được ưu "
+    "tiên hơn file .env, kể cả khi để trống), nên thuộc tính lưu ở đây sẽ không có hiệu lực. Muốn "
+    "đổi, hãy gỡ biến đó khỏi máy."
+)
+MSG_GSC_NO_ENTRY = (
+    "Tài khoản dịch vụ chưa thấy thuộc tính nào. Thêm email ở trên vào thuộc tính của website "
+    "trong Search Console (quyền «Hạn chế») rồi bấm «Tìm thuộc tính» lại."
+)
+MSG_GSC_NONE_USABLE = (
+    "Chưa có thuộc tính nào dùng được cho website (đúng dạng, phủ địa chỉ trong WORDPRESS_URL, đã "
+    "xác minh)."
+)
+
+
+def gsc_current_text(settings) -> str:
+    """Thuộc tính đang dùng, nói theo loại: trang Cài đặt không in giá trị trong ``.env`` (U2, Soi
+    Lỗi T-084). Kiểm dạng và phủ website ngay trên máy (``parse_property``, ``covers_site``), không
+    gọi mạng; câu lỗi của client là câu cố định, không chép giá trị."""
+    try:
+        site = parse_property(settings.gsc_site_url)
+    except SearchConsoleError as exc:
+        return str(exc)
+    if site.kind == "domain":
+        text = "Loại thuộc tính: tên miền (sc-domain:…); phần mềm tự lọc phần ngoài website."
+    else:
+        text = "Loại thuộc tính: tiền tố địa chỉ (https://…/)."
+    if not covers_site(site, settings.wordpress_url):
+        text += " Thuộc tính này không phủ địa chỉ website trong WORDPRESS_URL: chọn lại."
+    return text
+
+
+def gsc_entry_status(entry) -> str:
+    """Thuộc tính dùng được cho website không, vì sao (``SiteEntry.usable``; câu cố định)."""
+    if entry.usable:
+        return "✔ dùng được" + (" (tự lọc phần ngoài website)" if entry.kind == "domain" else "")
+    if not entry.kind:
+        return "✘ không đúng dạng (http://, đường con…)"
+    if not entry.covers:
+        return "✘ không phải website trong WORDPRESS_URL"
+    return "✘ chưa xác minh"
+
+
+def _save_property() -> None:
+    # Chạy trong on_click, trước khi trang đọc lại .env. Truyền đúng kết quả «Tìm thuộc tính» đang
+    # giữ trong phiên: ``save_property`` chỉ nhận mục dùng được trong đó (LC-T120-12).
+    found = S.get(GSC_FOUND)
+    S.pop(GSC_CHECK, None)
+    if not isinstance(found, tracking_refresh.PropertyList):
+        S[GSC_FLASH] = ("error", tracking_refresh.MSG_NOT_OFFERED)
+        return
+    result = tracking_refresh.save_property(S.get(GSC_CHOICE), found)
+    kind = "error" if not result.ok else "warning" if result.overridden else "success"
+    S[GSC_FLASH] = (kind, result.message)
+
+
+def gsc_found_panel(settings) -> None:
+    """Kết quả «Tìm thuộc tính»: bảng thuộc tính (chữ thuần), chọn trong các mục dùng được, lưu."""
+    found = S.get(GSC_FOUND)
+    if not isinstance(found, tracking_refresh.PropertyList):
+        return
+    if found.message:
+        st.error(escape_markdown(found.message))
+        return
+    if found.account_email:
+        st.caption("Email tài khoản dịch vụ (thêm vào Search Console, quyền «Hạn chế»):")
+        st.code(visible(found.account_email), language=None)
+    if not found.entries:
+        st.info(MSG_GSC_NO_ENTRY)
+    else:
+        rows = [
+            {
+                "Thuộc tính": plan_sync.safe_text(visible(entry.site_url)),
+                "Quyền": tracking_refresh.PERMISSION_TEXT.get(entry.permission, ""),
+                "Dùng cho website": gsc_entry_status(entry),
+            }
+            for entry in found.entries
+        ]
+        st.dataframe(rows, hide_index=True, width="stretch")
+    if found.skipped:
+        st.caption(f"{number_text(found.skipped)} mục Google trả không đúng dạng bị bỏ.")
+    if any(entry.permission in HIGH_PERMISSIONS for entry in found.entries):
+        st.warning(escape_markdown(tracking_refresh.MSG_PERMISSION_HIGH))
+    usable = found.usable_site_urls
+    if not usable:
+        if found.entries:
+            st.info(MSG_GSC_NONE_USABLE)
+        return
+    if S.get(GSC_CHOICE) not in usable:
+        S.pop(GSC_CHOICE, None)
+    current = settings.gsc_site_url
+    st.selectbox(
+        "Thuộc tính dùng cho trang Theo dõi",
+        usable,
+        index=usable.index(current) if current in usable else 0,
+        format_func=visible,
+        key=GSC_CHOICE,
+    )
+    st.button("Lưu thuộc tính đã chọn", key="gsc-save", type="primary", on_click=_save_property)
+
+
+def gsc_check_panel() -> None:
+    """Kết quả «Kiểm tra»: câu cố định (escape), cảnh báo quyền, bảng tên máy ngoài website."""
+    check = S.get(GSC_CHECK)
+    if not isinstance(check, tracking_refresh.ConnectionCheck):
+        return
+    lines = [
+        f"- {escape_markdown(message)}"
+        for message in check.messages
+        if message != tracking_refresh.MSG_PERMISSION_HIGH
+    ]
+    if lines:
+        (st.success if check.ok else st.error)("\n".join(lines))
+    if tracking_refresh.MSG_PERMISSION_HIGH in check.messages:
+        st.warning(escape_markdown(tracking_refresh.MSG_PERMISSION_HIGH))
+    if check.hosts:
+        st.dataframe(
+            [
+                {
+                    "Tên máy": plan_sync.safe_text(visible(host.host)),
+                    "Lượt hiển thị": number_text(host.impressions),
+                    "Ghi chú": host.note,
+                }
+                for host in check.hosts
+            ],
+            hide_index=True,
+            width="stretch",
+        )
+
+
+def search_console_card(settings, ready: bool) -> None:
+    st.markdown("#### 📈 Search Console")
+    st.caption(MSG_GSC_ABOUT)
+    flash = S.pop(GSC_FLASH, None)
+    if flash:
+        kind, text = flash
+        {"success": st.success, "warning": st.warning}.get(kind, st.error)(escape_markdown(text))
+    if env_file.gsc_site_url_overridden():  # biến có mặt, kể cả rỗng (LC-T120-23)
+        st.warning(MSG_GSC_OVERRIDDEN)
+    # Dòng trạng thái không dùng nhãn «badge»: hai nhãn của tab này là của file khóa và Sheet.
+    if settings.gsc_site_url:
+        st.markdown("✅ **Đã chọn thuộc tính** (lưu trong file .env)")
+        st.caption(escape_markdown(gsc_current_text(settings)))
+    else:
+        st.markdown("⚪ **Chưa chọn thuộc tính**")
+        st.caption("Bấm «Tìm thuộc tính», chọn thuộc tính của website rồi lưu.")
+    find, check, _ = st.columns([1, 1, 2])
+    if find.button("🔎 Tìm thuộc tính", key="gsc-find-btn", width="stretch", disabled=not ready):
+        S.pop(GSC_CHOICE, None)
+        with st.spinner("Đang hỏi Search Console… (có thể mất vài giây)"):
+            S[GSC_FOUND] = tracking_refresh.find_properties(settings)
+    if check.button(
+        "✅ Kiểm tra",
+        key="gsc-check-btn",
+        width="stretch",
+        disabled=not (ready and settings.gsc_site_url),
+    ):
+        with st.spinner("Đang kiểm kết nối Search Console… (có thể mất vài giây)"):
+            S[GSC_CHECK] = tracking_refresh.check_connection(settings)
+    gsc_found_panel(settings)
+    gsc_check_panel()
+    st.page_link("views/tracking.py", label="Mở trang Theo dõi", icon="📈")
+
+
 # ================================================================ Hẹn giờ, đăng (T-112)
 
 # Cùng khóa với ``RELEASE_SWITCH`` của ``app/views/write.py``: bước Xuất bản chỉ đọc khóa này.
@@ -771,6 +956,8 @@ def google_tab(settings) -> None:
         sheet_card(settings)
     check_card(settings, ready)
     st.page_link("views/plan.py", label="Mở trang Kế hoạch", icon="🗂️")
+    with st.container(border=True):
+        search_console_card(settings, ready)
 
 
 # Đọc cấu hình sau các callback ở trên, nên trạng thái "đã khai báo" đổi ngay khi vừa lưu.
