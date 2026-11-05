@@ -8,20 +8,32 @@ Dữ liệu đọc từ file là chưa tin cậy: giới hạn số dòng và đ
 ``PublishedItem`` và ``is_site_link`` (như lúc nhận từ site). Một dòng sai cũng coi cả cache là
 hỏng: bỏ và tải lại. File hỏng hẳn (không phải SQLite, sai cấu trúc, là liên kết tắt) thì xóa
 và tạo lại; cache không có gì cần giữ. Mọi câu SQL dùng tham số ``?``. Không lưu bí mật.
+
+Kiểm file như cache số liệu Search Console (T-122; T-131, LC-T129-1, SL-T117-1):
+
+- ``data/`` (hay một thư mục con) là liên kết thì không tạo, không mở, không xóa gì (câu cố định
+  ``MSG_DATA_DIR_LINK``); chính file, file nhật ký là liên kết thì chỉ gỡ liên kết.
+- ``sqlite_master`` phải khớp đúng hai bảng app tạo, kiểm trước khi mở **và** trong cùng giao dịch
+  với thao tác: bảng lạ, trigger, khung nhìn, chỉ mục lạ là file lạ, bỏ file. Đọc bằng bộ giải mã
+  có bắt lỗi (UTF-8 hỏng là file lạ, không lặp LC-T122-1).
+- Mỗi kết nối: ``trusted_schema = OFF``, giới hạn số bước máy ảo SQLite, độ dài một giá trị.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import stat
 from collections.abc import Iterator
 from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from functools import cache
 from pathlib import Path
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
+from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link, is_link
 from seo_app.wordpress.client import (
     MAX_LINK_CHARS,
     MAX_META_CHARS,
@@ -53,7 +65,32 @@ _WRITE_TIMEOUT = 1
 # bận, khóa, chỉ đọc…) thì KHÔNG xóa file: có thể chương trình khác đang giữ file.
 _SQLITE_CORRUPT = 11
 _SQLITE_NOTADB = 26
+_SQLITE_INTERRUPT = 9
+_SQLITE_TOOBIG = 18
+# Lỗi do môi trường, không do file lạ (LC-T122-1): quyền, bận, khóa, hết bộ nhớ, chỉ đọc, vào ra,
+# đầy ổ, không mở được, giao thức khóa. Bước kiểm file gặp các mã này thì giữ file, báo câu; mã
+# khác («unsupported file format», giá trị quá dài, quá số bước…) là file lạ: bỏ file.
+_KEEP_FILE_CODES = frozenset({3, 5, 6, 7, 8, 10, 13, 14, 15})
+_JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
+# Lớp phòng sau lớp kiểm cấu trúc (như ``plan_cache``, ``search_cache``): số bước tối đa của máy
+# ảo SQLite cho mỗi kết nối, độ dài tối đa của một giá trị. Kiểm, đọc, ghi danh sách lớn nhất
+# (``MAX_ITEMS`` dòng, chữ dài tối đa) dùng chưa tới một phần mười mức này (đo ở báo cáo T-131).
+_MAX_VM_STEPS = 50_000_000
+_PROGRESS_EVERY = 1000
+_MAX_SQLITE_LENGTH = 1_000_000
 _COLUMNS = ("id", "type", "slug", "link", "title", "meta_title", "meta_desc", "modified_gmt")
+# Câu tạo bảng giữ đúng chữ như trước T-131: file cache cũ trên máy vẫn khớp ``_expected_schema``.
+_CREATE_TABLES = (
+    "CREATE TABLE IF NOT EXISTS pages ("
+    "id INTEGER NOT NULL, type TEXT NOT NULL, slug TEXT NOT NULL, "
+    "link TEXT NOT NULL, title TEXT NOT NULL, meta_title TEXT NOT NULL, "
+    "meta_desc TEXT NOT NULL, modified_gmt TEXT NOT NULL, "
+    "PRIMARY KEY (type, id))",
+    "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+)
+_MASTER_SQL = "SELECT type, name, tbl_name, substr(sql, 1, ?) FROM sqlite_master LIMIT ?"
+_MAX_SQL_BYTES = 2048
+_MSG_BROKEN = "File lưu tạm danh sách bài bị lỗi nên không đọc/ghi được. Thử tải lại."
 
 
 class SiteIndexError(Exception):
@@ -143,35 +180,45 @@ class SiteIndexStore:
         if len(index.items) > MAX_ITEMS:
             raise SiteIndexError("Danh sách bài quá dài nên không lưu tạm được.")
         rows = [tuple(getattr(item, name) for name in _COLUMNS) for item in index.items]
-        try:
-            with self._connect(timeout=_WRITE_TIMEOUT) as conn:
-                conn.execute("DELETE FROM pages")
-                conn.executemany(
-                    "INSERT OR REPLACE INTO pages "
-                    "(id, type, slug, link, title, meta_title, meta_desc, modified_gmt) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    rows,
-                )
-                conn.executemany(
-                    "INSERT OR REPLACE INTO info (key, value) VALUES (?, ?)",
-                    [
-                        ("schema_version", SCHEMA_VERSION),
-                        ("site", index.site),
-                        ("fetched_at", index.fetched_at.isoformat()),
-                        ("truncated", "1" if index.truncated else "0"),
-                    ],
-                )
-        except sqlite3.DatabaseError as exc:
-            raise _db_error(exc) from None
-        except OSError as exc:
-            raise SiteIndexError(
-                f"Không ghi được file lưu tạm danh sách bài ({exc.strerror or 'lỗi đọc/ghi'})."
-            ) from None
+        info = [
+            ("schema_version", SCHEMA_VERSION),
+            ("site", index.site),
+            ("fetched_at", index.fetched_at.isoformat()),
+            ("truncated", "1" if index.truncated else "0"),
+        ]
+        # File lạ (cấu trúc đổi ngay trước lúc ghi): bỏ rồi ghi lại một lần trên file mới.
+        for attempt in (1, 2):
+            try:
+                with self._connect(timeout=_WRITE_TIMEOUT, write=True) as conn:
+                    conn.execute("DELETE FROM pages")
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO pages "
+                        "(id, type, slug, link, title, meta_title, meta_desc, modified_gmt) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        rows,
+                    )
+                    conn.executemany("INSERT OR REPLACE INTO info (key, value) VALUES (?, ?)", info)
+                return
+            except _Corrupt:
+                self._reset_quietly()
+                if attempt == 2:
+                    raise SiteIndexError(_MSG_BROKEN) from None
+            except sqlite3.DatabaseError as exc:
+                raise _db_error(exc) from None
+            except OSError as exc:
+                raise SiteIndexError(
+                    f"Không ghi được file lưu tạm danh sách bài ({exc.strerror or 'lỗi đọc/ghi'})."
+                ) from None
 
     def clear(self) -> None:
-        """Xóa file cache (lần sau tự tải lại)."""
+        """Xóa file cache và file nhật ký (lần sau tự tải lại). ``data/`` là liên kết thì không xóa
+        gì (file ở đó nằm ngoài thư mục phần mềm), báo câu cố định (SL-T117-1). Lỗi đọc thư mục
+        khi kiểm liên kết cũng ra câu cố định (như LC-T122-2)."""
         try:
-            self.path.unlink(missing_ok=True)
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                raise SiteIndexError(MSG_DATA_DIR_LINK)
+            for path in (self.path, *_journal_paths(self.path)):
+                path.unlink(missing_ok=True)
         except OSError as exc:
             raise SiteIndexError(
                 f"Không xóa được file lưu tạm danh sách bài ({exc.strerror or 'lỗi đọc/ghi'})."
@@ -265,40 +312,57 @@ class SiteIndexStore:
         )
 
     @contextmanager
-    def _connect(self, timeout: float | None = None) -> Iterator[sqlite3.Connection]:
-        """``timeout``: giây chờ khi file bị khóa; ``None`` là ``_SQLITE_TIMEOUT`` (đọc lúc gọi)."""
+    def _connect(
+        self, timeout: float | None = None, *, write: bool = False
+    ) -> Iterator[sqlite3.Connection]:
+        """Mở file, mở giao dịch (``write``: giành quyền ghi ngay), kiểm cấu trúc (``_app_tables``)
+        **trước** mọi truy vấn khác, trong cùng giao dịch với thao tác. Cấu trúc lạ, giá trị quá
+        dài, quá số bước: ``_Corrupt``. ``timeout``: giây chờ khi file bị khóa; ``None`` là
+        ``_SQLITE_TIMEOUT`` (đọc lúc gọi)."""
         self._prepare()
         if timeout is None:
             timeout = _SQLITE_TIMEOUT
         try:
-            # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
-            with closing(sqlite3.connect(self.path, timeout=timeout)) as conn, conn:
+            with closing(sqlite3.connect(self.path, timeout=timeout, isolation_level=None)) as conn:
+                _guard(conn)
                 conn.text_factory = _decode_text
-                yield conn
+                conn.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+                try:
+                    if _app_tables(conn) != _expected_schema():
+                        raise _Corrupt
+                    yield conn
+                except BaseException:
+                    if conn.in_transaction:
+                        conn.execute("ROLLBACK")
+                    raise
+                conn.execute("COMMIT")
         except sqlite3.DatabaseError as exc:
+            if _is_too_big(exc) or _is_interrupted(exc):
+                raise _Corrupt from None
             if _is_busy(exc):
                 raise _db_error(exc) from None
             raise
 
     def _prepare(self) -> None:
-        """Tạo thư mục; file hỏng / liên kết tắt thì xóa; tạo bảng nếu chưa có."""
+        """Mỗi lần mở: ``data/`` là liên kết thì báo lỗi, không tạo, không mở (SL-T117-1); chính
+        file là liên kết thì bỏ (chỉ xóa liên kết, F1), file nhật ký là liên kết thì gỡ; file
+        hỏng, lạ thì bỏ; file trống thì tạo bảng. Chỉ xin quyền ghi khi phải tạo bảng."""
         try:
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                raise SiteIndexError(MSG_DATA_DIR_LINK)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            if self.path.is_symlink() or (self.path.exists() and not _is_healthy(self.path)):
+            if _is_link(self.path):
                 # Liên kết tắt có thể trỏ ra ngoài data/ (F1): chỉ xóa chính liên kết.
                 self._reset()
-            with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS pages ("
-                    "id INTEGER NOT NULL, type TEXT NOT NULL, slug TEXT NOT NULL, "
-                    "link TEXT NOT NULL, title TEXT NOT NULL, meta_title TEXT NOT NULL, "
-                    "meta_desc TEXT NOT NULL, modified_gmt TEXT NOT NULL, "
-                    "PRIMARY KEY (type, id))"
-                )
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-                )
+            for path in _journal_paths(self.path):
+                if _is_link(path):
+                    path.unlink()  # chỉ gỡ chính liên kết, không đụng file nó trỏ tới
+            if self.path.exists() and not _is_healthy(self.path):
+                self._reset()
+            _create_tables(self.path)
         except sqlite3.DatabaseError as exc:
+            if _is_too_big(exc) or _is_interrupted(exc):
+                raise _Corrupt from None
             raise _db_error(exc) from None
         except OSError as exc:
             raise SiteIndexError(
@@ -307,8 +371,8 @@ class SiteIndexStore:
 
     def _reset(self) -> None:
         self.path.unlink(missing_ok=True)
-        for suffix in ("-journal", "-wal", "-shm"):
-            self.path.with_name(self.path.name + suffix).unlink(missing_ok=True)
+        for path in _journal_paths(self.path):
+            path.unlink(missing_ok=True)
         self.reset_count += 1
 
     def _reset_quietly(self) -> None:
@@ -396,24 +460,120 @@ def _parse_time(value: object, timezone: str) -> datetime:
         raise _Corrupt from None
 
 
-def _is_healthy(path: Path) -> bool:
-    """File là SQLite đọc được, và bảng nào đã có thì đúng cột.
+# ------------------------------------------------------------ kiểm cấu trúc file (T-131)
 
-    ``False`` chỉ khi **chắc chắn** hỏng: SQLite báo hỏng / không phải cơ sở dữ liệu,
-    ``quick_check`` khác ``ok``, hoặc sai cột. Lỗi khác (bận, khóa, không mở được, lỗi đọc/ghi)
-    được ném lại để ``_prepare`` báo ``SiteIndexError`` mà không xóa file (SL-T037-1, -4).
+
+def _journal_paths(path: Path) -> tuple[Path, ...]:
+    return tuple(path.with_name(path.name + suffix) for suffix in _JOURNAL_SUFFIXES)
+
+
+def _is_link(path: Path) -> bool:
+    """Liên kết tắt (symlink, junction, reparse point trỏ đi chỗ khác: ``data_dir.is_link``) hay
+    hard link (file thường có hơn một tên; tên kia có thể nằm ngoài ``data/``)."""
+    if is_link(path):
+        return True
+    try:
+        info = path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+
+
+def _guard(conn: sqlite3.Connection) -> None:
+    """File là dữ liệu chưa tin cậy (F3): không chạy hàm «không vô hại» trong khung nhìn, trigger
+    của file; dừng truy vấn quá ``_MAX_VM_STEPS`` bước; không cho giá trị dài quá
+    ``_MAX_SQLITE_LENGTH``. Lớp chặn chính là ``_app_tables``."""
+    conn.execute("PRAGMA trusted_schema = OFF")
+    conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_SQLITE_LENGTH)
+    steps = 0
+
+    def stop_when_too_long() -> int:
+        nonlocal steps
+        steps += _PROGRESS_EVERY
+        return 1 if steps > _MAX_VM_STEPS else 0
+
+    conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
+
+
+@cache
+def _expected_schema() -> frozenset[tuple]:
+    """Các dòng ``sqlite_master`` của hai bảng app tạo, dựng bằng chính ``_CREATE_TABLES`` trong
+    bộ nhớ (khớp đúng cách SQLite đang chạy ghi lại câu lệnh, kèm chỉ mục tự sinh)."""
+    with closing(sqlite3.connect(":memory:")) as conn:
+        for sql in _CREATE_TABLES:
+            conn.execute(sql)
+        return frozenset(tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, 16)))
+
+
+def _app_tables(conn: sqlite3.Connection) -> frozenset[tuple] | None:
+    """Các dòng ``sqlite_master`` của file, đọc vào danh sách có giới hạn: thừa dòng hay một dòng
+    ``(loại, tên)`` lặp lại thì ``None``. Khung nhìn, trigger, bảng ảo, chỉ mục hay bảng lạ nào
+    cũng làm tập này khác ``_expected_schema``."""
+    limit = len(_expected_schema())
+    rows = [tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit + 1))]
+    if len(rows) > limit or len({row[:2] for row in rows}) != len(rows):
+        return None
+    return frozenset(rows)
+
+
+def _create_tables(path: Path) -> None:
+    """Cấu trúc đúng thì thôi; file còn trống thì tạo bảng (kiểm lại trong giao dịch ghi); cấu trúc
+    khác (file bị thay ngay sau lần kiểm): ``_Corrupt``."""
+    with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT, isolation_level=None)) as conn:
+        _guard(conn)
+        conn.text_factory = _decode_text  # UTF-8 hỏng trong sqlite_master: _Corrupt
+        conn.execute("BEGIN")
+        try:
+            tables = _app_tables(conn)
+        finally:
+            conn.execute("ROLLBACK")
+        if tables == _expected_schema():
+            return
+        if tables is None or tables:
+            raise _Corrupt
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            tables = _app_tables(conn)
+            if tables is None or (tables and tables != _expected_schema()):
+                raise _Corrupt
+            if not tables:
+                for sql in _CREATE_TABLES:
+                    conn.execute(sql)
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        conn.execute("COMMIT")
+
+
+def _is_healthy(path: Path) -> bool:
+    """File là SQLite đọc được, cấu trúc đúng như app tạo (hay còn trống), ``quick_check`` ổn.
+
+    ``False`` khi chắc chắn hỏng hay lạ: cấu trúc khác (bảng, cột, trigger, khung nhìn, chỉ mục
+    lạ), UTF-8 hỏng trong ``sqlite_master``, SQLite báo hỏng / không phải cơ sở dữ liệu /
+    «unsupported file format», giá trị quá dài, quá số bước. Lỗi do môi trường (bận, khóa, không
+    mở được, lỗi đọc/ghi, chỉ đọc, đầy ổ: ``_KEEP_FILE_CODES``) được ném lại để ``_prepare`` báo
+    ``SiteIndexError`` mà không xóa file (SL-T037-1, -4; LC-T122-1).
     """
     try:
-        with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
-            if conn.execute("PRAGMA quick_check").fetchone() != ("ok",):
-                return False
-            pages = {row[1] for row in conn.execute("PRAGMA table_info(pages)")}
-            info = {row[1] for row in conn.execute("PRAGMA table_info(info)")}
+        with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT, isolation_level=None)) as conn:
+            _guard(conn)
+            conn.text_factory = _decode_text
+            conn.execute("BEGIN")
+            try:
+                tables = _app_tables(conn)
+                if tables is None or (tables and tables != _expected_schema()):
+                    return False
+                return conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
+            finally:
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+    except _Corrupt:
+        return False
     except sqlite3.DatabaseError as exc:
-        if _is_corrupt(exc):
-            return False
-        raise
-    return (not pages or pages == set(_COLUMNS)) and (not info or info == {"key", "value"})
+        if _is_busy(exc) or _code(exc) in _KEEP_FILE_CODES:
+            raise
+        return False
 
 
 def _is_busy(exc: sqlite3.DatabaseError) -> bool:
@@ -422,13 +582,26 @@ def _is_busy(exc: sqlite3.DatabaseError) -> bool:
     return isinstance(exc, sqlite3.OperationalError) and ("locked" in text or "busy" in text)
 
 
+def _code(exc: sqlite3.DatabaseError) -> int | None:
+    code = getattr(exc, "sqlite_errorcode", None)
+    return code & 0xFF if isinstance(code, int) else None
+
+
 def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:
     """SQLite báo chắc chắn file hỏng (``SQLITE_CORRUPT``, ``SQLITE_NOTADB``, kể cả mã mở rộng)."""
-    code = getattr(exc, "sqlite_errorcode", None)
-    if isinstance(code, int):
-        return code & 0xFF in (_SQLITE_CORRUPT, _SQLITE_NOTADB)
+    code = _code(exc)
+    if code is not None:
+        return code in (_SQLITE_CORRUPT, _SQLITE_NOTADB)
     text = str(exc).lower()  # phòng khi lỗi không kèm mã
     return "not a database" in text or "malformed" in text
+
+
+def _is_too_big(exc: sqlite3.DatabaseError) -> bool:
+    return _code(exc) == _SQLITE_TOOBIG or "too big" in str(exc).lower()
+
+
+def _is_interrupted(exc: sqlite3.DatabaseError) -> bool:
+    return _code(exc) == _SQLITE_INTERRUPT or "interrupted" in str(exc).lower()
 
 
 def _db_error(exc: sqlite3.DatabaseError) -> SiteIndexError:
@@ -440,7 +613,7 @@ def _db_message(exc: sqlite3.DatabaseError) -> str:
     if _is_busy(exc):
         return "File lưu tạm danh sách bài đang bận. Thử lại sau giây lát."
     if _is_corrupt(exc):
-        return "File lưu tạm danh sách bài bị lỗi nên không đọc/ghi được. Thử tải lại."
+        return _MSG_BROKEN
     return (
         "Không mở được file lưu tạm danh sách bài (có thể chương trình khác đang giữ file, "
         "hoặc không có quyền ghi). Danh sách vừa tải vẫn dùng được."

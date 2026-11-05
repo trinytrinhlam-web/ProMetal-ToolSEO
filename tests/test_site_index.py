@@ -255,11 +255,16 @@ def test_wrong_structure_is_dropped(store):
     assert store.get(source).from_cache
 
 
-def test_extra_table_does_not_break_cache(store):
-    # Bảng lạ thêm vào không làm hỏng cache (chỉ đọc đúng 2 bảng của mình).
+def test_extra_table_drops_the_cache(store):
+    # T-131 (R5, LC-T129-1): trước đây «bảng lạ không làm hỏng cache». Nay cấu trúc file phải khớp
+    # đúng hai bảng app tạo (như search_cache, plan_cache): bảng lạ là file lạ, bỏ rồi tải lại.
     store.refresh(Source())
     raw_sql(store.path, "CREATE TABLE extra (x TEXT)")
-    assert store.load(BASE_URL) is not None
+    assert store.load(BASE_URL) is None
+    assert store.reset_count == 1
+    source = Source()
+    assert store.get(source).from_cache is False and source.calls == 1
+    assert store.get(source).from_cache
 
 
 @pytest.mark.parametrize(
