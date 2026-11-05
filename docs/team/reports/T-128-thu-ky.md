@@ -7,6 +7,7 @@
 | Nhánh | `team/T-128` (từ `main` cục bộ `2a7b408`) |
 | Ngày nộp | 2026-11-05 10:19 (+07:00, theo lệnh `date`) |
 | Kết quả | Hoàn thành yêu cầu 1–3. Sửa `docs/team/security.md` mục 6; thêm `docs/team/reports/T-128-kich-ban-thu-that.md` và báo cáo này. Không sửa code, README |
+| Lượt 2 | 2026-11-05 12:33 (+07:00): sửa kịch bản theo biên bản Lá Chắn T-128 (`952aaca`): LC-T128-1, -2, -3 và ghi nhận N1–N5. Xem mục «Lượt 2» cuối báo cáo |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -102,3 +103,87 @@ Kịch bản không chứa mật khẩu ứng dụng, mật khẩu, tên hay n�
 ## Câu hỏi cho chủ dự án
 
 Không có câu mới. Các việc phía website (sao lưu, plugin tự báo bài mới, duyệt bài thử) đã ghi ở mục 3.1 của kịch bản để anh/chị quyết khi bắt đầu buổi thử.
+
+## Lượt 2 (2026-11-05, sau biên bản Lá Chắn T-128)
+
+Lá Chắn (`952aaca`, `T-128-la-chan.md`) kết luận ĐẠT CÓ ĐIỀU KIỆN:
+- 3 lỗi Thấp phải sửa trước buổi thử: LC-T128-1, -2, -3;
+- ghi nhận N1–N5 nên sửa cùng đợt (điều kiện 2).
+
+Lượt này sửa đủ cả 8 ý, chỉ trong `docs/team/reports/T-128-kich-ban-thu-that.md` (nay 308 dòng). Không sửa `security.md`, code, README.
+
+### Tóm tắt (cho chủ dự án)
+
+- **Kết luận chặt hơn.** Câu hỏi chính của buổi thử là «ghi SEO có làm đổi giờ sửa bài không». Giờ chỉ kết luận «không đổi» khi **ít nhất 3 lần** gửi có ghi SEO đều qua, vì một lần qua có thể chỉ là may.
+- **Tên tác giả.** Khi bài thử hiện công khai, anh/chị xem tên tác giả có lộ tên đăng nhập của tài khoản phần mềm không. Trước khi dùng thật, nên:
+  - đặt tên hiển thị khác, ví dụ «Pro-Metal»;
+  - đặt mật khẩu đăng nhập của tài khoản này thật mạnh.
+- **Dọn kỹ hơn.**
+  - Xóa **ảnh thử trước**, rồi mới xóa hẳn bài.
+  - Thêm bước xóa pingback (WordPress tự báo cho bài được link tới).
+  - Mục 3.1 có thêm một việc anh/chị quyết trước buổi: tắt tạm pingback, hay chấp nhận rồi xóa khi dọn.
+- **Lúc chờ bài hẹn giờ 15 phút tự đăng, không ai mở website hay trang quản trị.** Nhờ vậy biết được lịch chạy của website có tự chạy không. Buổi thử dài khoảng 1 giờ 30 tới 2 giờ.
+
+### Đã thay đổi (kịch bản, số dòng sau khi sửa)
+
+| Ý của Lá Chắn | Chỗ sửa |
+|---|---|
+| **LC-T128-1** kết luận (b) | Mục 4 thêm «Luật đọc (b)» `:160-167`: CÓ ĐỔI khi một lần gửi bật «Ghi SEO» có cả «Đã ghi SEO vào hộp SiteSEO của bài nháp.» lẫn «Bài nháp trên website đã bị sửa…» (ca 2 đã qua, không ai mở bài); KHÔNG ĐỔI chỉ khi ≥ 3 lần gửi bật «Ghi SEO» đều qua (ca 3, 4, 5; thiếu thì lặp ca 3, mỗi lần chuyển về nháp); không có «Đã ghi SEO…» thì chưa kết luận, không tính. Ca 3 `:169-180` (lần thứ nhất: qua thì «chưa kết luận»). Ca 4 bước 1–2 `:186-190` (bật «Ghi SEO» khi chưa có CÓ ĐỔI; bị chặn vì (b) thì làm lại với «Ghi SEO» tắt để kiểm (e), bỏ ca 5). Ca 5 `:202-210` (chỉ làm khi chưa có CÓ ĐỔI; lần thứ ba; bị chặn thì bài vẫn là nháp). Mục 2 dòng (b) `:50` («gần như luôn bị chặn»), mục 7 dòng (b) `:277` (ghi từng lần) |
+| **LC-T128-2** tác giả công khai | Mục 4.1 ô «Tác giả» `:221-226` (tên tác giả trên bài, trang tác giả `/author/…/`, `/wp-json/wp/v2/users`, cửa sổ ẩn danh; chỉ ghi có/không, không chép tên). Mục 7 dòng «Tác giả công khai» `:287`; mục 2 dòng LC-T128-2 `:57`. Mục 8 `:300-305`: chủ dự án quyết trước khi dùng thật (Biệt danh, Tên hiển thị công khai; mật khẩu đăng nhập dài, ngẫu nhiên; trang tác giả vẫn lộ tên đăng nhập, muốn giấu thì dùng chức năng chặn liệt kê người dùng của plugin bảo mật hay đổi tác giả); Lá Chắn xét |
+| **LC-T128-3** (i) thứ tự dọn | Mục 6 bước 3 `:257-258` xóa ảnh thử trước (Media dạng danh sách, cột «Đã tải lên» (Uploaded to) là tên bài thử), bước 4 `:259` mới xóa hẳn bài. Quy tắc 3 `:34`, tóm tắt `:22`. Mục 7 thêm dòng «Ảnh thử» `:288` (tên file ảnh từng ca) |
+| **LC-T128-3** (ii) pingback | Mục 3.1 `:69-71`: pingback, tắt tạm ô «Cố gắng thông báo cho các blog được liên kết tới từ bài viết» ở **Cài đặt → Thảo luận** hay chấp nhận. Dịch vụ cập nhật (**Cài đặt → Viết**, Ping-O-Matic) gộp vào ý «Plugin tự báo bài mới» `:66`. Mục 3.3 `:84`: bài thử không link ra website khác. Mục 6 bước 5 `:260` (**Bình luận** → loại **Pings** → xóa pingback có tên bài thử), bước 6 `:261` bật lại; dòng «Dọn» mục 7: 11 bước |
+| N1 dấu `[` `]` | Mục 3.3 `:83`: chỉ ra dòng **Cảnh báo** (khung vàng), không chặn |
+| N2 múi giờ | Ca 2 bước 2 `:151`: có câu «Không đọc được múi giờ của website…» thì ghi vào (c) |
+| N3 bật công tắc | Mục 8 `:308`: chỉ bật để dùng thật khi có **cả hai**: Lá Chắn đồng ý kết quả buổi thử, và Lá Chắn đã rà soát Giai đoạn 5 (LC-T094-41) |
+| N4 lịch chạy, cache | Ca 4 bước 3–4 `:191-199`: lúc chờ không đụng website (đóng tab trang quản trị, không thao tác app; ca 5, ca S làm sau bước 4); quá giờ 2–3 phút mở trang quản trị: đã xuất bản thì «tự đăng» (ĐẠT); chưa thì F5 sau 1 phút, lúc này mới lên thì ghi «chỉ đăng sau khi có người mở trang», Lá Chắn xét; bỏ cách mở trang chủ để kích (SpeedyCache). Mục 2 dòng (e) `:53`, mục 7 dòng (e) `:280`, mục 8 |
+| N5 điện thoại | Ca 1 bước 5 `:134`, mục 4.1 ô «Điện thoại» `:227`: kiểm GPS trên điện thoại ở ca 4/5 lúc bài công khai (không cần đăng nhập); mục 7 dòng (g)-1 |
+| Mục 1 «Ghi cho sau» | Mục 8: (b) = CÓ ĐỔI thì phiếu client «đọc lại giờ sửa sau lệnh SEO» làm khe 2 rộng thêm đúng bằng thời gian lệnh SEO; phiếu đó phải sửa dòng khe 2 của sổ rủi ro hay chọn cách khác, Lá Chắn xét lại |
+| Khác | Bảng đầu: «Khi nào» 1 giờ 30 tới 2 giờ; dòng Soạn, Nguồn ghi lượt 2 |
+
+**Tôi thêm ngoài gợi ý của Lá Chắn** (đề nghị Lá Chắn đọc lại):
+1. **Ca 0 bước 1 `:102`, quy tắc 1 `:31`: không chép tên ở dòng «Tài khoản: …».** Trang Kết nối in tên hiển thị (`users/me` → `name`: `seo_app/wordpress/client.py:1121`, `app/views/wordpress.py:123`). Tài khoản chưa đặt tên hiển thị thì tên này chính là tên đăng nhập. Kịch bản lượt 1 lại dặn «ghi lại» dòng này, nên nay chỉ ghi vai trò, kèm «trùng / không trùng» vào dòng «Tác giả công khai».
+2. **Ca 5 và ca S bước 3 không còn làm trong lúc chờ ca 4.** Lượt 1 cho làm ca 5 trong lúc chờ. Nhưng mọi lệnh của app tới website là lượt tải không qua cache, nên cũng kích lịch chạy. Làm vậy, (e) có thể «đạt» chỉ nhờ chính buổi thử. Buổi thử dài thêm khoảng 10 phút.
+3. **Luật đọc (b): lỗi ghi SEO lặp lại thì ghi «chưa kết luận» và báo Lá Chắn.** Lá Chắn chỉ dặn «chưa kết luận, ghi lại câu báo».
+
+### Đối chiếu
+
+- **Mã WordPress 6.9.4** của website (bản sao trong máy, chỉ đọc):
+  - `wp-includes/default-filters.php:405-407`: `init` → `wp_cron`.
+  - `wp-includes/cron.php:990-1004`: `wp_cron()` gắn `_wp_cron` vào `shutdown`, tức lịch chạy được kích ở **cuối** lượt tải. Vì vậy lần mở trang quản trị đầu tiên còn hiện trạng thái **trước** khi chính nó kích lịch chạy (ca 4 bước 4).
+  - `wp-admin/edit.php:238` nạp `heartbeat`, và `wp-includes/js/heartbeat.js:63` có `mainInterval: 60`: tab danh sách bài đang mở gửi yêu cầu lên website khoảng mỗi phút.
+  - Nhãn: `Pings` (`wp-admin/includes/class-wp-comments-list-table.php:514`), `Uploaded to` (`class-wp-media-list-table.php:368`), `Attempt to notify any blogs linked to from the post` (`wp-admin/options-discussion.php:52`), `Nickname` và `Display name publicly as` (`wp-admin/user-edit.php:506`, `:518`).
+- **App:**
+  - Câu múi giờ: `client.py:700-704`.
+  - Câu đoạn dạng shortcode mức `warn` (`seo_app/publish/render.py:539`, `:590-597`), hiện bằng `st.warning`: khung vàng (`app/views/write.py:3180`).
+  - LC-T094-41 ở `T-094-la-chan.md:125` ghi đủ hai điều kiện bật công tắc.
+- **Script đối chiếu câu trích** (73 câu lượt 1 + 8 câu mới): «tổng: 81 thiếu: 0».
+- **Kịch bản không có:**
+  - email, `@`, tên file khóa;
+  - tên đăng nhập hay tên tài khoản WordPress;
+  - địa chỉ thật. Cả 4 địa chỉ đều dạng `https://<tên-miền>/…`.
+
+### Kiểm tra
+
+```
+$ uv --version                 # trước khi chạy uvx (T-078)
+uv 0.13.4 (7456b60bc 2026-10-20 x86_64-pc-windows-msvc)
+$ PYTHONUTF8=1 uvx detect-secrets scan docs/team/reports/T-128-kich-ban-thu-that.md docs/team/reports/T-128-thu-ky.md
+  "results": {}
+$ (script đối chiếu câu trích)  tổng: 81 thiếu: 0
+```
+
+- `detect-secrets` có mồi đối chứng: chép hai file vào thư mục nháp, thêm dòng mở đầu một khóa riêng và một khóa AWS mẫu, rồi quét từ chính thư mục đó. Bắt được cả hai.
+- Không chạy pytest, ruff (chỉ đổi tài liệu).
+
+### Rủi ro và điểm cần chú ý
+
+- **Cách đọc (e) dựa trên WordPress 6.9.4**, bản kích lịch chạy ở `shutdown`. Nếu website chạy bản khác, lần mở đầu có thể đã thấy bài xuất bản do chính lần mở đó (khe rất nhỏ). Lá Chắn lưu ý khi đọc dòng (e).
+- **Ca 5 nay có thể chạy khi (b) chưa kết luận.** Điều này đúng luật Lá Chắn: ca 5 là một trong 3 lần. Nếu Abilities có đổi giờ sửa thì ca 5 bị chặn và bài vẫn là nháp, nên không có bài công khai ngoài ý muốn.
+- **Nhãn tiếng Việt của WordPress chưa đối chiếu trên trang thật.** Bản sao trong máy không có file tiếng Việt. Các nhãn «Thảo luận», «Đã tải lên», «Biệt danh», «Tên hiển thị công khai», «Cố gắng thông báo…» đều có kèm tên tiếng Anh đã kiểm trong mã.
+- **Không sửa `security.md`**, vì Chỉ Huy giao chỉ sửa kịch bản. Lá Chắn mục 1 có một gợi ý chữ, không bắt buộc: ghi giống nhau ở cả 3 dòng `:178-180` hai ý «Fable T-112 đồng ý» và «tự tái hiện được». Chỉ Huy quyết.
+
+### Câu hỏi cho chủ dự án
+
+Không có câu mới. Có hai việc mới để anh/chị quyết:
+- lúc bắt đầu buổi thử: pingback (kịch bản mục 3.1);
+- sau buổi thử: tên hiển thị và mật khẩu đăng nhập của tài khoản phần mềm (mục 8).
