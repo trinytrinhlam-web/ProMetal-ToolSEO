@@ -381,15 +381,21 @@ def test_phu_website_theo_tung_phan_ten_mien(value, wordpress, covers):
         ("https://suachuacuasat.com:443", PREFIX, r"^https://suachuacuasat\.com/"),
         ("https://example.com/blog", "https://example.com/blog/", r"^https://example\.com/blog/"),
         (
-            "https://example.com/b.log/",
-            "https://example.com/b.log/",
-            r"^https://example\.com/b\.log/",
+            "https://example.com/Blog_2/a-b~c",
+            "https://example.com/Blog_2/a-b~c/",
+            r"^https://example\.com/Blog_2/a-b~c/",
         ),
     ],
 )
 def test_tien_to_va_bieu_thuc_loc_dung_tu_wordpress_url(wordpress, prefix, expression):
     assert site_prefix(wordpress) == prefix
     assert page_filter_expression(prefix) == expression
+
+
+def test_bieu_thuc_loc_thoat_dau_cham_trong_tien_to():
+    # T-124 (R5): ca «b.log» cũ chuyển sang danh sách từ chối (đường con chung không nhận «.»,
+    # như cửa vào client WordPress); phép thoát «.» của bộ lọc RE2 vẫn kiểm trực tiếp ở đây.
+    assert page_filter_expression("https://example.com/b.log/") == r"^https://example\.com/b\.log/"
 
 
 @pytest.mark.parametrize(
@@ -408,6 +414,14 @@ def test_tien_to_va_bieu_thuc_loc_dung_tu_wordpress_url(wordpress, prefix, expre
         "https://suachuacuasat.com/(x)",
         "https://1.2.3.4",
         "https://suachuacuasat.com\\x",
+        # T-124: một luật đường con chung với client WordPress (``site_path_ok``).
+        "https://example.com/b.log/",
+        "https://example.com/blog/index.php",
+        "https://example.com/wp-json",
+        "https://example.com/WP-Admin/",
+        "https://example.com/a/code-snippets",
+        "https://example.com/prometal",
+        "https://example.com//blog",
     ],
 )
 def test_wordpress_url_khong_dung_duoc_bi_tu_choi(wordpress):

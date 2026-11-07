@@ -72,7 +72,7 @@ from seo_app.google.sheets import (  # lớp vận chuyển dùng chung với cl
     _TokenRequest,
     _TooLarge,
 )
-from seo_app.wordpress.client import MAX_LINK_CHARS, is_site_link
+from seo_app.wordpress.client import MAX_LINK_CHARS, is_site_link, site_base, site_path_ok
 
 SEARCH_CONSOLE_URL = "https://www.googleapis.com/webmasters/v3/"
 SITES_URL = SEARCH_CONSOLE_URL + "sites"
@@ -128,7 +128,6 @@ _ROUTES: tuple[tuple[str, str], ...] = (("sites", "GET"), ("query", "POST"))
 _LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
 _LAST_LABEL = r"[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?"
 _DOMAIN = re.compile(rf"(?=.{{1,253}}$)(?:{_LABEL}\.)+{_LAST_LABEL}")
-_PATH = re.compile(r"(?:/[A-Za-z0-9._~-]+)*")
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _RE2_SPECIAL = re.compile(r"([\\.^$|?*+()\[\]{}])")
 _REASON = re.compile(r"[A-Za-z_]{1,64}")
@@ -316,7 +315,9 @@ def parse_property(value: object) -> SiteProperty:
 def site_prefix(wordpress_url: object) -> str:
     """Tiền tố mọi trang của website: ``https://<tên máy>[/<đường con>]/`` dựng từ
     ``WORDPRESS_URL``. Sai dạng (không ``https``, có tên/mật khẩu, cổng khác 443, chữ lạ, có
-    ``?``/``#``) thì ``SearchConsoleError``."""
+    ``?``/``#``, đường con sai luật chung ``site_path_ok`` của client WordPress) thì
+    ``SearchConsoleError``. Phép kiểm chặt này là cửa vào (``from_settings``); tiền tố là
+    ``site_base`` dùng chung + «/» (T-124: một luật chuẩn hóa, một luật đường con)."""
     if (
         not isinstance(wordpress_url, str)
         or not wordpress_url
@@ -341,10 +342,10 @@ def site_prefix(wordpress_url: object) -> str:
         or parts.query
         or parts.fragment
         or not _DOMAIN.fullmatch(host)
-        or not _PATH.fullmatch(path)
+        or not site_path_ok(path)
     ):
         raise SearchConsoleError(_MSG_BAD_WORDPRESS)
-    return f"https://{host}{path}/"
+    return site_base(wordpress_url) + "/"
 
 
 def page_filter_expression(prefix: str) -> str:

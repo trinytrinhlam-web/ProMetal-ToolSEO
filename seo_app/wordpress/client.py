@@ -2348,6 +2348,67 @@ def is_site_link(link: object, base_url: str) -> bool:
     return (got_port or 443) == (want_port or 443)
 
 
+# ---------------------------------------------------------------- chuẩn hóa WORDPRESS_URL (T-124)
+# Một luật cho mọi nơi so địa chỉ trang với website: client Search Console (``site_prefix``), cache
+# số liệu (``CacheScope.base``) và lõi theo dõi (``page_key``) cùng nhập từ đây (gom 3 bản riêng của
+# T-121, T-122, T-123; Lá Chắn T-121 ghi nhận 1). Sửa các hàm này thì chạy test của cả ba nơi gọi.
+
+
+def site_path_ok(path: object) -> bool:
+    """Đường con của website (phần sau tên máy của ``WORDPRESS_URL``, đã bỏ «/» cuối) hợp lệ.
+
+    **Một luật** cho client WordPress (``_is_plain_site_url``) và client Search Console
+    (``site_prefix``): «/đoạn» lặp lại, mỗi đoạn chỉ chữ, số ASCII, «_», «~», «-»; không dấu «.»
+    (không ``/..``, không file ``.php``, ``.cgi``…: LC-T042-5); không chứa ``wp-json``,
+    ``code-snippets``, ``prometal``, ``wp-admin``. Chuỗi rỗng (website ở gốc tên miền) hợp lệ."""
+    if not isinstance(path, str) or not _SITE_PATH.fullmatch(path):
+        return False
+    lowered = path.lower()
+    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
+
+
+def _canonical_origin(url: str) -> tuple[str, int] | None:
+    """(«scheme://tên-máy[:cổng]» với scheme, tên máy viết thường và bỏ cổng 443 mặc định; độ dài
+    phần đầu tương ứng trong ``url``). ``None`` khi không tách được scheme, tên máy."""
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    host = parts.hostname
+    head = f"{parts.scheme}://{parts.netloc}"
+    if not parts.scheme or not host or url[: len(head)].lower() != head.lower():
+        return None
+    netloc = f"[{host}]" if ":" in host else host
+    if port is not None and not (parts.scheme == "https" and port == 443):
+        netloc = f"{netloc}:{port}"
+    return f"{parts.scheme}://{netloc}", len(head)
+
+
+def site_base(base_url: str) -> str:
+    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố địa chỉ trang: scheme, tên máy viết thường (tên
+    máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định, bỏ ``?…``, ``#…``
+    và «/» cuối; đường dẫn giữ nguyên chữ hoa, chữ thường. Không tách được tên máy thì chỉ bỏ «/»
+    cuối. Chỉ ``WORDPRESS_URL`` được chuẩn hóa: địa chỉ Google trả vẫn phải viết đúng như tiền tố
+    này (như bộ lọc phía Google, SL-T122-1, SL-T123-2)."""
+    base = base_url.rstrip("/")
+    origin = _canonical_origin(base)
+    if origin is None:
+        return base
+    return origin[0] + urlsplit(base).path.rstrip("/")
+
+
+def site_link(link: str) -> str:
+    """Link (của bài, trang WordPress) với scheme, tên máy viết thường và bỏ cổng 443; phần sau
+    tên máy giữ nguyên văn. Chỉ dùng sau ``is_site_link`` (đã chứng minh cùng tên máy, cùng cổng,
+    không tên/mật khẩu): ô «Địa chỉ trang» của WordPress gõ chữ hoa thì link bài có tên máy viết
+    hoa, vẫn là đúng website (LC-T123-1). Không tách được thì trả nguyên ``link``."""
+    origin = _canonical_origin(link)
+    if origin is None:
+        return link
+    return origin[0] + link[origin[1] :]
+
+
 def _published_from(raw: object, kind: str, base_url: str) -> PublishedItem | None:
     """Một mục REST -> ``PublishedItem``; ``None`` nếu không phải bài đã đăng hợp lệ."""
     if not isinstance(raw, dict) or raw.get("status") != "publish":
@@ -2516,13 +2577,10 @@ def _is_plain_site_url(base_url: str) -> bool:
         return False
     if parts.query or parts.fragment or not _SITE_HOST.fullmatch(parts.netloc):
         return False
-    if not _SITE_PATH.fullmatch(parts.path):
-        return False
     # SL-T042-10, LC-T042-5: thư mục con không được là file (``_SITE_PATH`` không nhận dấu ".").
     # Không chừa cả ``index.php``: website dùng đường dẫn tĩnh (``/wp-json/`` chạy được, T-033),
-    # không cần kiểu ``/index.php/wp-json/``.
-    lowered = parts.path.lower()
-    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
+    # không cần kiểu ``/index.php/wp-json/``. Cùng luật với client Search Console (T-124).
+    return site_path_ok(parts.path)
 
 
 def _check_web_image(image: object, number: int) -> None:

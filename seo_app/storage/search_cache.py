@@ -59,14 +59,13 @@ from datetime import date, datetime, timedelta
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
 from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link, is_link
 from seo_app.plan.model import MAX_POST_ID, clean_text
 from seo_app.storage.site_index import MAX_ITEMS
-from seo_app.wordpress.client import MAX_LINK_CHARS, is_site_link
+from seo_app.wordpress.client import MAX_LINK_CHARS, is_site_link, site_base
 
 DEFAULT_SEARCH_CACHE_FILE = PROJECT_ROOT / "data" / "search_cache.sqlite"
 SCHEMA_VERSION = "1"
@@ -127,6 +126,9 @@ _SQLITE_CORRUPT = 11
 _SQLITE_FULL = 13
 _SQLITE_TOOBIG = 18
 _SQLITE_NOTADB = 26
+# Lỗi SQLite do môi trường, không phải do file lạ: quyền, bận, khóa, hết bộ nhớ, chỉ đọc, vào ra,
+# không mở được, giao thức khóa. Gặp các mã này thì giữ file, báo câu (LC-T122-1).
+_KEEP_FILE_CODES = frozenset({3, 5, 6, 7, 8, 10, 14, 15})
 
 _CREATE_TABLES = (
     "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -448,10 +450,11 @@ class SearchCacheStore:
         self._write(write)
 
     def clear(self) -> None:
-        """Xóa file cache (lần lấy số liệu sau tạo lại)."""
-        if dir_has_link(self.path.parent, PROJECT_ROOT):
-            raise SearchCacheError(MSG_DATA_DIR_LINK)
+        """Xóa file cache (lần lấy số liệu sau tạo lại). Lỗi đọc thư mục khi kiểm liên kết (ví dụ
+        Windows từ chối quyền) cũng ra câu cố định, không lọt lỗi Python (LC-T122-2)."""
         try:
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                raise SearchCacheError(MSG_DATA_DIR_LINK)
             self._reset()
         except OSError as exc:
             raise SearchCacheError(MSG_IO.format(detail=exc.strerror or "lỗi đọc/ghi")) from None
@@ -526,6 +529,7 @@ class SearchCacheStore:
             sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT, isolation_level=None)
         ) as conn:
             _guard(conn)
+            conn.text_factory = _decode_text  # UTF-8 hỏng trong sqlite_master: _Corrupt (LC-T122-1)
             conn.execute("BEGIN")
             try:
                 tables = _app_tables(conn)
@@ -577,28 +581,6 @@ class _Full(Exception):
 
 class _BadRange(Exception):
     """Đoạn ngày mới không nối liền phần đã lưu (nội bộ)."""
-
-
-def site_base(wordpress_url: str) -> str:
-    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố địa chỉ trang (SL-T122-1): scheme và tên máy viết
-    thường (tên máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định và «/»
-    cuối; phần đường dẫn giữ nguyên chữ hoa, chữ thường. **Cùng luật** với ``site_prefix`` của
-    client Search Console (T-121) và ``site_base`` của gói tính toán (T-123), có chung bảng ca test;
-    ba bản nên gom về một hàm dùng chung ở T-124. Chỉ ``WORDPRESS_URL`` được chuẩn hóa: địa chỉ từ
-    Google vẫn phải viết đúng như tiền tố này. Không tách được tên máy thì chỉ bỏ «/» cuối."""
-    base = wordpress_url.rstrip("/")
-    try:
-        parts = urlsplit(base)
-        port = parts.port
-    except ValueError:
-        return base
-    host = parts.hostname
-    if not parts.scheme or not host:
-        return base
-    netloc = f"[{host}]" if ":" in host else host
-    if port is not None and not (parts.scheme == "https" and port == 443):
-        netloc = f"{netloc}:{port}"
-    return f"{parts.scheme}://{netloc}{parts.path.rstrip('/')}"
 
 
 def _utf8_ok(text: str) -> bool:
@@ -1023,8 +1005,9 @@ def _parse_day(value: object) -> date:
 
 
 def _parse_time(value: object, timezone: str) -> datetime:
-    """Mốc giờ có múi giờ; năm kiểm **trước** khi đổi múi giờ (LC-T120-10); tràn khi đổi (năm
-    10000, năm 0) cũng là ``_Corrupt``, không để lọt lỗi Python (như T-118, LC-T113-2)."""
+    """Mốc giờ có múi giờ; năm kiểm **trước** khi đổi múi giờ (LC-T120-10) và cả sau khi đổi (đối
+    xứng với ``_stamp``, G1 Lá Chắn T-122); tràn khi đổi (năm 10000, năm 0) cũng là ``_Corrupt``,
+    không để lọt lỗi Python (như T-118, LC-T113-2)."""
     if not isinstance(value, str) or not value.isascii() or len(value) > 40:
         raise _Corrupt
     try:
@@ -1034,9 +1017,12 @@ def _parse_time(value: object, timezone: str) -> datetime:
     if parsed.tzinfo is None or not YEAR_MIN <= parsed.year <= YEAR_MAX:
         raise _Corrupt
     try:
-        return parsed.astimezone(ZoneInfo(timezone))
+        moment = parsed.astimezone(ZoneInfo(timezone))
     except (OverflowError, ValueError):
         raise _Corrupt from None
+    if not YEAR_MIN <= moment.year <= YEAR_MAX:
+        raise _Corrupt
+    return moment
 
 
 def _decode_text(data: bytes) -> str:
@@ -1117,6 +1103,7 @@ def _is_healthy(path: Path) -> bool:
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT, isolation_level=None)) as conn:
             _guard(conn)
+            conn.text_factory = _decode_text  # UTF-8 hỏng trong sqlite_master là file lạ
             conn.execute("BEGIN")
             try:
                 tables = _app_tables(conn)
@@ -1126,10 +1113,15 @@ def _is_healthy(path: Path) -> bool:
             finally:
                 if conn.in_transaction:
                     conn.execute("ROLLBACK")
+    except _Corrupt:
+        return False
     except sqlite3.DatabaseError as exc:
-        if _is_corrupt(exc) or _is_too_big(exc) or _is_interrupted(exc):
-            return False
-        raise
+        # LC-T122-1: chỉ bận, khóa, lỗi vào ra, quyền (chương trình khác đang giữ file, không có
+        # quyền) mới ném lại để không xóa nhầm; lỗi khác của SQLite khi đọc cấu trúc (file hỏng,
+        # «unsupported file format», giá trị quá dài, quá số bước) là file lạ: bỏ file.
+        if _is_busy(exc) or _code(exc) in _KEEP_FILE_CODES:
+            raise
+        return False
 
 
 def _code(exc: sqlite3.DatabaseError) -> int | None:
