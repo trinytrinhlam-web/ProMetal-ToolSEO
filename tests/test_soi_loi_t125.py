@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
 import test_app_pages as pages
 import test_t125_settings_search_console as settings_tests
 import test_t125_tracking_page as page_tests
@@ -142,14 +141,6 @@ class CountLoads:
         monkeypatch.setattr(SearchCacheStore, "load", counted)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T125-1: load_cache đọc và kiểm lại toàn bộ bản lưu tạm ở mỗi lần chạy lại trang (đổi "
-        "khoảng, chọn bài, bật xem cách gõ…), dù file không đổi; với website cỡ thật (200 trang × "
-        "486 ngày) mỗi lần bấm mất 2,2–2,9 giây, 1,25 giây là đọc bản lưu tạm"
-    ),
-)
 def test_sl_t125_1_reruns_do_not_reload_an_unchanged_cache(
     project_root, configured, no_network, monkeypatch
 ):
@@ -194,14 +185,6 @@ def test_page_shows_new_data_after_the_cache_file_changes(project_root, configur
 # ======================================== SL-T125-2: xóa bản lưu tạm khi tab khác đang lấy số liệu
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T125-2: _clear_cache gọi thẳng SearchCacheStore.clear(), không xét khóa lấy số liệu "
-        "của refresh; tab đang lấy viết tiếp các đoạn sau vào file mới rồi báo xong, bản lưu tạm "
-        "mất phần đầu 16 tháng và lần bấm sau không lấy bù"
-    ),
-)
 def test_sl_t125_2_clearing_is_refused_while_another_tab_fetches(
     project_root, configured, no_network
 ):

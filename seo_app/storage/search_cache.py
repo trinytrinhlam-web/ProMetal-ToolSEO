@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 import sqlite3
 import stat
@@ -111,6 +112,9 @@ _SQLITE_TIMEOUT = 5
 _HEALTH_TIMEOUT = 1
 _WRITE_TIMEOUT = 1  # như cache kế hoạch: không giữ người dùng chờ lâu khi tab khác đang ghi
 _JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
+# Đầu file SQLite: «số đếm thay đổi» ở byte 24–27, tăng mỗi lần ghi xong (chế độ nhật ký thường).
+_HEADER_BYTES = 100
+_CHANGE_COUNTER = slice(24, 28)
 # Giới hạn byte khi đọc (chữ UTF-8 tối đa 4 byte mỗi ký tự): kiểm bằng SQL trước khi đọc vào bộ nhớ.
 _MAX_PAGE_BYTES = 4 * MAX_PAGE_CHARS
 _MAX_QUERY_BYTES = 4 * MAX_QUERY_CHARS
@@ -458,6 +462,38 @@ class SearchCacheStore:
             self._reset()
         except OSError as exc:
             raise SearchCacheError(MSG_IO.format(detail=exc.strerror or "lỗi đọc/ghi")) from None
+
+    def stamp(self) -> tuple[object, ...] | None:
+        """Dấu file lưu tạm, để nơi gọi biết file đã đổi từ lần đọc trước chưa mà không phải đọc,
+        kiểm lại cả file (SL-T125-1): ổ đĩa, mã file, cỡ, giờ sửa (nano giây), «số đếm thay đổi» ở
+        đầu file SQLite (tăng mỗi lần ghi xong, kể cả hai lần ghi trong cùng một nhịp đồng hồ), và
+        cỡ, giờ sửa của file nhật ký WAL nếu có. Dấu khác là file có thể đã đổi: đọc lại bằng
+        ``load`` (kiểm đủ như mọi lần, LC-T120-9).
+
+        ``None``: chưa có file, không phải file thường (liên kết, thư mục), hay không đọc được dấu:
+        nơi gọi luôn đọc lại. Không mở SQLite, không ghi gì, không đi theo liên kết."""
+        try:
+            info = os.lstat(self.path)
+            if not stat.S_ISREG(info.st_mode):
+                return None
+            with open(self.path, "rb") as file:
+                header = file.read(_HEADER_BYTES)
+            try:
+                wal_info = os.lstat(_journal_paths(self.path)[1])
+                wal = (wal_info.st_size, wal_info.st_mtime_ns)
+            except FileNotFoundError:
+                wal = None
+        except OSError:
+            return None
+        return (
+            os.path.abspath(self.path),
+            info.st_dev,
+            info.st_ino,
+            info.st_size,
+            info.st_mtime_ns,
+            header[_CHANGE_COUNTER],
+            wal,
+        )
 
     # ------------------------------------------------------------ nội bộ
 

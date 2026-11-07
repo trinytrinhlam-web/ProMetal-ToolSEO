@@ -6,7 +6,8 @@ Chỉ đọc, và **mở trang không gọi mạng** (LC-T120-14, -21): số li�
 đọc từ bản lưu tạm trong máy, chỉ khi file đã có (mở kho là tạo file: mở trang không ghi gì xuống
 đĩa). Chỉ nút «🔄 Lấy số liệu mới» gọi Search Console (``refresh`` của T-124: client mới mỗi lần
 bấm, một lần lấy mỗi tiến trình app). Không ``st.cache_data``, ``st.cache_resource``,
-``st.fragment``, không tự làm mới.
+``st.fragment``, không tự làm mới. Bản lưu tạm đã đọc giữ trong phiên theo dấu file, đọc và kiểm lại
+khi file đổi (SL-T125-1, ``load_cache``).
 
 Hiển thị an toàn (LC-T120-11, -19, -20; Lá Chắn T-123 mục 7, T-124 B.1):
 
@@ -116,6 +117,7 @@ VARIANTS_KEY = "trk-variants"
 REPORT_KEY = "trk-report"
 CLEAR_ASK_KEY = "trk-clear-ask"
 FLASH_KEY = "trk-flash"
+CACHE_MEMO_KEY = "trk-cache-memo"  # bản lưu tạm đã đọc của phiên, theo dấu file (SL-T125-1)
 
 KIND_TEXT = {"post": "Bài", "page": "Trang", "other": "Trang khác"}
 NO_NUMBER = "—"
@@ -320,16 +322,62 @@ def site_store(settings) -> site_index.SiteIndexStore:
     )
 
 
+def _memo() -> dict[str, object] | None:
+    """Bản lưu tạm đã đọc của phiên (SL-T125-1): ``key`` (dấu file ``SearchCacheStore.stamp``,
+    phạm vi, múi giờ lúc đọc), ``cache``; thêm ``inputs``, ``tracking`` khi đã dựng
+    ``build_tracking`` trên đúng bản này. Là ``dict`` thường: Streamlit chạy lại cả file trang mỗi
+    lần, lớp khai báo ở đây là lớp mới mỗi lần nên không dùng được ``isinstance``."""
+    memo = S.get(CACHE_MEMO_KEY)
+    return memo if isinstance(memo, dict) else None
+
+
 def load_cache(settings) -> tuple[SearchCache | None, str]:
     """Số liệu đã lưu của thuộc tính và website đang khai báo (không gọi mạng). Chưa có file thì
-    không mở kho (mở kho là tạo file). Lỗi: ``(None, câu cố định)``."""
+    không mở kho (mở kho là tạo file). Lỗi: ``(None, câu cố định)``.
+
+    Chỉ đọc lại khi file đổi (SL-T125-1): mỗi lần chạy lại trang chỉ lấy dấu file (cỡ, giờ sửa, mã
+    file, số đếm thay đổi ở đầu file SQLite), không mở SQLite. Dấu, phạm vi hay múi giờ khác lần
+    đọc trước (tab khác vừa ghi, «Lấy số liệu mới», xóa, đổi Cài đặt) thì đọc và kiểm lại đủ như
+    T-122 (LC-T120-9). Khóa giữ là dấu lấy **trước** khi đọc: file đổi trong lúc đọc thì lần chạy
+    sau dấu đã khác, đọc lại. Không ``st.cache_data``, ``st.cache_resource`` (LC-T120-21): bản giữ
+    nằm trong phiên, đổi ngay khi file đổi."""
     if not search_cache.DEFAULT_SEARCH_CACHE_FILE.exists():
+        S.pop(CACHE_MEMO_KEY, None)
         return None, ""
+    store = cache_store(settings)
     scope = CacheScope(settings.gsc_site_url, settings.wordpress_url)
+    stamp = store.stamp()
+    key = (stamp, scope, store.timezone)
+    memo = _memo()
+    if stamp is not None and memo is not None and memo["key"] == key:
+        return memo["cache"], ""
+    S.pop(CACHE_MEMO_KEY, None)
     try:
-        return cache_store(settings).load(scope), ""
+        cache = store.load(scope)
     except SearchCacheError as exc:
         return None, str(exc)
+    if stamp is not None:
+        S[CACHE_MEMO_KEY] = {"key": key, "cache": cache}
+    return cache, ""
+
+
+def tracking_for(
+    site: str,
+    items: tuple[PublishedItem, ...] | None,
+    cache: SearchCache,
+    plan_rows: tuple[PlanRow, ...],
+) -> SiteTracking:
+    """``build_tracking`` của bản lưu tạm ``cache``. Dựng lại chỉ khi bản lưu tạm (theo dấu file),
+    địa chỉ website, danh sách bài hay dòng kế hoạch đổi (SL-T125-1, Soi Lỗi gợi ý)."""
+    memo = _memo()
+    held = memo is not None and memo["cache"] is cache
+    inputs = (site, items, plan_rows)
+    if held and "tracking" in memo and memo["inputs"] == inputs:
+        return memo["tracking"]
+    tracking = build_tracking(site, items or (), cache.days, plan_rows)
+    if held:
+        memo["inputs"], memo["tracking"] = inputs, tracking
+    return tracking
 
 
 def cached_items(settings) -> tuple[PublishedItem, ...] | None:
@@ -423,15 +471,19 @@ def _cancel_clear() -> None:
 
 
 def _clear_cache() -> None:
-    """Xóa file lưu tạm (Lá Chắn T-122 mục 8.2: lối ra khi file báo lỗi lặp lại)."""
+    """Xóa file lưu tạm (Lá Chắn T-122 mục 8.2: lối ra khi file báo lỗi lặp lại) qua
+    ``clear_cache`` của lõi: xóa trong cùng khóa với «Lấy số liệu mới»; tab khác đang lấy thì không
+    xóa, báo «đang lấy ở tab khác» (SL-T125-2)."""
     S.pop(CLEAR_ASK_KEY, None)
     S.pop(REPORT_KEY, None)
-    try:
-        SearchCacheStore(path=search_cache.DEFAULT_SEARCH_CACHE_FILE).clear()
-    except SearchCacheError as exc:
-        S[FLASH_KEY] = ("error", str(exc))
-    else:
+    # Bản đã đọc trong phiên tự bỏ ở lần chạy sau khi file mất (``load_cache``); bị từ chối thì giữ.
+    result = tracking_refresh.clear_cache(
+        SearchCacheStore(path=search_cache.DEFAULT_SEARCH_CACHE_FILE)
+    )
+    if result.ok:
         S[FLASH_KEY] = ("success", MSG_CLEARED)
+    else:
+        S[FLASH_KEY] = ("warning" if result.busy else "error", result.message)
 
 
 def show_flash() -> None:
@@ -884,7 +936,7 @@ def render() -> None:
         return
     current, previous = periods
     site = settings.wordpress_url
-    tracking = build_tracking(site, items or (), cache.days, plan_rows)
+    tracking = tracking_for(site, items, cache, plan_rows)
     total_now = site_totals((*tracking.pages, *tracking.others), current)
     total_before = None
     if previous is not None:

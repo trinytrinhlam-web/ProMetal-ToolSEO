@@ -33,7 +33,8 @@ khi nạp module: mọi hàm gọi mạng ở đây chỉ chạy khi người d�
 Các nút khác: ``check_connection`` («Kiểm tra», thiết kế 1.2), ``find_properties`` («Tìm thuộc
 tính»), ``save_property`` (lưu thuộc tính vào ``.env``: chỉ một mục vừa tìm thấy, dùng được, qua
 bộ kiểm chặt; LC-T120-12, -23). ``refresh_hint``: gợi ý «có thể đã có số liệu mới» (3.3), không
-gọi mạng.
+gọi mạng. ``clear_cache``: nút «Xóa bản lưu tạm», xóa trong cùng khóa với lần lấy số liệu
+(SL-T125-2).
 
 Câu trả về là câu tiếng Việt cố định: câu lỗi của client, cache, WordPress, ``.env`` (đã cố định,
 không chép lời máy chủ) hay câu của module này, chỉ chèn số và ngày giờ do code định dạng. Chữ từ
@@ -246,6 +247,16 @@ class SaveResult:
     overridden: bool = False  # biến môi trường GSC_SITE_URL đè .env (LC-T120-23)
 
 
+@dataclass(frozen=True)
+class ClearResult:
+    """Kết quả ``clear_cache``. ``message``: câu cố định khi không xóa (``MSG_BUSY`` khi tab khác
+    đang lấy số liệu, hay câu lỗi của cache), rỗng khi đã xóa."""
+
+    ok: bool
+    message: str = ""
+    busy: bool = False  # tab khác đang lấy số liệu: chưa xóa gì
+
+
 class WordPressSource(Protocol):
     """Client WordPress (``WordPressClient``): danh sách bài đã đăng, trạng thái bài (chỉ đọc)."""
 
@@ -285,6 +296,22 @@ def refresh(
         return run.go(_aware(now, settings))
     finally:
         _FETCH_LOCK.release()
+
+
+def clear_cache(store: SearchCacheStore) -> ClearResult:
+    """Nút «Xóa bản lưu tạm» (Lá Chắn T-122 mục 8.2; SL-T125-2): xóa file trong **cùng khóa** với
+    ``refresh``. Tab khác đang lấy số liệu (khóa đang giữ) thì không xóa gì, trả ``MSG_BUSY``: xóa
+    giữa chừng thì lần lấy đó ghi tiếp các đoạn sau vào file mới rồi vẫn báo xong, bản lưu tạm mất
+    phần đầu mà không ai biết. Khi đang xóa, ``refresh`` ở tab khác cũng nhận BUSY."""
+    if not _FETCH_LOCK.acquire(blocking=False):
+        return ClearResult(False, MSG_BUSY, busy=True)
+    try:
+        store.clear()
+    except SearchCacheError as exc:
+        return ClearResult(False, str(exc))
+    finally:
+        _FETCH_LOCK.release()
+    return ClearResult(True)
 
 
 class _Stop(Exception):
