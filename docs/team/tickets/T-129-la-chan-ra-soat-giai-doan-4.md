@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 |
 | Mức ưu tiên | Trung bình (cần trước bản 1.0) |
 | Phụ thuộc | Các phiếu Giai đoạn 4 đã gộp `main`; T-116 (kiểm lại bằng Fable) xong |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-11-07; Giai đoạn 4 đóng có điều kiện) |
 
 ## Mục tiêu
 
@@ -33,3 +33,4 @@ Kết luận Giai đoạn 4 (meta, schema JSON-LD, liên kết nội bộ, ghi S
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-05 khi chủ dự án hỏi «khi nào đóng gói phần mềm»: đóng Giai đoạn 4 là một bước trước bản 1.0. Chạy Opus 5.5 (Fable để dành cho phiếu nhạy cảm Giai đoạn 6), ghi rõ model.
+- 2026-11-07 07:52 (Chỉ Huy B): biên bản `50005d7`: ĐÓNG CÓ ĐIỀU KIỆN. Lập T-131 (Phiếu A), T-132 (Phiếu B). Đánh dấu Giai đoạn 4 xong khi T-131, T-132 gộp và tài liệu cập nhật.

@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-11-05 12:37 (Chỉ Huy B)._
+_Cập nhật: 2026-11-07 07:52 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,10 +36,12 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu tạo lại mất khóa gửi trùng. Thấp | Lá Chắn · Fable: T-092 | `team/T-092` | Họa Sĩ 2 lượt (`bc8a611`, `bd03af9`: SL-T092-1); Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`c82c82e`: SL-T092-1 Thấp). ⏳ **Lá Chắn rút gọn (Fable)** | [Họa Sĩ](reports/T-092-hoa-si.md) · [Soi Lỗi](reports/T-092-soi-loi.md) |
-| [T-124](tickets/T-124-lay-so-lieu-luu-thuoc-tinh.md) | GĐ6 đợt 2: lấy số liệu Search Console, kiểm kết nối, lưu thuộc tính vào `.env`, gom 3 hàm chuẩn hóa `WORDPRESS_URL` | Thợ Máy · T-124 lấy số liệu Search Console | `team/T-124` | ⏳ Thợ Máy (mã `ac6a53a`, đang viết báo cáo) | — |
+| [T-124](tickets/T-124-lay-so-lieu-luu-thuoc-tinh.md) | GĐ6 đợt 2: lấy số liệu Search Console, kiểm kết nối, lưu thuộc tính vào `.env`, gom 3 hàm chuẩn hóa `WORDPRESS_URL` | Chỉ Huy (gộp) | `team/T-124` | Thợ Máy `ac6a53a`, `c8cbb5b` (R5), `03333cc`; Soi Lỗi đầy đủ **ĐẠT** (`37eb8a7`, 0 lỗi); Lá Chắn đầy đủ (Fable) **ĐẠT CÓ ĐIỀU KIỆN** (`682f62c`; ĐK → T-125, T-126, thử thật Google, T-131). ⏳ Gộp `main` sau toàn bộ test | [Thợ Máy](reports/T-124-tho-may.md) · [Soi Lỗi](reports/T-124-soi-loi.md) · [Lá Chắn](reports/T-124-la-chan.md) |
 | [T-126](tickets/T-126-readme-theo-doi-google.md) | GĐ6: README «Theo dõi trên Google» | Thư Ký | `team/T-126` | Phần 1 (việc chủ dự án làm phía Google, `cbe3114`): Lá Chắn **ĐẠT**, đã gộp `main`. ⏳ Phần 3 sau T-125 | [Thư Ký](reports/T-126-thu-ky.md) · [Lá Chắn](reports/T-126-la-chan.md) |
-| [T-128](tickets/T-128-so-rui-ro-va-kich-ban-thu-that.md) | Sổ rủi ro 3 giới hạn `modified_gmt` (chủ dự án đồng ý 04/11), kịch bản buổi thử thật Hẹn giờ/Đăng ngay | Thư Ký · T-128 lượt 2 kịch bản thử thật | `team/T-128` | Thư Ký `fb1dece`; Lá Chắn rút gọn **ĐẠT CÓ ĐIỀU KIỆN** (`952aaca`: sổ rủi ro đúng, 3 Thấp trong kịch bản). ⏳ Lượt 2 sửa kịch bản | [Thư Ký](reports/T-128-thu-ky.md) · [Lá Chắn](reports/T-128-la-chan.md) |
+| [T-125](tickets/T-125-trang-theo-doi.md) | GĐ6 đợt 3: trang «📈 Theo dõi» và mục Search Console trong Cài đặt | Soi Lỗi · T-125 trang Theo dõi | `team/T-125` | Họa Sĩ xong (`216ff2f`; chưa có nút từ khóa cho khoảng tự chọn → phiếu nhỏ). ⏳ **Soi Lỗi đầy đủ**, rồi Lá Chắn đầy đủ | [Họa Sĩ](reports/T-125-hoa-si.md) |
+| [T-130](tickets/T-130-giu-trang-thai-gui-khi-xoa-nhap.md) | Giữ trạng thái gửi khi xóa nháp đã gửi, nhắc khi xóa (điều kiện Lá Chắn T-092; trước khi bật công tắc) | Soi Lỗi · T-130 | `team/T-130` | Họa Sĩ xong (`302ba7a`). ⏳ **Soi Lỗi rút gọn**, rồi Lá Chắn | [Họa Sĩ](reports/T-130-hoa-si.md) |
+| [T-131](tickets/T-131-don-kho-du-lieu-phu.md) | Dọn kho dữ liệu phụ: kiểm file, chặn `data/` là liên kết cho mọi kho SQLite (điều kiện đóng GĐ4) | Thợ Máy · T-131 | `team/T-131` | ⏳ Phần 1–3 (`e53ee48`); phần `drafts.py` sau khi T-130 gộp | — |
+| [T-132](tickets/T-132-don-chu-giai-doan-4.md) | Dọn chữ GĐ4: trang Kết nối chỉ khuyên Biên tập viên (SL-T106-1), lọc meta (LC-T036-2, SL-T036-11), `recheck_draft` công khai | Thợ Máy | `team/T-132` | Thợ Máy xong (`1c8bba7`, 66 file test 7.968 qua). ⏳ Soi Lỗi rút gọn | [Thợ Máy](reports/T-132-tho-may.md) |
 
 ## Chờ
 
@@ -66,6 +68,9 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu không lặng lẽ tạo lại nháp, giữ trạng thái gửi tab biết, bước Xuất bản giữ khóa gửi trùng; README, `.env.example`, câu báo emoji | Họa Sĩ | 2026-11-07 | [Họa Sĩ](reports/T-092-hoa-si.md) 2 lượt · [Soi Lỗi](reports/T-092-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T092-1 đóng) · Lá Chắn rút gọn (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-092-la-chan.md) (ĐK → T-130). Chỉ Huy duyệt R5 `test_soi_loi_t089`. Gộp `main`, Windows 23.584 test qua, 0 hỏng |
+| [T-128](tickets/T-128-so-rui-ro-va-kich-ban-thu-that.md) | Sổ rủi ro 3 giới hạn `modified_gmt` (chủ dự án đồng ý 04/11), kịch bản buổi thử thật Hẹn giờ/Đăng ngay (LC-T094-44) | Thư Ký | 2026-11-07 | [Thư Ký](reports/T-128-thu-ky.md) 2 lượt · Lá Chắn rút gọn: [**ĐẠT**](reports/T-128-la-chan.md) (LC-T128-1..3 đóng). Gộp `main` (chỉ tài liệu). Kịch bản: [T-128-kich-ban-thu-that](reports/T-128-kich-ban-thu-that.md) |
+| [T-129](tickets/T-129-la-chan-ra-soat-giai-doan-4.md) | Lá Chắn rà soát đóng Giai đoạn 4 | Lá Chắn | 2026-11-07 | [Lá Chắn](reports/T-129-la-chan.md) (Opus 5.5): **ĐÓNG CÓ ĐIỀU KIỆN** (SL-T106-1 → T-132; LC-T129-1, SL-T117-1 → T-131; tài liệu khi đánh dấu). Gộp `main` |
 | [T-121](tickets/T-121-client-search-console.md) | GĐ6 đợt 1: client Google Search Console chỉ đọc (`webmasters.readonly`, dùng lại tài khoản dịch vụ, 2 lệnh cố định, lọc thuộc tính theo từng phần tên miền, kiểm từng dòng câu trả lời) | Thợ Máy | 2026-11-05 | [Thợ Máy](reports/T-121-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-121-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T121-1 đóng) · Lá Chắn đầy đủ (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-121-la-chan.md) (điều kiện cho T-124, T-125, thử thật Google). Gộp `main`, Windows 23.548 test qua, 0 hỏng |
 | [T-122](tickets/T-122-cache-so-lieu-search-console.md) | GĐ6 đợt 1: cache SQLite số liệu Search Console (kiểm khi đọc, mã băm phạm vi, chặn `data/` là liên kết, giữ 16 tháng) | Thợ Máy | 2026-11-05 | [Thợ Máy](reports/T-122-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-122-soi-loi.md) 2 lượt: ĐẠT (SL-T122-1..3 đóng) · Lá Chắn đầy đủ (Opus 5.5): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-122-la-chan.md) (LC-T122-1, -2 Thấp → T-124). Gộp `main`, Windows 23.548 test qua, 0 hỏng |
 | [T-123](tickets/T-123-loi-tinh-toan-theo-doi.md) | GĐ6 đợt 1: lõi tính toán `seo_app/tracking/` (khớp trang với bài, kỳ ngày PT, so kỳ, nhãn, từ khóa) | Thợ Máy | 2026-11-05 | [Thợ Máy](reports/T-123-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-123-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T123-1, -2 đóng) · Lá Chắn rút gọn (Opus 5.5): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-123-la-chan.md) (LC-T123-1 → T-124/T-125). Gộp `main`, Windows 23.548 test qua, 0 hỏng |
@@ -195,4 +200,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-129 (T-125, T-127 đã đặt chỗ trong thiết kế T-120)
+## Số phiếu tiếp theo: T-133 (T-127 đã đặt chỗ trong thiết kế T-120)

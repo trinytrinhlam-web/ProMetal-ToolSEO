@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | T-121, T-122, T-123 đã gộp `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Đã qua Lá Chắn; chờ gộp |
 
 ## Mục tiêu
 
@@ -71,3 +71,4 @@ Thêm từ Lá Chắn T-121 (`docs/team/reports/T-121-la-chan.md`, mục điều
 
 - Lập 2026-11-04 theo thiết kế T-120 và các biên bản đợt 1. Worktree `wt-T-124`, nhánh `team/T-124` từ `main` có T-121, T-122, T-123.
 - 2026-11-05 12:37 (Chỉ Huy B): giao 05/11 10:15 (Thợ Máy, `wt-T-124` từ `8caab2f`); mã `ac6a53a`, đang viết báo cáo.
+- 2026-11-07 07:52 (Chỉ Huy B): Soi Lỗi ĐẠT (`37eb8a7`), Lá Chắn đầy đủ Fable ĐẠT CÓ ĐIỀU KIỆN (`682f62c`). ĐK1 → T-125, ĐK2 → T-126 phần 3, ĐK3 → buổi thử thật Google, ĐK4 → T-131. Gộp `main` sau toàn bộ test.
