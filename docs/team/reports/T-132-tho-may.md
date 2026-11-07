@@ -5,8 +5,8 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 |
 | Phiếu | [T-132](../tickets/T-132-don-chu-giai-doan-4.md) |
 | Nhánh | `team/T-132` (từ `main` `f6a6e64`) |
-| Ngày nộp | 2026-11-05 14:39 (+07:00, theo lệnh `date`) |
-| Kết quả | Hoàn thành: mục bắt buộc và cả 4 mục tùy chọn |
+| Ngày nộp | 2026-11-05 14:39 (+07:00, theo lệnh `date`); lượt 2: 2026-11-07 09:38 |
+| Kết quả | Hoàn thành: mục bắt buộc và cả 4 mục tùy chọn; lượt 2: SL-T132-1, SL-T132-2 đã sửa |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -118,7 +118,7 @@ All checks passed!
 ## Rủi ro và điểm cần chú ý
 
 1. **«Chữ số + trăm»:**
-   - Danh sách đơn vị và danh từ đếm không đủ mọi danh từ. Danh từ ngoài danh sách («5 trăm thợ») bị coi là giá: gợi ý AI đó bị bỏ. Lệch về phía an toàn, như các đơn vị khác của `_PRICE`.
+   - Danh sách đơn vị và danh từ đếm không đủ mọi danh từ. Danh từ ngoài danh sách («5 trăm gia đình»; lượt 1 ghi nhầm ví dụ «5 trăm thợ», mà «thợ» có trong danh sách, Soi Lỗi GN-2) bị coi là giá: gợi ý AI đó bị bỏ. Lệch về phía an toàn, như các đơn vị khác của `_PRICE`.
    - Số viết bằng chữ đứng trống («năm trăm» không kèm đơn vị) vẫn chưa bắt. Không thuộc 4 ca SL-T036-11; bắt sẽ đụng «năm» (năm tháng).
 2. **`mentions_price` còn dùng cho ghi chú dòng kế hoạch** (`write.py:775`, `fill_from_plan` → `MSG_PLAN_PRICE`):
    - Ghi chú có «VNĐ», «5 trăm», «triệu rưỡi» nay cũng nhận câu nhắc «Ghi chú của dòng kế hoạch có nhắc giá». Chỉ là câu nhắc, không chặn gì.
@@ -146,3 +146,84 @@ All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 (sửa 2 lỗi Thấp của Soi Lỗi)
+
+Theo biên bản Soi Lỗi `docs/team/reports/T-132-soi-loi.md` (`ce6c4fd`, ĐẠT CÓ ĐIỀU KIỆN).
+
+File đã sửa:
+
+- `seo_app/onpage/meta.py`: chỉ phần dò link, dò giá.
+- `tests/test_soi_loi_t132.py`: chỉ xóa 2 dấu `xfail`.
+- `tests/test_t132_don_chu.py`: thêm test.
+- Báo cáo này.
+
+### Tóm tắt (cho chủ dự án)
+
+- Bộ lọc gợi ý meta của AI nay bắt cả **tên miền giả dạng** dùng chữ Nga, chữ Hy Lạp trông y hệt chữ thường: «evil.cоm» (chữ «о» Nga) hiện trên Google giống hệt «evil.com», trước đây lọt, nay gợi ý đó bị bỏ.
+- Bắt thêm cách viết giá **«đôla»** viết liền và «đô-la» («chỉ 20 đôla»).
+- Câu thường có ký hiệu Hy Lạp hay chữ Nga hợp lệ không bị bắt oan: đơn vị «μm», «π», «Ω», «Ø60», chuẩn thép «ГОСТ».
+
+### Đã sửa
+
+| Mã | Cách sửa |
+|---|---|
+| **SL-T132-1** | <ul><li>`_foreign_tld` (chỉ bắt đuôi tên miền **không có** chữ Latin nào) thay bằng `_foreign_domain`.</li><li>«Chữ lạ» (`_foreign_letter`) là chữ cái không phải chữ ASCII, không phải chữ Việt. Chữ Việt là chữ ASCII hay «đ» thêm dấu thanh, dấu mũ của tiếng Việt, xét sau NFD (`_VIET_MARKS`).</li><li>Chuỗi dạng tên miền (`_DOTTED`: các nhãn nối bằng dấu chấm, nhãn cuối toàn chữ cái) bị coi là link khi: có chữ lạ, **và** đuôi có chữ lạ hay toàn chữ ASCII thường/HOA.</li><li>Bắt được 5 ca của Soi Lỗi: «evil.cоm», «evil.соm», «evil.cοm», «evil.shоp», «EVIL.SHОP».</li><li>Bắt thêm các dạng cùng loại:<ul><li>chữ lạ ở **nhãn** mà đuôi là chữ ASCII («еvil.shop», «ЕVIL.SHOP»);</li><li>chữ Latin ngoài tiếng Việt trông y hệt chữ thường (U+1D0F chữ O hoa nhỏ, U+0261 «g» viết tay);</li><li>tên miền nhiều tầng («ví-dụ.evil.cоm», «a.b.cоm»).</li></ul></li></ul> |
+| **SL-T132-2** | <ul><li>`_MONEY_UNIT`: `đô(?:\s*-?\s*la)?` thay `đô(?:\s+la)?`, nên nhận «20 đôla», «hai đôla».</li><li>Luật tên tiền đứng riêng: `đô\s*-?\s*la` thay `đô\s+la`, nên nhận «tính bằng đôla», «tính bằng đô-la», «đô - la».</li></ul> |
+| GN-3 (một phần) | `_LINK` nhận thêm ngoặc nhọn trong dấu chấm kiểu né («evil{.}com», «evil{dot}com»). Không có rủi ro bắt oan |
+
+Không bắt oan (ca đang ghim và ca mới):
+
+- 14 câu thường của Soi Lỗi (`test_cau_thuong_khong_bi_coi_la_link`) và các viết tắt địa danh của lượt 1.
+- Câu có chữ Hy Lạp, chữ Nga hợp lệ (`test_cau_thuong_co_chu_hy_lap_kirin_khong_bi_coi_la_link`, 10 ca), kể cả khi thiếu dấu cách sau dấu chấm: «Sơn dày 60µm.Bền màu» (NFKC đổi «µ» thành «μ» Hy Lạp), «Lớp mạ 80μm. Bảo hành», «Thép đạt chuẩn ГОСТ.Bền chắc», «Thép chuẩn ГОСТ 8240», «Hệ số ma sát μ = 0.3», «Diện tích π.r²», «Ống Ø60.Mạ kẽm», «Điện trở 5Ω.Chống giật», «Thép α.β».
+  - Lý do: đuôi là chữ Việt hay viết hoa chữ đầu, hoặc không có đuôi chữ cái dài từ 2 ký tự.
+- Giá: «đô lá», «thủ đô Hà Nội», «khu đô thị» không bị coi là giá; ca «2 đô vật» (SL-T036-10) vẫn `xfail` như cũ.
+
+### Gỡ dấu xfail (R5: chỉ xóa dấu, Chỉ Huy đã duyệt)
+
+| File | Ca | Bằng chứng trước khi xóa |
+|---|---|---|
+| `tests/test_soi_loi_t132.py` (dòng 80-84 cũ) | `test_sl_t132_1_duoi_ten_mien_tron_chu_bi_bat` (5 ca) | `[XPASS(strict)]` cả 5 ca |
+| `tests/test_soi_loi_t132.py` (dòng 129-132 cũ) | `test_sl_t132_2_dola_viet_lien_bi_bat` (3 ca) | `[XPASS(strict)]` cả 3 ca |
+
+Không đổi thân test, tham số hay docstring.
+
+### Test
+
+- `tests/test_t132_don_chu.py` thêm 5 hàm test, 28 ca (mục «5. lượt 2»): tên miền trộn chữ ở nhãn hay đuôi (9), câu thường có chữ Hy Lạp, Kirin (10), dấu chấm ngoặc nhọn (2), «đôla» các cách viết (4), «đô» không phải tiền (3).
+- **Đối chứng:** tạm đặt lại `meta.py` bản lượt 1 (HEAD `ce6c4fd`).
+  - Kết quả: `18 failed` (8 ca của Soi Lỗi, 10 ca mới của mình). Hai ca mới vẫn qua trên bản cũ, vì vốn đã bị bắt bằng luật khác: «evil.bız» khớp «biz» khi không phân biệt hoa thường; «shop.evil.cоm» khớp «shop.evil».
+  - Trả lại bản mới, mã băm file khớp trước và sau.
+  - Hai ca ngoặc nhọn thêm sau lần đối chứng đó, kiểm riêng: nạp `meta.py` của HEAD từ `git show`, `has_link` trả `False` cho «evil{.}com», «EVIL{DOT}SHOP»; bản mới trả `True`.
+- **Thời gian:** `has_link` trên 10 chuỗi 1.000 ký tự dựng xấu nhất mất tối đa 16,7 ms (lấy lần nhanh nhất trong 5 lần đo). Các chuỗi gồm «a.» ×500, «a-» ×500, «а.» Kirin ×500, nhãn dài 990 chữ… Soi Lỗi đo lượt 1: ≤ 20 ms.
+
+```
+$ uv run pytest <25 file, mọi nơi gọi has_link, mentions_price> -q -rfEX    # 09:15 → 09:27
+2296 passed, 1 xfailed in 714.33s (0:11:54)
+$ uv run pytest tests/test_images_process.py -k ma_nguon                    # ca quét mã nguồn seo_app/
+1 passed, 138 deselected
+$ uv run pytest <17 file có dùng bộ dò link, sau khi thêm ngoặc nhọn> -q -rfEX   # 09:28 → 09:37
+1944 passed, 1 xfailed in 572.40s (0:09:32)
+$ uv run ruff check .
+All checks passed!
+```
+
+Các file test đã chạy:
+
+- **Bộ lọc gợi ý meta và quy trình gợi ý** (`filter_ai_titles`, `filter_ai_descriptions` của `seo_app/content/workflow.py`): `test_onpage_meta`, `test_soi_loi_t036`, `test_t041_meta`, `test_la_chan_t040`, `test_soi_loi_t040`, `test_soi_loi_t041`, `test_la_chan_t041`, `test_t040_prompts`, `test_t090_meta_emoji_moi`, `test_content_workflow`.
+- **Test của phiếu:** `test_soi_loi_t132`, `test_t132_don_chu`.
+- **Cụm từ neo liên kết nội bộ** (`links.py:433`): `test_onpage_links`, `test_soi_loi_t039`, `test_la_chan_t039`, `test_t041_links_ai`.
+- **Bước SEO:** `test_t041_seo_ui`.
+- **Câu nhắc ghi chú kế hoạch** (`write.py:775`): `test_t101_home_page`, `test_t101_plan_page`, `test_la_chan_t100`, `test_la_chan_t103`.
+- **Quét mã nguồn:** `test_la_chan_t096`, `test_soi_loi_t034`, `test_t103_plan_prompt`, `test_app_pages`.
+- Đợt thứ ba chỉ gồm 17 file có dùng bộ dò link (bộ lọc meta, cụm từ neo, bước SEO, test của phiếu, quét ký tự đảo chiều).
+- 1 `xfailed` ở cả hai đợt là ca «đô vật» SL-T036-10, giữ nguyên. Không chạy toàn bộ pytest.
+
+### Còn lại (không sửa, lệch về phía an toàn hay ngoài phạm vi)
+
+- **Bắt oan có thể có:** chữ lạ hợp lệ đứng sát dấu chấm, sau đó là một từ ASCII toàn chữ thường hay toàn HOA, không dấu cách («60μm.ben», «Ø60.ma», «ГОСТ.BEN»). Cùng loại với «60um.ben» mà luật cũ vốn đã bắt. Chữ Latin ngoài tiếng Việt cũng là chữ lạ, nên «Munich.Müller» bị bắt.
+- **Soi Lỗi GN-3 chưa làm:**
+  - «evil.SHOP» (nhãn thường, đuôi HOA): bắt dạng này sẽ bắt oan câu thiếu dấu cách kiểu «uy tin.HOTLINE», «giao nhanh.FREESHIP»;
+  - «Evil.Shop», «AB.SHOP», «evil [.] com»: như lượt 1.
+- **«thủ đô La Mã», «thủ đô La Paz»** bị coi là giá (có từ lượt 1, luật «đô la» đứng riêng).
+- **Soi Lỗi GN-1, GN-2, GN-4, GN-5:** ngoài 2 lỗi được giao, không đổi.

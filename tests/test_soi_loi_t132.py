@@ -77,11 +77,6 @@ HOMOGLYPH = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T132-1: đuôi tên miền trộn chữ Latin với chữ Kirin/Hy Lạp («evil.cоm») lọt bộ dò "
-    "link: _foreign_tld chỉ bắt đuôi KHÔNG có chữ Latin nào",
-)
 @pytest.mark.parametrize("domain", HOMOGLYPH.values(), ids=HOMOGLYPH.keys())
 def test_sl_t132_1_duoi_ten_mien_tron_chu_bi_bat(domain):
     """«evil.cоm» (chữ «о» Kirin) hiện ra y hệt «evil.com» trong kết quả Google. Gợi ý AI mang nó
@@ -126,10 +121,6 @@ DOLA = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T132-2: «đôla» viết liền, «đô-la» đứng riêng chưa bị coi là nói giá",
-)
 @pytest.mark.parametrize("text", DOLA.values(), ids=DOLA.keys())
 def test_sl_t132_2_dola_viet_lien_bi_bat(text):
     assert mentions_price(f"Sửa cửa sắt {text} tại nhà", KEYWORD)

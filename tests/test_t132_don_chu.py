@@ -275,3 +275,72 @@ def test_dang_ten_mien_la_bi_bat(link):
 @pytest.mark.parametrize("ok", NOT_LINK.values(), ids=NOT_LINK.keys())
 def test_viet_tat_dia_danh_khong_bi_coi_la_link(ok):
     assert not has_link(f"Cửa sắt bị xệ {ok} đẹp")
+
+
+# ====================================================================== 5. lượt 2 (SL-T132-1, -2)
+# Chữ lạ viết bằng chr(0x…): trông y hệt chữ Latin nên không gõ thẳng vào mã.
+CYR_O, CYR_IE, GREEK_O = chr(0x043E), chr(0x0435), chr(0x03BF)
+SMALL_CAP_O, DOTLESS_I, SCRIPT_G = chr(0x1D0F), chr(0x0131), chr(0x0261)
+MICRO_SIGN = chr(0x00B5)  # NFKC đổi thành «μ» Hy Lạp
+
+MIXED_LINK = {
+    "nhan-e-kirin": CYR_IE + "vil.shop",
+    "nhan-hoa-e-kirin": CYR_IE.upper() + "VIL.SHOP",
+    "duoi-o-hoa-nho": "evil.c" + SMALL_CAP_O + "m",
+    "duoi-i-khong-cham": "evil.b" + DOTLESS_I + "z",
+    "duoi-g-viet-tay": "evil.or" + SCRIPT_G,
+    "duoi-o-hy-lap-hoa": "EVIL.C" + GREEK_O.upper() + "M",
+    "nhieu-tang-nhan-viet": "ví-dụ.evil.c" + CYR_O + "m",
+    "nhieu-tang": "shop.evil.c" + CYR_O + "m",
+    "ba-tang-ngan": "a.b.c" + CYR_O + "m",
+}
+GREEK_CYRILLIC_OK = {
+    "micro-thieu-cach": "Sơn dày 60" + MICRO_SIGN + "m.Bền màu",
+    "mu-co-phay": "Sơn dày 60μm, bền màu",
+    "mu-cuoi-cau": "Lớp mạ 80μm. Bảo hành 5 năm",
+    "gost-thieu-cach": "Thép đạt chuẩn ГОСТ.Bền chắc",
+    "gost-so": "Thép chuẩn ГОСТ 8240, dày 2 ly",
+    "he-so-mu": "Hệ số ma sát μ = 0.3",
+    "pi": "Diện tích π.r² của cột tròn",
+    "phi-ong": "Ống Ø60.Mạ kẽm nhúng nóng",
+    "ohm": "Điện trở 5Ω.Chống giật",
+    "alpha-beta": "Thép α.β",
+}
+
+
+@pytest.mark.parametrize("link", MIXED_LINK.values(), ids=MIXED_LINK.keys())
+def test_ten_mien_tron_chu_la_o_nhan_hay_duoi_bi_bat(link):
+    """SL-T132-1 mở rộng: chữ lạ ở nhãn (đuôi chữ ASCII), chữ Latin ngoài tiếng Việt trông y hệt
+    chữ thường, tên miền nhiều tầng."""
+    assert has_link(f"Xem {link} ngay")
+    assert accept_ai_title(f"Cửa sắt bị xệ: xem {link} để biết cách sửa", KEYWORD) is None
+
+
+@pytest.mark.parametrize("link", ["evil{.}com", "EVIL{DOT}SHOP"], ids=["cham", "dot-hoa"])
+def test_dau_cham_ngoac_nhon_bi_bat(link):
+    """Soi Lỗi GN-3: dấu chấm kiểu né trong ngoặc nhọn, như «evil[.]com», «evil(dot)com»."""
+    assert has_link(f"Xem {link} ngay")
+
+
+@pytest.mark.parametrize("ok", GREEK_CYRILLIC_OK.values(), ids=GREEK_CYRILLIC_OK.keys())
+def test_cau_thuong_co_chu_hy_lap_kirin_khong_bi_coi_la_link(ok):
+    """Đơn vị «μm», ký hiệu «π», «Ω», «Ø», chuẩn «ГОСТ» trong câu thường (cả khi thiếu dấu cách sau
+    dấu chấm): đuôi là chữ Việt hay viết hoa chữ đầu, hoặc không có đuôi chữ cái, thì không phải
+    tên miền."""
+    assert not has_link(ok)
+
+
+@pytest.mark.parametrize(
+    "price",
+    ["hai đôla", "20 Đôla", "tính bằng đô - la", "50 ĐÔ-LA"],
+    ids=["chu", "hoa", "gach-cach", "hoa-gach"],
+)
+def test_dola_cac_cach_viet_bi_bat(price):
+    assert mentions_price(f"Sửa cửa sắt {price} tại nhà", KEYWORD)
+
+
+@pytest.mark.parametrize(
+    "ok", ["đô lá", "thủ đô Hà Nội", "khu đô thị"], ids=["la", "thu-do", "do-thi"]
+)
+def test_do_khong_phai_tien(ok):
+    assert not mentions_price(f"Cửa sắt bị xệ {ok} đẹp", KEYWORD)
