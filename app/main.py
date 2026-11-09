@@ -26,6 +26,7 @@ PAGES = [
     ("views/home.py", "Bài viết", "📚"),
     ("views/write.py", "Soạn bài", "✍️"),
     ("views/plan.py", "Kế hoạch", "🗂️"),
+    ("views/tracking.py", "Theo dõi", "📈"),  # T-125: chủ dự án 04/11, giữa Kế hoạch và Cài đặt
     ("views/settings.py", "Cài đặt", "⚙️"),
     ("views/wordpress.py", "Kết nối WordPress", "🔌"),
 ]
