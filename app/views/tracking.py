@@ -33,7 +33,7 @@ import streamlit as st
 from seo_app import ui
 from seo_app.config import load_settings
 from seo_app.plan import model as plan_model
-from seo_app.plan import sync
+from seo_app.plan import propose, sync
 from seo_app.plan.model import PlanRow
 from seo_app.storage import plan_cache, search_cache, site_index
 from seo_app.storage.search_cache import (
@@ -118,6 +118,8 @@ REPORT_KEY = "trk-report"
 CLEAR_ASK_KEY = "trk-clear-ask"
 FLASH_KEY = "trk-flash"
 CACHE_MEMO_KEY = "trk-cache-memo"  # bản lưu tạm đã đọc của phiên, theo dấu file (SL-T125-1)
+PLAN_PICK_KEY = "trk-plan-pick"
+GOOGLE_HANDOFF_KEY = "plan_google_keywords"  # trang Kế hoạch đọc khóa này (T-127)
 
 KIND_TEXT = {"post": "Bài", "page": "Trang", "other": "Trang khác"}
 NO_NUMBER = "—"
@@ -191,9 +193,18 @@ MSG_NO_KEYWORDS = (
 )
 MSG_NO_KEYWORD_ROWS = "Chưa có từ khóa nào của bài này trong khoảng đang xem."
 MSG_KEYWORDS_SKIPPED = "{count} dòng từ khóa không đúng dạng bị bỏ."
-MSG_PLAN_LATER = (
-    "Sắp có (T-127): chọn từ khóa Google rồi đưa sang trang Kế hoạch để duyệt, như đề xuất kế "
-    "hoạch."
+MSG_PLAN_PICK = f"Chọn từ khóa đưa vào kế hoạch (tối đa {propose.MAX_GOOGLE_KEYWORDS})"
+MSG_PLAN_HELP = (
+    "Mở trang Kế hoạch: mỗi từ khóa đã chọn thành một đề xuất «Thêm bài» (nguồn Search Console). "
+    "Bạn duyệt rồi mới ghi vào Google Sheet."
+)
+MSG_PLAN_NONE = (
+    "Không có từ khóa nào đưa vào kế hoạch được: chỉ nhận chữ, số, khoảng trắng, dấu «-», tối đa "
+    f"{propose.GOOGLE_KEYWORD_MAX} ký tự, không có số điện thoại, email, địa chỉ web."
+)
+MSG_PLAN_LEFT_OUT = (
+    "{count} từ khóa không có trong ô chọn: có ký tự khác chữ, số, khoảng trắng, dấu «-», dài quá "
+    f"{propose.GOOGLE_KEYWORD_MAX} ký tự, hay có số điện thoại, email, địa chỉ web."
 )
 MSG_OTHERS_NOTE = (
     "Địa chỉ có số liệu trên Google mà không khớp bài, trang nào trong danh sách đã đăng: trang "
@@ -804,8 +815,27 @@ def keyword_panel(view: PageView, current: Period) -> None:
     st.caption(HIDDEN_QUERIES_NOTE)
     if table.skipped:
         st.caption(MSG_KEYWORDS_SKIPPED.format(count=number_text(table.skipped)))
-    # Chỗ cho nút «Đưa vào kế hoạch» (T-127, câu 7 = B): chưa làm.
-    st.button("➕ Đưa vào kế hoạch", key="trk-to-plan", disabled=True, help=MSG_PLAN_LATER)
+    plan_box(table)
+
+
+def plan_box(table: KeywordTable) -> None:
+    """«➕ Đưa vào kế hoạch» (T-127, câu 7 = B; LC-T120-24): ô chọn chỉ có từ khóa qua bộ lọc chặt
+    ``propose.google_keyword`` (hiện nguyên văn, chữ thuần), tối đa ``MAX_GOOGLE_KEYWORDS``. Bấm
+    thì chuyển danh sách sang trang Kế hoạch; trang đó dựng đề xuất «Thêm» chờ duyệt trên đúng kế
+    hoạch hiện tại (lọc lại lần nữa). Không AI, không ghi Sheet ở bước này (LC-T120-13)."""
+    allowed = [group.text for group in table.groups if propose.google_keyword(group.text)]
+    left_out = len(table.groups) - len(allowed)
+    if not allowed:
+        st.caption(MSG_PLAN_NONE)
+        return
+    picked = st.multiselect(
+        MSG_PLAN_PICK, allowed, key=PLAN_PICK_KEY, max_selections=propose.MAX_GOOGLE_KEYWORDS
+    )
+    if left_out:
+        st.caption(MSG_PLAN_LEFT_OUT.format(count=number_text(left_out)))
+    if st.button("➕ Đưa vào kế hoạch", key="trk-to-plan", disabled=not picked, help=MSG_PLAN_HELP):
+        S[GOOGLE_HANDOFF_KEY] = tuple(picked[: propose.MAX_GOOGLE_KEYWORDS])
+        st.switch_page("views/plan.py")
 
 
 def detail_panel(views: list[PageView], current: Period) -> None:
