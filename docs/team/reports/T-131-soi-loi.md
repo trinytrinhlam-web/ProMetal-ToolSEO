@@ -4,7 +4,7 @@
 |---|---|
 | Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-131](../tickets/T-131-don-kho-du-lieu-phu.md), nhánh `team/T-131`: mã và test Thợ Máy `e53ee48`, báo cáo `f3e5c32` (gốc `main` `f6a6e64`). Chỉ phần 1–3; phần `drafts.py` (chờ T-130) không tính |
-| Ngày nộp | 2026-11-10 (10:20 +07:00; soi từ 2026-11-07, chờ hạn mức) |
+| Ngày nộp | 2026-11-10 (10:20 +07:00; soi từ 2026-11-07, chờ hạn mức). **Lượt 2** (kho nháp `drafts.py`, SL-T131-1): 2026-11-10, mục «Lượt 2» cuối báo cáo: **ĐẠT**, 0 lỗi mới, SL-T131-1 đóng |
 | **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN**: 0 Nghiêm trọng, 0 Cao, 0 Trung bình, **1 Thấp mới** (SL-T131-1). Cả bốn trọng tâm Chỉ Huy giao: `site_index` kiểm file đúng như `search_cache`; `data/` là liên kết thì không mở, không ghi, không xóa (đo: 0 lần `sqlite3.connect` vào thư mục đích có file cache thật); `plan_cache._is_healthy` coi lỗi giải mã và «unsupported file format» là file lạ; không lùi chức năng (bản gộp thử với `main`, 76 file test nơi gọi và quét cả gói: 7053 qua, 0 hỏng). **SL-T131-1:** `plan_cache` gỡ liên kết ở tên file nhật ký (`-journal`, `-wal`, `-shm`) **sau** bước kiểm file, mà bước này đã mở file bằng SQLite; `site_index`, `search_cache` gỡ **trước**. Thử thật: file ngoài dự án bị cắt và ghi đè; hay cache kế hoạch kẹt mãi. Sửa: đổi chỗ 3 dòng (bản sửa nháp: 4 ca `xfail` thành XPASS, mọi ca khác qua). Điều kiện: sửa SL-T131-1 cùng lượt phần 4 (`drafts.py`), trước Lá Chắn đầy đủ |
 
 ## Tóm tắt (cho chủ dự án)
@@ -182,3 +182,133 @@ Script thăm dò (thư mục nháp của phiên Soi Lỗi): `probe_shm.py` (hard
 - Giao Thợ Máy sửa SL-T131-1 cùng lượt phần 4 (`drafts.py`), rồi gỡ 4 dấu `xfail` (R5: chỉ gỡ dấu, không đổi kỳ vọng). Khi làm kho nháp, thêm kho nháp vào `KINDS` của `test_soi_loi_t131.py`, hay viết ca tương đương.
 - Lá Chắn đầy đủ sau phần 4: xem thêm GN-1.
 - Chạy lại `test_t131_kho_du_lieu_phu.py`, `test_soi_loi_t131.py` trên Mac/Linux khi có máy (ca symlink bị bỏ qua trên máy này).
+
+## Lượt 2 (2026-11-10): kho nháp `drafts.py`, SL-T131-1
+
+| Mục | Nội dung |
+|---|---|
+| Agent | Soi Lỗi (`soi-loi`) · model: Claude Opus 5.5 · dưới Chỉ Huy B (phiên khác lượt 1; phiên đã soi T-092, T-130) |
+| Nhánh | `team/T-131` tại `147c9f1` (Thợ Máy lượt 2; đã gộp `main` `7153f0a` có T-130, T-132 ở `cd575a9`). Thử gộp với `main` cục bộ `03b5881`, rồi `d4a015e` (chỉ thêm phiếu, tài liệu): **không xung đột**, cây `cd4b38a`, `23554b7` |
+| **Kết luận lượt 2** | **ĐẠT**: 0 lỗi mới. **SL-T131-1 đóng.** `drafts.py` chỉ đổi phần mở kho, kiểm file; trạng thái gửi và khối SEO không đổi dòng nào. Các ca liên kết, file lạ, file hỏng, file bận đúng như báo cáo Thợ Máy. Lớp bọc `_Checked` giữ nguyên so rồi đặt của T-089, T-092 (thêm ca hai kho chạy thật song song). Nháp cũ trước T-086, T-100 mở được. Không ca nào mất dấu «đã gửi» khỏi file. Thời gian kiểm file chấp nhận được. Cây gộp, 62 file mọi nơi gọi kho nháp và các kho lưu tạm: **4.381 qua, 0 hỏng**. 3 ghi nhận, không chặn |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Kho nháp bài viết nay được kiểm kỹ như các file lưu tạm. Phần này đúng.**
+  - Thư mục `data` là lối tắt: phần mềm không mở, không ghi gì ở đó.
+  - File nháp bị chương trình khác sửa (cài trigger, bảng lạ) hay là lối tắt: phần mềm **cất sang một bên, không xóa**, rồi dùng file mới.
+  - File nháp đang bị khóa lúc mở app: phần mềm chỉ báo «đang bận», file giữ nguyên (trước đây có thể bị cất đi cùng dấu «đã gửi»).
+- **Dấu «đã gửi» chống gửi trùng không mất** trong mọi ca tôi thử: hai tab cùng gửi một bài, xóa nháp đúng lúc tab kia đang lưu, file nháp các bản cũ, file nháp bị chương trình khác chuyển chế độ lưu (WAL). File bị cất sang một bên vẫn giữ nguyên dấu đó bên trong.
+- **Lỗi nhỏ lượt trước (SL-T131-1) đã sửa đúng.**
+- **Tốc độ:** kho nháp bình thường (30 bài, mỗi bài khoảng 50 KB) kiểm mất khoảng 20 phần nghìn giây, gần như cũ. Chỉ kho cực lớn (gần 150 MB) mới mất khoảng 1 giây. Chấp nhận được.
+- **Việc của bạn:** không có.
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `tests/test_soi_loi_t131.py` | Thêm mục «lượt 2: kho nháp»: **4 ca, qua cả 4** (hai kho giành «đang gửi» cùng lúc; lưu so rồi đặt và xóa cùng lúc; file hợp lệ chế độ WAL sau `VACUUM`; chỗ đặt file là hard link: file cất đi còn dấu «đã gửi»). Không đổi ca nào của lượt 1. Cả file: 29 ca, qua cả 29 |
+| `docs/team/reports/T-131-soi-loi.md` | Mục «Lượt 2» này |
+
+Không sửa code ứng dụng, không sửa test của Thợ Máy, không commit file phiếu.
+
+### 1. SL-T131-1 đóng
+
+`plan_cache._prepare` (`seo_app/storage/plan_cache.py:249`) nay gỡ liên kết ở chính file và ở tên file nhật ký **trước** `_is_healthy`, đúng thứ tự `site_index`, `search_cache`. 4 ca SL-T131-1 của lượt 1 (gỡ dấu `xfail`) qua trên cây gộp (lô 1).
+
+### 2. `drafts.py` chỉ đổi phần mở kho, kiểm file
+
+Các khối đổi (`git diff cd575a9..147c9f1`): chú thích đầu file, `import`, hằng kiểm file, `_connect`, `_prepare`, `_move_aside`, các hàm mới sau `_check_images` (`_Checked`, `_journal_paths`, `_is_link`, `_remove_link`, `_guard`, `_expected_schema`, `_app_tables`, `_create_tables`, `_is_healthy`, `_is_busy`, `_code`, `_db_message`). **Không khối nào** chạm `save`, `delete`, `load_send_state`, `send_state_if_exists`, `save_send_state`, `_trim_orphan_send_states`, việc ghi Sheet còn nợ hay khối SEO. Ba câu tạo bảng chuyển vào `_CREATE_TABLES` giữ đúng từng chữ.
+
+### 3. Các ca kiểm
+
+36 ca của Thợ Máy (`tests/test_t131_kho_nhap.py`) qua trên cây gộp. Đối chiếu từng ca Chỉ Huy giao:
+
+| Ca | Kết quả |
+|---|---|
+| `data/` là liên kết | `_prepare` gọi `dir_has_link` đầu tiên ở mọi lần mở: báo câu cố định, 0 lần `sqlite3.connect`, không đổi tên gì (ca Thợ Máy, ca SL-T117-1 `[kho-nhap]` gỡ dấu) |
+| Tên file nhật ký là liên kết | Gỡ chính liên kết **trước** mọi lần SQLite mở file (ca đếm `sqlite3.connect` của Thợ Máy; `-shm` hard link ở chế độ WAL: file ngoài nguyên vẹn) |
+| Chỗ đặt file là liên kết | **Đổi tên** chính liên kết sang một bên, không xóa, không đi theo. Ca thêm của tôi: hard link tới file nháp ngoài dự án có «đã gửi 501»: kho dùng file mới, file ngoài nguyên từng byte, file cất đi (đọc chỉ đọc) **còn dòng «đã gửi 501»** |
+| File lạ, hỏng | Trigger, khung nhìn, bảng, chỉ mục lạ, `ANALYZE`, câu tạo bảng khác chữ, UTF-8 hỏng: đổi tên sang một bên, trigger không chạy (ca Thợ Máy). Đọc mã `_app_tables`: so trọn `sqlite_master` (loại, tên, bảng, câu lệnh) với lược đồ dựng bằng chính ba câu tạo bảng, kể cả chỉ mục tự sinh của khóa chính; bảng thiếu thì được; dòng thừa, lặp là «khác» |
+| File bận lúc mở lần đầu | `_is_healthy` ném lại lỗi bận, khóa (`_KEEP_FILE_CODES`): báo «đang bận», không đổi tên; lần sau mở được, trạng thái gửi còn nguyên (ca Thợ Máy với `BEGIN EXCLUSIVE` của kết nối khác) |
+
+### 4. Lớp bọc `_Checked` và so rồi đặt (T-089, T-092), kể cả hai tab
+
+Đọc mã: tôi liệt kê câu SQL theo thứ tự trong cả 11 thao tác của kho. Thao tác nào đọc rồi mới ghi (`save` với `must_exist`, `save_send_state` và `save_plan_write` với `expected`) đều **tự mở `BEGIN IMMEDIATE` ở câu đầu**: `_Checked` chạy đúng câu đó, rồi kiểm cấu trúc trong giao dịch ấy, nên khóa ghi vẫn giữ **trước** câu kiểm «nháp còn», trạng thái cũ. Thao tác chỉ ghi: câu đầu là câu ghi, `_Checked` mở `BEGIN IMMEDIATE`. Thao tác chỉ đọc: `BEGIN`. Không thao tác nào đọc trong giao dịch hoãn rồi mới ghi (kiểu dễ bị SQLite trả «bận» ngay khi tab khác đang ghi), không câu `BEGIN` nào nằm giữa thao tác.
+
+| Thử (ca mới của tôi, hai kho riêng như hai tab, hai luồng thật, 12 lần mỗi ca) | Kết quả |
+|---|---|
+| Hai kho cùng giành «đang gửi» một nháp (so rồi đặt với «chưa gửi») | Mỗi lần đúng một bên thắng, bên kia không ghi gì, không bên nào báo lỗi; kho mang đúng trạng thái bên thắng |
+| Tab A xóa nháp «đã gửi 501» đúng lúc tab B tự lưu kiểu so rồi đặt | Mọi thứ tự: không có nháp tạo lại sau lần xóa; tab B (nếu thua) báo `DraftGoneError`; dòng «đã gửi 501» luôn còn (dòng mồ côi T-130) |
+
+Các file T-089, T-092, T-130 (cả của Soi Lỗi, Lá Chắn) qua trên cây gộp (lô 1, 2).
+
+### 5. Nháp cũ trước T-086, T-100
+
+Ca của Thợ Máy dựng file đúng câu của bản T-016 (chỉ bảng `drafts`), T-086 (thêm `send_states`), T-100 (đủ ba bảng): mở được, không đổi tên, bảng thiếu được tạo thêm, nháp và trạng thái gửi còn nguyên; `test_drafts_images.py`, `test_t100_drafts_plan.py` (khuôn nháp 1, 2) qua. Ca thêm của tôi: file nháp app tạo, bị chương trình khác chuyển sang chế độ WAL và `VACUUM`: vẫn dùng được, không đổi tên, ghi tiếp được.
+
+### 6. Không mất dấu «đã gửi»
+
+Chỉ có hai đường xóa dòng trạng thái gửi, đều không đổi ở lượt này: lần gửi chưa tạo gì trả về «chưa gửi» (nháp còn), và dọn dòng mồ côi quá 200 (T-130). Các đường T-131 thêm: file bận thì giữ file; cấu trúc lạ phát hiện giữa thao tác thì cuộn lại, chưa ghi gì; file lạ hay chỗ đặt file là liên kết thì **đổi tên**, không xóa (dấu «đã gửi» còn trong file cất đi, ca của tôi ở mục 3). Riêng ca đổi tên: app không còn thấy dấu đó (xem G2).
+
+### 7. Thời gian kiểm file lần đầu
+
+Đo lại trên máy này (đang chạy song song việc khác), nhanh nhất trong 3 lần, kho có 230 dòng trạng thái gửi:
+
+| Kho | Bản mới | Bản cũ (`cd575a9`) |
+|---|---|---|
+| Thực tế: 30 nháp × 50 KB (1,6 MB) | 19,7 ms | 16,4 ms |
+| Lớn: 30 nháp × 1 MB (30 MB) | 305 ms | 138 ms |
+| Trần: 30 nháp × 4,9 MB (147 MB) | 1.228 ms | 552 ms |
+
+Bản mới chậm khoảng gấp đôi ở kho lớn vì đọc thử mọi ô; với kho thực tế chênh vài mili giây. **Chấp nhận được.** Lưu ý: trang Soạn bài dùng lại một kho cho cả phiên (`st.cache_resource`) nên chỉ kiểm lần đầu, còn trang Bài viết, Kế hoạch tạo kho mới mỗi lần gọi, nên bước kiểm chạy ở **mỗi lần vẽ** hai trang đó (G1).
+
+### 8. R5
+
+Chỉ xóa dấu `xfail`, đúng phần Chỉ Huy cho: 4 ca SL-T131-1 (`marks=SL_T131_1` và hằng `SL_T131_1`, `tests/test_soi_loi_t131.py`), ca `[kho-nhap]` của SL-T117-1 (`tests/test_soi_loi_t117.py`, kèm sửa dòng chú thích). Không đổi thân test, tham số hay kỳ vọng.
+
+### 9. Gộp thử, chạy chọn lọc
+
+Cây gộp `cd4b38a` (`main` `03b5881` + `147c9f1`), qua `run_list.sh` (kiểm danh sách, thiếu file thì dừng; dòng đầu mỗi lô đã xem), 6 lô nối tiếp, mỗi lúc một tiến trình. Danh sách: mọi file test nhắc `DraftStore`, `drafts.sqlite`, `DEFAULT_DRAFTS_FILE`, kho nháp (`ui.store()`, `draft_store`), cộng các kho lưu tạm (`plan_cache`, `site_index`, `search_cache`) và trang Kế hoạch, Theo dõi:
+
+| Lô | Nội dung | Kết quả |
+|---|---|---|
+| 1 | T-131 (cả hai phần), kho nháp, T-092, T-130, SL-T117 (13 file) | 503 passed, 3 skipped |
+| 2 | T-086, T-089, Soi Lỗi T-016–T-021 (8 file) | 267 passed, 6 skipped |
+| 3 | Ảnh, chọn ảnh, gửi nháp kèm ảnh (10 file) | 1.769 passed, 11 skipped, 1 xfailed (SL-T107-3, có từ trước) |
+| 4 | Bước SEO T-041 (6 file) | 351 passed |
+| 5 | Xuất bản T-102, T-112, T-115, kế hoạch, trang Bài viết, Kế hoạch, T-127 (15 file) | 869 passed |
+| 6 | Kho lưu tạm, khóa T-037, trang Theo dõi (10 file) | 622 passed, 2 skipped |
+
+Cộng: **4.381 passed, 22 skipped, 1 xfailed, 0 failed, 0 XPASS**. Ca bỏ qua đều do Windows (symlink cần Developer Mode, quyền kiểu `chmod`). `main` `d4a015e` (mới nhất) so với `03b5881` chỉ thêm phiếu, ghi việc: không đổi file code, test nào, nên kết quả trên đúng cho cây gộp `23554b7`.
+
+### 10. Đột biến (của tôi)
+
+5 đột biến trong bản sao `seo_app/storage/drafts.py` (`147c9f1`; script `mutate131.py`), mỗi lượt chạy 40 ca (36 ca `test_t131_kho_nhap.py` của Thợ Máy, 4 ca lượt 2 của tôi), dừng ở ca hỏng đầu: **5/5 bị bắt**. Bản sao trả nguyên sau mỗi lượt (so với `git show 147c9f1`: khớp).
+
+| Đột biến | Ca bắt đầu tiên |
+|---|---|
+| R1 `_Checked` mở `BEGIN` thường thay cho `BEGIN IMMEDIATE` của thao tác so rồi đặt | `test_soi_loi_t131.py::test_l2_hai_kho_gianh_dang_gui_cung_luc_chi_mot_thang` (của tôi) |
+| R2 `_Checked` không kiểm cấu trúc trong giao dịch | `test_t131_kho_nhap.py::test_file_bi_cai_trigger_khi_dang_chay_thi_khong_ghi` |
+| R3 file bận lúc kiểm bị coi là hỏng (đổi tên) | `test_t131_kho_nhap.py::test_file_ban_luc_kiem_khong_bi_doi_ten` |
+| R4 chỗ đặt file là liên kết thì xóa liên kết thay vì đổi tên | `test_soi_loi_t131.py::test_l2_cho_dat_file_la_hard_link_file_cat_di_con_dau_da_gui` (của tôi) |
+| R5 đổi tên sang một bên không mang theo file nhật ký | `test_t131_kho_nhap.py::test_doi_ten_sang_mot_ben_mang_theo_file_nhat_ky` |
+
+### Lỗi mới
+
+Không có.
+
+### Ghi nhận (không tính lỗi, không chặn)
+
+- **G1 · Trang Bài viết, Kế hoạch kiểm file nháp mỗi lần vẽ:** `app/views/home.py:49`, `app/views/plan.py:140` tạo `DraftStore` mới mỗi lần gọi (không `st.cache_resource` như trang Soạn bài), nên `_is_healthy` chạy ở mỗi lần vẽ hai trang đó: khoảng 20 ms với kho thực tế, tới khoảng 1,2 giây với kho cực lớn. Có từ trước T-131 (bản cũ: 16–550 ms). Đề xuất phiếu sau: dùng lại một kho như trang Soạn bài.
+- **G2 · File bị cất sang một bên thì app không còn thấy dấu «đã gửi»:** khi file nháp lạ hay chỗ đặt file là liên kết, file bị đổi tên (giữ nguyên, có thể lấy lại bằng tay) nhưng tab đang mở bài sẽ gặp «nháp không còn» (T-092), lưu lại thì nháp mới không có khóa gửi trùng. Chỉ xảy ra khi chương trình khác sửa file; Thợ Máy đã nêu. Nếu muốn chặt hơn: phiếu sau có thể chép các dòng trạng thái gửi (đọc qua khuôn `SendState`) từ file cất đi sang file mới.
+- **G3 · Ca symlink chưa chạy trên máy này** (Windows chưa bật Developer Mode): đã thử bằng junction, hard link. Cần chạy lại `test_t131_kho_nhap.py`, `test_soi_loi_t131.py` trên Mac/Linux khi có máy.
+
+### Lệnh đã chạy (lượt 2)
+
+- `pytest tests/test_soi_loi_t131.py -k l2` (cây nhánh): 4 passed. Cả file chạy trong lô 1 trên cây gộp: 29 passed.
+- Đo `_is_healthy` (`probe_time.py`, nạp bản cũ từ `git show cd575a9:…`): mục 7.
+- Cây gộp `cd4b38a`, 6 lô chọn lọc, 62 file: 4.381 passed, 22 skipped, 1 xfailed, 0 failed (mục 9).
+- Đột biến: mục 10.
+- `uv run ruff check .`: sạch.
+- `detect-secrets` (`PYTHONUTF8=1`), quét bản sao trong thư mục ngoài git cùng file mồi tiếng Việt: sạch (chỉ file mồi bị báo; file test và báo cáo không có gì).
+- Script: thư mục ghi chú chung `T-131-soi-loi-l2-scripts/` (`run_list.sh`, `mutate131.py`, `probe_time.py`).

@@ -12,6 +12,11 @@
 
 Không gọi mạng; mọi file nằm trong ``tmp_path``. Liên kết thư mục: junction trên Windows (không cần
 quyền quản trị), symlink trên Mac/Linux; hard link bằng ``os.link``.
+
+Lượt 2 (kho nháp, T-131 phần 4; Soi Lỗi khác phiên): lớp bọc ``_Checked`` không làm hỏng so rồi
+đặt khi **hai kho** (hai tab) chạy thật song song (T-089, T-092); file nháp hợp lệ ở chế độ WAL sau
+``VACUUM`` vẫn dùng được; chỗ đặt file là hard link bị đổi tên sang một bên mà dấu «đã gửi» vẫn còn
+trong file đó.
 """
 
 from __future__ import annotations
@@ -20,15 +25,18 @@ import contextlib
 import hashlib
 import os
 import sqlite3
+import threading
 from contextlib import closing
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from seo_app.images.data_dir import MSG_DATA_DIR_LINK, is_link
-from seo_app.storage import plan_cache, search_cache, site_index
+from seo_app.storage import drafts, plan_cache, search_cache, site_index
+from seo_app.storage.drafts import DraftGoneError, DraftSnapshot, DraftStore, SendState
 from seo_app.wordpress.client import PublishedItem
 
 TZ = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -311,3 +319,116 @@ def test_hand_edited_file_never_leaves_the_cache_stuck(project, kind, damage):
     assert kho.store.reset_count == 1
     kho.write()
     assert kho.has_data(kho.read())
+
+
+# ================================================================ lượt 2: kho nháp (phần 4)
+ROUNDS = 12  # số lần chạy đua mỗi ca (mỗi lần một nháp mới)
+
+
+@pytest.fixture
+def drafts_path(tmp_path: Path, monkeypatch) -> Path:
+    """File nháp trong thư mục dự án giả (``PROJECT_ROOT`` của kho nháp trỏ vào đó)."""
+    root = tmp_path / "du-an"
+    root.mkdir()
+    monkeypatch.setattr(drafts, "PROJECT_ROOT", root)
+    return root / "data" / "drafts.sqlite"
+
+
+def race(*jobs):
+    """Chạy các việc cùng lúc (hàng rào chung); trả kết quả từng việc (hay lỗi nó ném), đúng thứ
+    tự."""
+    barrier = threading.Barrier(len(jobs))
+    results: list = [None] * len(jobs)
+
+    def run(index, job):
+        barrier.wait()
+        try:
+            results[index] = job()
+        except Exception as exc:  # trả lỗi về cho ca kiểm
+            results[index] = exc
+
+    threads = [threading.Thread(target=run, args=(i, job)) for i, job in enumerate(jobs)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    return results
+
+
+def moved_drafts(folder: Path) -> list[Path]:
+    return sorted(path for path in folder.iterdir() if ".hong-" in path.name)
+
+
+def test_l2_hai_kho_gianh_dang_gui_cung_luc_chi_mot_thang(drafts_path):
+    """T-089 qua lớp bọc ``_Checked``: hai tab (hai kho riêng, hai luồng) cùng giành «đang gửi» một
+    nháp (so rồi đặt với «chưa gửi»): đúng một bên thắng, bên kia không ghi gì, không bên nào báo
+    lỗi; kho mang đúng trạng thái của bên thắng."""
+    tab_a, tab_b = DraftStore(path=drafts_path), DraftStore(path=drafts_path)
+    for _ in range(ROUNDS):
+        snap = tab_a.save(DraftSnapshot(keyword="cổng inox"))
+        tab_b.list_drafts()  # tab B đã mở kho (kiểm file xong) trước lần đua
+        claims = (SendState.now(pending=True, post_id=None), SendState.now(pending=True, post_id=7))
+        results = race(
+            partial(tab_a.save_send_state, snap.id, claims[0], expected=(None, False)),
+            partial(tab_b.save_send_state, snap.id, claims[1], expected=(None, False)),
+        )
+        assert sorted(results) == [False, True], results
+        assert tab_a.load_send_state(snap.id) == claims[results.index(True)]
+
+
+def test_l2_luu_so_roi_dat_va_xoa_cung_luc_khong_tao_lai_nhap(drafts_path):
+    """T-092 + T-130 qua lớp bọc: tab A xóa nháp «đã gửi 501» đúng lúc tab B tự lưu kiểu so rồi đặt.
+    Mọi thứ tự đều không có nháp tạo lại sau lần xóa; tab B (nếu thua) báo ``DraftGoneError``; dòng
+    «đã gửi 501» luôn còn (dòng mồ côi T-130), không bên nào ra lỗi khác."""
+    tab_a, tab_b = DraftStore(path=drafts_path), DraftStore(path=drafts_path)
+    sent = SendState.now(pending=False, post_id=501)
+    for n in range(ROUNDS):
+        snap = tab_b.save(DraftSnapshot(keyword=f"bài {n}"))
+        tab_b.save_send_state(snap.id, sent)
+        tab_a.list_drafts()
+        edited = snap.model_copy(update={"keyword": f"bài {n} đã sửa"})
+        deleted, saved = race(
+            partial(tab_a.delete, snap.id), partial(tab_b.save, edited, must_exist=True)
+        )
+        assert deleted is True
+        assert isinstance(saved, (DraftSnapshot, DraftGoneError)), saved
+        assert snap.id not in [d.id for d in tab_a.list_drafts().drafts]
+        assert tab_a.load_send_state(snap.id) == sent
+
+
+def test_l2_file_nhap_hop_le_che_do_wal_sau_vacuum_van_dung(drafts_path):
+    """File nháp app tạo, rồi chương trình khác chuyển sang chế độ WAL và ``VACUUM`` (không đổi cấu
+    trúc): kho mới mở được, không đổi tên file, nháp và trạng thái gửi còn nguyên, ghi tiếp được."""
+    first = DraftStore(path=drafts_path)
+    snap = first.save(DraftSnapshot(keyword="cổng inox"))
+    sent = SendState.now(pending=False, post_id=501)
+    first.save_send_state(snap.id, sent)
+    with closing(sqlite3.connect(drafts_path)) as conn:
+        assert conn.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
+        conn.execute("VACUUM")
+    again = DraftStore(path=drafts_path)
+    assert [d.id for d in again.list_drafts().drafts] == [snap.id]
+    assert again.load_send_state(snap.id) == sent
+    assert again.recovered_from is None and moved_drafts(drafts_path.parent) == []
+    again.save(snap.model_copy(update={"keyword": "cổng inox Tân Phú"}), must_exist=True)
+    assert again.load(snap.id).keyword == "cổng inox Tân Phú"
+
+
+def test_l2_cho_dat_file_la_hard_link_file_cat_di_con_dau_da_gui(drafts_path, tmp_path):
+    """Chỗ đặt file nháp là hard link tới file nháp ở ngoài dự án (có «đã gửi 501»): kho đổi tên
+    chính liên kết sang một bên, không ghi xuyên; dấu «đã gửi» vẫn nằm nguyên trong file cất đi
+    (không bị xóa), file ngoài nguyên từng byte."""
+    outside = tmp_path / "ngoai" / "drafts.sqlite"
+    seed = DraftStore(path=outside)
+    snap = seed.save(DraftSnapshot(keyword="cổng inox"))
+    seed.save_send_state(snap.id, SendState.now(pending=False, post_id=501))
+    before = outside.read_bytes()
+    drafts_path.parent.mkdir(parents=True)
+    hard_link_or_skip(outside, drafts_path)
+    store = DraftStore(path=drafts_path)
+    assert store.list_drafts().drafts == []  # kho dùng file mới
+    (moved,) = moved_drafts(drafts_path.parent)
+    assert store.recovered_from == moved
+    assert outside.read_bytes() == before
+    with closing(sqlite3.connect(f"file:{moved.as_posix()}?mode=ro", uri=True)) as conn:
+        assert '"post_id":501' in conn.execute("SELECT data FROM send_states").fetchone()[0]
