@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình (cần trước bản 1.0) |
 | Phụ thuộc | T-120 → T-127, T-133 đã gộp `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-11-10; Giai đoạn 6 đóng có điều kiện) |
 
 ## Mục tiêu
 
@@ -32,3 +32,4 @@ Kết luận Giai đoạn 6 đóng được hay còn gì (giống T-129, T-134).
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-10 trên đường tới bản 1.0. Worktree `wt-T-135`, nhánh `team/T-135`.
+- 2026-11-10 21:02 (Chỉ Huy B): biên bản `1cedac5`. Đánh dấu Giai đoạn 6 xong.

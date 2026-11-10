@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 |
 | Mức ưu tiên | Trung bình (cần trước bản 1.0) |
 | Phụ thuộc | Các phiếu Giai đoạn 5 đã gộp `main` (T-096 → T-103, T-109, T-112, T-113, T-115, T-128, T-130) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (2026-11-10; Giai đoạn 5 đóng có điều kiện) |
 
 ## Mục tiêu
 
@@ -33,3 +33,4 @@ Kết luận Giai đoạn 5 đóng được hay còn gì, giống T-093 (Giai đ
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-10 trên đường tới bản 1.0. Chạy Opus 5.5, ghi rõ model. Worktree `wt-T-134`, nhánh `team/T-134`.
+- 2026-11-10 21:02 (Chỉ Huy B): biên bản `2052dd5`. Đánh dấu Giai đoạn 5 xong sau khi T-131 gộp.

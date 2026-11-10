@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 (điều kiện đóng, T-129) |
 | Mức ưu tiên | Trung bình (trước bản 1.0) |
 | Phụ thuộc | T-122 đã gộp (mẫu `search_cache`); phần `drafts.py` làm **sau khi T-130 gộp** |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -42,3 +42,4 @@ Mọi kho SQLite trong máy kiểm file và từ chối `data/` là liên kết 
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-05 theo «Phiếu A» Lá Chắn T-129. Worktree `wt-T-131`, nhánh `team/T-131`.
+- 2026-11-10 21:02 (Chỉ Huy B): Soi Lỗi lượt 2 `fcc1d1d` ĐẠT, Lá Chắn Fable `1fdda13` ĐẠT CÓ ĐIỀU KIỆN. Gộp `main`, Windows 24.334 test qua, 0 hỏng. Đã đẩy. B.1, B.2, B.4 → T-136; B.3 (Mac) gom ca Mac.

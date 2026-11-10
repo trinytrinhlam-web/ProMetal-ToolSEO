@@ -28,9 +28,9 @@ File này tóm tắt toàn bộ công việc: đã làm tới đâu, đang làm 
 | 1 | WordPress: kiểm tra kết nối, chuyên mục/thẻ, tạo bài nháp, tải ảnh, ảnh đại diện | ✅ Xong |
 | 2 | AI viết bài | ✅ Xong (2026-10-16; xem mục 3) |
 | 3 | Ảnh: chọn ảnh từ thư mục, nén WebP, đổi tên chuẩn SEO, **giữ nguyên GPS**, alt bằng AI, ảnh AI kèm prompt | ⚪ Chưa làm |
-| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | 🟡 Đang làm: thiết kế xong (T-033); schema FAQPage (T-038) đã lên `main`; meta (T-036) và danh sách bài đã đăng (T-037) đang kiểm |
-| 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ⚪ Chưa làm |
-| 6 | Theo dõi thứ hạng qua Search Console | ⚪ Chưa làm (anh chốt giữ, 2026-10-15) |
+| 4 | Tối ưu on-page: meta title/description, schema, liên kết nội bộ (plugin SiteSEO) | ✅ Xong 2026-11-10 |
+| 5 | Kế hoạch & lịch: nhận kế hoạch (file / dán / Google Sheets), AI đề xuất, hẹn giờ đăng, gửi bài lên WordPress | ✅ Xong 2026-11-10 (Hẹn giờ/Đăng ngay bật sau buổi thử thật) |
+| 6 | Theo dõi thứ hạng qua Search Console | ✅ Xong 2026-11-10 (chờ buổi thử thật với Google) |
 
 ## 3. Giai đoạn 2 chi tiết
 
