@@ -42,7 +42,6 @@ lại file rỗng; chỉ mất các thẻ đã sửa tay, ảnh lại dùng th�
 from __future__ import annotations
 
 import sqlite3
-import stat
 import unicodedata
 from collections.abc import Iterable, Iterator
 from contextlib import closing, contextmanager, suppress
@@ -56,6 +55,7 @@ from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
 from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link
 from seo_app.images.folders import MAX_REL_PATH_CHARS, ImageFolderError, ImageRef
 from seo_app.images.tags import SOURCE_AI, FolderTags, ImageTags, TagError, tags_for_image
+from seo_app.storage import sqlite_file
 
 DEFAULT_IMAGE_TAGS_FILE = PROJECT_ROOT / "data" / "image_tags.sqlite"
 MAX_MANUAL_TAGS = 20_000  # quá số này thì bỏ các thẻ sửa tay cũ nhất
@@ -75,7 +75,7 @@ _SQLITE_CORRUPT = 11
 _SQLITE_TOOBIG = 18
 _SQLITE_NOTADB = 26
 _SQLITE_MAX_INT = 2**63 - 1  # số nguyên lớn nhất SQLite lưu được
-_JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
+_JOURNAL_SUFFIXES = sqlite_file.JOURNAL_SUFFIXES
 # Giới hạn số bước máy ảo SQLite cho mỗi lần mở (LC-T052-2). Đo trên Windows (T-070): việc nặng
 # nhất của một file hợp lệ (kiểm ``quick_check``, liệt kê, lưu kèm dọn thẻ cũ trên file 60.000 dòng,
 # 176 MB, gấp gần ba lần ``MAX_FILE_BYTES``) tốn dưới 2,1 triệu bước; truy vấn đệ quy vô hạn chạy
@@ -96,7 +96,7 @@ _CREATE_TABLES = (
     "CREATE TABLE IF NOT EXISTS info (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
 )
 _APP_TABLES = frozenset({b"manual_tags", b"info"})
-_MASTER_SQL = "SELECT type, name, tbl_name, substr(sql, 1, ?) FROM sqlite_master LIMIT ?"
+_MASTER_SQL = sqlite_file.MASTER_SQL
 _MAX_SQL_BYTES = 2048  # câu CREATE dài nhất của app chưa tới 400 byte
 _COLUMNS = (
     "root_index",
@@ -495,7 +495,7 @@ class ImageTagStore:
 
     @staticmethod
     def _journal_paths(path: Path) -> tuple[Path, ...]:
-        return tuple(path.with_name(path.name + suffix) for suffix in _JOURNAL_SUFFIXES)
+        return sqlite_file.journal_paths(path)
 
     def _move_aside(self) -> Path:
         """Đổi tên file hỏng (và file nhật ký đi kèm) sang một bên để giữ lại."""
@@ -517,24 +517,12 @@ class ImageTagStore:
         return target
 
 
-def _is_link(path: Path) -> bool:
-    """Liên kết tắt (symlink, junction) hoặc hard link: file thường có hơn một tên, tên kia có thể
-    nằm ngoài ``data/`` (SL-T052-7). SQLite không bao giờ tự tạo hard link."""
-    try:
-        if path.is_symlink() or path.is_junction():
-            return True
-        info = path.lstat()
-    except (FileNotFoundError, NotADirectoryError):
-        return False
-    return stat.S_ISREG(info.st_mode) and info.st_nlink > 1
-
-
-def _remove_link(path: Path) -> None:
-    """Chỉ gỡ chính liên kết (F1): file/thư mục nó trỏ tới, tên kia của hard link giữ nguyên."""
-    try:
-        path.unlink()
-    except (IsADirectoryError, PermissionError):
-        path.rmdir()  # junction Windows: xóa chính junction, không đụng thư mục đích
+# Phần kiểm file chung của 5 kho nằm ở ``sqlite_file`` (T-136); các hàm dưới giữ tên cũ, chuyển
+# hằng số của kho này vào lúc gọi (test hạ được giới hạn, vá được từng hàm như trước). Liên kết:
+# trước T-136 kho này chỉ xét symlink, junction và hard link; nay theo định nghĩa chung của 4 kho
+# kia (``data_dir.is_link``: thêm reparse point trỏ đi chỗ khác, SL-T052-7).
+_is_link = sqlite_file.is_link
+_remove_link = sqlite_file.remove_link
 
 
 def _parse_time(value: str, timezone: str) -> datetime | None:
@@ -550,25 +538,16 @@ def _parse_time(value: str, timezone: str) -> datetime | None:
 
 
 def _guard(conn: sqlite3.Connection) -> None:
-    """File thẻ là dữ liệu chưa tin cậy (F3): không chạy hàm "không vô hại" trong view/trigger/chỉ
-    mục của file; dừng truy vấn chạy quá ``_MAX_VM_STEPS`` bước trên kết nối này (LC-T052-2: SQLite
-    báo ``interrupted``); không cho tạo chuỗi hay khối byte dài quá ``_MAX_SQLITE_LENGTH``
-    (SL-T070-2: SQLite báo ``SQLITE_TOOBIG``).
-
-    Đây là lớp phòng sau lớp kiểm cấu trúc, và **không phải giới hạn thời gian**: mỗi bước bị chặn
-    cỡ, số bước bị chặn số, nhưng một truy vấn lạ vẫn có thể chạy lâu trước khi bị dừng. Lớp chặn
-    chính là ``_app_tables`` (chỉ câu SQL của app được chạy trên file)."""
-    conn.execute("PRAGMA trusted_schema = OFF")
-    conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_SQLITE_LENGTH)
-    limit = _MAX_VM_STEPS  # đọc lúc mở (test hạ được giới hạn)
-    steps = 0
-
-    def stop_when_too_long() -> int:
-        nonlocal steps
-        steps += _PROGRESS_EVERY
-        return 1 if steps > limit else 0
-
-    conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
+    """File thẻ là dữ liệu chưa tin cậy (F3): ``sqlite_file.guard`` với giới hạn của kho này
+    (LC-T052-2: quá số bước thì SQLite báo ``interrupted``; SL-T070-2: giá trị dài quá
+    ``_MAX_SQLITE_LENGTH`` thì ``SQLITE_TOOBIG``). Lớp phòng sau, **không phải giới hạn thời
+    gian**; lớp chặn chính là ``_app_tables``."""
+    sqlite_file.guard(
+        conn,
+        max_length=_MAX_SQLITE_LENGTH,
+        max_steps=_MAX_VM_STEPS,
+        progress_every=_PROGRESS_EVERY,
+    )
 
 
 def _begin(conn: sqlite3.Connection, *, write: bool) -> None:
@@ -582,20 +561,10 @@ def _begin(conn: sqlite3.Connection, *, write: bool) -> None:
 
 @cache
 def _expected_schema() -> dict[bytes, frozenset[tuple]]:
-    """Các dòng ``sqlite_master`` (loại, tên, bảng, câu lệnh) của hai bảng app tạo, theo tên bảng.
-
-    Dựng bằng chính ``_CREATE_TABLES`` trong một cơ sở dữ liệu trong bộ nhớ, nên khớp đúng cách
-    SQLite đang chạy ghi lại câu lệnh (bỏ ``IF NOT EXISTS``…). Mỗi bảng có một chỉ mục tự sinh
-    cho khóa chính (câu lệnh rỗng)."""
-    with closing(sqlite3.connect(":memory:")) as conn:
-        conn.text_factory = bytes
-        for sql in _CREATE_TABLES:
-            conn.execute(sql)
-        rows = conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, 16)).fetchall()
-    schema: dict[bytes, set[tuple]] = {}
-    for row in rows:
-        schema.setdefault(row[2], set()).add(tuple(row))
-    return {name: frozenset(items) for name, items in schema.items()}
+    """Các dòng ``sqlite_master`` (loại, tên, bảng, câu lệnh) của hai bảng app tạo, theo tên bảng
+    (``sqlite_file.schema_by_table``: dựng bằng chính ``_CREATE_TABLES`` trong bộ nhớ, nên khớp
+    đúng cách SQLite đang chạy ghi lại câu lệnh, kèm chỉ mục tự sinh của khóa chính)."""
+    return sqlite_file.schema_by_table(_CREATE_TABLES, max_sql_bytes=_MAX_SQL_BYTES)
 
 
 def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
@@ -603,25 +572,11 @@ def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
     trong file đều khớp đúng ``_expected_schema``; có gì khác thì ``None`` (LC-T052-2, SL-T052-9).
 
     Bắt được: khung nhìn, trigger, bảng ảo (``USING …``), ``WITHOUT ROWID``, ``CHECK``, cột sinh,
-    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối phải đặt ``text_factory = bytes``, và đang ở
-    trong giao dịch của thao tác (``_begin``).
-
-    Đọc vào **danh sách** (LC-T070-1): nhiều dòng hơn số mong đợi, hay một dòng ``(loại, tên)``
-    lặp lại, thì ``None``. So theo tập hợp thì một dòng chỉ mục lặp lại (``writable_schema``) gộp
-    vào dòng cũ và đẩy một trigger ra ngoài ``LIMIT``. Vẫn đọc có ``LIMIT``: không đọc vô hạn.
+    kiểu cột khác, chỉ mục thêm, bảng lạ. Kết nối đang ở trong giao dịch của thao tác
+    (``_begin``). Đọc vào **danh sách** có ``LIMIT`` (LC-T070-1): nhiều dòng hơn số mong đợi, hay
+    một dòng ``(loại, tên)`` lặp lại, thì ``None`` (``sqlite_file.app_table_names``).
     """
-    expected = _expected_schema()
-    limit = sum(len(items) for items in expected.values())
-    rows = [tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit + 1))]
-    if len(rows) > limit or len({row[:2] for row in rows}) != len(rows):
-        return None
-    found: dict[bytes, set[tuple]] = {}
-    for row in rows:
-        found.setdefault(row[2], set()).add(row)
-    for name, items in found.items():
-        if name not in expected or items != expected[name]:
-            return None
-    return frozenset(found)
+    return sqlite_file.app_table_names(conn, _expected_schema(), max_sql_bytes=_MAX_SQL_BYTES)
 
 
 def _is_healthy(path: Path) -> bool:
@@ -632,7 +587,13 @@ def _is_healthy(path: Path) -> bool:
     cấu trúc khác app tạo, ``quick_check`` khác ``ok``, có ô dài quá ``_MAX_SQLITE_LENGTH`` hay
     gặp ``SQLITE_TOOBIG`` (T-074, SL-T070-2), sai phiên bản, kiểm quá số bước). Lỗi khác (bận,
     khóa, không mở được) được ném lại để báo lỗi mà không đổi tên file.
+
+    T-136: đầu file ghi phiên bản lạ (byte 18–19 lớn hơn 2, ``sqlite_file.newer_file_format``)
+    cũng là file lạ; trước đây SQLite mở file đó ở chế độ chỉ đọc, mọi lần lưu thẻ báo «không mở
+    được» mà file không bao giờ được cất đi (cùng lớp LC-T131-1 b của kho nháp).
     """
+    if sqlite_file.newer_file_format(path):
+        return False
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT)) as conn:
             # File chưa tin cậy: không chạy hàm trong view/trigger/chỉ mục của nó khi kiểm.
@@ -663,9 +624,7 @@ def _is_healthy(path: Path) -> bool:
     return version is None or version == (SCHEMA_VERSION.encode(),)
 
 
-def _is_busy(exc: sqlite3.DatabaseError) -> bool:
-    text = str(exc).lower()
-    return isinstance(exc, sqlite3.OperationalError) and ("locked" in text or "busy" in text)
+_is_busy = sqlite_file.is_busy
 
 
 def _is_corrupt(exc: sqlite3.DatabaseError) -> bool:

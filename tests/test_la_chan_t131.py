@@ -41,13 +41,6 @@ def byte_18_la_3(file, _draft_id: str) -> None:
     file.write_bytes(bytes(data))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T131-1 (la-chan, Thấp, có từ trước): ô TEXT có UTF-8 hỏng làm list_drafts lỗi mãi; "
-        "byte 18 của đầu file > 2 làm mọi lần lưu lỗi mãi; file không được cất sang một bên"
-    ),
-)
 @pytest.mark.parametrize(
     "damage", [utf8_hong_trong_o, byte_18_la_3], ids=["utf8-hong-trong-o", "byte-18-la-3"]
 )

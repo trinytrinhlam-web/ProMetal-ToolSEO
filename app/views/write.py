@@ -4497,9 +4497,8 @@ except DraftError as exc:
 if store is not None and store.recovered_from is not None and not S.get("_recovered_noted"):
     S._recovered_noted = True
     st.warning(
-        "File nháp cũ bị hỏng nên đã được cất sang một bên "
-        f"(tên «{store.recovered_from.name}», cùng thư mục). App bắt đầu file nháp mới."
-    )
+        draft_storage.MSG_RECOVERED.format(name=escape_markdown(store.recovered_from.name))
+    )  # câu chung của kho nháp: lối tắt, dấu «đã gửi» ở file đã cất (T-136)
 if "_draft_error" in S:
     st.error(S.pop("_draft_error"))
 if "_images_notice" in S:

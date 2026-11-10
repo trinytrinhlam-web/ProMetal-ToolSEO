@@ -76,10 +76,7 @@ WEB_LABELS = {
     "private": "Riêng tư",
 }
 SQLITE_HEADER = b"SQLite format 3\x00"
-MSG_DRAFTS_MOVED = (
-    "File nháp cũ bị hỏng nên đã được cất sang một bên (tên «{name}», cùng thư mục). App bắt "
-    "đầu file nháp mới."
-)
+MSG_DRAFTS_MOVED = drafts.MSG_RECOVERED  # câu chung của kho nháp (T-136)
 
 MSG_NO_GOOGLE = (
     "Chưa kết nối Google Sheets nên chưa có kế hoạch để so và ghi. Vào Cài đặt → 📗 Google để "
