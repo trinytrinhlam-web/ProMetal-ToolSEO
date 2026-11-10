@@ -18,6 +18,10 @@ An toàn (F3, LC-T094-29):
   **Một dòng sai** (hay sai phiên bản, sai giờ) là bỏ cả cache. Nơi dùng đọc lại mọi dòng qua
   ``PlanRow`` (``sync.parse_sheet``), như dữ liệu vừa tải từ Sheet.
 - Mọi câu SQL dùng tham số ``?``; không ``pickle``, không ``eval``.
+- ``data/`` (hay một thư mục con) là liên kết thì không tạo, không mở, không xóa gì (câu cố định
+  ``MSG_DATA_DIR_LINK``); chính file, file nhật ký là liên kết thì chỉ gỡ liên kết (T-131,
+  SL-T117-1). Bước kiểm file đọc ``sqlite_master`` bằng bộ giải mã có bắt lỗi; UTF-8 hỏng,
+  «unsupported file format» là file lạ, bỏ file (cùng mẫu LC-T122-1).
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ import hashlib
 import json
 import math
 import sqlite3
+import stat
 from collections.abc import Iterator, Sequence
 from contextlib import closing, contextmanager, suppress
 from dataclasses import dataclass, field
@@ -35,6 +40,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from seo_app.config import DEFAULT_TIMEZONE, PROJECT_ROOT
+from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link, is_link
 
 DEFAULT_PLAN_CACHE_FILE = PROJECT_ROOT / "data" / "plan_cache.sqlite"
 DEFAULT_MAX_AGE_MINUTES = 5.0
@@ -60,6 +66,11 @@ _SQLITE_CORRUPT = 11
 _SQLITE_NOTADB = 26
 _SQLITE_TOOBIG = 18
 _SQLITE_INTERRUPT = 9
+# Lỗi do môi trường, không do file lạ (LC-T122-1): quyền, bận, khóa, hết bộ nhớ, chỉ đọc, vào ra,
+# đầy ổ, không mở được, giao thức khóa. Bước kiểm file gặp các mã này thì giữ file, báo câu; mã
+# khác («unsupported file format»…) là file lạ: bỏ file.
+_KEEP_FILE_CODES = frozenset({3, 5, 6, 7, 8, 10, 13, 14, 15})
+_JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
 
 _CREATE_TABLES = (
     "CREATE TABLE IF NOT EXISTS sheet_rows (number INTEGER PRIMARY KEY, cells TEXT NOT NULL)",
@@ -154,8 +165,12 @@ class PlanCacheStore:
         return age < -_CLOCK_SKEW or age > timedelta(minutes=self.max_age_minutes)
 
     def clear(self) -> None:
-        """Xóa file cache (lần sau tự tải lại)."""
+        """Xóa file cache (lần sau tự tải lại). ``data/`` là liên kết thì không xóa gì (file ở đó
+        nằm ngoài thư mục phần mềm), báo câu cố định (SL-T117-1). Lỗi đọc thư mục khi kiểm liên
+        kết cũng ra câu cố định (như LC-T122-2)."""
         try:
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                raise PlanCacheError(MSG_DATA_DIR_LINK)
             self._reset()
         except OSError as exc:
             raise PlanCacheError(_MSG_IO.format(detail=exc.strerror or "lỗi đọc/ghi")) from None
@@ -232,11 +247,22 @@ class PlanCacheStore:
             raise
 
     def _prepare(self) -> None:
-        """Tạo thư mục; liên kết tắt hay file hỏng/lạ thì xóa; tạo bảng nếu chưa có."""
+        """``data/`` là liên kết thì báo lỗi, không tạo, không mở (SL-T117-1); tạo thư mục; chính
+        file là liên kết thì xóa (chỉ xóa liên kết, F1), file nhật ký là liên kết thì gỡ, **cả hai
+        trước mọi lần SQLite mở file** (SL-T131-1, như ``site_index``, ``search_cache``:
+        ``_is_healthy`` mở file, SQLite đi theo liên kết ở tên nhật ký); file hỏng/lạ thì xóa; tạo
+        bảng nếu chưa có."""
         try:
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                raise PlanCacheError(MSG_DATA_DIR_LINK)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            if self.path.is_symlink() or (self.path.exists() and not _is_healthy(self.path)):
+            if _is_link(self.path):
                 # Liên kết tắt có thể trỏ ra ngoài data/ (F1): chỉ xóa chính liên kết.
+                self._reset()
+            for path in _journal_paths(self.path):
+                if _is_link(path):
+                    path.unlink()  # chỉ gỡ chính liên kết, không đụng file nó trỏ tới
+            if self.path.exists() and not _is_healthy(self.path):
                 self._reset()
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
@@ -249,8 +275,8 @@ class PlanCacheStore:
 
     def _reset(self) -> None:
         self.path.unlink(missing_ok=True)
-        for suffix in ("-journal", "-wal", "-shm"):
-            self.path.with_name(self.path.name + suffix).unlink(missing_ok=True)
+        for path in _journal_paths(self.path):
+            path.unlink(missing_ok=True)
         self.reset_count += 1
 
     def _reset_quietly(self) -> None:
@@ -391,12 +417,33 @@ def _app_tables(conn: sqlite3.Connection) -> frozenset[tuple] | None:
     return frozenset(rows)
 
 
+def _journal_paths(path: Path) -> tuple[Path, ...]:
+    return tuple(path.with_name(path.name + suffix) for suffix in _JOURNAL_SUFFIXES)
+
+
+def _is_link(path: Path) -> bool:
+    """Liên kết tắt (symlink, junction, reparse point trỏ đi chỗ khác: ``data_dir.is_link``) hay
+    hard link (file thường có hơn một tên; tên kia có thể nằm ngoài ``data/``)."""
+    if is_link(path):
+        return True
+    try:
+        info = path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+
+
 def _is_healthy(path: Path) -> bool:
     """File là SQLite đọc được, cấu trúc đúng như app tạo (hay còn trống), ``quick_check`` ổn.
-    ``False`` chỉ khi chắc chắn hỏng hay lạ; lỗi khác (bận, khóa) được ném lại."""
+
+    ``False`` khi chắc chắn hỏng hay lạ, gồm cả UTF-8 hỏng trong ``sqlite_master`` và
+    «unsupported file format» (LC-T122-1: trước đây hai lỗi này bị ném lại, file không bao giờ
+    được bỏ). Lỗi do môi trường (bận, khóa, không mở được, lỗi đọc/ghi, chỉ đọc, đầy ổ:
+    ``_KEEP_FILE_CODES``) được ném lại để không xóa nhầm."""
     try:
         with closing(sqlite3.connect(path, timeout=_HEALTH_TIMEOUT, isolation_level=None)) as conn:
             _guard(conn)
+            conn.text_factory = _decode_text  # UTF-8 hỏng trong sqlite_master là file lạ
             conn.execute("BEGIN")
             try:
                 tables = _app_tables(conn)
@@ -404,11 +451,14 @@ def _is_healthy(path: Path) -> bool:
                     return False
                 return conn.execute("PRAGMA quick_check").fetchone() == ("ok",)
             finally:
-                conn.execute("ROLLBACK")
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+    except _Corrupt:
+        return False
     except sqlite3.DatabaseError as exc:
-        if _is_corrupt(exc) or _is_too_big(exc) or _is_interrupted(exc):
-            return False
-        raise
+        if _is_busy(exc) or _code(exc) in _KEEP_FILE_CODES:
+            raise
+        return False
 
 
 def _code(exc: sqlite3.DatabaseError) -> int | None:
