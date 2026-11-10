@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 5 (trước khi bật công tắc Hẹn giờ/Đăng ngay) |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | T-092 đã gộp `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -49,3 +49,4 @@ W1 (không mở thêm đường gửi), W2 (không xóa gì trên website), U1.
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-05 theo điều kiện 1, 3 của Lá Chắn T-092. Worktree `wt-T-130`, nhánh `team/T-130` từ `main` có T-092.
+- 2026-11-10 13:03 (Chỉ Huy B): Soi Lỗi `9e3971b` ĐẠT, Lá Chắn `b0a36ea` ĐẠT. Gộp `main` (`f084f5c`), Windows 24.109 test qua, 0 hỏng. Đã đẩy.

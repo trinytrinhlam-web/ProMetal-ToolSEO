@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình (chủ dự án chọn câu 7 = B, 04/11) |
 | Phụ thuộc | T-125 (Lá Chắn Fable ĐẠT CÓ ĐIỀU KIỆN; nhánh `team/T-125`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Đã qua Lá Chắn; chờ gộp |
 
 ## Mục tiêu
 
@@ -54,3 +54,4 @@ Nguyên văn từ biên bản Lá Chắn T-120:
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-07. Worktree `wt-T-127`, nhánh `team/T-127` từ `team/T-125` (`09fdad2`).
+- 2026-11-10 13:03 (Chỉ Huy B): Thợ Máy 2 lượt, Soi Lỗi `8e2cd5a`, Lá Chắn Fable `08b24df` ĐẠT CÓ ĐIỀU KIỆN (B.1 → T-133, B.2 → README, B.3 → sổ rủi ro: T-126 lượt cuối). Chủ dự án đồng ý ghi sổ rủi ro LC-T120-24 (10/11). Gộp cùng T-126 sau toàn bộ test.

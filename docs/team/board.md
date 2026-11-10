@@ -2,11 +2,11 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-11-07 07:52 (Chỉ Huy B)._
+_Cập nhật: 2026-11-10 13:03 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
-**Cả dự án: khoảng 92% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
+**Cả dự án: khoảng 95% khối lượng việc** (ước tính theo số phiếu đã xong trong từng giai đoạn, cân theo độ lớn giai đoạn; giai đoạn 5, 6 chưa thiết kế nên con số còn đổi).
 
 | Giai đoạn | Hoàn thành | Đã làm được gì |
 |---|---|---|
@@ -14,9 +14,9 @@ _Cập nhật: 2026-11-07 07:52 (Chỉ Huy B)._
 | 1 · Kết nối WordPress | **100%** | Kiểm tra kết nối, chuyên mục, thẻ, tạo bài nháp, tải ảnh |
 | 2 · AI viết bài | **100%** | 3 hãng AI; ý định tìm kiếm, nghiên cứu, dàn ý, viết, tự rà soát; viết lại từng phần; kiểm tra văn phong; thử mù mô hình |
 | 3 · Ảnh | **100%** (đóng 02/11) | Đọc thư mục ảnh an toàn, xoay, 1600 px, WebP giữ GPS, AI gợi ý alt, thẻ ảnh từ tên thư mục, chặn shortcode, chèn ảnh vào nháp. **Màn hình chọn ảnh** trên trang Soạn bài (Ảnh thật/AI, GPS, duyệt alt) và nút **«Gửi nháp»** kèm ảnh lên WordPress, nhớ trạng thái gửi, chống gửi trùng kể cả hai tab. Ảnh «Gửi nháp» được gắn vào bài nháp nên không hiện trong danh sách Media công khai trước khi bài đăng. **Tạm không nhận ảnh HEIC** của iPhone tới khi thư viện có bản vá (bật lại ở T-111). Đã kiểm lại bằng Fable (T-116 nhóm 1). Để sau: tạo ảnh AI (T-053), GPS thẻ phụ (T-072), lỗi nhỏ thư mục ảnh (T-064), chạy test trên Mac (chủ dự án chốt 30/10) |
-| 4 · SEO trên trang | **khoảng 98%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27–28/10** (ghi SEO, ảnh còn GPS cả trên điện thoại); đã dọn xong lỗi nhỏ của client WordPress (T-091). Đã thêm cảnh báo trên trang Kết nối khi tài khoản thiếu quyền `unfiltered_html` (T-106) |
-| 5 · Kế hoạch, lịch, đăng bài | **khoảng 95%** | **Xong cả 8 phiếu thiết kế** (T-096 → T-103) và lõi ghi trạng thái website về Sheet (T-109): trang Kế hoạch, Cài đặt → Google, trang Bài viết, bước Xuất bản thật có màn hình xác nhận (Hẹn giờ/Đăng ngay đang tắt), **nút «Cập nhật trạng thái từ website»** (T-113). Đang làm: chuẩn bị bật Hẹn giờ/Đăng ngay (T-112, T-115). Còn: thử thật trên website cùng chủ dự án trước khi bật, Lá Chắn rà soát cả giai đoạn |
-| 6 · Theo dõi thứ hạng Google | **khoảng 40%** | **Thiết kế xong** (T-120): xem từng bài trên Google (hiển thị, click, CTR, vị trí, từ khóa), so hai kỳ, đánh dấu bài tụt hạng; chỉ đọc, dùng lại tài khoản Google đang có. **Xong đợt 1** (T-121 client chỉ đọc, T-122 cache, T-123 lõi tính toán); README mục 15 hướng dẫn việc chủ dự án làm phía Google. Đang làm đợt 2 (T-124 lấy số liệu). Chủ dự án chọn 04/11: trang mới «📈 Theo dõi», có nút «Đưa vào kế hoạch», các câu còn lại theo khuyến nghị |
+| 4 · SEO trên trang | **khoảng 99%** | Meta title, mô tả, slug, schema FAQ, liên kết nội bộ, ghi SEO vào nháp qua SiteSEO, màn hình bước 4 «SEO» chạy thật; **đã thử thật trên website 27–28/10** (ghi SEO, ảnh còn GPS cả trên điện thoại); đã dọn xong lỗi nhỏ của client WordPress (T-091). Đã thêm cảnh báo trên trang Kết nối khi tài khoản thiếu quyền `unfiltered_html` (T-106) |
+| 5 · Kế hoạch, lịch, đăng bài | **khoảng 97%** | **Xong cả 8 phiếu thiết kế** (T-096 → T-103) và lõi ghi trạng thái website về Sheet (T-109): trang Kế hoạch, Cài đặt → Google, trang Bài viết, bước Xuất bản thật có màn hình xác nhận (Hẹn giờ/Đăng ngay đang tắt), **nút «Cập nhật trạng thái từ website»** (T-113). Đang làm: chuẩn bị bật Hẹn giờ/Đăng ngay (T-112, T-115). Còn: thử thật trên website cùng chủ dự án trước khi bật, Lá Chắn rà soát cả giai đoạn |
+| 6 · Theo dõi thứ hạng Google | **khoảng 90%** | **Thiết kế xong** (T-120): xem từng bài trên Google (hiển thị, click, CTR, vị trí, từ khóa), so hai kỳ, đánh dấu bài tụt hạng; chỉ đọc, dùng lại tài khoản Google đang có. **Xong đợt 1** (T-121 client chỉ đọc, T-122 cache, T-123 lõi tính toán); README mục 15 hướng dẫn việc chủ dự án làm phía Google. Đang làm đợt 2 (T-124 lấy số liệu). Chủ dự án chọn 04/11: trang mới «📈 Theo dõi», có nút «Đưa vào kế hoạch», các câu còn lại theo khuyến nghị |
 
 Trên app hôm nay chủ dự án dùng thật được trang **Soạn bài bước 1–5**: viết bài bằng AI, chọn ảnh thật cho chỗ cần ảnh, bước SEO (meta, slug, liên kết nội bộ, schema), rồi **«Gửi nháp»** lên WordPress (cần khóa API và kết nối WordPress). Kế hoạch, lịch đăng (Giai đoạn 5) và theo dõi thứ hạng (Giai đoạn 6) chưa làm.
 
@@ -36,12 +36,9 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-124](tickets/T-124-lay-so-lieu-luu-thuoc-tinh.md) | GĐ6 đợt 2: lấy số liệu Search Console, kiểm kết nối, lưu thuộc tính vào `.env`, gom 3 hàm chuẩn hóa `WORDPRESS_URL` | Chỉ Huy (gộp) | `team/T-124` | Thợ Máy `ac6a53a`, `c8cbb5b` (R5), `03333cc`; Soi Lỗi đầy đủ **ĐẠT** (`37eb8a7`, 0 lỗi); Lá Chắn đầy đủ (Fable) **ĐẠT CÓ ĐIỀU KIỆN** (`682f62c`; ĐK → T-125, T-126, thử thật Google, T-131). ⏳ Gộp `main` sau toàn bộ test | [Thợ Máy](reports/T-124-tho-may.md) · [Soi Lỗi](reports/T-124-soi-loi.md) · [Lá Chắn](reports/T-124-la-chan.md) |
-| [T-126](tickets/T-126-readme-theo-doi-google.md) | GĐ6: README «Theo dõi trên Google» | Thư Ký | `team/T-126` | Phần 1 (việc chủ dự án làm phía Google, `cbe3114`): Lá Chắn **ĐẠT**, đã gộp `main`. ⏳ Phần 3 sau T-125 | [Thư Ký](reports/T-126-thu-ky.md) · [Lá Chắn](reports/T-126-la-chan.md) |
-| [T-125](tickets/T-125-trang-theo-doi.md) | GĐ6 đợt 3: trang «📈 Theo dõi» và mục Search Console trong Cài đặt | Soi Lỗi · T-125 trang Theo dõi | `team/T-125` | Họa Sĩ xong (`216ff2f`; chưa có nút từ khóa cho khoảng tự chọn → phiếu nhỏ). ⏳ **Soi Lỗi đầy đủ**, rồi Lá Chắn đầy đủ | [Họa Sĩ](reports/T-125-hoa-si.md) |
-| [T-130](tickets/T-130-giu-trang-thai-gui-khi-xoa-nhap.md) | Giữ trạng thái gửi khi xóa nháp đã gửi, nhắc khi xóa (điều kiện Lá Chắn T-092; trước khi bật công tắc) | Soi Lỗi · T-130 | `team/T-130` | Họa Sĩ xong (`302ba7a`). ⏳ **Soi Lỗi rút gọn**, rồi Lá Chắn | [Họa Sĩ](reports/T-130-hoa-si.md) |
-| [T-131](tickets/T-131-don-kho-du-lieu-phu.md) | Dọn kho dữ liệu phụ: kiểm file, chặn `data/` là liên kết cho mọi kho SQLite (điều kiện đóng GĐ4) | Thợ Máy · T-131 | `team/T-131` | ⏳ Phần 1–3 (`e53ee48`); phần `drafts.py` sau khi T-130 gộp | — |
-| [T-132](tickets/T-132-don-chu-giai-doan-4.md) | Dọn chữ GĐ4: trang Kết nối chỉ khuyên Biên tập viên (SL-T106-1), lọc meta (LC-T036-2, SL-T036-11), `recheck_draft` công khai | Thợ Máy | `team/T-132` | Thợ Máy xong (`1c8bba7`, 66 file test 7.968 qua). ⏳ Soi Lỗi rút gọn | [Thợ Máy](reports/T-132-tho-may.md) |
+| [T-126](tickets/T-126-readme-theo-doi-google.md) | GĐ6: README «Theo dõi trên Google» | Chỉ Huy (gộp) | `team/T-126` | Phần 1 đã gộp; phần 3 (`f3e2af3`) và lượt cuối (`f0ccb32`: nút «Đưa vào kế hoạch», kịch bản T-133 thêm ca, sổ rủi ro LC-T120-24, `security.md` U1): Lá Chắn ĐẠT / ĐẠT CÓ ĐIỀU KIỆN (`0256545`, `e917252`). ⏳ Gộp cùng T-127 | [Thư Ký](reports/T-126-thu-ky.md) · [Lá Chắn](reports/T-126-la-chan.md) |
+| [T-127](tickets/T-127-dua-tu-khoa-vao-ke-hoach.md) | GĐ6: nút «Đưa vào kế hoạch» (từ khóa Google thành đề xuất Thêm bài, lọc chặt LC-T120-24) | Chỉ Huy (gộp) | `team/T-127` | Thợ Máy 2 lượt (`0505f31`, `8ce3383`); Soi Lỗi ĐẠT CÓ ĐIỀU KIỆN (`8e2cd5a`, SL-T127-1 đóng); Lá Chắn đầy đủ (Fable) **ĐẠT CÓ ĐIỀU KIỆN** (`08b24df`). ⏳ Gộp `main` sau toàn bộ test | [Thợ Máy](reports/T-127-tho-may.md) · [Soi Lỗi](reports/T-127-soi-loi.md) · [Lá Chắn](reports/T-127-la-chan.md) |
+| [T-131](tickets/T-131-don-kho-du-lieu-phu.md) | Dọn kho dữ liệu phụ: kiểm file, chặn `data/` là liên kết cho mọi kho SQLite (điều kiện đóng GĐ4) | Thợ Máy · T-131 lượt 2 | `team/T-131` | Phần 1–3 (`e53ee48`); Soi Lỗi rút gọn ĐẠT CÓ ĐIỀU KIỆN (`5b83fde`, SL-T131-1 Thấp). ⏳ **Lượt 2**: SL-T131-1, phần `drafts.py` (T-130 đã gộp), docstring `set_gsc_site_url`; rồi Lá Chắn đầy đủ | — |
 
 ## Chờ
 
@@ -68,6 +65,11 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-124](tickets/T-124-lay-so-lieu-luu-thuoc-tinh.md) | GĐ6 đợt 2: lấy số liệu Search Console, kiểm kết nối, tìm và lưu thuộc tính, gom 3 hàm chuẩn hóa `WORDPRESS_URL` | Thợ Máy | 2026-11-10 | [Thợ Máy](reports/T-124-tho-may.md) · [Soi Lỗi](reports/T-124-soi-loi.md): ĐẠT · Lá Chắn đầy đủ (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-124-la-chan.md). Gộp `main`, toàn bộ test chạy hết 100% không ca hỏng (dòng tổng kết mất vì phiên khởi động lại), rồi chạy lại cùng T-125, T-130, T-132: Windows 24.109 test qua, 0 hỏng |
+| [T-125](tickets/T-125-trang-theo-doi.md) | GĐ6 đợt 3: **trang «📈 Theo dõi»** và mục Search Console trong Cài đặt | Họa Sĩ, Thợ Máy | 2026-11-10 | [Họa Sĩ](reports/T-125-hoa-si.md) · [Thợ Máy](reports/T-125-tho-may.md) lượt 2 · [Soi Lỗi](reports/T-125-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T125-1, -2 đóng) · Lá Chắn đầy đủ (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-125-la-chan.md). Gộp `main`, Windows 24.109 test qua, 0 hỏng |
+| [T-130](tickets/T-130-giu-trang-thai-gui-khi-xoa-nhap.md) | Xóa nháp đã gửi vẫn giữ trạng thái gửi (khóa gửi trùng ở mọi tab), nhắc khi xóa | Họa Sĩ | 2026-11-10 | [Họa Sĩ](reports/T-130-hoa-si.md) · [Soi Lỗi](reports/T-130-soi-loi.md): ĐẠT · Lá Chắn rút gọn: [**ĐẠT**](reports/T-130-la-chan.md) (ĐK 1, 3 của T-092 đóng). Gộp `main`, Windows 24.109 test qua, 0 hỏng |
+| [T-132](tickets/T-132-don-chu-giai-doan-4.md) | Dọn chữ GĐ4: trang Kết nối chỉ khuyên Biên tập viên, lọc meta bắt tên miền lạ và giá nói trống, `recheck_draft` công khai | Thợ Máy | 2026-11-10 | [Thợ Máy](reports/T-132-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-132-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T132-1, -2 đóng) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-132-la-chan.md). Gộp `main`, Windows 24.109 test qua, 0 hỏng |
+| [T-133](tickets/T-133-kich-ban-thu-that-google.md) | Kịch bản buổi thử thật Google Search Console | Thư Ký | 2026-11-10 | [Thư Ký](reports/T-133-thu-ky.md) · Lá Chắn rút gọn: [**ĐẠT**](reports/T-133-la-chan.md). Gộp `main` (chỉ tài liệu) |
 | [T-092](tickets/T-092-nhap-bi-xoa-o-tab-khac.md) | Nháp bị xóa ở một tab khi tab khác còn mở: tự lưu không lặng lẽ tạo lại nháp, giữ trạng thái gửi tab biết, bước Xuất bản giữ khóa gửi trùng; README, `.env.example`, câu báo emoji | Họa Sĩ | 2026-11-07 | [Họa Sĩ](reports/T-092-hoa-si.md) 2 lượt · [Soi Lỗi](reports/T-092-soi-loi.md): ĐẠT CÓ ĐIỀU KIỆN (SL-T092-1 đóng) · Lá Chắn rút gọn (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-092-la-chan.md) (ĐK → T-130). Chỉ Huy duyệt R5 `test_soi_loi_t089`. Gộp `main`, Windows 23.584 test qua, 0 hỏng |
 | [T-128](tickets/T-128-so-rui-ro-va-kich-ban-thu-that.md) | Sổ rủi ro 3 giới hạn `modified_gmt` (chủ dự án đồng ý 04/11), kịch bản buổi thử thật Hẹn giờ/Đăng ngay (LC-T094-44) | Thư Ký | 2026-11-07 | [Thư Ký](reports/T-128-thu-ky.md) 2 lượt · Lá Chắn rút gọn: [**ĐẠT**](reports/T-128-la-chan.md) (LC-T128-1..3 đóng). Gộp `main` (chỉ tài liệu). Kịch bản: [T-128-kich-ban-thu-that](reports/T-128-kich-ban-thu-that.md) |
 | [T-129](tickets/T-129-la-chan-ra-soat-giai-doan-4.md) | Lá Chắn rà soát đóng Giai đoạn 4 | Lá Chắn | 2026-11-07 | [Lá Chắn](reports/T-129-la-chan.md) (Opus 5.5): **ĐÓNG CÓ ĐIỀU KIỆN** (SL-T106-1 → T-132; LC-T129-1, SL-T117-1 → T-131; tài liệu khi đánh dấu). Gộp `main` |
@@ -200,4 +202,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-133 (T-127 đã đặt chỗ trong thiết kế T-120)
+## Số phiếu tiếp theo: T-134

@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Cao |
 | Phụ thuộc | T-124 (Lá Chắn Fable ĐẠT CÓ ĐIỀU KIỆN; nhánh `team/T-124`) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -68,3 +68,4 @@ Thêm: điều kiện 1 của Lá Chắn T-124 (mục 4 ở trên là tóm tắt
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-05 theo thiết kế T-120 và quyết định chủ dự án 04/11. Worktree `wt-T-125`, nhánh `team/T-125` từ `team/T-124` (`682f62c`); gộp `main` vào nhánh trước khi nộp.
+- 2026-11-10 13:03 (Chỉ Huy B): Soi Lỗi `1c55e9e`, Thợ Máy lượt 2 `93d9f78`/`df46f70`, Lá Chắn Fable `09fdad2`. Gộp `main` (`223c5f2`), Windows 24.109 test qua, 0 hỏng. Đã đẩy.

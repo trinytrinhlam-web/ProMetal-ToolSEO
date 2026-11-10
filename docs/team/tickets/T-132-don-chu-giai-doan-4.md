@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 4 (điều kiện đóng, T-129) |
 | Mức ưu tiên | Trung bình (trước bản 1.0) |
 | Phụ thuộc | Không |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -35,3 +35,4 @@
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-05 theo «Phiếu B» Lá Chắn T-129. Worktree `wt-T-132`, nhánh `team/T-132`.
+- 2026-11-10 13:03 (Chỉ Huy B): Lượt 2 `4a3bc10`, Lá Chắn `687daa0` ĐẠT. Gộp `main` (`7153f0a`), Windows 24.109 test qua, 0 hỏng. Đã đẩy.

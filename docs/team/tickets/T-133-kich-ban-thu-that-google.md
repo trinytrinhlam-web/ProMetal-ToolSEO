@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình (trước bản 1.0) |
 | Phụ thuộc | T-121, T-124 (lõi); T-125 (giao diện) để chốt tên nút |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -44,3 +44,4 @@ Soạn sẵn kịch bản từng bước cho buổi thử thật phần theo dõ
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-07 theo điều kiện 3 Lá Chắn T-124. Worktree `wt-T-133`, nhánh `team/T-133`.
+- 2026-11-10 13:03 (Chỉ Huy B): Thư Ký `d8410c6`, Lá Chắn `9c15b90` ĐẠT. Gộp `main`. Ca «Đưa vào kế hoạch» thêm ở T-126 lượt cuối.
