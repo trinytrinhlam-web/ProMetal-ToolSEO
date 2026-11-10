@@ -661,7 +661,6 @@ def test_r2_price_forms_detected(price):
 
 
 @pytest.mark.parametrize("price", ["5 trăm", "chỉ 5 trăm", "triệu rưỡi", "giá tính bằng VNĐ"])
-@pytest.mark.xfail(strict=True, reason="SL-T036-11: vài cách nói giá còn lọt (Thấp)")
 def test_r2_price_forms_still_missed(price):
     assert mentions_price(f"Sửa cửa sắt {price} tại nhà", KEYWORD)
 

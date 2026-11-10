@@ -2478,6 +2478,7 @@ COPY_LABELS = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
 KEYWORD_LABEL = "Từ khóa chính"
 MSG_KEYWORD_FIX = "Sửa từ khóa ở bước 1 · Chuẩn bị."
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
+MSG_FAQ_NOT_SENT = "Ô này chỉ ghi nhớ lựa chọn trong nháp: app chưa gửi schema lên website."
 MSG_SEO_WILL_SKIP = "Sẽ không ghi {fields}: ở bước SEO đang báo «Chặn» (xem lý do ở đó)."
 MSG_SEO_SKIPPED = (
     "Không ghi {fields}: ở bước SEO đang báo «Chặn». Sửa ở bước SEO rồi chép tay vào hộp SiteSEO."
@@ -2865,6 +2866,7 @@ def faq_panel() -> None:
             st.caption(f"⚠️ {escape_markdown(issue.message)}")
         if result.json_ld:
             st.checkbox("Dùng schema Hỏi đáp (FAQ) này cho bài", key="seo_use_faq")
+            st.caption(MSG_FAQ_NOT_SENT)  # T-132: như README mục 10 (Lá Chắn T-129 góp ý)
             st.code(result.json_ld, language="json")
 
 
@@ -3001,9 +3003,7 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
         written = seo.written is True
         if written and seo.route == "abilities":
             try:
-                # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai;
-                # phiếu sửa client sau nên mở hàm này ra).
-                client._own_draft(post_id)
+                client.recheck_draft(post_id)  # hỏi lại site bài còn là nháp (T-132)
             except WordPressError as exc:
                 message = f"{message} {MSG_SEO_RECHECK} {exc}"
                 written = False
