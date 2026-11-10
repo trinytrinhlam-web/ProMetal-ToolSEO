@@ -8,7 +8,7 @@
 | Giai đoạn | Giai đoạn 6 |
 | Mức ưu tiên | Trung bình |
 | Phụ thuộc | Phần 1: T-121 đã gộp; phần 2: sau T-125 |
-| Trạng thái | Đang làm (phần 1 xong; phần 3 sau T-125) |
+| Trạng thái | Xong (gộp `main` 2026-11-10) |
 
 ## Mục tiêu
 
@@ -40,3 +40,4 @@ Không ghi email tài khoản dịch vụ đầy đủ, mã project, đường d
 
 - Lập 2026-11-04 theo thiết kế T-120. Phần 1 giúp chủ dự án làm sớm hai việc phía Google cho buổi thử thật.
 - 2026-11-05 12:37 (Chỉ Huy B): phần 1 (`cbe3114`): README mục 15, chú thích `GSC_SITE_URL`; Lá Chắn rút gọn ĐẠT (`9ead565`). Gộp `main`, chạy lại test README/`.env.example`: 134 qua, 2 xfail.
+- 2026-11-10 16:02 (Chỉ Huy B): phần 3 (`f3e2af3`) và lượt cuối (`f0ccb32`), Lá Chắn `0256545`, `e917252`. Gộp `main` cùng T-127, Windows 24.204 test qua, 0 hỏng. Chủ dự án đồng ý sổ rủi ro LC-T120-24 (10/11). Đã đẩy.
