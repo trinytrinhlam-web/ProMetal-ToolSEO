@@ -4,9 +4,9 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-127](../tickets/T-127-dua-tu-khoa-vao-ke-hoach.md) · câu 7 = B (chủ dự án, 04/11) · LC-T120-13, -15, -24 |
-| Nhánh | `team/T-127`, từ `team/T-125` (`09fdad2`); mã và test `523b0ce`, `0505f31`; báo cáo ở commit ngay sau |
+| Nhánh | `team/T-127`, từ `team/T-125` (`09fdad2`); mã và test `523b0ce`, `0505f31`, báo cáo `0c1f286`; lượt 2 `8ce3383`, báo cáo lượt 2 ở commit ngay sau |
 | Ngày nộp | 2026-11-10 (giờ máy, +07) |
-| Kết quả | Hoàn thành: yêu cầu 1–5 |
+| Kết quả | Hoàn thành: yêu cầu 1–5; lượt 2: SL-T127-1 đã sửa (mục «Lượt 2» cuối báo cáo) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -121,3 +121,69 @@ uv run ruff format --check <4 file>     → 4 files already formatted
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 · SL-T127-1 (2026-11-10)
+
+| Mục | Nội dung |
+|---|---|
+| Lỗi | SL-T127-1 ([biên bản Soi Lỗi](T-127-soi-loi.md), Thấp). Nút «Đưa vào kế hoạch» kiểm trùng bài đã đăng bằng `cached_index()`: bản lưu trên máy cũ bao lâu cũng dùng, không tải lại, không báo |
+| Commit | `8ce3383` (mã và test); báo cáo lượt 2 ở commit ngay sau |
+| Kết quả | Đã sửa theo đúng gợi ý của Soi Lỗi |
+
+### Tóm tắt (cho chủ dự án)
+
+- Khi đưa từ khóa sang Kế hoạch, phần mềm so với danh sách bài đã đăng **còn mới**, giống cách nạp kế hoạch:
+  - danh sách trên máy cũ hơn 6 giờ thì tải lại từ website;
+  - không tải được thì đề xuất có dòng báo «Chưa tải được danh sách bài đã đăng…»;
+  - chưa kết nối WordPress thì có dòng báo «chưa kết nối».
+- Danh sách còn mới thì không gọi website, như trước.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `app/views/plan.py` | `take_google_keywords`: `index, notice = fresh_index()` thay cho `index = cached_index()`. Câu báo `notice` (nếu có) vào ghi chú đề xuất, sau dòng «Từ khóa chọn ở trang 📈 Theo dõi…». Đúng cách của `read_source` và `read_sheet_link` (T-098) |
+| `tests/test_soi_loi_t127.py` | Gỡ dấu `xfail(strict=True)` của ca SL-T127-1, vì ca đã XPASS. Thân test không đổi |
+| `tests/test_t127_dua_vao_ke_hoach.py` | Thêm 1 ca. Danh sách trên máy lưu cách đây 7 giờ; website trả thêm bài 99 «Cửa kéo mẫu 01». Kết quả mong đợi: tải lại đúng 1 lần, đề xuất «cửa kéo mẫu 01» có cảnh báo trùng bài 99, không có câu báo về danh sách |
+
+### Đổi kỳ vọng ca test cũ (R5)
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_soi_loi_t127.py::test_sl_t127_1_stale_published_list_is_refreshed_or_told` | `xfail(strict=True)` | Bỏ dấu (đã XPASS); thân test không đổi |
+
+### Bằng chứng
+
+```text
+# Windows 11, Python 3.12.15, ruff 0.16.10. Chạy trên đúng commit 8ce3383 (git status sạch).
+uv run pytest -q -p no:randomly tests/test_soi_loi_t127.py tests/test_t127_dua_vao_ke_hoach.py
+  trước khi gỡ dấu: 1 failed (XPASS strict của SL-T127-1), 93 passed
+  sau khi gỡ dấu:   95 passed
+
+# Đối chứng (script ở thư mục nháp; trả file về đúng byte, kiểm bằng SHA-256):
+#   cho take_google_keywords dùng lại cached_index()
+#   → 2 ca SL-T127-1 hỏng (ca của Soi Lỗi và ca mới của Thợ Máy).
+
+# 34 file liên quan:
+#   - nơi gọi propose.py và seo_app.plan;
+#   - trang Kế hoạch: test_app_pages, test_t101_*, test_t113_website_status,
+#     test_soi_loi_t113, test_la_chan_t113;
+#   - trang Theo dõi: test_t125_tracking_page, test_soi_loi_t125, test_t125_tho_may;
+#   - test_t127_dua_vao_ke_hoach, test_soi_loi_t127;
+#   - test quét cả cây mã nguồn.
+uv run pytest -q -p no:randomly -rfEsxX <34 file>
+  2484 passed, 1 skipped in 612.59s
+  # 0 hỏng. 1 bỏ qua: ca symlink file của T-125 (máy Windows này chưa bật Developer Mode).
+
+uv run ruff check .                     → All checks passed!
+uv run ruff format --check <3 file>     → đã đúng khuôn
+# Quét bí mật: 3 file lấy từ 8ce3383, có khóa giả đối chứng (bắt được) → 0 phát hiện.
+# Ký tự ẩn, CR, NFC: 0.
+# Gộp thử: git merge-tree với main cục bộ 7153f0a → không xung đột.
+#   main không sửa file nào của phiếu này.
+```
+
+### Rủi ro và điểm cần chú ý
+
+- **Sau khi bấm «Đưa vào kế hoạch», trang Kế hoạch có thể gọi website** để đọc danh sách bài, khi bản trên máy cũ hơn 6 giờ. Trang hiện vòng chờ «Đang tải danh sách bài đã đăng trên website…». Đây là việc người dùng bấm, giống hai đường đề xuất T-098.
+- Lời gọi chỉ chạy khi có từ khóa vừa chuyển sang. Khóa chuyển trang được lấy ra (`pop`) trước khi tải, nên tải lại trang không chạy lại. Mở trang như thường không thêm lời gọi nào.
