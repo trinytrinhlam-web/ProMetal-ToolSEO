@@ -463,6 +463,13 @@ _SEO_CHECK_FAILED = (
     "Không kiểm được bài nháp trên WordPress trước khi ghi SEO{code}. Chưa ghi gì; bài nháp "
     "vẫn còn. Thử lại sau, hoặc chép tay tiêu đề, mô tả SEO vào hộp SiteSEO của bài nháp."
 )
+# T-132: hỏi lại bài SAU lệnh ghi (``recheck_draft``): không dùng câu «trước khi ghi SEO… Chưa
+# ghi gì» của ``_SEO_CHECK_FAILED``, vì lúc này SEO đã ghi xong.
+_RECHECK_NOT_OWN = "Chỉ hỏi lại được bài nháp app vừa tạo trong lần làm việc này."
+_RECHECK_FAILED = (
+    "Không hỏi lại được bài trên WordPress{code} nên chưa biết bài còn là nháp không. Mở bài "
+    "trong trang quản trị WordPress, xem trạng thái bài và hộp SiteSEO."
+)
 _SEO_EMPTY = "Chưa có tiêu đề, mô tả hay từ khóa chính SEO nào để ghi."
 _SEO_DISABLED = (
     "Chưa bật ghi SEO lên website: hãy chép tiêu đề, mô tả SEO vào hộp SiteSEO của bài nháp."
@@ -1332,6 +1339,20 @@ class WordPressClient:
         if abilities:
             return self._seo_via_abilities(post_id, fields)
         return self._seo_via_meta(post_id, fields, draft)
+
+    def recheck_draft(self, post_id: int) -> None:
+        """Hỏi lại website bài ``post_id`` còn là nháp không, ngay sau một lệnh ghi (LC-T042-2: ghi
+        SEO qua Abilities xong). Hàm công khai cho app thay chỗ gọi ``_own_draft`` (T-132).
+
+        Chỉ cho bài nháp chính client này tạo (như ``set_seo_meta``); chỉ đọc: một lệnh ``GET``
+        của ``_own_draft``, cùng xử lý: bài không còn là nháp thì ``WordPressError`` câu
+        ``_SEO_NOT_DRAFT`` và client thôi coi bài là của app; bài bị sửa ngoài app thì đánh dấu
+        «không biết» (``release_draft`` không chuyển bài). Không hỏi được thì câu
+        ``_RECHECK_FAILED``.
+        """
+        if type(post_id) is not int or post_id not in self._created_post_ids:
+            raise WordPressError(_RECHECK_NOT_OWN)
+        self._own_draft(post_id, failed=_RECHECK_FAILED)
 
     def _own_draft(self, post_id: int, *, failed: str = "") -> dict[str, Any]:
         """Hỏi site bài ``post_id`` còn là nháp không (chỉ đọc). Không phải nháp: từ chối.
@@ -2348,6 +2369,67 @@ def is_site_link(link: object, base_url: str) -> bool:
     return (got_port or 443) == (want_port or 443)
 
 
+# ---------------------------------------------------------------- chuẩn hóa WORDPRESS_URL (T-124)
+# Một luật cho mọi nơi so địa chỉ trang với website: client Search Console (``site_prefix``), cache
+# số liệu (``CacheScope.base``) và lõi theo dõi (``page_key``) cùng nhập từ đây (gom 3 bản riêng của
+# T-121, T-122, T-123; Lá Chắn T-121 ghi nhận 1). Sửa các hàm này thì chạy test của cả ba nơi gọi.
+
+
+def site_path_ok(path: object) -> bool:
+    """Đường con của website (phần sau tên máy của ``WORDPRESS_URL``, đã bỏ «/» cuối) hợp lệ.
+
+    **Một luật** cho client WordPress (``_is_plain_site_url``) và client Search Console
+    (``site_prefix``): «/đoạn» lặp lại, mỗi đoạn chỉ chữ, số ASCII, «_», «~», «-»; không dấu «.»
+    (không ``/..``, không file ``.php``, ``.cgi``…: LC-T042-5); không chứa ``wp-json``,
+    ``code-snippets``, ``prometal``, ``wp-admin``. Chuỗi rỗng (website ở gốc tên miền) hợp lệ."""
+    if not isinstance(path, str) or not _SITE_PATH.fullmatch(path):
+        return False
+    lowered = path.lower()
+    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
+
+
+def _canonical_origin(url: str) -> tuple[str, int] | None:
+    """(«scheme://tên-máy[:cổng]» với scheme, tên máy viết thường và bỏ cổng 443 mặc định; độ dài
+    phần đầu tương ứng trong ``url``). ``None`` khi không tách được scheme, tên máy."""
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    host = parts.hostname
+    head = f"{parts.scheme}://{parts.netloc}"
+    if not parts.scheme or not host or url[: len(head)].lower() != head.lower():
+        return None
+    netloc = f"[{host}]" if ":" in host else host
+    if port is not None and not (parts.scheme == "https" and port == 443):
+        netloc = f"{netloc}:{port}"
+    return f"{parts.scheme}://{netloc}", len(head)
+
+
+def site_base(base_url: str) -> str:
+    """``WORDPRESS_URL`` dạng chuẩn để so tiền tố địa chỉ trang: scheme, tên máy viết thường (tên
+    máy không phân biệt hoa thường, như ``is_site_link``), bỏ cổng 443 mặc định, bỏ ``?…``, ``#…``
+    và «/» cuối; đường dẫn giữ nguyên chữ hoa, chữ thường. Không tách được tên máy thì chỉ bỏ «/»
+    cuối. Chỉ ``WORDPRESS_URL`` được chuẩn hóa: địa chỉ Google trả vẫn phải viết đúng như tiền tố
+    này (như bộ lọc phía Google, SL-T122-1, SL-T123-2)."""
+    base = base_url.rstrip("/")
+    origin = _canonical_origin(base)
+    if origin is None:
+        return base
+    return origin[0] + urlsplit(base).path.rstrip("/")
+
+
+def site_link(link: str) -> str:
+    """Link (của bài, trang WordPress) với scheme, tên máy viết thường và bỏ cổng 443; phần sau
+    tên máy giữ nguyên văn. Chỉ dùng sau ``is_site_link`` (đã chứng minh cùng tên máy, cùng cổng,
+    không tên/mật khẩu): ô «Địa chỉ trang» của WordPress gõ chữ hoa thì link bài có tên máy viết
+    hoa, vẫn là đúng website (LC-T123-1). Không tách được thì trả nguyên ``link``."""
+    origin = _canonical_origin(link)
+    if origin is None:
+        return link
+    return origin[0] + link[origin[1] :]
+
+
 def _published_from(raw: object, kind: str, base_url: str) -> PublishedItem | None:
     """Một mục REST -> ``PublishedItem``; ``None`` nếu không phải bài đã đăng hợp lệ."""
     if not isinstance(raw, dict) or raw.get("status") != "publish":
@@ -2516,13 +2598,10 @@ def _is_plain_site_url(base_url: str) -> bool:
         return False
     if parts.query or parts.fragment or not _SITE_HOST.fullmatch(parts.netloc):
         return False
-    if not _SITE_PATH.fullmatch(parts.path):
-        return False
     # SL-T042-10, LC-T042-5: thư mục con không được là file (``_SITE_PATH`` không nhận dấu ".").
     # Không chừa cả ``index.php``: website dùng đường dẫn tĩnh (``/wp-json/`` chạy được, T-033),
-    # không cần kiểu ``/index.php/wp-json/``.
-    lowered = parts.path.lower()
-    return not any(word in lowered for word in _SITE_PATH_FORBIDDEN)
+    # không cần kiểu ``/index.php/wp-json/``. Cùng luật với client Search Console (T-124).
+    return site_path_ok(parts.path)
 
 
 def _check_web_image(image: object, number: int) -> None:

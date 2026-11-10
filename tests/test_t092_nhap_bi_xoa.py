@@ -67,17 +67,19 @@ def break_send_state(store: DraftStore, draft_id: str) -> None:
 
 
 def test_must_exist_does_not_recreate_deleted_draft(store):
-    """Nháp đã bị xóa (cả trạng thái gửi): lần ghi đè so rồi đặt không ghi gì, báo lỗi riêng (một
-    dạng ``DraftError``, câu cố định)."""
+    """Nháp đã bị xóa (trạng thái gửi giữ lại thành dòng mồ côi, T-130): lần ghi đè so rồi đặt
+    không ghi gì, báo lỗi riêng (một dạng ``DraftError``, câu cố định); dòng mồ côi không đổi."""
     snap = store.save(DraftSnapshot(keyword="cổng inox"))
-    store.save_send_state(snap.id, SendState.now(pending=False, post_id=501))
+    state = SendState.now(pending=False, post_id=501)
+    store.save_send_state(snap.id, state)
     assert store.delete(snap.id)
+    kept = send_rows(store)
     with pytest.raises(DraftGoneError) as caught:
         store.save(snap.model_copy(update={"keyword": "sửa sau khi xóa"}), must_exist=True)
     assert isinstance(caught.value, DraftError)
     assert str(caught.value) == MSG_GONE
     assert store.list_drafts().drafts == []
-    assert send_rows(store) == {}
+    assert send_rows(store) == kept and store.load_send_state(snap.id) == state
 
 
 def test_must_exist_overwrites_draft_still_there(store):
@@ -206,6 +208,13 @@ def saved_captions(at) -> list[str]:
     return [c.value for c in at.caption if c.value.startswith("💾 Đã lưu lúc")]
 
 
+def lose_kept_state(store: DraftStore, draft: str) -> None:
+    """Từ T-130, xóa nháp giữ trạng thái gửi thành dòng mồ côi. Giả dòng đó cũng mất (bị dọn vì
+    quá ``max_orphan_send_states``, hay file nháp bị xóa): chỉ còn điều tab biết, đúng đường T-092
+    phải giữ khóa."""
+    assert store.save_send_state(draft, None)
+
+
 def test_autosave_does_not_recreate_draft_deleted_in_other_tab(project_root):
     """Tab 1 mở nháp; tab 2 bấm «🗑️ Xóa» → «Xóa hẳn» đúng nháp đó. Tab 1 làm tiếp: không lặng lẽ
     tạo lại nháp; trang báo rõ (thay cho «💾 Đã lưu lúc»), hỏi lưu lại hay bỏ. Tab 1 chưa từng thấy
@@ -273,9 +282,9 @@ def test_recreate_keeps_sent_state_this_tab_knows(project_root, root, fake_ai, s
 def test_sent_state_seen_at_publish_step_is_known(project_root, root, fake_ai, site, monkeypatch):
     """Tab khác gửi xong (bài 777); tab này đang ở bước Xuất bản, vẽ lại thì thấy «đã gửi 777» (chỉ
     lần đọc ở đó, ``_wp_seen``, biết: tab này không gửi gì, lần tự lưu trước đọc ra «chưa gửi»).
-    Nháp bị xóa ngay sau lần đọc đó, trước lần tự lưu của lần chạy. Tab vẫn biết «đã gửi 777»,
-    vẽ lại bước Xuất bản (đọc ra «chưa gửi» vì dòng đã bị xóa cùng nháp) vẫn nhớ; lưu lại vẫn
-    khóa."""
+    Nháp bị xóa ngay sau lần đọc đó, trước lần tự lưu của lần chạy, và dòng trạng thái gửi giữ
+    lại cũng mất (T-130: ``lose_kept_state``). Tab vẫn biết «đã gửi 777», vẽ lại bước Xuất bản
+    (đọc ra «chưa gửi») vẫn nhớ; lưu lại vẫn khóa."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     draft = at.session_state["draft_id"]
@@ -288,6 +297,7 @@ def test_sent_state_seen_at_publish_step_is_known(project_root, root, fake_ai, s
         if not deleted:
             deleted.append(draft_id)
             self.delete(draft_id)  # tab khác xóa nháp ngay sau lần đọc ở bước Xuất bản
+            lose_kept_state(self, draft_id)
         return original(self, draft_id)
 
     monkeypatch.setattr(DraftStore, "send_state_if_exists", delete_before_autosave)
@@ -308,9 +318,10 @@ def test_own_send_known_when_deleted_before_any_read(
     project_root, root, fake_ai, site, monkeypatch
 ):
     """Nháp bị xóa ngay khi lần gửi của tab này vừa ghi «đã gửi 501», trước mọi lần đọc sau đó
-    (cả ở bước Xuất bản): không lần đọc nào thấy gì, nhưng tab biết chính nó đã gửi bài 501
-    (``_wp_sent``, kết quả lần gửi). Tab vẫn đứng ở bước Xuất bản, vẽ lại nhiều lần (mỗi lần đọc
-    ra «chưa gửi»): lưu lại vẫn khóa «đã gửi 501»."""
+    (cả ở bước Xuất bản), và dòng trạng thái gửi giữ lại cũng mất (T-130: ``lose_kept_state``):
+    không lần đọc nào thấy gì, nhưng tab biết chính nó đã gửi bài 501 (``_wp_sent``, kết quả lần
+    gửi). Tab vẫn đứng ở bước Xuất bản, vẽ lại nhiều lần (mỗi lần đọc ra «chưa gửi»): lưu lại vẫn
+    khóa «đã gửi 501»."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     draft = at.session_state["draft_id"]
@@ -322,6 +333,7 @@ def test_own_send_known_when_deleted_before_any_read(
         if not deleted and state is not None and not state.pending:
             deleted.append(draft_id)
             self.delete(draft_id)  # tab 2 xóa đúng lúc lần gửi vừa ghi xong
+            lose_kept_state(self, draft_id)
             return original(self, draft_id)
         return state
 
@@ -341,8 +353,9 @@ def test_own_send_known_when_deleted_before_any_read(
 @pytest.mark.parametrize("kind", ["gửi dở", "dòng hỏng"])
 def test_recreate_keeps_unsure_lock(project_root, root, fake_ai, site, kind):
     """Tab này thấy khóa «gửi dở» (lần gửi trước chưa rõ kết quả, hay dòng trạng thái gửi hỏng)
-    rồi nháp bị xóa ở tab khác: lưu lại thì nháp vẫn khóa «gửi dở» (dòng hỏng thành «chưa rõ kết
-    quả»), phiên mới phải xác nhận đã kiểm trang quản trị mới gửi được."""
+    rồi nháp bị xóa ở tab khác, dòng trạng thái gửi giữ lại cũng mất (T-130: ``lose_kept_state``):
+    lưu lại thì nháp vẫn khóa «gửi dở» (dòng hỏng thành «chưa rõ kết quả»), phiên mới phải xác
+    nhận đã kiểm trang quản trị mới gửi được."""
     at, _pid = ui.ready_image(project_root)
     draft = at.session_state["draft_id"]
     ui.store().save_send_state(draft, SendState.now(pending=True, post_id=None))
@@ -351,6 +364,7 @@ def test_recreate_keeps_unsure_lock(project_root, root, fake_ai, site, kind):
     ui.to_publish(at)
     assert button(at, SEND).disabled
     assert ui.store().delete(draft)
+    lose_kept_state(ui.store(), draft)
     at.session_state["step"] = 2
     run_ok(at.run())
     assert KNOWN_SENT in notice(at)
@@ -388,12 +402,14 @@ def test_recreate_writes_send_state_before_draft(
 ):
     """«Lưu lại thành nháp» ghi trạng thái gửi trước rồi mới tạo lại nháp: hỏng ở bước nào thì
     cũng không có nháp tạo lại thiếu khóa (hỏng ở bước sau chỉ còn dòng trạng thái gửi, vô hại).
-    Trang vẫn báo và hỏi, kèm lý do; bấm lại khi hết lỗi thì được."""
+    Trang vẫn báo và hỏi, kèm lý do; bấm lại khi hết lỗi thì được. Dòng trạng thái gửi giữ lại
+    khi xóa cũng mất (T-130: ``lose_kept_state``), nên lần lưu lại phải tự ghi điều tab biết."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     ui.send(at)
     draft = at.session_state["draft_id"]
     assert ui.store().delete(draft)
+    lose_kept_state(ui.store(), draft)
     at.session_state["step"] = 2
     run_ok(at.run())
     original = getattr(DraftStore, failing)
@@ -546,15 +562,17 @@ def test_known_sent_stays_locked_until_confirmed_while_gone(project_root, root, 
 
 
 def test_draft_saved_back_without_state_keeps_this_tab_locked(project_root, root, fake_ai, site):
-    """G1 (Soi Lỗi T-092): tab này biết «đã gửi 777»; nháp bị xóa, rồi tab khác (không biết bài đã
-    gửi) lưu lại nháp không kèm trạng thái gửi. Tab này hết khung báo (nháp đã có lại) nhưng vẫn
-    khóa «đã gửi 777» qua nhiều lần vẽ và lần tự lưu: lần đọc «chưa gửi» không xóa bài tab đã
-    biết. Tick «Tạo thêm…» thì gửi được."""
+    """G1 (Soi Lỗi T-092): tab này biết «đã gửi 777»; nháp bị xóa (dòng trạng thái gửi giữ lại
+    cũng mất, T-130: ``lose_kept_state``), rồi tab khác (không biết bài đã gửi) lưu lại nháp
+    không kèm trạng thái gửi. Tab này hết khung báo (nháp đã có lại) nhưng vẫn khóa «đã gửi 777»
+    qua nhiều lần vẽ và lần tự lưu: lần đọc «chưa gửi» không xóa bài tab đã biết. Tick «Tạo
+    thêm…» thì gửi được."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     draft = seen_sent_elsewhere(at)
     snap = ui.store().load(draft)
     assert ui.store().delete(draft)
+    lose_kept_state(ui.store(), draft)
     run_ok(at.run())
     assert KNOWN_SENT in notice(at)
     ui.store().save(snap)  # tab khác bấm «Lưu lại thành nháp», không biết bài đã gửi
@@ -601,9 +619,10 @@ def test_click_through_lock_while_gone_sends_nothing(
 
 @pytest.mark.parametrize("gone", [True, False], ids=["nhap-bi-xoa", "nhap-con"])
 def test_unsure_knowledge_locks_only_when_draft_gone(project_root, root, fake_ai, site, gone):
-    """Tab thấy «gửi dở» chưa có mã bài (lần gửi ở tab khác đang chạy hay bị ngắt). Nháp bị xóa:
-    bước Xuất bản vẫn khóa «gửi dở» (phải tick «Tôi đã kiểm tra trang quản trị…»). Nháp còn mà kho
-    về «chưa gửi» (lần gửi đó xong mà chưa tạo gì): mở khóa ngay, không khóa oan."""
+    """Tab thấy «gửi dở» chưa có mã bài (lần gửi ở tab khác đang chạy hay bị ngắt). Nháp bị xóa
+    (dòng trạng thái gửi giữ lại cũng mất, T-130: ``lose_kept_state``): bước Xuất bản vẫn khóa
+    «gửi dở» theo điều tab biết (phải tick «Tôi đã kiểm tra trang quản trị…»). Nháp còn mà kho về
+    «chưa gửi» (lần gửi đó xong mà chưa tạo gì): mở khóa ngay, không khóa oan."""
     at, _pid = ui.ready_image(project_root)
     ui.to_publish(at)
     draft = at.session_state["draft_id"]
@@ -612,6 +631,7 @@ def test_unsure_knowledge_locks_only_when_draft_gone(project_root, root, fake_ai
     assert box(at, CHECKED) is not None and button(at, SEND).disabled
     if gone:
         assert ui.store().delete(draft)
+        lose_kept_state(ui.store(), draft)
     else:
         assert ui.store().save_send_state(draft, None)  # lần gửi đó xong, chưa tạo gì
     run_ok(at.run())

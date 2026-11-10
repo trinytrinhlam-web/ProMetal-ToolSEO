@@ -128,9 +128,11 @@ if info:
         f"- {plain(info.siteseo_status)}"
     )
     if not (info.can_edit_posts and info.can_upload_files):
+        # SL-T106-1 (T-132): chỉ khuyên vai Biên tập viên, như quyết định 2A và câu GPS dưới.
         st.warning(
-            "Tài khoản thiếu quyền viết bài hoặc tải ảnh. Nên dùng tài khoản có vai trò "
-            "Biên tập viên (Editor) hoặc Quản trị viên (Administrator)."
+            "Tài khoản thiếu quyền viết bài hoặc tải ảnh. Phần mềm cần một tài khoản riêng ở vai "
+            "trò **Biên tập viên (Editor)**: nhờ người quản trị website kiểm tra vai trò của tài "
+            "khoản này."
         )
     note = unfiltered_html_note(info)
     if note:

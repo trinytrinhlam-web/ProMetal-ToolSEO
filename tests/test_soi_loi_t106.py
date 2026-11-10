@@ -293,10 +293,6 @@ def test_bam_tao_nhap_sau_khi_kiem_khong_doi_cau_bao_va_khong_tai_anh(project_ro
 
 
 # ================================================================ lỗi tìm ra
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T106-1: câu cũ của mục 1 vẫn khuyên «Quản trị viên (Administrator)» cạnh câu mới",
-)
 @pytest.mark.parametrize(
     ("roles", "capabilities"),
     [(["contributor"], CONTRIBUTOR), (["editor"], _ABSENT)],

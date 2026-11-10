@@ -236,6 +236,15 @@ MSG_GONE_UNKNOWN = (
     "Nếu bài đã được gửi lên website ở tab khác thì tab này không biết: lưu lại rồi gửi nữa sẽ tạo "
     "thêm một bài trên website."
 )
+# Popover «🗑️ Xóa» của nháp đã gửi (T-130): xóa nháp không xóa gì trên website.
+MSG_DELETE_SENT = (
+    "Bài này đã gửi lên website (bài mã {post_id}). Xóa nháp **không** xóa bài trên website: muốn "
+    "bỏ bài thì xóa trong trang quản trị WordPress."
+)
+MSG_DELETE_UNSURE = (
+    "Lần gửi bài này chưa rõ kết quả: bài có thể đã có trên website. Xóa nháp **không** xóa gì "
+    "trên website: kiểm Bài viết → Nháp trong trang quản trị WordPress."
+)
 
 # Chỗ cần ảnh (T-056). Nhãn của segmented_control cố định giữa các lần chạy.
 REAL, AI_KIND = "Ảnh thật", "Ảnh AI"
@@ -895,20 +904,24 @@ def discard_gone_draft() -> None:
     st.toast("Đã bỏ bài đang soạn ở tab này", icon="🗑️")
 
 
-def known_send_state(*, own_send: bool = True) -> SendState | None:
+def known_send_state(
+    *, own_send: bool = True, extra: tuple[SendState | None, bool] | None = None
+) -> SendState | None:
     """Trạng thái gửi tab này biết lần cuối cho nháp đang mở (T-092): giữ khi tạo lại nháp, và
     khóa bước Xuất bản khi kho đọc ra «chưa gửi» (SL-T092-1).
 
     - Các lần đọc kho: lúc tự lưu (``_draft_send_known``: lần đọc cuối khi nháp còn, bài có mã
       không bị lần đọc «chưa gửi» xóa (``kept_send_knowledge``), gộp thêm những gì tab biết lúc
-      thấy nháp không còn) và ở bước Xuất bản (``_wp_seen``: gửi xong trang chạy lại ngay, lần
-      tự lưu của lần gửi không chạy). Lấy dòng ghi muộn nhất (``updated_at``). Có lần đọc thấy
-      dòng hỏng thì coi như lần gửi trước chưa rõ kết quả: khóa «gửi dở», giữ mã bài nếu biết.
+      thấy nháp không còn), ở bước Xuất bản (``_wp_seen``: gửi xong trang chạy lại ngay, lần
+      tự lưu của lần gửi không chạy) và ``extra`` (dòng giữ lại khi xóa nháp, T-130). Lấy dòng
+      ghi muộn nhất (``updated_at``). Có lần đọc thấy dòng hỏng thì coi như lần gửi trước chưa
+      rõ kết quả: khóa «gửi dở», giữ mã bài nếu biết.
     - ``own_send``: không lần đọc nào thấy gì mà chính tab này đã gửi (``_wp_sent``,
       ``_wp_maybe_draft``: nháp bị xóa ngay sau lần gửi, trước lần đọc kế tiếp): «đã gửi» kèm mã
       bài của lần đó; không rõ kết quả hay không có mã thì «gửi dở». Bước Xuất bản tự khóa theo
       các cờ này (``own_send=False``), không dựng trạng thái mang giờ của lần vẽ."""
-    reads = [read for read in (S.get("_draft_send_known"), S.get("_wp_seen")) if read is not None]
+    sources = (S.get("_draft_send_known"), S.get("_wp_seen"), extra)
+    reads = [read for read in sources if read is not None]
     states = [state for state, _broken in reads if state is not None]
     latest = max(states, key=lambda state: state.updated_at, default=None)
     if any(broken for _state, broken in reads):
@@ -928,8 +941,8 @@ def kept_send_knowledge(read: tuple[SendState | None, bool]) -> tuple[SendState 
     """Lần đọc kho khi nháp còn → điều tab biết (``_draft_send_known``), chỉ lên không xuống với
     bài đã có trên website (Soi Lỗi T-092, G1): kho đọc ra «chưa gửi» không xóa bài có mã tab đã
     biết. Luồng gửi không đưa nháp đã có bài về «chưa gửi» (lần gửi hỏng trả về đúng trạng thái
-    trước nó, LC-T089-1), nên kho «chưa gửi» ở đây là nháp bị xóa rồi được lưu lại không kèm
-    trạng thái gửi (tab lưu lại không biết bài đã gửi)."""
+    trước nó, LC-T089-1), xóa nháp cũng giữ trạng thái gửi (T-130), nên kho «chưa gửi» ở đây là
+    dòng đó đã mất (dòng mồ côi bị dọn, file nháp bị xóa) rồi nháp được lưu lại."""
     state, broken = read
     previous = S.get("_draft_send_known")
     if state is None and not broken and previous is not None:
@@ -937,6 +950,31 @@ def kept_send_knowledge(read: tuple[SendState | None, bool]) -> tuple[SendState 
         if known is not None and known.post_id is not None:
             return previous
     return read
+
+
+def kept_send_read(store: DraftStore, draft_id: str) -> tuple[SendState | None, bool] | None:
+    """Dòng trạng thái gửi giữ lại khi nháp bị xóa (T-130), thêm vào điều tab biết lúc thấy nháp
+    không còn. Không đọc được (dòng hỏng, file bận): bỏ qua; khóa vẫn nằm trong kho, «Lưu lại
+    thành nháp» so rồi đặt giữ nguyên dòng đó."""
+    try:
+        return store.load_send_state(draft_id), False
+    except DraftError:
+        return None
+
+
+def delete_warning(store: DraftStore, draft_id: str) -> str:
+    """Câu nhắc trong popover «🗑️ Xóa» của nháp đã gửi (T-130): xóa nháp không xóa gì trên
+    website. Rỗng: nháp chưa gửi. Chữ cố định, mã bài là số. Dòng hỏng, file bận: nhắc như lần
+    gửi chưa rõ kết quả (hướng an toàn)."""
+    try:
+        state = store.load_send_state(draft_id)
+    except DraftError:
+        return MSG_DELETE_UNSURE
+    if state is None:
+        return ""
+    if state.post_id is not None and not (state.pending or state.release_unknown):
+        return MSG_DELETE_SENT.format(post_id=state.post_id)
+    return MSG_DELETE_UNSURE
 
 
 def recreate_draft(store: DraftStore, snap: DraftSnapshot, current: str) -> None:
@@ -980,9 +1018,10 @@ def autosave(slot) -> None:
     Nháp đã có trong kho (đã lưu, vừa mở) phải **còn** đó (T-092): mỗi lần chạy kiểm nháp còn và
     đọc trạng thái gửi của nó trong một giao dịch (``send_state_if_exists``, nhớ vào
     ``_draft_send_known``), lần lưu thì so rồi đặt (``save(must_exist=True)``). Nháp bị xóa ở tab
-    khác (hay kho đầy bỏ bớt, file nháp bị xóa) thì không lặng lẽ tạo lại: nháp tạo lại không còn
-    trạng thái gửi, mất khóa gửi trùng. Trang báo rõ và hỏi (``gone_notice``); người dùng chọn tạo
-    lại thì ghi lại trạng thái gửi tab này biết (``recreate_draft``)."""
+    khác (hay kho đầy bỏ bớt, file nháp bị xóa) thì không lặng lẽ tạo lại: người dùng vừa xóa nó,
+    và trạng thái gửi có thể đã mất theo (trước T-130 luôn mất; nay chỉ khi dòng mồ côi bị dọn,
+    file nháp bị xóa). Trang báo rõ và hỏi (``gone_notice``); người dùng chọn tạo lại thì ghi lại
+    trạng thái gửi tab này biết (``recreate_draft``), dòng giữ lại trong kho thì giữ nguyên."""
     if "draft_id" not in S and not (keyword() or S.research is not None):
         return  # trang còn trống, chưa có gì để lưu
     recreate = S.pop("_draft_recreate", False)  # vừa bấm «Lưu lại thành nháp»
@@ -995,9 +1034,11 @@ def autosave(slot) -> None:
         known = store.send_state_if_exists(snap.id) if stored else None
         if stored and known is None:
             gone = True
-            # Gộp ngay những gì tab biết: các lần vẽ sau ở bước Xuất bản đọc ra «chưa gửi» (dòng
-            # đã bị xóa cùng nháp) và ghi đè ``_wp_seen``.
-            S._draft_send_known = (known_send_state(), False)
+            # Gộp ngay những gì tab biết, cả dòng trạng thái gửi giữ lại khi xóa nháp (T-130):
+            # dòng đó có thể bị dọn, hay cả file nháp bị xóa, thì các lần vẽ sau ở bước Xuất bản
+            # đọc ra «chưa gửi» và ghi đè ``_wp_seen``.
+            extra = kept_send_read(store, snap.id)
+            S._draft_send_known = (known_send_state(extra=extra), False)
             if recreate:
                 recreate_draft(store, snap, current)
                 gone = False
@@ -1027,9 +1068,11 @@ def format_saved(summary_time) -> str:
 
 
 def drafts_panel() -> None:
-    """Khung «Bài đang soạn dở» ở bước Chuẩn bị. Chữ từ nháp chỉ hiện bằng st.text."""
+    """Khung «Bài đang soạn dở» ở bước Chuẩn bị. Chữ từ nháp chỉ hiện bằng st.text. Popover
+    «🗑️ Xóa» của nháp đã gửi nhắc xóa nháp không xóa bài trên website (T-130)."""
+    store = draft_store()
     try:
-        listing = draft_store().list_drafts()
+        listing = store.list_drafts()
     except DraftError as exc:
         st.warning(str(exc))
         return
@@ -1062,6 +1105,9 @@ def drafts_panel() -> None:
                         width="stretch",
                     )
                 with del_col.popover("🗑️ Xóa", width="stretch"):
+                    warning = delete_warning(store, d.id)
+                    if warning:
+                        st.warning(warning, icon="⚠️")
                     st.markdown("Xóa hẳn nháp này? Không lấy lại được.")
                     st.button(
                         "Xóa hẳn",
@@ -2432,6 +2478,7 @@ COPY_LABELS = ("Tiêu đề SEO", "Mô tả SEO", "Đường dẫn (slug)")
 KEYWORD_LABEL = "Từ khóa chính"
 MSG_KEYWORD_FIX = "Sửa từ khóa ở bước 1 · Chuẩn bị."
 MSG_SEO_RECHECK = "Kiểm lại ngay sau khi ghi SEO:"
+MSG_FAQ_NOT_SENT = "Ô này chỉ ghi nhớ lựa chọn trong nháp: app chưa gửi schema lên website."
 MSG_SEO_WILL_SKIP = "Sẽ không ghi {fields}: ở bước SEO đang báo «Chặn» (xem lý do ở đó)."
 MSG_SEO_SKIPPED = (
     "Không ghi {fields}: ở bước SEO đang báo «Chặn». Sửa ở bước SEO rồi chép tay vào hộp SiteSEO."
@@ -2819,6 +2866,7 @@ def faq_panel() -> None:
             st.caption(f"⚠️ {escape_markdown(issue.message)}")
         if result.json_ld:
             st.checkbox("Dùng schema Hỏi đáp (FAQ) này cho bài", key="seo_use_faq")
+            st.caption(MSG_FAQ_NOT_SENT)  # T-132: như README mục 10 (Lá Chắn T-129 góp ý)
             st.code(result.json_ld, language="json")
 
 
@@ -2955,9 +3003,7 @@ def write_seo(client: WordPressClient, holder: dict) -> None:
         written = seo.written is True
         if written and seo.route == "abilities":
             try:
-                # Hàm riêng của client: hỏi lại site bài còn là nháp (không có hàm công khai;
-                # phiếu sửa client sau nên mở hàm này ra).
-                client._own_draft(post_id)
+                client.recheck_draft(post_id)  # hỏi lại site bài còn là nháp (T-132)
             except WordPressError as exc:
                 message = f"{message} {MSG_SEO_RECHECK} {exc}"
                 written = False
@@ -4109,7 +4155,8 @@ def saved_send_state() -> tuple[SendState | None, str]:
 def send_lock_state(saved: SendState | None, saved_error: str) -> SendState | None:
     """Trạng thái khóa gửi trùng ở bước Xuất bản: trạng thái trong kho (T-086); kho đọc ra «chưa
     gửi» thì điều tab biết (``known_send_state``, T-092, SL-T092-1). Bài có mã luôn khóa: kho chỉ
-    về «chưa gửi» khi nháp bị xóa ở tab khác, có thể đã được lưu lại không kèm trạng thái gửi.
+    về «chưa gửi» khi trạng thái gửi mất theo nháp (từ T-130: dòng mồ côi bị dọn, file nháp bị
+    xóa), có thể nháp đã được lưu lại sau đó.
     «Gửi dở» chưa có mã chỉ khóa khi nháp không còn trong kho: nháp còn mà kho «chưa gửi» là lần
     gửi đó đã xong mà chưa tạo gì (trả về «chưa gửi»), không khóa oan. Khóa tới khi người dùng
     «Lưu lại thành nháp» (kho có lại trạng thái gửi) hay tick xác nhận gửi tiếp."""

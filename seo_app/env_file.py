@@ -14,6 +14,10 @@ Riêng ``GOOGLE_SHEET_ID`` (T-097, LC-T094-15) có hàm ghi riêng ``set_google_
 kiểm riêng ``validate_sheet_id`` (chỉ ``[A-Za-z0-9_-]{25,100}``, chặt hơn khóa AI). Đường dẫn
 file khóa Google (``GOOGLE_SERVICE_ACCOUNT_FILE``) **không** ghi được từ giao diện.
 
+Thuộc tính Search Console ``GSC_SITE_URL`` (T-124, LC-T120-12, -23) ghi qua ``set_gsc_site_url``:
+bộ kiểm chặt ``validate_gsc_site_url`` **và** giá trị phải là một thuộc tính vừa nhận từ «Tìm thuộc
+tính»; ``gsc_site_url_overridden`` cho biết biến môi trường của máy có đè ``.env`` không.
+
 Mã băm mật khẩu ``APP_PASSWORD_HASH`` chỉ ghi qua ``set_password_hash``, cho script
 ``set_password`` (T-104), không từ giao diện; ``password_hash_overridden`` cho biết biến môi trường
 của máy có đè ``.env`` không (T-105).
@@ -29,7 +33,7 @@ import io
 import os
 import re
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -52,6 +56,14 @@ CHECK_TIMEOUT_SECONDS = 15.0
 # LC-T094-15). Dùng chung cho mọi nơi kiểm mã Sheet (``seo_app/google/sheets.py``).
 SHEET_ID_VAR = "GOOGLE_SHEET_ID"
 SHEET_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{25,100}")
+
+# Thuộc tính Search Console (T-124; thiết kế T-120 mục 1.2, câu hỏi 2 = A; LC-T120-12): chỉ hai dạng
+# ``sc-domain:<tên miền>`` và ``https://<tên máy>/``, chữ thường ASCII, số, «.», «-». Không xuống
+# dòng, dấu cách, «#», dấu nháy, «=», nên không chèn được biến khác vào ``.env``. Nghĩa (tên miền
+# hợp lệ, phủ website) do client Search Console kiểm (``parse_property``, ``covers_site``).
+GSC_SITE_URL_VAR = "GSC_SITE_URL"
+GSC_SITE_URL_PATTERN = re.compile(r"sc-domain:[a-z0-9.-]{1,253}|https://[a-z0-9.-]{1,253}/")
+GSC_SITE_URL_MAX = 300  # như MAX_SITE_URL_CHARS của client Search Console
 
 # Mã băm mật khẩu đăng nhập (``set_password``, T-104): chữ, số ASCII và ":" (dạng
 # ``pbkdf2_sha256:lặp:muối:băm`` của ``seo_app.auth``), giới hạn độ dài.
@@ -411,6 +423,61 @@ def clear_google_sheet_id(env_file: Path | None = None) -> None:
     Chưa có file hoặc chưa có dòng của biến thì không làm gì.
     """
     _write_value(SHEET_ID_VAR, "", env_file, add_if_missing=False)
+
+
+_MSG_GSC_MISSING = "Chưa chọn thuộc tính Search Console."
+_MSG_GSC_FORMAT = (
+    "Thuộc tính Search Console không đúng dạng (sc-domain:ten-mien hoặc https://ten-mien/). Bấm "
+    "«Tìm thuộc tính» rồi chọn lại."
+)
+_MSG_GSC_NOT_OFFERED = (
+    "Chỉ lưu được thuộc tính vừa tìm thấy ở «Tìm thuộc tính» (và dùng được cho website). Bấm "
+    "«Tìm thuộc tính» rồi chọn lại."
+)
+
+
+def validate_gsc_site_url(value: object) -> str:
+    """Kiểm thuộc tính Search Console sẽ ghi vào ``.env`` (bộ kiểm chặt riêng, LC-T120-12): đúng
+    ``GSC_SITE_URL_PATTERN`` (toàn chuỗi), tối đa ``GSC_SITE_URL_MAX`` ký tự. Không bỏ khoảng trắng
+    (có khoảng trắng là sai). Câu báo không bao giờ chép giá trị."""
+    if not isinstance(value, str) or not value:
+        raise EnvFileError(_MSG_GSC_MISSING)
+    if len(value) > GSC_SITE_URL_MAX or not GSC_SITE_URL_PATTERN.fullmatch(value):
+        raise EnvFileError(_MSG_GSC_FORMAT)
+    return value
+
+
+def set_gsc_site_url(
+    value: str, *, offered: Iterable[str], env_file: Path | None = None
+) -> None:
+    """Ghi ``GSC_SITE_URL`` vào ``.env`` (cách ghi như ``set_google_sheet_id``: thay đúng dòng của
+    biến hay thêm vào cuối, giữ mọi dòng khác, ghi nguyên tử, đọc lại để chắc chắn).
+
+    ``offered``: các thuộc tính vừa nhận từ lệnh ``sites`` («Tìm thuộc tính») trong cùng phiên và
+    dùng được cho website. Giá trị phải là **một trong số đó** và qua ``validate_gsc_site_url``
+    (LC-T120-12): đường này không nhận chữ gõ tay."""
+    cleaned = validate_gsc_site_url(value)
+    if isinstance(offered, str | bytes) or not isinstance(offered, Iterable):
+        raise EnvFileError(_MSG_GSC_NOT_OFFERED)
+    allowed = {item for item in offered if isinstance(item, str)}
+    if cleaned not in allowed:
+        raise EnvFileError(_MSG_GSC_NOT_OFFERED)
+    _write_value(GSC_SITE_URL_VAR, cleaned, env_file)
+
+
+def clear_gsc_site_url(env_file: Path | None = None) -> None:
+    """Để trống ``GSC_SITE_URL`` (``GSC_SITE_URL=``), giữ nguyên dòng và vị trí của nó. Chưa có file
+    hoặc chưa có dòng của biến thì không làm gì."""
+    _write_value(GSC_SITE_URL_VAR, "", env_file, add_if_missing=False)
+
+
+def gsc_site_url_overridden(environ: Mapping[str, str] | None = None) -> bool:
+    """``GSC_SITE_URL`` có trong biến môi trường hệ điều hành (LC-T120-23). Cùng điều kiện với
+    ``load_settings``: biến **có mặt** là đè ``.env``, kể cả rỗng (như ``password_hash_overridden``;
+    không ``.strip()``). Khi đó thuộc tính ghi vào ``.env`` không có hiệu lực. Chỉ trả về đúng/sai,
+    không bao giờ trả về giá trị."""
+    env = os.environ if environ is None else environ
+    return GSC_SITE_URL_VAR in env
 
 
 def set_password_hash(value: str, env_file: Path | None = None) -> None:
