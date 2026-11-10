@@ -83,3 +83,145 @@
 ### 7. Kết luận phần 1
 
 **ĐẠT.** Gộp `main` được ngay. N1–N3 có thể sửa cùng phần 2 (sau T-125); N4 chuyển cho T-125 và kịch bản buổi thử. Phần 2 (cách đọc số, nút «Đưa vào kế hoạch») Lá Chắn kiểm khi giao.
+
+---
+
+## Phần 3 (README mục 15: cách dùng trong app, cách đọc số) · Opus 5.5
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | `team/T-126` tại `f3e2af3`: nhánh nằm ngay trên `main` cục bộ `7153f0a` (đã có T-124, T-125, T-130, T-132). Đổi 3 file tài liệu: `README.md` (mục 15 `:604-756`, dòng Trạng thái, mục 4), `.env.example` (chú thích `GSC_SITE_URL`), báo cáo Thư Ký mục «Phần 3». Đối chiếu: điều kiện B.2 của Lá Chắn T-124; giao diện thật trên `main` (`app/views/tracking.py`, `app/views/settings.py`, `seo_app/tracking/refresh.py`, `seo_app/env_file.py`, `seo_app/config.py`); biên bản Lá Chắn T-125 (Fable) |
+| Ngày | 2026-11-10 (11:34–11:39, giờ máy +07) |
+| **Kết luận** | **ĐẠT** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp. Đủ 5 ý của T-124 B.2. Không lộ bí mật; không câu nào bảo nâng quyền. N1–N3 của phần 1 đã sửa. 1 ghi nhận cho T-127. **Gộp `main` được ngay** |
+
+### Tóm tắt (cho chủ dự án)
+
+- README nay có đủ cách dùng trang **📈 Theo dõi**:
+  - chọn thuộc tính bằng nút «Tìm thuộc tính»;
+  - lấy số liệu;
+  - đọc từng ô, từng nhãn;
+  - xử lý từng câu lỗi.
+- Các câu liên quan an toàn đều đúng với phần mềm:
+  - chỉ bấm nút mới hỏi Google;
+  - thuộc tính chỉ chọn từ danh sách Google trả về, không tự gõ;
+  - từ khóa không gửi cho AI, không ghi lên Google Sheets;
+  - gặp lỗi 403 thì không nâng quyền.
+- Không có email, mã project, đường dẫn file khóa hay tên miền thật.
+- **Việc của anh/chị:** không có.
+
+### 1. Đủ điều kiện B.2 của Lá Chắn T-124: **đủ**
+
+| Ý (T-124 B.2) | README | Đối chiếu code |
+|---|---|---|
+| Lần đầu khoảng một phút, 18 lệnh | «Lấy số liệu»: «lần đầu lấy 16 tháng số liệu, khoảng một phút, hỏi Google khoảng 18 lần» | 16 đoạn ngày × trang + 2 kỳ từ khóa (Thư Ký tính bằng chính hàm của `refresh.py`; kịch bản T-133 dùng cùng số) |
+| Bấm lại trong 10 phút không có gì mới | trích câu «Vừa lấy số liệu lúc …; Google cập nhật khoảng một lần mỗi ngày nên chưa có gì mới…», nói rõ «không hỏi Google» | câu có trong `refresh.py` |
+| Nghĩa «số tạm» | «Đọc số» → «Trễ 2–3 ngày, chỉ tính số đã chốt»: số tạm là số Google còn đang cộng, app không hiện, không tính, tự lấy lại khi đã chốt | câu «… ngày gần nhất còn là số tạm, chưa tính.» có trong mã |
+| Thuộc tính chỉ chọn qua «Tìm thuộc tính» | Bước 4 (`:646-655`): chỉ dòng «✔ dùng được» chọn được; «app chỉ lưu thuộc tính vừa tìm thấy và dùng được… Đừng tự gõ dòng này». `.env.example`: «Đừng tự gõ» | Lá Chắn T-125 đã kiểm `save_property` chỉ nhận đối tượng vừa tìm (T-124 B.1 (a)) |
+| Biến môi trường `GSC_SITE_URL` đè `.env` | Bước 4: «Biến này được ưu tiên hơn file `.env`, **kể cả khi để trống**… Nhờ người hỗ trợ gỡ biến đó khỏi máy». `.env.example` cùng ý | Đúng từng chữ: `load_settings` lấy mọi biến **có mặt** trong môi trường, kể cả rỗng (`config.py:125`); `gsc_site_url_overridden` cùng điều kiện (`env_file.py:474-480`) |
+
+### 2. Khớp giao diện thật và biên bản T-125
+
+- **Câu, nút README trích:** tôi chạy script riêng (chỉ đọc mã trên `main`), đủ 56 đoạn: Cài đặt → Search Console, trang Theo dõi, 7 nhãn, bảng lỗi 9 dòng. 55 đoạn có nguyên văn. Câu «Tài khoản dịch vụ thấy thuộc tính này, quyền «Hạn chế».» ghép lúc chạy từ `MSG_LISTED` (`refresh.py:140`), với nhãn quyền «Hạn chế» (`:177`). Thư Ký đối chiếu 192/192.
+- **Câu liên quan bảo mật, đúng với mã và với biên bản Lá Chắn T-125:**
+  - «Mở trang không hỏi Google… Chỉ nút 🔄 Lấy số liệu mới gọi Google; ở Cài đặt chỉ có 🔎 Tìm thuộc tính và ✅ Kiểm tra» (`:668`): đúng LC-T120-21, T-125 đã kiểm.
+  - «Từ khóa chỉ hiện ở trang này: app không gửi từ khóa cho AI, không ghi lên Google Sheets» (`:725`): đúng LC-T120-13. Tôi grep lại: `seo_app/ai`, `seo_app/plan`, `seo_app/content`, trang Kế hoạch, Soạn bài không nhập gì từ `seo_app/tracking` hay `search_cache`.
+  - Nút «➕ Đưa vào kế hoạch» được ghi là chưa làm (T-127), nút khóa.
+- **Nhãn 👻 khuyên chủ dự án tự «Kiểm tra URL», «Yêu cầu lập chỉ mục» trong Search Console** (`:710`): đó là việc chủ dự án làm bằng tài khoản của mình, không phải quyền của tài khoản dịch vụ. Phần mềm vẫn không có URL Inspection (LC-T120-7). Không phải nâng quyền.
+
+### 3. Không lộ bí mật, không bảo nâng quyền: **đạt**
+
+- detect-secrets (`PYTHONUTF8=1`; chép `README.md`, `.env.example`, báo cáo Thư Ký ra thư mục ngoài git cùng file mồi tiếng Việt, `scan --all-files .`): 3 file 0 kết quả; file mồi bị bắt.
+- Grep phần thêm của diff `f3e2af3`: không email, không link Sheet, không `sc-domain:` thật, không tên miền thật, không `.json`, không đường dẫn máy.
+- Mọi chỗ nhắc «Toàn quyền», «chủ sở hữu» đều ở thể phủ định: «**Không** chọn Toàn quyền… **không** thêm làm chủ sở hữu», «**Đừng nâng lên «Toàn quyền» hay chủ sở hữu** để thử». Câu ««Hạn chế» là đủ» nay ghi «theo Google» và «buổi thử sẽ xác nhận» (N1 phần 1).
+- N2 (chỉ thêm email vào đúng thuộc tính của website này, vì ai có file khóa cũng đọc được mọi thuộc tính có email đó) và N3 (thuộc tính tiền tố có đường con bị từ chối) đã thêm vào bước 3 và bảng «Chọn thuộc tính nào».
+
+### 4. Ghi nhận (không tính lỗi)
+
+- **G1 · Cho T-127:** câu «app không gửi từ khóa cho AI, **không ghi lên Google Sheets**» (`:725`) đúng hôm nay. Khi làm T-127 («Đưa vào kế hoạch»), từ khóa Google mà chủ dự án tick sẽ thành dòng kế hoạch, rồi được ghi lên Google Sheets. Phiếu T-127 phải sửa câu này cùng lúc, ví dụ «… chỉ lên Google Sheets khi bạn tự tick «Đưa vào kế hoạch» rồi áp dụng». Lá Chắn sẽ đối chiếu khi kiểm T-127.
+
+### 5. Kết quả kiểm tra
+
+| Việc | Kết quả | Đã xác minh |
+|---|---|---|
+| detect-secrets 3 file + mồi | 0 kết quả; mồi bị bắt | ✔ |
+| Script đối chiếu câu, nút (chỉ đọc mã) | 56 đoạn, 55 nguyên văn, 1 ghép lúc chạy | ✔ |
+| pytest file đọc `.env.example` (`test_config.py`, `test_t090_env_bang_ma.py`, `test_la_chan_t090.py`) | 58 qua, 12 giây | ✔ |
+| Gộp thử `main` cục bộ `7153f0a` | nhánh nằm ngay trên `main`, `merge-tree` sạch | ✔ |
+
+### 6. Kết luận phần 3
+
+**ĐẠT.** Gộp `main` được ngay. G1 chuyển cho phiếu T-127.
+
+---
+
+## Lượt cuối (nút «Đưa vào kế hoạch», kịch bản T-133 ca 6b, `security.md`) · Opus 5.5
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | Đọc nhanh `f0ccb32` (Thư Ký) trên `team/T-126` (nằm ngay trên `main` `7153f0a`), 4 file tài liệu: `README.md` (mục 14 một câu; mục 15 `:725-737`, bảng lỗi +1 dòng), `docs/team/reports/T-133-kich-ban-thu-that-google.md` (ca 6b `:184-211`, đoạn lệnh ca 7, dọn bước 7), `docs/team/security.md` (U1 `:111`, §6 `:181`), báo cáo Thư Ký «Lượt cuối». Đối chiếu: mã T-127 trên `origin/team/T-127` (`08b24df`: `seo_app/plan/propose.py`, `seo_app/plan/model.py`, `app/views/tracking.py`, `app/views/plan.py`), điều kiện B.1–B.3 của biên bản Lá Chắn T-127 (Fable), điều kiện B.4 của Lá Chắn T-125, LC-T120-24 |
+| Ngày | 2026-11-10 (12:37–12:42, giờ máy +07) |
+| **Kết luận** | **ĐẠT CÓ ĐIỀU KIỆN** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp. Cả 4 chỗ khớp mã và điều kiện. Không lộ bí mật, không câu nào bảo nâng quyền. **Hai điều kiện nhỏ** (mục 5): dòng sổ rủi ro mới cần chủ dự án xác nhận; gộp `main` cùng lúc hay sau T-127 |
+
+### 1. README «Đưa từ khóa vào kế hoạch» khớp LC-T120-24 và mã T-127: **đạt**
+
+| README (`:726-737`) | Mã T-127 (`08b24df`) |
+|---|---|
+| Tối đa 10 mỗi lần | `MAX_GOOGLE_KEYWORDS = 10` (`propose.py:870`); ô chọn `max_selections` (`tracking.py:833-834`); nhãn «Chọn từ khóa đưa vào kế hoạch (tối đa 10)» (`MSG_PLAN_PICK`, `:196`) |
+| Chỉ chữ tiếng Việt hoặc a–z, số, khoảng trắng, «-», ≤ 80 ký tự | `google_keyword` (`propose.py:901-923`): NFC, gộp khoảng trắng; `_KEYWORD_LETTERS` (a–z, «đ», 12 nguyên âm × 5 dấu, cả chữ hoa; không chữ trông giống, chữ vô hình) + `_KEYWORD_OTHERS` (`" -0123456789"`); `GOOGLE_KEYWORD_MAX = 80`; phải có ít nhất một chữ cái |
+| Không số điện thoại (bắt đầu bằng 0 hay 84), email, địa chỉ web | `personal_info` (`model.py:402-406`, `_PHONE_RE` nhận đầu `0`, `84`, `+84`, `(0`…; `_EMAIL_RE`); chữ web: không có «.», «:», «/» qua bộ lọc ký tự, còn «www», «http», «https» bị bỏ (`_WEB_WORDS`) |
+| Lọc lại lần nữa ở trang Kế hoạch; trùng trong lần đưa lấy một; cảnh báo ⚠️ trùng kế hoạch, bài đã đăng; nguồn «Search Console», trạng thái «Chưa viết» | `from_google_keywords` (`propose.py:926-…`): qua `google_keyword` rồi mọi bộ kiểm `PlanRow`, gộp theo `keyword_key`, `check_proposals` như T-098, `SOURCE_SEARCH_CONSOLE` |
+| «Áp dụng» mới ghi Sheet; «Hủy» không ghi gì; không gọi AI | docstring «Không gọi AI (LC-T120-13), không ghi Sheet: đề xuất đi qua đúng đường duyệt» |
+| Câu lỗi «Chưa đọc được kế hoạch nên chưa đưa từ khóa Google vào được…» | `app/views/plan.py:101` |
+
+- Câu cũ «… không ghi lên Google Sheets» (G1 phần 3) đã sửa đúng (`:725`): chỉ lên Sheet khi người dùng tự chọn, «Đưa vào kế hoạch» rồi «Áp dụng»; nói rõ sau đó từ khóa vào lời dặn AI như mọi từ khóa kế hoạch. Nói thật rủi ro, không giấu.
+- Lý do lọc chặt viết đúng bản chất («chỗ dễ giấu «lệnh» cho AI»), không chỉ cách lách.
+
+### 2. Kịch bản T-133 ca 6b: **đạt** (Lá Chắn T-127 B.1)
+
+- Đủ các ý của B.1:
+  - ô chọn chỉ có từ khóa sạch, câu đếm từ khóa bị để ngoài (chỉ ghi số, không chép từ khóa);
+  - đề xuất «Thêm», Mã bài mới, nguồn «Search Console», cảnh báo ⚠️ không tick sẵn;
+  - **trước** «Áp dụng» tải lại Sheet thấy chưa đổi; **sau** «Áp dụng» đúng một dòng mới, các dòng cũ không đổi, kiểm trực tiếp trên Sheet;
+  - tùy chọn «Hủy» không ghi gì.
+- An toàn:
+  - nói rõ dòng thêm là dòng kế hoạch **thật**, chủ dự án chọn từ khóa mình thật muốn viết, hoặc làm trên Sheet bản sao (như T-128 mục 3.4);
+  - mã, link Sheet chỉ ghi 4 ký tự cuối;
+  - quy tắc «chỉ đọc» ghi đúng ngoại lệ duy nhất là ca 6b, chỉ khi chủ dự án bấm «Áp dụng»;
+  - dọn bước 7: giữ dòng hay chủ dự án tự xóa trên Sheet (phần mềm không xóa dòng), đổi lại Sheet thật nếu dùng bản sao. Bước 8: soát ảnh chụp có cả mã Sheet đầy đủ.
+- **Đoạn lệnh ca 7** nay chỉ in câu lỗi cho 3 loại lỗi của phần mềm, lỗi khác chỉ in tên loại (ghi nhận G1 của tôi ở T-133): đúng như gợi ý.
+
+### 3. `security.md` §6, dòng LC-T120-24: **nội dung đúng**, cần chủ dự án xác nhận (điều kiện 1)
+
+- Rủi ro mô tả đúng: một câu lệnh viết toàn chữ thường, không dấu câu, dưới 80 ký tự vẫn qua bộ lọc (Soi Lỗi T-127 GN-2), rồi có thể vào lời dặn AI khi viết bài từ dòng đó.
+- Hai lớp giảm nhẹ đúng với mã T-127 (Lá Chắn T-127 B.3):
+  1. bộ lọc chặt `google_keyword`;
+  2. người dùng tự tick tối đa 10, duyệt đề xuất, bấm «Áp dụng» thì mới ghi Sheet.
+
+  Thêm nữa, khi viết bài từ khóa nằm trong khung dữ liệu của lời dặn (T-098, T-103), dàn ý và bài đều qua người duyệt. Mức Thấp: đồng ý.
+- **Cột «Người quyết»:** ghi «Chủ dự án chọn câu 7 = B (04/11)». Nhưng câu 7 của thiết kế T-120 (`T-120-tho-may.md:630-633`) chỉ hỏi có thêm nút hay không. Câu đó **không nêu** rủi ro còn lại này. Mục 6 là sổ những rủi ro **chủ dự án đã chấp nhận**, nên dòng này cần chủ dự án xác nhận rõ, như ba dòng `modified_gmt` (chủ dự án đồng ý 04/11).
+
+### 4. `security.md` U1: **đúng** (Lá Chắn T-125 B.4)
+
+- Câu mới: chữ ngoài **mới** lên giao diện phải qua lớp làm sạch **trước** `escape_markdown`. Đúng ý ghi nhận 1 và điều kiện B.4 của Lá Chắn T-125.
+- Bốn hàm nêu tên đều có trên `main`: `clean_text` (`seo_app/plan/model.py:159`), `page_label` (`seo_app/tracking/match.py:99`), `visible` (`app/views/settings.py:526`), `_clean_text` của client WordPress (`seo_app/wordpress/client.py:2472`).
+- Lý do đúng với mã: `escape_markdown` (`seo_app/text.py:44-50`) chỉ thoát ký tự Markdown, gộp khoảng trắng và chèn ký tự ngắt link. Nó không bỏ ký tự đảo hướng hay ký tự vô hình (U+200B không phải khoảng trắng với `str.split`).
+
+### 5. Điều kiện (ĐẠT CÓ ĐIỀU KIỆN)
+
+1. **Chủ dự án xác nhận dòng sổ rủi ro LC-T120-24** (Chỉ Huy hỏi ở lần báo tiếp, một câu), ví dụ: «Từ khóa anh chọn từ Google, sau khi «Áp dụng», sẽ được AI đọc khi viết bài. Một câu lệnh viết toàn chữ thường, ngắn vẫn có thể lọt bộ lọc; app chặn câu dài, có dấu câu, số điện thoại, email, và anh luôn duyệt dàn ý, bài. Anh đồng ý chấp nhận rủi ro nhỏ này?».
+   - Đồng ý: cột «Người quyết» ghi thêm «Chủ dự án đồng ý (ngày)».
+   - Chưa trả lời: ghi «chờ chủ dự án xác nhận».
+   - Không đồng ý: xử lý như rủi ro chưa chấp nhận, Lá Chắn đề xuất lớp chặn thêm.
+
+   Không chặn gộp.
+2. **Thứ tự gộp:** README mục 15 và kịch bản T-133 nay tả nút «Đưa vào kế hoạch» của T-127. Gộp `team/T-126` **cùng lúc hay sau** `team/T-127`, để README không tả một nút chưa có. Thử gộp hai nhánh: không xung đột (cây `bdd7e0c`), không chung file.
+
+### 6. Kết quả kiểm tra
+
+| Việc | Kết quả | Đã xác minh |
+|---|---|---|
+| detect-secrets (`PYTHONUTF8=1`; chép 4 file ra thư mục ngoài git cùng file mồi tiếng Việt) | 4 file: 0 kết quả; file mồi: bị bắt | ✔ |
+| Grep phần thêm của diff `f0ccb32` (email, link Sheet, `sc-domain:` thật, địa chỉ thật, `.json`, đường dẫn máy) | 0 | ✔ |
+| Grep «Toàn quyền», «chủ sở hữu», «nâng» trong phần thêm | 0 (lượt này không thêm câu nào về quyền) | ✔ |
+| Đối chiếu luật lọc, câu, nút với mã T-127 (`08b24df`) | Khớp (mục 1) | ✔ |
+| Gộp thử `team/T-126` + `team/T-127` | không xung đột, không chung file | ✔ |

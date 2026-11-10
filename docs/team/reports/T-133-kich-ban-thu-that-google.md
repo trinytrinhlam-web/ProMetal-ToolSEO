@@ -3,16 +3,16 @@
 | Mục | Nội dung |
 |---|---|
 | Phiếu | T-133 (`docs/team/tickets/T-133-kich-ban-thu-that-google.md`) |
-| Soạn | Thư Ký (`thu-ky`) · model: Claude Opus 5.5 · 2026-11-07 |
+| Soạn | Thư Ký (`thu-ky`) · model: Claude Opus 5.5 · 2026-11-07; lượt 2 ngày 2026-11-10 (trong T-126 lượt cuối): thêm ca 6b theo Lá Chắn T-127 B.1, sửa đoạn lệnh ca 7 theo Lá Chắn T-133 G1 |
 | Dùng cho | **Chỉ Huy** làm từng bước; **chủ dự án ngồi cùng**, tự đăng nhập Google (Search Console, Google Cloud) và tự làm việc cần quyền chủ sở hữu. **Lá Chắn** đọc kịch bản (nhất là đoạn lệnh ở ca 7) trước buổi, đọc bảng kết quả (mục 7) sau buổi |
-| Khi nào | Khi T-125 (trang «📈 Theo dõi», khung Search Console trong Cài đặt) đã gộp `main` và chủ dự án báo rảnh. Khoảng 45–60 phút. Buổi thử **chỉ đọc**: không đăng bài, không sửa gì trên Search Console hay website |
-| Tên nút | Theo nhánh `team/T-125` (`216ff2f`, chưa gộp `main`): `app/views/tracking.py`, `app/views/settings.py`. Gộp xong mà khác thì theo giao diện. Nhãn của Search Console theo trang trợ giúp tiếng Việt của Google; chỗ chưa chắc ghi «(tên theo giao diện khi gộp)» hay «(tên theo giao diện Search Console)» |
-| Nguồn | Thiết kế T-120 (`T-120-tho-may.md` mục 1.2, 2.7; mục 6 «Đi kèm» dòng «Thử thật»; mục «Rủi ro và điểm cần chú ý»), Lá Chắn T-121 (điều kiện B4), Lá Chắn T-124 (điều kiện B.3), README mục 14, mục 15, kịch bản mẫu T-128 |
+| Khi nào | Khi T-125 (trang «📈 Theo dõi», khung Search Console trong Cài đặt) và T-127 (nút «Đưa vào kế hoạch») đã gộp `main`, và chủ dự án báo rảnh. Khoảng 45–60 phút. Buổi thử **chỉ đọc** với Search Console và website: không đăng bài, không sửa gì trên Search Console hay website. Chỉ ca 6b ghi một dòng kế hoạch lên Google Sheet, khi chủ dự án bấm «Áp dụng» |
+| Tên nút | Theo `main` `7153f0a` (đã gộp T-125): `app/views/tracking.py`, `app/views/settings.py`. Ca 6b theo nhánh `team/T-127` (`08b24df`, chưa gộp `main` khi soạn): `app/views/tracking.py`, `app/views/plan.py`. Gộp xong mà khác thì theo giao diện. Nhãn của Search Console theo trang trợ giúp tiếng Việt của Google; chỗ chưa chắc ghi «(tên theo giao diện khi gộp)» hay «(tên theo giao diện Search Console)» |
+| Nguồn | Thiết kế T-120 (`T-120-tho-may.md` mục 1.2, 2.7; mục 6 «Đi kèm» dòng «Thử thật»; mục «Rủi ro và điểm cần chú ý»), Lá Chắn T-121 (điều kiện B4), Lá Chắn T-124 (điều kiện B.3), Lá Chắn T-127 (điều kiện B.1), Lá Chắn T-133 (ghi nhận G1), README mục 14, mục 15, kịch bản mẫu T-128 |
 
 ## 0. Tóm tắt (cho chủ dự án)
 
 - Trang **📈 Theo dõi** cho xem mỗi bài được Google hiển thị bao nhiêu lần, được bấm bao nhiêu lần, đứng vị trí trung bình nào, khách tìm bằng từ khóa gì. Số liệu lấy từ Google Search Console, **chỉ đọc**.
-- Trước khi dùng thật, cần một buổi thử với Search Console thật của website, anh/chị ngồi cùng. Buổi thử không đăng bài, không sửa gì trên Search Console hay website.
+- Trước khi dùng thật, cần một buổi thử với Search Console thật của website, anh/chị ngồi cùng. Buổi thử không đăng bài, không sửa gì trên Search Console hay website. Chỉ có một việc ghi: thêm một dòng kế hoạch vào Google Sheet từ từ khóa anh/chị chọn (ca 6b), và chỉ khi anh/chị bấm «Áp dụng».
 - Việc của anh/chị:
   - trước buổi: làm README mục 15 bước 1–3 (bật «Google Search Console API», thêm email tài khoản dịch vụ với quyền «Hạn chế»), nếu chưa làm;
   - trong buổi: tự đăng nhập Search Console; mở bảng «Trang» để so số với phần mềm; cuối buổi xem lại «Người dùng và quyền».
@@ -24,10 +24,11 @@
    - không tên, đường dẫn, nội dung file khóa Google;
    - không email tài khoản dịch vụ: Cài đặt hiện email này ở khung «🔑 Tài khoản dịch vụ Google (file khóa)» và trong kết quả «🔎 Tìm thuộc tính»;
    - không mã project Google Cloud;
+   - mã hay link Google Sheet kế hoạch (ca 6b) chỉ ghi **4 ký tự cuối** (như app hiện);
    - thuộc tính Search Console chỉ ghi **loại** (tiền tố hay tên miền), không ghi đầy đủ. Tên máy ngoài website (bảng của «Kiểm tra») chỉ ghi dạng: `www.`, bản thử (staging), «địa chỉ http:// hoặc lạ»;
    - không chụp: file `.env`, khung 🔑, bảng kết quả «Tìm thuộc tính», trang tài khoản dịch vụ và khóa trong Google Cloud;
    - tên bài, từ khóa là chữ công khai nhưng không cần chép: bảng kết quả ghi số và khớp / không khớp.
-2. **Chỉ đọc.** Không bấm gì làm thay đổi Search Console: không gửi sơ đồ trang web, không yêu cầu lập chỉ mục, không xóa URL. Không đổi cài đặt Google Cloud. Ngoại lệ duy nhất: chủ dự án làm README mục 15 nếu chưa làm.
+2. **Chỉ đọc.** Không bấm gì làm thay đổi Search Console: không gửi sơ đồ trang web, không yêu cầu lập chỉ mục, không xóa URL. Không đổi cài đặt Google Cloud. Hai ngoại lệ: chủ dự án làm README mục 15 nếu chưa làm; ca 6b ghi một dòng kế hoạch lên Google Sheet khi chủ dự án bấm «Áp dụng».
 3. **Gặp lỗi 403: không nâng quyền.** Không đổi sang «Toàn quyền», không thêm làm chủ sở hữu, không cấp vai trò (role) nào trong Google Cloud. Dừng, ghi câu báo nguyên văn, hỏi chủ dự án và Lá Chắn (mục 5).
 4. **Chủ dự án tự đăng nhập** Search Console và Google Cloud (tự gõ mật khẩu).
 5. **Một tab app** (trừ bước tùy chọn ở ca 3).
@@ -51,12 +52,13 @@
 | (8) | Số lệnh của lần bấm đầu ≤ 20 (Lá Chắn T-124 B.3) | Ca 3 |
 | (9) | Mã lý do 403 khi chưa bật API, khi hết hạn mức (Lá Chắn T-121 B4 (c)) | Mục 3.1 (nếu API chưa bật); mọi ca (nếu gặp) |
 | (10) | Từ khóa của một bài khớp Search Console (phiếu T-133) | Ca 6 |
+| (11) | «➕ Đưa vào kế hoạch» với từ khóa thật: ô chọn chỉ có từ khóa sạch, câu đếm từ khóa bị để ngoài; đề xuất «Thêm» nguồn «Search Console» ở trang Kế hoạch, cảnh báo trùng; **chỉ** sau «Áp dụng» mới có dòng mới trên Sheet, kiểm trực tiếp trên Sheet (Lá Chắn T-127 B.1) | Ca 6b |
 
 ## 3. Chuẩn bị
 
 ### 3.1 Chủ dự án làm trước buổi (phía Google)
 
-- [ ] Đã có tài khoản dịch vụ và file khóa, đã khai báo trong `.env`: README mục 14, các phần «Tạo tài khoản dịch vụ», «Cất file khóa» và bước 1–2 của «Khai báo trong app». Buổi này không cần Google Sheet.
+- [ ] Đã có tài khoản dịch vụ và file khóa, đã khai báo trong `.env`: README mục 14, các phần «Tạo tài khoản dịch vụ», «Cất file khóa» và bước 1–2 của «Khai báo trong app». Ca 6b cần thêm Google Sheet kế hoạch đã nối (README mục 14, phần «Khai báo trong app»); chưa nối thì bỏ ca 6b.
 - [ ] README mục 15 bước 1–3:
   - bật **Google Search Console API** trong đúng project của tài khoản dịch vụ;
   - thêm email tài khoản dịch vụ vào thuộc tính của **website chính**, quyền **Hạn chế**. Không thêm vào thuộc tính bản thử (staging).
@@ -177,7 +179,36 @@ Mỗi ca ghi vào bảng mục 7: giờ, câu báo nguyên văn (không bí mậ
    - Dòng có ghi chú «gộp … cách gõ»: bật **Xem từng cách gõ của từ khóa đã gộp**, so từng cách gõ.
    - Ghi khớp / không khớp và các số, không chép từ khóa.
 4. Cộng click của mọi từ khóa luôn **ít hơn** click của bài, vì Google ẩn từ khóa hiếm («Google ẩn từ khóa hiếm và từ khóa có thông tin cá nhân…» dưới bảng). Đúng, không phải lỗi.
-5. Nút **➕ Đưa vào kế hoạch** đang khóa (rê chuột: «Sắp có (T-127)…»): đúng.
+5. Dưới bảng có ô chọn từ khóa và nút **➕ Đưa vào kế hoạch**: làm ở ca 6b.
+
+### Ca 6b · Đưa từ khóa vào kế hoạch → (11)
+
+Cần Google Sheet kế hoạch đã nối (README mục 14) và trang **Kế hoạch** đọc được kế hoạch. Chưa nối thì bỏ ca này, ghi «Chưa làm».
+
+Dòng thêm vào là **dòng kế hoạch thật** trên Sheet đang khai báo. Vì vậy:
+- chủ dự án chọn từ khóa mình thật sự muốn viết bài;
+- không muốn đụng Sheet thật thì làm trên Sheet bản sao như kịch bản T-128 mục 3.4, rồi đổi lại Sheet thật khi dọn.
+
+1. Mở Google Sheet kế hoạch trong trình duyệt. Ghi số dòng và Mã bài cuối cùng (ví dụ «B-0…»).
+2. Phần mềm: **📈 Theo dõi** → **Chi tiết một bài, trang** → bài A, khoảng **28 ngày**. Dưới bảng từ khóa có ô **Chọn từ khóa đưa vào kế hoạch (tối đa 10)**.
+   - Ô chọn chỉ có từ khóa «sạch»: chữ tiếng Việt hoặc a–z, số, khoảng trắng, dấu «-», tối đa 80 ký tự, không có số điện thoại, email, địa chỉ web.
+   - Có dòng «… từ khóa không có trong ô chọn…» thì dòng đó chỉ ghi số, không chép lại từ khóa bị để ngoài.
+   - Không từ khóa nào qua lọc thì có dòng «Không có từ khóa nào đưa vào kế hoạch được…». Khi đó chọn bài khác.
+   - Ghi số từ khóa trong ô chọn và số từ khóa bị để ngoài.
+3. Chủ dự án chọn **1–2 từ khóa**, bấm **➕ Đưa vào kế hoạch**.
+4. App mở trang **Kế hoạch**. Khung **Đề xuất thay đổi** phải có:
+   - ghi chú «Từ khóa chọn ở trang «📈 Theo dõi» (Search Console): duyệt rồi mới ghi vào Sheet.»;
+   - mỗi từ khóa một dòng: cột **Loại** là «Thêm», **Mã bài** mới (chưa có trên Sheet), **Nguồn** là «Search Console»;
+   - dòng trùng kế hoạch hay trùng bài đã đăng có dấu ⚠️ và **không** tick sẵn.
+5. **Trước khi áp dụng:** tải lại Sheet trong trình duyệt (F5). Phải **chưa** có dòng mới: số dòng như bước 1.
+6. Tick đúng một dòng (chủ dự án quyết), bấm **✅ Áp dụng thay đổi (1)**. Khung **Kết quả áp dụng** phải màu xanh.
+7. Tải lại Sheet. Phải có **đúng một** dòng mới, với:
+   - Mã bài như ở bước 4;
+   - Trạng thái «Chưa viết»;
+   - từ khóa đúng như đã chọn.
+
+   Các dòng cũ không đổi.
+8. (Tùy chọn) Làm lại bước 2–4 rồi bấm **Hủy** ở trang Kế hoạch. Tải lại Sheet: không có gì đổi.
 
 ### Ca 7 · Số đo cho Lá Chắn: `metadata`, dòng bị bỏ → (4), (7)
 
@@ -211,7 +242,8 @@ try:
     print("Q2 28 ngay | dong:", len(q.rows), "| bo:", q.dropped, "| cham tran:", q.truncated)
     print("so lenh da gui:", c.request_count)
 except Exception as exc:
-    print("DUNG:", type(exc).__name__, exc)
+    ok = type(exc).__name__ in {"SearchConsoleError", "ServiceAccountError", "ConfigError"}
+    print("DUNG:", type(exc).__name__, exc if ok else "")
 '@ | uv run python -
 ```
 
@@ -222,7 +254,7 @@ except Exception as exc:
      - «Q1 cu» ra `missing`: bình thường, cả đoạn đã chốt.
    - `bo:` (dòng bị bỏ), `dong:` (số dòng), `cham tran:` (`True`: Google chỉ trả phần đầu) của ba lần gọi.
    - `so lenh da gui:` (thường là 3).
-   - Dòng `DUNG: …` thay cho kết quả: ghi nguyên câu (câu cố định, không bí mật). Câu 403 thì theo mục 5.
+   - Dòng `DUNG: …` thay cho kết quả: ghi nguyên dòng. Lỗi của phần mềm (ba loại `SearchConsoleError`, `ServiceAccountError`, `ConfigError`) thì có kèm câu cố định, không bí mật; lỗi khác chỉ in tên loại lỗi. Câu 403 thì theo mục 5.
 5. Đóng cửa sổ PowerShell.
 
 ### Ca 8 · Search Console: Người dùng và quyền không đổi → (6)
@@ -260,7 +292,11 @@ except Exception as exc:
 4. [ ] Ca 1 có phải hạ quyền: kiểm lại quyền đã là «Hạn chế» (ca 8).
 5. [ ] Đóng cửa sổ PowerShell của ca 7; không lưu đầu ra vào thư mục phần mềm.
 6. [ ] Tab thứ hai (bước tùy chọn ở ca 3): đã đóng.
-7. [ ] Ảnh chụp màn hình: soát không có email, thuộc tính đầy đủ, tên máy, đường dẫn file khóa (mục 1); lưu ngoài thư mục dự án, không đưa lên GitHub.
+7. [ ] Dòng kế hoạch thêm ở ca 6b:
+   - chủ dự án muốn viết bài đó thì giữ;
+   - không thì chủ dự án tự xóa dòng trên Google Sheet (phần mềm không bao giờ xóa dòng);
+   - đã làm trên Sheet bản sao thì dán lại link Sheet thật ở **Cài đặt → 📗 Google** (kịch bản T-128 mục 6 bước 8).
+8. [ ] Ảnh chụp màn hình: soát không có email, thuộc tính đầy đủ, tên máy, đường dẫn file khóa, mã Sheet đầy đủ (mục 1); lưu ngoài thư mục dự án, không đưa lên GitHub.
 
 ## 7. Bảng ghi kết quả (cho Lá Chắn)
 
@@ -280,13 +316,14 @@ Chỉ Huy điền ngay trong buổi. Sau buổi, chép bảng vào báo cáo bu�
 | (3) Bài B | Như bài A | | |
 | (3) Tổng (tùy chọn) | Bốn ô đầu trang so với Search Console | | |
 | (10) Từ khóa | 3 từ khóa đầu: click, hiển thị khớp; cộng từ khóa ít hơn tổng của bài | | |
+| (11) Đưa vào kế hoạch | Số từ khóa trong ô chọn, số bị để ngoài; đề xuất «Thêm», nguồn «Search Console», Mã bài mới, cảnh báo ⚠️; trước «Áp dụng» Sheet không đổi; sau «Áp dụng» đúng một dòng mới, trạng thái «Chưa viết»; «Hủy» không ghi gì (tùy chọn) | | |
 | (4) `metadata` mới nhất | `ok` / `missing` / `bad`; ngày tạm đầu | | |
 | (4) `metadata` cũ | `ok` / `missing` / `bad` | | |
 | (7) Dòng bị bỏ | Câu «… dòng số liệu không đúng dạng bị bỏ.» ở lần lấy đầu (số); ca 7: `bo`, `dong`, `cham tran` của Q1 mới nhất, Q1 cũ, Q2 | | |
 | (9) 403, 429 | Câu báo nếu gặp: chưa bật API, thiếu quyền, hết hạn mức | | |
 | (6) Người dùng và quyền | Không đổi so với ca 0 | | |
 | Câu báo | Mọi câu là câu tiếng Việt cố định; không lộ email, đường dẫn máy, lời máy chủ | | |
-| Dọn | Mục 6, đủ 7 dòng | | |
+| Dọn | Mục 6, đủ 8 dòng | | |
 
 ## 8. Sau buổi thử
 
@@ -296,5 +333,5 @@ Chỉ Huy điền ngay trong buổi. Sau buổi, chép bảng vào báo cáo bu�
     - xét nới luật 10% dòng lạ, chỉ áp khi lần gọi có từ 20 dòng trở lên.
   - Có dòng bị bỏ, hay câu «… nhiều dòng không đúng dạng hoặc lặp lại…»: Lá Chắn xét lại luật 10% (Soi Lỗi T-124 GN-2).
   - Click, hiển thị không bằng nhau, hay vị trí lệch quá 0,1: phiếu cho Thợ Máy (cách cộng số theo trang, vị trí trung bình theo lượt hiển thị, T-120 «Rủi ro»).
-- **Thư Ký**: README mục 15 phần 2 (T-126, sau T-125) viết theo kết quả thật: cách dùng trong app, thời gian lần lấy đầu, số ngày tạm, cách đọc số.
+- **Thư Ký**: README mục 15 (T-126 đã viết theo thiết kế) sửa theo kết quả thật nếu khác: thời gian lần lấy đầu, số ngày tạm, số từng bài có khớp thẻ «Trang» không, quyền «Hạn chế» có đủ không.
 - **Chỉ Huy** cập nhật bảng việc, `docs/team/dong-bo.md`, bảng tiến độ cho chủ dự án.

@@ -4,7 +4,7 @@ Phần mềm chạy ngay trên máy tính (Windows và Mac) để triển khai k
 
 App mở trong trình duyệt tại địa chỉ `http://localhost:8501`. Địa chỉ này chỉ dùng được trên chính máy bạn, người khác không truy cập được.
 
-> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp chữ), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11; Hẹn giờ, Đăng ngay đã làm nhưng đang tắt, chờ thử thật). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
+> **Trạng thái:** đã có đăng nhập, kết nối WordPress (kiểm tra kết nối, xem chuyên mục/thẻ, tạo thử bài nháp chữ), viết bài bằng AI (Claude, ChatGPT, Gemini; có thử mù để chọn mô hình, xem mục 7), chọn ảnh thật từ thư mục cho bài (mục 9), bước SEO: tiêu đề, mô tả cho Google, đường dẫn, liên kết nội bộ, schema hỏi đáp (mục 10) và gửi bài nháp kèm ảnh lên website, có thể ghi luôn tiêu đề, mô tả SEO vào SiteSEO (mục 11; Hẹn giờ, Đăng ngay đã làm nhưng đang tắt, chờ thử thật), theo dõi lượt hiển thị, lượt click, vị trí từng bài trên Google qua Search Console (mục 15; chờ buổi thử với Search Console thật). Các chức năng khác sẽ được thêm dần theo lộ trình trong `CLAUDE.md`.
 
 ---
 
@@ -62,7 +62,7 @@ Cách khác: trên trang GitHub của dự án, bấm **Code → Download ZIP**,
 - **Tắt app:** đóng cửa sổ đen / Terminal. Đóng tab trình duyệt thì app chưa tắt.
 - **Đổi mật khẩu hoặc quên mật khẩu:** chạy lại `set_password.bat` / `set_password.command`.
 - Tải lại trang (F5) thì phải đăng nhập lại. Đây là chủ ý để bảo mật. Nút **Đăng xuất** nằm ở trang Cài đặt.
-- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào, mục 14), **Cài đặt**, **Kết nối WordPress**.
+- **Menu trên cùng**: **Bài viết** (các bài đang viết), **Soạn bài** (viết một bài qua 5 bước), **Kế hoạch** (đưa kế hoạch của bạn vào, mục 14), **Theo dõi** (số liệu Google của từng bài, mục 15), **Cài đặt**, **Kết nối WordPress**.
 - Chỗ nào có nhãn cam **"Bản demo"** là đang dùng dữ liệu mẫu để bạn xem trước: bấm thử thoải mái, không gửi gì đi đâu. Chức năng sẽ chạy thật khi tới giai đoạn tương ứng. Ba bước đầu của **Soạn bài** đã dùng AI thật (xem mục 7); chọn ảnh, bước SEO và gửi bài nháp cũng đã chạy thật (mục 9, 10, 11).
 
 ## 5. File cấu hình `.env`
@@ -580,7 +580,7 @@ Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái t�
 **Trang Kế hoạch**
 
 - **Danh sách bài theo kế hoạch**: đọc từ trang tính «KeHoach». App giữ một bản lưu trên máy và dùng lại trong 5 phút; nút **🔄 Tải lại** đọc lại ngay từ Google. Không đọc được Google thì app hiện bản lưu kèm câu báo (dòng trên bảng ghi «bản lưu trên máy»).
-- **📥 Cung cấp kế hoạch**: ba thẻ **Tải file** (CSV, TSV, TXT, MD; tối đa 1 MB), **Dán nội dung**, **Google Sheets** (link một Sheet khác đã chia sẻ cho tài khoản dịch vụ, có trang tính «KeHoach»). Bấm **🧠 Đọc kế hoạch và đề xuất cập nhật**. Bảng có cột «Từ khóa chính» thì app tự đọc; chữ tự do thì AI đọc (bấm **🤖 Gửi AI đọc**; gọi AI một lần, có tốn tiền). App hiện **Đề xuất thay đổi**: tick dòng muốn dùng rồi bấm **✅ Áp dụng thay đổi (…)** thì mới ghi lên Sheet.
+- **📥 Cung cấp kế hoạch**: ba thẻ **Tải file** (CSV, TSV, TXT, MD; tối đa 1 MB), **Dán nội dung**, **Google Sheets** (link một Sheet khác đã chia sẻ cho tài khoản dịch vụ, có trang tính «KeHoach»). Bấm **🧠 Đọc kế hoạch và đề xuất cập nhật**. Bảng có cột «Từ khóa chính» thì app tự đọc; chữ tự do thì AI đọc (bấm **🤖 Gửi AI đọc**; gọi AI một lần, có tốn tiền). App hiện **Đề xuất thay đổi**: tick dòng muốn dùng rồi bấm **✅ Áp dụng thay đổi (…)** thì mới ghi lên Sheet. Từ khóa đưa sang từ trang **📈 Theo dõi** (mục 15) cũng thành đề xuất ở đây, nguồn «Search Console».
 - **✍️ Viết bài**: chọn một dòng ở ô **Chọn bài để viết** rồi bấm. App mở **Soạn bài** điền sẵn từ khóa và các ô của dòng đó (số điện thoại, email trong ghi chú được che). Gửi bài xong, app ghi vào dòng: «Đã gửi nháp» (hay «Đã hẹn giờ», «Đã đăng»), Mã bài WordPress. Ghi Sheet lỗi (mất mạng) thì bài **không** bị gửi lại lên website; việc ghi còn nợ hiện ở trang này, có nút **Thử ghi lại**.
 - **🌐 Cập nhật trạng thái từ website** (cần kết nối WordPress, mục 6): app hỏi website trạng thái các bài có «Mã bài WordPress», rồi hiện khung **🌐 Thay đổi trạng thái từ website**: bảng thay đổi, mỗi dòng một ô tick (không tick sẵn). Tick dòng muốn ghi (hay bấm **Chọn tất cả**), rồi bấm **✍️ Ghi … thay đổi vào Google Sheet**. App chỉ đổi ô Trạng thái, Ngày đăng thực tế, Cập nhật lúc của dòng đó, không đụng bài trên website. Lần kiểm đã quá 5 phút thì phải bấm kiểm lại mới ghi được. Cột «Trên website» ghi «Lỡ lịch» khi bài hẹn giờ đã quá giờ 15 phút mà chưa lên (thường do lịch chạy của WordPress chạy trễ): mở trang quản trị WordPress kiểm tra.
 
@@ -603,16 +603,16 @@ Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái t�
 
 ## 15. Theo dõi trên Google (Search Console)
 
-Phần mềm sẽ có trang **📈 Theo dõi** để xem mỗi bài được Google hiển thị bao nhiêu lần, được bấm bao nhiêu lần, đứng vị trí trung bình nào và khách tìm bằng từ khóa gì. Số liệu lấy từ **Google Search Console**. Phần mềm **chỉ đọc** số liệu, không sửa gì trên Search Console, và dùng lại tài khoản dịch vụ, file khóa ở mục 14 (không cần khóa mới).
+Trang **📈 Theo dõi** (menu trên cùng, giữa Kế hoạch và Cài đặt) cho xem mỗi bài được Google hiển thị bao nhiêu lần, được bấm bao nhiêu lần, đứng vị trí trung bình nào và khách tìm bằng từ khóa gì. Số liệu lấy từ **Google Search Console**. Phần mềm **chỉ đọc** số liệu, không sửa gì trên Search Console, và dùng lại tài khoản dịch vụ, file khóa ở mục 14 (không cần khóa mới).
 
-> **Hiện tại:** trang 📈 Theo dõi và phần chọn thuộc tính trong Cài đặt **chưa làm xong**. Bạn làm trước phần phía Google dưới đây (bước 1–3) để sẵn sàng cho buổi thử thật. Cách dùng trong app và cách đọc số sẽ viết thêm khi làm xong. Chưa cần sửa dòng `GSC_SITE_URL` trong `.env`.
+> **Chưa thử với Search Console thật.** Trang đã chạy được, nhưng còn một buổi thử cùng Chỉ Huy để so số của phần mềm với Search Console. Lá Chắn xem kết quả buổi thử rồi mới cho dùng số này để quyết định việc gì; trước đó chỉ xem để làm quen.
 
 **Trước khi bắt đầu**
 
 - Đã có tài khoản dịch vụ và file khóa: làm xong phần «Tạo tài khoản dịch vụ», «Cất file khóa» và bước 1–2 của «Khai báo trong app» ở mục 14. Phần theo dõi không cần Google Sheet.
 - Đăng nhập https://search.google.com/search-console bằng tài khoản Google là **chủ sở hữu** website trong Search Console (thường là tài khoản đã xác minh website). Chỉ chủ sở hữu mới thêm được người dùng ở bước 3.
 - Search Console gọi website đã khai báo là **thuộc tính** (bản tiếng Việt có chỗ ghi «tài sản», tiếng Anh *property*).
-- Bước 1–3 làm **một lần**, dùng cho cả hai máy.
+- Bước 1–3 (phía Google) làm **một lần**, dùng cho cả hai máy. Bước 4–5 (trong app) làm trên **từng máy**, vì thuộc tính lưu trong file `.env` của máy đó.
 
 **Bước 1. Bật Google Search Console API**
 
@@ -626,10 +626,10 @@ Trong app: **Cài đặt → 📗 Google**, khung **🔑 Tài khoản dịch v�
 
 **Bước 3. Thêm email vào Search Console với quyền «Hạn chế»**
 
-1. Ở ô chọn thuộc tính (góc trên bên trái Search Console), chọn thuộc tính của **website chính**. Có nhiều thuộc tính thì xem «Chọn thuộc tính nào» ngay dưới đây.
+1. Ở ô chọn thuộc tính (góc trên bên trái Search Console), chọn thuộc tính của **website chính**. Có nhiều thuộc tính thì xem «Chọn thuộc tính nào» ngay dưới đây. Chỉ thêm email vào đúng thuộc tính của website này, không thêm vào thuộc tính của website khác của bạn: ai có file khóa cũng đọc được số liệu của mọi thuộc tính có email này.
 2. Bấm **Cài đặt** (Settings) → **Người dùng và quyền** (Users and permissions) → **Thêm người dùng** (Add user).
 3. Dán email tài khoản dịch vụ, chọn quyền **Hạn chế** (Restricted), bấm **Thêm** (Add).
-   - **Không** chọn **Toàn quyền** (Full), **không** thêm làm chủ sở hữu (Owner). Phần mềm chỉ đọc danh sách thuộc tính và báo cáo Hiệu suất (lượt hiển thị, lượt bấm, vị trí, từ khóa). Quyền «Hạn chế» xem được báo cáo này, còn cài đặt của Search Console thì chỉ xem, không sửa được.
+   - **Không** chọn **Toàn quyền** (Full), **không** thêm làm chủ sở hữu (Owner). Phần mềm chỉ đọc danh sách thuộc tính và báo cáo Hiệu suất (lượt hiển thị, lượt bấm, vị trí, từ khóa). Theo trang trợ giúp của Google, quyền «Hạn chế» xem được báo cáo này, còn cài đặt của Search Console thì chỉ xem, không sửa được; buổi thử sẽ xác nhận.
    - Search Console không nhận email này, hoặc báo chỉ thêm được làm chủ sở hữu: dừng lại và báo Chỉ Huy, đừng thử cách khác.
 4. Lỡ chọn quyền cao hơn: bấm biểu tượng trình đơn cạnh email → **Thay đổi quyền** → chọn **Hạn chế**.
 
@@ -637,20 +637,128 @@ Trong app: **Cài đặt → 📗 Google**, khung **🔑 Tài khoản dịch v�
 
 | Loại thuộc tính | Nhận ra trong Search Console | App lưu thành | Dùng với app |
 |---|---|---|---|
-| Tiền tố URL (URL prefix) | Tên bắt đầu bằng `https://`, ví dụ `https://ten-mien-cua-ban/` | `https://ten-mien-cua-ban/` | **Nên chọn** nếu có: tài khoản dịch vụ chỉ thấy đúng website. Tên miền phải giống hệt `WORDPRESS_URL` (có hay không có `www.` cũng phải giống) |
+| Tiền tố URL (URL prefix) | Tên bắt đầu bằng `https://`, ví dụ `https://ten-mien-cua-ban/` | `https://ten-mien-cua-ban/` | **Nên chọn** nếu có: tài khoản dịch vụ chỉ thấy đúng website. Tên miền phải giống hệt `WORDPRESS_URL` (có hay không có `www.` cũng phải giống), không có đường con (`https://ten-mien-cua-ban/blog/` bị từ chối) |
 | Tên miền (Domain) | Chỉ có tên miền, ví dụ `ten-mien-cua-ban` | `sc-domain:ten-mien-cua-ban` | Dùng khi không có loại trên. Loại này gồm mọi địa chỉ của tên miền: `www.`, `http://`, tên miền con (thường có cả bản thử staging); app chỉ lấy số liệu của đúng địa chỉ trong `WORDPRESS_URL` |
 
 - **Không dùng thuộc tính của bản thử website** (staging, địa chỉ thường có chữ `staging`): không thêm email vào thuộc tính đó. Chọn nhầm thì app từ chối, không lấy số.
-- App không nhận thuộc tính `http://…` (website chạy `https://`).
+- App không nhận thuộc tính `http://…` (website chạy `https://`), cũng không nhận thuộc tính tiền tố có đường con.
 
-**Khi app báo lỗi** (các câu này hiện khi phần theo dõi trong app làm xong)
+**Bước 4. Chọn thuộc tính trong app** (trên từng máy)
+
+1. **Cài đặt → 📗 Google**, kéo xuống khung **📈 Search Console**, bấm **🔎 Tìm thuộc tính** (mất vài giây).
+2. Bảng **Thuộc tính · Quyền · Dùng cho website** liệt kê các thuộc tính tài khoản dịch vụ thấy được. Chỉ dòng «✔ dùng được» mới chọn được. Dòng «✘ không phải website trong WORDPRESS_URL» (ví dụ staging), «✘ không đúng dạng (http://, đường con…)», «✘ chưa xác minh» thì không.
+   - Có câu «Phần mềm chỉ cần quyền «Hạn chế»: nên hạ quyền…»: hạ quyền như bước 3 ý 4, rồi bấm **🔎 Tìm thuộc tính** lại.
+   - Câu «Tài khoản dịch vụ chưa thấy thuộc tính nào…»: kiểm lại bước 3, đợi vài phút rồi bấm lại.
+3. Ô **Thuộc tính dùng cho trang Theo dõi**: chọn thuộc tính (có cả hai loại thì chọn loại tiền tố), bấm **Lưu thuộc tính đã chọn**. Thấy «Đã lưu thuộc tính Search Console vào file .env.» là xong; không cần tắt app.
+   - Thuộc tính **chỉ chọn qua nút «Tìm thuộc tính»**: app chỉ lưu thuộc tính vừa tìm thấy và dùng được, rồi tự ghi dòng `GSC_SITE_URL` trong `.env`. Đừng tự gõ dòng này.
+   - Khung báo «Thuộc tính Search Console đang được đặt trong biến môi trường GSC_SITE_URL của máy…»: máy đang có một biến môi trường tên `GSC_SITE_URL`. Biến này được ưu tiên hơn file `.env`, **kể cả khi để trống**, nên thuộc tính vừa lưu không có hiệu lực. Nhờ người hỗ trợ gỡ biến đó khỏi máy, rồi tắt và mở lại phần mềm.
+
+**Bước 5. Kiểm tra kết nối**
+
+Bấm **✅ Kiểm tra** (cùng khung). Thấy «Tài khoản dịch vụ thấy thuộc tính này, quyền «Hạn chế».» và «Có số liệu đã chốt tới hết ngày … (ngày theo giờ Google).» là được.
+
+- Thuộc tính tên miền có thêm một câu về phần lượt hiển thị nằm ngoài website (`www.`, staging…). App không tính phần đó.
+- Câu «Gần hết lượt hiển thị nằm ngoài địa chỉ trong WORDPRESS_URL…»: Google đang ghi số liệu cho một địa chỉ khác, thường là khác nhau ở `www.`. Kiểm lại `WORDPRESS_URL` (mục 6).
+
+**Lấy số liệu**
+
+- Trang **📈 Theo dõi** → nút **🔄 Lấy số liệu mới**.
+  - Lần đầu lấy 16 tháng số liệu, **khoảng một phút**, hỏi Google **khoảng 18 lần**. Search Console API không tính tiền, Google chỉ giới hạn số lần hỏi.
+  - Các lần sau chỉ lấy mấy ngày mới, nhanh hơn.
+- **Mở trang không hỏi Google**: trang đọc bản lưu tạm trong máy. Chỉ nút **🔄 Lấy số liệu mới** gọi Google; ở Cài đặt chỉ có **🔎 Tìm thuộc tính** và **✅ Kiểm tra** gọi Google.
+- Google cập nhật số liệu khoảng **một lần mỗi ngày**.
+  - Bấm lại **trong 10 phút** sau lần lấy thì app báo «Vừa lấy số liệu lúc …; Google cập nhật khoảng một lần mỗi ngày nên chưa có gì mới…», không hỏi Google.
+  - Trang hiện «Có thể đã có số liệu mới.» khi lần lấy cuối đã quá 24 giờ, hay ngày «Số liệu tới hết ngày …» đã cách hôm nay hơn 3 ngày.
+- Hai tab cùng bấm: tab sau báo «Đang lấy số liệu Search Console ở tab khác…». Chờ tab kia xong.
+- Khung vàng «Đã lưu số liệu tới hết ngày …; phần còn lại chưa lấy được, bấm lại để lấy tiếp.»: phần đã lấy được vẫn giữ. Bấm lại sau; câu báo có mã 429 thì đợi 15 phút.
+
+**Đọc số**
+
+- **Ngày theo giờ Google.** Mọi ngày trên trang là ngày của Search Console, tính theo giờ Thái Bình Dương của Mỹ, chậm hơn giờ Việt Nam 14–15 tiếng. Dưới nút có dòng «Số liệu tới hết ngày … (ngày theo giờ Google) · lấy lúc …»; giờ «lấy lúc» là giờ máy.
+- **Trễ 2–3 ngày, chỉ tính số đã chốt.**
+  - Google cần khoảng 2–3 ngày mới chốt xong số liệu của một ngày. Ngày chưa chốt là **số tạm**: Google còn đang cộng, số có thể còn đổi.
+  - App **không hiện, không tính** số tạm. Câu «… ngày gần nhất còn là số tạm, chưa tính.» cho biết có mấy ngày như vậy.
+  - Lần bấm sau, ngày nào Google đã chốt thì app tự lấy lại.
+- **Khoảng và kỳ so sánh.**
+  - Ô **Khoảng**: **7 ngày**, **28 ngày** (mặc định), **3 tháng**, cả ba kết thúc ở ngày «Số liệu tới hết ngày …». Hoặc **Tùy chọn**: hai ô ngày, chỉ trong phần số liệu đã lưu.
+  - Ô **So với**: **Kỳ trước** (cùng số ngày, liền ngay trước) hay **Cùng kỳ năm trước** (lùi 52 tuần, giữ đúng thứ trong tuần; cần có số liệu đủ xa).
+  - Ô **Chỉ bài trong kế hoạch** dùng được khi máy đã có kế hoạch: mở trang Kế hoạch một lần.
+- **Bốn ô đầu trang.**
+  - **Lượt click**.
+  - **Lượt hiển thị**: số lần bài hiện trong kết quả tìm kiếm.
+  - **CTR**: click chia cho lượt hiển thị.
+  - **Vị trí trung bình**: số nhỏ là đứng cao, vị trí 1–10 là trang đầu.
+
+  Dòng nhỏ xanh, đỏ bên dưới là chênh so với kỳ so sánh. Chênh CTR tính bằng **điểm** phần trăm: 4,0% lên 4,5% là «+0,5 điểm». Thấy «**ít dữ liệu**» nghĩa là một trong hai kỳ dưới 30 lượt hiển thị, nên app chưa so CTR, vị trí.
+- **Tổng của app có thể cao hơn biểu đồ Search Console.**
+  - App cộng theo từng trang, còn biểu đồ Search Console tính theo cả website. Ví dụ một lần tìm mà hai bài của bạn cùng hiện thì Search Console tính 1 lượt hiển thị, app tính 2.
+  - Muốn so với Search Console thì so **từng bài** ở thẻ **Trang** của báo cáo Hiệu suất. Đặt khoảng ngày tùy chỉnh trùng khoảng của app; đừng dùng «28 ngày qua», vì ngày mới nhất của Search Console có thể là số sơ bộ.
+- **Bảng bài, trang.**
+  - Mỗi dòng là một bài hay trang đã đăng trên website, xếp theo click nhiều nhất.
+  - Cột **Mã KH** là mã dòng kế hoạch. Bài nối với dòng kế hoạch qua ô «Mã bài WordPress» ở trang Kế hoạch.
+  - Các cột «±» là chênh so với kỳ so sánh, ví dụ «+12 (+30%)», «lên 1,5 bậc», «giữ nguyên».
+  - Địa chỉ có số liệu mà không phải bài, trang đã đăng (trang chủ, chuyên mục, thẻ, địa chỉ cũ trước khi đổi đường dẫn, trang tìm kiếm) nằm ở mục «Trang khác trên website…» cuối trang.
+  - Câu «… dòng số liệu nằm ngoài địa chỉ website nên không tính.» là số liệu của `www.`, `http://`, staging. Bình thường.
+  - «Chưa có danh sách bài đã đăng trên máy…»: kết nối WordPress (mục 6) rồi bấm lấy lại.
+  - «… dòng kế hoạch «Đã đăng» chưa nối được với bài…»: kiểm ô «Mã bài WordPress» của dòng đó ở trang Kế hoạch.
+- **Nhãn** (cột **Nhãn**, ô **Lọc theo nhãn**, dòng «Cần chú ý: …» trên bảng). App tự đặt theo ngưỡng cố định, so kỳ đang xem với kỳ so sánh. Chọn bài ở **Chi tiết một bài, trang** để xem lý do (có số) và gợi ý.
+
+| Nhãn | Khi nào |
+|---|---|
+| 🔻 Tụt hạng | Cả hai kỳ có từ 30 lượt hiển thị, và vị trí trung bình kém đi từ 3 bậc trở lên, hay rơi khỏi trang đầu (vị trí 1–10) |
+| 📉 Mất click | Kỳ trước có từ 10 click, kỳ này còn một nửa trở xuống |
+| 👻 Chưa có lượt hiển thị | 0 lượt hiển thị trong kỳ đang xem và kỳ so sánh; với bài: đã đăng từ 14 ngày trở lên, hay chưa rõ ngày đăng. Có thể Google chưa lập chỉ mục bài. Kiểm bằng tay trong Search Console: ô **Kiểm tra URL** ở trên cùng, dán địa chỉ bài; chưa có thì bấm **Yêu cầu lập chỉ mục**. App không tự kiểm |
+| 👀 Nhiều hiển thị, ít click | Từ 200 lượt hiển thị, vị trí trung bình trong trang đầu mà CTR dưới 1%: tiêu đề, mô tả SEO có thể chưa hấp dẫn. Sửa trong SiteSEO trên website (app không sửa bài đã đăng) |
+| 🎯 Từ khóa chính chưa có | Bài có dòng kế hoạch, từ 100 lượt hiển thị, mà không từ khóa nào Google ghi trùng từ khóa chính của dòng kế hoạch. Chỉ xét khi có bảng từ khóa của kỳ đang xem (khoảng 28 ngày) |
+| 🌱 Mới đăng | Bài đăng chưa tới 14 ngày, tính tới ngày cuối khoảng. Chờ thêm: Google cần vài ngày tới vài tuần |
+| 🔺 Lên hạng | Ngược với «Tụt hạng»: tốt lên từ 3 bậc, hay vào trang đầu |
+
+«Cần chú ý» chỉ đếm 5 nhãn đầu; «Mới đăng», «Lên hạng» chỉ để biết.
+
+- **Chi tiết một bài, trang.** Chọn bài ở ô **Bài, trang**. Phần này hiện nhãn kèm lý do và gợi ý, rồi biểu đồ click, vị trí theo từng tuần (mỗi tuần 7 ngày, kết thúc ở ngày cuối khoảng; khoảng ngắn hơn một tuần thì không vẽ).
+- **Từ khóa** (bảng «Từ khóa trên Google (…)»):
+  - Mỗi lần bấm **🔄 Lấy số liệu mới**, app lấy từ khóa của **28 ngày gần nhất** và kỳ trước liền kề. Chọn khoảng khác thì bảng báo chưa có từ khóa cho khoảng đó.
+  - **Google ẩn từ khóa hiếm** và từ khóa có thông tin cá nhân, nên cộng các dòng từ khóa luôn **ít hơn** tổng của bài. Không phải lỗi.
+  - Cách gõ có dấu, không dấu, viết hoa của cùng một từ khóa gộp thành một dòng («gộp … cách gõ»). Bật **Xem từng cách gõ của từ khóa đã gộp** để xem riêng từng cách.
+  - Cột «Ghi chú»: «từ khóa chính» là trùng từ khóa chính của dòng kế hoạch; «từ khóa mới» là có ở kỳ này, không có ở kỳ trước.
+  - Bảng hiện 50 dòng đầu theo click; muốn xem tiếp thì bấm nút **Xem thêm … từ khóa**.
+  - Từ khóa chỉ hiện ở trang này. Nó chỉ lên Google Sheets khi bạn tự chọn, bấm **➕ Đưa vào kế hoạch** rồi **Áp dụng** ở trang Kế hoạch (ngay dưới đây). Khi đó nó thành một dòng kế hoạch như mọi dòng khác; viết bài từ dòng đó thì từ khóa vào lời dặn cho AI như mọi từ khóa kế hoạch.
+- **Đưa từ khóa vào kế hoạch** (ô chọn và nút **➕ Đưa vào kế hoạch** dưới bảng từ khóa của một bài):
+  1. Ô **Chọn từ khóa đưa vào kế hoạch (tối đa 10)**: chọn từ khóa bạn muốn viết bài, **tối đa 10** mỗi lần.
+     - Ô chỉ có từ khóa «sạch»: chữ tiếng Việt hoặc a–z, số, khoảng trắng, dấu «-», tối đa **80 ký tự**, không có số điện thoại (dạng bắt đầu bằng 0 hay 84), email, địa chỉ web.
+     - Từ khóa khác vẫn xem được trong bảng nhưng không chọn được. Dòng «… từ khóa không có trong ô chọn…» chỉ báo số lượng.
+     - Lý do lọc chặt: từ khóa là chữ người lạ gõ trên Google; câu dài, có dấu câu là chỗ dễ giấu «lệnh» cho AI khi viết bài.
+  2. Bấm **➕ Đưa vào kế hoạch**. App mở trang **Kế hoạch**: mỗi từ khóa thành một đề xuất «Thêm» trong khung **Đề xuất thay đổi** (Mã bài mới, nguồn «Search Console», trạng thái «Chưa viết»).
+     - App lọc lại lần nữa; từ khóa trùng nhau trong một lần đưa chỉ lấy một.
+     - Dòng trùng kế hoạch hay trùng bài đã đăng có cảnh báo ⚠️ và không tick sẵn.
+     - Đề xuất đang chờ (từ file, chữ dán, AI) mà chưa áp dụng sẽ được thay bằng bộ đề xuất mới này.
+  3. Tick dòng muốn giữ, bấm **✅ Áp dụng thay đổi (…)**: lúc này app mới ghi dòng mới lên Google Sheet. Bấm **Hủy** thì không ghi gì.
+
+  Bước này không gọi AI. Cần Google Sheet kế hoạch đã nối (mục 14).
+
+**Bản lưu tạm trên máy**
+
+- Số liệu đã lấy được lưu tạm trong máy (thư mục `data` của phần mềm), để mở trang không phải hỏi Google. Mỗi máy có một bản riêng. Số liệu gốc nằm trên Google, nên hai máy bấm lấy là thấy như nhau.
+- Đổi thuộc tính (bước 4) hay `WORDPRESS_URL` thì bản lưu tạm cũ tự bỏ; lần bấm sau lấy lại 16 tháng.
+- **Xóa bản lưu tạm** chỉ khi app báo file lưu tạm bị lỗi hay không mở được, nhiều lần liền.
+  - Cách xóa: trang **📈 Theo dõi** → khung **🧹 Bản lưu tạm số liệu trên máy** (cuối trang, hay ngay dưới câu báo lỗi) → **Xóa bản lưu tạm** → **Xóa**.
+  - Lần bấm **🔄 Lấy số liệu mới** sau đó lấy lại 16 tháng (khoảng một phút).
+  - Tab khác đang lấy số liệu thì app không xóa, báo «Đang lấy số liệu Search Console ở tab khác…».
+
+**Khi app báo lỗi**
 
 | App báo | Cách xử lý |
 |---|---|
+| "Chưa chọn thuộc tính Search Console. Vào Cài đặt → 📗 Google → Search Console…" | Làm bước 4. |
 | "Chưa bật Google Search Console API trong Google Cloud (mã 403)…" | Làm bước 1, đúng project của tài khoản dịch vụ. |
-| "Tài khoản dịch vụ chưa có quyền xem thuộc tính này (mã 403)…" | Kiểm lại bước 1 và bước 3: đúng thuộc tính, đúng email, quyền «Hạn chế». **Đừng nâng lên «Toàn quyền» hay chủ sở hữu** để thử: «Hạn chế» là đủ. Làm đúng mà vẫn báo thì báo Chỉ Huy. |
-| "Thuộc tính Search Console đã chọn không phải của website trong WORDPRESS_URL (ví dụ thuộc tính staging)…" | Chọn lại thuộc tính của website chính (bảng «Chọn thuộc tính nào»). |
-| "Thuộc tính Search Console chưa khai báo hoặc sai dạng…" | Chọn lại thuộc tính; hai dạng app nhận ở bảng «Chọn thuộc tính nào». |
+| "Tài khoản dịch vụ chưa có quyền xem thuộc tính này (mã 403)…" | Kiểm lại bước 1 và bước 3: đúng thuộc tính, đúng email, quyền «Hạn chế». **Đừng nâng lên «Toàn quyền» hay chủ sở hữu** để thử: theo Google, «Hạn chế» là đủ. Làm đúng mà vẫn báo thì báo Chỉ Huy. |
+| "Thuộc tính Search Console đã chọn không phải của website trong WORDPRESS_URL (ví dụ thuộc tính staging)…" | Chọn lại thuộc tính của website chính (bước 4). |
+| "Thuộc tính Search Console chưa khai báo hoặc sai dạng…" | Chọn lại thuộc tính ở bước 4; hai dạng app nhận ở bảng «Chọn thuộc tính nào». |
+| "Search Console đang giới hạn số lần lấy số liệu (mã 429)…" | Đợi 15 phút rồi bấm lại. |
+| "Đã gửi đủ 20 lệnh tới Search Console cho lần bấm này…" | Bấm lại sau để lấy tiếp; phần đã lấy được vẫn giữ. |
+| "Search Console báo số tạm ở đoạn ngày cũ…" | Để sau một ngày rồi bấm lại. |
+| "Chưa đọc được kế hoạch nên chưa đưa từ khóa Google vào được…" | Kiểm kết nối Google Sheets (mục 14), rồi chọn lại từ khóa ở trang 📈 Theo dõi. |
+| "Không mở được file lưu tạm số liệu Search Console…" lặp lại | Tắt chương trình khác có thể đang mở thư mục `data` (phần mềm sao lưu, diệt virus đang quét), rồi thử lại. Vẫn báo thì xóa bản lưu tạm (phần trên). |
 
 **Giữ an toàn**
 
