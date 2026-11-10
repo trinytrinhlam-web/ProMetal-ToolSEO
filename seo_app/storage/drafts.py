@@ -141,6 +141,9 @@ _MSG_FOLDER_NAME = (
 MAX_SEND_STATE_BYTES = 4096
 _MSG_SEND_STATE_BROKEN = "Trạng thái gửi ghi trong nháp bị hỏng nên không đọc được."
 _MSG_DRAFT_GONE = "Nháp này không còn trong kho nháp (có thể vừa bị xóa ở tab khác)."
+# Trạng thái gửi của nháp đã bị xóa hay bị dọn (T-130) giữ lại thành dòng «mồ côi» (không có nháp
+# đi kèm); giữ tối đa chừng này dòng mồ côi ghi gần nhất, như việc ghi Sheet còn nợ (T-100).
+MAX_ORPHAN_SEND_STATES = 200
 # Việc ghi Google Sheet còn nợ (T-100): một dòng JSON vài trăm byte; giữ tối đa chừng này việc.
 MAX_PLAN_WRITE_BYTES = 4096
 MAX_PLAN_WRITES = 200
@@ -867,6 +870,7 @@ class DraftStore:
     timezone: str = DEFAULT_TIMEZONE
     max_drafts: int = MAX_DRAFTS
     max_bytes: int = MAX_DRAFT_BYTES
+    max_orphan_send_states: int = MAX_ORPHAN_SEND_STATES
     recovered_from: Path | None = field(default=None, init=False)
     """Nếu file cũ hỏng và đã được đổi tên sang một bên: đường dẫn bản hỏng (để báo người dùng)."""
     _ready: bool = field(default=False, init=False, repr=False)
@@ -923,20 +927,14 @@ class DraftStore:
             )
             # Giữ nháp vừa lưu cộng (max - 1) nháp mới nhất khác. Không dựa vào giờ máy để giữ
             # nháp vừa lưu: đồng hồ bị chỉnh lùi thì nó lại là nháp "cũ nhất" (Soi Lỗi R8-6).
-            # Trạng thái gửi của đúng các nháp bị bỏ đi cũng bỏ theo (T-086).
-            conn.execute(
-                "DELETE FROM send_states WHERE id IN "
-                "(SELECT id FROM drafts WHERE id != ? AND id NOT IN "
-                "(SELECT id FROM drafts WHERE id != ? "
-                "ORDER BY saved_ts DESC, rowid DESC LIMIT ?))",
-                (saved.id, saved.id, max(0, self.max_drafts - 1)),
-            )
+            # Trạng thái gửi của các nháp bị bỏ đi giữ lại thành dòng mồ côi (T-130, như delete).
             conn.execute(
                 "DELETE FROM drafts WHERE id != ? AND id NOT IN "
                 "(SELECT id FROM drafts WHERE id != ? "
                 "ORDER BY saved_ts DESC, rowid DESC LIMIT ?)",
                 (saved.id, saved.id, max(0, self.max_drafts - 1)),
             )
+            _trim_orphan_send_states(conn, self.max_orphan_send_states)
         return saved
 
     def load(self, draft_id: str) -> DraftSnapshot:
@@ -991,11 +989,17 @@ class DraftStore:
         return DraftList(drafts=drafts, skipped=skipped)
 
     def delete(self, draft_id: str) -> bool:
-        """Xóa một nháp (kèm trạng thái gửi của nó). Trả về ``False`` nếu không có nháp đó."""
+        """Xóa một nháp. Trả về ``False`` nếu không có nháp đó.
+
+        Trạng thái gửi của nháp (đã gửi, đang gửi, gửi dở, dòng hỏng; nháp chưa gửi không có dòng
+        nào) **giữ lại** thành dòng mồ côi (T-130): bài trên website vẫn còn, nên nháp được lưu
+        lại ở bất kỳ tab nào, kể cả tab chưa từng thấy lần gửi, vẫn khóa gửi trùng (``save`` gắn
+        lại đúng dòng này theo mã nháp; «Lưu lại thành nháp» so rồi đặt giữ dòng có sẵn). Dòng mồ
+        côi cũ dọn theo ``max_orphan_send_states`` (``_trim_orphan_send_states``)."""
         _check_id(draft_id)
         with self._connect() as conn:
-            conn.execute("DELETE FROM send_states WHERE id = ?", (draft_id,))
             cursor = conn.execute("DELETE FROM drafts WHERE id = ?", (draft_id,))
+            _trim_orphan_send_states(conn, self.max_orphan_send_states)
             return cursor.rowcount > 0
 
     def load_send_state(self, draft_id: str) -> SendState | None:
@@ -1011,9 +1015,9 @@ class DraftStore:
     def send_state_if_exists(self, draft_id: str) -> tuple[SendState | None, bool] | None:
         """Nháp còn trong kho thì trạng thái gửi của nó, dạng ``(trạng thái, hỏng)`` như
         ``expected`` của ``save_send_state`` (``hỏng``: dòng không đọc được); ``None`` khi nháp
-        không còn (T-092). Kiểm nháp và đọc trạng thái trong **một** giao dịch đọc: lần xóa ở tab
-        khác (xóa cả hai) không chen được vào giữa, nên không lẫn «nháp còn, chưa gửi» với «nháp
-        vừa bị xóa»."""
+        không còn (T-092), kể cả khi trạng thái gửi của nó còn (dòng mồ côi, T-130). Kiểm nháp và
+        đọc trạng thái trong **một** giao dịch đọc: lần xóa hay lần ghi ở tab khác không chen được
+        vào giữa, nên «nháp còn» luôn đi cùng đúng trạng thái gửi của lúc đó."""
         _check_id(draft_id)
         with self._connect() as conn:
             conn.execute("BEGIN")  # giữ khóa đọc tới hết các lần đọc dưới
@@ -1204,6 +1208,20 @@ class DraftStore:
             target = self.path.with_name(f"{self.path.stem}.hong-{stamp}-{n}{self.path.suffix}")
         self.path.replace(target)
         return target
+
+
+def _trim_orphan_send_states(conn: sqlite3.Connection, keep: int) -> None:
+    """Dọn dòng trạng thái gửi mồ côi cũ (T-130), trong giao dịch đang mở. Chỉ xét dòng **không**
+    có nháp đi kèm, nên không bao giờ đụng trạng thái gửi của nháp còn trong kho; giữ ``keep``
+    dòng mồ côi ghi gần nhất (``rowid`` lớn nhất: mỗi lần ghi trạng thái gửi là một dòng mới,
+    ``INSERT OR REPLACE``), bỏ phần còn lại. Bảng nháp có dòng mã ``NULL`` (sửa tay) thì
+    ``NOT IN`` không bao giờ đúng: không dọn gì (hướng an toàn)."""
+    conn.execute(
+        "DELETE FROM send_states WHERE id NOT IN (SELECT id FROM drafts) AND rowid NOT IN "
+        "(SELECT rowid FROM send_states WHERE id NOT IN (SELECT id FROM drafts) "
+        "ORDER BY rowid DESC LIMIT ?)",
+        (max(0, keep),),
+    )
 
 
 def _read_send_state(conn: sqlite3.Connection, draft_id: str) -> SendState | None:
@@ -1662,6 +1680,7 @@ __all__ = [
     "MAX_DRAFT_BYTES",
     "MAX_PROMPT_CHARS",
     "MAX_ROOT_INDEX",
+    "MAX_ORPHAN_SEND_STATES",
     "MAX_PLAN_WRITES",
     "MAX_PLAN_WRITE_BYTES",
     "MAX_SEND_STATE_BYTES",
