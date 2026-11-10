@@ -83,3 +83,71 @@
 ### 7. Kết luận phần 1
 
 **ĐẠT.** Gộp `main` được ngay. N1–N3 có thể sửa cùng phần 2 (sau T-125); N4 chuyển cho T-125 và kịch bản buổi thử. Phần 2 (cách đọc số, nút «Đưa vào kế hoạch») Lá Chắn kiểm khi giao.
+
+---
+
+## Phần 3 (README mục 15: cách dùng trong app, cách đọc số) · Opus 5.5
+
+| Mục | Nội dung |
+|---|---|
+| Phạm vi | `team/T-126` tại `f3e2af3`: nhánh nằm ngay trên `main` cục bộ `7153f0a` (đã có T-124, T-125, T-130, T-132). Đổi 3 file tài liệu: `README.md` (mục 15 `:604-756`, dòng Trạng thái, mục 4), `.env.example` (chú thích `GSC_SITE_URL`), báo cáo Thư Ký mục «Phần 3». Đối chiếu: điều kiện B.2 của Lá Chắn T-124; giao diện thật trên `main` (`app/views/tracking.py`, `app/views/settings.py`, `seo_app/tracking/refresh.py`, `seo_app/env_file.py`, `seo_app/config.py`); biên bản Lá Chắn T-125 (Fable) |
+| Ngày | 2026-11-10 (11:34–11:39, giờ máy +07) |
+| **Kết luận** | **ĐẠT** · 0 Nghiêm trọng, 0 Cao, 0 Trung bình, 0 Thấp. Đủ 5 ý của T-124 B.2. Không lộ bí mật; không câu nào bảo nâng quyền. N1–N3 của phần 1 đã sửa. 1 ghi nhận cho T-127. **Gộp `main` được ngay** |
+
+### Tóm tắt (cho chủ dự án)
+
+- README nay có đủ cách dùng trang **📈 Theo dõi**:
+  - chọn thuộc tính bằng nút «Tìm thuộc tính»;
+  - lấy số liệu;
+  - đọc từng ô, từng nhãn;
+  - xử lý từng câu lỗi.
+- Các câu liên quan an toàn đều đúng với phần mềm:
+  - chỉ bấm nút mới hỏi Google;
+  - thuộc tính chỉ chọn từ danh sách Google trả về, không tự gõ;
+  - từ khóa không gửi cho AI, không ghi lên Google Sheets;
+  - gặp lỗi 403 thì không nâng quyền.
+- Không có email, mã project, đường dẫn file khóa hay tên miền thật.
+- **Việc của anh/chị:** không có.
+
+### 1. Đủ điều kiện B.2 của Lá Chắn T-124: **đủ**
+
+| Ý (T-124 B.2) | README | Đối chiếu code |
+|---|---|---|
+| Lần đầu khoảng một phút, 18 lệnh | «Lấy số liệu»: «lần đầu lấy 16 tháng số liệu, khoảng một phút, hỏi Google khoảng 18 lần» | 16 đoạn ngày × trang + 2 kỳ từ khóa (Thư Ký tính bằng chính hàm của `refresh.py`; kịch bản T-133 dùng cùng số) |
+| Bấm lại trong 10 phút không có gì mới | trích câu «Vừa lấy số liệu lúc …; Google cập nhật khoảng một lần mỗi ngày nên chưa có gì mới…», nói rõ «không hỏi Google» | câu có trong `refresh.py` |
+| Nghĩa «số tạm» | «Đọc số» → «Trễ 2–3 ngày, chỉ tính số đã chốt»: số tạm là số Google còn đang cộng, app không hiện, không tính, tự lấy lại khi đã chốt | câu «… ngày gần nhất còn là số tạm, chưa tính.» có trong mã |
+| Thuộc tính chỉ chọn qua «Tìm thuộc tính» | Bước 4 (`:646-655`): chỉ dòng «✔ dùng được» chọn được; «app chỉ lưu thuộc tính vừa tìm thấy và dùng được… Đừng tự gõ dòng này». `.env.example`: «Đừng tự gõ» | Lá Chắn T-125 đã kiểm `save_property` chỉ nhận đối tượng vừa tìm (T-124 B.1 (a)) |
+| Biến môi trường `GSC_SITE_URL` đè `.env` | Bước 4: «Biến này được ưu tiên hơn file `.env`, **kể cả khi để trống**… Nhờ người hỗ trợ gỡ biến đó khỏi máy». `.env.example` cùng ý | Đúng từng chữ: `load_settings` lấy mọi biến **có mặt** trong môi trường, kể cả rỗng (`config.py:125`); `gsc_site_url_overridden` cùng điều kiện (`env_file.py:474-480`) |
+
+### 2. Khớp giao diện thật và biên bản T-125
+
+- **Câu, nút README trích:** tôi chạy script riêng (chỉ đọc mã trên `main`), đủ 56 đoạn: Cài đặt → Search Console, trang Theo dõi, 7 nhãn, bảng lỗi 9 dòng. 55 đoạn có nguyên văn. Câu «Tài khoản dịch vụ thấy thuộc tính này, quyền «Hạn chế».» ghép lúc chạy từ `MSG_LISTED` (`refresh.py:140`), với nhãn quyền «Hạn chế» (`:177`). Thư Ký đối chiếu 192/192.
+- **Câu liên quan bảo mật, đúng với mã và với biên bản Lá Chắn T-125:**
+  - «Mở trang không hỏi Google… Chỉ nút 🔄 Lấy số liệu mới gọi Google; ở Cài đặt chỉ có 🔎 Tìm thuộc tính và ✅ Kiểm tra» (`:668`): đúng LC-T120-21, T-125 đã kiểm.
+  - «Từ khóa chỉ hiện ở trang này: app không gửi từ khóa cho AI, không ghi lên Google Sheets» (`:725`): đúng LC-T120-13. Tôi grep lại: `seo_app/ai`, `seo_app/plan`, `seo_app/content`, trang Kế hoạch, Soạn bài không nhập gì từ `seo_app/tracking` hay `search_cache`.
+  - Nút «➕ Đưa vào kế hoạch» được ghi là chưa làm (T-127), nút khóa.
+- **Nhãn 👻 khuyên chủ dự án tự «Kiểm tra URL», «Yêu cầu lập chỉ mục» trong Search Console** (`:710`): đó là việc chủ dự án làm bằng tài khoản của mình, không phải quyền của tài khoản dịch vụ. Phần mềm vẫn không có URL Inspection (LC-T120-7). Không phải nâng quyền.
+
+### 3. Không lộ bí mật, không bảo nâng quyền: **đạt**
+
+- detect-secrets (`PYTHONUTF8=1`; chép `README.md`, `.env.example`, báo cáo Thư Ký ra thư mục ngoài git cùng file mồi tiếng Việt, `scan --all-files .`): 3 file 0 kết quả; file mồi bị bắt.
+- Grep phần thêm của diff `f3e2af3`: không email, không link Sheet, không `sc-domain:` thật, không tên miền thật, không `.json`, không đường dẫn máy.
+- Mọi chỗ nhắc «Toàn quyền», «chủ sở hữu» đều ở thể phủ định: «**Không** chọn Toàn quyền… **không** thêm làm chủ sở hữu», «**Đừng nâng lên «Toàn quyền» hay chủ sở hữu** để thử». Câu ««Hạn chế» là đủ» nay ghi «theo Google» và «buổi thử sẽ xác nhận» (N1 phần 1).
+- N2 (chỉ thêm email vào đúng thuộc tính của website này, vì ai có file khóa cũng đọc được mọi thuộc tính có email đó) và N3 (thuộc tính tiền tố có đường con bị từ chối) đã thêm vào bước 3 và bảng «Chọn thuộc tính nào».
+
+### 4. Ghi nhận (không tính lỗi)
+
+- **G1 · Cho T-127:** câu «app không gửi từ khóa cho AI, **không ghi lên Google Sheets**» (`:725`) đúng hôm nay. Khi làm T-127 («Đưa vào kế hoạch»), từ khóa Google mà chủ dự án tick sẽ thành dòng kế hoạch, rồi được ghi lên Google Sheets. Phiếu T-127 phải sửa câu này cùng lúc, ví dụ «… chỉ lên Google Sheets khi bạn tự tick «Đưa vào kế hoạch» rồi áp dụng». Lá Chắn sẽ đối chiếu khi kiểm T-127.
+
+### 5. Kết quả kiểm tra
+
+| Việc | Kết quả | Đã xác minh |
+|---|---|---|
+| detect-secrets 3 file + mồi | 0 kết quả; mồi bị bắt | ✔ |
+| Script đối chiếu câu, nút (chỉ đọc mã) | 56 đoạn, 55 nguyên văn, 1 ghép lúc chạy | ✔ |
+| pytest file đọc `.env.example` (`test_config.py`, `test_t090_env_bang_ma.py`, `test_la_chan_t090.py`) | 58 qua, 12 giây | ✔ |
+| Gộp thử `main` cục bộ `7153f0a` | nhánh nằm ngay trên `main`, `merge-tree` sạch | ✔ |
+
+### 6. Kết luận phần 3
+
+**ĐẠT.** Gộp `main` được ngay. G1 chuyển cho phiếu T-127.
