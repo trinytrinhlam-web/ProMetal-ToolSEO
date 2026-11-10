@@ -8,6 +8,7 @@
 | Ngày nộp phần 1 | 2026-11-05 10:56 (+07:00, theo đồng hồ máy) |
 | Kết quả | **Phần 1 xong** (yêu cầu 1, 2 của phiếu). Phần 2 (yêu cầu 3: cách đọc số, nút «Đưa vào kế hoạch») làm sau T-125. Chỉ sửa `README.md` và chú thích trong `.env.example`, không sửa code |
 | Phần 3 | 2026-11-10 11:20 (+07:00): yêu cầu 3 của phiếu (cách đọc số) và điều kiện B.2 của Lá Chắn T-124, sau khi T-125 gộp `main`; Chỉ Huy B giao ngày 10/11, gọi là «phần 3». Phần nút «Đưa vào kế hoạch» chờ T-127. Xem mục «Phần 3» cuối báo cáo |
+| Lượt cuối | 2026-11-10 12:33 (+07:00): gom điều kiện tài liệu còn lại sau T-127. README mục 15 (nút «Đưa vào kế hoạch», Lá Chắn T-127 B.2); kịch bản T-133 thêm ca 6b (Lá Chắn T-127 B.1, Lá Chắn T-133 G1, G2); `security.md` §6 dòng LC-T120-24 (Lá Chắn T-127 B.3) và U1 (Lá Chắn T-125 B.4). Xem mục «Lượt cuối» cuối báo cáo |
 
 ## Phần 1
 
@@ -224,3 +225,126 @@ $ PYTHONUTF8=1 uvx detect-secrets scan README.md .env.example docs/team/reports/
 ### Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt cuối (2026-11-10, gom điều kiện tài liệu còn lại)
+
+Chỉ Huy B giao ngày 10/11, sau khi T-127 qua Lá Chắn Fable (`08b24df`, ĐẠT CÓ ĐIỀU KIỆN).
+- Làm trên `team/T-126` từ `0256545` (biên bản Lá Chắn phần 3, ĐẠT). Lượt này không gộp `main`, vì Chỉ Huy không yêu cầu.
+- T-127 chưa gộp `main`, nên phần về nút «Đưa vào kế hoạch» đọc mã trên `team/T-127` (`08b24df`): `app/views/tracking.py`, `app/views/plan.py`, `seo_app/plan/propose.py`.
+- Không sửa code.
+
+### Tóm tắt (cho chủ dự án)
+
+- **README mục 15** có hướng dẫn nút **«➕ Đưa vào kế hoạch»**:
+  - chọn tối đa 10 từ khóa «sạch»: chữ, số, khoảng trắng, «-», tối đa 80 ký tự; không số điện thoại, email, địa chỉ web;
+  - các từ khóa này thành đề xuất «Thêm» ở trang Kế hoạch;
+  - chỉ khi anh/chị bấm «Áp dụng» thì mới ghi lên Google Sheet.
+- **Kịch bản buổi thử Google** có thêm ca 6b: thử nút này với từ khóa thật, và kiểm trên Sheet rằng chỉ sau «Áp dụng» mới có dòng mới.
+- **Sổ bảo mật** ghi thêm hai việc:
+  - rủi ro «từ khóa Google có thể giấu lệnh cho AI» (mức Thấp, đã chấp nhận) cùng hai lớp giảm nhẹ;
+  - quy tắc: chữ lấy từ ngoài phải được làm sạch trước khi hiện lên màn hình.
+
+### Đã thay đổi
+
+| File (số dòng sau khi sửa) | Thay đổi | Nguồn |
+|---|---|---|
+| `README.md:725` | Câu «Từ khóa chỉ hiện ở trang này: app không gửi từ khóa cho AI, không ghi lên Google Sheets» đổi thành: từ khóa chỉ lên Google Sheets khi bạn tự chọn, bấm «Đưa vào kế hoạch» rồi «Áp dụng»; sau đó nó là dòng kế hoạch như mọi dòng, vào lời dặn AI khi viết bài | Lá Chắn T-126 phần 3, G1 |
+| `README.md:726-737` | Thay chỗ giữ «chưa làm (phiếu T-127)» bằng phần «Đưa từ khóa vào kế hoạch», ba bước. (1) Ô chọn, tối đa 10, luật lọc, lý do lọc chặt. (2) Đề xuất «Thêm» (Mã bài mới, nguồn «Search Console», trạng thái «Chưa viết»); lọc lại; trùng nhau chỉ lấy một; dòng ⚠️ không tick sẵn; bộ đề xuất đang chờ bị thay. (3) «Áp dụng» mới ghi, «Hủy» không ghi. Bước này không gọi AI, cần Sheet đã nối | Lá Chắn T-127 B.2; ghi nhận 1, 5 |
+| `README.md:760` | Bảng «Khi app báo lỗi» thêm dòng «Chưa đọc được kế hoạch nên chưa đưa từ khóa Google vào được…» | `MSG_GOOGLE_NO_PLAN` (T-127) |
+| `README.md:583` (mục 14) | Thêm câu: từ khóa đưa sang từ trang 📈 Theo dõi cũng thành đề xuất ở trang Kế hoạch, nguồn «Search Console» | Cho nhất quán hai mục |
+| `docs/team/reports/T-133-kich-ban-thu-that-google.md` | Xem bảng con ngay dưới | Lá Chắn T-127 B.1; Lá Chắn T-133 G1, G2 |
+| `docs/team/security.md:111` (U1) | Thêm câu: chữ ngoài **mới** đưa lên giao diện phải qua lớp làm sạch (`clean_text`, `page_label`, `visible`, hay `_clean_text` của client WordPress) **trước** `escape_markdown`, vì `escape_markdown` không bỏ ký tự đảo hướng, ký tự vô hình | Lá Chắn T-125 B.4, ghi nhận 1 |
+| `docs/team/security.md:181` (§6) | Dòng mới, ngày 2026-11-04, cho LC-T120-24 (mục 9 bảng rủi ro của biên bản Lá Chắn T-120). Gồm: rủi ro (câu lệnh toàn chữ, không dấu câu, dưới 80 ký tự vẫn qua bộ lọc: Soi Lỗi T-127 GN-2); lý do Thấp; **hai lớp giảm nhẹ** đã có ở T-127; lớp thêm khi viết bài; người quyết định | Lá Chắn T-127 B.3 |
+
+Các chỗ sửa trong kịch bản T-133:
+- Bảng đầu:
+  - «Soạn» ghi lượt 2.
+  - «Khi nào»: cần cả T-127 đã gộp; buổi thử chỉ đọc với Search Console và website, chỉ ca 6b ghi một dòng kế hoạch.
+  - «Tên nút»: theo `main` `7153f0a` (đã gộp T-125); riêng ca 6b theo `team/T-127` `08b24df`.
+  - «Nguồn» thêm Lá Chắn T-127 B.1, Lá Chắn T-133 G1.
+- Tóm tắt cho chủ dự án nói rõ việc ghi duy nhất.
+- Quy tắc 1: mã, link Sheet chỉ ghi 4 ký tự cuối. Quy tắc 2: thêm ngoại lệ ca 6b.
+- Mục 2: việc (11) (`:55`). Mục 3.1: ca 6b cần Sheet đã nối.
+- Ca 6 bước 5 trỏ sang ca 6b.
+- **Ca 6b mới** (`:184-211`), 8 bước:
+  - ghi số dòng Sheet trước;
+  - ô chọn chỉ có từ khóa sạch, câu đếm chỉ ghi số;
+  - chọn 1–2 từ khóa;
+  - đề xuất «Thêm», nguồn «Search Console», ⚠️ không tick sẵn;
+  - trước «Áp dụng», Sheet chưa đổi;
+  - «Áp dụng» một dòng;
+  - Sheet có đúng một dòng mới, trạng thái «Chưa viết»;
+  - «Hủy» không ghi (tùy chọn).
+- Ca 7: khối lệnh theo G1 (`:245-246`), chỉ in câu lỗi khi lỗi thuộc ba loại của phần mềm; cách đọc dòng `DUNG`.
+- Mục 6: bước 7 mới về dòng kế hoạch của ca 6b (giữ hay chủ dự án tự xóa; đổi lại Sheet thật nếu dùng bản sao); bước 8 soát cả mã Sheet.
+- Mục 7: dòng (11) (`:319`); «Dọn» thành 8 dòng.
+- Mục 8: việc của Thư Ký sau buổi thử.
+
+### Đối chiếu
+
+| Điều kiện | Chỗ sửa | Mã trên `team/T-127` (`08b24df`) hay `main` |
+|---|---|---|
+| T-127 B.2: tối đa 10 mỗi lần | README bước 1 | `MAX_GOOGLE_KEYWORDS = 10`; `st.multiselect(max_selections=…)`; `from_google_keywords` cắt `[:10]` |
+| T-127 B.2: chữ tiếng Việt hoặc a–z, số, dấu cách, «-», ≤ 80 ký tự | README bước 1 | `google_keyword`: `_KEYWORD_LETTERS`, `_KEYWORD_OTHERS = " -0123456789"`, `GOOGLE_KEYWORD_MAX = 80` |
+| T-127 B.2: không số điện thoại, email, web | README bước 1 (ghi rõ «dạng bắt đầu bằng 0 hay 84») | `personal_info`; `_WEB_WORDS`; email, web không thể có vì không nhận `@ . : /`. Ghi nhận 1 của Lá Chắn: hotline 1900, 1800 lọt, đã thử lại và đúng như vậy |
+| T-127 B.2: luôn duyệt ở trang Kế hoạch | README bước 2, 3 | `take_google_keywords` → `keep_proposals` (không lệnh ghi); ghi Sheet chỉ trong nút «✅ Áp dụng thay đổi» (`apply_chosen`); «Hủy» bỏ đề xuất |
+| Đề xuất «Thêm», nguồn, trạng thái, cảnh báo | README bước 2; kịch bản ca 6b bước 4 | `Action.ADD = "Thêm"`, `SOURCE_SEARCH_CONSOLE`, `_new_row` → `STATUS_NEW = "Chưa viết"`, `check_proposals`, `preselected`, `pick_label` (⚠️) |
+| Bộ đề xuất đang chờ bị thay | README bước 2 | `keep_proposals` (Lá Chắn T-127 ghi nhận 5) |
+| T-127 B.1: thử với từ khóa thật, chỉ sau «Áp dụng» mới có dòng trên Sheet | Kịch bản ca 6b, việc (11), bảng (11) | Như trên; ghi chú `MSG_GOOGLE_FROM`, câu `MSG_PLAN_LEFT_OUT`, `MSG_PLAN_NONE`, khung «Kết quả áp dụng» |
+| T-127 B.3: hai lớp giảm nhẹ | `security.md` §6 dòng mới | Lớp 1: bộ lọc ≤ 80 ký tự, không dấu câu. Lớp 2: người dùng tick, duyệt, «Áp dụng». Lý do Thấp theo Lá Chắn T-127 mục 1 (a)–(c) |
+| T-125 B.4: U1 | `security.md` U1 | Bốn hàm làm sạch có thật: `seo_app/plan/model.py` `clean_text`, `seo_app/tracking/match.py` `page_label`, `app/views/settings.py` `visible`, `seo_app/wordpress/client.py` `_clean_text` |
+| Lá Chắn T-126 phần 3 G1 | README `:725` | Từ khóa lên Sheet, rồi vào lời dặn AI, chỉ sau khi người dùng chọn và áp dụng (Lá Chắn T-127 mục 4) |
+| Lá Chắn T-133 G1 | Kịch bản ca 7 | Chỉ in câu lỗi với `SearchConsoleError`, `ServiceAccountError`, `ConfigError` (ba lớp có thật trong mã) |
+| Lá Chắn T-133 G2 | Script đối chiếu chạy lại trên `main` đã gộp T-125 | Xem «Kiểm tra» |
+
+### Kiểm tra
+
+```
+$ uv --version                 # trước khi chạy uvx (T-078)
+uv 0.13.4 (7456b60bc 2026-10-20 x86_64-pc-windows-msvc)
+$ (script đối chiếu kịch bản T-133: main đã gộp T-125 + câu ca 6b trên team/T-127)     tổng: 244 thiếu/sai: 0
+$ (script kiểm khối lệnh ca 7 sau G1, không gọi mạng)                                    thiếu/sai: 0 (24 điểm)
+$ (chạy thử khối lệnh: không .env, gỡ biến Google, proxy chết)
+DUNG: SearchConsoleError WORDPRESS_URL chưa khai báo hoặc không dùng được để lấy số liệu Search Console (…)
+$ (giả một lỗi lạ RuntimeError mang chữ bí mật giả)
+DUNG: RuntimeError
+$ (script đối chiếu README phần mới, U1, dòng §6; gọi thẳng google_keyword của T-127)  tổng: 74 thiếu/sai: 0
+$ (script phần 3 chạy lại)                                                              tổng: 192 thiếu/sai: 0
+$ uv run pytest tests/test_soi_loi_t112.py tests/test_soi_loi_t106.py -k readme -q
+5 passed, 69 deselected
+$ uv run pytest tests/test_t092_nhap_bi_xoa.py -k "env_example or siteseo_caption" -q
+2 passed, 27 deselected
+$ PYTHONUTF8=1 uvx detect-secrets scan README.md docs/team/security.md docs/team/reports/T-133-kich-ban-thu-that-google.md docs/team/reports/T-126-thu-ky.md
+  "results": {}
+```
+
+- **Script kịch bản (244 điểm):**
+  - 96 câu, nhãn của lõi và giao diện có trong mã `main` (đã gộp T-125) và trong kịch bản;
+  - 16 câu, nhãn ca 6b có trong mã T-127; 14 đoạn chữ của ca 6b có trong kịch bản;
+  - khối lệnh ca 7 trong kịch bản giống hệt bản đã kiểm;
+  - 16 đoạn, 18 lệnh;
+  - phần dọn có 8 bước;
+  - không còn «Sắp có (T-127)»;
+  - không email, chỉ có địa chỉ công khai của Search Console.
+- **Script README, U1, §6 (74 điểm):** gồm cả phép thử `google_keyword` thật.
+  - Nhận 4 mẫu: «sửa cửa kéo», «cửa-kéo 2 cánh», chữ hoa có dấu, 80 ký tự.
+  - Bỏ 13 mẫu: dấu phẩy, dấu hỏi, dấu chấm, «/», 81 ký tự, số điện thoại liền và cách, `www`, `http`, email, chỉ có số, ký tự đảo hướng, chữ toàn khổ.
+- Không file test nào khác đọc `security.md` hay kịch bản T-133 (grep `tests/`: chỉ nhắc tên trong chú thích).
+- `detect-secrets` có mồi đối chứng: bắt được hết.
+- Không chạy toàn bộ pytest, ruff (chỉ đổi tài liệu).
+
+### Rủi ro và điểm cần chú ý
+
+- **T-127 chưa gộp `main`.** README và kịch bản mô tả nút theo `team/T-127`. Nên gộp lượt này cùng lúc hoặc sau T-127. Gộp trước thì README tả một nút còn khóa («Sắp có (T-127)»).
+- **Sổ §6 trước đây chưa có dòng nào cho LC-T120-24**, nên tôi thêm dòng mới, không sửa dòng cũ.
+  - Ngày ghi 2026-11-04, là ngày chủ dự án chọn câu 7 = B.
+  - Cột «Người quyết định» chỉ ghi điều đã có: chủ dự án chọn B; Lá Chắn T-120 nhận xét «B chấp nhận được với LC-T120-24» và đặt mức Thấp; Lá Chắn T-127 giữ Thấp.
+  - Không ghi rằng chủ dự án đã đọc riêng rủi ro này. Chỉ Huy, Lá Chắn xem có cần hỏi chủ dự án xác nhận không.
+- **Ca 6b ghi một dòng kế hoạch thật.** Kịch bản cho chọn Sheet bản sao (theo T-128 mục 3.4), và dặn giữ hay xóa tay khi dọn.
+- **Hotline 1900, 1800 lọt bộ lọc** (Lá Chắn T-127 ghi nhận 1). README ghi đúng «số điện thoại dạng bắt đầu bằng 0 hay 84», không hứa chặn mọi số.
+- **Tên nút ở ca 6b** đọc trên `08b24df`. Gộp xong mà khác thì chạy lại script đối chiếu, như G2 đã làm cho T-125.
+- Lá Chắn T-125 B.2 (thử thật: từ khóa, đường dẫn hiện chữ thuần; «Kiểm tra» ≤ 3 lệnh) không thuộc lượt này. Kịch bản đã có dòng «Câu báo» ở mục 7 và ca 1 về cảnh báo quyền cao; số lệnh của «Kiểm tra» không đo được trên màn hình.
+
+### Câu hỏi cho chủ dự án
+
+Không có câu mới. Xác nhận riêng dòng sổ rủi ro LC-T120-24 (nếu Chỉ Huy, Lá Chắn thấy cần) là việc của Chỉ Huy.

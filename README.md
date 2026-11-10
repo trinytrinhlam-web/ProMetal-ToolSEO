@@ -580,7 +580,7 @@ Kế hoạch bài viết (từ khóa, ngày đăng dự kiến, trạng thái t�
 **Trang Kế hoạch**
 
 - **Danh sách bài theo kế hoạch**: đọc từ trang tính «KeHoach». App giữ một bản lưu trên máy và dùng lại trong 5 phút; nút **🔄 Tải lại** đọc lại ngay từ Google. Không đọc được Google thì app hiện bản lưu kèm câu báo (dòng trên bảng ghi «bản lưu trên máy»).
-- **📥 Cung cấp kế hoạch**: ba thẻ **Tải file** (CSV, TSV, TXT, MD; tối đa 1 MB), **Dán nội dung**, **Google Sheets** (link một Sheet khác đã chia sẻ cho tài khoản dịch vụ, có trang tính «KeHoach»). Bấm **🧠 Đọc kế hoạch và đề xuất cập nhật**. Bảng có cột «Từ khóa chính» thì app tự đọc; chữ tự do thì AI đọc (bấm **🤖 Gửi AI đọc**; gọi AI một lần, có tốn tiền). App hiện **Đề xuất thay đổi**: tick dòng muốn dùng rồi bấm **✅ Áp dụng thay đổi (…)** thì mới ghi lên Sheet.
+- **📥 Cung cấp kế hoạch**: ba thẻ **Tải file** (CSV, TSV, TXT, MD; tối đa 1 MB), **Dán nội dung**, **Google Sheets** (link một Sheet khác đã chia sẻ cho tài khoản dịch vụ, có trang tính «KeHoach»). Bấm **🧠 Đọc kế hoạch và đề xuất cập nhật**. Bảng có cột «Từ khóa chính» thì app tự đọc; chữ tự do thì AI đọc (bấm **🤖 Gửi AI đọc**; gọi AI một lần, có tốn tiền). App hiện **Đề xuất thay đổi**: tick dòng muốn dùng rồi bấm **✅ Áp dụng thay đổi (…)** thì mới ghi lên Sheet. Từ khóa đưa sang từ trang **📈 Theo dõi** (mục 15) cũng thành đề xuất ở đây, nguồn «Search Console».
 - **✍️ Viết bài**: chọn một dòng ở ô **Chọn bài để viết** rồi bấm. App mở **Soạn bài** điền sẵn từ khóa và các ô của dòng đó (số điện thoại, email trong ghi chú được che). Gửi bài xong, app ghi vào dòng: «Đã gửi nháp» (hay «Đã hẹn giờ», «Đã đăng»), Mã bài WordPress. Ghi Sheet lỗi (mất mạng) thì bài **không** bị gửi lại lên website; việc ghi còn nợ hiện ở trang này, có nút **Thử ghi lại**.
 - **🌐 Cập nhật trạng thái từ website** (cần kết nối WordPress, mục 6): app hỏi website trạng thái các bài có «Mã bài WordPress», rồi hiện khung **🌐 Thay đổi trạng thái từ website**: bảng thay đổi, mỗi dòng một ô tick (không tick sẵn). Tick dòng muốn ghi (hay bấm **Chọn tất cả**), rồi bấm **✍️ Ghi … thay đổi vào Google Sheet**. App chỉ đổi ô Trạng thái, Ngày đăng thực tế, Cập nhật lúc của dòng đó, không đụng bài trên website. Lần kiểm đã quá 5 phút thì phải bấm kiểm lại mới ghi được. Cột «Trên website» ghi «Lỡ lịch» khi bài hẹn giờ đã quá giờ 15 phút mà chưa lên (thường do lịch chạy của WordPress chạy trễ): mở trang quản trị WordPress kiểm tra.
 
@@ -722,8 +722,19 @@ Bấm **✅ Kiểm tra** (cùng khung). Thấy «Tài khoản dịch vụ thấy
   - Cách gõ có dấu, không dấu, viết hoa của cùng một từ khóa gộp thành một dòng («gộp … cách gõ»). Bật **Xem từng cách gõ của từ khóa đã gộp** để xem riêng từng cách.
   - Cột «Ghi chú»: «từ khóa chính» là trùng từ khóa chính của dòng kế hoạch; «từ khóa mới» là có ở kỳ này, không có ở kỳ trước.
   - Bảng hiện 50 dòng đầu theo click; muốn xem tiếp thì bấm nút **Xem thêm … từ khóa**.
-  - Từ khóa chỉ hiện ở trang này: app không gửi từ khóa cho AI, không ghi lên Google Sheets.
-- **➕ Đưa vào kế hoạch** (chọn từ khóa của Google đưa sang trang Kế hoạch): **chưa làm** (phiếu T-127), nút đang khóa. Phần này sẽ viết thêm khi làm xong.
+  - Từ khóa chỉ hiện ở trang này. Nó chỉ lên Google Sheets khi bạn tự chọn, bấm **➕ Đưa vào kế hoạch** rồi **Áp dụng** ở trang Kế hoạch (ngay dưới đây). Khi đó nó thành một dòng kế hoạch như mọi dòng khác; viết bài từ dòng đó thì từ khóa vào lời dặn cho AI như mọi từ khóa kế hoạch.
+- **Đưa từ khóa vào kế hoạch** (ô chọn và nút **➕ Đưa vào kế hoạch** dưới bảng từ khóa của một bài):
+  1. Ô **Chọn từ khóa đưa vào kế hoạch (tối đa 10)**: chọn từ khóa bạn muốn viết bài, **tối đa 10** mỗi lần.
+     - Ô chỉ có từ khóa «sạch»: chữ tiếng Việt hoặc a–z, số, khoảng trắng, dấu «-», tối đa **80 ký tự**, không có số điện thoại (dạng bắt đầu bằng 0 hay 84), email, địa chỉ web.
+     - Từ khóa khác vẫn xem được trong bảng nhưng không chọn được. Dòng «… từ khóa không có trong ô chọn…» chỉ báo số lượng.
+     - Lý do lọc chặt: từ khóa là chữ người lạ gõ trên Google; câu dài, có dấu câu là chỗ dễ giấu «lệnh» cho AI khi viết bài.
+  2. Bấm **➕ Đưa vào kế hoạch**. App mở trang **Kế hoạch**: mỗi từ khóa thành một đề xuất «Thêm» trong khung **Đề xuất thay đổi** (Mã bài mới, nguồn «Search Console», trạng thái «Chưa viết»).
+     - App lọc lại lần nữa; từ khóa trùng nhau trong một lần đưa chỉ lấy một.
+     - Dòng trùng kế hoạch hay trùng bài đã đăng có cảnh báo ⚠️ và không tick sẵn.
+     - Đề xuất đang chờ (từ file, chữ dán, AI) mà chưa áp dụng sẽ được thay bằng bộ đề xuất mới này.
+  3. Tick dòng muốn giữ, bấm **✅ Áp dụng thay đổi (…)**: lúc này app mới ghi dòng mới lên Google Sheet. Bấm **Hủy** thì không ghi gì.
+
+  Bước này không gọi AI. Cần Google Sheet kế hoạch đã nối (mục 14).
 
 **Bản lưu tạm trên máy**
 
@@ -746,6 +757,7 @@ Bấm **✅ Kiểm tra** (cùng khung). Thấy «Tài khoản dịch vụ thấy
 | "Search Console đang giới hạn số lần lấy số liệu (mã 429)…" | Đợi 15 phút rồi bấm lại. |
 | "Đã gửi đủ 20 lệnh tới Search Console cho lần bấm này…" | Bấm lại sau để lấy tiếp; phần đã lấy được vẫn giữ. |
 | "Search Console báo số tạm ở đoạn ngày cũ…" | Để sau một ngày rồi bấm lại. |
+| "Chưa đọc được kế hoạch nên chưa đưa từ khóa Google vào được…" | Kiểm kết nối Google Sheets (mục 14), rồi chọn lại từ khóa ở trang 📈 Theo dõi. |
 | "Không mở được file lưu tạm số liệu Search Console…" lặp lại | Tắt chương trình khác có thể đang mở thư mục `data` (phần mềm sao lưu, diệt virus đang quét), rồi thử lại. Vẫn báo thì xóa bản lưu tạm (phần trên). |
 
 **Giữ an toàn**
