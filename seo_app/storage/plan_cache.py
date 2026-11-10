@@ -248,18 +248,22 @@ class PlanCacheStore:
 
     def _prepare(self) -> None:
         """``data/`` là liên kết thì báo lỗi, không tạo, không mở (SL-T117-1); tạo thư mục; chính
-        file là liên kết thì xóa (chỉ xóa liên kết, F1), file nhật ký là liên kết thì gỡ; file
-        hỏng/lạ thì xóa; tạo bảng nếu chưa có."""
+        file là liên kết thì xóa (chỉ xóa liên kết, F1), file nhật ký là liên kết thì gỡ, **cả hai
+        trước mọi lần SQLite mở file** (SL-T131-1, như ``site_index``, ``search_cache``:
+        ``_is_healthy`` mở file, SQLite đi theo liên kết ở tên nhật ký); file hỏng/lạ thì xóa; tạo
+        bảng nếu chưa có."""
         try:
             if dir_has_link(self.path.parent, PROJECT_ROOT):
                 raise PlanCacheError(MSG_DATA_DIR_LINK)
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            if _is_link(self.path) or (self.path.exists() and not _is_healthy(self.path)):
+            if _is_link(self.path):
                 # Liên kết tắt có thể trỏ ra ngoài data/ (F1): chỉ xóa chính liên kết.
                 self._reset()
             for path in _journal_paths(self.path):
                 if _is_link(path):
                     path.unlink()  # chỉ gỡ chính liên kết, không đụng file nó trỏ tới
+            if self.path.exists() and not _is_healthy(self.path):
+                self._reset()
             with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
                 _guard(conn)
                 for sql in _CREATE_TABLES:

@@ -2,8 +2,20 @@
 
 Mỗi nháp là một ``DraftSnapshot`` lưu dạng JSON trong một dòng của bảng ``drafts``. Dữ liệu
 đọc từ file được coi là chưa tin cậy: giới hạn kích thước, kiểm khuôn bằng pydantic; nháp hỏng
-thì bỏ qua và báo lỗi tiếng Việt, không làm sập app. File hỏng hẳn (không phải SQLite) được
-đổi tên sang một bên để giữ lại, rồi tạo file mới.
+thì bỏ qua và báo lỗi tiếng Việt, không làm sập app.
+
+File cũng chưa tin cậy (T-131; Lá Chắn LC-T129-1, SL-T117-1; cùng mẫu kho thẻ ảnh,
+``search_cache``):
+
+- ``data/`` là liên kết thì kho không tạo, không mở, không đổi tên gì, báo câu cố định. Tên file
+  nhật ký là liên kết thì gỡ; chỗ đặt file là liên kết thì đổi tên chính liên kết sang một bên.
+  Kiểm ở mỗi lần mở, trước mọi lần SQLite mở file.
+- ``sqlite_master`` phải khớp đúng các bảng app tạo (đúng chữ câu tạo bảng của mọi bản trước; file
+  cũ thiếu bảng sau thì được), kiểm trước khi dùng file và **trong cùng giao dịch** với mỗi thao
+  tác (``_Checked``). Mọi kết nối: ``trusted_schema = OFF``, trần số bước, trần độ dài giá trị.
+- File hỏng hay lạ (không phải SQLite, cấu trúc khác, ô dài quá trần) được đổi tên sang một bên để
+  giữ lại (cùng file nhật ký), rồi tạo file mới; **không bao giờ xóa**: kho giữ nháp và khóa gửi
+  trùng (T-086, T-089, T-092, T-130). File bận, không mở được thì báo lỗi, giữ nguyên file.
 
 Không dùng ``pickle``; mọi câu SQL dùng tham số ``?``. Khuôn không có chỗ nào cho khóa API
 hay mật khẩu, và ``extra="forbid"`` chặn mọi trường lạ.
@@ -53,12 +65,14 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import stat
 import unicodedata
 import uuid
-from collections.abc import Collection, Iterable, Iterator
-from contextlib import closing, contextmanager
+from collections.abc import Collection, Iterable, Iterator, Sequence
+from contextlib import closing, contextmanager, suppress
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 from zoneinfo import ZoneInfo
@@ -88,6 +102,7 @@ from seo_app.images.alt import (
     clean_alt_text,
     clean_suggestion,
 )
+from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link, is_link
 from seo_app.images.folders import (
     MAX_REL_PATH_CHARS,
     ImageEntry,
@@ -116,6 +131,50 @@ _NO_IMAGE_VERSIONS = frozenset({1})  # khuôn chưa có ảnh đã chọn
 _ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")  # băm SHA-256 dạng hex thường (``hexdigest``)
 _SQLITE_TIMEOUT = 5  # giây chờ khi file đang bị một lần lưu khác giữ
+
+# Kiểm file nháp (T-131, LC-T129-1, SL-T117-1; mẫu kho thẻ ảnh và ``search_cache``). Câu tạo bảng
+# giữ **đúng chữ** của mọi bản trước (đối chiếu cả 21 bản ``drafts.py`` trong lịch sử git: ba câu
+# này chưa từng đổi từ khi có bảng), nên file nháp cũ khớp ``_expected_schema``. File cũ chỉ thiếu
+# bảng thêm sau (``send_states`` trước T-086, ``plan_writes`` trước T-100) thì được tạo thêm bảng.
+_CREATE_TABLES = {
+    "drafts": (
+        "CREATE TABLE IF NOT EXISTS drafts ("
+        "id TEXT PRIMARY KEY, title TEXT NOT NULL, keyword TEXT NOT NULL, "
+        "saved_at TEXT NOT NULL, saved_ts REAL NOT NULL, data TEXT NOT NULL)"
+    ),
+    # File nháp tạo trước T-086 chưa có bảng này: tạo thêm, nháp cũ giữ nguyên.
+    "send_states": (
+        "CREATE TABLE IF NOT EXISTS send_states (id TEXT PRIMARY KEY, data TEXT NOT NULL)"
+    ),
+    # T-100: việc ghi Google Sheet còn nợ; file cũ chưa có thì tạo thêm.
+    "plan_writes": (
+        "CREATE TABLE IF NOT EXISTS plan_writes ("
+        "id TEXT PRIMARY KEY, data TEXT NOT NULL, saved_ts REAL NOT NULL)"
+    ),
+}
+_ALL_TABLES = frozenset(name.encode() for name in _CREATE_TABLES)
+_COLUMNS = {
+    "drafts": ("id", "title", "keyword", "saved_at", "saved_ts", "data"),
+    "send_states": ("id", "data"),
+    "plan_writes": ("id", "data", "saved_ts"),
+}
+_MASTER_SQL = "SELECT type, name, tbl_name, substr(sql, 1, ?) FROM sqlite_master LIMIT ?"
+_MAX_SQL_BYTES = 2048  # câu CREATE dài nhất của kho nháp chưa tới 200 byte
+_JOURNAL_SUFFIXES = ("-journal", "-wal", "-shm")
+# Lớp phòng sau lớp kiểm cấu trúc (như kho thẻ ảnh, ``search_cache``): số bước tối đa của máy ảo
+# SQLite cho mỗi kết nối, độ dài tối đa của một giá trị. Một nháp tối đa ``MAX_DRAFT_BYTES``: trần
+# độ dài gấp bốn lần; số bước của mọi thao tác trên kho đầy (đo ở báo cáo T-131 lượt 2) chưa tới
+# một phần trăm trần.
+_MAX_VM_STEPS = 50_000_000
+_PROGRESS_EVERY = 1000
+_MAX_SQLITE_LENGTH = 4 * MAX_DRAFT_BYTES
+# Lỗi do môi trường, không do file lạ (LC-T122-1; như ``site_index``): quyền, bận, khóa, hết bộ nhớ,
+# chỉ đọc, vào ra, đầy ổ, không mở được, giao thức khóa. Bước kiểm file gặp các mã này thì giữ file,
+# báo câu; mã khác (hỏng, «không phải cơ sở dữ liệu», «unsupported file format», giá trị quá dài,
+# quá số bước…) là file lạ: đổi tên sang một bên.
+_KEEP_FILE_CODES = frozenset({3, 5, 6, 7, 8, 10, 13, 14, 15})
+_MSG_BROKEN = "File nháp bị lỗi nên không đọc/ghi được. Thử tải lại trang."
+_MSG_NOT_A_FILE = "Chỗ đặt file nháp đang là một thư mục, app không dùng được."
 
 # Ảnh đã chọn (T-055). Số thứ tự thư mục gốc lớn hơn mức này không thể do app ghi: bỏ ảnh đó.
 # Số trong khoảng mà thư mục chưa khai báo thì giữ, ``check_draft_images`` báo "không có".
@@ -1155,44 +1214,74 @@ class DraftStore:
     # ------------------------------------------------------------ nội bộ
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        if self._ready and not self.path.exists():
-            # File hoặc cả thư mục data/ bị xóa khi app đang chạy: tạo lại (Soi Lỗi R8-1).
-            self._ready = False
+    def _connect(self) -> Iterator[_Checked]:
+        """Một thao tác: một kết nối, một giao dịch, cấu trúc file kiểm **trong** giao dịch đó trước
+        câu đầu tiên của thao tác (``_Checked``; T-131, LC-T129-1). Xong thì ``COMMIT``, lỗi thì
+        ``ROLLBACK``. Cấu trúc lạ, file hỏng, quá số bước, giá trị quá dài: ``DraftError``, và lần
+        mở sau kiểm lại file từ đầu (``_prepare``: file lạ thì đổi tên sang một bên)."""
         self._prepare()
         try:
-            # ``with conn``: một giao dịch, xong thì commit, lỗi thì rollback
-            with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
-                yield conn
+            with closing(
+                sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT, isolation_level=None)
+            ) as conn:
+                _guard(conn)
+                try:
+                    yield _Checked(conn)
+                except BaseException:
+                    if conn.in_transaction:
+                        conn.execute("ROLLBACK")
+                    raise
+                if conn.in_transaction:
+                    conn.execute("COMMIT")
+        except _ForeignFile:
+            self._ready = False  # file bị thay khi app đang chạy: lần sau kiểm lại, đổi tên file lạ
+            raise DraftError(_MSG_BROKEN) from None
         except sqlite3.DatabaseError as exc:
+            if not _is_busy(exc):
+                # Hỏng, quá số bước, giá trị quá dài…: lần sau kiểm lại file. Bận chỉ là tab khác.
+                self._ready = False
             raise DraftError(_db_message(exc)) from None
         except OSError as exc:
             raise DraftError(f"Không đọc/ghi được file nháp ({exc.strerror or exc}).") from None
 
     def _prepare(self) -> None:
-        """Lần đầu: tạo thư mục, kiểm file, tạo bảng. File hỏng thì đổi tên sang một bên."""
-        if self._ready:
-            return
+        """Mỗi lần mở (T-131, mẫu kho thẻ ảnh, ``search_cache``):
+
+        - ``data/`` (hay thư mục chứa file) là liên kết thì báo ``MSG_DATA_DIR_LINK``, không tạo,
+          không mở, không đổi tên gì (SL-T117-1): file ở đó nằm ngoài thư mục phần mềm.
+        - Tên file nhật ký (``-journal``, ``-wal``, ``-shm``) là liên kết thì gỡ chính liên kết; chỗ
+          đặt file là liên kết (symlink, junction, hard link) thì **đổi tên** chính liên kết sang
+          một bên (không xóa: kho giữ nháp và khóa gửi trùng của người dùng; file nó trỏ tới không
+          bị đụng). Cả hai **trước mọi lần SQLite mở file** (SL-T131-1, F1).
+
+        Lần đầu, hoặc khi file bị xóa, bị thay khi app đang chạy: tạo thư mục; file hỏng, lạ thì
+        đổi tên sang một bên (cùng file nhật ký) rồi tạo file mới; tạo bảng còn thiếu. File bận,
+        không mở được (``_KEEP_FILE_CODES``) thì báo lỗi, **không** đổi tên: nháp và trạng thái gửi
+        trong đó còn nguyên (trước T-131, file bận lúc kiểm bị coi là hỏng)."""
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            if self.path.exists() and not _is_healthy(self.path):
+            if dir_has_link(self.path.parent, PROJECT_ROOT):
+                self._ready = False
+                raise DraftError(MSG_DATA_DIR_LINK)
+            for journal in _journal_paths(self.path):
+                if _is_link(journal):
+                    _remove_link(journal)
+                    self._ready = False
+            if _is_link(self.path):
                 self.recovered_from = self._move_aside()
-            with closing(sqlite3.connect(self.path, timeout=_SQLITE_TIMEOUT)) as conn, conn:
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS drafts ("
-                    "id TEXT PRIMARY KEY, title TEXT NOT NULL, keyword TEXT NOT NULL, "
-                    "saved_at TEXT NOT NULL, saved_ts REAL NOT NULL, data TEXT NOT NULL)"
-                )
-                # File nháp tạo trước T-086 chưa có bảng này: tạo thêm, nháp cũ giữ nguyên.
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS send_states ("
-                    "id TEXT PRIMARY KEY, data TEXT NOT NULL)"
-                )
-                # T-100: việc ghi Google Sheet còn nợ; file cũ chưa có thì tạo thêm.
-                conn.execute(
-                    "CREATE TABLE IF NOT EXISTS plan_writes ("
-                    "id TEXT PRIMARY KEY, data TEXT NOT NULL, saved_ts REAL NOT NULL)"
-                )
+                self._ready = False
+            if not self.path.is_file():
+                # File hoặc cả thư mục data/ bị xóa khi app đang chạy: tạo lại (Soi Lỗi R8-1).
+                self._ready = False
+            if self._ready:
+                return
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            if self.path.exists():
+                if not self.path.is_file():
+                    raise DraftError(_MSG_NOT_A_FILE)
+                if not _is_healthy(self.path):
+                    self.recovered_from = self._move_aside()
+            if not _create_tables(self.path):
+                raise DraftError(_MSG_BROKEN)  # file bị thay ngay sau lần kiểm: lần sau kiểm lại
         except sqlite3.DatabaseError as exc:
             raise DraftError(_db_message(exc)) from None
         except OSError as exc:
@@ -1200,13 +1289,18 @@ class DraftStore:
         self._ready = True
 
     def _move_aside(self) -> Path:
+        """Đổi tên file hỏng, lạ hay chỗ đặt file là liên kết (và file nhật ký đi kèm) sang một bên
+        để giữ lại. File nhật ký của file cũ mà để lại thì SQLite «khôi phục» nó vào file mới."""
         stamp = datetime.now(ZoneInfo(self.timezone)).strftime("%Y%m%d-%H%M%S")
         target = self.path.with_name(f"{self.path.stem}.hong-{stamp}{self.path.suffix}")
         n = 1
-        while target.exists():
+        while target.exists() or target.is_symlink():
             n += 1
             target = self.path.with_name(f"{self.path.stem}.hong-{stamp}-{n}{self.path.suffix}")
-        self.path.replace(target)
+        self.path.replace(target)  # đổi tên chính liên kết, không đi theo nó
+        for journal, moved in zip(_journal_paths(self.path), _journal_paths(target), strict=True):
+            with suppress(FileNotFoundError):
+                journal.replace(moved)
         return target
 
 
@@ -1623,29 +1717,232 @@ def _check_images(
     return results
 
 
-def _is_healthy(path: Path) -> bool:
-    """File là SQLite đọc được, và bảng ``drafts``, ``send_states`` (nếu có) có đủ cột cần dùng."""
+# ------------------------------------------------------------ kiểm file nháp (T-131)
+
+
+class _ForeignFile(Exception):
+    """Cấu trúc file khác app tạo, phát hiện trong giao dịch của thao tác (nội bộ). Không phải
+    ``DraftError``, để thao tác nào bắt ``DraftError`` cũng không nuốt mất: ``_connect`` đổi thành
+    ``DraftError(_MSG_BROKEN)`` và cho lần mở sau kiểm lại file."""
+
+
+class _Checked:
+    """Kết nối của một thao tác trên kho nháp: mọi câu SQL chạy trong **một** giao dịch, và cấu trúc
+    file (``_app_tables``) được kiểm **trong chính giao dịch đó**, trước câu đầu tiên của thao tác
+    (T-131, LC-T129-1; như kho thẻ ảnh LC-T070-2). Nhờ vậy chỉ câu SQL của app chạy trên file, kể
+    cả khi file bị thay ngay sau ``_prepare``.
+
+    Thao tác chọn khóa như trước T-131:
+
+    - câu đầu tiên là ``BEGIN`` hay ``BEGIN IMMEDIATE`` (thao tác tự mở giao dịch, như so rồi đặt
+      giữ khóa ghi từ đầu: T-089, T-092): chạy câu đó, rồi kiểm;
+    - câu đầu tiên là câu ghi: mở ``BEGIN IMMEDIATE`` (giữ khóa ghi trước cả câu kiểm, như lần ghi
+      đầu của giao dịch trước đây), rồi kiểm;
+    - câu đầu tiên là câu đọc: mở ``BEGIN``; câu kiểm giữ khóa đọc (ảnh chụp ở chế độ WAL) tới hết
+      thao tác.
+
+    Cấu trúc khác app tạo: ``_ForeignFile``, chưa đọc, chưa ghi gì của thao tác."""
+
+    _WRITE_HEADS = ("INSERT", "DELETE", "UPDATE", "REPLACE")
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+        self._checked = False
+
+    def execute(self, sql: str, parameters: Sequence[object] = ()) -> sqlite3.Cursor:
+        if not self._checked:
+            self._checked = True
+            head = sql.lstrip().upper()
+            if head in ("BEGIN", "BEGIN IMMEDIATE"):
+                cursor = self._conn.execute(head)
+                self._check()
+                return cursor
+            self._conn.execute("BEGIN IMMEDIATE" if head.startswith(self._WRITE_HEADS) else "BEGIN")
+            self._check()
+        return self._conn.execute(sql, parameters)
+
+    def _check(self) -> None:
+        if _app_tables(self._conn) != _ALL_TABLES:
+            raise _ForeignFile
+
+
+def _journal_paths(path: Path) -> tuple[Path, ...]:
+    return tuple(path.with_name(path.name + suffix) for suffix in _JOURNAL_SUFFIXES)
+
+
+def _is_link(path: Path) -> bool:
+    """Liên kết tắt (symlink, junction, reparse point trỏ đi chỗ khác: ``data_dir.is_link``) hay
+    hard link (file thường có hơn một tên; tên kia có thể nằm ngoài ``data/``). SQLite không bao giờ
+    tự tạo hard link."""
+    if is_link(path):
+        return True
     try:
-        with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT)) as conn:
-            if conn.execute("PRAGMA quick_check").fetchone() != ("ok",):
-                return False
-            columns = {row[1] for row in conn.execute("PRAGMA table_info(drafts)")}
-            send_columns = {row[1] for row in conn.execute("PRAGMA table_info(send_states)")}
-            write_columns = {row[1] for row in conn.execute("PRAGMA table_info(plan_writes)")}
-    except sqlite3.DatabaseError:
+        info = path.lstat()
+    except (FileNotFoundError, NotADirectoryError):
         return False
-    needed = {"id", "title", "keyword", "saved_at", "saved_ts", "data"}
-    return (
-        (not columns or needed <= columns)
-        and (not send_columns or {"id", "data"} <= send_columns)
-        and (not write_columns or {"id", "data", "saved_ts"} <= write_columns)
-    )
+    return stat.S_ISREG(info.st_mode) and info.st_nlink > 1
+
+
+def _remove_link(path: Path) -> None:
+    """Chỉ gỡ chính liên kết (F1): file, thư mục nó trỏ tới, tên kia của hard link giữ nguyên."""
+    try:
+        path.unlink()
+    except (IsADirectoryError, PermissionError):
+        path.rmdir()  # junction Windows: xóa chính junction, không đụng thư mục đích
+
+
+def _guard(conn: sqlite3.Connection) -> None:
+    """File nháp là dữ liệu chưa tin cậy (F3): không chạy hàm «không vô hại» trong khung nhìn,
+    trigger của file; dừng truy vấn quá ``_MAX_VM_STEPS`` bước trên kết nối này; không cho giá trị
+    dài quá ``_MAX_SQLITE_LENGTH``. Lớp chặn chính là ``_app_tables``; đây là lớp phòng sau, không
+    phải giới hạn thời gian."""
+    conn.execute("PRAGMA trusted_schema = OFF")
+    conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, _MAX_SQLITE_LENGTH)
+    limit = _MAX_VM_STEPS  # đọc lúc mở (test hạ được giới hạn)
+    steps = 0
+
+    def stop_when_too_long() -> int:
+        nonlocal steps
+        steps += _PROGRESS_EVERY
+        return 1 if steps > limit else 0
+
+    conn.set_progress_handler(stop_when_too_long, _PROGRESS_EVERY)
+
+
+@cache
+def _expected_schema() -> dict[bytes, frozenset[tuple]]:
+    """Các dòng ``sqlite_master`` (loại, tên, bảng, câu lệnh) của ba bảng app tạo, theo tên bảng,
+    dựng bằng chính ``_CREATE_TABLES`` trong bộ nhớ (khớp đúng cách SQLite đang chạy ghi lại câu
+    lệnh, kèm chỉ mục tự sinh của khóa chính)."""
+    with closing(sqlite3.connect(":memory:")) as conn:
+        conn.text_factory = bytes
+        for sql in _CREATE_TABLES.values():
+            conn.execute(sql)
+        rows = conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, 16)).fetchall()
+    schema: dict[bytes, set[tuple]] = {}
+    for row in rows:
+        schema.setdefault(row[2], set()).add(tuple(row))
+    return {name: frozenset(items) for name, items in schema.items()}
+
+
+def _app_tables(conn: sqlite3.Connection) -> frozenset[bytes] | None:
+    """Đọc ``sqlite_master`` (chưa chạm vào bảng nào): tên các bảng của app có trong file, nếu mọi
+    đối tượng trong file đều khớp đúng ``_expected_schema`` (bảng thiếu thì được: file cũ); có gì
+    khác thì ``None``: khung nhìn, trigger, bảng ảo, chỉ mục hay bảng lạ, câu tạo bảng khác chữ,
+    ``WITHOUT ROWID``…
+
+    Đọc thành byte (``text_factory`` tạm là ``bytes``): UTF-8 hỏng trong ``sqlite_master`` là
+    «khác», không phải lỗi giải mã (LC-T122-1). Đọc vào **danh sách** có ``LIMIT`` (LC-T070-1):
+    thừa dòng hay một dòng ``(loại, tên)`` lặp lại thì ``None``."""
+    expected = _expected_schema()
+    limit = sum(len(items) for items in expected.values())
+    factory = conn.text_factory
+    conn.text_factory = bytes
+    try:
+        rows = [tuple(row) for row in conn.execute(_MASTER_SQL, (_MAX_SQL_BYTES, limit + 1))]
+    finally:
+        conn.text_factory = factory
+    if len(rows) > limit or len({row[:2] for row in rows}) != len(rows):
+        return None
+    found: dict[bytes, set[tuple]] = {}
+    for row in rows:
+        found.setdefault(row[2], set()).add(row)
+    for name, items in found.items():
+        if name not in expected or items != expected[name]:
+            return None
+    return frozenset(found)
+
+
+def _create_tables(path: Path) -> bool:
+    """Đủ ba bảng, đúng cấu trúc: chỉ đọc, không xin quyền ghi. Còn thiếu bảng (file mới, file nháp
+    cũ): tạo trong một giao dịch ghi, kiểm lại cấu trúc trong giao dịch đó trước khi tạo. ``False``:
+    cấu trúc lạ (file bị thay ngay sau lần kiểm), chưa ghi gì."""
+    with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT, isolation_level=None)) as conn:
+        _guard(conn)
+        conn.execute("BEGIN")
+        try:
+            tables = _app_tables(conn)
+        finally:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+        if tables == _ALL_TABLES:
+            return True
+        if tables is None:
+            return False
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            tables = _app_tables(conn)
+            if tables is not None:
+                for name, sql in _CREATE_TABLES.items():
+                    if name.encode() not in tables:
+                        conn.execute(sql)
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        conn.execute("COMMIT" if tables is not None else "ROLLBACK")
+        return tables is not None
+
+
+def _oversized_sql(table: str) -> str:
+    checks = " OR ".join(f"length(CAST({column} AS BLOB)) > ?1" for column in _COLUMNS[table])
+    return f"SELECT 1 FROM {table} WHERE {checks} LIMIT 1"
+
+
+# Ô dài hơn ``_MAX_SQLITE_LENGTH`` (app không bao giờ ghi): đọc ô đó báo ``SQLITE_TOOBIG`` ở mọi lần
+# đọc, nên danh sách nháp hay việc tìm nháp theo kế hoạch kẹt mãi ở câu báo lỗi. ``_is_healthy`` đọc
+# thử mọi ô (``CAST`` nạp cả ô) để file như vậy bị đổi tên sang một bên (như kho thẻ ảnh, T-074).
+# Chỉ ghép tên bảng, tên cột hằng.
+_OVERSIZED_SQL = {name.encode(): _oversized_sql(name) for name in _CREATE_TABLES}
+
+
+def _is_healthy(path: Path) -> bool:
+    """File là SQLite đọc được, chỉ chứa đúng các bảng app tạo (bảng thiếu thì được: file cũ),
+    ``quick_check`` ổn, không có ô dài quá ``_MAX_SQLITE_LENGTH``.
+
+    ``False`` chỉ khi **chắc chắn** hỏng hay lạ: cấu trúc khác, UTF-8 hỏng trong ``sqlite_master``,
+    SQLite báo hỏng / không phải cơ sở dữ liệu / «unsupported file format», giá trị quá dài, quá số
+    bước. Lỗi do môi trường (bận, khóa, không mở được, chỉ đọc, đầy ổ…: ``_KEEP_FILE_CODES``) được
+    ném lại để báo ``DraftError`` mà **không** đổi tên file: nháp và trạng thái gửi còn nguyên.
+    Mọi bước kiểm nằm trong một giao dịch đọc, cấu trúc kiểm trước mọi truy vấn khác."""
+    try:
+        with closing(sqlite3.connect(path, timeout=_SQLITE_TIMEOUT, isolation_level=None)) as conn:
+            _guard(conn)
+            conn.execute("BEGIN")
+            try:
+                tables = _app_tables(conn)
+                if tables is None:
+                    return False
+                if conn.execute("PRAGMA quick_check").fetchone() != ("ok",):
+                    return False
+                return not any(
+                    conn.execute(_OVERSIZED_SQL[name], (_MAX_SQLITE_LENGTH,)).fetchone()
+                    for name in sorted(tables)
+                )
+            finally:
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+    except sqlite3.DatabaseError as exc:
+        if _is_busy(exc) or _code(exc) in _KEEP_FILE_CODES:
+            raise
+        return False
+
+
+def _is_busy(exc: sqlite3.DatabaseError) -> bool:
+    """File đang bị kết nối khác khóa (không phải hỏng)."""
+    text = str(exc).lower()
+    return isinstance(exc, sqlite3.OperationalError) and ("locked" in text or "busy" in text)
+
+
+def _code(exc: sqlite3.DatabaseError) -> int | None:
+    code = getattr(exc, "sqlite_errorcode", None)
+    return code & 0xFF if isinstance(code, int) else None
 
 
 def _db_message(exc: sqlite3.DatabaseError) -> str:
     if isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower():
         return "File nháp đang bận (có thể app mở ở tab khác đang lưu). Thử lại sau giây lát."
-    return "File nháp bị lỗi nên không đọc/ghi được. Thử tải lại trang."
+    return _MSG_BROKEN
 
 
 def _short(exc: Exception) -> str:

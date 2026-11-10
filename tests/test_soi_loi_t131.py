@@ -37,16 +37,9 @@ SITE = "https://suachuacuasat.com"
 SHEET_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-soi"
 VALUES = (("Mã bài", "Từ khóa chính"), ("B-001", "sửa cửa cuốn"))
 OUTSIDE_BYTES = b"FILE-NGOAI-DU-AN-" * 4000  # 68 KB, lớn hơn vùng chỉ mục WAL (32 KB)
-SL_T131_1 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T131-1 (soi-loi, Thấp): plan_cache._prepare gỡ liên kết ở tên file nhật ký sau "
-        "_is_healthy (đã mở file bằng SQLite); site_index, search_cache gỡ trước khi mở"
-    ),
-)
 KINDS = [
     pytest.param("site-index", id="site-index"),
-    pytest.param("plan-cache", id="plan-cache", marks=SL_T131_1),
+    pytest.param("plan-cache", id="plan-cache"),
     pytest.param("search-cache", id="search-cache-mau"),  # mẫu đối chiếu (T-122)
 ]
 

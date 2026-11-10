@@ -112,20 +112,8 @@ def test_preview_cache_check_error_means_no_cache(tmp_path, monkeypatch):
     ("write", "errors"),
     [
         # T-131 phần 1–3: cache kế hoạch, danh sách bài đã sửa (XPASS, gỡ dấu theo R5). Kho nháp
-        # sửa sau khi T-130 gộp, nên còn dấu.
-        pytest.param(
-            _drafts,
-            (DraftError,),
-            id="kho-nhap",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "SL-T117-1 (soi-loi, có từ trước, cùng loại LC-T116-1): data/ là liên kết thì "
-                    "kho nháp ghi file SQLite ra nơi liên kết trỏ tới (ngoài dự án); chưa dùng "
-                    "dir_has_link như cache ảnh, kho thẻ (T-117 Đề xuất 1)"
-                ),
-            ),
-        ),
+        # sửa ở T-131 lượt 2 (XPASS, gỡ dấu theo R5).
+        pytest.param(_drafts, (DraftError,), id="kho-nhap"),
         pytest.param(_plan_cache, (PlanCacheError,), id="cache-ke-hoach"),
         pytest.param(_site_index, (SiteIndexError,), id="danh-sach-bai-da-dang"),
     ],

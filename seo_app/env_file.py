@@ -455,7 +455,13 @@ def set_gsc_site_url(
 
     ``offered``: các thuộc tính vừa nhận từ lệnh ``sites`` («Tìm thuộc tính») trong cùng phiên và
     dùng được cho website. Giá trị phải là **một trong số đó** và qua ``validate_gsc_site_url``
-    (LC-T120-12): đường này không nhận chữ gõ tay."""
+    (LC-T120-12): đường này không nhận chữ gõ tay.
+
+    **Nơi gọi phải kiểm giá trị bằng** ``seo_app.google.search_console.parse_property`` **trước**
+    khi gọi hàm này (Lá Chắn T-124, ghi nhận 1 và điều kiện 4). ``validate_gsc_site_url`` chỉ kiểm
+    bộ ký tự (``sc-domain:a..b``, ``sc-domain:-a.com`` vẫn qua); nghĩa tên miền (nhãn rỗng, gạch
+    nối đầu hay cuối nhãn…) do ``parse_property`` kiểm. Đường duy nhất hiện nay,
+    ``seo_app.tracking.refresh.save_property``, gọi ``parse_property`` ngay trước hàm này."""
     cleaned = validate_gsc_site_url(value)
     if isinstance(offered, str | bytes) or not isinstance(offered, Iterable):
         raise EnvFileError(_MSG_GSC_NOT_OFFERED)
