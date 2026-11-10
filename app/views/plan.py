@@ -92,6 +92,15 @@ MSG_EMPTY_SOURCE = {
     TAB_SHEET: "Chưa dán link Google Sheets.",
 }
 MSG_NO_CHANGES = "Không có thay đổi nào so với kế hoạch hiện tại."
+# T-127: từ khóa Google chọn ở trang «📈 Theo dõi» (khóa phiên do trang đó đặt).
+GOOGLE_HANDOFF_KEY = "plan_google_keywords"
+MSG_GOOGLE_FROM = (
+    "Từ khóa chọn ở trang «📈 Theo dõi» (Search Console): duyệt rồi mới ghi vào Sheet."
+)
+MSG_GOOGLE_NO_PLAN = (
+    "Chưa đọc được kế hoạch nên chưa đưa từ khóa Google vào được. Kiểm tra kết nối Google Sheets "
+    "rồi chọn lại ở trang «📈 Theo dõi»."
+)
 MSG_RELOADED = "Đây là Sheet kế hoạch chính: đã tải lại kế hoạch."
 MSG_ODD_DATA = "Không đọc được kế hoạch (dữ liệu có chỗ lạ). Kiểm tra lại nguồn rồi thử lại."
 MSG_AI_TOO_LONG = (
@@ -400,6 +409,37 @@ def ai_box() -> None:
         if cancel.button("Hủy", key="plan-ai-cancel"):
             S.pop("plan_ai", None)
             st.rerun()
+
+
+def take_google_keywords(base: sync.SheetPlan | None, keywords: object) -> None:
+    """Từ khóa Google chọn ở trang «📈 Theo dõi» (T-127, câu 7 = B; LC-T120-24): đề xuất «Thêm»
+    chờ duyệt trên đúng kế hoạch vừa đọc, như mọi đề xuất. Không gọi AI, không ghi Sheet; danh
+    sách đi qua ``propose.from_google_keywords`` (lọc chặt lại, tối đa 10). Chưa đọc được kế hoạch
+    thì chỉ báo.
+
+    Danh sách bài đã đăng (kiểm trùng) lấy như hai đường đề xuất T-098 (SL-T127-1): ``fresh_index``
+    tải lại khi bản trên máy cũ hơn 6 giờ (chạy sau khi người dùng bấm nút); không tải được hay
+    chưa kết nối WordPress thì câu báo vào ghi chú đề xuất."""
+    if base is None:
+        show("warning", MSG_GOOGLE_NO_PLAN)
+        return
+    index, notice = fresh_index()
+    try:
+        found = propose.from_google_keywords(
+            base.plan_rows(),
+            keywords if isinstance(keywords, tuple) else (),
+            posts=index.items if index else (),
+            today=today(),
+        )
+    except model.PlanKeyError as exc:
+        show("error", exc)
+        return
+    except ValueError:
+        show("error", MSG_ODD_DATA)
+        return
+    keep_proposals(found, base, index, [MSG_GOOGLE_FROM, *([notice] if notice else [])])
+    if "plan_flash" in S:  # không có đề xuất nào: báo ngay (ô báo đầu trang đã vẽ xong)
+        show(*S.pop("plan_flash"))
 
 
 def run_ai(text: str, *, allow_personal: bool) -> None:
@@ -1034,6 +1074,8 @@ if problem:
     show("error", problem)
 listing = plan_listing(client)
 base = listing.plan if listing is not None else None
+if GOOGLE_HANDOFF_KEY in S:
+    take_google_keywords(base, S.pop(GOOGLE_HANDOFF_KEY))
 
 source, brief = st.columns([3, 2], gap="large")
 with source, st.container(border=True):
