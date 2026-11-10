@@ -415,11 +415,15 @@ def take_google_keywords(base: sync.SheetPlan | None, keywords: object) -> None:
     """Từ khóa Google chọn ở trang «📈 Theo dõi» (T-127, câu 7 = B; LC-T120-24): đề xuất «Thêm»
     chờ duyệt trên đúng kế hoạch vừa đọc, như mọi đề xuất. Không gọi AI, không ghi Sheet; danh
     sách đi qua ``propose.from_google_keywords`` (lọc chặt lại, tối đa 10). Chưa đọc được kế hoạch
-    thì chỉ báo."""
+    thì chỉ báo.
+
+    Danh sách bài đã đăng (kiểm trùng) lấy như hai đường đề xuất T-098 (SL-T127-1): ``fresh_index``
+    tải lại khi bản trên máy cũ hơn 6 giờ (chạy sau khi người dùng bấm nút); không tải được hay
+    chưa kết nối WordPress thì câu báo vào ghi chú đề xuất."""
     if base is None:
         show("warning", MSG_GOOGLE_NO_PLAN)
         return
-    index = cached_index()
+    index, notice = fresh_index()
     try:
         found = propose.from_google_keywords(
             base.plan_rows(),
@@ -433,7 +437,7 @@ def take_google_keywords(base: sync.SheetPlan | None, keywords: object) -> None:
     except ValueError:
         show("error", MSG_ODD_DATA)
         return
-    keep_proposals(found, base, index, [MSG_GOOGLE_FROM])
+    keep_proposals(found, base, index, [MSG_GOOGLE_FROM, *([notice] if notice else [])])
     if "plan_flash" in S:  # không có đề xuất nào: báo ngay (ô báo đầu trang đã vẽ xong)
         show(*S.pop("plan_flash"))
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import inspect
 import unicodedata
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import test_app_pages as pages
@@ -23,7 +24,9 @@ from test_t125_tracking_page import FORMULA_QUERY, MARKDOWN_QUERY, open_tracking
 
 from seo_app.plan import propose
 from seo_app.plan.model import STATUS_NEW, PlanRow
-from seo_app.wordpress.client import PublishedItem
+from seo_app.storage import site_index
+from seo_app.storage.site_index import SiteIndex, SiteIndexStore
+from seo_app.wordpress.client import PublishedItem, PublishedList, WordPressClient
 
 env = pages.env
 private_key = page_tests.private_key
@@ -256,6 +259,37 @@ def test_picked_keywords_when_the_table_changes(project_root, configured, no_net
     run(at.selectbox(key="trk-page").set_value(11))
     assert not at.exception
     assert set(at.multiselect(key="trk-plan-pick").value) <= {"sửa cửa kéo bị kẹt"}
+    assert no_network.count == 0
+
+
+def test_stale_published_list_is_reloaded_before_the_duplicate_check(
+    project_root, configured, no_network, monkeypatch
+):
+    # Lượt 2 (SL-T127-1): danh sách bài trên máy cũ hơn 6 giờ thì tải lại như hai đường đề xuất
+    # T-098, nên bài đăng sau lần lưu cũng được so.
+    monkeypatch.setenv("WORDPRESS_USERNAME", "lam")
+    monkeypatch.setenv("WORDPRESS_APP_PASSWORD", "abcd efgh")
+    new_post = PublishedItem(
+        99, "post", "cua-keo-mau-01", page_tests.link("/cua-keo-mau-01/"), "Cửa kéo mẫu 01"
+    )
+    loads = []
+
+    def list_published(self):
+        loads.append(self.base_url)
+        return PublishedList([*page_tests.POSTS, new_post])
+
+    at = open_keywords(project_root)
+    monkeypatch.setattr(WordPressClient, "list_published", list_published)
+    old = datetime.now(UTC) - timedelta(hours=site_index.DEFAULT_MAX_AGE_HOURS + 1)
+    SiteIndexStore(path=site_index.DEFAULT_SITE_INDEX_FILE).save(
+        SiteIndex(page_tests.WORDPRESS, old, page_tests.POSTS)
+    )
+    run(at.multiselect(key="trk-plan-pick").set_value(["cửa kéo mẫu 01"]))
+    run(at.button(key="trk-to-plan").click())
+    (proposal,) = at.session_state["plan_proposals"].items
+    assert propose.WARN_DUPLICATE_POST.format(post_id=99) in proposal.warnings
+    assert len(loads) == 1
+    assert not any("danh sách bài đã đăng" in note for note in at.session_state["plan_notes"])
     assert no_network.count == 0
 
 

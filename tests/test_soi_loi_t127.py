@@ -118,15 +118,6 @@ def test_published_post_duplicate_is_warned_when_the_list_is_fresh(
     assert not any("danh sách bài đã đăng" in str(text) for text in shown)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "SL-T127-1 (soi-loi, Thấp): take_google_keywords kiểm trùng bài đã đăng bằng "
-        "cached_index() (bản lưu tạm, kể cả đã cũ; không có thì bỏ qua), không tải lại, không "
-        "báo; các đường đề xuất T-098 dùng fresh_index(): cũ hơn 6 giờ thì tải lại, không tải "
-        "được thì báo câu"
-    ),
-)
 def test_sl_t127_1_stale_published_list_is_refreshed_or_told(project_root, wordpress, no_network):
     no_network.error = WordPressError  # website không trả lời: như mất mạng thật
     _proposal, shown = picked_and_sent(project_root, stale_published_list=True)
