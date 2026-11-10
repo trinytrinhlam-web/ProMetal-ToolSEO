@@ -47,11 +47,31 @@ RLO = chr(0x202E)
         ("cửa kéo-đài loan 2024", "cửa kéo-đài loan 2024"),
         (unicodedata.normalize("NFD", "cửa sắt"), "cửa sắt"),
         ("a" * 80, "a" * 80),
+        ("CỬA KÉO ĐÀI LOAN", "CỬA KÉO ĐÀI LOAN"),
+        ("wifi zalo fiji", "wifi zalo fiji"),
+        ("ỹ ỵ ỷ ĩ ữ ợ", "ỹ ỵ ỷ ĩ ữ ợ"),
     ],
-    ids=["tieng-viet", "gop-dau-cach", "so-gach-noi", "nfd", "du-80"],
+    ids=[
+        "tieng-viet",
+        "gop-dau-cach",
+        "so-gach-noi",
+        "nfd",
+        "du-80",
+        "chu-hoa",
+        "fjwz",
+        "dau-thanh",
+    ],
 )
 def test_strict_filter_keeps_plain_keywords(text, expected):
     assert propose.google_keyword(text) == expected
+
+
+def test_letters_are_vietnamese_or_a_to_z_only():
+    letters = propose._KEYWORD_LETTERS
+    # Chữ thường: a–z, đ (27) + 12 nguyên âm × 6 dạng thanh, trừ 6 nguyên âm đã có trong a–z.
+    assert len(letters) == 2 * (27 + 12 * 6 - 6)
+    assert all(len(char) == 1 and unicodedata.name(char).startswith("LATIN ") for char in letters)
+    assert all(unicodedata.category(char) in {"Ll", "Lu"} for char in letters)
 
 
 REJECTED = [
@@ -89,6 +109,13 @@ REJECTED = [
     None,
     1,
     b"cua keo",
+    f"{chr(0x441)}ửa cuốn",  # «с» Cyrillic trông như «c»
+    f"cửa cuốn {chr(0x3164)}",  # «chữ» Hangul vô hình
+    f"it{chr(0x2BC)}s",  # «chữ» trông như dấu «'»
+    f"cửa cuốn{chr(0x1C3)}",  # «chữ» trông như dấu «!»
+    f"cửa {chr(0x5D0)}",  # chữ viết từ phải sang trái
+    f"{chr(0xFF43)}ửa",  # chữ toàn chiều rộng
+    f"cửa{chr(0xA0)}cuốn",  # dấu cách không ngắt
 ]
 
 
@@ -130,11 +157,11 @@ def test_at_most_ten_keywords_each_time():
 
 
 def test_dropped_keywords_are_only_counted():
-    secret = "gọi 0909 123 456 ngay"
-    found = propose.from_google_keywords([], ("cửa cuốn", secret, "x", "=HYPERLINK(1)"))
+    phone_text = "gọi 0909 123 456 ngay"
+    found = propose.from_google_keywords([], ("cửa cuốn", phone_text, "x", "=HYPERLINK(1)"))
     assert [p.after.keyword for p in found.items] == ["cửa cuốn"]
     assert found.notes == (propose.NOTE_GOOGLE_SKIPPED.format(count=3),)  # «x»: quá ngắn
-    assert all(secret not in note and "0909" not in note for note in found.notes)
+    assert all(phone_text not in note and "0909" not in note for note in found.notes)
 
 
 def test_same_keyword_twice_in_one_batch_is_taken_once():
@@ -214,6 +241,21 @@ def test_picked_keywords_become_proposals_on_the_plan_page(project_root, configu
     ]
     assert found.items[0].warnings  # trùng dòng B-012 của kế hoạch: không tick sẵn
     assert "plan_google_keywords" not in at.session_state
+    assert no_network.count == 0
+
+
+def test_picked_keywords_when_the_table_changes(project_root, configured, no_network):
+    # Đã chọn ở bài 11 rồi đổi sang bài 15 (từ khóa khác): trang không lỗi, ô chọn chỉ giữ từ khóa
+    # còn trong bảng mới.
+    at = open_keywords(project_root)
+    run(at.multiselect(key="trk-plan-pick").set_value(["sửa cửa kéo bị kẹt"]))
+    run(at.selectbox(key="trk-page").set_value(15))
+    assert not at.exception
+    for picker in at.multiselect:
+        assert set(picker.value) <= set(picker.options)
+    run(at.selectbox(key="trk-page").set_value(11))
+    assert not at.exception
+    assert set(at.multiselect(key="trk-plan-pick").value) <= {"sửa cửa kéo bị kẹt"}
     assert no_network.count == 0
 
 

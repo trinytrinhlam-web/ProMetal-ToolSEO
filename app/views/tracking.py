@@ -199,12 +199,14 @@ MSG_PLAN_HELP = (
     "Bạn duyệt rồi mới ghi vào Google Sheet."
 )
 MSG_PLAN_NONE = (
-    "Không có từ khóa nào đưa vào kế hoạch được: chỉ nhận chữ, số, khoảng trắng, dấu «-», tối đa "
-    f"{propose.GOOGLE_KEYWORD_MAX} ký tự, không có số điện thoại, email, địa chỉ web."
+    "Không có từ khóa nào đưa vào kế hoạch được: chỉ nhận chữ tiếng Việt hoặc a–z, số, khoảng "
+    f"trắng, dấu «-», tối đa {propose.GOOGLE_KEYWORD_MAX} ký tự, không có số điện thoại, email, "
+    "địa chỉ web."
 )
 MSG_PLAN_LEFT_OUT = (
-    "{count} từ khóa không có trong ô chọn: có ký tự khác chữ, số, khoảng trắng, dấu «-», dài quá "
-    f"{propose.GOOGLE_KEYWORD_MAX} ký tự, hay có số điện thoại, email, địa chỉ web."
+    "{count} từ khóa không có trong ô chọn: có ký tự khác chữ tiếng Việt, a–z, số, khoảng trắng, "
+    f"dấu «-», dài quá {propose.GOOGLE_KEYWORD_MAX} ký tự, hay có số điện thoại, email, địa chỉ "
+    "web."
 )
 MSG_OTHERS_NOTE = (
     "Địa chỉ có số liệu trên Google mà không khớp bài, trang nào trong danh sách đã đăng: trang "

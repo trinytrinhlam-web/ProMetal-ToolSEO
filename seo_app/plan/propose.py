@@ -871,8 +871,8 @@ MAX_GOOGLE_KEYWORDS = 10  # mỗi lần «Đưa vào kế hoạch» (LC-T120-24)
 GOOGLE_KEYWORD_MAX = 80
 REASON_GOOGLE = "Từ khóa người tìm trên Google đã đưa tới website (Search Console)."
 NOTE_GOOGLE_SKIPPED = (
-    "{count} từ khóa không đưa vào kế hoạch: chỉ nhận chữ, số, khoảng trắng, dấu «-», tối đa "
-    f"{GOOGLE_KEYWORD_MAX} ký tự, không có số điện thoại, email, địa chỉ web."
+    "{count} từ khóa không đưa vào kế hoạch: chỉ nhận chữ tiếng Việt hoặc a–z, số, khoảng trắng, "
+    f"dấu «-», tối đa {GOOGLE_KEYWORD_MAX} ký tự, không có số điện thoại, email, địa chỉ web."
 )
 NOTE_GOOGLE_TOO_MANY = (
     f"Mỗi lần chỉ đưa tối đa {MAX_GOOGLE_KEYWORDS} từ khóa; {{count}} từ khóa sau bị bỏ."
@@ -882,25 +882,39 @@ NOTE_GOOGLE_REPEATED = "{count} từ khóa trùng từ khóa khác trong lần �
 _WEB_WORDS = frozenset({"www", "http", "https"})
 
 
+def _keyword_letters() -> frozenset[str]:
+    """Chữ cái bộ lọc chặt nhận: a–z, «đ» và 12 nguyên âm tiếng Việt với đủ 5 dấu thanh (dạng NFC),
+    cả chữ hoa: 186 ký tự. Không nhận chữ của bảng chữ khác (chữ trông giống chữ Latin như «с»
+    Cyrillic, chữ viết từ phải sang trái), «chữ» vô hình (U+3164) hay trông như dấu câu (U+02BC
+    giống «'», U+01C3 giống «!»), chữ toàn chiều rộng."""
+    lower = set("abcdefghijklmnopqrstuvwxyzđ")
+    marks = ["", *(chr(code) for code in (0x300, 0x301, 0x309, 0x303, 0x323))]
+    for vowel in "aăâeêioôơuưy":
+        lower.update(unicodedata.normalize("NFC", vowel + mark) for mark in marks)
+    return frozenset(lower | {char.upper() for char in lower})
+
+
+_KEYWORD_LETTERS = _keyword_letters()
+_KEYWORD_OTHERS = frozenset(" -0123456789")
+
+
 def google_keyword(text: object) -> str | None:
     """Từ khóa Search Console đã qua bộ lọc **chặt hơn** ô từ khóa thường (LC-T120-24); ``None``:
     không nhận.
 
-    Chuẩn NFC, gộp khoảng trắng; rồi chỉ nhận chữ (mọi bảng chữ, kể cả tiếng Việt), số 0–9, dấu
-    cách, dấu «-»; có ít nhất một chữ; tối đa ``GOOGLE_KEYWORD_MAX`` ký tự; không có số điện thoại,
-    email (``personal_info``), chữ chỉ địa chỉ web. Câu lệnh dài, có dấu câu, xuống dòng, ký tự vô
-    hình không lọt. Không chép chữ bị bỏ vào câu báo nào."""
+    Chuẩn NFC, gộp khoảng trắng; rồi chỉ nhận chữ tiếng Việt hoặc a–z (``_KEYWORD_LETTERS``), số
+    0–9, dấu cách, dấu «-»; có ít nhất một chữ; tối đa ``GOOGLE_KEYWORD_MAX`` ký tự; không có số
+    điện thoại, email (``personal_info``), chữ chỉ địa chỉ web. Câu lệnh dài, có dấu câu, xuống
+    dòng, ký tự vô hình, chữ trông giống không lọt. Không chép chữ bị bỏ vào câu báo nào."""
     if not isinstance(text, str):
         return None
     keyword = " ".join(unicodedata.normalize("NFC", text).split(" "))
     keyword = " ".join(part for part in keyword.split(" ") if part)
     if not 0 < len(keyword) <= GOOGLE_KEYWORD_MAX:
         return None
-    if not all(
-        char in " -0123456789" or unicodedata.category(char).startswith("L") for char in keyword
-    ):
+    if not all(char in _KEYWORD_LETTERS or char in _KEYWORD_OTHERS for char in keyword):
         return None
-    if not any(unicodedata.category(char).startswith("L") for char in keyword):
+    if not any(char in _KEYWORD_LETTERS for char in keyword):
         return None
     if any(model.personal_info(keyword)):
         return None
