@@ -117,6 +117,11 @@ $ PYTHONUTF8=1 uv run --frozen pytest -q -p no:cacheprovider --no-header -rfE \
 $ PYTHONUTF8=1 uv run --frozen pytest -q tests/test_t137_nhac_gui_trung.py   # lần chạy đầu, 56 ca
 56 passed in 144.61s (0:02:24)        # ca thứ 57 (gửi hỏng) thêm sau: 1 passed; cả 57 qua ở lượt trên
 
+# Bản test cuối (sau khi sửa 3 ca theo kết quả đột biến Q3, P6), 2026-11-12 17:57:39 → 18:09:08:
+$ PYTHONUTF8=1 uv run --frozen pytest -q tests/test_t137_nhac_gui_trung.py
+57 passed in 156.60s (0:02:36)
+# rồi chạy lại trọn bộ 23 đột biến trên bản này: 22 bị bắt, 1 tương đương (P9)
+
 $ uv run --frozen ruff check .
 All checks passed!
 $ uv run --frozen ruff format --check tests/test_t137_nhac_gui_trung.py app/views/home.py \
