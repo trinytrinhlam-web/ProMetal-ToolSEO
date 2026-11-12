@@ -4,9 +4,9 @@
 |---|---|
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-136](../tickets/T-136-gom-kiem-file-5-kho.md) · Lá Chắn T-131 B.1, B.2, B.4, LC-T131-1 · Soi Lỗi T-131 GN-1 → GN-3 |
-| Nhánh | `team/T-136`, từ `main` `71322c4`; mã và test `c48aedd`, báo cáo ở commit ngay sau |
+| Nhánh | `team/T-136`, từ `main` `71322c4`; mã và test `c48aedd`, báo cáo `81a3016`; lượt 2 `348f6f3`, báo cáo lượt 2 ở commit ngay sau |
 | Ngày nộp | 2026-11-10 (giờ máy, +07) |
-| Kết quả | Hoàn thành: yêu cầu 1–5 |
+| Kết quả | Hoàn thành: yêu cầu 1–5; lượt 2: LC-T136-1 và Soi Lỗi G1 đã sửa (mục «Lượt 2» cuối báo cáo) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -126,3 +126,75 @@ uv run ruff format --check              → 11 file đã đúng khuôn
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 · LC-T136-1, Soi Lỗi G1 (2026-11-12)
+
+| Mục | Nội dung |
+|---|---|
+| Lỗi | **LC-T136-1** ([biên bản Lá Chắn](T-136-la-chan.md), Thấp, chỉ Mac/Linux). `newer_file_format` mở thẳng đường dẫn bằng `path.open("rb")` trước khi biết đó là file thường. FIFO đặt vào chỗ file làm `open()` chờ mãi, nên trang Kế hoạch, Theo dõi đứng. **G1** ([biên bản Soi Lỗi](T-136-soi-loi.md)): thư mục ở chỗ file lưu tạm làm câu báo nói «Permission denied», sai nguyên nhân |
+| Commit | `348f6f3` (mã và test); báo cáo lượt 2 ở commit ngay sau |
+| Kết quả | Đã sửa theo hướng Lá Chắn gợi ý; chỉ sửa `sqlite_file.py` và test, không đụng lớp mỏng của kho |
+
+### Tóm tắt (cho chủ dự án)
+
+- Nếu chương trình lạ đặt một thứ không phải file thường vào chỗ file lưu tạm, trang không còn đứng (máy Mac/Linux). Thứ đó có thể là «ống» FIFO, thư mục hay thiết bị.
+- Ở chỗ file lưu tạm mà có thư mục thì câu báo lại là «Không mở được file lưu tạm…» như trước T-136, không còn «Permission denied». Thư mục giữ nguyên.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/storage/sqlite_file.py` | `newer_file_format` theo bốn bước. <ul><li>`os.lstat` phải là file thường; không thì `False`.</li><li>Mở bằng `os.open` với `_OPEN_FLAGS`: `O_RDONLY`, `O_NONBLOCK`, `O_NOFOLLOW`, `O_BINARY`. Cờ nào hệ điều hành không có thì là 0; Windows không có `O_NONBLOCK`, `O_NOFOLLOW`, cũng không có FIFO trên ổ.</li><li>`os.fstat` kiểm lại «file thường» trên chính fd đã mở. Thứ bị đổi vào đúng lúc giữa `lstat` và lúc mở thì không được đọc; nhờ cờ không chờ, việc mở cũng không treo.</li><li>Đọc 20 byte; fd luôn được đóng.</li></ul> Không phải file thường, hay mở, đọc không được: `False`. Khi đó SQLite xét tiếp, và kho báo như trước T-136 |
+| `tests/test_la_chan_t136.py` | Gỡ dấu `xfail` `LC_T136_1` ở 2 ca, cùng câu khai báo dấu (R5, chỉ xóa dấu; thân test không đổi) |
+| `tests/test_t136_kiem_file_chung.py` | Thêm 9 ca (lớp `FakeOs` giả `lstat`/`fstat`, vì trên Windows không tạo được FIFO thật). <ul><li>`test_header_check_reads_only_regular_files` (4 ca): FIFO; thư mục; đổi thành FIFO giữa `lstat` và lúc mở; đối chứng file thường. Kiểm cả số lần mở và fd đã đóng.</li><li>`test_header_check_opens_without_waiting_or_following_links`: cờ mở.</li><li>`test_header_check_cannot_open`: lỗi quyền khi mở, file chưa có.</li><li>`test_folder_in_place_of_cache_file_keeps_folder_and_old_message` (3 kho lưu tạm): câu «Không mở được…», không «Permission denied», thư mục còn nguyên.</li></ul> Commit `348f6f3` ghi nhầm là «+10 ca» |
+
+### Chỗ để ngỏ, tôi đã chọn
+
+1. **Không phải file thường thì trả `False`.** Không coi đó là file lạ để kho xóa hay cất đi. Như vậy luồng của từng kho giữ đúng như trước T-136:
+   - SQLite mở, báo lỗi;
+   - kho báo «Không mở được…» và không xóa gì.
+
+   Đây là cách Soi Lỗi gợi ý ở G1 («để SQLite báo như cũ»). Lá Chắn T-136 đã ghi: trước T-136, SQLite mở FIFO đọc-ghi, không chờ trên Linux, macOS, rồi báo lỗi ngay.
+2. **Thêm `O_NOFOLLOW`** (khi hệ điều hành có). Đây là siết thêm, không nới: nếu tầng cuối bị đổi thành liên kết giữa `lstat` và lúc mở thì không đọc qua liên kết. Lớp liên kết của từng kho (gỡ, cất sang một bên) vẫn chạy trước như cũ.
+3. **Lỗi đọc đầu file cũng trả `False`**, không ném lên. Ví dụ: file vừa bị xóa, lỗi quyền, mở hay đọc không được. SQLite xét tiếp và báo đúng nguyên nhân của nó, ví dụ không có quyền thì «Không mở được… không có quyền ghi». Trước đây lỗi này đi lên nhánh `OSError` của kho, với câu «Permission denied».
+
+### Đổi kỳ vọng ca test cũ (R5)
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_la_chan_t136.py::test_lc_t136_1_header_check_skips_a_folder` | `xfail(strict=True)` | Bỏ dấu (đã XPASS trên Windows); thân test không đổi |
+| `test_la_chan_t136.py::test_lc_t136_1_header_check_never_waits_on_a_fifo` | `xfail(strict=True)`, bỏ qua trên Windows | Bỏ dấu theo phiếu lượt 2. Ca vẫn bỏ qua trên Windows (không có `mkfifo`), nên **chưa chạy thật**. Đường FIFO đã thử bằng ca giả `lstat`/`fstat` ở trên; chạy thật trên Mac/Linux cùng các ca symlink (Lá Chắn T-131 B.3) |
+
+### Bằng chứng
+
+```text
+# Windows 11, Python 3.12.15, ruff 0.16.10. Chạy trên đúng commit 348f6f3 (git status sạch lúc chạy).
+
+uv run pytest -q -p no:randomly tests/test_la_chan_t136.py tests/test_t136_kiem_file_chung.py tests/test_la_chan_t131.py
+  66 passed, 1 skipped            # bỏ qua: ca FIFO (Windows không có mkfifo)
+  # Trước khi gỡ dấu: ca thư mục XPASS strict.
+
+# Đột biến (script ở thư mục nháp; mỗi lần trả file về đúng byte, kiểm SHA-256):
+#   A  bỏ kiểm lstat              → 2 ca hỏng (fifo, thu-muc)
+#   B  bỏ kiểm fstat              → 1 ca hỏng (doi-giua-chung)
+#   C  mở thẳng như bản đầu       → 9 ca hỏng
+#   Bỏ O_NONBLOCK không thử được trên Windows (cờ không có).
+
+# Mọi file test nhập 5 kho, sqlite_file; mọi test quét cả cây mã nguồn; test_app_pages:
+uv run pytest -q -p no:randomly -rfEsxX <109 file>
+  10147 passed, 34 skipped, 11 xfailed in 4034.78s
+  # 0 hỏng.
+  # 34 bỏ qua: các ca chỉ chạy được ngoài Windows như lượt 1 (symlink, quyền POSIX…), thêm ca FIFO.
+  # 11 xfail: dấu có từ trước, không ca nào XPASS.
+
+uv run ruff check .                     → All checks passed!
+uv run ruff format --check <3 file>     → đã đúng khuôn
+# Quét bí mật: 3 file lấy từ 348f6f3, có khóa giả đối chứng (bắt được) → 0 phát hiện.
+# Ký tự ẩn, CR, NFC: 0.
+# Gộp thử: git merge-tree với main 01fc45c → không xung đột.
+```
+
+### Rủi ro và điểm cần chú ý
+
+- **Ca FIFO thật chưa chạy trên Mac/Linux**: phải chạy khi có máy (B.3), cùng các ca symlink của T-131, T-136.
+- Bước kiểm đầu file nay thêm một lần `lstat` và `fstat`. Bước này chỉ chạy lúc kiểm file, không chạy ở mỗi thao tác.
