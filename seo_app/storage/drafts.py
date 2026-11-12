@@ -187,6 +187,10 @@ MSG_RECOVERED = (
     "khi gửi lại một bài, hãy xem trên WordPress bài đó đã có chưa để khỏi gửi trùng."
 )
 _MSG_NOT_A_FILE = "Chỗ đặt file nháp đang là một thư mục, app không dùng được."
+# Giờ trong tên file kho cất sang một bên (``_move_aside``); ``moved_aside_names`` dò đúng khuôn
+# này (T-137): ``<tên>.hong-YYYYmmdd-HHMMSS<đuôi>``, thêm ``-N`` (N từ 2 tới 9999) khi trùng giây.
+_MOVED_STAMP = "%Y%m%d-%H%M%S"
+_MOVED_TAIL = r"\.hong-([0-9]{8}-[0-9]{6})(?:-([2-9]|[1-9][0-9]{1,3}))?"
 
 # Ảnh đã chọn (T-055). Số thứ tự thư mục gốc lớn hơn mức này không thể do app ghi: bỏ ảnh đó.
 # Số trong khoảng mà thư mục chưa khai báo thì giữ, ``check_draft_images`` báo "không có".
@@ -1260,7 +1264,7 @@ class DraftStore:
             if not _is_busy(exc):
                 # Hỏng, quá số bước, giá trị quá dài…: lần sau kiểm lại file. Bận chỉ là tab khác.
                 self._ready = False
-            raise DraftError(_db_message(exc)) from None
+            raise DraftError(_db_message(exc, self.path)) from None
         except OSError as exc:
             raise DraftError(f"Không đọc/ghi được file nháp ({exc.strerror or exc}).") from None
 
@@ -1303,7 +1307,7 @@ class DraftStore:
             if not _create_tables(self.path):
                 raise DraftError(_MSG_BROKEN)  # file bị thay ngay sau lần kiểm: lần sau kiểm lại
         except sqlite3.DatabaseError as exc:
-            raise DraftError(_db_message(exc)) from None
+            raise DraftError(_db_message(exc, self.path)) from None
         except OSError as exc:
             raise DraftError(f"Không tạo được file nháp ({exc.strerror or exc}).") from None
         self._ready = True
@@ -1322,6 +1326,38 @@ class DraftStore:
             with suppress(FileNotFoundError):
                 journal.replace(moved)
         return target
+
+
+def moved_aside_names(path: Path | None = None) -> tuple[str, ...]:
+    """Tên các file nháp app đã cất sang một bên (T-137, SL-T136-1), mới nhất trước: dấu «đã gửi»
+    của các bài gửi trước lúc cất nằm trong các file đó, kho hiện tại không còn biết. Dấu hiệu theo
+    **tên** trong thư mục chứa file nháp ``path`` (mặc định ``DEFAULT_DRAFTS_FILE``, tra lúc gọi)
+    nên còn sau khi tắt mở lại app, hết khi người dùng dời hay xóa file đã cất.
+
+    Chỉ nhận đúng khuôn tên ``_move_aside`` đặt: ``<tên>.hong-YYYYmmdd-HHMMSS<đuôi>``, có thể thêm
+    ``-N`` (N từ 2 tới 9999), chữ số ASCII, ngày giờ có thật; file nhật ký đi kèm, tên gần giống
+    không tính. Chỉ liệt kê tên: không mở, không đọc file nào (hướng B.2 của T-136). Thư mục là liên
+    kết (``dir_has_link``, như mọi kho: nằm ngoài thư mục phần mềm), chưa có hay không đọc được:
+    rỗng."""
+    path = DEFAULT_DRAFTS_FILE if path is None else path
+    pattern = re.compile(re.escape(path.stem) + _MOVED_TAIL + re.escape(path.suffix))
+    found: list[tuple[datetime, int, str]] = []
+    try:
+        if dir_has_link(path.parent, PROJECT_ROOT):
+            return ()
+        names = [entry.name for entry in path.parent.iterdir()]
+    except OSError:
+        return ()
+    for name in names:
+        match = pattern.fullmatch(name)
+        if match is None:
+            continue
+        try:
+            stamp = datetime.strptime(match[1], _MOVED_STAMP)
+        except ValueError:
+            continue  # ngày giờ không có thật: không phải tên app đặt
+        found.append((stamp, int(match[2] or 1), name))
+    return tuple(name for _stamp, _n, name in sorted(found, reverse=True))
 
 
 def _trim_orphan_send_states(conn: sqlite3.Connection, keep: int) -> None:
@@ -1904,10 +1940,16 @@ def _no_oversized_cells(conn: sqlite3.Connection, tables: frozenset[bytes]) -> b
     )
 
 
-def _db_message(exc: sqlite3.DatabaseError) -> str:
+def _db_message(exc: sqlite3.DatabaseError, path: Path | None = None) -> str:
+    """Câu báo cho lỗi SQLite của kho nháp. «Chỉ đọc» (mã 8) mà đầu file ``path`` đúng là phiên bản
+    lạ (byte 18, 19 lớn hơn 2: chương trình khác sửa đầu file, SQLite mở file chỉ đọc) thì đó là
+    file lạ, không phải chế độ chỉ đọc (G4, T-137): báo ``_MSG_BROKEN``; lần mở sau kho kiểm lại
+    file, cất sang một bên và các trang báo ``MSG_RECOVERED``."""
     if isinstance(exc, sqlite3.OperationalError) and "locked" in str(exc).lower():
         return "File nháp đang bận (có thể app mở ở tab khác đang lưu). Thử lại sau giây lát."
     if _code(exc) == sqlite_file.SQLITE_READONLY:
+        if path is not None and sqlite_file.newer_file_format(path):
+            return _MSG_BROKEN
         return _MSG_READONLY
     return _MSG_BROKEN
 
@@ -1968,5 +2010,6 @@ __all__ = [
     "check_chosen_image",
     "check_draft_images",
     "clean_loaded",
+    "moved_aside_names",
     "new_draft_id",
 ]
