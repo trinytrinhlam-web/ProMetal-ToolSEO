@@ -33,3 +33,5 @@ Làm các điều kiện B.1, B.2, B.4 của Lá Chắn T-131 (`docs/team/report
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-10 theo điều kiện B.1, B.2, B.4 của Lá Chắn T-131. B.3 (chạy test T-131 trên Mac) gom với các ca Mac.
+- 2026-11-12 13:56 (Chỉ Huy B): Thợ Máy `c48aedd`, `81a3016` (B.2 chọn câu báo, không chép `send_states`). Soi Lỗi rút gọn `52edfa1` ĐẠT. Giao Lá Chắn rút gọn, chạy Opus 5.5 (Fable hết hạn mức tuần).
+- 2026-11-12 (Chỉ Huy B): Lá Chắn rút gọn (Opus 5.5) `2e43ebb` ĐẠT CÓ ĐIỀU KIỆN, gộp được. B.1 (LC-T136-1 Thấp, Mac/Linux: FIFO làm treo khi mở 3 kho lưu tạm; cùng gốc Soi Lỗi G1) → Thợ Máy lượt 2 trên nhánh này, Lá Chắn rút gọn lại. B.2 (ca FIFO) gom ca Mac. B.3 (thêm ca «file nháp bị cất rồi thử gửi lại» vào kịch bản T-128) → Soi Lỗi thử cục bộ và soạn. Gộp `main` sau buổi thử thật (app của chủ dự án chạy từ thư mục `main`).

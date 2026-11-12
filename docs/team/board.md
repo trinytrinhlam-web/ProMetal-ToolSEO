@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-11-10 21:02 (Chỉ Huy B)._
+_Cập nhật: 2026-11-12 16:15 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,6 +36,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
+| [T-136](tickets/T-136-gom-kiem-file-5-kho.md) | Gom kiểm file 5 kho SQLite, LC-T131-1, câu báo kho nháp | Thợ Máy · T-136 | `team/T-136` | Lá Chắn 2 lượt ĐẠT CÓ ĐIỀU KIỆN, gộp được; chạy toàn bộ test; gộp `main` sau buổi thử thật | [Thợ Máy](reports/T-136-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-136-soi-loi.md) ĐẠT · [Lá Chắn](reports/T-136-la-chan.md) (Opus 5.5) |
+| [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Đang làm | — |
 
 ## Chờ
 
@@ -204,4 +206,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-137
+## Số phiếu tiếp theo: T-138
