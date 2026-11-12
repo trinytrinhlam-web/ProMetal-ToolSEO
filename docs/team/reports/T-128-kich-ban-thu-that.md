@@ -6,7 +6,7 @@
 | Soạn | Thư Ký (`thu-ky`) · model: Claude Opus 5.5 · 2026-11-05; lượt 2 cùng ngày theo Lá Chắn T-128 (LC-T128-1, -2, -3; ghi nhận N1–N5) |
 | Dùng cho | **Chỉ Huy** làm từng bước; **chủ dự án ngồi cùng**, duyệt bài thử và tự làm các việc trên trang quản trị cần mật khẩu hay xóa hẳn. **Lá Chắn** đọc bảng kết quả (mục 7) trước khi cho dùng Hẹn giờ / Đăng ngay |
 | Khi nào | Khi chủ dự án báo rảnh (chủ dự án quyết 04/11). Cần khoảng 1 giờ 30 tới 2 giờ, trong đó có 15–20 phút chờ bài hẹn giờ tự đăng (lúc chờ không đụng tới website, ca 4) |
-| Nguồn | Lá Chắn T-112 (mục «Điều kiện», phần B mục 4; bảng «Còn phải làm trước khi bật công tắc» lượt 3), Lá Chắn T-094 (LC-T094-44), Lá Chắn T-115 (điều kiện 4), Lá Chắn T-110 (điều kiện 3), Lá Chắn T-091 (điều kiện 4), Lá Chắn T-059 (ghi nhận 2), Lá Chắn T-097 (điều kiện 5), Fable T-116 nhóm 2 (các việc gom vào buổi thử), Lá Chắn T-128 (lượt 2). README mục 11, mục 14 |
+| Nguồn | Lá Chắn T-112 (mục «Điều kiện», phần B mục 4; bảng «Còn phải làm trước khi bật công tắc» lượt 3), Lá Chắn T-094 (LC-T094-44), Lá Chắn T-115 (điều kiện 4), Lá Chắn T-110 (điều kiện 3), Lá Chắn T-091 (điều kiện 4), Lá Chắn T-059 (ghi nhận 2), Lá Chắn T-097 (điều kiện 5), Fable T-116 nhóm 2 (các việc gom vào buổi thử), Lá Chắn T-128 (lượt 2), Lá Chắn T-136 (B.3; ca R do Soi Lỗi soạn, Lá Chắn sửa). README mục 11, mục 14 |
 
 ## 0. Tóm tắt (cho chủ dự án)
 
@@ -57,6 +57,7 @@
 | LC-T128-2 | Bài công khai có làm lộ **tên đăng nhập** của tài khoản phần mềm không: tên tác giả trên bài, trang tác giả, `/wp-json/wp/v2/users` (Lá Chắn T-128) | Ca 0, ca 4/5 (mục 4.1) |
 | T-110 đk 3 | Gửi nháp kèm ảnh: danh sách Media xem bằng cửa sổ ẩn danh không có ảnh vừa gửi; tài khoản Biên tập viên gắn được ảnh vào bài (không lỗi 403) | Ca 1 |
 | T-097 đk 5 | Lệnh Google thật đầu tiên chỉ tới 2 máy chủ (`sheets.googleapis.com`, `oauth2.googleapis.com`), khuôn câu trả lời đúng như client đọc (tùy chọn) | Mục 3.4 |
+| Lá Chắn T-136 B.3 | File nháp bị cất sang một bên (chương trình khác làm hỏng file): câu báo, khóa gửi trùng có đủ để người dùng không gửi trùng không (Soi Lỗi T-136 G2, SL-T136-1) | Ca R |
 
 ## 3. Chuẩn bị
 
@@ -73,7 +74,7 @@
 
 ### 3.2 Máy
 
-- [ ] App bản mới nhất: GitHub Desktop → **Fetch origin** → **Pull origin**, rồi bấm đúp `run.bat`. Bản này phải có T-112, T-115, T-118, T-128.
+- [ ] App bản mới nhất: GitHub Desktop → **Fetch origin** → **Pull origin**, rồi bấm đúp `run.bat`. Bản này phải có T-112, T-115, T-118, T-128 (ca R cần thêm T-136; nên có cả phiếu sửa SL-T136-1, T-137).
 - [ ] Đồng hồ Windows bật **đặt giờ tự động**. App so giờ máy với giờ website, lệch quá 2 phút thì không hẹn giờ («Đồng hồ máy tính lệch giờ website hơn 2 phút…»).
 - [ ] Chủ dự án đăng nhập trang quản trị WordPress trong trình duyệt riêng (tự gõ mật khẩu).
 - [ ] Mở sẵn một cửa sổ **ẩn danh** (chưa đăng nhập) để xem như khách.
@@ -238,6 +239,83 @@ Luật của app: trạng thái dòng **chỉ đi tới** (Chưa viết → Đan
 4. **Lỡ lịch** (ca 4 quá giờ hẹn 15 phút mà chưa lên): **🌐 Cập nhật trạng thái từ website** ra cảnh báo «Lỡ lịch: bài #… (dòng …) hẹn giờ lúc … đã quá giờ mà chưa lên…». Ghi thêm vào (e).
 5. **Sau khi dọn** (mục 6, bước 1–4), trước khi đổi về Sheet thật: **🌐 Cập nhật trạng thái từ website** ra «Không thấy bài #… (dòng …) trên website: bài đã bị xóa, đang trong thùng rác…» cho các bài thử. Đây là cách kiểm nhanh đã dọn đủ.
 
+### Ca R · File nháp bị cất rồi thử gửi lại → Lá Chắn T-136 B.3, Soi Lỗi SL-T136-1
+
+Chỉ làm khi app đã có T-136. Kiểm: Chỉ Huy chạy `Test-Path seo_app\storage\sqlite_file.py` trong PowerShell ở thư mục dự án (thư mục có `run.bat` chủ dự án bấm), phải ra `True`. Chưa có thì bỏ ca, ghi «chưa làm» ở mục 7. **Nên làm sau khi phiếu sửa SL-T136-1 đã gộp** (để kiểm lời nhắc mới); làm trước thì kỳ vọng như dưới (hành vi hiện tại, đã biết).
+
+Làm **sau ca 5** (bỏ ca 5 thì sau ca 4; có làm ca S thì sau ca S bước 3), trước mục 6. Cần bài thử trên máy đã gửi ít nhất một lần. **Ca này không bật công tắc Hẹn giờ/Đăng ngay và không gửi gì lên website** (phần gửi trùng Soi Lỗi đã thử bằng WordPress giả). Khoảng 20 phút, tắt mở app hai lần.
+
+Tình huống: một chương trình khác (đồng bộ đám mây, diệt virus, ổ đĩa lỗi) làm hỏng file nháp trong lúc app chạy. App cất file hỏng sang một bên (đổi tên thành `drafts.hong-<ngày>-<giờ>.sqlite`, cùng thư mục) rồi bắt đầu file nháp mới. Dấu «đã gửi» của các bài nằm trong file cũ. Ca này xem app nhắc gì để người dùng không gửi trùng.
+
+File nháp thật của chủ dự án (`drafts.sqlite` trong thư mục `data` của dự án) được chép dự phòng ở bước 1 và trả lại ở bước 8. Các lệnh do Chỉ Huy chạy trong **PowerShell**, ở thư mục dự án. Câu lỗi của lệnh có thể in đường dẫn trong máy: **không chép** câu đó vào báo cáo.
+
+- **Từ bước 3 tới hết bước 8, không soạn hay sửa bài thật**: nháp tạo trong lúc này nằm ở file sẽ đổi tên ở bước 8 và bị xóa ở bước dọn.
+- **Ảnh chụp màn hình chỉ giữ trong máy**, không đưa vào repo, không gửi đi (có tên bài, từ khóa).
+
+1. **Chép dự phòng.** Tắt app: đóng cửa sổ dòng lệnh (màu đen) mà `run.bat` mở. Chỉ Huy chạy:
+
+   ```powershell
+   $ErrorActionPreference = 'Stop'; if (Test-Path data\drafts.ban-sao-ca-R.sqlite) { 'DUNG: da co ban sao tu lan truoc (khong chep de len)' } elseif (Test-Path data\drafts.sau-ca-R.sqlite) { 'DUNG: con file drafts.sau-ca-R.sqlite tu lan truoc' } elseif (Get-ChildItem data -Filter 'drafts.sqlite-*') { 'DUNG: con file nhat ky drafts.sqlite-...' } else { Copy-Item data\drafts.sqlite data\drafts.ban-sao-ca-R.sqlite; 'ban sao giong file goc: ' + ((Get-FileHash data\drafts.sqlite).Hash -eq (Get-FileHash data\drafts.ban-sao-ca-R.sqlite).Hash) }
+   ```
+
+   Phải thấy `ban sao giong file goc: True`. Ra `DUNG…` hay câu lỗi: bỏ ca, ghi «chưa làm», báo Soi Lỗi. `DUNG: da co ban sao…` hay `DUNG: con file drafts.sau-ca-R…` nghĩa là lần làm trước chưa dọn: **không xóa hay đổi tên file nào để chạy lại** (bản sao cũ có thể là bản tốt duy nhất), hỏi Soi Lỗi trước.
+
+2. **Khóa gửi lúc bình thường.** Bấm đúp `run.bat`, chủ dự án đăng nhập app. **Không bật công tắc Hẹn giờ/Đăng ngay.**
+   - Trang **Bài viết**, cột **Đã gửi WordPress**: có bài thử.
+   - **Soạn bài**: ghi số trong **📂 Bài đang soạn dở (…)** vào mục 7. **Mở** bài thử → **5 · Xuất bản**, hình thức **Nháp**.
+
+   Phải thấy: «Bài này đã gửi … (bài … mã …)», ô **Tạo thêm một bài nháp mới** chưa tick, nút **📤 Gửi nháp** mờ. Ghi mã bài.
+
+3. **Làm hỏng file nháp** (giả chương trình khác). Để yên tab app, không bấm gì. Chỉ Huy chạy:
+
+   ```powershell
+   $ErrorActionPreference = 'Stop'; $f = (Resolve-Path data\drafts.sqlite).Path; $s = [IO.File]::Open($f, 'Open', 'ReadWrite', 'ReadWrite'); try { $h = New-Object byte[] 20; [void]$s.Read($h, 0, 20); if ([Text.Encoding]::ASCII.GetString($h, 0, 15) -ne 'SQLite format 3' -or $h[18] -gt 2) { 'DUNG: khong sua gi (dau file khong nhu cho)' } else { $s.Position = 18; $s.WriteByte(3); "da sua byte 18: $($h[18]) -> 3" } } finally { $s.Close() }
+   ```
+
+   Phải thấy `da sua byte 18: 1 -> 3` (hay `2 -> 3`). Lệnh chỉ đổi 1 byte ở đầu file (số «phiên bản ghi» của SQLite); đầu file khác dự đoán thì không sửa gì. Bản gốc nằm ở bản dự phòng.
+
+4. **App cất file.** Trong tab app, bấm menu **Bài viết**.
+
+   Phải thấy ở cột **Đã gửi WordPress**:
+   - khung vàng «File nháp cũ bị hỏng nên đã được cất sang một bên (tên «drafts.hong-…sqlite», cùng thư mục)… trước khi gửi lại một bài, hãy xem trên WordPress bài đó đã có chưa để khỏi gửi trùng.» Ghi tên file vào mục 7, chụp màn hình (giữ trong máy);
+   - dòng «Chưa có bài nào phần mềm đã gửi lên WordPress.» (đã nối Sheet bản sao thì cột này có thể vẫn hiện bài thử, lấy từ cột Mã bài WordPress của Sheet: ghi lại). **Đã có phiếu sửa SL-T136-1:** dòng này phải là lời nhắc «file nháp đã cất», không phải «Chưa có bài nào…» trơn.
+
+   Bấm menu **Bài viết** lần nữa. Phải thấy (hành vi hiện tại): khung vàng **mất** (câu chỉ hiện một lần), dòng «Chưa có bài nào…» vẫn còn. **Đã có phiếu sửa:** lời nhắc vẫn còn.
+
+5. **Tab đang mở bài thử.** Bấm menu **Soạn bài** (trang đang ở bước khác thì bấm **5 · Xuất bản**, hình thức **Nháp**).
+
+   Phải thấy:
+   - nội dung bài thử còn nguyên;
+   - khung vàng «**Nháp của bài này không còn trong kho nháp**… Tab này biết bài đã gửi (hoặc gửi dở) lên website: lưu lại thì nháp vẫn nhớ việc đó, nút gửi vẫn khóa như trước.», nút **💾 Lưu lại thành nháp**, **🗑️ Bỏ bài này**;
+   - vẫn «Bài này đã gửi … (bài … mã …)», ô **Tạo thêm một bài nháp mới** chưa tick, nút **📤 Gửi nháp** mờ;
+   - trang Soạn bài **không** có câu «File nháp cũ bị hỏng…» (câu đó chỉ hiện ở trang đã cất file). Có thì ghi lại.
+
+   **Không** chọn hình thức Hẹn giờ hay Đăng ngay, **không** tick «Tạo thêm…», không bấm gửi.
+
+6. **Tab mới chưa biết bài đã gửi** (chỉ xem). Mở thêm một tab trình duyệt tới địa chỉ app, chủ dự án đăng nhập.
+
+   Phải thấy (hành vi hiện tại):
+   - **Bài viết**: không có khung vàng; cột **Đã gửi WordPress** ghi «Chưa có bài nào…» (hay chỉ bài theo Sheet);
+   - **Soạn bài**: không có câu nhắc nào; khung **📂 Bài đang soạn dở** không hiện (mọi nháp, kể cả bài thử, nằm trong file đã cất).
+
+   Đây là chỗ người dùng có thể nghĩ bài bị mất, viết lại rồi gửi trùng mà app không còn nhắc gì (Soi Lỗi SL-T136-1). **Đã có phiếu sửa:** cả hai trang phải có lời nhắc, nút gửi của bài chưa có dấu «đã gửi» phải đòi tick «đã kiểm trên WordPress». Không viết lại, không gửi. Đóng tab này.
+
+7. **Lưu lại nháp rồi mở lại.** Về tab đầu, **Soạn bài** → **💾 Lưu lại thành nháp**.
+
+   Phải thấy «Đã lưu lại nháp», khung vàng mất, nút gửi vẫn mờ.
+
+   Tải lại trang (F5), chủ dự án đăng nhập. Phải thấy:
+   - **Bài viết**, cột **Đã gửi WordPress**: có lại bài thử;
+   - **Soạn bài** → **📂 Bài đang soạn dở** có bài thử → **Mở** → **5 · Xuất bản**: vẫn «Bài này đã gửi … (bài … mã …)», ô **Tạo thêm…** chưa tick, nút mờ.
+
+8. **Trả file nháp thật.** Tắt app (đóng cửa sổ dòng lệnh của `run.bat`). Chỉ Huy chạy:
+
+   ```powershell
+   $ErrorActionPreference = 'Stop'; if (Get-ChildItem data -Filter 'drafts.sqlite-*') { 'DUNG: con file nhat ky drafts.sqlite-...' } else { Rename-Item data\drafts.sqlite drafts.sau-ca-R.sqlite; Copy-Item data\drafts.ban-sao-ca-R.sqlite data\drafts.sqlite; 'da tra file cu, giong ban sao: ' + ((Get-FileHash data\drafts.sqlite).Hash -eq (Get-FileHash data\drafts.ban-sao-ca-R.sqlite).Hash) }
+   ```
+
+   Phải thấy `da tra file cu, giong ban sao: True`. Bấm đúp `run.bat`, chủ dự án đăng nhập: **📂 Bài đang soạn dở** đúng số bài ghi ở bước 2; bài thử mở ra vẫn khóa như bước 2. Ra `DUNG…` hay câu lỗi: không chạy lại lệnh, không xóa file nào, báo Soi Lỗi (bản dự phòng `drafts.ban-sao-ca-R.sqlite` vẫn còn).
+
 ### Suốt buổi · (f)
 
 - [ ] Mọi câu báo là câu tiếng Việt cố định, kèm mã bài. Không có đường dẫn máy, tên file khóa, địa chỉ có mật khẩu, chữ tiếng Anh của máy chủ.
@@ -266,6 +344,7 @@ Luật của app: trạng thái dòng **chỉ đi tới** (Chưa viết → Đan
 9. [ ] App, Soạn bài, khung **Bài đang soạn dở**: bài thử trên máy → **🗑️ Xóa** → **Xóa hẳn** (chủ dự án bấm). Làm **sau** bước 8, để không còn nháp gắn với Sheet bản sao.
 10. [ ] Bước SEO của một bài bất kỳ: **🔄 Tải lại danh sách bài**, để danh sách bài đã đăng trên máy không còn bài thử.
 11. [ ] Ảnh chụp màn hình của buổi thử: soát lại không có bí mật (mục 1); lưu ngoài thư mục dự án, không đưa lên GitHub.
+12. [ ] **Ca R** (nếu đã làm), chỉ khi ca R bước 8 đã ra `True` và kiểm đủ nháp: chủ dự án xóa ba file thử trong thư mục `data` của dự án: `drafts.ban-sao-ca-R.sqlite`, `drafts.sau-ca-R.sqlite` và file `drafts.hong-<ngày>-<giờ>.sqlite` đúng tên ghi ở mục 7. **Không xóa `drafts.sqlite`.** Ba file này chứa nháp của chủ dự án: không gửi đi. Chưa chắc thì để lại, app không đọc các file này.
 
 ## 7. Bảng ghi kết quả (cho Lá Chắn)
 
@@ -289,7 +368,8 @@ Chỉ Huy điền ngay trong buổi. Sau buổi, chép bảng vào báo cáo bu�
 | T-110 đk 3 | Ảnh của bài nháp không có trong `/wp-json/wp/v2/media` khi xem ẩn danh; gắn ảnh không lỗi | | |
 | Sheet bản sao | Mục 3.4, ca S: kết nối bản sao, dòng ghi đúng trạng thái, cập nhật từ website ghi đúng ô | | |
 | T-097 đk 5 | (tùy chọn) Tên máy chủ Google thấy được | | |
-| Dọn | Mục 6, đủ 11 dòng (ảnh xóa trước bài; pingback có / không, đã xóa) | | |
+| Ca R | File nháp bị cất rồi thử gửi lại (Lá Chắn T-136 B.3, Soi Lỗi SL-T136-1). Bước 1: `True`. Bước 4: câu «File nháp cũ bị hỏng…» hiện ở đâu, mất sau mấy lần bấm, tên file `drafts.hong-…`; dòng «Chưa có bài nào…» hay lời nhắc. Bước 5: còn nội dung; khung «Tab này biết bài đã gửi…»; nút gửi mờ; có/không câu «File nháp cũ…» trên Soạn bài. Bước 6: tab mới thấy/không thấy bài thử, có/không câu nhắc. Bước 7: lưu lại, F5 vẫn khóa. Bước 8: `True`, số bài như bước 2. Không bật công tắc, không gửi gì | | |
+| Dọn | Mục 6, đủ 12 dòng (ảnh xóa trước bài; pingback có / không, đã xóa) | | |
 | `unfiltered_html` | Có/không câu cảnh báo ở Kết nối WordPress | | |
 
 ## 8. Sau buổi thử
