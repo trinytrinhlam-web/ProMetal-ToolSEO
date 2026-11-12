@@ -18,6 +18,7 @@ Không nhập gì từ ``seo_app.storage`` (gói này nạp các kho).
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import stat
 from collections.abc import Callable, Iterable, Mapping
@@ -41,6 +42,14 @@ SQLITE_READONLY = 8
 # GN-1). Đã thử SQLite 3.53.1: byte 18 = 3, 255 → đọc được, ghi lỗi mã 8; byte 19 = 3, 255 → mã 26.
 _FORMAT_VERSION_OFFSETS = (18, 19)
 _MAX_FORMAT_VERSION = 2
+# Đọc đầu file: chỉ đọc, không chờ (FIFO), không đi theo liên kết ở tầng cuối, byte nguyên vẹn.
+# Cờ nào hệ điều hành không có thì là 0 (Windows: không có O_NONBLOCK, O_NOFOLLOW; có O_BINARY).
+_OPEN_FLAGS = (
+    os.O_RDONLY
+    | getattr(os, "O_NONBLOCK", 0)
+    | getattr(os, "O_NOFOLLOW", 0)
+    | getattr(os, "O_BINARY", 0)
+)
 _SCHEMA_ROWS_LIMIT = 64  # dựng cấu trúc mẫu trong bộ nhớ: mỗi kho chỉ vài dòng
 
 
@@ -187,11 +196,31 @@ def app_table_names(
 
 
 def newer_file_format(path: Path) -> bool:
-    """Byte 18 hay 19 của đầu file lớn hơn 2 (``_FORMAT_VERSION_OFFSETS``): file lạ. Đọc 20 byte
-    đầu, không mở bằng SQLite. File ngắn hơn (trống, cụt): ``False``, để SQLite tự xét."""
+    """Byte 18 hay 19 của đầu file lớn hơn 2 (``_FORMAT_VERSION_OFFSETS``): file lạ. Chỉ đọc 20 byte
+    đầu của **file thường**, không mở bằng SQLite.
+
+    Chỗ đó không phải file thường (thư mục, FIFO, thiết bị, liên kết), không mở được, hay file
+    ngắn hơn đầu file (trống, cụt): ``False``, để bước sau (SQLite) tự xét và kho báo như trước
+    T-136 (LC-T136-1, Soi Lỗi T-136 G1: trước đây ``open()`` chờ mãi trên FIFO ở Mac/Linux, ném lỗi
+    quyền với thư mục nên câu báo nói sai nguyên nhân). Mở bằng ``os.open`` không chờ
+    (``O_NONBLOCK`` trên Mac/Linux; Windows không có cờ này, cũng không có FIFO trên ổ), rồi
+    ``fstat`` kiểm lại «file thường» trên chính fd đã mở: thứ đặt vào đúng lúc giữa ``lstat`` và
+    lúc mở không làm treo, không được đọc."""
     end = max(_FORMAT_VERSION_OFFSETS) + 1
-    with path.open("rb") as handle:
-        head = handle.read(end)
+    try:
+        if not stat.S_ISREG(os.lstat(path).st_mode):
+            return False
+        fd = os.open(path, _OPEN_FLAGS)
+    except OSError:
+        return False
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return False
+        head = os.read(fd, end)
+    except OSError:
+        return False
+    finally:
+        os.close(fd)
     return len(head) >= end and any(
         head[offset] > _MAX_FORMAT_VERSION for offset in _FORMAT_VERSION_OFFSETS
     )

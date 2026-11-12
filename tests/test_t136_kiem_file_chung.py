@@ -129,6 +129,104 @@ def test_newer_file_format(tmp_path, data, newer):
     assert sqlite_file.newer_file_format(path) is newer
 
 
+# ---------------------------------------------------------------- lượt 2: LC-T136-1, Soi Lỗi G1
+
+HEADER_18_IS_3 = b"SQLite format 3\x00" + b"\x10\x00\x03\x01"
+
+
+class FakeOs:
+    """``os`` của ``sqlite_file`` trong ca test: ``lstat``/``fstat`` trả kiểu file định sẵn (FIFO
+    trên Windows không tạo được thật), ``open``/``close`` ghi lại; phần còn lại là ``os`` thật."""
+
+    def __init__(self, lstat_mode: int, fstat_mode: int) -> None:
+        self.lstat_mode, self.fstat_mode = lstat_mode, fstat_mode
+        self.opened: list[int] = []
+        self.closed: list[int] = []
+
+    def __getattr__(self, name):
+        return getattr(os, name)
+
+    def lstat(self, path):
+        return os.stat_result((self.lstat_mode, *[0] * 9))
+
+    def fstat(self, fd):
+        return os.stat_result((self.fstat_mode, *[0] * 9))
+
+    def open(self, path, flags):
+        fd = os.open(path, flags)
+        self.opened.append(fd)
+        return fd
+
+    def close(self, fd):
+        self.closed.append(fd)
+        os.close(fd)
+
+
+REGULAR = stat.S_IFREG | 0o644
+FIFO = stat.S_IFIFO | 0o644
+
+
+@pytest.mark.parametrize(
+    ("lstat_mode", "fstat_mode", "newer", "opens"),
+    [
+        (FIFO, FIFO, False, 0),  # FIFO có sẵn: không mở (open đọc sẽ chờ đầu ghi mãi)
+        (stat.S_IFDIR | 0o755, REGULAR, False, 0),  # thư mục: không mở (Windows: lỗi quyền)
+        (REGULAR, FIFO, False, 1),  # đổi thành FIFO giữa lstat và lúc mở: mở không chờ, không đọc
+        (REGULAR, REGULAR, True, 1),  # đối chứng: file thường byte 18 = 3
+    ],
+    ids=["fifo", "thu-muc", "doi-giua-chung", "file-thuong"],
+)
+def test_header_check_reads_only_regular_files(
+    tmp_path, monkeypatch, lstat_mode, fstat_mode, newer, opens
+):
+    path = tmp_path / "site_index.sqlite"
+    path.write_bytes(HEADER_18_IS_3)
+    fake = FakeOs(lstat_mode, fstat_mode)
+    monkeypatch.setattr(sqlite_file, "os", fake)
+    assert sqlite_file.newer_file_format(path) is newer
+    assert len(fake.opened) == opens and fake.closed == fake.opened  # fd đã mở luôn được đóng
+
+
+def test_header_check_opens_without_waiting_or_following_links():
+    for flag in ("O_NONBLOCK", "O_NOFOLLOW", "O_BINARY"):
+        value = getattr(os, flag, 0)
+        assert sqlite_file._OPEN_FLAGS & value == value
+    assert sqlite_file._OPEN_FLAGS & (os.O_WRONLY | os.O_RDWR | os.O_CREAT) == 0
+
+
+def test_header_check_cannot_open(tmp_path, monkeypatch):
+    path = tmp_path / "site_index.sqlite"
+    path.write_bytes(HEADER_18_IS_3)
+    fake = FakeOs(REGULAR, REGULAR)
+
+    def denied(*_args):
+        raise PermissionError("giả")
+
+    fake.open = denied
+    monkeypatch.setattr(sqlite_file, "os", fake)
+    assert sqlite_file.newer_file_format(path) is False  # để SQLite xét và báo như trước T-136
+    assert sqlite_file.newer_file_format(tmp_path / "chua-co.sqlite") is False
+
+
+@pytest.mark.parametrize("name", ["site-index", "plan-cache", "search-cache"], ids=str)
+def test_folder_in_place_of_cache_file_keeps_folder_and_old_message(tmp_path, name):
+    # Soi Lỗi T-136 G1: câu báo như trước T-136 («Không mở được…»), không «Permission denied».
+    path = tmp_path / "kho.sqlite"
+    path.mkdir()
+    (path / "cua-nguoi-dung.txt").write_text("giữ nguyên", encoding="utf-8")
+    module = MODULES[name]
+    with pytest.raises(Exception) as info:
+        STORES[name](path=path)._prepare()
+    message = str(info.value)
+    if name == "search-cache":  # _prepare để lỗi SQLite đi lên, nơi gọi đổi bằng _db_message
+        assert isinstance(info.value, sqlite3.DatabaseError)
+        message = module._db_message(info.value)
+        assert message == module.MSG_OPEN
+    assert "Không mở được" in message
+    assert "Permission denied" not in message and "WinError" not in message
+    assert (path / "cua-nguoi-dung.txt").read_text(encoding="utf-8") == "giữ nguyên"
+
+
 # ================================================================ byte 18–19 (LC-T131-1 b, GN-1)
 
 

@@ -26,16 +26,7 @@ import pytest
 
 from seo_app.storage import sqlite_file
 
-LC_T136_1 = pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "LC-T136-1 (la-chan, Thấp): newer_file_format mở thẳng đường dẫn bằng open() trước khi "
-        "biết đó là file thường: FIFO (Mac/Linux) làm treo mãi, thư mục ném lỗi quyền"
-    ),
-)
 
-
-@LC_T136_1
 def test_lc_t136_1_header_check_skips_a_folder(tmp_path):
     folder = tmp_path / "site_index.sqlite"
     folder.mkdir()
@@ -43,7 +34,6 @@ def test_lc_t136_1_header_check_skips_a_folder(tmp_path):
 
 
 @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="FIFO chỉ có trên Mac/Linux")
-@LC_T136_1
 def test_lc_t136_1_header_check_never_waits_on_a_fifo(tmp_path):
     fifo = tmp_path / "site_index.sqlite"
     os.mkfifo(fifo)
