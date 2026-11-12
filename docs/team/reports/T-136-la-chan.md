@@ -128,3 +128,110 @@ Script `probe_t136.py` (thư mục nháp của phiên; file tạm, không mạng
 1. **Sửa LC-T136-1 trước khi dùng app trên Mac/Linux** (nên làm ngay ở một lượt nhỏ của T-136 hay phiếu dọn: vài dòng ở `newer_file_format`, sửa luôn Soi Lỗi G1); gỡ 2 dấu `xfail` của `tests/test_la_chan_t136.py` theo R5. Lá Chắn kiểm rút gọn.
 2. **Khi có máy Mac** (T-063 ĐK 3, Lá Chắn T-131 B.3): chạy thêm `tests/test_la_chan_t136.py` (ca FIFO) cùng các ca symlink T-131, T-136.
 3. **Kịch bản buổi thử thật Hẹn giờ/Đăng ngay (T-128):** thêm một bước theo Soi Lỗi G2: file nháp bị cất sang một bên rồi thử gửi lại một bài đã gửi, xác nhận màn hình xác nhận và câu `MSG_RECOVERED` đủ để người dùng không gửi trùng.
+
+## Lượt 2 · LC-T136-1, Soi Lỗi G1; xét SL-T136-1, G4; đọc soát ca R (2026-11-12)
+
+> **Model:** **Claude Opus 5.5** (hạn mức tuần Fable vẫn hết; Chỉ Huy B giao). Không phải lượt kiểm bằng Fable.
+
+| Mục | Nội dung |
+|---|---|
+| Được kiểm | Thợ Máy lượt 2: `348f6f3` (mã, test), `47fe6af` (báo cáo, mục «Lượt 2»). Soi Lỗi thử cục bộ G2 (không commit), Chỉ Huy B chép tóm tắt và ca R nguyên văn cho Lá Chắn đọc |
+| Phạm vi | Rút gọn: diff `2e43ebb..47fe6af` (`sqlite_file.newer_file_format`, `_OPEN_FLAGS`; 9 ca mới ở `test_t136_kiem_file_chung.py`; R5 ở `test_la_chan_t136.py`); xét mức SL-T136-1 và G4 của Soi Lỗi; đọc soát ca R cho kịch bản T-128. Không sửa mã; không chạm website, Google; không chạm thư mục app chủ dự án đang chạy |
+| **Kết luận lượt 2** | **ĐẠT CÓ ĐIỀU KIỆN, gộp `main` được ngay** (`main` `01fc45c`: `git merge-tree` không xung đột). **LC-T136-1 đóng, Soi Lỗi G1 đóng**; không nới lớp nào; R5 đúng; trên Windows chỉ đổi câu báo G1 về như trước T-136. **SL-T136-1: Thấp** (đồng ý Soi Lỗi), không do T-136 tạo ra, **không chặn gộp T-136**, **không chặn cứng** việc bật công tắc; **khuyến nghị sửa ở phiếu riêng trước khi bật công tắc Hẹn giờ/Đăng ngay cho bài thật** (như Lá Chắn T-092 B.1 → T-130), Lá Chắn kiểm **đầy đủ**. **G4: câu chữ**, gộp vào phiếu đó. **Ca R: sửa 6 chỗ** (bản cuối ở thư mục ghi chú chung) |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Lỗi nhỏ trên Mac/Linux ở lượt trước đã sửa đúng:** chỗ đặt file lưu tạm mà không phải file thường thì app không còn đứng; câu báo trở về như cũ. Máy Windows không đổi gì khác.
+- **Soi Lỗi tìm ra một đường có thể gửi trùng (SL-T136-1):** khi file nháp bị chương trình khác làm hỏng và app cất nó sang một bên, app chỉ nhắc một lần; sau đó trang Bài viết nói «Chưa có bài nào…» và lúc gửi lại không nhắc gì. Hiếm (phải có thứ làm hỏng file nháp trước). Hậu quả: một bài trùng trên website (bài nháp nếu chưa bật Hẹn giờ/Đăng ngay). Tôi xếp mức Thấp, đề nghị sửa ở một phiếu nhỏ **trước khi anh/chị bật Hẹn giờ/Đăng ngay cho bài thật**.
+- **Bài kiểm tay «ca R»** cho buổi thử thật: tôi sửa để lệnh chép dự phòng không bao giờ ghi đè bản sao file nháp của anh/chị, và cả ca không bật Hẹn giờ/Đăng ngay.
+- **Việc của anh/chị lúc này:** không có.
+
+### 1. LC-T136-1, Soi Lỗi G1 — **đóng**
+
+- `newer_file_format` (`sqlite_file.py:198-226`) nay: `os.lstat` không phải file thường → `False` (không mở); mở bằng `os.open` với `_OPEN_FLAGS` = `O_RDONLY` + `O_NONBLOCK` + `O_NOFOLLOW` + `O_BINARY` (cờ hệ điều hành không có là 0); `os.fstat` trên chính fd không phải file thường → `False`, không đọc; đọc 20 byte; fd luôn đóng (`finally`); mọi `OSError` → `False`.
+  - **FIFO** (Mac/Linux): bị loại ở `lstat`, không mở. Đổi thành FIFO đúng khe `lstat` → `open`: mở không chờ (`O_NONBLOCK`), bị loại ở `fstat`.
+  - **Liên kết** đặt vào đúng khe đó: Mac/Linux `O_NOFOLLOW` từ chối; Windows không có cờ này, nên có thể đọc 20 byte của file đích chỉ để tính một giá trị đúng/sai (không ghi, không hiện): vô hại, cùng loại khe `stamp()` đã ghi nhận ở T-125. Lớp gỡ liên kết của từng kho vẫn chạy trước như cũ.
+  - **«Không phải file thường hay đọc lỗi thì `False`»** không nới gì: kho vẫn tự gỡ liên kết, nhật ký trước; SQLite mở tiếp và báo như trước T-136 (thư mục: «Không mở được…»; FIFO: lỗi vào ra, không chờ, vì SQLite mở đọc-ghi và đọc bằng `pread`/`lseek`). Đầu file đọc lỗi nhất thời mà byte 18 thật sự lớn hơn 2: lần đó kho giữ file, lần kiểm sau bắt.
+- Probe A, E chạy lại: thư mục → `False`; `site_index` với thư mục ở chỗ file → «Không mở được file lưu tạm danh sách bài (có thể chương trình khác đang giữ file, hoặc không có quyền ghi)…», thư mục còn nguyên.
+- 9 ca mới của Thợ Máy (lớp `FakeOs` giả `lstat`/`fstat` vì Windows không tạo được FIFO): FIFO và thư mục không mở; đổi giữa chừng mở 1 lần, không đọc; fd mở là được đóng; cờ mở đúng; lỗi quyền → `False`; 3 kho lưu tạm giữ thư mục và câu cũ. Đọc từng ca: đúng hành vi cần ghim.
+- **R5:** `git diff 2e43ebb..348f6f3 -- tests/test_la_chan_t136.py` chỉ xóa hằng `LC_T136_1` và hai dòng `@LC_T136_1`; thân test không đổi. Ca thư mục qua trên Windows; ca FIFO vẫn bỏ qua trên Windows và phải chạy trên Mac (B.2).
+- Lượt 2 chỉ đổi `sqlite_file.py` và test; lớp mỏng của 5 kho, kho nháp, trạng thái gửi không đổi dòng nào.
+
+### 2. SL-T136-1 — **Thấp**; không chặn gộp T-136; khuyến nghị sửa ở phiếu riêng trước khi bật công tắc cho bài thật
+
+**Tôi sửa lại đánh giá G2 ở lượt 1.** Tôi đã viết «khi bật công tắc, màn hình xác nhận (T-102, T-112) vẫn là chốt chặn». Không đúng: khung «Xem lại trước khi gửi» chỉ bắt đọc lại bài, không biết bài đã có trên website. Chốt chống gửi trùng duy nhất là dấu «đã gửi» trong kho nháp (T-086, T-089, T-130), và dấu đó đi theo file bị cất.
+
+**Cơ chế đúng như Soi Lỗi tả** (đọc mã, probe):
+
+- Kho dùng chung của trang Soạn bài gặp byte 18 = 3: lần lưu đầu báo «chỉ đọc» (G4), lần sau cất file; từ đó `send_state_if_exists` của bài trong kho mới là `None` (probe G4).
+- `home.py:62-63` chỉ hiện `MSG_RECOVERED` khi chính kho của lần vẽ đó vừa cất file; `home.py:299` ghi «Chưa có bài nào phần mềm đã gửi lên WordPress.» khi kho mới trống.
+- Hai đường gửi trùng của Soi Lỗi đúng: tab mở bài trước lần gửi ở tab khác (T-092 chỉ giữ điều tab biết); F5, tab mới, mở lại app.
+
+**Mức Thấp**, vì:
+
+- **Điều kiện hiếm:** file nháp phải bị cất (chương trình khác sửa hay làm hỏng file, ổ lỗi, lối tắt); dữ liệu `data/` nằm trong thư mục phần mềm trên ổ máy, không đồng bộ đám mây. Sau đó người dùng phải chủ động gửi lại: đường 1 cần bấm «Lưu lại», chọn hình thức, tick xác nhận; đường 2 cần viết lại bài.
+- **Hậu quả có giới hạn:** công tắc tắt (mặc định) thì chỉ ra một bài **nháp** trùng (không công khai, xóa được). Công tắc bật thì là một bài hẹn giờ hay đăng trùng, công khai tới khi người dùng xóa. Không lộ dữ liệu; W1 vẫn giữ (đăng vẫn phải bấm xác nhận).
+- **Không do T-136 tạo ra:** cùng lớp G2 tôi ghi ở T-131; T-136 thêm một nguyên nhân cất file (byte 18–19, theo LC-T131-1 b của tôi) và câu báo tốt hơn.
+
+**Có chặn bật công tắc không:** **không chặn cứng.** Theo cách đã làm với khoảng hở cùng loại ở Lá Chắn T-092 (B.1, khuyến nghị trước khi bật công tắc; đã làm ở T-130): **khuyến nghị sửa trước khi bật công tắc Hẹn giờ/Đăng ngay cho bài thật**; Chỉ Huy và chủ dự án quyết. Nếu bật trước khi sửa: ghi một dòng sổ rủi ro, và README nhắc «thấy câu "File nháp cũ bị hỏng…" thì xem WordPress trước khi gửi bất kỳ bài nào». Không chặn buổi thử thật với bài thử có người theo dõi.
+
+**Sửa ở đâu:** **phiếu riêng**, không phải T-136 lượt 3. Chỗ sửa ở giao diện ba trang và cổng của nút gửi (đụng logic khóa gửi trùng), nên **Lá Chắn đầy đủ**; T-136 (gom kiểm file) gộp được ngay.
+
+**Hướng sửa:** đồng ý hướng của Soi Lỗi, kèm yêu cầu bảo mật:
+
+1. **Dấu hiệu sống qua lần mở lại app.** Biến trong bộ nhớ mất khi tắt app, không phủ đường 2. Xét theo **tên file** `drafts.hong-*.sqlite` trong `data/`: sau `dir_has_link`, chỉ liệt kê tên, khớp đúng khuôn tên app tự đặt (`drafts.hong-YYYYmmdd-HHMMSS[-n].sqlite`).
+2. **Không mở, không đọc file đã cất:** không SQLite, không chép dòng `send_states`. Không hiện đường dẫn đầy đủ; tên qua `escape_markdown`.
+3. **Lời nhắc thường trực khi còn file đã cất:** trang Bài viết thay «Chưa có bài nào…» bằng lời nhắc (không chỉ một lần). Bước Xuất bản của bài **chưa có** dấu «đã gửi» trong kho hiện tại, ở **mọi** hình thức (cả Nháp), đòi tick «Tôi đã xem trên WordPress: bài này chưa có» trước khi nút gửi bật. Tick không có sẵn, không nhớ sang bài khác.
+4. **Chỉ thêm cổng:** không nới so rồi đặt (T-089), không đổi T-092, T-130. Lời nhắc hết khi người dùng xóa hay dời file đã cất; câu nhắc nói rõ chỉ xóa sau khi đã đối chiếu WordPress.
+5. **Nên thêm:** bài gắn dòng kế hoạch mà Sheet đã có «Mã bài WordPress» (đã qua `PlanRow`) thì bước Xuất bản nhắc mã đó.
+6. **Test:** hai đường của Soi Lỗi (`xfail(strict=True)` trước khi sửa); ca mở lại app (đường 2 sau khi tắt app); ca tên lạ trong `data/` không được tính.
+
+### 3. G4 — **câu chữ**; gộp vào phiếu sửa SL-T136-1
+
+Probe G4: kho dùng chung đã mở, byte 18 đổi thành 3. Lần lưu đầu báo `_MSG_READONLY` («File nháp đang ở chế độ chỉ đọc… Bỏ chế độ chỉ đọc rồi thử lại.»); lần sau cất file.
+
+- **Không có hệ quả bảo mật:** sai nguyên nhân một lần; lần đọc vẫn qua kiểm cấu trúc trong giao dịch; file được cất ở thao tác kế.
+- **Gợi ý sửa:** `_db_message` hay `_connect` của kho nháp gặp mã 8 mà `sqlite_file.newer_file_format(self.path)` đúng thì coi là file lạ (`_MSG_BROKEN`, `_ready = False`).
+- Không chặn gộp T-136.
+
+### 4. Ca R (kịch bản T-128) — **sửa 6 chỗ**
+
+Bản cuối: `T-136-la-chan-ca-R-ban-cuoi.md` trong thư mục ghi chú chung của nhóm phiên Chỉ Huy B (Chỉ Huy chép vào kịch bản T-128).
+
+1. **Bước 1 không ghi đè bản sao cũ.** `Copy-Item` ghi đè im lặng (đã thử PowerShell 5.1 trên máy này). Chạy lại ca sau một lần dở sẽ chép file nháp mới đè lên bản sao tốt duy nhất, rồi bước dọn xóa nốt file đã cất. Lệnh mới dừng khi còn bản sao hay file `sau-ca-R` của lần trước.
+2. **Bỏ bật công tắc và bước Hẹn giờ.** Soi Lỗi đã thử bằng WordPress giả; trên website thật bước đó chỉ còn rủi ro bấm nhầm «Tạo thêm…» ra bài hẹn giờ thật.
+3. **Không soạn bài thật** từ bước 3 tới hết ca (nháp tạo lúc đó bị xóa ở bước dọn).
+4. **Ảnh chụp chỉ giữ trong máy.**
+5. **Nên chạy sau phiếu sửa SL-T136-1**; kỳ vọng ghi hai kiểu (hiện tại, đã sửa).
+6. **Đánh lại số bước** (8 bước), sửa dòng bảng mục 7, mục 6, mục 2.
+
+Ba lệnh (bước 1, 3, 8) chạy thử trên một thư mục `data` giả trong thư mục nháp của tôi (không chạm thư mục dự án):
+
+| Lệnh | Kết quả |
+|---|---|
+| Bước 1 | Tạo bản sao (`True`); chạy lại → `DUNG`; còn file `-journal` → `DUNG` |
+| Bước 3 | Sửa byte 18 `1 -> 3`; chạy lại → `DUNG` |
+| Bước 8 | Trả đúng file (`True`); chạy lại → báo lỗi, không đổi gì |
+
+Ca R an toàn cho máy chủ dự án: không gửi gì lên website, không gọi mạng, không đọc `.env`, không in đường dẫn khi chạy đúng (câu lỗi có thể in đường dẫn: kịch bản dặn không chép). Ca chỉ đổi 1 byte của file nháp đã có bản sao, và trả lại file ở bước cuối.
+
+### 5. Thử, công cụ quét (lượt 2)
+
+| Việc | Kết quả |
+|---|---|
+| pytest 36 file liên quan trên `47fe6af` (35 file lượt 1 + `test_la_chan_t136.py`) | **2.884 qua, 8 bỏ qua** (7 ca symlink, 1 ca FIFO: Windows), **7 xfail có từ trước** (SL-T070-4), **0 hỏng**, 21 phút 35 giây |
+| Probe A, E (`probe_t136.py`); probe G4; chạy thử 3 lệnh ca R | như mục 1, 3, 4 |
+| `ruff check .` | sạch |
+| detect-secrets (`PYTHONUTF8=1`) biên bản này | 0 |
+| Gộp thử | `git merge-tree --write-tree main HEAD` (`main` `01fc45c`) không xung đột |
+
+### Điều kiện (cập nhật sau lượt 2)
+
+**A. Gộp `main`: được ngay.**
+
+**B.**
+
+1. ~~Sửa LC-T136-1~~: **đã xong** ở `348f6f3`.
+2. **Khi có máy Mac:** chạy `tests/test_la_chan_t136.py` (ca FIFO nay không còn dấu `xfail`: phải qua) cùng các ca symlink T-131, T-136.
+3. **Kịch bản T-128:** dùng **ca R bản cuối** (mục 4), thay cho mục B.3 lượt 1.
+4. **Phiếu mới (Thấp): sửa SL-T136-1 và G4** theo mục 2, 3; Lá Chắn **đầy đủ**. **Khuyến nghị xong trước khi bật công tắc Hẹn giờ/Đăng ngay cho bài thật**; nếu bật trước thì ghi sổ rủi ro và README như mục 2.
