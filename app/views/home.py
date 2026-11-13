@@ -40,10 +40,7 @@ WEB_LABELS = {
 MSG_NO_PLAN = "Chưa có kế hoạch trên máy: mở trang Kế hoạch để tải từ Google Sheets."
 MSG_ODD_DATA = "Không đọc được kế hoạch (dữ liệu có chỗ lạ)."
 SQLITE_HEADER = b"SQLite format 3\x00"
-MSG_DRAFTS_MOVED = (
-    "File nháp cũ bị hỏng nên đã được cất sang một bên (tên «{name}», cùng thư mục). App bắt "
-    "đầu file nháp mới."
-)
+MSG_DRAFTS_MOVED = drafts.MSG_RECOVERED  # câu chung của kho nháp (T-136)
 
 
 def draft_store() -> DraftStore | None:
