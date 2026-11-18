@@ -24,9 +24,10 @@ class Answer(BaseModel):
 
 def test_project_ai_config_is_valid():
     # Không có hãng mặc định (chốt 2026-10-15): kiểm từng việc, không đòi mọi việc là anthropic.
+    # Bước nghiên cứu bật hay tắt tìm web là lựa chọn của chủ dự án (18/11 tắt vì gói Gemini miễn
+    # phí, ghim ở test_t138_gemini_flash); ở đây chỉ kiểm không việc nào khác được tìm web.
     tasks = load_ai_config()
     assert {"research", "outline", "write", "rewrite", "review", "alt"} <= set(tasks)
-    assert tasks["research"].web_search is True
     for name, task in tasks.items():
         assert task.provider in PROVIDERS, name
         assert task.model.strip(), name

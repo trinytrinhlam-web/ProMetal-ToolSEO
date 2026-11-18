@@ -8,6 +8,8 @@ test kiểm **điều bảo vệ**, không ghim hãng đang ghi trong ``config/a
 - ``ai_text_on``: chữ ``config/ai.toml`` với mọi việc đang bật chuyển sang một hãng. Dùng làm bản
   mẫu trong ``tmp_path``, ví dụ «viết bài bằng Claude, tạo ảnh bằng Gemini» để thử khóa Gemini chỉ
   bị đòi khi gọi việc ảnh (điều bảo vệ của T-062), dù file đã commit đang dùng hãng nào.
+- ``research_web_search_toml``: bản mẫu ``config/ai.toml`` với bước nghiên cứu bật hay tắt tìm web,
+  để kiểm điều chỉ có khi bật (bài đối thủ hiện trên trang) dù file đã commit đang tắt.
 """
 
 from __future__ import annotations
@@ -64,3 +66,20 @@ def ai_text_on(provider: str, text: str | None = None, model: str | None = None)
             row = f'model = "{model}"'
         rows.append(row)
     return "\n".join(rows)
+
+
+def research_web_search_toml(tmp_path: Path, on: bool, text: str | None = None) -> Path:
+    """Ghi ``tmp_path/ai.toml``: chữ ``config/ai.toml`` (hay ``text``) với khối
+    ``[tasks.research]`` chỉ còn một dòng ``web_search`` bật (``on``) hay tắt; các việc khác giữ
+    nguyên. Đọc lại để chắc giá trị đã ăn."""
+    if text is None:
+        text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
+    rows = text.split("\n")
+    head = next(i for i, row in enumerate(rows) if row.startswith("[tasks.research]"))
+    end = next((i for i in range(head + 1, len(rows)) if rows[i].startswith("[")), len(rows))
+    block = [row for row in rows[head + 1 : end] if not row.startswith("web_search = ")]
+    rows[head + 1 : end] = [f"web_search = {'true' if on else 'false'}", *block]
+    path = tmp_path / "ai.toml"
+    path.write_text("\n".join(rows), encoding="utf-8")
+    assert ai_registry.load_ai_config(path)["research"].web_search is on
+    return path

@@ -254,8 +254,11 @@ def test_good_ai_config_values_still_load(tmp_path):
 
 
 def test_project_ai_config_still_loads():
+    # Bộ kiểm chặt vẫn nhận file của dự án và đọc đúng web_search ghi trong file (bật hay tắt do chủ
+    # dự án chọn: 18/11 tắt, T-138), không bỏ qua giá trị để lấy mặc định.
+    raw = tomllib.loads(ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8"))["tasks"]
     tasks = load_ai_config()
-    assert tasks["research"].web_search is True
+    assert tasks["research"].web_search is raw["research"].get("web_search", False)
 
 
 # ------------------------------------------------ SL #6: AI trả rỗng

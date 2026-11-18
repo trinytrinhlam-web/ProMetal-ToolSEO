@@ -288,7 +288,8 @@ def test_plan_task_in_config_matches_outline_and_never_searches_web():
                                                         outline.effort)  # fmt: skip
     assert plan.web_search is False
     assert plan.max_tokens >= PLAN_MAX_TOKENS
-    assert [name for name, task in tasks.items() if task.web_search] == ["research"]
+    # Chỉ bước nghiên cứu được tìm web (bật hay tắt do chủ dự án chọn: 18/11 tắt, T-138).
+    assert {name for name, task in tasks.items() if task.web_search} <= {"research"}
     # Cài đặt → Mô hình AI hiện tên việc bằng tiếng Việt (bất biến SL-T051-3), không phải «plan».
     assert TASK_LABELS[PLAN_TASK] == "Đề xuất thay đổi kế hoạch"
 

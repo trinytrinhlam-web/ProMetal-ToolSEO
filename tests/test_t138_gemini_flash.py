@@ -15,6 +15,7 @@ import dataclasses
 
 import pytest
 import test_app_pages as pages
+from ai_config_samples import research_web_search_toml
 from fake_ai import RESEARCH, FakeProvider
 from test_app_pages import button, write_page
 
@@ -128,26 +129,12 @@ def test_competitors_are_dropped_only_when_web_search_is_off(monkeypatch, web_se
 # ================================================================ trang Soạn bài bước 1
 
 
-def _ai_toml_with_web_search(tmp_path, on: bool):
-    text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
-    research = text.index("[tasks.research]")
-    line_start = text.index("web_search = ", research)
-    line_end = text.index("\n", line_start)
-    path = tmp_path / "ai.toml"
-    path.write_text(
-        text[:line_start] + f"web_search = {'true' if on else 'false'}" + text[line_end:],
-        encoding="utf-8",
-    )
-    assert load_ai_config(path)["research"].web_search is on
-    return path
-
-
 @pytest.mark.parametrize("on", [False, True], ids=["tat-tim-web", "bat-tim-web"])
 def test_write_page_step_one_tells_when_web_search_is_off(
     project_root, tmp_path, monkeypatch, fake_ai, on
 ):
     monkeypatch.setattr(
-        ai_registry.load_ai_config, "__defaults__", (_ai_toml_with_web_search(tmp_path, on),)
+        ai_registry.load_ai_config, "__defaults__", (research_web_search_toml(tmp_path, on),)
     )
     at = write_page(project_root)
     notes = [c.value for c in at.caption if "Đang tắt tìm Google" in c.value]
