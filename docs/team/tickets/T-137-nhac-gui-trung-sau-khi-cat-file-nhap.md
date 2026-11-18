@@ -55,3 +55,4 @@ Khi file nháp bị chương trình khác làm hỏng và app cất nó sang m�
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-12 theo Lá Chắn T-136 lượt 2 (`6a005c1`): sửa ở phiếu riêng **trước khi bật Hẹn giờ/Đăng ngay cho bài thật**, không chặn gộp T-136 và không chặn buổi thử thật. Worktree `wt-T-137`, nhánh `team/T-137` từ `team/T-136`.
+- 2026-11-18 (Chỉ Huy B): Họa Sĩ 2ee7152, 5daf638; Soi Lỗi đầy đủ 619c229 ĐẠT (0 lỗi mới, 52 bước G2, đột biến 13/13); Lá Chắn đầy đủ (Fable 5.1) e27d1df **ĐẠT**, gộp main được; SL-T136-1, G4 đóng (B.4 của Lá Chắn T-136 lượt 2 xong). G-1 Thấp có từ T-092 → phiếu sau; G-2 ca R bước 6 đã sửa ở bản cuối của Lá Chắn (chép vào kịch bản T-128 khi gộp); G-3, G-4 câu chữ → phiếu sau; G-5 → T-138. Gộp main sau buổi thử thật hôm nay (app chủ dự án chạy từ thư mục main); thư mục data/ của app hiện không có file drafts.hong-*.

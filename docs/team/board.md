@@ -39,6 +39,7 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Họa Sĩ xong `2ee7152`, `5daf638`; Soi Lỗi đầy đủ đang kiểm; sau đó Lá Chắn đầy đủ | [Họa Sĩ](reports/T-137-hoa-si.md) |
 | [T-138](tickets/T-138-tam-dung-gemini-flash.md) | Tạm dùng Gemini Flash cho mọi việc AI (chủ dự án 18/11): cấu hình, sửa 14 test ghim cấu hình Claude, bước nghiên cứu không tìm web không có đối thủ bịa | Thợ Máy · T-138 | `team/T-138` | Đang làm | — |
 | [T-139](tickets/T-139-la-chan-doc-thu-that-google.md) | Lá Chắn đọc kết quả buổi thử thật Google 18/11 (số liệu khớp Search Console từng con số), cho dùng trang 📈 Theo dõi | Lá Chắn | — | Chờ Lá Chắn (sau T-137) | [Kết quả buổi thử](reports/T-139-thu-that-google.md) |
+| [T-140](tickets/T-140-thiet-ke-anh-tu-chon-va-anh-ai-cloudflare.md) | Thiết kế: ảnh tự chọn từ thư mục (không hỏi) và ảnh minh họa AI miễn phí qua Cloudflare Workers AI (chủ dự án 18/11; thay T-053) | Thợ Máy · T-140 |  | Đang thiết kế | — |
 
 ## Chờ
 
@@ -208,4 +209,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-140
+## Số phiếu tiếp theo: T-141

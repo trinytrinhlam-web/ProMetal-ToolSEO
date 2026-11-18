@@ -38,6 +38,7 @@ Người dùng là chủ dự án: hiểu khái niệm lập trình nhưng ít d
 - Chủ dự án 2026-11-02: Lá Chắn **kiểm lại bằng Fable, phần nhạy cảm trước** (T-116: ảnh; WordPress, đăng bài; đăng nhập, `.env`, AI; Google, kế hoạch); khi app gặp lỗi bất ngờ, trang **chỉ hiện loại lỗi** (`client.showErrorDetails = "type"`, không lộ đường dẫn; T-118).
 - Chủ dự án 2026-11-04: Giai đoạn 6 đặt ở **trang mới «📈 Theo dõi»** (giữa Kế hoạch và Cài đặt); có nút **«Đưa vào kế hoạch»** từ khóa Google sang trang Kế hoạch; các câu khác của T-120 theo khuyến nghị; **giữ schema FAQ**. Hết hạn mức Fable thì Lá Chắn chạy **Opus 5.5** (ghi rõ model). Khóa Gemini lộ trong file kết quả trên máy (`SU-CO-2026-11-04`): chủ dự án **đổi khóa**.
 - Chủ dự án 2026-11-18: **tạm dùng Gemini Flash miễn phí** (`gemini-3.8-flash`) cho mọi việc AI, tắt tìm Google ở bước nghiên cứu (máy chưa có khóa Claude; khóa Gemini chưa bật thanh toán nên mô hình Pro bị từ chối). Quay lại Claude hay bật thanh toán Gemini thì sửa `config/ai.toml` (phiếu T-138). Hướng «nhiều website» (12–13/11) **bỏ qua**.
+- Chủ dự án 2026-11-18 (trong buổi thử thật): **hạn chế ảnh thật, ưu tiên ảnh minh họa AI**; ảnh có trong thư mục thì app **tự chọn, không hỏi** (vẫn hiện ở màn hình xem lại trước khi gửi); ảnh AI **miễn phí, app tự tạo** bằng **Cloudflare Workers AI** (FLUX) thay Flow của Google (Flow không có API; tự động hóa Flow phải vượt reCAPTCHA, không làm); chưa bật thanh toán Gemini. Chấp nhận dùng Gemini miễn phí cho viết alt (sổ rủi ro). Thiết kế ở T-140 (thay T-053).
 
 ## Bí mật và bảo mật
 
