@@ -234,7 +234,17 @@ class ContentWriter:
 
     # 1-2. Ý định tìm kiếm + đối thủ
     def research(self, keyword: str) -> Research:
-        return clean_research(self._run("research", prompts.research_prompt(keyword), Research))
+        """Bước nghiên cứu. Việc ``research`` tắt tìm web (T-138: gói Gemini miễn phí) thì lời dặn
+        bảo để trống danh sách bài đối thủ, và mọi bài đối thủ AI vẫn trả về đều bị bỏ: AI không
+        đọc được trang nào nên chúng là bịa (không tin lời dặn)."""
+        provider, config = self.ai.get("research")
+        prompt = prompts.research_prompt(keyword, web_search=config.web_search)
+        research = clean_research(
+            provider.generate(config, system=self.system, prompt=prompt, schema=Research)
+        )
+        if not config.web_search:
+            research = research.model_copy(update={"competitors": []})
+        return research
 
     # 4. Dàn ý
     def outline(self, keyword: str, research: Research, material: Mapping[str, str]) -> Outline:

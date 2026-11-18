@@ -2082,6 +2082,20 @@ def build_writer() -> ContentWriter:
     return ContentWriter(AIRouter(load_ai_config(), load_settings()), load_rules())
 
 
+MSG_NO_WEB_SEARCH = "Đang tắt tìm Google: AI không đọc bài đối thủ."
+
+
+def research_searches_web() -> bool:
+    """Việc nghiên cứu có được tìm web (``[tasks.research]`` ``web_search``; T-138). Chỉ đọc file
+    cấu hình, không tạo AI, không cần khóa. Cấu hình lỗi: coi như có (câu báo lỗi cấu hình đã hiện ở
+    chỗ khác, không thêm câu nhắc có thể sai)."""
+    try:
+        task = load_ai_config().get("research")
+    except AIError:
+        return True
+    return task is None or task.web_search
+
+
 def ai_call(spinner: str, fn, *args, **kwargs):
     """Chạy một bước AI, hiện vòng quay; lỗi thì báo bằng tiếng Việt và trả về None."""
     try:
@@ -2171,12 +2185,17 @@ def step_prepare(writer: ContentWriter | None) -> None:
     kw_col, btn_col = st.columns([4, 1.4], vertical_alignment="bottom")
     kw_col.text_input("Từ khóa chính", key="keyword", placeholder="ví dụ: so sánh inox 201 và 304")
     research: Research | None = S.research
+    searches_web = research_searches_web()
+    if not searches_web:
+        st.caption(MSG_NO_WEB_SEARCH)
     label = "🔄 Phân tích lại" if research else "🔎 Phân tích từ khóa"
     if btn_col.button(
         label, type="primary", width="stretch", disabled=writer is None or not keyword()
     ):
         result = ai_call(
-            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)",
+            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)"
+            if searches_web
+            else "AI đang phân tích từ khóa…",
             writer.research,
             keyword(),
         )

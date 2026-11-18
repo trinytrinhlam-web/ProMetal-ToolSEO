@@ -22,6 +22,7 @@ import re
 import unicodedata
 
 import pytest
+from ai_config_samples import ai_text_on, configured_providers
 from fake_ai import FakeProvider
 from PIL import Image
 from streamlit.testing.v1 import AppTest
@@ -65,9 +66,14 @@ EMPTY_ALT = "không viết được alt"
 # ------------------------------------------------------------------------------- tiện ích
 
 
-def _enabled_ai_toml(tmp_path, provider: str | None = None, model: str | None = None):
-    """Bản sao config/ai.toml, xóa «# » ở 4 dòng của khối [tasks.image] như chú thích hướng dẫn."""
-    rows = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8").split("\n")
+def _enabled_ai_toml(
+    tmp_path, provider: str | None = None, model: str | None = None, writing_on: str | None = None
+):
+    """Bản sao config/ai.toml, xóa «# » ở 4 dòng của khối [tasks.image] như chú thích hướng dẫn.
+    ``writing_on``: mọi việc khác chuyển sang hãng này trước (T-138: bản mẫu «viết bằng Claude,
+    ảnh bằng Gemini», không phụ thuộc hãng trong file đã commit)."""
+    text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
+    rows = (text if writing_on is None else ai_text_on(writing_on, text)).split("\n")
     starts = [i for i, row in enumerate(rows) if row.lstrip("# ").startswith("[tasks.image]")]
     assert len(starts) == 1
     for i in range(starts[0], starts[0] + 4):
@@ -175,7 +181,8 @@ def test_write_flow_with_image_enabled_never_builds_gemini(
     project_root, tmp_path, monkeypatch, built
 ):
     # Bật [tasks.image], chỉ có khóa Claude: chạy trọn 3 bước AI, Gemini không bao giờ được tạo.
-    _use_ai_toml(monkeypatch, _enabled_ai_toml(tmp_path))
+    # Bản mẫu viết bằng Claude (T-138: file đã commit có thể đang dùng Gemini cho mọi việc).
+    _use_ai_toml(monkeypatch, _enabled_ai_toml(tmp_path, writing_on="anthropic"))
     monkeypatch.setenv(ENV["anthropic"], KEYS["anthropic"])
     at = _page(project_root, "write.py")
     assert not [w.value for w in at.warning if "API_KEY" in w.value]
@@ -201,7 +208,8 @@ def test_write_page_with_image_on_claude_shows_vietnamese_error(
 
 
 def test_models_tab_with_image_enabled_and_only_claude_key(project_root, tmp_path, monkeypatch):
-    _use_ai_toml(monkeypatch, _enabled_ai_toml(tmp_path))
+    # Bản mẫu viết bằng Claude, ảnh bằng Gemini (T-138: không phụ thuộc hãng đã commit).
+    _use_ai_toml(monkeypatch, _enabled_ai_toml(tmp_path, writing_on="anthropic"))
     monkeypatch.setenv(ENV["anthropic"], KEYS["anthropic"])
     at = _page(project_root, "settings.py")
     table = at.dataframe[0].value
@@ -383,7 +391,8 @@ def test_bad_alt_and_images_do_not_lock_write_page(project_root, tmp_path, monke
         load_image_settings(path)
     defaults = rules_module.load_rules.__defaults__
     monkeypatch.setattr(rules_module.load_rules, "__defaults__", (path, *defaults[1:]))
-    monkeypatch.setenv(ENV["anthropic"], KEYS["anthropic"])
+    for provider in configured_providers():  # khóa của hãng đang được cấu hình (T-138)
+        monkeypatch.setenv(ENV[provider], KEYS[provider])
     at = _page(project_root, "write.py")
     assert not [w.value for w in at.warning if "content.toml" in w.value]
     at.text_input(key="keyword").input("sửa cửa cuốn bị kẹt").run()

@@ -156,6 +156,16 @@ Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (ng
 
 App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và **Gemini** (Google). **Không có hãng mặc định**: bạn có khóa của hãng nào thì dùng hãng đó, và đổi hãng cho từng việc khi cần (xem "Đổi hãng hoặc mô hình" bên dưới). Việc nào trong `config/ai.toml` đang ghi hãng nào thì hãng đó phải có khóa.
 
+> **Đang dùng Gemini Flash miễn phí (từ 18/11/2026).** Mọi việc AI tạm dùng mô hình `gemini-3.8-flash`, chỉ cần khóa Gemini (`GEMINI_API_KEY`). Khóa Gemini ở gói miễn phí nên có hai giới hạn:
+>
+> - **Không tìm Google**: bước Chuẩn bị chỉ phân tích ý định tìm kiếm, góc mới, câu hỏi từ hiểu biết chung của AI, **không đọc bài đối thủ**. Trang Soạn bài ghi một dòng «Đang tắt tìm Google: AI không đọc bài đối thủ».
+> - **Có lúc báo bận** (lỗi 503, Google quá tải): đợi vài phút rồi bấm lại.
+>
+> Muốn bài tốt hơn thì làm một trong hai cách, rồi sửa `config/ai.toml` (mục 7.2):
+>
+> - **Quay lại Claude**: nhập khóa Claude ở **Cài đặt → 🔌 Kết nối**, rồi ở từng việc ghi `provider = "anthropic"`, `model = "claude-opus-5-5"` (việc `alt`: `"claude-sonnet-5-5"`). Ghi chú đầu file `config/ai.toml` có sẵn cách làm.
+> - **Bật thanh toán cho khóa Gemini** (trên trang Google AI Studio) để dùng mô hình Pro (ví dụ `gemini-3.1-pro-preview`) và bật lại tìm Google (`web_search = true` ở mục `[tasks.research]`).
+
 ### 7.1. Lấy khóa API và nhập vào app
 
 Khóa API là một dãy chữ-số riêng của bạn, để app gọi AI thay bạn. Chỉ cần khóa của hãng bạn định dùng.

@@ -8,7 +8,8 @@
 #              hoặc đã thử trong app:
 #                anthropic: "claude-opus-5-5", "claude-sonnet-5-5"
 #                openai   : "gpt-5.1"
-#                gemini   : "gemini-3-pro"
+#                gemini   : "gemini-3.8-flash" (gói miễn phí dùng được, 18/11),
+#                           "gemini-3.1-pro-preview" (phải bật thanh toán Gemini)
 #              Tên sai thì app báo "Không có mô hình ...".
 #              Việc tạo ảnh ([tasks.image]) dùng mô hình tạo ảnh riêng, xem ghi chú ở mục đó.
 #              Claude KHÔNG tạo được ảnh: việc tạo ảnh chỉ chọn "openai" hoặc "gemini".
@@ -32,48 +33,53 @@
 # chú kế hoạch ở trang Kế hoạch); alt (viết chữ thay thế cho ảnh); image (tạo ảnh minh họa, đang
 # tắt, xem ghi chú ở cuối file).
 
+# Chủ dự án chốt 2026-11-18: TẠM dùng Gemini Flash miễn phí cho mọi việc (máy chưa có khóa Claude;
+# khóa Gemini chưa bật thanh toán nên mô hình Pro và tìm Google bị từ chối). Muốn quay
+# lại Claude: ở từng việc ghi provider = "anthropic", model = "claude-opus-5-5" (việc alt:
+# "claude-sonnet-5-5"), và nhập khóa Claude ở Cài đặt → 🔌 Kết nối.
+
 [tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "medium"
-web_search = true
+web_search = false  # gói Gemini miễn phí: tìm Google hết hạn mức (18/11)
 max_tokens = 16000
 
 [tasks.outline]  # tạo dàn ý
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "medium"
 max_tokens = 8000
 
 [tasks.write]  # viết toàn bài
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "high"
 max_tokens = 32000
 
 [tasks.rewrite]  # viết lại một phần theo yêu cầu
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "medium"
 max_tokens = 8000
 
 [tasks.review]  # rà soát văn phong theo checklist
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "medium"
 max_tokens = 16000
 
 [tasks.meta]  # gợi ý meta title, meta description (bước SEO)
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "low"
 max_tokens = 2000
 
 [tasks.links]  # gợi ý chỗ đặt liên kết nội bộ tới bài đã đăng (bước SEO)
 # KHÔNG thêm web_search ở việc này: lời dặn có tiêu đề bài lấy từ website (điều kiện Lá Chắn
 # T-039). Có web_search thì phần mềm từ chối chạy việc này.
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "low"
 max_tokens = 2000
 
@@ -82,16 +88,16 @@ max_tokens = 2000
 # cho tới khi bạn muốn đổi. Một lần đọc có thể ra tới 100 đề xuất nên max_tokens lớn hơn dàn ý.
 # KHÔNG thêm web_search ở việc này: lời dặn chứa kế hoạch và ghi chú chép từ nơi khác (điều kiện
 # Lá Chắn T-094). Dù có ghi, phần mềm vẫn luôn tắt tìm web cho việc này.
-provider = "anthropic"
-model = "claude-opus-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "medium"
 max_tokens = 16000
 
 [tasks.alt]  # viết alt (chữ thay thế) và chú thích cho ảnh, AI nhìn ảnh rồi viết
 # Quyết định 4A (2026-10-19): Claude Sonnet. Quy tắc viết alt nằm ở mục [alt] của
 # config/content.toml. Việc ngắn (alt ≤ 125 ký tự) nên effort thấp, max_tokens nhỏ.
-provider = "anthropic"
-model = "claude-sonnet-5-5"
+provider = "gemini"
+model = "gemini-3.8-flash"
 effort = "low"
 max_tokens = 2000
 
