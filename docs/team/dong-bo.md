@@ -59,6 +59,12 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-18 10:45 · Chỉ Huy B
+
+- 12/11: chủ dự án «tiếp tục, sau đó thử thật». Buổi thử thật Hẹn giờ/Đăng ngay qua Ca 0 (vai trò editor, Đăng bài ✅, SiteSEO ghi được, múi giờ UTC+7, trình soạn khối, header `Date` có); dừng ở Ca 1 vì máy không có khóa Claude. Ghi chép buổi thử trong thư mục nháp của Chỉ Huy B (chưa thành báo cáo).
+- T-136 gộp `main` `0c5d476` (Windows 24.402 qua, 0 hỏng); lập T-137 (Họa Sĩ xong, Soi Lỗi đang kiểm), thêm ca R vào kịch bản T-128, file mẫu kế hoạch `docs/plan/mau-ke-hoach.csv`.
+- 18/11: chủ dự án chọn tạm Gemini Flash miễn phí; `config/ai.toml` trên máy chủ dự án đã đổi (chưa commit, chờ T-138 sửa 14 test ghim cấu hình Claude). Hướng nhiều website: bỏ qua.
+
 ### 2026-11-10 13:03 · Chỉ Huy B
 
 - 07–10/11: chủ dự án «dừng» lần 3 (09/11), «tiếp tục» 10/11. Hạn mức tuần có lúc 93% rồi mở lại sớm (10/11 11:00: tuần 44%, Fable 0%).

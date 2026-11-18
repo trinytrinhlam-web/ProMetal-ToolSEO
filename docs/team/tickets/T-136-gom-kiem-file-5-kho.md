@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (dọn sau T-131) |
 | Mức ưu tiên | Thấp (không chặn bản 1.0) |
 | Phụ thuộc | T-131 đã gộp `main` |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-18) |
 
 ## Mục tiêu
 
@@ -35,3 +35,4 @@ Làm các điều kiện B.1, B.2, B.4 của Lá Chắn T-131 (`docs/team/report
 - Lập 2026-11-10 theo điều kiện B.1, B.2, B.4 của Lá Chắn T-131. B.3 (chạy test T-131 trên Mac) gom với các ca Mac.
 - 2026-11-12 13:56 (Chỉ Huy B): Thợ Máy `c48aedd`, `81a3016` (B.2 chọn câu báo, không chép `send_states`). Soi Lỗi rút gọn `52edfa1` ĐẠT. Giao Lá Chắn rút gọn, chạy Opus 5.5 (Fable hết hạn mức tuần).
 - 2026-11-12 (Chỉ Huy B): Lá Chắn rút gọn (Opus 5.5) `2e43ebb` ĐẠT CÓ ĐIỀU KIỆN, gộp được. B.1 (LC-T136-1 Thấp, Mac/Linux: FIFO làm treo khi mở 3 kho lưu tạm; cùng gốc Soi Lỗi G1) → Thợ Máy lượt 2 trên nhánh này, Lá Chắn rút gọn lại. B.2 (ca FIFO) gom ca Mac. B.3 (thêm ca «file nháp bị cất rồi thử gửi lại» vào kịch bản T-128) → Soi Lỗi thử cục bộ và soạn. Gộp `main` sau buổi thử thật (app của chủ dự án chạy từ thư mục `main`).
+- 2026-11-18 10:45 (Chỉ Huy B): Thợ Máy lượt 2 `348f6f3`, `47fe6af`; Lá Chắn rút gọn lượt 2 (Opus 5.5) `6a005c1` ĐẠT CÓ ĐIỀU KIỆN, gộp được. Toàn bộ test trên `6a005c1`: Windows 24.402 qua, 71 bỏ qua, 31 xfail, 0 hỏng (2 giờ 42 phút; hai lần trước bị ngắt khi app khởi động lại, máy tắt). Gộp `main` `0c5d476`, đã đẩy. SL-T136-1, G4 → T-137; ca R đã vào kịch bản T-128 (`a493c53`); ca FIFO gom ca Mac.

@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-11-12 16:15 (Chỉ Huy B)._
+_Cập nhật: 2026-11-18 10:45 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,8 +36,8 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-136](tickets/T-136-gom-kiem-file-5-kho.md) | Gom kiểm file 5 kho SQLite, LC-T131-1, câu báo kho nháp | Thợ Máy · T-136 | `team/T-136` | Lá Chắn 2 lượt ĐẠT CÓ ĐIỀU KIỆN, gộp được; chạy toàn bộ test; gộp `main` sau buổi thử thật | [Thợ Máy](reports/T-136-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-136-soi-loi.md) ĐẠT · [Lá Chắn](reports/T-136-la-chan.md) (Opus 5.5) |
-| [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Đang làm | — |
+| [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Họa Sĩ xong `2ee7152`, `5daf638`; Soi Lỗi đầy đủ đang kiểm; sau đó Lá Chắn đầy đủ | [Họa Sĩ](reports/T-137-hoa-si.md) |
+| [T-138](tickets/T-138-tam-dung-gemini-flash.md) | Tạm dùng Gemini Flash cho mọi việc AI (chủ dự án 18/11): cấu hình, sửa 14 test ghim cấu hình Claude, bước nghiên cứu không tìm web không có đối thủ bịa | Thợ Máy · T-138 | `team/T-138` | Đang làm | — |
 
 ## Chờ
 
@@ -64,6 +64,7 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-136](tickets/T-136-gom-kiem-file-5-kho.md) | Gom kiểm file 5 kho SQLite (`sqlite_file`), LC-T131-1, câu báo kho nháp; lượt 2 LC-T136-1 (FIFO, Mac/Linux) | Thợ Máy | 2026-11-18 | [Thợ Máy](reports/T-136-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-136-soi-loi.md) rút gọn: ĐẠT · Lá Chắn rút gọn 2 lượt (Opus 5.5): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-136-la-chan.md) (SL-T136-1 → T-137; ca R vào kịch bản T-128; ca FIFO gom ca Mac). Gộp `main` `0c5d476`, Windows 24.402 test qua, 0 hỏng |
 | [T-131](tickets/T-131-don-kho-du-lieu-phu.md) | Dọn kho dữ liệu phụ: mọi kho SQLite kiểm file, chặn `data/` là liên kết (điều kiện đóng GĐ4) | Thợ Máy | 2026-11-10 | [Thợ Máy](reports/T-131-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-131-soi-loi.md) 2 lượt: ĐẠT · Lá Chắn đầy đủ (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-131-la-chan.md) (LC-T131-1 Thấp có từ trước → T-136). Gộp `main`, Windows 24.334 test qua, 0 hỏng |
 | [T-134](tickets/T-134-la-chan-ra-soat-giai-doan-5.md) | Lá Chắn rà soát đóng Giai đoạn 5 | Lá Chắn | 2026-11-10 | [Lá Chắn](reports/T-134-la-chan.md) (Opus 5.5): **ĐÓNG CÓ ĐIỀU KIỆN** (buổi thử thật trước khi bật công tắc) |
 | [T-135](tickets/T-135-la-chan-ra-soat-giai-doan-6.md) | Lá Chắn rà soát đóng Giai đoạn 6 | Lá Chắn | 2026-11-10 | [Lá Chắn](reports/T-135-la-chan.md) (Opus 5.5): **ĐÓNG CÓ ĐIỀU KIỆN** (buổi thử thật Google, ca Mac) |
@@ -206,4 +207,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-138
+## Số phiếu tiếp theo: T-139
