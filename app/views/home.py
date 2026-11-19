@@ -2,7 +2,8 @@
 
 «Tiếp theo trong kế hoạch» và ô «Từ kế hoạch» đọc bản kế hoạch lưu trên máy (cache
 ``data/plan_cache.sqlite``, không gọi Google khi mở trang); «Đã gửi WordPress» lấy mã bài từ kho
-nháp và cột Mã bài WordPress của kế hoạch, trạng thái trên website chỉ hỏi khi bấm (chỉ đọc). Chữ
+nháp và cột Mã bài WordPress của kế hoạch, trạng thái trên website chỉ hỏi khi bấm (chỉ đọc); còn
+file nháp đã cất sang một bên thì cột này nhắc thường trực (T-137, ``moved_aside_names``). Chữ
 kế hoạch, tiêu đề bài hiện bằng ``escape_markdown`` (T-101, LC-T094-3). «Bắt đầu» không gửi gì
 lên WordPress: chỉ mở Soạn bài (LC-T094-35). Khung «Đang viết» vẫn là bản demo.
 """
@@ -41,6 +42,15 @@ MSG_NO_PLAN = "Chưa có kế hoạch trên máy: mở trang Kế hoạch để 
 MSG_ODD_DATA = "Không đọc được kế hoạch (dữ liệu có chỗ lạ)."
 SQLITE_HEADER = b"SQLite format 3\x00"
 MSG_DRAFTS_MOVED = drafts.MSG_RECOVERED  # câu chung của kho nháp (T-136)
+# Lời nhắc thường trực khi còn file nháp đã cất (T-137, SL-T136-1), thay «Chưa có bài nào…».
+MSG_SENT_MOVED = (
+    "File nháp cũ đã bị cất sang một bên (tên «{name}»{more}, cùng thư mục): dấu «đã gửi» của các "
+    "bài gửi trước lúc đó nằm trong file ấy, nên danh sách này có thể thiếu bài. Trước khi gửi lại "
+    "bài nào, hãy xem trên WordPress (**Bài viết**) bài đó đã có chưa. Đối chiếu xong, muốn tắt "
+    "lời nhắc này thì tự dời file đó ra khỏi thư mục data (hay xóa nếu không cần giữ): app không "
+    "tự xóa file đã cất."
+)
+MSG_SENT_MOVED_MORE = " và {count} file cũ hơn"
 
 
 def draft_store() -> DraftStore | None:
@@ -294,8 +304,12 @@ with left:
 with right:
     st.subheader("Đã gửi WordPress")
     sent = sent_items(plan)
+    moved = drafts.moved_aside_names()
     with st.container(border=True):
-        if not sent:
+        if moved:
+            more = MSG_SENT_MOVED_MORE.format(count=len(moved) - 1) if len(moved) > 1 else ""
+            st.warning(MSG_SENT_MOVED.format(name=escape_markdown(moved[0]), more=more))
+        elif not sent:
             st.caption("Chưa có bài nào phần mềm đã gửi lên WordPress.")
         for item in sent:
             badge = web_badge(item["id"]) or f":violet-badge[{escape_markdown(item['label'])}]"

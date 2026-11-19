@@ -188,6 +188,9 @@ COMPOSE_KEYS = (
     "_wp_confirm",
     "_wp_confirmed",
     "_wp_shown",
+    # Ô «Tôi đã xem trên WordPress…» khi có file nháp đã cất (T-137) và mã băm lúc tick
+    "_wp_moved_ok",
+    "_wp_moved_digest",
     # Dòng kế hoạch của bài (T-102): ``DraftPlanRef``, trang dịch vụ đích, loại bài, tiêu đề dự kiến
     "_plan_ref",
     "_plan_required",
@@ -342,6 +345,19 @@ MSG_CONFIRM_CHANGED = (
 )
 MSG_CONFIRM_RESET = (
     "Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại."
+)
+# File nháp cũ đã bị cất sang một bên (T-137, SL-T136-1): dấu «đã gửi» của bài có thể nằm ở đó.
+MSG_MOVED_GATE = (
+    "File nháp cũ đã bị cất sang một bên (tên «{name}»{more}, cùng thư mục): dấu «đã gửi» của các "
+    "bài gửi trước lúc đó nằm trong file ấy, nên app không biết bài này đã có trên website chưa. "
+    "Mở trang quản trị WordPress (**Bài viết**) xem bài này đã có chưa rồi mới gửi.{plan}"
+)
+MSG_MOVED_MORE = " và {count} file cũ hơn"
+MSG_MOVED_PLAN = " Dòng kế hoạch của bài ghi Mã bài WordPress {post_id}: xem đúng bài đó."
+MOVED_CHECK_LABEL = "Tôi đã xem trên WordPress: bài này chưa có trên website"
+MSG_MOVED_RESET = (
+    "Bài đã thay đổi sau lần bạn tick «Tôi đã xem trên WordPress…» nên app đã bỏ tick: xem lại rồi "
+    "tick lại."
 )
 MSG_NO_LISTING = (
     "Chưa tải được danh sách bài đã đăng để kiểm link nội bộ ({reason}). Chưa gửi gì lên website: "
@@ -3343,6 +3359,31 @@ def confirm_box(digest: str) -> bool:
     )
 
 
+def remember_moved() -> None:
+    """Tick «Tôi đã xem trên WordPress…»: nhớ mã băm của đúng màn hình người dùng vừa xem, như
+    ``remember_confirm``."""
+    S._wp_moved_digest = S.get("_wp_shown") if S.get("_wp_moved_ok") else None
+
+
+def moved_box(moved: tuple[str, ...], digest: str | None) -> bool:
+    """Cổng thêm của T-137 (SL-T136-1): file nháp cũ đã bị cất sang một bên (``moved_aside_names``)
+    mà bài chưa có dấu «đã gửi» trong kho hiện tại, ở mọi hình thức. Dấu đó có thể nằm trong file
+    đã cất (app không mở file đó), nên phải tick «Tôi đã xem trên WordPress…» mới gửi được. Ô không
+    tick sẵn, gắn mã băm bài lúc tick như ``confirm_box``: bài đổi thì bỏ tick; đổi bài, sau mỗi
+    lần bấm gửi thì bỏ (``COMPOSE_KEYS``, ``_wp_reset_guards``). Bài có Mã bài WordPress từ dòng kế
+    hoạch thì nêu mã đó. Chữ cố định, tên file qua ``escape_markdown`` (U1)."""
+    if S.get("_wp_moved_ok") and S.get("_wp_moved_digest") != digest:
+        S._wp_moved_ok = False
+        S._wp_moved_digest = None
+        st.warning(MSG_MOVED_RESET)
+    more = MSG_MOVED_MORE.format(count=len(moved) - 1) if len(moved) > 1 else ""
+    ref = S.get("_plan_ref")
+    post_id = getattr(ref, "wp_post_id", None)
+    plan = MSG_MOVED_PLAN.format(post_id=post_id) if isinstance(post_id, int) else ""
+    st.warning(MSG_MOVED_GATE.format(name=escape_markdown(moved[0]), more=more, plan=plan))
+    return st.checkbox(MOVED_CHECK_LABEL, key="_wp_moved_ok", on_change=remember_moved)
+
+
 LINK_KINDS = {
     LinkKind.INTERNAL: "Nội bộ",
     LinkKind.EXTERNAL: "Ra ngoài website",
@@ -4321,7 +4362,14 @@ def publish_panel(mode: str) -> None:
     trần), đầy đủ với Hẹn giờ, Đăng ngay kèm ô tick gắn mã băm (LC-T094-37, -38). Còn dòng Chặn
     thì nút khóa."""
     if S.get("_wp_reset_guards"):  # bỏ tick trước, bỏ cờ sau (LC-T056-1 b)
-        for key in ("_wp_checked", "_wp_again", "_wp_confirm", "_wp_confirmed"):
+        for key in (
+            "_wp_checked",
+            "_wp_again",
+            "_wp_confirm",
+            "_wp_confirmed",
+            "_wp_moved_ok",
+            "_wp_moved_digest",
+        ):
             S.pop(key, None)
         S.pop("_wp_reset_guards", None)
     if mode != "draft" and not release_enabled():
@@ -4408,6 +4456,9 @@ def publish_panel(mode: str) -> None:
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox(AGAIN_LABELS.get(mode, AGAIN_LABELS["draft"]), key="_wp_again")
         allowed = allowed and again
+    elif moved := draft_storage.moved_aside_names():
+        # T-137: bài chưa có dấu «đã gửi» trong kho hiện tại mà có file nháp đã cất. Chỉ thêm cổng.
+        allowed = allowed and moved_box(moved, built.digest if built is not None else None)
     seo_toggle()  # T-041: «Ghi SEO lên website», mặc định tắt (Lá Chắn T-042)
     # Mã băm của đúng màn hình đang hiện (LC-T094-38): ô tick nhớ mã này, lúc bấm dựng lại và so.
     S._wp_shown = built.digest if built is not None else None
