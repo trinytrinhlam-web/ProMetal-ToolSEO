@@ -6,7 +6,7 @@
 | Phiếu | [T-141](../tickets/T-141-thiet-ke-che-do-tu-dong.md) |
 | Nhánh | `team/T-141` (từ `main` `bbe916b`, đã gộp `team/T-140`: thiết kế `523a959`, biên bản Lá Chắn `fb9d2ef`) |
 | Ngày nộp | 2026-11-19 (+07:00, giờ theo lệnh `date`, ghi ở commit) |
-| Kết quả | Hoàn thành (thiết kế, không sửa mã) |
+| Kết quả | Hoàn thành (thiết kế, không sửa mã). Bổ sung cùng ngày theo chủ dự án: prompt ảnh chi tiết (1.10), vì sao không chạy Flow trong app (1.11) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -23,6 +23,12 @@
 - Thay cho tick duyệt từng ảnh: **một ô tick** «Tôi đã đọc bài và xem từng ảnh ở trên». Chưa tick thì chưa gửi được. Sửa gì sau khi tick thì phải tick lại.
 - **Không gì lên website khi bạn chưa bấm** Gửi nháp / Hẹn giờ / Đăng ngay. Màn hình xác nhận, khóa chống gửi trùng giữ nguyên. Ngày giờ hẹn điền sẵn theo dòng kế hoạch.
 - Lưu ý: nút Hẹn giờ, Đăng ngay vẫn tắt cho tới khi xong buổi thử thật (đang dừng ở Ca 3). Tới lúc đó bài tự động gửi lên dạng Nháp.
+
+**Ảnh AI (bổ sung 19/11)**
+
+- Prompt tạo ảnh chi tiết tới từng thành phần: vật chính, chất liệu, màu, chỗ hư, từng chi tiết phụ và vị trí trong khung, góc máy, ánh sáng, bố cục. Prompt bằng tiếng Anh cho mô hình, kèm **một dòng tiếng Việt** tóm tắt để bạn đọc.
+- Mô hình FLUX của Cloudflare chỉ đọc khoảng 1.000 ký tự đầu của prompt, nên app giữ prompt dưới 900 ký tự và đặt ý chính lên đầu.
+- App **không điều khiển Flow** của Google: Flow không có API; muốn điều khiển phải giữ đăng nhập Google trong app và vượt reCAPTCHA. Ảnh AI do app tự tạo bằng Cloudflare, như bạn đã chốt.
 
 **Hạn mức AI miễn phí**
 
@@ -41,6 +47,7 @@
 
 - Không sửa mã, cấu hình, test. Không gọi AI, Google, WordPress, Cloudflare thật.
 - Tài liệu Google đọc ngày 2026-11-19 qua một agent đọc trang (mục 0).
+- Bổ sung cùng ngày (tin của Chỉ Huy B theo chủ dự án): mục 1.10, 1.11; sửa 1.7, 5, 6.1, 7 cho khớp. Đường Flow bán tự động (nút «Mở Flow», tự nhận ảnh tải về) **không** thiết kế: chủ dự án 19/11 «dùng Cloudflare cũng được».
 
 ## 0. Nguồn đã đọc
 
@@ -64,6 +71,15 @@
 | `…/docs/rate-limits` | Không ghi số lần/phút, lần/ngày của các mô hình Flash ở gói miễn phí: «View your active rate limits in AI Studio». Hạn mức **tính theo project, không theo khóa**. Số lần/ngày **đặt lại lúc nửa đêm giờ Thái Bình Dương** |
 | `…/docs/troubleshooting` | Gặp 429 `RESOURCE_EXHAUSTED` hay 503 `UNAVAILABLE`: thử lại lùi dần (exponential backoff) có ngẫu nhiên, chỉ với lỗi tạm thời, có trần số lần |
 | `…/docs/pricing` | Gói miễn phí: «Content used to improve our products»; tìm Google (grounding) của Gemini 3.x Flash: không có ở gói miễn phí. Trang dài, agent đọc trọn phần đầu, phần sau là bản tóm tắt |
+
+**Tài liệu cho phần bổ sung** (đọc 2026-11-19 qua agent đọc trang, chỉ trang công khai, không đăng nhập):
+
+| Trang | Điều dùng trong thiết kế |
+|---|---|
+| Thẻ mô hình FLUX.1 [schnell] (huggingface.co/black-forest-labs/FLUX.1-schnell) | Ví dụ dùng chính thức truyền `max_sequence_length=256` |
+| Tài liệu diffusers, Flux (huggingface.co/docs/diffusers/…/flux) | Mục bản chưng cất bước (timestep-distilled, như schnell): «`max_sequence_length` cannot be more than 256» |
+| `labs.google/fx/tools/flow` | Chuyển sang `flow.google.com`: trang khung đòi đăng nhập Google |
+| Trợ giúp Flow (support.google.com/flow) | Flow tạo được ảnh (Nano Banana Pro, Nano Banana 2.1, Nano Banana 2 Lite: «default model available at no charge»). Không có dòng nào nói tới API hay chạy tự động. Không ghi giới hạn độ dài prompt. Việt Nam có trong danh sách nước dùng được |
 
 ## 1. Luồng tự động một bài (Việc 1)
 
@@ -169,8 +185,8 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
 **Khác thiết kế T-140:**
 
 - T-140 mục 3.2 viết prompt mỗi chỗ một lần gọi. Ở đây gộp **mọi chỗ của bài vào một lần gọi**, đỡ lượt Gemini.
-  - Khuôn mới: `ImageTexts(items=[ImageText(slot, prompt_en, alt_vi, caption_vi)])`.
-  - Mã kiểm từng mục: số chỗ đúng và không trùng; prompt qua bộ kiểm LC-T140-9; alt qua `clean_alt_text`; chú thích ≤ 200 ký tự.
+  - Khuôn mới: `ImageTexts(items=[ImageText(slot, prompt, summary_vi, alt_vi, caption_vi)])`. `prompt` là khuôn có cấu trúc từng thành phần (mục 1.10), không phải một chuỗi tự do; chỗ ảnh thật không có `prompt`.
+  - Mã kiểm từng mục: số chỗ đúng và không trùng; từng trường của prompt và chuỗi ghép cuối qua bộ kiểm LC-T140-9, theo ngân sách ở 1.10; alt qua `clean_alt_text`; chú thích ≤ 200 ký tự.
   - Mục hỏng thì chỉ chỗ đó trống (dấu vàng «chưa viết được prompt»), không làm hỏng cả bài.
 - Alt ảnh thật mặc định viết từ chữ (câu hỏi 1 = A), dấu vàng «AI chưa nhìn ảnh: xem alt có đúng ảnh không». Nút «✨ AI xem ảnh, viết lại alt» giữ nguyên, theo từng lần bấm (Lá Chắn T-050 đk 3a không đổi).
 
@@ -216,6 +232,73 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
   - nháp do lượt chạy tạo, mở bằng trang (AppTest), ra đúng như soạn tay: dàn ý chưa escape, chữ bài đã escape, ảnh, SEO;
   - hàm trong `seo_app/auto/` không gọi `st.*` (test quét mã);
   - cả lượt chạy với AI giả, Cloudflare giả: **0 request tới WordPress**.
+
+### 1.10. Prompt ảnh chi tiết cho FLUX (bổ sung 19/11)
+
+Chủ dự án muốn prompt «chi tiết đến từng thành phần trong ảnh». Áp cho ảnh AI app tạo bằng Cloudflare (đường mặc định, tự động).
+
+**Giới hạn độ dài của FLUX.1 [schnell]:**
+
+- Cloudflare nhận prompt 1–2048 ký tự (khuôn đầu vào, T-140 2.1). Nhưng mô hình chỉ đọc **256 token đầu**: ví dụ chính thức của Black Forest Labs truyền `max_sequence_length=256`, tài liệu diffusers ghi bản schnell không được quá 256. Phần sau bị bỏ qua, kể cả đuôi an toàn nếu nằm sau mốc đó.
+- Bộ mã hóa thứ hai của FLUX (CLIP) chỉ đọc khoảng 77 token đầu (giới hạn chuẩn của CLIP). Nên ý chính (kiểu ảnh, vật chính, tình trạng) phải nằm ở **đầu** prompt.
+- App không có bộ đếm token (không thêm thư viện), nên dùng ngân sách ký tự: 256 token tiếng Anh vào khoảng 1.000 ký tự. App giữ:
+  - phần do AI viết (hay bạn sửa) ≤ 600 ký tự, như LC-T140-9;
+  - phần mã ghép thêm (kiểu ảnh, đuôi an toàn) ≤ 300 ký tự;
+  - **cả prompt ≤ 900 ký tự**, thay mức «≤ 2048» của LC-T140-9 (siết, không nới).
+- Lần gọi thử (LC-T140-17) xem ảnh có theo đủ các thành phần không; thấy thiếu thì giảm ngân sách.
+
+**Khuôn có cấu trúc.** AI không viết thẳng chuỗi prompt: việc `image_prompt` trả **từng trường**, mã kiểm từng trường rồi ghép theo thứ tự cố định (ý chính lên đầu).
+
+| # | Thành phần | Ai đặt | Giới hạn | Ví dụ (tiếng Anh gửi FLUX) |
+|---|---|---|---|---|
+| 1 | Kiểu ảnh, tỉ lệ khung | Mã, cố định: ảnh chụp thật, khung vuông (câu 1, 3 của T-140) | — | «Realistic documentary photograph, square format.» |
+| 2 | Vật chính | AI | ≤ 80 ký tự | «The lower hinge of a black wrought iron swing gate» |
+| 3 | Cỡ, chất liệu, màu | AI | ≤ 60 | «flat steel bars, matte black paint» |
+| 4 | Tình trạng hư, hay thao tác đang làm | AI | ≤ 80 | «orange-brown rust around the hinge pin, the leaf sagging onto the concrete» |
+| 5 | Chi tiết phụ và vị trí trong khung | AI: tối đa 3 mục, mỗi mục ≤ 40 ký tự; vị trí chọn trong danh sách (tiền cảnh trái, giữa, phải; trung cảnh; hậu cảnh trái, phải) | — | «Middle ground right: the latch bar.» |
+| 6 | Người | AI chọn trong danh sách: không có người; chỉ thấy bàn tay; một người ở xa, quay lưng | — | «Empty scene.» |
+| 7 | Bối cảnh, nền | AI | ≤ 60 | «front yard of a townhouse, plain grey wall» |
+| 8 | Góc máy, cỡ cảnh | AI chọn: ngang tầm mắt, góc thấp, góc cao, nhìn thẳng xuống; cận, trung, toàn | — | «Eye-level close-up» |
+| 9 | Ống kính | AI chọn: góc rộng, tiêu chuẩn, tele ngắn, macro. Viết bằng chữ: luật «không chữ số» nên không có «35mm» | — | «standard lens» |
+| 10 | Ánh sáng | AI chọn: ban ngày dịu, trời âm u, nắng chiều ấm, đèn xưởng, đèn trong nhà | — | «soft overcast daylight» |
+| 11 | Bố cục | AI chọn: vật ở giữa khung, một phần ba, tiền cảnh rõ hậu cảnh mờ, đối xứng | — | «subject centered, shallow depth of field» |
+| 12 | Màu chủ đạo | AI | ≤ 30 | «black, rust orange and grey» |
+| 13 | Đuôi an toàn | Mã (Ngòi Bút viết, Lá Chắn duyệt), luôn ghép | ≤ 200 | Xem dưới |
+
+- Trường «chọn trong danh sách» là kiểu liệt kê cố định trong mã (`Literal`): AI chỉ chọn, không viết chữ tự do. Ít chữ tự do thì ít chỗ lọt lệnh, ít chỗ khiến mô hình vẽ chữ.
+- Trần từng trường cộng lại (kể cả dấu ngăn) không quá 600 ký tự. Mã kiểm cả chuỗi ghép cuối: một dòng, ký tự in được, không chữ số, không link, không tên «Pro-Metal», tên miền, tên quận, không từ cấm (LC-T140-9).
+- **Dòng tiếng Việt `summary_vi`** (≤ 140 ký tự): một câu tóm tắt cho bạn đọc, ví dụ «Bản lề cổng sắt đen bị gỉ, cánh cổng xệ chạm nền, nền tường xám». Hiện ở bước ảnh và màn hình cuối (chữ thuần, escape); không gửi Cloudflare.
+- Bạn vẫn xem, sửa, chép được prompt tiếng Anh (T-140 3.5). Sửa tay thì mã kiểm lại cả chuỗi và ngân sách 900 ký tự; sai thì không gửi, báo «Viết lại prompt».
+
+**Danh sách «tránh»:** chữ, số, logo, số nhà, biển số xe, biển hiệu, số điện thoại, mặt người rõ, người nổi tiếng, thương hiệu, hình mờ, cảnh «thợ của xưởng tại nhà khách».
+
+- Dùng ở ba chỗ: (1) lời dặn AI, phần bảo vệ nằm trong mã như `ALT_SYSTEM` (`config/` chỉ bổ sung); (2) bộ kiểm mã trên từng trường và chuỗi cuối; (3) đuôi an toàn.
+- FLUX không có prompt phủ định: viết «no text» có khi lại gợi mô hình vẽ chữ. Đuôi an toàn viết **khẳng định**, ví dụ «Clean unmarked metal and plain painted walls, generic residential setting, natural colors, sharp focus.» Không chép nguyên danh sách tránh vào prompt.
+
+**Ví dụ prompt ghép xong** (bịa để minh họa, khoảng 600 ký tự):
+
+```text
+Realistic documentary photograph, square format. The lower hinge of a black wrought iron swing gate, flat steel bars, matte black paint, orange-brown rust around the hinge pin, the leaf sagging onto the concrete. Foreground center: the rusted hinge knuckle. Middle ground right: the latch bar. Background left: a plain grey wall, softly blurred. Empty scene. Front yard of a townhouse. Eye-level close-up, standard lens, soft overcast daylight, subject centered, shallow depth of field, black, rust orange and grey. Clean unmarked metal and plain painted walls, generic residential setting, natural colors, sharp focus.
+```
+
+**Đặt ở đâu:**
+
+- Ngòi Bút (phiếu M, mục 7): luật viết từng trường (`[image_prompt]` trong `config/content.toml`, chỉ bổ sung); chữ tiếng Anh của các danh sách chọn; kiểu ảnh; đuôi an toàn; ví dụ tốt, xấu (bản xấu có nhãn «Không nên viết» kèm lý do, C4 của T-051); luật dòng tóm tắt tiếng Việt.
+- Thợ Máy (phiếu D): khuôn `ImagePromptSpec` (trường, trần, danh sách chọn), hàm ghép, bộ kiểm, ngân sách; đặt kiểu ảnh, đuôi an toàn vào mã.
+- Việc `image_prompt` trả nhiều chữ hơn (tối đa 8 chỗ, mỗi chỗ đủ khuôn): `max_tokens` của `[tasks.image_prompt]` khoảng 8.000. Vẫn một lần gọi mỗi bài.
+
+### 1.11. Vì sao không chạy Flow trong app (bổ sung 19/11)
+
+Chủ dự án hỏi có nhúng trình duyệt vào app để chạy Flow của Google không. **Không làm**, vì:
+
+- **Flow không có API.** Trang trợ giúp Flow (đọc 19/11) không có dòng nào về API hay chạy tự động. Địa chỉ `labs.google/fx/tools/flow` nay chuyển sang `flow.google.com`, phải đăng nhập Google.
+- **Phải vượt reCAPTCHA và bộ chặn máy tự động:** trái điều khoản Google; tài khoản Google của bạn có thể bị khóa.
+- **Phải giữ phiên đăng nhập Google trong app:** lộ file phiên là lộ cả tài khoản Google, nặng hơn mọi khóa API app đang giữ trong `.env`.
+- **Phải thêm thư viện nặng** (Playwright cùng một trình duyệt riêng, hàng trăm MB): trái quy tắc «không thêm thư viện khi chưa cần».
+- **Dễ hỏng:** Google đổi giao diện Flow là kịch bản điều khiển hỏng, không ai báo trước.
+- Chủ dự án chốt 19/11: dùng Cloudflare (tự động) là đủ; không làm đường bán tự động (nút mở Flow, tự nhận ảnh tải về).
+
+Ghi chú: bạn vẫn tự tạo ảnh bằng Flow được. Trợ giúp Flow (19/11) ghi tạo ảnh không tốn credit; không có gói trả phí thì tối đa 20 ảnh/ngày với Nano Banana Pro, 400 ảnh/ngày với Nano Banana 2.1 và 2 Lite cộng lại. Lưu ảnh vào thư mục có chữ «Minh họa» hay «AI» trong tên thì app đã coi là ảnh AI (T-070), và có thể tự chọn khi tên thư mục ghi vật (ví dụ «Minh họa AI - Cổng sắt - bản lề», T-140 1.3). Không phải làm thêm gì.
 
 ## 2. Chạy lâu trong Streamlit (Việc 2)
 
@@ -425,6 +508,9 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
 | 12 | **Quy trình nội dung bước 4** (duyệt dàn ý) | Chủ dự án thay 19/11 | Mã kiểm dàn ý (1.3) và duyệt cả bài ở bước cuối |
 | 13 | **«Không sản xuất nội dung hàng loạt»** | Chủ dự án thay 19/11 | Tối đa 5 bài mỗi lần bấm, chạy lần lượt, duyệt từng bài; khóa nút khi đã có 5 bài chờ duyệt (câu hỏi 3) |
 | 14 | **T-137:** file nháp bị cất thì tick «bài này chưa có trên website» | — | Giữ, áp cả bài tự động |
+| 15 | **LC-T140-9:** phần AI hay người dùng viết ≤ 600 ký tự, cả đuôi ≤ 2048; kiểm prompt cuối | Prompt chi tiết dài hơn; FLUX chỉ đọc 256 token đầu | Giữ 600 cho phần AI viết hay bạn sửa; **cả prompt ≤ 900** (siết từ 2048); kiểm từng trường và chuỗi cuối; người, góc máy, ống kính, ánh sáng, bố cục, vị trí chọn trong danh sách cố định (1.10) |
+| 16 | **LC-T140-19:** đuôi an toàn viết khẳng định, nằm trong mã | Đuôi đặt cuối có thể rơi sau mốc 256 token | Đuôi ≤ 200 ký tự trong tổng 900, nên luôn nằm trong phần FLUX đọc; lớp thật vẫn là bộ kiểm mã (không chữ số, không từ cấm) |
+| 17 | **LC-T140-10:** việc `image_prompt` chỉ nhận mô tả, tiêu đề mục, mặt thẻ; trả khuôn `ImagePrompt` | Kết quả nay có cấu trúc, cho cả bài | Đầu vào giữ nguyên; kết quả `ImagePromptSpec` từng chỗ (1.10) thay chuỗi `prompt_en` tự do |
 
 **Chỗ mới Lá Chắn cần đọc** (không thuộc điều kiện cũ nào):
 
@@ -435,6 +521,8 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
 - Chốt tự áp câu sửa (1.5).
 - Bộ dựng chặn «[cần bổ sung: …]» khi Hẹn giờ, Đăng ngay.
 - Lời gọi `image_prompt` gộp cả bài: đầu vào vẫn chỉ mô tả, tiêu đề mục, mặt thẻ (LC-T140-10).
+- Khuôn prompt có cấu trúc, danh sách chọn cố định, ngân sách 900 ký tự (1.10).
+- Không điều khiển Flow, không giữ phiên đăng nhập Google trong app (1.11).
 
 ## 6. Hạn mức (Việc 6)
 
@@ -455,6 +543,7 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
 - Gemini đang bận thì một lần gọi có thể thành 2–3 request (thư viện tự thử lại); Google đếm cả các request đó.
 - Chữ ước tính mỗi bài: khoảng 60 nghìn token vào (hồ sơ doanh nghiệp nằm trong mọi lời dặn) và 20 nghìn token ra, kể cả phần «suy nghĩ».
 - Thời gian ước tính: 3–6 phút mỗi bài (bước viết với `effort = "high"` lâu nhất), cộng giãn nhịp khoảng 1 phút.
+- Prompt ảnh chi tiết (1.10) không thêm lần gọi: chữ ảnh của cả bài vẫn là một lần gọi, chỉ dài hơn (`max_tokens` khoảng 8.000).
 
 ### 6.2. Năm bài
 
@@ -494,7 +583,7 @@ Không. Trần 9.000 neuron của app đủ khoảng 155 ảnh mỗi ngày, tứ
 
 ## 7. Chia phiếu code, thứ tự gộp (Việc 7)
 
-Số phiếu do Chỉ Huy cấp. Giữ ký hiệu A–F của T-140 (Lá Chắn đã duyệt), phiếu mới của T-141 là G, H, J, K, L.
+Số phiếu do Chỉ Huy cấp. Giữ ký hiệu A–F của T-140 (Lá Chắn đã duyệt), phiếu mới của T-141 là G, H, J, K, L, M.
 
 ### 7.1. Phiếu T-140 sau khi gộp
 
@@ -502,10 +591,10 @@ Số phiếu do Chỉ Huy cấp. Giữ ký hiệu A–F của T-140 (Lá Chắn 
 |---|---|---|---|
 | **A** · Client Cloudflare, ảnh AI sạch, kho ảnh AI | Thợ Máy | Gọi được từ luồng nền (không `st.*`); lỗi trả `kind` cho lượt chạy | Đầy đủ |
 | **B** · Tự chọn ảnh, sổ ảnh đã gửi, đếm neuron | Thợ Máy | Hàm thuần gán ảnh cho cả bài (kèm lý do từng chỗ); kho đếm dùng chung cho sổ đếm Gemini (phiếu G) | Rút gọn |
-| **C** · Lời dặn ảnh, dàn ý | Ngòi Bút | Gộp **mọi** lời dặn chế độ tự động: dàn ý (1.3), viết (`gaps`, không «[cần bổ sung]»), chữ ảnh cho cả bài (1.7); ghi chú mục `[auto]` trong `config/ai.toml` | Rút gọn (A1, A2) |
-| **D** · Việc AI chữ ảnh, khuôn nháp 4 | Thợ Máy | `image_texts` một lần cho cả bài (thay mỗi chỗ một lần); khuôn nháp 4 thêm `auto` (1.8); `save(expected_saved_at=…)` | **Đầy đủ** (đụng `save`) |
+| **C** · Lời dặn bài: dàn ý, viết, rà soát | Ngòi Bút | Gộp lời dặn chế độ tự động: dàn ý (1.3), viết (`gaps`, không «[cần bổ sung]»), rà soát; ghi chú mục `[auto]` trong `config/ai.toml`. Phần prompt ảnh của T-140 C chuyển sang phiếu M | Rút gọn (A1, A2) |
+| **D** · Việc AI chữ ảnh, khuôn nháp 4 | Thợ Máy | `image_texts` một lần cho cả bài (thay mỗi chỗ một lần); khuôn `ImagePromptSpec`, hàm ghép, bộ kiểm, ngân sách 900 ký tự (1.10); khuôn nháp 4 thêm `auto` (1.8); `save(expected_saved_at=…)` | **Đầy đủ** (đụng `save`) |
 | **E** · Cài đặt | Họa Sĩ | Chỉ còn trang Cài đặt: mục Cloudflare (T-140 mục 4) và dòng «Hôm nay máy này đã gọi Gemini X lần». Phần Soạn bài của E chuyển sang J (cùng file `write.py`) | Rút gọn (U1, S2, LC-T140-2) |
-| **F** · README, sổ rủi ro | Thư Ký | Thêm chế độ tự động: cách dùng, giữ app mở, tắt chế độ ngủ, hạn mức Gemini (xem trong AI Studio), dấu vàng, ô duyệt chung. Sổ rủi ro: luồng nền; chữ kế hoạch vào AI không qua duyệt dàn ý; ảnh tự chọn chỉ được người dùng nhìn ở bước cuối | Rút gọn |
+| **F** · README, sổ rủi ro | Thư Ký | Thêm chế độ tự động: cách dùng, giữ app mở, tắt chế độ ngủ, hạn mức Gemini (xem trong AI Studio), dấu vàng, ô duyệt chung. Sổ rủi ro: luồng nền; chữ kế hoạch vào AI không qua duyệt dàn ý; ảnh tự chọn chỉ được người dùng nhìn ở bước cuối. Một dòng vì sao app không chạy Flow (1.11) | Rút gọn |
 
 ### 7.2. Phiếu mới
 
@@ -516,6 +605,7 @@ Số phiếu do Chỉ Huy cấp. Giữ ký hiệu A–F của T-140 (Lá Chắn 
 | **J** · Giao diện chế độ tự động trên Soạn bài | Họa Sĩ | Nút «Soạn tự động»; khung tiến độ; chỉ xem khi đang chạy; Dừng / Chạy tiếp / Chạy lại; màn hình duyệt cuối (mục 3), ô duyệt chung, «Sửa» và quay lại; bước ảnh theo T-140 mục 4 (nhãn nguồn, tạo lại, ảnh trước, sửa prompt) | `app/views/write.py`, `app/assets/style.css` | Đầy đủ (đường gửi) |
 | **K** · «Viết các bài tới hạn» (lõi) | Thợ Máy | Chọn dòng, đọc lại, ghi «Đang viết», hàng đợi lô, ước lượt, giới hạn kho nháp (mục 4) | `seo_app/auto/batch.py` | Rút gọn (dùng lại `open_row`, `record_status`) |
 | **L** · Giao diện lô bài tới hạn, «Chờ duyệt» | Họa Sĩ | Nút, popover xác nhận ở Kế hoạch; khung Đang chạy / Chờ duyệt / Dừng giữa chừng ở Bài viết (thay demo «Đang viết»); đổi nhãn «Chờ duyệt trên website» | `app/views/plan.py`, `app/views/home.py` | Rút gọn |
+| **M** · Khuôn prompt ảnh chi tiết (bổ sung 19/11) | Ngòi Bút | Mục 1.10: luật viết từng trường (`[image_prompt]` trong `config/content.toml`, chỉ bổ sung); chữ tiếng Anh của các danh sách chọn (vị trí, người, góc máy, ống kính, ánh sáng, bố cục); kiểu ảnh; đuôi an toàn khẳng định ≤ 200 ký tự; ví dụ tốt, xấu; luật dòng tóm tắt tiếng Việt; ghi chú `[tasks.image_prompt]` (`max_tokens`). Chữ đặt vào mã do D làm | `config/content.toml`, `config/ai.toml` (ghi chú) | Rút gọn (A1, A2, LC-T140-9, -19) |
 
 Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, WordPress thật; tham số lớn có `ids` ngắn.
 
@@ -523,8 +613,8 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 
 | Đợt | Phiếu | Vì sao |
 |---|---|---|
-| 1 | A, B, C, G song song | Khác file |
-| 2 | D | Sau C (khuôn lời dặn chữ ảnh, `gaps`) |
+| 1 | A, B, G song song; Ngòi Bút làm C rồi M | Khác file. C và M cùng sửa ghi chú `config/ai.toml` nên làm lần lượt (hay gộp một phiếu) |
+| 2 | D | Sau C, M (khuôn `gaps`, khuôn prompt chi tiết) |
 | 3 | H | Cần A, B, C, D, G. D và H cùng sửa `workflow.py` nên phải lần lượt |
 | 4 | J, K, E song song | J sau H (`write.py`); K sau H; E sau A, G (`settings.py`) |
 | 5 | L, F | L sau K; F cùng J, L |
@@ -534,7 +624,7 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 
 ### 7.4. Trước khi bật cho bài thật
 
-1. Lần gọi thử Cloudflare (LC-T140-17).
+1. Lần gọi thử Cloudflare (LC-T140-17), thêm một prompt chi tiết gần 900 ký tự: xem ảnh có theo đủ các thành phần không (1.10).
 2. Xem hạn mức Gemini trong AI Studio (số lần/phút, lần/ngày của `gemini-3.8-flash`), ghi vào `[auto]`. Gặp lỗi 429 theo ngày thì chép khuôn chi tiết (không có bí mật) để xác nhận cách nhận ra; không cố đốt hạn mức để thử.
 3. Chạy thử 1 bài theo từ khóa và một lô 2 dòng trên Sheet bản sao (như T-128): đo thời gian, số lần gọi; gửi Nháp, xem trên website, rồi xóa.
 4. Lá Chắn đọc kết quả rồi mới cho dùng với bài thật.
@@ -566,9 +656,10 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 - [x] Việc 2, chạy lâu trong Streamlit: mục 2 (luồng nền, tiến độ, dừng, chạy tiếp, 503 và hạn mức, hai tab, hai máy, không chạy nền khi tắt app).
 - [x] Việc 3, màn hình duyệt cuối: mục 3 (bố cục, «Sửa», dấu vàng, chặn và cảnh báo, ô duyệt chung, khóa gửi trùng, công tắc).
 - [x] Việc 4, «Viết các bài tới hạn»: mục 4 (chọn dòng, chạy lô, «Chờ duyệt» ở trang Bài viết, ngày giờ hẹn, ghi Sheet).
-- [x] Việc 5, đối chiếu điều kiện Lá Chắn: mục 5 (14 điều kiện, câu thay LC-T140-12 ở 3.5).
+- [x] Việc 5, đối chiếu điều kiện Lá Chắn: mục 5 (17 điều kiện, câu thay LC-T140-12 ở 3.5).
 - [x] Việc 6, hạn mức: mục 6.
 - [x] Việc 7, chia phiếu, thứ tự gộp với A–F, câu hỏi: mục 7, 8.
+- [x] Bổ sung 19/11 (Chỉ Huy B, theo chủ dự án): prompt ảnh chi tiết có cấu trúc, tiếng Anh kèm một dòng tiếng Việt, luật ở Ngòi Bút, đuôi an toàn trong mã, giữ trong giới hạn của FLUX (1.10, phiếu M); lý do không chạy Flow trong app (1.11). Đường Flow bán tự động bỏ theo chủ dự án.
 - [x] Không sửa mã; không gọi AI, Google, WordPress, Cloudflare thật.
 
 ## Rủi ro và điểm cần chú ý
@@ -582,6 +673,7 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 - **AI không theo lời dặn mới về «[cần bổ sung]»:** bài còn chữ này thì Hẹn giờ, Đăng ngay bị chặn.
 - **Ảnh tự chọn có thể có nhà khách:** chỉ người nhìn ra (app không mở ảnh để kiểm). Ô duyệt chung bắt buộc ở cả Nháp vì vậy.
 - **Khuôn lỗi 429 theo ngày của Gemini** chưa thấy tận mắt; nhận sai thì lô thử lại vô ích tới khi chạm trần mỗi bài (6 lần), rồi dừng.
+- **FLUX.1 [schnell] chỉ đọc 256 token và chạy 4 bước:** prompt rất chi tiết vẫn có thể bị vẽ thiếu chi tiết nhỏ. Ngân sách 900 ký tự chỉ là ước lượng thay cho đếm token; khuôn ưu tiên tối đa 3 chi tiết phụ. Lần gọi thử đo lại.
 
 ## Đề xuất
 
