@@ -39,8 +39,13 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 | [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Họa Sĩ xong `2ee7152`, `5daf638`; Soi Lỗi đầy đủ đang kiểm; sau đó Lá Chắn đầy đủ | [Họa Sĩ](reports/T-137-hoa-si.md) |
 | [T-138](tickets/T-138-tam-dung-gemini-flash.md) | Tạm dùng Gemini Flash cho mọi việc AI (chủ dự án 18/11): cấu hình, sửa 14 test ghim cấu hình Claude, bước nghiên cứu không tìm web không có đối thủ bịa | Thợ Máy · T-138 | `team/T-138` | Đang làm | — |
 | [T-139](tickets/T-139-la-chan-doc-thu-that-google.md) | Lá Chắn đọc kết quả buổi thử thật Google 18/11 (số liệu khớp Search Console từng con số), cho dùng trang 📈 Theo dõi | Lá Chắn | — | Chờ Lá Chắn (sau T-137) | [Kết quả buổi thử](reports/T-139-thu-that-google.md) |
-| [T-140](tickets/T-140-thiet-ke-anh-tu-chon-va-anh-ai-cloudflare.md) | Thiết kế: ảnh tự chọn từ thư mục (không hỏi) và ảnh minh họa AI miễn phí qua Cloudflare Workers AI (chủ dự án 18/11; thay T-053) | Thợ Máy · T-140 | `team/T-140` | Thiết kế xong (523a959), Lá Chắn ĐẠT CÓ ĐIỀU KIỆN (fb9d2ef); gộp vào thiết kế T-141 trước khi lập phiếu code | — |
-| [T-141](tickets/T-141-thiet-ke-che-do-tu-dong.md) | Thiết kế chế độ tự động: từ khóa hay kế hoạch → bài hoàn chỉnh → duyệt một lần ở bước Xuất bản; nút «Viết các bài tới hạn» (chủ dự án 19/11) | Thợ Máy · T-141 | `team/T-141` | Đang thiết kế | — |
+| [T-140](tickets/T-140-thiet-ke-anh-tu-chon-va-anh-ai-cloudflare.md) | Thiết kế ảnh tự chọn + ảnh AI Cloudflare | Thợ Máy | — | Xong (thiết kế 523a959, Lá Chắn Fable fb9d2ef ĐẠT CÓ ĐIỀU KIỆN; gộp main 2f65641) | [Thợ Máy](reports/T-140-tho-may.md) · [Lá Chắn](reports/T-140-la-chan.md) |
+| [T-141](tickets/T-141-thiet-ke-che-do-tu-dong.md) | Thiết kế chế độ tự động, duyệt một lần ở bước Xuất bản | Thợ Máy | — | Xong (thiết kế 9f34808, d23fdf4; Lá Chắn Fable đầy đủ 03568dc ĐẠT CÓ ĐIỀU KIỆN; 12 phiếu T-142 → T-153; gộp main 2f65641) | [Thợ Máy](reports/T-141-tho-may.md) · [Lá Chắn](reports/T-141-la-chan.md) |
+| [T-142](tickets/T-142-client-cloudflare-anh-ai-sach.md) | Đợt 1 · A: client Cloudflare Workers AI, ảnh AI sạch | Thợ Máy · T-142 | `team/T-142` | Đang làm | — |
+| [T-143](tickets/T-143-tu-chon-anh-thu-muc-so-dem.md) | Đợt 1 · B: tự chọn ảnh thư mục, sổ ảnh đã dùng | Thợ Máy · T-143 | `team/T-143` | Đang làm | — |
+| [T-148](tickets/T-148-loai-loi-ai-mot-lop-thu-lai.md) | Đợt 1 · G: loại lỗi AI, một lớp thử lại, đếm lượt | Thợ Máy · T-148 | `team/T-148` | Đang làm | — |
+| T-144, T-153 | Đợt 1 · C, M (Ngòi Bút, lần lượt): lời dặn bài chế độ tự động; khuôn prompt ảnh chi tiết | Ngòi Bút | — | Chờ chỗ (tối đa 4 agent) | — |
+| T-145 → T-147, T-149 → T-152 | Đợt 2–5 chế độ tự động (D, E, F, H, J, K, L) theo thứ tự gộp T-141 mục 7.3 | — | — | Chờ đợt trước | — |
 
 ## Chờ
 
@@ -210,4 +215,4 @@ Lá Chắn yêu cầu, xem các biên bản trong `reports/`:
 - Gỡ ký tự rộng 0 (U+200B) mà T-031 chèn vào địa chỉ (`unbreak_autolinks`) trước khi gửi WordPress, cho cả thân bài, tiêu đề, meta. Sau khi gỡ thì bộ chuyển Markdown → HTML **không** bật autolink, hoặc màn hình xác nhận liệt kê cả địa chỉ trần. Chữ đã gỡ không được coi là an toàn ([T-031-la-chan.md](reports/T-031-la-chan.md)).
 - Bất biến: kết quả `unescape_link_syntax` / `unbreak_autolinks` không bao giờ được đưa vào `st.markdown`.
 
-## Số phiếu tiếp theo: T-142
+## Số phiếu tiếp theo: T-154
