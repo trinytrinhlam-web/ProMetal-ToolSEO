@@ -33,6 +33,8 @@ ENV_VARS = (
     "GOOGLE_SHEET_ID",
     "GSC_SITE_URL",
     "IMAGE_FOLDERS",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_API_TOKEN",
 )
 
 
@@ -71,6 +73,12 @@ class Settings:
     gsc_site_url: str = ""
 
     image_folders: tuple[Path, ...] = ()
+
+    # Ảnh minh họa AI qua Cloudflare Workers AI (T-142). Mã tài khoản không phải bí mật nhưng nằm
+    # trong đường gọi API: cũng không in (LC-T140-2). Kiểm dạng lúc tạo client, không ở đây (sai
+    # dạng không làm hỏng các trang khác).
+    cloudflare_account_id: str = field(default="", repr=False)
+    cloudflare_api_token: str = field(default="", repr=False)
 
     @property
     def timezone(self) -> ZoneInfo:
@@ -150,6 +158,8 @@ def load_settings(
         google_sheet_id=get("GOOGLE_SHEET_ID"),
         gsc_site_url=get("GSC_SITE_URL"),
         image_folders=_parse_folders(get("IMAGE_FOLDERS")),
+        cloudflare_account_id=get("CLOUDFLARE_ACCOUNT_ID"),
+        cloudflare_api_token=get("CLOUDFLARE_API_TOKEN"),
     )
 
 

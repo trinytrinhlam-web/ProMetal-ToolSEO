@@ -19,9 +19,17 @@ PROVIDERS = {
 }
 SUPPORTED = {"anthropic", "openai", "gemini"}
 
-# Việc tạo ảnh minh họa (T-053): Claude không tạo được ảnh (T-046 mục 4), chỉ OpenAI, Gemini.
+# Việc tạo ảnh minh họa (T-053): Claude không tạo được ảnh (T-046 mục 4), chỉ OpenAI, Gemini;
+# T-142 thêm Cloudflare Workers AI (thiết kế T-140 mục 2.9).
 IMAGE_TASK = "image"
-IMAGE_PROVIDERS = ("gemini", "openai")
+IMAGE_PROVIDERS = ("gemini", "openai", "cloudflare")
+
+# Hãng chỉ dùng để tạo ảnh (T-142): không viết chữ nên không nằm trong ``PROVIDERS`` (thử mù, «Kiểm
+# tra khóa» chỉ duyệt các hãng viết bài). Tên trong config -> (tên hiển thị, biến token trong .env).
+# Ảnh Cloudflare tạo bằng ``seo_app.ai.cloudflare_images``, không qua ``make_provider``.
+IMAGE_ONLY_PROVIDERS = {"cloudflare": ("Cloudflare Workers AI", "CLOUDFLARE_API_TOKEN")}
+IMAGE_STEPS_DEFAULT = 4  # số bước tạo ảnh của [tasks.image] (Cloudflare), 4 ≈ 58 neuron/ảnh
+IMAGE_MAX_STEPS = 8
 
 # Các việc của trang Soạn bài (``ContentWriter``: nghiên cứu → dàn ý → viết → rà soát → viết
 # lại). ``AIRouter`` dựng sẵn provider cho các việc này lúc tạo, để trang Soạn bài báo thiếu khóa
@@ -92,8 +100,15 @@ def load_ai_config(path: Path = AI_CONFIG_FILE) -> dict[str, TaskConfig]:
                 "model…"
             )
         provider = str(raw.get("provider", "")).strip().lower()
-        if provider not in PROVIDERS:
+        if provider in IMAGE_ONLY_PROVIDERS and name != IMAGE_TASK:
+            raise AIError(
+                f"Việc «{name}»: {IMAGE_ONLY_PROVIDERS[provider][0]} chỉ dùng để tạo ảnh "
+                f"(mục [tasks.{IMAGE_TASK}])."
+            )
+        if provider not in PROVIDERS and provider not in IMAGE_ONLY_PROVIDERS:
             raise AIError(f"Việc «{name}»: không biết hãng AI «{provider}».")
+        if name == IMAGE_TASK and "steps" in raw:
+            image_steps(name, raw["steps"])
         if name == IMAGE_TASK and provider not in IMAGE_PROVIDERS:
             raise AIError(
                 f"Việc «{name}»: Claude không tạo được ảnh. Trong mục [tasks.{name}] của "
@@ -129,8 +144,27 @@ def _positive_int(task: str, key: str, value: object) -> int:
     return value
 
 
+def image_steps(task: str, value: object) -> int:
+    """``steps`` của việc tạo ảnh (Cloudflare, T-142): số nguyên 1–8; ``true``/``false`` không phải
+    số (như ``_positive_int``, LC-T140-3)."""
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= IMAGE_MAX_STEPS:
+        raise AIError(
+            f"Việc «{task}»: steps phải là số nguyên từ 1 đến {IMAGE_MAX_STEPS}, ví dụ "
+            f"{IMAGE_STEPS_DEFAULT}."
+        )
+    return value
+
+
+def provider_label(provider: str) -> str:
+    """Tên hiển thị của một hãng trong config (cả hãng chỉ tạo ảnh như Cloudflare)."""
+    entry = PROVIDERS.get(provider) or IMAGE_ONLY_PROVIDERS.get(provider)
+    return entry[0] if entry else provider
+
+
 def make_provider(provider: str, settings: Settings) -> AIProvider:
     """Tạo provider của một hãng. Báo ``AIError`` nếu chưa hỗ trợ hoặc thiếu khóa API."""
+    if provider in IMAGE_ONLY_PROVIDERS:  # T-142: ảnh Cloudflare đi qua cloudflare_images
+        raise AIError(f"{IMAGE_ONLY_PROVIDERS[provider][0]} chỉ dùng để tạo ảnh minh họa.")
     label, key_name = PROVIDERS[provider]
     if provider not in SUPPORTED:
         raise AIError(f'{label} chưa được hỗ trợ. Tạm thời đổi provider = "anthropic".')

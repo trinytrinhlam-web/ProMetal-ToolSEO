@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 
 from seo_app.ai import AIError, TaskConfig, load_ai_config, make_provider
 from seo_app.ai.base import EFFORTS, TokenLimitError
-from seo_app.ai.registry import AI_CONFIG_FILE, IMAGE_TASK, PROVIDERS
+from seo_app.ai.registry import AI_CONFIG_FILE, IMAGE_TASK, PROVIDERS, provider_label
 from seo_app.config import Settings
 from seo_app.content import prompts
 from seo_app.content.rules import ContentRules
@@ -202,7 +202,7 @@ def task_models(path: Path = AI_CONFIG_FILE) -> list[TaskModel]:
             task=name,
             task_label=TASK_LABELS.get(name, name),
             provider=task.provider,
-            provider_label=PROVIDERS[task.provider][0],
+            provider_label=provider_label(task.provider),  # cả hãng chỉ tạo ảnh (T-142)
             model=task.model,
             effort=task.effort,
         )
