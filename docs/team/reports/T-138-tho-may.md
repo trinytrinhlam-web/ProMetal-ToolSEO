@@ -6,7 +6,7 @@
 | Phiếu | [T-138](../tickets/T-138-tam-dung-gemini-flash.md) · quyết định chủ dự án 2026-11-18 |
 | Nhánh | `team/T-138`, từ `main` `3202035`; mã, cấu hình, test, README `7bbe500`; yêu cầu 6 `6309116`; 5 ca ghim cấu hình tìm thêm `2bdee5f`; báo cáo ở commit ngay sau |
 | Ngày nộp | 2026-11-18 (giờ máy, +07) |
-| Kết quả | Hoàn thành: yêu cầu 1–5 và yêu cầu 6 (Chỉ Huy thêm sau: test không ghi vào `data/` thật) |
+| Kết quả | Hoàn thành: yêu cầu 1–5 và yêu cầu 6 (Chỉ Huy thêm sau: test không ghi vào `data/` thật); lượt 2: SL-T138-1, -2, -3 đã sửa (mục «Lượt 2» cuối báo cáo) |
 
 ## Tóm tắt (cho chủ dự án)
 
@@ -20,6 +20,10 @@
   - cách quay lại Claude, hoặc bật thanh toán Gemini để dùng bản Pro và bật lại tìm Google.
 - Ghi chú đầu file `config/ai.toml` có sẵn cách quay lại Claude, và tên mô hình Gemini còn dùng được.
 - Việc phụ: bộ kiểm thử của đội không còn ghi file lưu tạm vào thư mục `data` của phần mềm. Trước đây chạy kiểm thử có thể tạo, ghi đè file danh sách bài, kế hoạch, số liệu Google trong `data` của thư mục chạy kiểm thử.
+- **Lượt 2** sửa 3 lỗi nhỏ Soi Lỗi tìm ra (mục «Lượt 2»):
+  - README ghi đúng việc viết alt cho ảnh đang dùng Gemini miễn phí, anh/chị đã chấp nhận ngày 18/11;
+  - hướng dẫn quay lại Claude có thêm bước bật lại tìm Google;
+  - khi tắt tìm Google, bước Chuẩn bị không còn câu «đọc các bài đứng đầu Google», không còn khung bài đối thủ để trống.
 
 ## Đã thay đổi
 
@@ -165,3 +169,94 @@ uv run ruff check .                     → All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 · SL-T138-1, -2, -3 (Soi Lỗi `c1b6674`, 18/11)
+
+| Mục | Nội dung |
+|---|---|
+| Lỗi | 3 lỗi Thấp trong [biên bản Soi Lỗi](T-138-soi-loi.md). SL-T138-1 bắt buộc sửa ở lượt này |
+| Commit | `8203c06` (mã, README, cấu hình, test); báo cáo lượt 2 ở commit ngay sau |
+| Kết quả | Đã sửa cả 3 lỗi theo gợi ý của Soi Lỗi và lời giao của Chỉ Huy B |
+
+### Tóm tắt (cho chủ dự án)
+
+- README mục 7.2 ghi đúng: việc viết alt cho ảnh đang dùng **Gemini Flash khóa miễn phí**.
+  - Google có thể dùng ảnh gửi lên; anh/chị đã chấp nhận điều này ngày 18/11.
+  - Ảnh có mặt người, số nhà, biển hiệu của khách thì tự gõ alt, đừng bấm «✨ AI viết alt».
+- Hướng dẫn **quay lại Claude** (README, đầu file `config/ai.toml`) có thêm bước bật lại tìm Google: `web_search = true` ở việc nghiên cứu.
+- Bước Chuẩn bị của trang Soạn bài, khi đang tắt tìm Google:
+  - khung hướng dẫn không còn nói «đọc các bài đứng đầu Google»;
+  - không còn khung «Các bài đứng đầu Google còn thiếu gì?» để trống; khung «Người tìm từ khóa này muốn gì?» rộng cả hàng.
+- Bật lại tìm Google thì trang như cũ.
+
+### Đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `README.md` | Mục 7.2, đoạn viết alt (SL-T138-1):<ul><li>«đang ghi Claude Sonnet» → «từ 18/11/2026 đang ghi Gemini Flash, khóa miễn phí; trước đó là Claude Sonnet»;</li><li>bỏ «(đang ghi sẵn)»;</li><li>câu «báo Chỉ Huy để ghi vào sổ rủi ro trước» → chủ dự án đã chấp nhận 18/11/2026 (sổ rủi ro `docs/team/security.md` mục 6, dòng 2026-11-18; dòng này có trên `main` từ `756941c`, nhánh này tách từ `3202035` nên chưa có, gộp vào là khớp). Ảnh có mặt người, số nhà, biển hiệu của khách thì tự gõ alt. Quay lại Claude hay bật thanh toán thì không còn điều này.</li></ul> Mục 7, gạch «Quay lại Claude» (SL-T138-2): thêm «ở mục `[tasks.research]` đổi lại `web_search = true`» |
+| `config/ai.toml` | Chỉ sửa chú thích, giá trị không đổi:<ul><li>ghi chú quay lại Claude thêm bước `web_search = true` ở việc research (SL-T138-2);</li><li>dòng `[tasks.research]` ghi «đang tắt tìm web từ 18/11»;</li><li>chú thích `[tasks.alt]` thêm «tạm Gemini Flash khóa miễn phí từ 2026-11-18», trỏ sổ rủi ro.</li></ul> |
+| `app/views/write.py` | `step_prepare` (SL-T138-3), khi việc nghiên cứu tắt tìm web:<ul><li>khung hướng dẫn trước khi phân tích: «AI xác định người tìm muốn gì, bài của mình nên có thêm gì và người đọc hay hỏi gì»;</li><li>sau khi phân tích, không có bài đối thủ thì không hiện khung đối thủ; khung ý định chiếm cả hàng.</li></ul> Bật tìm web: không đổi |
+| `tests/test_soi_loi_t138.py` | Gỡ 3 dấu `xfail(strict=True)` (SL-T138-1 → -3); thân test không đổi |
+| `tests/test_t138_gemini_flash.py` | Ca bước 1 (bật/tắt) kiểm thêm khung hướng dẫn, khung đối thủ, khung ý định. Thêm 1 ca: kết quả cũ còn bài đối thủ thật thì tắt tìm web vẫn hiện |
+
+### Chỗ để ngỏ, tôi đã chọn
+
+1. **Kết quả đang xem còn bài đối thủ thật** (phân tích lúc còn tìm Google, hay nháp cũ) mà nay tắt tìm web: vẫn hiện khung đối thủ. Dàn ý và bài viết vẫn dùng các bài đó (`prompts._research`), nên người dùng cần thấy. Chỉ ẩn khi danh sách trống.
+2. **Ẩn khung, không thêm câu «Đang tắt tìm Google» thứ hai**: dòng nhắc đã có ngay dưới ô từ khóa.
+
+### Ghi nhận (ngoài phạm vi, không sửa)
+
+- Khi tắt tìm web, lời dặn dàn ý và viết bài (`prompts._research`) vẫn có dòng «Các bài đứng đầu Google:» với danh sách rỗng.
+  - Trước T-138, khi AI không trả bài đối thủ nào, cũng vậy.
+  - Không làm AI bịa: bài đối thủ đã bỏ ở code.
+  - Muốn lời dặn gọn hơn thì Ngòi Bút sửa ở phiếu sau.
+
+### Đổi kỳ vọng ca test cũ (R5)
+
+| Ca | Cũ | Mới |
+|---|---|---|
+| `test_soi_loi_t138.py::test_readme_noi_dung_hang_dang_viet_alt` | `xfail(strict=True)`, điều kiện «alt không ở Claude» | Bỏ dấu (đã XPASS); thân test không đổi |
+| `test_soi_loi_t138.py::test_ghi_chu_quay_lai_claude_nhac_bat_lai_tim_web` | `xfail(strict=True)` | Bỏ dấu (đã XPASS) |
+| `test_soi_loi_t138.py::test_tat_tim_web_buoc_1_khong_con_chu_doc_bai_dung_dau_google` | `xfail(strict=True)` | Bỏ dấu (đã XPASS) |
+| `test_t138_gemini_flash.py::test_write_page_step_one_tells_when_web_search_is_off` (ca của tôi, lượt 1) | Kiểm dòng nhắc, kết quả nghiên cứu | Giữ mọi kiểm cũ, thêm: khung hướng dẫn chỉ nói «đứng đầu Google» khi bật; khung đối thủ có khi bật, không có khi tắt; khung ý định luôn có |
+
+### Bằng chứng
+
+```text
+# Windows 11, Python 3.12.15, ruff 0.16.10. Không gọi AI thật, Google thật, WordPress thật.
+uv run pytest -q -p no:randomly tests/test_soi_loi_t138.py tests/test_t138_gemini_flash.py
+  20 passed   # 3 ca SL-T138 trước là xfail strict, nay qua
+
+# Đối chứng (script ở thư mục nháp; trả file về đúng byte, kiểm bằng SHA-256):
+#   write.py bản c1b6674 (trước lượt 2) → 2 hỏng: ca bước 1 [tat-tim-web] của tôi, ca SL-T138-3
+#   của Soi Lỗi. Ca [bat-tim-web] và ca kết quả cũ qua (bản cũ đã đúng ở hai chỗ đó).
+# Đột biến, 8/8 bị bắt (cũng trả file đúng byte):
+#   M1 ẩn khung đối thủ mỗi khi tắt tìm web (bỏ ý kết quả cũ)  → 1 hỏng
+#   M2 luôn hiện khung đối thủ (như trước lượt 2)               → 2 hỏng
+#   M3 khung hướng dẫn luôn nói «đứng đầu Google»               → 2 hỏng
+#   M4 khung hướng dẫn không bao giờ nói (bật cũng đổi)          → 1 hỏng
+#   M5 tắt tìm web: khung ý định biến mất                        → 1 hỏng
+#   M6 README bỏ bước web_search ở «Quay lại Claude»             → 1 hỏng
+#   M7 config/ai.toml bỏ bước web_search ở ghi chú quay lại      → 1 hỏng
+#   M8 README 7.2 trả lại «Nên dùng Claude (đang ghi sẵn)»      → 1 hỏng
+
+# 34 file liên quan, trên đúng commit 8203c06 (git status chỉ còn file báo cáo này):
+#   - test_soi_loi_t138, test_t138_gemini_flash, test_app_pages;
+#   - mọi test bấm «Phân tích từ khóa» hay đọc step_prepare;
+#   - mọi test đọc README, đọc chữ config/ai.toml, dùng ai_config_samples;
+#   - test đọc mã write.py, test quét cả cây mã nguồn.
+uv run pytest -q -p no:randomly -rfEsxX <34 file>
+  3300 passed, 2 xfailed in 1396.74s (0:23:16)
+#   0 hỏng. 2 xfailed: lỗi Soi Lỗi R4-3 ghi từ trước (chữ trong `code` Markdown), không liên quan.
+#   Lượt đầu của cùng 34 file bị dừng giữa chừng khi phiên tắt (tới 91%, 0 hỏng); chạy lại đủ.
+# Sau lượt chạy: worktree không có thư mục data/.
+
+uv run ruff check .                     → All checks passed!
+uv run ruff format --check <3 file .py> → đã đúng khuôn
+# Quét bí mật: 5 file đổi, có khóa giả đối chứng (bắt được). Một chỗ báo, có từ trước: docstring
+#   «https://tên:mật-khẩu@…» ở write.py (7aa4dbd). Không chỗ nào của lượt này.
+# Ký tự ẩn, CR, NFC: 0.
+# Gộp thử (git merge-tree), không xung đột với cả hai:
+#   - main 2c9c1ae (main không sửa file nào của lượt này kể từ 3202035);
+#   - team/T-137 e27d1df (chưa gộp main; cũng sửa write.py, README).
+```
