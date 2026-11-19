@@ -169,11 +169,6 @@ def test_bo_doc_cau_hinh_doc_dung_web_search_ca_hai_chieu(tmp_path, on):
 # ============================================================ lỗi chưa sửa (xfail strict)
 
 
-@pytest.mark.xfail(
-    _alt_not_on_claude(),  # alt quay lại Claude thì README nói đúng: ca chạy như ca thường
-    strict=True,
-    reason="SL-T138-1: README 7.2 còn ghi alt «đang ghi Claude Sonnet», cấu hình đã là Gemini",
-)
 def test_readme_noi_dung_hang_dang_viet_alt(project_root):
     readme = (project_root / "README.md").read_text(encoding="utf-8")
     start = readme.index("**Việc viết alt cho ảnh (`[tasks.alt]`)")
@@ -183,10 +178,6 @@ def test_readme_noi_dung_hang_dang_viet_alt(project_root):
         assert "(đang ghi sẵn)" not in paragraph
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T138-2: ghi chú quay lại Claude không nhắc bật lại web_search = true",
-)
 def test_ghi_chu_quay_lai_claude_nhac_bat_lai_tim_web(project_root):
     toml = (project_root / "config" / "ai.toml").read_text(encoding="utf-8")
     if "Muốn quay" not in toml:
@@ -198,10 +189,6 @@ def test_ghi_chu_quay_lai_claude_nhac_bat_lai_tim_web(project_root):
     assert "web_search = true" in line
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T138-3: tắt tìm web mà bước 1 vẫn nói AI đọc bài đứng đầu Google",
-)
 def test_tat_tim_web_buoc_1_khong_con_chu_doc_bai_dung_dau_google(
     project_root, tmp_path, monkeypatch, liar
 ):

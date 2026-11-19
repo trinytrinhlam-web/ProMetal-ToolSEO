@@ -36,9 +36,10 @@
 # Chủ dự án chốt 2026-11-18: TẠM dùng Gemini Flash miễn phí cho mọi việc (máy chưa có khóa Claude;
 # khóa Gemini chưa bật thanh toán nên mô hình Pro và tìm Google bị từ chối). Muốn quay
 # lại Claude: ở từng việc ghi provider = "anthropic", model = "claude-opus-5-5" (việc alt:
-# "claude-sonnet-5-5"), và nhập khóa Claude ở Cài đặt → 🔌 Kết nối.
+# "claude-sonnet-5-5"); ở việc research ngay dưới đây đổi lại web_search = true để AI tìm
+# Google như trước; rồi nhập khóa Claude ở Cài đặt → 🔌 Kết nối.
 
-[tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google
+[tasks.research]  # ý định tìm kiếm + đọc các bài đứng đầu Google (đang tắt tìm web từ 18/11)
 provider = "gemini"
 model = "gemini-3.8-flash"
 effort = "medium"
@@ -94,8 +95,10 @@ effort = "medium"
 max_tokens = 16000
 
 [tasks.alt]  # viết alt (chữ thay thế) và chú thích cho ảnh, AI nhìn ảnh rồi viết
-# Quyết định 4A (2026-10-19): Claude Sonnet. Quy tắc viết alt nằm ở mục [alt] của
-# config/content.toml. Việc ngắn (alt ≤ 125 ký tự) nên effort thấp, max_tokens nhỏ.
+# Quyết định 4A (2026-10-19): Claude Sonnet. Tạm Gemini Flash khóa miễn phí từ 2026-11-18: chủ
+# dự án chấp nhận việc Google có thể dùng ảnh gửi lên (sổ rủi ro docs/team/security.md mục 6).
+# Quy tắc viết alt nằm ở mục [alt] của config/content.toml. Việc ngắn (alt ≤ 125 ký tự) nên
+# effort thấp, max_tokens nhỏ.
 provider = "gemini"
 model = "gemini-3.8-flash"
 effort = "low"

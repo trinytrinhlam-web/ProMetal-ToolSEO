@@ -2208,6 +2208,9 @@ def step_prepare(writer: ContentWriter | None) -> None:
         st.info(
             "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì và đọc các "
             "bài đứng đầu Google để tìm chỗ họ còn thiếu."
+            if searches_web
+            else "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì, bài của "
+            "mình nên có thêm gì và người đọc hay hỏi gì."
         )
     else:
         if S.research_keyword != keyword():
@@ -2215,17 +2218,28 @@ def step_prepare(writer: ContentWriter | None) -> None:
                 f"Kết quả dưới đây là của từ khóa «{S.research_keyword}». "
                 "Bấm Phân tích lại cho từ khóa mới."
             )
-        left, right = st.columns(2, gap="medium")
-        with left, st.container(border=True, height="stretch"):
+        # Tắt tìm Google thì không có bài đối thủ (code đã bỏ): không hiện khung đối thủ trống,
+        # khung ý định chiếm cả hàng (T-138, SL-T138-3). Kết quả cũ còn bài đối thủ thật (phân
+        # tích lúc còn tìm Google) thì vẫn hiện, vì dàn ý vẫn dùng các bài đó.
+        if searches_web or research.competitors:
+            left, right = st.columns(2, gap="medium")
+            intent_box = left.container(border=True, height="stretch")
+        else:
+            right = None
+            intent_box = st.container(border=True)
+        with intent_box:
             st.markdown("#### 🎯 Người tìm từ khóa này muốn gì?")
             for line in research.intent:
                 st.markdown(f"- {line}")
             st.markdown(f"**Dạng bài hợp nhất:** {research.article_type}")
-        with right, st.container(border=True, height="stretch"):
-            st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
-            for c in research.competitors:
-                title = markdown_link(c.title, c.url)
-                st.markdown(f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]")
+        if right is not None:
+            with right.container(border=True, height="stretch"):
+                st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
+                for c in research.competitors:
+                    title = markdown_link(c.title, c.url)
+                    st.markdown(
+                        f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]"
+                    )
         with st.container(border=True):
             st.markdown("#### ✨ Bài của mình phải có thêm")
             for angle in research.new_angles:

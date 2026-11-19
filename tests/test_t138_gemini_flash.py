@@ -4,7 +4,9 @@
   quay lại Claude; ví dụ tên mô hình Gemini còn dùng được.
 - Bước nghiên cứu khi tắt tìm web: lời dặn bảo để trống danh sách bài đối thủ, và code bỏ mọi bài
   đối thủ AI vẫn trả về (không tin lời dặn). Bật tìm web thì như cũ.
-- Trang Soạn bài bước 1: một dòng nhắc khi việc nghiên cứu tắt tìm web.
+- Trang Soạn bài bước 1: một dòng nhắc khi việc nghiên cứu tắt tìm web. Lượt 2 (SL-T138-3): tắt
+  thì khung hướng dẫn không nói đọc bài đứng đầu Google, không hiện khung bài đối thủ trống (kết
+  quả cũ còn bài đối thủ thật thì vẫn hiện).
 
 Không gọi AI thật, Google thật: AI giả (``fake_ai``), cấu hình mẫu trong ``tmp_path``.
 """
@@ -38,6 +40,8 @@ EVIL = Competitor(
     missing="Thiếu ví dụ",
 )
 FLASH = "gemini-3.8-flash"
+INTENT_BOX = "#### 🎯 Người tìm từ khóa này muốn gì?"
+RIVALS_BOX = "#### 🔎 Các bài đứng đầu Google còn thiếu gì?"
 
 
 # ================================================================ config/ai.toml (yêu cầu 1)
@@ -139,6 +143,10 @@ def test_write_page_step_one_tells_when_web_search_is_off(
     at = write_page(project_root)
     notes = [c.value for c in at.caption if "Đang tắt tìm Google" in c.value]
     assert notes == ([] if on else ["Đang tắt tìm Google: AI không đọc bài đối thủ."])
+    # Khung hướng dẫn trước khi phân tích vẫn có; chỉ nói «đọc bài đứng đầu Google» khi tìm web
+    # (lượt 2, SL-T138-3).
+    intro = [i.value for i in at.info if "Nhập từ khóa rồi bấm" in i.value]
+    assert len(intro) == 1 and ("đứng đầu Google" in intro[0]) is on
     at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
     button(at, "🔎 Phân tích từ khóa").click().run()
     assert not at.exception, at.exception
@@ -146,6 +154,29 @@ def test_write_page_step_one_tells_when_web_search_is_off(
     assert any(RESEARCH.new_angles[0] in m for m in shown)
     assert any(RESEARCH.competitors[0].missing in m for m in shown) is on
     assert at.session_state["research"].competitors == (RESEARCH.competitors if on else [])
+    # Khung bài đối thủ: bật tìm web như cũ; tắt thì không hiện khung trống. Khung ý định luôn có.
+    assert (RIVALS_BOX in shown) is on
+    assert INTENT_BOX in shown
+
+
+def test_old_result_with_real_competitors_still_shows_them_after_search_is_turned_off(
+    project_root, tmp_path, monkeypatch, fake_ai
+):
+    # Phân tích lúc còn tìm Google (có bài đối thủ), rồi tắt tìm web: kết quả cũ vẫn hiện bài đối
+    # thủ, vì dàn ý còn dùng các bài đó; dòng nhắc báo lần phân tích sau không tìm Google.
+    sample = research_web_search_toml(tmp_path, True)
+    monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (sample,))
+    at = write_page(project_root)
+    at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
+    button(at, "🔎 Phân tích từ khóa").click().run()
+    assert at.session_state["research"].competitors == RESEARCH.competitors
+    assert research_web_search_toml(tmp_path, False) == sample  # cùng file, trang đọc lại
+    at.run()
+    assert not at.exception, at.exception
+    shown = [m.value for m in at.markdown]
+    assert RIVALS_BOX in shown and INTENT_BOX in shown
+    assert any(RESEARCH.competitors[0].missing in m for m in shown)
+    assert any("Đang tắt tìm Google" in c.value for c in at.caption)
 
 
 def test_write_page_with_committed_config_shows_the_note(project_root, fake_ai):

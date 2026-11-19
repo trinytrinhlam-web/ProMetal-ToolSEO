@@ -163,7 +163,7 @@ App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và 
 >
 > Muốn bài tốt hơn thì làm một trong hai cách, rồi sửa `config/ai.toml` (mục 7.2):
 >
-> - **Quay lại Claude**: nhập khóa Claude ở **Cài đặt → 🔌 Kết nối**, rồi ở từng việc ghi `provider = "anthropic"`, `model = "claude-opus-5-5"` (việc `alt`: `"claude-sonnet-5-5"`). Ghi chú đầu file `config/ai.toml` có sẵn cách làm.
+> - **Quay lại Claude**: nhập khóa Claude ở **Cài đặt → 🔌 Kết nối**, rồi ở từng việc ghi `provider = "anthropic"`, `model = "claude-opus-5-5"` (việc `alt`: `"claude-sonnet-5-5"`), và ở mục `[tasks.research]` đổi lại `web_search = true` để bước Chuẩn bị đọc lại bài đứng đầu Google. Ghi chú đầu file `config/ai.toml` có sẵn cách làm.
 > - **Bật thanh toán cho khóa Gemini** (trên trang Google AI Studio) để dùng mô hình Pro (ví dụ `gemini-3.1-pro-preview`) và bật lại tìm Google (`web_search = true` ở mục `[tasks.research]`).
 
 ### 7.1. Lấy khóa API và nhập vào app
@@ -204,10 +204,10 @@ max_tokens = 32000
 - `effort` là mức "suy nghĩ" của AI (`low`, `medium`, `high`, `xhigh`, `max`): càng cao càng kỹ nhưng chậm và tốn tiền hơn. Claude và ChatGPT dùng đúng mức bạn ghi. Gemini chỉ có 3 mức (`low`, `medium`, `high`): `xhigh` và `max` được tính là `high`. Mô hình không có chế độ suy nghĩ thì app tự bỏ qua `effort`.
 - Việc đang dùng hãng nào thì hãng đó phải có khóa. Thiếu khóa thì ngay khi mở **Soạn bài**, app báo màu vàng và khóa tạm các bước dùng AI.
 
-**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (đang ghi Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. App chỉ gửi ảnh cho hãng AI khi bạn bấm **✨ AI viết alt** (hay **🔄 AI viết lại alt**) ở một ảnh đã chọn (mục 9), mỗi lần một ảnh. Vì vậy:
+**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (từ 18/11/2026 đang ghi Gemini Flash, khóa miễn phí; trước đó là Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. App chỉ gửi ảnh cho hãng AI khi bạn bấm **✨ AI viết alt** (hay **🔄 AI viết lại alt**) ở một ảnh đã chọn (mục 9), mỗi lần một ảnh. Vì vậy:
 
-- Nên dùng Claude (đang ghi sẵn) hoặc khóa **trả phí** của OpenAI / Gemini.
-- Khóa Gemini **miễn phí**: Google được dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Muốn dùng khóa miễn phí cho việc viết alt thì báo Chỉ Huy để ghi vào sổ rủi ro trước.
+- Nên dùng Claude hoặc khóa **trả phí** của OpenAI / Gemini.
+- Khóa Gemini **miễn phí** (đang dùng): Google có thể dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Chủ dự án đã chấp nhận điều này ngày 18/11/2026 (sổ rủi ro `docs/team/security.md` mục 6, dòng 2026-11-18). Ảnh có mặt người, số nhà, biển hiệu của khách thì đừng bấm **✨ AI viết alt**: tự gõ alt vào ô **Alt** (mục 9). Quay lại Claude hay bật thanh toán cho khóa Gemini thì không còn điều này.
 
 ### 7.3. Thử mù: chọn mô hình viết hay nhất
 
