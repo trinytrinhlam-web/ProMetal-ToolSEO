@@ -6,14 +6,14 @@
 | Phiếu | [T-141](../tickets/T-141-thiet-ke-che-do-tu-dong.md) |
 | Nhánh | `team/T-141` (từ `main` `bbe916b`, đã gộp `team/T-140`: thiết kế `523a959`, biên bản Lá Chắn `fb9d2ef`) |
 | Ngày nộp | 2026-11-19 (+07:00, giờ theo lệnh `date`, ghi ở commit) |
-| Kết quả | Hoàn thành (thiết kế, không sửa mã). Bổ sung cùng ngày theo chủ dự án: prompt ảnh chi tiết (1.10), vì sao không chạy Flow trong app (1.11) |
+| Kết quả | Hoàn thành (thiết kế, không sửa mã). Bổ sung cùng ngày theo chủ dự án: prompt ảnh chi tiết (1.10), vì sao không chạy Flow trong app (1.11). Chủ dự án trả lời 6 câu mục 8 ngày 19/11: cả 6 chọn A |
 
 ## Tóm tắt (cho chủ dự án)
 
 **Cách dùng mới**
 
 - **Soạn theo từ khóa:** gõ từ khóa (thêm ghi chú của thợ nếu có), bấm «🤖 Soạn tự động». App tự làm hết: phân tích từ khóa, dàn ý, viết bài, tự rà soát và sửa câu, SEO, chọn ảnh trong thư mục hay tạo ảnh AI, viết alt, chú thích. Xong thì bài dừng ở **bước 5 · Xuất bản**.
-- **Theo kế hoạch:** trang Kế hoạch có nút «🤖 Viết các bài tới hạn». App lấy tối đa 5 dòng có Ngày dự kiến trong 7 ngày tới, viết lần lượt từng bài. Bài xong vào danh sách **«Chờ duyệt»** ở trang Bài viết.
+- **Theo kế hoạch:** trang Kế hoạch có nút «🤖 Viết các bài tới hạn». App lấy tối đa 5 dòng có Ngày dự kiến trong 7 ngày tới (cả dòng đã quá ngày mà chưa viết, xếp trước), viết lần lượt từng bài. Bài xong vào danh sách **«Chờ duyệt»** ở trang Bài viết. Đã có 5 bài chờ duyệt thì nút tạm khóa, nhắc duyệt bớt.
 - Mỗi bài mất khoảng **3–6 phút**; 5 bài khoảng 15–30 phút (ước tính, đo lại ở buổi thử). Trong lúc chạy bạn vẫn dùng app được; trang hiện bước đang làm, có nút «Dừng».
 
 **Duyệt một lần ở bước cuối**
@@ -21,7 +21,7 @@
 - Màn hình cuối hiện đủ: cả bài, từng ảnh (kèm alt, chú thích), SEO, link, cảnh báo. Mỗi phần có nút **«Sửa»** đưa bạn về đúng bước; sửa xong bấm «↩ Về bước duyệt».
 - **Chỗ tô vàng là chỗ nên xem:** thiếu chất liệu thật (AI đã viết chung, không bịa số), câu AI chưa tự sửa được, ảnh thật app tự chọn (xem có nhà khách, biển số không), ảnh AI.
 - Thay cho tick duyệt từng ảnh: **một ô tick** «Tôi đã đọc bài và xem từng ảnh ở trên». Chưa tick thì chưa gửi được. Sửa gì sau khi tick thì phải tick lại.
-- **Không gì lên website khi bạn chưa bấm** Gửi nháp / Hẹn giờ / Đăng ngay. Màn hình xác nhận, khóa chống gửi trùng giữ nguyên. Ngày giờ hẹn điền sẵn theo dòng kế hoạch.
+- **Không gì lên website khi bạn chưa bấm** Gửi nháp / Hẹn giờ / Đăng ngay. Màn hình xác nhận, khóa chống gửi trùng giữ nguyên. Ngày giờ hẹn điền sẵn theo dòng kế hoạch (dòng đã quá ngày: ngày mai, giờ của dòng). Tiêu đề, mô tả SEO tự ghi vào SiteSEO khi gửi (bật sẵn, tắt được; chờ Lá Chắn xét).
 - Lưu ý: nút Hẹn giờ, Đăng ngay vẫn tắt cho tới khi xong buổi thử thật (đang dừng ở Ca 3). Tới lúc đó bài tự động gửi lên dạng Nháp.
 
 **Ảnh AI (bổ sung 19/11)**
@@ -37,7 +37,7 @@
 - Hết lượt giữa chừng: app dừng, giữ nguyên các bài đã xong và chỗ đang dở; bạn bấm «▶ Chạy tiếp» sau giờ đặt lại. App không tự chạy lại.
 - **Giữ cửa sổ đen của app mở** trong lúc chạy. Đóng tab trình duyệt: app vẫn chạy tiếp. Tắt app: lượt chạy dừng; mở lại bấm «Chạy tiếp».
 
-**Có 6 câu hỏi cho bạn** ở mục 8. Câu nào cũng có khuyến nghị sẵn.
+**6 câu hỏi ở mục 8: bạn đã trả lời ngày 19/11, cả 6 chọn khuyến nghị A.** Thiết kế đã ghi theo. Riêng câu 4 (bật sẵn «Ghi SEO lên website» cho bài tự động) còn chờ Lá Chắn xét.
 
 ## Đã thay đổi
 
@@ -47,7 +47,7 @@
 
 - Không sửa mã, cấu hình, test. Không gọi AI, Google, WordPress, Cloudflare thật.
 - Tài liệu Google đọc ngày 2026-11-19 qua một agent đọc trang (mục 0).
-- Bổ sung cùng ngày (tin của Chỉ Huy B theo chủ dự án): mục 1.10, 1.11; sửa 1.7, 5, 6.1, 7 cho khớp. Đường Flow bán tự động (nút «Mở Flow», tự nhận ảnh tải về) **không** thiết kế: chủ dự án 19/11 «dùng Cloudflare cũng được».
+- Bổ sung cùng ngày (tin của Chỉ Huy B theo chủ dự án): mục 1.10, 1.11; sửa 1.7, 5, 6.1, 7 cho khớp. Sau đó ghi 6 câu trả lời của chủ dự án (mục 8) vào các mục liên quan. Đường Flow bán tự động (nút «Mở Flow», tự nhận ảnh tải về) **không** thiết kế: chủ dự án 19/11 «dùng Cloudflare cũng được».
 
 ## 0. Nguồn đã đọc
 
@@ -125,7 +125,8 @@ Quyết định 19/11 bỏ bước người dùng duyệt dàn ý (Quy trình n�
 
 - 3–8 mục; mục nào cũng có tiêu đề (≤ 120 ký tự) và ít nhất một ý; tiêu đề mục không trùng nhau.
 - Tối đa 8 chỗ cần ảnh mỗi bài (LC-T140-7); mô tả ảnh ≤ 300 ký tự, dài hơn thì bỏ chỗ ảnh đó (dấu vàng).
-- Tiêu đề H1 có từ khóa chính (so không dấu), 20–90 ký tự. Không đạt: AI làm lại 1 lần; vẫn không đạt thì dùng tiêu đề AI kèm dấu vàng.
+- **Tiêu đề dự kiến của dòng kế hoạch** (chủ dự án chọn 5A): có chữ và qua kiểm (có từ khóa chính, so không dấu; ≤ 70 ký tự; không link, email, số điện thoại) thì dùng làm H1 thay tiêu đề AI, trước bước viết. Trống thì AI đặt; có chữ mà không qua kiểm thì AI đặt, kèm dấu vàng «không dùng được tiêu đề dự kiến».
+- Tiêu đề H1 do AI đặt có từ khóa chính (so không dấu), 20–90 ký tự. Không đạt: AI làm lại 1 lần; vẫn không đạt thì dùng tiêu đề AI kèm dấu vàng.
 - Ý có số điện thoại, email (`personal_info`) thì che (`mask_personal_info`), dấu vàng.
 
 Ngòi Bút sửa chữ lời dặn (phiếu C, mục 7):
@@ -169,7 +170,7 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
   - `select_candidates` theo loại bài, trang dịch vụ đích của dòng kế hoạch, rồi `internal_links`; mọi gợi ý đạt `check_suggestions` được dùng (`use=True`).
   - Thiếu link bắt buộc tới trang dịch vụ đích (`missing_required`): gọi lại 1 lần. Vẫn thiếu thì bộ dựng chặn như hiện nay, bước cuối hiện đỏ kèm «Sửa» sang bước SEO.
 - **Schema FAQ:** mã dựng (`build_article_faq`). Hợp lệ thì tick sẵn «Dùng schema» (chỉ ghi nhớ trong nháp, chưa gửi lên website, như T-132).
-- **«Ghi SEO lên website»:** câu hỏi 4.
+- **«Ghi SEO lên website»:** bật sẵn cho bài tự động (chủ dự án chọn 4A ngày 19/11; Lá Chắn xét vì đổi mặc định của T-042). Công tắc vẫn hiện ở bước cuối, tắt được, nằm trong mã băm màn hình.
 
 ### 1.7. Ảnh (gộp với T-140)
 
@@ -178,7 +179,7 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
 1. **Tự chọn ảnh thư mục** cho mọi chỗ cần ảnh (T-140 mục 1, phiếu B): chỉ đọc tên thư mục, tên file; không mở file; không gọi mạng.
 2. **Chữ ảnh cho cả bài, một lần gọi AI** (`image_prompt`):
    - chỗ dùng ảnh AI: `prompt_en`, `alt_vi`;
-   - chỗ đã có ảnh thật: `alt_vi` và chú thích, viết từ mô tả chỗ cần ảnh, tiêu đề mục, mặt thẻ (giá trị trong danh sách cố định). **Không gửi ảnh** (câu hỏi 1).
+   - chỗ đã có ảnh thật: `alt_vi` và chú thích, viết từ mô tả chỗ cần ảnh, tiêu đề mục, mặt thẻ (giá trị trong danh sách cố định). **Không gửi ảnh** (chủ dự án chọn 1A ngày 19/11).
 3. **Tạo ảnh AI qua Cloudflare** lần lượt; tối đa 8 ảnh mỗi bài; kiểm trần neuron trước từng ảnh (LC-T140-7).
 4. **Mã bọc ảnh AI:** `ImageTags.for_ai_image`, tên `minh-hoa-ai-…`, alt «Minh họa…», chú thích «Ảnh minh họa (AI)…» (LC-T140-13).
 
@@ -188,7 +189,7 @@ Giữ đúng một lượt tự sửa như `write_and_review` hiện nay (viết
   - Khuôn mới: `ImageTexts(items=[ImageText(slot, prompt, summary_vi, alt_vi, caption_vi)])`. `prompt` là khuôn có cấu trúc từng thành phần (mục 1.10), không phải một chuỗi tự do; chỗ ảnh thật không có `prompt`.
   - Mã kiểm từng mục: số chỗ đúng và không trùng; từng trường của prompt và chuỗi ghép cuối qua bộ kiểm LC-T140-9, theo ngân sách ở 1.10; alt qua `clean_alt_text`; chú thích ≤ 200 ký tự.
   - Mục hỏng thì chỉ chỗ đó trống (dấu vàng «chưa viết được prompt»), không làm hỏng cả bài.
-- Alt ảnh thật mặc định viết từ chữ (câu hỏi 1 = A), dấu vàng «AI chưa nhìn ảnh: xem alt có đúng ảnh không». Nút «✨ AI xem ảnh, viết lại alt» giữ nguyên, theo từng lần bấm (Lá Chắn T-050 đk 3a không đổi).
+- Alt ảnh thật viết từ chữ (chủ dự án chọn 1A), dấu vàng «AI chưa nhìn ảnh: xem alt có đúng ảnh không». Nút «✨ AI xem ảnh, viết lại alt» giữ nguyên, theo từng lần bấm (Lá Chắn T-050 đk 3a không đổi).
 
 **Giữ của T-140:**
 
@@ -400,7 +401,7 @@ Ghi chú: bạn vẫn tự tạo ảnh bằng Flow được. Trợ giúp Flow (1
 | Câu cần xem lại | Góp ý chưa tự áp, cụm sáo rỗng (1.5) | Câu trong bài |
 | Văn phong dưới 80, chưa chấm lại | Lần chấm cuối | Bảng kiểm |
 | Ảnh thật tự chọn | Phiếu B | Thẻ ảnh: «Xem kỹ: nhà khách, biển số, mặt người, số điện thoại?» |
-| Alt viết từ mô tả | Câu hỏi 1 = A | Thẻ ảnh |
+| Alt viết từ mô tả | Chủ dự án chọn 1A | Thẻ ảnh, kèm nút «✨ AI xem ảnh, viết lại alt» |
 | Ảnh có GPS | `web_info` | Thẻ ảnh; cảnh báo trước nút gửi giữ nguyên |
 | Ảnh AI | Ảnh Cloudflare | Thẻ ảnh (chú thích «Ảnh minh họa (AI)» sẽ hiện dưới ảnh) |
 | Chỗ cần ảnh còn trống | Không khớp, Cloudflare lỗi, prompt bị từ chối | Thẻ ảnh, kèm «Sửa» |
@@ -455,10 +456,11 @@ Ghi chú: bạn vẫn tự tạo ảnh bằng Flow được. Trợ giúp Flow (1
 - **Dòng được chọn** khi đủ mọi điều kiện:
   1. có Mã bài, từ khóa hợp lệ (`PlanRow`);
   2. Trạng thái **«Chưa viết»**. Dòng «Đang viết» bỏ qua (đang viết ở máy khác, hay dở dang: mở bằng «Viết bài» như cũ);
-  3. Ngày dự kiến từ hôm nay tới 6 ngày sau (7 ngày lịch). Dòng đã quá ngày: câu hỏi 2;
+  3. Ngày dự kiến từ hôm nay tới 6 ngày sau (7 ngày lịch), **hoặc đã quá ngày** mà vẫn «Chưa viết» (chủ dự án chọn 2A);
   4. Loại trang không phải «Cập nhật bài cũ» (như nút «Viết bài», T-101);
   5. máy này chưa có nháp của Mã bài đó (`find_plan_draft`).
-- **Thứ tự:** ngày dự kiến, giờ đăng, Ưu tiên (Cao trước), Mã bài. Lấy tối đa 5, và không quá số chỗ còn trong kho nháp (câu hỏi 3).
+- **Thứ tự:** ngày dự kiến (nên dòng quá hạn đứng trước), giờ đăng, Ưu tiên (Cao trước), Mã bài. Lấy tối đa 5, và không quá số chỗ còn trong kho nháp (không để nháp chưa gửi bị bỏ).
+- **Khóa tạm nút** khi máy đã có 5 bài «Chờ duyệt» chưa gửi (chủ dự án chọn 3A): nút mờ, câu nhắc «Duyệt bớt các bài chờ duyệt rồi viết tiếp». Dưới 5 bài thì lô vẫn lấy tối đa 5 dòng; sau lô có thể có tới 9 bài chờ duyệt, nút khóa tới khi còn dưới 5.
 - **Bấm nút → popover xác nhận:**
   - danh sách «Mã bài · từ khóa · ngày giờ»;
   - ước tính «khoảng 40 lần gọi Gemini, 20 ảnh AI, 15–30 phút»; «hôm nay máy này đã gọi Gemini X lần»;
@@ -488,25 +490,26 @@ Ghi chú: bạn vẫn tự tạo ảnh bằng Flow được. Trợ giúp Flow (1
 ### 4.4. Hẹn giờ theo dòng, ghi trạng thái Sheet
 
 - Mở bài: ngày giờ của dòng điền sẵn vào ô Hẹn giờ (`plan_details`, như hiện nay). Hình thức chọn sẵn «Hẹn giờ» khi công tắc bật và giờ còn hợp lệ; không thì «Nháp».
+- Dòng đã quá ngày (chủ dự án chọn 2A): ô Ngày điền sẵn **ngày mai**, ô Giờ là giờ của dòng (dòng không có giờ thì giờ mặc định `[plan].default_time`). Ô Hẹn giờ hiện nay đã tự đổi ngày đã qua thành ngày mai (`schedule_picker`), nên chỉ cần giữ đúng giờ của dòng.
 - Gửi xong: ghi trạng thái về Sheet như hiện nay (T-100, T-102: «Đã gửi nháp» / «Đã hẹn giờ» / «Đã đăng»; lỗi thì giữ việc còn nợ, thử lại ở trang Kế hoạch).
 
 ## 5. Đối chiếu điều kiện cũ của Lá Chắn (Việc 5)
 
 | # | Điều kiện cũ | Chế độ tự động đụng thế nào | Đề xuất |
 |---|---|---|---|
-| 1 | **T-050 đk 3a, LC-T050-4, sổ rủi ro 18/11:** AI chỉ xem ảnh khi người dùng bấm, cho ảnh đã chọn; giảm rủi ro bằng cách «tránh gửi ảnh có mặt người, số nhà, biển hiệu» | Nếu AI tự xem ảnh thật tự chọn thì không ai nhìn ảnh trước khi ảnh tới Google | **Câu hỏi 1 = A: không đổi điều kiện.** Lượt chạy không gửi ảnh thật cho AI; alt viết từ chữ; «AI xem ảnh» chỉ khi bấm. (Chọn B thì điều kiện đổi thành «AI xem ảnh thật tự chọn trong lượt chạy bạn bấm, chỉ byte `make_ai_image`, mỗi ảnh một lần», sổ rủi ro thêm một dòng) |
+| 1 | **T-050 đk 3a, LC-T050-4, sổ rủi ro 18/11:** AI chỉ xem ảnh khi người dùng bấm, cho ảnh đã chọn; giảm rủi ro bằng cách «tránh gửi ảnh có mặt người, số nhà, biển hiệu» | Nếu AI tự xem ảnh thật tự chọn thì không ai nhìn ảnh trước khi ảnh tới Google | **Chủ dự án chọn 1A (19/11): không đổi điều kiện.** Lượt chạy không gửi ảnh thật cho AI; alt viết từ chữ; «AI xem ảnh» chỉ khi bấm, từng ảnh |
 | 2 | **T-050 đk 3b, T-056:** alt, chú thích hiện trong ô để người dùng sửa và **duyệt từng ảnh** | Không còn tick từng ảnh | Ô duyệt chung (3.5). Alt, chú thích vẫn sửa trong ô nhập ở bước 3; ở màn hình cuối hiện chữ thuần (escape) |
 | 3 | **T-086, T-089:** băm ảnh đã duyệt, lưu trong nháp; mở lại mà ảnh khác thì duyệt lại | Băm đặt lúc tick từng ảnh | **Giữ nguyên cơ chế**, chỉ đổi chỗ đặt băm: tick chung ghi băm từng ảnh. Lúc gửi vẫn so |
 | 4 | **LC-T140-12:** ảnh tự chọn tick duyệt từng ảnh | Trái quyết định 19/11 | Thay bằng câu ở 3.5 |
 | 5 | **LC-T140-14, C9 sửa:** chỉ tạo ảnh khi bấm; tối đa 8 ảnh mỗi lần bấm; nhánh B: một lần sau bước viết, ghi dấu | Ảnh tạo trong lượt chạy | Cú bấm là «Soạn tự động», «Viết các bài tới hạn», «Chạy tiếp». Tối đa 8 ảnh mỗi bài, 40 ảnh mỗi lần bấm lô; kiểm trần trước từng ảnh; mỗi chỗ tạo một lần mỗi lượt (`images_made`, ảnh đã có không tạo lại); không bao giờ khi mở trang, mở nháp, chạy lại trang; tiến độ chỉ đọc bộ nhớ |
 | 6 | **LC-T094-21 (A3):** số điện thoại, email trong ghi chú kế hoạch: cảnh báo trước khi gửi AI | Lô không có người xem cảnh báo trước | **Che tự động** (`mask_personal_info`) trước khi vào lời dặn, đúng việc `fill_from_plan` đang làm; không bao giờ gửi bản chưa che; dấu vàng ở bước cuối |
-| 7 | **T-094, T-103 đk 2a, 2b, LC-T120-24:** chữ kế hoạch (cả từ khóa Google đưa vào kế hoạch) là dữ liệu chưa tin cậy vào lời dặn AI; trước đây người dùng còn đọc dàn ý trước khi AI viết | Mất chốt người giữa dàn ý và bài | Chốt người dời về bước cuối (đọc cả bài). Giữ khung `_block`, `_keyword`, `DATA_RULES`. Thêm chốt mã trên kết quả AI: dàn ý (1.3), câu tự sửa không thêm số, giá, link, số điện thoại (1.5). Tiêu đề dự kiến: câu hỏi 5 (chọn A thì tiêu đề vào lời dặn trong khung `dan_y`) |
+| 7 | **T-094, T-103 đk 2a, 2b, LC-T120-24:** chữ kế hoạch (cả từ khóa Google đưa vào kế hoạch) là dữ liệu chưa tin cậy vào lời dặn AI; trước đây người dùng còn đọc dàn ý trước khi AI viết | Mất chốt người giữa dàn ý và bài | Chốt người dời về bước cuối (đọc cả bài). Giữ khung `_block`, `_keyword`, `DATA_RULES`. Thêm chốt mã trên kết quả AI: dàn ý (1.3), câu tự sửa không thêm số, giá, link, số điện thoại (1.5). Tiêu đề dự kiến (chủ dự án chọn 5A): mã kiểm trước (1.3), rồi tiêu đề vào lời dặn trong khung `dan_y`. Trước đây chữ này chỉ hiện làm gợi ý, không gửi AI |
 | 8 | **LC-T094-35:** không hẹn giờ, đăng hàng loạt; «Viết bài» không gửi gì lên WordPress | Lô viết nhiều bài | **Giữ nguyên:** lô chỉ viết; 0 lệnh WordPress, kể cả đọc (dùng danh sách bài đã lưu); test đếm |
 | 9 | **LC-T094-38:** mã băm xác nhận | — | Giữ; với bài tự động áp cả cho Nháp |
 | 10 | **LC-T094-41:** công tắc Hẹn giờ / Đăng ngay mặc định tắt | — | Giữ |
-| 11 | **Lá Chắn T-042:** «Ghi SEO lên website» mặc định tắt | Phải chép tay vào SiteSEO, trái mục tiêu «duyệt một lần» | Câu hỏi 4: bật sẵn cho bài tự động, vẫn nằm trong mã băm, vẫn tắt được |
+| 11 | **Lá Chắn T-042:** «Ghi SEO lên website» mặc định tắt | Phải chép tay vào SiteSEO, trái mục tiêu «duyệt một lần» | Chủ dự án chọn 4A (19/11): bật sẵn cho bài tự động, vẫn nằm trong mã băm, vẫn tắt được. **Lá Chắn xét** việc đổi mặc định này |
 | 12 | **Quy trình nội dung bước 4** (duyệt dàn ý) | Chủ dự án thay 19/11 | Mã kiểm dàn ý (1.3) và duyệt cả bài ở bước cuối |
-| 13 | **«Không sản xuất nội dung hàng loạt»** | Chủ dự án thay 19/11 | Tối đa 5 bài mỗi lần bấm, chạy lần lượt, duyệt từng bài; khóa nút khi đã có 5 bài chờ duyệt (câu hỏi 3) |
+| 13 | **«Không sản xuất nội dung hàng loạt»** | Chủ dự án thay 19/11 | Tối đa 5 bài mỗi lần bấm, chạy lần lượt, duyệt từng bài; khóa nút khi đã có 5 bài chờ duyệt (chủ dự án chọn 3A) |
 | 14 | **T-137:** file nháp bị cất thì tick «bài này chưa có trên website» | — | Giữ, áp cả bài tự động |
 | 15 | **LC-T140-9:** phần AI hay người dùng viết ≤ 600 ký tự, cả đuôi ≤ 2048; kiểm prompt cuối | Prompt chi tiết dài hơn; FLUX chỉ đọc 256 token đầu | Giữ 600 cho phần AI viết hay bạn sửa; **cả prompt ≤ 900** (siết từ 2048); kiểm từng trường và chuỗi cuối; người, góc máy, ống kính, ánh sáng, bố cục, vị trí chọn trong danh sách cố định (1.10) |
 | 16 | **LC-T140-19:** đuôi an toàn viết khẳng định, nằm trong mã | Đuôi đặt cuối có thể rơi sau mốc 256 token | Đuôi ≤ 200 ký tự trong tổng 900, nên luôn nằm trong phần FLUX đọc; lớp thật vẫn là bộ kiểm mã (không chữ số, không từ cấm) |
@@ -579,7 +582,7 @@ Không. Trần 9.000 neuron của app đủ khoảng 155 ảnh mỗi ngày, tứ
 5. **Nếu hạn mức thấp:**
    - (a) «chế độ tiết kiệm lượt» (sau đợt này): gộp meta, liên kết, chữ ảnh vào một lần gọi (8 → 6), bỏ lần chấm lại (6 → 5);
    - (b) AI Studio cho thấy mô hình Flash-Lite có hạn mức riêng thì chuyển các việc nhỏ (`meta`, `links`, `alt`, `image_prompt`) sang mô hình đó trong `config/ai.toml` (hạn mức tính theo từng mô hình);
-   - (c) bật thanh toán Gemini (câu hỏi 6).
+   - (c) bật thanh toán Gemini: chủ dự án chọn 6A (19/11), đo trước rồi mới quyết (7.4).
 
 ## 7. Chia phiếu code, thứ tự gộp (Việc 7)
 
@@ -627,9 +630,23 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 1. Lần gọi thử Cloudflare (LC-T140-17), thêm một prompt chi tiết gần 900 ký tự: xem ảnh có theo đủ các thành phần không (1.10).
 2. Xem hạn mức Gemini trong AI Studio (số lần/phút, lần/ngày của `gemini-3.8-flash`), ghi vào `[auto]`. Gặp lỗi 429 theo ngày thì chép khuôn chi tiết (không có bí mật) để xác nhận cách nhận ra; không cố đốt hạn mức để thử.
 3. Chạy thử 1 bài theo từ khóa và một lô 2 dòng trên Sheet bản sao (như T-128): đo thời gian, số lần gọi; gửi Nháp, xem trên website, rồi xóa.
-4. Lá Chắn đọc kết quả rồi mới cho dùng với bài thật.
+4. Chỉ Huy báo chủ dự án số bài mỗi ngày đo được; chủ dự án quyết có bật thanh toán Gemini không (6A).
+5. Lá Chắn đọc kết quả rồi mới cho dùng với bài thật.
 
-## 8. Câu hỏi cho chủ dự án
+## 8. Câu hỏi cho chủ dự án (đã trả lời 19/11)
+
+Chủ dự án trả lời ngày 2026-11-19 (Chỉ Huy B chuyển lời): **cả 6 câu chọn A** (khuyến nghị). Thiết kế đã ghi theo ở các mục trong bảng. Câu hỏi gốc giữ bên dưới để đối chiếu.
+
+| Câu | Chủ dự án chọn | Ghi ở |
+|---|---|---|
+| 1. Alt ảnh thật tự chọn | A: không gửi ảnh cho AI; alt viết từ mô tả và tên thư mục; nút «✨ AI xem ảnh, viết lại alt» từng ảnh ở bước cuối | 1.7, 3.3, mục 5 dòng 1 |
+| 2. Dòng quá hạn chưa viết | A: viết, xếp trước; ngày hẹn điền sẵn là ngày mai, giờ của dòng | 4.1, 4.4 |
+| 3. Nhiều bài chờ duyệt | A: có 5 bài «Chờ duyệt» thì tạm khóa nút «Viết các bài tới hạn», nhắc duyệt bớt | 4.1, mục 5 dòng 13 |
+| 4. «Ghi SEO lên website» | A: bật sẵn cho bài tự động, tắt được; **Lá Chắn xét** | 1.6, mục 5 dòng 11 |
+| 5. Tiêu đề dự kiến | A: có chữ và qua kiểm thì dùng làm tiêu đề bài; trống thì AI đặt | 1.3, mục 5 dòng 7 |
+| 6. Gemini miễn phí không đủ 5 bài/ngày | A: đo trước (chạy thử 1 bài, xem AI Studio), rồi chủ dự án quyết | 6.5, 7.4 |
+
+**Câu hỏi gốc:**
 
 1. **Alt của ảnh thật app tự chọn: AI có nhìn ảnh không?**
    - A (khuyến nghị): không. AI viết alt từ mô tả chỗ cần ảnh và tên thư mục; ảnh không rời máy, không tốn thêm lượt Gemini. Ở bước cuối, ảnh nào alt chưa khớp thì bấm «✨ AI xem ảnh, viết lại alt» cho riêng ảnh đó.
@@ -658,7 +675,7 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 - [x] Việc 4, «Viết các bài tới hạn»: mục 4 (chọn dòng, chạy lô, «Chờ duyệt» ở trang Bài viết, ngày giờ hẹn, ghi Sheet).
 - [x] Việc 5, đối chiếu điều kiện Lá Chắn: mục 5 (17 điều kiện, câu thay LC-T140-12 ở 3.5).
 - [x] Việc 6, hạn mức: mục 6.
-- [x] Việc 7, chia phiếu, thứ tự gộp với A–F, câu hỏi: mục 7, 8.
+- [x] Việc 7, chia phiếu, thứ tự gộp với A–F, câu hỏi: mục 7, 8 (chủ dự án đã trả lời 19/11, cả 6 câu chọn A).
 - [x] Bổ sung 19/11 (Chỉ Huy B, theo chủ dự án): prompt ảnh chi tiết có cấu trúc, tiếng Anh kèm một dòng tiếng Việt, luật ở Ngòi Bút, đuôi an toàn trong mã, giữ trong giới hạn của FLUX (1.10, phiếu M); lý do không chạy Flow trong app (1.11). Đường Flow bán tự động bỏ theo chủ dự án.
 - [x] Không sửa mã; không gọi AI, Google, WordPress, Cloudflare thật.
 
@@ -666,7 +683,7 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 
 - **Không còn ai đọc dàn ý trước khi AI viết.** Chất lượng dựa vào màn hình cuối. Dấu vàng chỉ chỗ nên xem, nhưng vẫn nên đọc lướt cả bài.
 - **Hạn mức Gemini miễn phí chưa biết.** Thấp thì lô 5 bài không chạy hết trong một ngày. Gemini Flash miễn phí hay báo bận (503) giờ cao điểm: lô chậm, có thể dừng.
-- **Kho nháp chỉ giữ 30 nháp;** lưu nháp thứ 31 thì nháp cũ nhất bị bỏ, kể cả bài chờ duyệt chưa gửi. Kiểm chỗ trống trước lô, câu hỏi 3. Sau đợt này nên để kho ưu tiên bỏ nháp đã gửi.
+- **Kho nháp chỉ giữ 30 nháp;** lưu nháp thứ 31 thì nháp cũ nhất bị bỏ, kể cả bài chờ duyệt chưa gửi. Kiểm chỗ trống trước lô; khóa nút khi đã có 5 bài chờ duyệt (3A). Sau đợt này nên để kho ưu tiên bỏ nháp đã gửi.
 - **Bài chờ duyệt chỉ nằm trên máy đã viết.**
 - **Luồng nền và Streamlit:** lỡ gọi `st.*` trong luồng thì lượt chạy hỏng âm thầm. Có test quét mã; Soi Lỗi thử dừng, F5, hai tab, tắt app giữa chừng.
 - **Khuôn nháp 4 gộp hai thiết kế:** nâng khuôn một lần; nháp cũ đọc như cũ.
@@ -678,7 +695,7 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 ## Đề xuất
 
 - **Chỉ Huy:**
-  - hỏi 6 câu ở mục 8;
+  - chép 6 câu trả lời ngày 19/11 (mục 8) vào các phiếu code liên quan; câu 4 chờ Lá Chắn xét;
   - đưa thiết kế cho Lá Chắn đọc (đầy đủ), nhất là mục 3.5 và mục 5;
   - nhờ Họa Sĩ xem mục 3, 4.3 trước khi lập phiếu J, L;
   - sửa nội dung phiếu T-140 A–F theo 7.1 trước khi lập phiếu code.
@@ -689,4 +706,4 @@ Mọi phiếu code: Soi Lỗi kiểm. Test không gọi AI, Cloudflare, Google, 
 
 ## Câu hỏi cho chủ dự án
 
-Xem mục 8 (6 câu, mỗi câu có khuyến nghị).
+Không còn câu nào: chủ dự án đã trả lời 6 câu ở mục 8 ngày 19/11 (cả 6 chọn A).
