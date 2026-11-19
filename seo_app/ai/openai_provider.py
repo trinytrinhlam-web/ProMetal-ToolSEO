@@ -42,6 +42,7 @@ from seo_app.ai.base import (
     library_error,
     model_label,
     prepare_images,
+    status_kind,
     token_limit_error,
     unreadable_error,
 )
@@ -59,13 +60,24 @@ TIMEOUT_SECONDS = 900.0
 
 
 class OpenAIProvider:
-    def __init__(self, api_key: str, client: openai.OpenAI | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        client: openai.OpenAI | None = None,
+        *,
+        single_attempt: bool = False,
+    ) -> None:
+        """``single_attempt``: thư viện không tự thử lại (``max_retries=0``), mỗi lần gọi một
+        request (lượt chạy tự động, T-148). Mặc định giữ như cũ (thử lại tối đa 3 lần)."""
         if client is None:
             # base_url cố định: biến môi trường OPENAI_BASE_URL không có tác dụng (W4).
             # OPENAI_CUSTOM_HEADERS bị bỏ qua (T-028).
             with ignoring_custom_headers():
                 client = openai.OpenAI(
-                    api_key=api_key, base_url=OPENAI_URL, timeout=TIMEOUT_SECONDS, max_retries=3
+                    api_key=api_key,
+                    base_url=OPENAI_URL,
+                    timeout=TIMEOUT_SECONDS,
+                    max_retries=0 if single_attempt else 3,
                 )
         self._client = client
 
@@ -130,27 +142,35 @@ class OpenAIProvider:
                 params.pop("reasoning")
                 response = self._client.responses.create(**params)
         except openai.AuthenticationError as exc:
-            raise AIError("Khóa OPENAI_API_KEY trong file .env không đúng.") from exc
+            raise AIError("Khóa OPENAI_API_KEY trong file .env không đúng.", kind="auth") from exc
         except openai.PermissionDeniedError as exc:
             raise AIError(
-                f"Tài khoản OpenAI không được dùng mô hình «{model_label(task.model)}»."
+                f"Tài khoản OpenAI không được dùng mô hình «{model_label(task.model)}».",
+                kind="model",
             ) from exc
         except openai.NotFoundError as exc:
             raise AIError(
                 f"Không có mô hình «{model_label(task.model)}». "
-                "Kiểm tra lại tên trong config/ai.toml."
+                "Kiểm tra lại tên trong config/ai.toml.",
+                kind="model",
             ) from exc
         except openai.RateLimitError as exc:
             if exc.code == "insufficient_quota":
-                raise AIError("Tài khoản OpenAI đã hết tiền (credit) hoặc hết hạn mức.") from exc
-            raise AIError("OpenAI đang giới hạn số lần gọi. Đợi một phút rồi thử lại.") from exc
+                raise AIError(
+                    "Tài khoản OpenAI đã hết tiền (credit) hoặc hết hạn mức.", kind="quota_day"
+                ) from exc
+            raise AIError(
+                "OpenAI đang giới hạn số lần gọi. Đợi một phút rồi thử lại.", kind="rate"
+            ) from exc
         except openai.APITimeoutError as exc:
-            raise AIError("OpenAI trả lời quá lâu. Bấm thử lại.") from exc
+            raise AIError("OpenAI trả lời quá lâu. Bấm thử lại.", kind="timeout") from exc
         except openai.APIConnectionError as exc:
             if caused_by_decoding(exc):
                 # Nội dung nén gzip/br hỏng: đã có trả lời, chỉ là đọc không được (LC-T028-3).
                 raise bad_response_error(VENDOR) from exc
-            raise AIError("Không kết nối được tới OpenAI. Kiểm tra mạng Internet.") from exc
+            raise AIError(
+                "Không kết nối được tới OpenAI. Kiểm tra mạng Internet.", kind="network"
+            ) from exc
         except openai.APIStatusError as exc:
             if exc.status_code == 400:
                 # Câu cố định, không chép thông điệp của máy chủ (S2). Mã lỗi và tên tham số
@@ -158,7 +178,10 @@ class OpenAIProvider:
                 code = getattr(exc, "code", None)
                 param = getattr(exc, "param", None)
                 raise bad_request_error("OpenAI", task, code, param) from exc
-            raise AIError(f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.") from exc
+            raise AIError(
+                f"OpenAI báo lỗi {exc.status_code}. Thử lại sau ít phút.",
+                kind=status_kind(exc.status_code),
+            ) from exc
         except openai.OpenAIError as exc:
             # Các lỗi còn lại của thư viện: chỉ nêu tên lỗi, không chép thông điệp thô.
             raise AIError(f"Lỗi khi gọi OpenAI ({type(exc).__name__}). Bấm thử lại.") from exc
@@ -216,9 +239,12 @@ def _parse(response: Any, task: TaskConfig, schema: type[T]) -> T:
     if status == "incomplete" and reason == "max_output_tokens":
         raise token_limit_error(task)
     if status == "incomplete" and reason == "content_filter":
-        raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")
+        raise AIError(
+            "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.", kind="refusal"
+        )
     if status in ("failed", "cancelled", "incomplete"):
-        raise AIError("OpenAI chưa trả lời xong. Bấm thử lại.")
+        # Chưa có câu trả lời trọn vẹn để dùng: như trả sai khuôn (lượt chạy thử lại một lần).
+        raise AIError("OpenAI chưa trả lời xong. Bấm thử lại.", kind="shape")
 
     texts: list[str] = []
     for item in _as_list(getattr(response, "output", None)):
@@ -230,16 +256,19 @@ def _parse(response: Any, task: TaskConfig, schema: type[T]) -> T:
         for content in _as_list(getattr(item, "content", None)):
             kind = getattr(content, "type", None)
             if kind == "refusal":
-                raise AIError("AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.")
+                raise AIError(
+                    "AI từ chối yêu cầu này. Thử diễn đạt lại từ khóa hoặc ghi chú.",
+                    kind="refusal",
+                )
             text = getattr(content, "text", None)
             if kind == "output_text" and isinstance(text, str) and text:
                 texts.append(text)
     if not texts:
-        raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.")
+        raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.", kind="shape")
     try:
         return schema.model_validate_json(texts[-1])
     except pydantic.ValidationError as exc:
-        raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.") from exc
+        raise AIError("AI trả về dữ liệu không đúng khuôn. Bấm thử lại.", kind="shape") from exc
 
 
 def _as_list(value: Any) -> list[Any]:

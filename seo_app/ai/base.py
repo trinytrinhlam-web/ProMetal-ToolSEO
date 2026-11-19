@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import threading
@@ -30,13 +31,15 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 # - "người-dùng:mật-khẩu@" trong địa chỉ (https://admin:matkhau@site…);
 # - tham số "key=" trong địa chỉ (Google hay để khóa ở "…?key=…"): che tới "&", dấu cách
 #   hoặc dấu nháy;
-# - giá trị của trường tên đúng "key" trong JSON/dict ("key": "…", 'key': '…').
+# - giá trị của trường tên đúng "key" trong JSON/dict ("key": "…", 'key': '…');
+# - token Cloudflare dạng mới (tiền tố "cfut_", LC-T140-2), ở bất kỳ đâu trong câu.
 _SECRET_NAMES = (
     "x-api-key", "api_key", "api-key", "apikey", "authorization", "password", "passwd",
     "token", "secret", "private_key", "private-key", "privatekey",
 )  # fmt: skip
 _SECRET_LIKE = re.compile(
     r"(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_\-]{8,}|AIza[0-9A-Za-z_\-]{16,})"
+    r"|cfut_[A-Za-z0-9_\-]{20,}"
     r"|(?:(?<=bearer)|(?<=basic))(?:\s*:\s*|\s+)[A-Za-z0-9._~+/=\-]{6,}"
     r"|(?:" + "|".join(f"(?<={re.escape(name)})" for name in _SECRET_NAMES) + r")"
     r"[\"']?[ \t]*[:=][ \t]*[\"']?[^\n\"']{4,}"
@@ -52,8 +55,57 @@ def redact_secrets(text: str) -> str:
     return _SECRET_LIKE.sub("[đã ẩn]", text)
 
 
+# Loại lỗi AI (T-148, thiết kế T-141 2.4): lượt chạy tự động biết nên chờ rồi thử lại hay dừng.
+# Lớp provider đặt loại từ mã lỗi số và trạng thái chuỗi cố định của máy chủ, không từ chữ máy
+# chủ viết (S2, LC-T141-13); câu tiếng Việt không đổi. Lỗi của Cloudflare (T-142) dùng cùng tên.
+AI_ERROR_KINDS = frozenset({
+    "busy",  # máy chủ bận: 500, 502, 503, 504 (Anthropic báo quá tải bằng 529)
+    "rate",  # 429: giới hạn số lần gọi theo phút
+    "quota_day",  # hết hạn mức ngày, hết tiền
+    "network",  # rớt mạng, không kết nối được
+    "timeout",  # quá giờ chờ (cả 408 của máy chủ)
+    "auth",  # khóa sai
+    "model",  # tên mô hình sai, tài khoản không được dùng mô hình
+    "bad_request",  # 400: máy chủ không nhận yêu cầu (thông số trong config/ai.toml)
+    "shape",  # trả về sai khuôn, dữ liệu lạ, chưa trả lời xong
+    "refusal",  # bị chặn, AI từ chối
+    "token_limit",  # bài dài quá max_tokens
+    "other",
+})  # fmt: skip
+# Trần số giây chờ máy chủ gợi ý (RetryInfo ``retryDelay``), LC-T141-13.
+MAX_RETRY_AFTER = 120.0
+
+
+def clamp_retry_after(seconds: object) -> float | None:
+    """Số giây chờ hợp lệ (0 tới ``MAX_RETRY_AFTER``), ``None`` nếu không phải số dùng được."""
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
+        return None
+    if not math.isfinite(seconds) or seconds < 0:
+        return None
+    return min(float(seconds), MAX_RETRY_AFTER)
+
+
 class AIError(RuntimeError):
-    """Lỗi khi gọi AI. Thông điệp viết bằng tiếng Việt để hiện thẳng cho người dùng."""
+    """Lỗi khi gọi AI. Thông điệp viết bằng tiếng Việt để hiện thẳng cho người dùng.
+
+    ``kind``: một trong ``AI_ERROR_KINDS`` (mặc định ``"other"``), để lượt chạy tự động biết nên
+    chờ rồi thử lại hay dừng. ``retry_after``: số giây máy chủ bảo chờ, đã chặn trần
+    ``MAX_RETRY_AFTER`` (``None``: không biết).
+    """
+
+    kind: str = "other"
+    retry_after: float | None = None
+
+    def __init__(
+        self, *args: object, kind: str | None = None, retry_after: float | None = None
+    ) -> None:
+        super().__init__(*args)
+        if kind is not None:
+            if kind not in AI_ERROR_KINDS:
+                raise ValueError(f"Loại lỗi AI không có trong danh sách: {kind!r}")
+            self.kind = kind
+        if retry_after is not None:
+            self.retry_after = clamp_retry_after(retry_after)
 
 
 class TokenLimitError(AIError):
@@ -62,6 +114,28 @@ class TokenLimitError(AIError):
     Lớp riêng để nơi gọi (ví dụ thử mù, nơi giới hạn không đọc từ ``config/ai.toml``) thay câu
     gợi ý cho đúng cách người dùng sửa được.
     """
+
+    kind = "token_limit"
+
+
+# Mã HTTP dùng chung của các hãng → loại lỗi (T-141 2.4). Chỉ số, không đọc chữ máy chủ.
+_BUSY_CODES = frozenset({500, 502, 503, 504, 529})
+
+
+def status_kind(code: object) -> str:
+    """Loại lỗi theo mã HTTP ``code``; mã không có trong bảng (hay không phải số): ``"other"``."""
+    if isinstance(code, bool) or not isinstance(code, int):
+        return "other"
+    if code in _BUSY_CODES:
+        return "busy"
+    return {
+        429: "rate",
+        408: "timeout",
+        401: "auth",
+        403: "model",
+        404: "model",
+        400: "bad_request",
+    }.get(code, "other")
 
 
 def token_limit_error(task: TaskConfig) -> TokenLimitError:
@@ -111,7 +185,7 @@ def bad_response_message(vendor: str) -> str:
 
 
 def bad_response_error(vendor: str) -> AIError:
-    return AIError(bad_response_message(vendor))
+    return AIError(bad_response_message(vendor), kind="shape")
 
 
 def connection_lost_message(vendor: str) -> str:
@@ -212,9 +286,9 @@ def unreadable_error(exc: BaseException, vendor: str) -> AIError | None:
     """
     kind = network_error_kind(exc)
     if kind == "timeout":
-        return AIError(f"{vendor} trả lời quá lâu. Bấm thử lại.")
+        return AIError(f"{vendor} trả lời quá lâu. Bấm thử lại.", kind="timeout")
     if kind == "network":
-        return AIError(connection_lost_message(vendor))
+        return AIError(connection_lost_message(vendor), kind="network")
     if kind == "decode" or is_bad_response(exc):
         return bad_response_error(vendor)
     return None
@@ -462,7 +536,8 @@ def bad_request_error(
     )
     return AIError(
         f"{vendor} không nhận yêu cầu (lỗi 400{note}) với mô hình «{model_label(task.model)}». "
-        f"{advice}"
+        f"{advice}",
+        kind="bad_request",
     )
 
 

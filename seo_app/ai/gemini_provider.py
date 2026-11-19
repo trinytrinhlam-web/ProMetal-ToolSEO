@@ -50,9 +50,11 @@ from seo_app.ai.base import (
     TaskConfig,
     bad_request_error,
     bad_response_message,
+    clamp_retry_after,
     library_error,
     model_label,
     prepare_images,
+    status_kind,
     token_limit_error,
 )
 
@@ -69,6 +71,16 @@ THINKING_LEVELS = {
 TIMEOUT_MS = 900_000
 # Thử lại tối đa 2 lần khi máy chủ bận (429, 5xx) hoặc rớt mạng, giống Anthropic/OpenAI.
 RETRY = types.HttpRetryOptions(attempts=3)
+# Lượt chạy tự động (T-148, LC-T141-12): thư viện không tự thử lại (thư viện tự thử lại thì sổ đếm
+# của app không thấy các request đó); mọi lần thử lại do lượt chạy làm.
+SINGLE_ATTEMPT = types.HttpRetryOptions(attempts=1)
+# Đọc chi tiết lỗi 429 (google.rpc QuotaFailure, RetryInfo trong error.details) để nhận ra hết hạn
+# mức theo ngày và số giây máy chủ bảo chờ. TẮT tới khi Chỉ Huy chép được khuôn thật ở buổi thử
+# (T-141 7.4.2, LC-T141-13): tài liệu Google (19/11) không ghi trường nào như vậy. Tới đó mọi 429
+# không có chữ thanh toán là «rate».
+READ_QUOTA_DETAILS = False
+# Trạng thái chuỗi cố định của Google khi không có mã số dùng được (mã 500, 503, 504).
+_BUSY_STATUSES = frozenset({"INTERNAL", "UNAVAILABLE", "DEADLINE_EXCEEDED"})
 # Mô hình đời cũ không dùng được tìm web cùng kết quả có khuôn.
 _LEGACY_MODEL = re.compile(r"^(?:models/)?gemini-[12](?:[.-]|$)", re.IGNORECASE)
 # Lỗi mạng: google-genai không bọc lại mà ném thẳng lỗi của httpx (thư viện nó dùng để gọi).
@@ -114,13 +126,19 @@ def is_legacy_model(model: str) -> bool:
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str, client: Any | None = None) -> None:
+    def __init__(
+        self, api_key: str, client: Any | None = None, *, single_attempt: bool = False
+    ) -> None:
+        """``single_attempt``: mỗi lần gọi chỉ gửi một request, thư viện không tự thử lại khi
+        429, 5xx, rớt mạng (lượt chạy tự động, T-148). Mặc định giữ như cũ (thử lại 2 lần)."""
         self._client = client or genai.Client(
             api_key=api_key,
             vertexai=False,
             # base_url cố định: biến môi trường GOOGLE_GEMINI_BASE_URL không có tác dụng (W4).
             http_options=types.HttpOptions(
-                base_url=GEMINI_URL, timeout=TIMEOUT_MS, retry_options=RETRY
+                base_url=GEMINI_URL,
+                timeout=TIMEOUT_MS,
+                retry_options=SINGLE_ATTEMPT if single_attempt else RETRY,
             ),
             debug_config=no_debug_config(),
         )
@@ -165,7 +183,9 @@ class GeminiProvider:
                 )
                 text = _text(notes, task)
                 if not text.strip():
-                    raise AIError("AI tìm web nhưng không ghi chép được gì. Bấm thử lại.")
+                    raise AIError(
+                        "AI tìm web nhưng không ghi chép được gì. Bấm thử lại.", kind="shape"
+                    )
                 prompt = prompt + FORMAT_PROMPT.format(notes=_frame(text))
                 response = self._call(
                     task, system=system, prompt=prompt, schema=schema, search=False, images=images
@@ -182,7 +202,7 @@ class GeminiProvider:
         except errors.APIError as exc:
             raise _api_error(exc, task) from exc
         except httpx.TimeoutException as exc:
-            raise AIError("Gemini trả lời quá lâu. Bấm thử lại.") from exc
+            raise AIError("Gemini trả lời quá lâu. Bấm thử lại.", kind="timeout") from exc
         except (
             json.JSONDecodeError,
             errors.UnknownApiResponseError,
@@ -192,9 +212,11 @@ class GeminiProvider:
             # Mã 200 nhưng không phải JSON của Gemini (Wi-Fi bắt đăng nhập, proxy công ty trả
             # trang HTML), dữ liệu nén hỏng, hoặc JSON sai kiểu so với khuôn của thư viện (thư
             # viện kiểm bằng pydantic): không chép thông điệp thô.
-            raise AIError(BAD_RESPONSE) from exc
+            raise AIError(BAD_RESPONSE, kind="shape") from exc
         except httpx.RequestError as exc:
-            raise AIError("Không kết nối được tới Gemini. Kiểm tra mạng Internet.") from exc
+            raise AIError(
+                "Không kết nối được tới Gemini. Kiểm tra mạng Internet.", kind="network"
+            ) from exc
         return _parse(response, task, schema)
 
     def _call(
@@ -281,30 +303,103 @@ def _frame(text: str) -> str:
     return _block("du_lieu_tham_khao", text)
 
 
+QUOTA_DAY_MESSAGE = "Tài khoản Gemini đã hết tiền hoặc hết hạn mức (quota) trong ngày."
+
+
 def _api_error(exc: errors.APIError, task: TaskConfig) -> AIError:
-    """Đổi lỗi của Gemini sang ``AIError`` tiếng Việt, không chép khóa hay thông điệp thô."""
+    """Đổi lỗi của Gemini sang ``AIError`` tiếng Việt, không chép khóa hay thông điệp thô.
+
+    ``kind`` đặt từ mã số ``exc.code`` và trạng thái chuỗi cố định ``exc.status``; chữ máy chủ chỉ
+    dùng ở các chỗ đã có từ trước (khóa sai trả 400, từ thanh toán khi 429, gợi ý 400 đã biết).
+    """
     code = exc.code
     status = str(exc.status or "").upper()
     message = str(exc.message or "")
     lower = message.lower()
     if code == 401 or status == "UNAUTHENTICATED" or _bad_key(exc):
-        return AIError("Khóa GEMINI_API_KEY trong file .env không đúng.")
+        return AIError("Khóa GEMINI_API_KEY trong file .env không đúng.", kind="auth")
     if code == 403 or status == "PERMISSION_DENIED":
-        return AIError(f"Tài khoản Gemini không được dùng mô hình «{model_label(task.model)}».")
+        return AIError(
+            f"Tài khoản Gemini không được dùng mô hình «{model_label(task.model)}».", kind="model"
+        )
     if code == 404 or status == "NOT_FOUND":
         return AIError(
-            f"Không có mô hình «{model_label(task.model)}». Kiểm tra lại tên trong config/ai.toml."
+            f"Không có mô hình «{model_label(task.model)}». Kiểm tra lại tên trong config/ai.toml.",
+            kind="model",
         )
     if code == 429 or status == "RESOURCE_EXHAUSTED":
         if "billing" in lower or "credit" in lower or "prepayment" in lower:
-            return AIError("Tài khoản Gemini đã hết tiền hoặc hết hạn mức (quota) trong ngày.")
-        return AIError("Gemini đang giới hạn số lần gọi. Đợi một phút rồi thử lại.")
+            return AIError(QUOTA_DAY_MESSAGE, kind="quota_day")
+        per_day, retry_after = quota_details(exc.details) if READ_QUOTA_DETAILS else (False, None)
+        if per_day:
+            return AIError(QUOTA_DAY_MESSAGE, kind="quota_day", retry_after=retry_after)
+        return AIError(
+            "Gemini đang giới hạn số lần gọi. Đợi một phút rồi thử lại.",
+            kind="rate",
+            retry_after=retry_after,
+        )
     if code == 400:
         # Câu cố định kèm trạng thái (INVALID_ARGUMENT…), không chép thông điệp máy chủ (S2).
         # Lỗi đã biết thì kèm gợi ý viết sẵn (chỉ dùng câu máy chủ để nhận ra, không chép lại).
         hint = next((text for phrase, text in KNOWN_400_HINTS if phrase in lower), None)
         return bad_request_error("Gemini", task, status, hint=hint)
-    return AIError(f"Gemini báo lỗi {code}. Thử lại sau ít phút.")
+    kind = status_kind(code)
+    if kind == "other" and status in _BUSY_STATUSES:
+        kind = "busy"
+    return AIError(f"Gemini báo lỗi {code}. Thử lại sau ít phút.", kind=kind)
+
+
+# Chi tiết lỗi theo khuôn google.rpc (chỉ đọc khi READ_QUOTA_DETAILS bật).
+_QUOTA_FAILURE = "type.googleapis.com/google.rpc.QuotaFailure"
+_RETRY_INFO = "type.googleapis.com/google.rpc.RetryInfo"
+# Duration của protobuf ở dạng JSON: số giây, có thể có phần lẻ, đuôi «s» (ví dụ "13s", "1.5s").
+_DURATION = re.compile(r"[0-9]{1,9}(?:\.[0-9]{1,9})?s")
+# Đọc tối đa chừng này phần tử (phòng JSON lạ rất dài).
+_MAX_DETAIL_ITEMS = 20
+
+
+def quota_details(details: object) -> tuple[bool, float | None]:
+    """Đọc ``error.details[]`` của lỗi 429 (``exc.details`` là JSON trả lời của máy chủ).
+
+    Trả ``(hết hạn mức theo ngày, số giây chờ)``: hết hạn mức ngày khi có phần tử ``@type``
+    QuotaFailure mà một ``violations[].quotaId`` chứa «PerDay»; số giây chờ lấy từ ``retryDelay``
+    của RetryInfo, chặn trần ``MAX_RETRY_AFTER`` (120). Khuôn lạ hay thiếu: ``(False, None)``.
+    Không bao giờ chép chữ trong chi tiết ra ngoài.
+    """
+    per_day = False
+    retry_after: float | None = None
+    for item in _detail_items(details):
+        kind = item.get("@type")
+        if kind == _QUOTA_FAILURE:
+            violations = item.get("violations")
+            if isinstance(violations, list):
+                per_day = per_day or any(
+                    isinstance(v, dict)
+                    and isinstance(v.get("quotaId"), str)
+                    and "PerDay" in v["quotaId"]
+                    for v in violations[:_MAX_DETAIL_ITEMS]
+                )
+        elif kind == _RETRY_INFO and retry_after is None:
+            retry_after = clamp_retry_after(duration_seconds(item.get("retryDelay")))
+    return per_day, retry_after
+
+
+def _detail_items(details: object) -> list[dict[str, Any]]:
+    """Các phần tử dạng dict của ``details`` trong ``{"error": {…}}`` (hay ``{…}`` không bọc)."""
+    if not isinstance(details, dict):
+        return []
+    error = details.get("error", details)
+    items = error.get("details") if isinstance(error, dict) else None
+    if not isinstance(items, list):
+        return []
+    return [item for item in items[:_MAX_DETAIL_ITEMS] if isinstance(item, dict)]
+
+
+def duration_seconds(value: object) -> float | None:
+    """Số giây của một Duration protobuf dạng chuỗi (``"13s"``, ``"0.5s"``); sai dạng: ``None``."""
+    if not isinstance(value, str) or not _DURATION.fullmatch(value):
+        return None
+    return float(value[:-1])
 
 
 def _bad_key(exc: errors.APIError) -> bool:
@@ -319,15 +414,15 @@ def _text(response: Any, task: TaskConfig) -> str:
     """Chữ trong câu trả lời, sau khi kiểm tra không bị chặn hay cắt ngang."""
     feedback = getattr(response, "prompt_feedback", None)
     if feedback is not None and getattr(feedback, "block_reason", None):
-        raise AIError(REFUSAL)
+        raise AIError(REFUSAL, kind="refusal")
     candidates = getattr(response, "candidates", None) or []
     if not candidates:
-        raise AIError(BAD_SHAPE)
+        raise AIError(BAD_SHAPE, kind="shape")
     reason = getattr(candidates[0], "finish_reason", None)
     if reason == types.FinishReason.MAX_TOKENS:
         raise token_limit_error(task)
     if reason in _BLOCKED:
-        raise AIError(REFUSAL)
+        raise AIError(REFUSAL, kind="refusal")
     content = getattr(candidates[0], "content", None)
     parts = getattr(content, "parts", None) or []
     # Bỏ phần "suy nghĩ" (thought) nếu có, chỉ lấy câu trả lời.
@@ -339,8 +434,8 @@ def _text(response: Any, task: TaskConfig) -> str:
 def _parse(response: Any, task: TaskConfig, schema: type[T]) -> T:
     text = _text(response, task)
     if not text.strip():
-        raise AIError(BAD_SHAPE)
+        raise AIError(BAD_SHAPE, kind="shape")
     try:
         return schema.model_validate_json(text)
     except pydantic.ValidationError as exc:
-        raise AIError(BAD_SHAPE) from exc
+        raise AIError(BAD_SHAPE, kind="shape") from exc

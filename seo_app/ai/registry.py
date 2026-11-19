@@ -129,7 +129,7 @@ def _positive_int(task: str, key: str, value: object) -> int:
     return value
 
 
-def make_provider(provider: str, settings: Settings) -> AIProvider:
+def make_provider(provider: str, settings: Settings, *, single_attempt: bool = False) -> AIProvider:
     """Tạo provider của một hãng. Báo ``AIError`` nếu chưa hỗ trợ hoặc thiếu khóa API."""
     label, key_name = PROVIDERS[provider]
     if provider not in SUPPORTED:
@@ -152,7 +152,8 @@ def make_provider(provider: str, settings: Settings) -> AIProvider:
             from seo_app.ai.openai_provider import OpenAIProvider as cls
         else:
             from seo_app.ai.gemini_provider import GeminiProvider as cls
-        return cls(api_key)
+        # single_attempt: thư viện của hãng không tự thử lại (lượt chạy tự động, T-148).
+        return cls(api_key, single_attempt=True) if single_attempt else cls(api_key)
     except SETUP_ERRORS as exc:
         raise library_error(label) from exc
 
@@ -165,6 +166,10 @@ class AIRouter:
     trong ``prepare`` (mặc định ``WRITING_TASKS``) được tạo ngay lúc dựng: thiếu khóa hay thư viện
     hỏng thì báo ở đây, trang Soạn bài khóa các nút AI. Trang chỉ dùng việc khác (ví dụ viết alt)
     truyền ``prepare=()`` hoặc đúng việc của trang, để không đòi khóa của các việc viết bài.
+
+    ``single_attempt=True`` (chỉ lượt chạy tự động, T-149): provider tạo ở chế độ thư viện không
+    tự thử lại, để mọi lần thử lại do lượt chạy làm và sổ đếm thấy đủ request (LC-T141-12). Các
+    trang đang có giữ mặc định (thư viện tự thử lại như cũ).
     """
 
     def __init__(
@@ -172,19 +177,29 @@ class AIRouter:
         tasks: dict[str, TaskConfig],
         settings: Settings,
         prepare: Iterable[str] = WRITING_TASKS,
+        *,
+        single_attempt: bool = False,
     ) -> None:
         self.tasks = tasks
         self._settings = settings
+        self._single_attempt = single_attempt
         self._providers: dict[str, AIProvider] = {}
         for name in prepare:
             if name in tasks:
                 self._provider(tasks[name])
 
+    @property
+    def single_attempt(self) -> bool:
+        return self._single_attempt
+
     def _provider(self, task: TaskConfig) -> AIProvider:
         provider = self._providers.get(task.provider)
         if provider is None:
             # Lỗi (thiếu khóa, thư viện hỏng) không được nhớ: lần gọi sau thử tạo lại.
-            provider = make_provider(task.provider, self._settings)
+            if self._single_attempt:
+                provider = make_provider(task.provider, self._settings, single_attempt=True)
+            else:
+                provider = make_provider(task.provider, self._settings)
             self._providers[task.provider] = provider
         return provider
 
