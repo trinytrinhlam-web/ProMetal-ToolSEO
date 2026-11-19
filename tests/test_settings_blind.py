@@ -7,6 +7,7 @@ môi trường; ``.env`` trỏ sang file tạm.
 from __future__ import annotations
 
 import pytest
+from ai_config_samples import ENV_KEYS
 from streamlit.testing.v1 import AppTest
 
 import seo_app.config as config
@@ -155,13 +156,18 @@ def test_only_providers_with_key_can_be_chosen(project_root, monkeypatch):
 
 
 def test_model_name_suggested_from_config_and_follows_provider(project_root, monkeypatch):
-    set_keys(monkeypatch, "ANTHROPIC_API_KEY", "OPENAI_API_KEY")
+    # T-138: không ghim hãng đang ghi trong config/ai.toml (18/11 tạm Gemini, trước đó Claude):
+    # chọn hãng có trong cấu hình thì ô tên mô hình điền đúng mô hình đang dùng; đổi sang hãng khác
+    # thì đổi theo gợi ý của hãng đó.
+    suggestions = blind_test.model_suggestions(blind_test.task_models())
+    configured = next(p for p in ("anthropic", "gemini", "openai") if suggestions[p])
+    other = "openai" if configured != "openai" else "anthropic"
+    set_keys(monkeypatch, *(ENV_KEYS[configured], ENV_KEYS[other]))
     at = open_models_tab(project_root)
-    configured = blind_test.model_suggestions(blind_test.task_models())["anthropic"][0]
-    assert at.text_input(key="blind-cand-0-model").value == configured
-    at.selectbox(key="blind-cand-0-provider").set_value("openai").run()
-    suggested = (blind_test.model_suggestions(blind_test.task_models())["openai"] or [""])[0]
-    assert at.text_input(key="blind-cand-0-model").value == suggested
+    at.selectbox(key="blind-cand-0-provider").set_value(configured).run()
+    assert at.text_input(key="blind-cand-0-model").value == suggestions[configured][0]
+    at.selectbox(key="blind-cand-0-provider").set_value(other).run()
+    assert at.text_input(key="blind-cand-0-model").value == (suggestions[other] or [""])[0]
 
 
 def test_three_candidates(project_root, monkeypatch, fake_run):

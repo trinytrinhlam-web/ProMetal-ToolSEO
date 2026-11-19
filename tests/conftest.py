@@ -228,6 +228,25 @@ def _never_touch_real_image_tags(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(image_tags, "DEFAULT_IMAGE_TAGS_FILE", folder / "image_tags.sqlite")
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_real_caches(monkeypatch, tmp_path_factory):
+    """Test không bao giờ đọc/ghi ba file lưu tạm thật trong ``data/`` (T-138 yêu cầu 6): danh
+    sách bài đã đăng ``site_index``, kế hoạch ``plan_cache``, số liệu Search Console
+    ``search_cache``. Trước đây test có WordPress giả (ví dụ trang Soạn bài qua
+    ``cached_site_index``: chỉ mở kho cũng tạo file) ghi vào ``data/`` của thư mục chạy test. Các
+    trang và kho đọc ``DEFAULT_…_FILE`` của module lúc chạy, nên trỏ cả ba sang thư mục tạm riêng
+    cho từng test; test tự trỏ chỗ khác thì vẫn đè được. Kho nháp, kho thẻ ảnh: hai fixture trên.
+    ``tests/test_t138_khong_ghi_data_that.py`` ghim việc này (kể cả kho mới thêm sau)."""
+    import seo_app.storage.plan_cache as plan_cache
+    import seo_app.storage.search_cache as search_cache
+    import seo_app.storage.site_index as site_index
+
+    folder = tmp_path_factory.mktemp("luu-tam")
+    monkeypatch.setattr(site_index, "DEFAULT_SITE_INDEX_FILE", folder / "site_index.sqlite")
+    monkeypatch.setattr(plan_cache, "DEFAULT_PLAN_CACHE_FILE", folder / "plan_cache.sqlite")
+    monkeypatch.setattr(search_cache, "DEFAULT_SEARCH_CACHE_FILE", folder / "search_cache.sqlite")
+
+
 @pytest.fixture
 def project_root() -> Path:
     return PROJECT_ROOT

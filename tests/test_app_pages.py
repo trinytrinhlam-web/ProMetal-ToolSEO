@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from ai_config_samples import configured_key_envs
 from fake_ai import DRAFT, OUTLINE, RESEARCH, STIFF, VAGUE_FIX, FakeProvider
 from streamlit.testing.v1 import AppTest
 
@@ -94,7 +95,9 @@ def write_page(project_root) -> AppTest:
 
 def test_without_api_key_ai_buttons_are_locked(project_root):
     at = write_page(project_root)
-    assert any("ANTHROPIC_API_KEY" in w.value for w in at.warning)
+    # Câu báo nêu khóa của hãng đang được cấu hình (18/11: Gemini; trước đó: Claude; T-138).
+    missing = configured_key_envs()
+    assert any(name in w.value for w in at.warning for name in missing)
     at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
     assert button(at, "🔎 Phân tích từ khóa").disabled
 
@@ -115,7 +118,12 @@ def test_full_flow_research_outline_write(project_root, fake_ai):
     at = write_page(project_root)
     at.text_input(key="keyword").input("so sánh inox 201 và 304").run()
     button(at, "🔎 Phân tích từ khóa").click().run()
-    assert any(RESEARCH.competitors[0].missing in m.value for m in at.markdown)
+    shown = [m.value for m in at.markdown]
+    assert any(RESEARCH.new_angles[0] in m for m in shown)
+    # Bài đối thủ chỉ hiện khi việc nghiên cứu được tìm web (T-138: tắt thì AI không đọc bài nào,
+    # mọi «đối thủ» AI trả về bị bỏ; 18/11 chủ dự án tạm tắt).
+    searches_web = ai_registry.load_ai_config()["research"].web_search
+    assert any(RESEARCH.competitors[0].missing in m for m in shown) is searches_web
 
     at.text_area(key="real-Kinh nghiệm của xưởng").input("Cổng 201 gần biển hay gỉ").run()
     button(at, "Tiếp: tạo dàn ý →").click().run()

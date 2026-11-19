@@ -2098,6 +2098,20 @@ def build_writer() -> ContentWriter:
     return ContentWriter(AIRouter(load_ai_config(), load_settings()), load_rules())
 
 
+MSG_NO_WEB_SEARCH = "Đang tắt tìm Google: AI không đọc bài đối thủ."
+
+
+def research_searches_web() -> bool:
+    """Việc nghiên cứu có được tìm web (``[tasks.research]`` ``web_search``; T-138). Chỉ đọc file
+    cấu hình, không tạo AI, không cần khóa. Cấu hình lỗi: coi như có (câu báo lỗi cấu hình đã hiện ở
+    chỗ khác, không thêm câu nhắc có thể sai)."""
+    try:
+        task = load_ai_config().get("research")
+    except AIError:
+        return True
+    return task is None or task.web_search
+
+
 def ai_call(spinner: str, fn, *args, **kwargs):
     """Chạy một bước AI, hiện vòng quay; lỗi thì báo bằng tiếng Việt và trả về None."""
     try:
@@ -2187,12 +2201,17 @@ def step_prepare(writer: ContentWriter | None) -> None:
     kw_col, btn_col = st.columns([4, 1.4], vertical_alignment="bottom")
     kw_col.text_input("Từ khóa chính", key="keyword", placeholder="ví dụ: so sánh inox 201 và 304")
     research: Research | None = S.research
+    searches_web = research_searches_web()
+    if not searches_web:
+        st.caption(MSG_NO_WEB_SEARCH)
     label = "🔄 Phân tích lại" if research else "🔎 Phân tích từ khóa"
     if btn_col.button(
         label, type="primary", width="stretch", disabled=writer is None or not keyword()
     ):
         result = ai_call(
-            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)",
+            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)"
+            if searches_web
+            else "AI đang phân tích từ khóa…",
             writer.research,
             keyword(),
         )
@@ -2205,6 +2224,9 @@ def step_prepare(writer: ContentWriter | None) -> None:
         st.info(
             "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì và đọc các "
             "bài đứng đầu Google để tìm chỗ họ còn thiếu."
+            if searches_web
+            else "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì, bài của "
+            "mình nên có thêm gì và người đọc hay hỏi gì."
         )
     else:
         if S.research_keyword != keyword():
@@ -2212,17 +2234,28 @@ def step_prepare(writer: ContentWriter | None) -> None:
                 f"Kết quả dưới đây là của từ khóa «{S.research_keyword}». "
                 "Bấm Phân tích lại cho từ khóa mới."
             )
-        left, right = st.columns(2, gap="medium")
-        with left, st.container(border=True, height="stretch"):
+        # Tắt tìm Google thì không có bài đối thủ (code đã bỏ): không hiện khung đối thủ trống,
+        # khung ý định chiếm cả hàng (T-138, SL-T138-3). Kết quả cũ còn bài đối thủ thật (phân
+        # tích lúc còn tìm Google) thì vẫn hiện, vì dàn ý vẫn dùng các bài đó.
+        if searches_web or research.competitors:
+            left, right = st.columns(2, gap="medium")
+            intent_box = left.container(border=True, height="stretch")
+        else:
+            right = None
+            intent_box = st.container(border=True)
+        with intent_box:
             st.markdown("#### 🎯 Người tìm từ khóa này muốn gì?")
             for line in research.intent:
                 st.markdown(f"- {line}")
             st.markdown(f"**Dạng bài hợp nhất:** {research.article_type}")
-        with right, st.container(border=True, height="stretch"):
-            st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
-            for c in research.competitors:
-                title = markdown_link(c.title, c.url)
-                st.markdown(f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]")
+        if right is not None:
+            with right.container(border=True, height="stretch"):
+                st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
+                for c in research.competitors:
+                    title = markdown_link(c.title, c.url)
+                    st.markdown(
+                        f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]"
+                    )
         with st.container(border=True):
             st.markdown("#### ✨ Bài của mình phải có thêm")
             for angle in research.new_angles:
