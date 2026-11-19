@@ -43,3 +43,4 @@ Quyết định này **thay** các quyết định cũ: duyệt dàn ý trước
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-19 theo 3 câu trả lời của chủ dự án. Buổi thử thật Hẹn giờ/Đăng ngay đang dừng ở Ca 3 (làm tiếp khi chủ dự án rảnh). Worktree `wt-T-141`, nhánh `team/T-141` từ `main`.
+- 2026-11-19 (Chỉ Huy B): thiết kế Thợ Máy 5f5c38e (luồng 1 bài, chạy lâu, màn hình duyệt cuối, «Viết các bài tới hạn», hạn mức, phiếu A–F sửa + G, H, J, K, L). Chủ dự án thêm: không nhúng trình duyệt chạy Flow, không làm đường Flow tay; Cloudflare tự tạo ảnh; prompt ảnh rất chi tiết từng thành phần. 6 câu mục 8: chọn cả 6 khuyến nghị A (alt ảnh thật không gửi ảnh; dòng quá hạn viết trước, hẹn ngày mai; 5 bài chờ duyệt thì khóa nút; Ghi SEO bật sẵn — Lá Chắn xét; dùng Tiêu đề dự kiến khi hợp lệ; đo hạn mức Gemini trước rồi quyết).
