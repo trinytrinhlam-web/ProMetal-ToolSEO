@@ -104,6 +104,21 @@ model = "gemini-3.8-flash"
 effort = "low"
 max_tokens = 2000
 
+# ---------------------------------------------------------------- chế độ tự động
+# Mục [auto] (thiết kế T-141): nhịp gọi AI khi app tự soạn bài («Soạn tự động», «Viết các bài tới
+# hạn»). Đây không phải một việc AI nên không có provider, model. Thiếu mục hay thiếu dòng thì
+# chế độ tự động dùng 6 giây và 0 (không chặn).
+[auto]
+# min_seconds_between_calls: hai lần gọi Gemini liền nhau cách nhau ít nhất bấy nhiêu giây. 6 giây
+#   là không quá 10 lần mỗi phút, để gói miễn phí ít báo «Gemini đang giới hạn số lần gọi».
+min_seconds_between_calls = 6
+# gemini_requests_per_day: số lần gọi Gemini tối đa mỗi ngày. Ngày của Google đặt lại lúc nửa đêm
+#   giờ Thái Bình Dương: 15:00 giờ Việt Nam từ tuần đầu tháng 11 tới tuần thứ hai của tháng 3,
+#   14:00 trong thời gian còn lại. 0 = chưa biết: app không chặn, chỉ đếm số lần đã gọi.
+#   Xem số thật của gói đang dùng trong Google AI Studio rồi ghi vào đây. App chỉ đếm lần gọi của
+#   máy này; Google tính hạn mức theo project, nên hai máy dùng chung khóa thì dùng chung hạn mức.
+gemini_requests_per_day = 0
+
 # ---------------------------------------------------------------- tạo ảnh minh họa (đang tắt)
 # Quyết định 4A (2026-10-19): tạo ảnh bằng Gemini. Mục dưới đây ĐANG TẮT (có dấu # ở đầu dòng)
 # vì phần mềm chưa có chức năng tạo ảnh (phiếu T-053). Nếu bật sớm, trang Soạn bài sẽ đòi khóa
