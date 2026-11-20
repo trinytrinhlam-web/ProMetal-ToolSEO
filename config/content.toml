@@ -171,6 +171,58 @@ tot = "Minh họa cửa cuốn nhà phố đang mở một nửa"
 xau = "Cửa cuốn nhà chị Lan sau khi Pro-Metal sửa xong"
 vi_sao = "Ảnh AI không được gắn tên khách hay «sau khi sửa»"
 
+# LƯU Ý: quy tắc (rules) và ví dụ ([[image_prompt.examples]], kể cả bản «xau») của mục
+# [image_prompt] được gửi NGUYÊN VĂN cho hãng AI (việc [tasks.image_prompt] trong config/ai.toml)
+# mỗi lần viết chữ cho các chỗ ảnh của bài. Chỉ dùng thông tin bịa; không bao giờ chép tên khách,
+# địa chỉ, số điện thoại thật vào đây. Dòng bắt đầu bằng # chỉ là ghi chú cho người sửa file,
+# không gửi đi.
+[image_prompt]
+# Luật viết prompt tiếng Anh cho ảnh minh họa AI (mô hình FLUX trên Cloudflare vẽ) và dòng tóm tắt
+# tiếng Việt. Mục này chỉ BỔ SUNG: kiểu ảnh, mệnh đề an toàn, đuôi an toàn, các danh sách chọn
+# (người, góc máy, ống kính, ánh sáng, bố cục, vị trí) và bộ kiểm (không chữ số, không link, không
+# tên doanh nghiệp, tên khu vực…) nằm cố định trong phần mềm; sửa ở đây không bỏ được các điều đó.
+rules = [
+  # Chung
+  "Ảnh AI chỉ minh họa khái niệm: một bộ phận (bản lề, ray, bánh xe, lá cửa, ổ khóa), một dấu hiệu hư (gỉ, xệ, cong, kẹt, trật ray, mòn), một dụng cụ hay một bước làm, kiểu dáng chung. Không bao giờ là công trình, nhà khách hay khu vực cụ thể",
+  "Viết tiếng Anh thường, tả cái nhìn thấy được; không tên riêng, không tên doanh nghiệp, khách, đường, khu vực; không chữ số (viết «standard lens», không viết số milimét)",
+  "Không nhắc tới chữ, biển hiệu, logo, số nhà, biển số xe, số điện thoại, thương hiệu, hình mờ hay mặt người, kể cả để nói «không có»: mô hình vẽ ảnh dễ vẽ đúng thứ được nhắc. Muốn bề mặt trơn thì tả «plain», «unmarked»",
+  # Từng thành phần tự do
+  "Vật chính: tên bộ phận hay loại cửa cụ thể, dưới 70 ký tự: «a rusted hinge on a black wrought iron gate», không phải «a gate»",
+  "Cỡ, chất liệu, màu: dưới 50 ký tự, đúng vật chính: «flat steel bars, chipped matte black paint»",
+  "Tình trạng hư hay thao tác đang làm: dưới 70 ký tự, đúng điều mô tả chỗ ảnh nói: «orange-brown rust around the hinge pin», hay «a gloved hand brushing grease onto the hinge pin»",
+  "Chi tiết phụ: tối đa ba, mỗi chi tiết dưới 35 ký tự, chọn vị trí trong danh sách; chỉ vật giúp hiểu ảnh (chốt cửa, ray, bánh xe, dụng cụ), không đồ trang trí",
+  "Bối cảnh, nền: dưới 50 ký tự, chung chung: «a narrow alley behind the gate», «a plain workshop wall»; không tên nơi, không bảng hiệu",
+  "Màu chủ đạo: hai hay ba màu, dưới 25 ký tự: «black, rust orange and grey»",
+  "Người: chọn «Empty scene» khi ảnh chỉ cần vật; chọn bàn tay đeo găng khi tả một thao tác; chọn người ở xa quay lưng chỉ khi cần thấy cỡ cánh cửa so với người",
+  # Tóm tắt tiếng Việt
+  "Dòng tóm tắt (summary_vi): một câu tiếng Việt dưới 120 ký tự, tả ảnh sẽ tạo để chủ xưởng đọc: «Bản lề cổng sắt đen bị gỉ, tay thợ đeo găng quét mỡ vào chốt, nền hẻm mờ». Không link, không số điện thoại",
+]
+
+# Ví dụ cho AI và cho người duyệt. mo_ta = mô tả chỗ cần ảnh trong dàn ý; tot = phần AI viết (thành
+# phần 2 tới 12, ghép như phần mềm ghép; kiểu ảnh, mệnh đề an toàn và đuôi an toàn do phần mềm tự
+# gắn thêm); tom_tat = dòng tóm tắt tiếng Việt; xau = prompt không nên viết; vi_sao = lý do.
+# Mọi ví dụ, kể cả bản xau, được gửi nguyên văn cho hãng AI: chỉ dùng thông tin bịa.
+[[image_prompt.examples]]
+mo_ta = "Bản lề cổng sắt bị gỉ, thợ tra mỡ vào chốt bản lề"
+tot = "A rusted hinge on a black wrought iron gate, flat steel bars, chipped matte black paint, a gloved hand brushing grease onto the hinge pin. Foreground center: the hinge knuckle with fresh grease. Midground left: a small open tin of grease. Only gloved hands in view. A narrow alley behind the gate. Eye-level close-up, standard lens, soft daylight, softly blurred background. Colors: black, rust orange and grey."
+tom_tat = "Bản lề cổng sắt đen bị gỉ, tay thợ đeo găng quét mỡ vào chốt, nền hẻm mờ"
+xau = "Pro-Metal worker fixing the gate at Mr Tuan's house in Tan Phu, 50mm lens, shop sign reading SUA CUA SAT"
+vi_sao = "Không nên viết: tên doanh nghiệp, cảnh thợ của xưởng tại nhà khách, tên khách, tên quận, chữ số; tả biển hiệu có chữ nên mô hình vẽ chữ"
+
+[[image_prompt.examples]]
+mo_ta = "Lá cửa cuốn bị kẹt trong ray hông"
+tot = "The lower slats of a roller shutter door, galvanized steel slats, pale grey finish, the bottom slat jammed and bent inside the side guide rail. Foreground right: the dented edge of the guide rail. Background center: a tiled floor in shade. Empty scene. The ground floor front of a townhouse. Low-angle close-up, short telephoto lens, overcast daylight, rule of thirds. Colors: silver grey and dark grey."
+tom_tat = "Lá dưới cùng của cửa cuốn bị kẹt, cong trong ray hông, mặt tiền nhà phố trời âm u"
+xau = "A roller shutter, no text, no logo, no watermark, no faces"
+vi_sao = "Không nên viết: vật chính mơ hồ, không tả tình trạng; viết «no text», «no logo» lại gợi mô hình vẽ chữ, logo vì mô hình không hiểu câu phủ định"
+
+[[image_prompt.examples]]
+mo_ta = "Thay bánh xe mòn của cổng trượt"
+tot = "The worn bottom wheel of a sliding steel gate, cast iron wheel, black painted gate frame, the gate raised on a jack, the old wheel taken off. Foreground left: a new grooved wheel on the ground. Midground center: the gate track along the driveway. A distant figure, back turned. A paved driveway in front of a house. Eye-level medium shot, wide-angle lens, warm afternoon sun, subject centered. Colors: black, grey and warm beige."
+tom_tat = "Cổng trượt sắt được kích lên để thay bánh xe mòn, bánh mới đặt dưới đất, người ở xa quay lưng"
+xau = "Our finished sliding gate project, beautiful high quality work, best price, 4K"
+vi_sao = "Không nên viết: giả «công trình hoàn thiện của chúng tôi», lời quảng cáo, nhắc giá, chữ số"
+
 # LƯU Ý (T-103, 2026-10-28; nối ở T-102, 2026-10-31): mục [plan] dùng cho bước Xuất bản của Soạn
 # bài (Giai đoạn 5). Phần mềm chỉ đọc default_time ở mục này; các nhãn bên dưới chỉ là chú thích.
 [plan]

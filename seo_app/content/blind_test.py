@@ -103,6 +103,7 @@ TASK_LABELS = {
     "links": "Gợi ý liên kết nội bộ",
     "plan": "Đề xuất thay đổi kế hoạch",
     "alt": "Viết alt ảnh",
+    "image_prompt": "Viết chữ cho ảnh (prompt, alt)",
     "image": "Tạo ảnh AI",
 }
 

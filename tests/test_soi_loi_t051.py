@@ -40,8 +40,13 @@ KEY_FIELDS = {
     "gemini": "gemini_api_key",
 }
 WRITING_TASKS = ("research", "outline", "write", "rewrite", "review")
-# 4 dòng mà chú thích trong ai.toml bảo xóa dấu # khi bật việc tạo ảnh, theo đúng thứ tự.
-IMAGE_LINES = ("[tasks.image]", "provider", "model", "max_tokens")
+# 4 dòng mà chú thích trong ai.toml bảo xóa dấu # khi bật việc tạo ảnh, theo đúng thứ tự (R5, T-153:
+# khối Cloudflare có «steps» thay «max_tokens»).
+IMAGE_LINES = ("[tasks.image]", "provider", "model", "steps")
+# R5 (T-153): khối thật trong ai.toml nay là Cloudflare (hãng «cloudflare» có ở lớp AI từ T-142).
+# Các test cơ chế việc ảnh (khóa Gemini chỉ bị đòi khi gọi việc ảnh, thử mù không gợi ý mô hình
+# ảnh, quên dòng model) bật khối đó với bản mẫu Gemini này, như khối Gemini trước T-153.
+GEMINI_SAMPLE = {"provider": "gemini", "model": "gemini-nano-banana-2.1"}
 
 
 def _ai_text() -> str:
@@ -61,10 +66,11 @@ def enable_image_block(
     lines: int = len(IMAGE_LINES),
     keep_space: bool = False,
     provider: str | None = None,
+    model: str | None = None,
 ) -> str:
     """Làm như chú thích trong ai.toml: xóa dấu # ở ``lines`` dòng đầu của khối ``[tasks.image]``
     (các dòng sau để tắt). ``keep_space``: chỉ xóa «#», để lại dấu cách đầu dòng (người dùng hay
-    xóa như vậy trong Notepad). ``provider``: đổi hãng của việc ảnh.
+    xóa như vậy trong Notepad). ``provider``, ``model``: đổi hãng, mô hình của việc ảnh.
 
     Khối đã bật sẵn (sau T-053) cũng dùng được: hàm chỉ đặt lại dấu # theo ``lines``."""
     rows = text.split("\n")
@@ -76,6 +82,8 @@ def enable_image_block(
         assert body.startswith(prefix), f"dòng thứ {offset + 1} của khối ảnh: {row!r}"
         if prefix == "provider" and provider is not None:
             body = f'provider = "{provider}"'
+        if prefix == "model" and model is not None:
+            body = f'model = "{model}"'
         on = (" " if keep_space else "") + body
         rows[starts[0] + offset] = on if offset < lines else f"# {body}"
     return "\n".join(rows)
@@ -92,7 +100,7 @@ def _enabled_ai_toml(tmp_path, writing_on: str | None = None):
     hãng này trước (T-138: điều bảo vệ «khóa Gemini chỉ bị đòi khi gọi việc ảnh» chỉ thử được khi
     các việc viết dùng hãng khác Gemini, dù file đã commit đang dùng hãng nào)."""
     text = _ai_text() if writing_on is None else ai_text_on(writing_on)
-    return _write(tmp_path, "ai.toml", enable_image_block(text))
+    return _write(tmp_path, "ai.toml", enable_image_block(text, **GEMINI_SAMPLE))
 
 
 # ------------------------------------------------------------------ config/ai.toml
@@ -141,10 +149,10 @@ def test_image_task_never_forces_an_extra_key_for_writing():
 
 
 def test_image_block_has_the_four_lines_the_comment_names():
-    # Chú thích bảo «xóa dấu # ở 4 dòng [tasks.image], provider, model, max_tokens»: khối phải
-    # có đúng 4 dòng đó, liền nhau, đúng thứ tự (hàm enable_image_block kiểm từng dòng).
+    # Chú thích bảo «xóa dấu # ở 4 dòng [tasks.image], provider, model, steps» (R5, T-153: khối
+    # Cloudflare): khối phải có đúng 4 dòng đó, liền nhau, đúng thứ tự (enable_image_block kiểm).
     text = _ai_text()
-    assert "dấu # ở 4 dòng [tasks.image], provider, model, max_tokens" in text
+    assert "dấu # ở 4 dòng [tasks.image], provider, model, steps" in text
     enable_image_block(text)
 
 
@@ -159,13 +167,13 @@ def test_enable_helper_also_works_when_block_is_already_on():
     "keep_space", [False, True], ids=["xoa-dau-thang-va-cach", "chi-xoa-dau-thang"]
 )
 def test_enabled_image_block_reads_as_gemini_and_keeps_other_tasks(tmp_path, keep_space):
-    path = _write(tmp_path, "ai.toml", enable_image_block(_ai_text(), keep_space=keep_space))
-    tasks = load_ai_config(path)
+    # R5 (T-153): bật khối thật với bản mẫu Gemini; khối Cloudflare không có dòng max_tokens.
+    text = enable_image_block(_ai_text(), keep_space=keep_space, **GEMINI_SAMPLE)
+    tasks = load_ai_config(_write(tmp_path, "ai.toml", text))
     image = tasks["image"]
-    assert (image.provider, image.model, image.max_tokens, image.web_search) == (
+    assert (image.provider, image.model, image.web_search) == (
         "gemini",
         "gemini-nano-banana-2.1",
-        2000,
         False,
     )
     assert {n: t for n, t in tasks.items() if n != "image"} == load_ai_config()
@@ -173,7 +181,9 @@ def test_enabled_image_block_reads_as_gemini_and_keeps_other_tasks(tmp_path, kee
 
 def test_half_enabled_image_block_gives_vietnamese_error(tmp_path):
     # Người dùng chỉ xóa # ở 2 dòng đầu (quên dòng model): báo rõ, không đoán tên mô hình.
-    path = _write(tmp_path, "ai.toml", enable_image_block(_ai_text(), lines=2))
+    # R5 (T-153): hãng mẫu Gemini, để câu báo là về dòng model, không về hãng chưa có.
+    text = enable_image_block(_ai_text(), lines=2, **GEMINI_SAMPLE)
+    path = _write(tmp_path, "ai.toml", text)
     with pytest.raises(AIError, match="«image».*model"):
         load_ai_config(path)
 
@@ -525,8 +535,10 @@ def test_write_page_with_image_block_touched_never_crashes_or_shows_key(
     project_root, tmp_path, monkeypatch, variant
 ):
     # Bật đủ (chưa có T-062) hay bật nửa chừng: trang báo tiếng Việt, khóa nút AI, không lộ khóa.
+    # R5 (T-153): bản mẫu Gemini như trước (khối thật Cloudflare: test T-153).
     lines = len(IMAGE_LINES) if variant == "bat-du" else 2
-    path = _write(tmp_path, "ai.toml", enable_image_block(_ai_text(), lines=lines))
+    text = enable_image_block(_ai_text(), lines=lines, **GEMINI_SAMPLE)
+    path = _write(tmp_path, "ai.toml", text)
     monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
     monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (path,))
     at = _open_write_page(project_root)

@@ -59,7 +59,9 @@ KEYS = {
     "gemini": "gemini-khoa-gia-soi-loi-t062",
 }
 ENV = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY"}
-IMAGE_MODEL = "gemini-nano-banana-2.1"  # mô hình trong khối [tasks.image] đang tắt
+# Mô hình mẫu Gemini cho việc ảnh. R5 (T-153): khối [tasks.image] đang tắt trong ai.toml nay là
+# Cloudflare (hãng «cloudflare» có ở lớp AI từ T-142); test cơ chế bật khối với bản mẫu này.
+IMAGE_MODEL = "gemini-nano-banana-2.1"
 EMPTY_ALT = "không viết được alt"
 
 
@@ -71,7 +73,9 @@ def _enabled_ai_toml(
 ):
     """Bản sao config/ai.toml, xóa «# » ở 4 dòng của khối [tasks.image] như chú thích hướng dẫn.
     ``writing_on``: mọi việc khác chuyển sang hãng này trước (T-138: bản mẫu «viết bằng Claude,
-    ảnh bằng Gemini», không phụ thuộc hãng trong file đã commit)."""
+    ảnh bằng Gemini», không phụ thuộc hãng trong file đã commit). Không nêu ``provider``,
+    ``model`` thì dùng bản mẫu Gemini (R5, T-153: khối thật là Cloudflare)."""
+    provider, model = provider or "gemini", model or IMAGE_MODEL
     text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
     rows = (text if writing_on is None else ai_text_on(writing_on, text)).split("\n")
     starts = [i for i, row in enumerate(rows) if row.lstrip("# ").startswith("[tasks.image]")]
