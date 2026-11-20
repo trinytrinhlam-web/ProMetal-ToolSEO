@@ -2,7 +2,7 @@
 
 Chủ dự án xem file này để biết agent nào đang làm gì. Chỉ Huy cập nhật mỗi khi giao, nhận hoặc đóng phiếu.
 
-_Cập nhật: 2026-11-18 10:45 (Chỉ Huy B)._
+_Cập nhật: 2026-11-20 16:15 (Chỉ Huy B)._
 
 ## Tiến độ dự án (cho chủ dự án)
 
@@ -36,15 +36,14 @@ Mỗi agent chạy ở một **phiên con** dưới phiên Chỉ Huy đang giữ
 
 | Phiếu | Việc | Agent (tên phiên) | Nhánh | Trạng thái | Báo cáo |
 |---|---|---|---|---|---|
-| [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4); trước khi bật Hẹn giờ/Đăng ngay cho bài thật | Họa Sĩ · T-137 | `team/T-137` | Họa Sĩ xong `2ee7152`, `5daf638`; Soi Lỗi đầy đủ đang kiểm; sau đó Lá Chắn đầy đủ | [Họa Sĩ](reports/T-137-hoa-si.md) |
-| [T-138](tickets/T-138-tam-dung-gemini-flash.md) | Tạm dùng Gemini Flash cho mọi việc AI (chủ dự án 18/11): cấu hình, sửa 14 test ghim cấu hình Claude, bước nghiên cứu không tìm web không có đối thủ bịa | Thợ Máy · T-138 | `team/T-138` | Đang làm | — |
 | [T-139](tickets/T-139-la-chan-doc-thu-that-google.md) | Lá Chắn đọc kết quả buổi thử thật Google 18/11 (số liệu khớp Search Console từng con số), cho dùng trang 📈 Theo dõi | Lá Chắn | — | Chờ Lá Chắn (sau T-137) | [Kết quả buổi thử](reports/T-139-thu-that-google.md) |
 | [T-140](tickets/T-140-thiet-ke-anh-tu-chon-va-anh-ai-cloudflare.md) | Thiết kế ảnh tự chọn + ảnh AI Cloudflare | Thợ Máy | — | Xong (thiết kế 523a959, Lá Chắn Fable fb9d2ef ĐẠT CÓ ĐIỀU KIỆN; gộp main 2f65641) | [Thợ Máy](reports/T-140-tho-may.md) · [Lá Chắn](reports/T-140-la-chan.md) |
 | [T-141](tickets/T-141-thiet-ke-che-do-tu-dong.md) | Thiết kế chế độ tự động, duyệt một lần ở bước Xuất bản | Thợ Máy | — | Xong (thiết kế 9f34808, d23fdf4; Lá Chắn Fable đầy đủ 03568dc ĐẠT CÓ ĐIỀU KIỆN; 12 phiếu T-142 → T-153; gộp main 2f65641) | [Thợ Máy](reports/T-141-tho-may.md) · [Lá Chắn](reports/T-141-la-chan.md) |
-| [T-142](tickets/T-142-client-cloudflare-anh-ai-sach.md) | Đợt 1 · A: client Cloudflare Workers AI, ảnh AI sạch | Thợ Máy · T-142 | `team/T-142` | Đang làm | — |
+| [T-142](tickets/T-142-client-cloudflare-anh-ai-sach.md) | Đợt 1 · A: client Cloudflare Workers AI, ảnh AI sạch | Thợ Máy · T-142 | `team/T-142` | Thợ Máy 2 lượt (035c598, ab6b524); Soi Lỗi 28bb809 ĐẠT CÓ ĐIỀU KIỆN; Lá Chắn đầy đủ (Fable) a9ee007 **ĐẠT CÓ ĐIỀU KIỆN**; chờ gộp đợt 1 | [Thợ Máy](reports/T-142-tho-may.md) · [Soi Lỗi](reports/T-142-soi-loi.md) · [Lá Chắn](reports/T-142-la-chan.md) |
 | [T-143](tickets/T-143-tu-chon-anh-thu-muc-so-dem.md) | Đợt 1 · B: tự chọn ảnh thư mục, sổ ảnh đã dùng | Thợ Máy · T-143 | `team/T-143` | Đang làm | — |
-| [T-148](tickets/T-148-loai-loi-ai-mot-lop-thu-lai.md) | Đợt 1 · G: loại lỗi AI, một lớp thử lại, đếm lượt | Thợ Máy · T-148 | `team/T-148` | Đang làm | — |
-| T-144, T-153 | Đợt 1 · C, M (Ngòi Bút, lần lượt): lời dặn bài chế độ tự động; khuôn prompt ảnh chi tiết | Ngòi Bút | — | Chờ chỗ (tối đa 4 agent) | — |
+| [T-148](tickets/T-148-loai-loi-ai-mot-lop-thu-lai.md) | Đợt 1 · G: loại lỗi AI, một lớp thử lại, đếm lượt | Thợ Máy · T-148 | `team/T-148` | Thợ Máy xong 1e29c45; Soi Lỗi đang kiểm | [Thợ Máy](reports/T-148-tho-may.md) |
+| [T-144](tickets/T-144-loi-dan-bai-che-do-tu-dong.md) | Đợt 1 · C: lời dặn bài chế độ tự động | Ngòi Bút · T-144 | `team/T-144` | Ngòi Bút 7e4791d; Soi Lỗi 1dc7d75 ĐẠT; Lá Chắn rút gọn (Fable) 4b8fe56 **ĐẠT CÓ ĐIỀU KIỆN**; chờ gộp đợt 1 | [Ngòi Bút](reports/T-144-ngoi-but.md) · [Soi Lỗi](reports/T-144-soi-loi.md) · [Lá Chắn](reports/T-144-la-chan.md) |
+| [T-153](tickets/T-153-khuon-prompt-anh-chi-tiet.md) | Đợt 1 · M: khuôn prompt ảnh chi tiết (13 thành phần) | Ngòi Bút · T-153 | `team/T-153` (từ team/T-144) | Ngòi Bút b77bbe9; Soi Lỗi đang kiểm | [Ngòi Bút](reports/T-153-ngoi-but.md) |
 | T-145 → T-147, T-149 → T-152 | Đợt 2–5 chế độ tự động (D, E, F, H, J, K, L) theo thứ tự gộp T-141 mục 7.3 | — | — | Chờ đợt trước | — |
 
 ## Chờ
@@ -72,6 +71,8 @@ Các việc này bắt đầu trước khi có đội agent. Khi xong, Chỉ Huy
 
 | Phiếu | Việc | Agent | Ngày xong | Kết quả |
 |---|---|---|---|---|
+| [T-138](tickets/T-138-tam-dung-gemini-flash.md) | Tạm dùng Gemini Flash miễn phí cho mọi việc AI; nghiên cứu tắt tìm web bỏ đối thủ bịa; test ghim cấu hình kiểm điều bảo vệ; test không ghi data/ thật | Thợ Máy | 2026-11-20 | [Thợ Máy](reports/T-138-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-138-soi-loi.md) rút gọn: ĐẠT CÓ ĐIỀU KIỆN · [Lá Chắn](reports/T-138-la-chan.md) rút gọn (Fable): **ĐẠT CÓ ĐIỀU KIỆN** (B.1 [bat-du], B.2 PREVIEW_CACHE_DIR → T-143, B.3 khi quay lại Claude). Gộp `main` f6ec79b, Windows 24.516 test qua, 0 hỏng |
+| [T-137](tickets/T-137-nhac-gui-trung-sau-khi-cat-file-nhap.md) | Nhắc chống gửi trùng sau khi file nháp bị cất (SL-T136-1, G4) | Họa Sĩ | 2026-11-20 | [Họa Sĩ](reports/T-137-hoa-si.md) · [Soi Lỗi](reports/T-137-soi-loi.md) đầy đủ: ĐẠT · [Lá Chắn](reports/T-137-la-chan.md) đầy đủ (Fable): **ĐẠT** (G-1 Thấp có từ T-092 → phiếu sau). Gộp `main` 4ef88db, Windows 24.516 test qua, 0 hỏng |
 | [T-136](tickets/T-136-gom-kiem-file-5-kho.md) | Gom kiểm file 5 kho SQLite (`sqlite_file`), LC-T131-1, câu báo kho nháp; lượt 2 LC-T136-1 (FIFO, Mac/Linux) | Thợ Máy | 2026-11-18 | [Thợ Máy](reports/T-136-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-136-soi-loi.md) rút gọn: ĐẠT · Lá Chắn rút gọn 2 lượt (Opus 5.5): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-136-la-chan.md) (SL-T136-1 → T-137; ca R vào kịch bản T-128; ca FIFO gom ca Mac). Gộp `main` `0c5d476`, Windows 24.402 test qua, 0 hỏng |
 | [T-131](tickets/T-131-don-kho-du-lieu-phu.md) | Dọn kho dữ liệu phụ: mọi kho SQLite kiểm file, chặn `data/` là liên kết (điều kiện đóng GĐ4) | Thợ Máy | 2026-11-10 | [Thợ Máy](reports/T-131-tho-may.md) 2 lượt · [Soi Lỗi](reports/T-131-soi-loi.md) 2 lượt: ĐẠT · Lá Chắn đầy đủ (Fable): [**ĐẠT CÓ ĐIỀU KIỆN**](reports/T-131-la-chan.md) (LC-T131-1 Thấp có từ trước → T-136). Gộp `main`, Windows 24.334 test qua, 0 hỏng |
 | [T-134](tickets/T-134-la-chan-ra-soat-giai-doan-5.md) | Lá Chắn rà soát đóng Giai đoạn 5 | Lá Chắn | 2026-11-10 | [Lá Chắn](reports/T-134-la-chan.md) (Opus 5.5): **ĐÓNG CÓ ĐIỀU KIỆN** (buổi thử thật trước khi bật công tắc) |

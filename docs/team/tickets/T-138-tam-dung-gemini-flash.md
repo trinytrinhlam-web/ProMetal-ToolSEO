@@ -8,7 +8,7 @@
 | Giai đoạn | Chung (cấu hình AI) |
 | Mức ưu tiên | Cao (chủ dự án cần dùng app ngay) |
 | Phụ thuộc | `main` `0c5d476` (đã gộp T-136) |
-| Trạng thái | Đang làm |
+| Trạng thái | Xong (gộp `main` 2026-11-20) |
 
 ## Bối cảnh
 
@@ -43,3 +43,4 @@
 ## Ghi chú của Chỉ Huy
 
 - Lập 2026-11-18 theo quyết định của chủ dự án. Worktree `wt-T-138`, nhánh `team/T-138` từ `main`.
+- 2026-11-20 16:15 (Chỉ Huy B): Thợ Máy lượt 1 (7bbe500, 6309116, 2bdee5f, d82ad6d), lượt 2 (8203c06, df517a3); Soi Lỗi rút gọn c1b6674 ĐẠT CÓ ĐIỀU KIỆN; Lá Chắn rút gọn (Fable) f2014f4 ĐẠT CÓ ĐIỀU KIỆN. Gộp cùng T-137; Windows 24.516 qua, 0 hỏng; `main` `f6ec79b`. B.2 (PREVIEW_CACHE_DIR) làm ở T-143; B.1, B.3 phiếu sau.

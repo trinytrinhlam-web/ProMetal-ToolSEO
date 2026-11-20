@@ -59,6 +59,13 @@ Chỉ Huy B, cập nhật 2026-10-26 18:55. Agent chạy ở phiên con dưới 
 
 _Mục mới nhất ở trên cùng._
 
+### 2026-11-20 16:15 · Chỉ Huy B
+
+- 18/11: nối Google xong, buổi thử Google (T-133) đạt, Lá Chắn T-139 cho dùng trang Theo dõi. Chủ dự án chốt ảnh AI miễn phí qua Cloudflare, ảnh thư mục tự chọn (T-140), rồi 19/11 chế độ tự động duyệt một lần ở bước cuối (T-141); 12 phiếu T-142 → T-153.
+- 20/11: buổi thử thật Hẹn giờ/Đăng ngay xong ca 0–5 (b KHÔNG ĐỔI, e ĐẠT), đang dọn; ghi chép trong thư mục nháp Chỉ Huy B (sẽ thành báo cáo).
+- Gộp T-137, T-138 (`main` f6ec79b, Windows 24.516 qua, 0 hỏng). Đợt 1 chế độ tự động: T-142, T-144 qua Lá Chắn; T-143, T-148, T-153 đang kiểm; sẽ gộp cả đợt một lượt test.
+- Lưu ý: máy chủ dự án hay khởi động lại làm chết test nền; agent chia lô test. Chỉ chạy test trong worktree, không trong thư mục app.
+
 ### 2026-11-18 10:45 · Chỉ Huy B
 
 - 12/11: chủ dự án «tiếp tục, sau đó thử thật». Buổi thử thật Hẹn giờ/Đăng ngay qua Ca 0 (vai trò editor, Đăng bài ✅, SiteSEO ghi được, múi giờ UTC+7, trình soạn khối, header `Date` có); dừng ở Ca 1 vì máy không có khóa Claude. Ghi chép buổi thử trong thư mục nháp của Chỉ Huy B (chưa thành báo cáo).
