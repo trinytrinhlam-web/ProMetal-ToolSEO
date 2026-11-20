@@ -5,7 +5,7 @@
 | Agent | Thợ Máy (`tho-may`) · model: Claude Opus 5.5 · dưới Chỉ Huy B |
 | Phiếu | [T-142](../tickets/T-142-client-cloudflare-anh-ai-sach.md) · đợt 1 (song song T-143, T-148, T-144 → T-153) |
 | Nhánh | `team/T-142`, từ `main` `ddcd23c` |
-| Ngày nộp | 2026-11-19 (+07:00, giờ theo lệnh `date`, ghi ở commit) |
+| Ngày nộp | 2026-11-19 (+07:00, giờ theo lệnh `date`, ghi ở commit) · lượt 2: 2026-11-20 (mục «Lượt 2» cuối báo cáo) |
 | Kết quả | Hoàn thành yêu cầu 1–13. Chưa nối vào lượt chạy, giao diện; chưa bật cho bài thật (cần lần gọi thử cùng chủ dự án) |
 
 ## Tóm tắt (cho chủ dự án)
@@ -125,3 +125,103 @@ uv run ruff check .                                       → All checks passed!
 ## Câu hỏi cho chủ dự án
 
 Không có.
+
+## Lượt 2 — sửa 2 lỗi Thấp của Soi Lỗi (2026-11-20)
+
+| Mục | Nội dung |
+|---|---|
+| Giao | Chỉ Huy B, 2026-11-20: sửa SL-T142-1, SL-T142-2 ([biên bản Soi Lỗi](T-142-soi-loi.md), `28bb809`) trước Lá Chắn đầy đủ |
+| Nhánh | `team/T-142`: trước khi sửa đã gộp `origin/int/T-137-138` (`f6ec79b` = `main` + T-137 + T-138), commit gộp `84eb41f`, không xung đột |
+| Kết quả | Cả 2 lỗi đã sửa. 6 ca ghim của Soi Lỗi đã bỏ dấu `xfail`, nay qua |
+
+### Tóm tắt (cho chủ dự án)
+
+- **Ảnh Cloudflare trả về bị hỏng thì app báo đúng chỗ.** Câu báo nói về ảnh do Cloudflare tạo, kèm lời khuyên «Tạo lại». Trước đây app mượn câu của ảnh trong thư mục («Google Drive chưa đồng bộ?», «đổi đuôi», «HEIC của iPhone», «thu nhỏ ảnh»), dễ làm anh/chị đi kiểm nhầm chỗ.
+- **Hai bài kiểm thử không còn phụ thuộc hãng AI đang chọn.** Sau khi chuyển sang Gemini (18/11), hai bài kiểm thử «trang viết bài không đòi khóa Cloudflare» bị hỏng, dù phần mềm không sai. Nay bài kiểm thử tự dựng cấu hình mẫu riêng và thử lần lượt cả Claude, ChatGPT, Gemini.
+- Trên trang chưa có gì thay đổi: chức năng tạo ảnh chưa nối vào trang Soạn bài (phiếu sau).
+
+### Đã thay đổi (lượt 2)
+
+| File | Thay đổi |
+|---|---|
+| `seo_app/images/generated.py` | `make_generated_web_image`: lỗi của `process._open` và của `make_web_image` đi qua `_ai_image_error` để thành câu của ảnh AI (bảng dưới). Kiểm `max_edge_px`, `webp_quality` trước khi mở ảnh: câu cấu hình sai giữ nguyên, không thành «Tạo lại». `process.py` không đổi (ảnh trong thư mục vẫn câu cũ) |
+| `tests/test_t142_config_registry.py` | Hàm mẫu `_real_with_cloudflare` dựng bản mẫu trong `tmp_path`, không phụ thuộc hãng trong file đã commit (SL-T142-1). Ca router thử cả 3 hãng viết bài. Thêm ca `test_template_does_not_depend_on_the_committed_file` |
+| `tests/test_t142_generated_images.py` | `test_not_an_allowed_image_is_refused` so đúng từng câu (11 ca; trước có 4 ca, chỉ kiểm có lỗi). Thêm ca: file quá lớn, mọi câu `_MSG_*` của `process`, câu lạ, Pillow cũ, lỗi ở bước nén WebP, cấu hình ảnh sai |
+| `tests/test_soi_loi_t142.py` | Chỉ xóa 3 dấu `xfail(strict=True)` của 6 ca ghim SL-T142-1, -2 (R5). Không sửa thân ca nào |
+
+### SL-T142-1: hàm mẫu không phụ thuộc hãng trong file đã commit
+
+- `_real_with_cloudflare(tmp_path, writing_on="anthropic")` theo cách T-138:
+  - đọc `config/ai.toml` thật, bỏ khối `[tasks.image]` **đang bật** nếu file đã commit có (phòng phiếu sau bật ảnh trong file đó: thêm khối thứ hai là TOML hỏng);
+  - `ai_text_on(writing_on, …)` (của T-138) chuyển mọi việc đang bật sang một hãng;
+  - thêm khối `[tasks.image]` Cloudflare đang bật, ghi vào `tmp_path`.
+- **Điều bảo vệ giữ nguyên.** Trang Soạn bài chỉ có khóa Claude, `[tasks.image]` dùng Cloudflare, không khóa Cloudflare: trang không hiện câu nào về Cloudflare, nút «Phân tích từ khóa» bấm được. Router cho mọi việc viết bài chạy; chỉ việc `image` báo «chỉ dùng để tạo ảnh».
+- **Mạnh hơn trước:** ca router chạy lần lượt Claude, ChatGPT, Gemini, mỗi lần chỉ đặt khóa của đúng hãng đó.
+- Ca mới giả file đã commit dùng Gemini hay OpenAI **và** đã bật `[tasks.image]`: bản mẫu vẫn ra «viết bằng Claude, ảnh bằng Cloudflare».
+- Hai ca ghim của Soi Lỗi (giả cấu hình đã commit là Gemini rồi chạy lại đúng hai ca cũ) nay qua mà không sửa gì ở file của Soi Lỗi: chữ ký hai ca cũ giữ nguyên.
+
+### SL-T142-2: câu báo riêng cho ảnh AI
+
+| Ảnh Cloudflare trả về | Câu cũ (của ảnh trong thư mục) | Câu mới |
+|---|---|---|
+| Hỏng, cụt, rỗng | «Ảnh bị hỏng hoặc chưa tải xong (Google Drive chưa đồng bộ?)…», «File ảnh rỗng (0 byte).» | `MSG_BROKEN` «Ảnh Cloudflare trả về bị hỏng, app không đọc được. Tạo lại.» (đã có) |
+| GIF, BMP, HEIC, SVG, chữ, không phải byte | «File này không phải ảnh JPEG, PNG hoặc WebP đọc được (có thể bị đổi đuôi hoặc hỏng).», «Tạm chưa nhận ảnh HEIC của iPhone…» | `MSG_FORMAT` (mới) «Ảnh Cloudflare trả về không phải ảnh JPEG, PNG hay WebP đọc được nên app không dùng. Tạo lại.» |
+| Quá nhiều điểm ảnh, file quá lớn | «… Hãy thu nhỏ ảnh trước.», «Ảnh quá lớn (… MB)…» | `MSG_TOO_BIG` (mới) «Ảnh Cloudflare trả về quá lớn nên app không dùng. Tạo lại.» |
+| Không nén được sang WebP | «Không nén được ảnh này. Hãy thử ảnh khác.» | `MSG_ENCODE` (mới) «Không nén được ảnh Cloudflare trả về sang WebP. Tạo lại.» |
+| Pillow cũ (dưới 13) | giữ nguyên | giữ nguyên (không nói về ảnh; mở lại app bằng `run.bat` mới sửa được) |
+| Câu khác, kể cả câu `process` thêm sau này | — | `MSG_BROKEN` |
+
+- `_ai_image_error` so với **chính hằng** `_MSG_*` của `process`: đổi chữ ở đó thì ở đây theo. Hai câu có số (cỡ file, số điểm ảnh) so phần đầu câu; có test ghim.
+- Câu mới dựng bằng `raise … from None`: câu cũ không nằm trong dấu vết lỗi (test kiểm cả `traceback.format_exception`).
+- Bước nén WebP (`make_web_image`) cũng đi qua `_ai_image_error`. Nhánh này nhận PNG sạch do app tự dựng nên khó hỏng; bọc để mọi lỗi của hàm đều là câu của ảnh AI.
+- Cấu hình ảnh sai (`max_edge_px`, `webp_quality`) kiểm trước khi mở ảnh, câu giữ nguyên: bấm «Tạo lại» không sửa được cấu hình.
+
+### Ghi chú (lượt 2)
+
+- `tests/test_soi_loi_t142.py`: theo R5 tôi chỉ xóa dấu. Docstring đầu file, tiêu đề mục «lỗi chưa sửa (xfail strict)» và hằng `GOP_T138` (nay không ca nào dùng) vẫn còn; Soi Lỗi sửa chữ khi kiểm lại.
+- Các ghi nhận G-1 → G-5 của Soi Lỗi không thuộc lượt này (Chỉ Huy chỉ giao 2 lỗi Thấp). G-4 (fixture tự chạy trỏ `AI_IMAGES_DIR` sang thư mục tạm) nên làm trước T-149, T-146.
+
+### Bằng chứng (lượt 2)
+
+```text
+# Windows 11, Python 3.12.15, venv của wt-T-142 (sau gộp 84eb41f, uv.lock không đổi). Không gọi
+# Cloudflare, AI, Google, WordPress thật (Cloudflare giả, bộ chặn mạng của conftest).
+
+# 4 file T-142 (3 file của Thợ Máy + file của Soi Lỗi đã gỡ 3 dấu xfail):
+uv run pytest -q -p no:randomly -p no:cacheprovider tests/test_t142_cloudflare_client.py \
+    tests/test_t142_generated_images.py tests/test_t142_config_registry.py tests/test_soi_loi_t142.py
+  329 passed in 79.96s        # lượt 1: 200 + 88 qua, 6 xfail; nay 6 ca ghim qua, thêm 35 ca
+# Sau lượt chạy: worktree không có thư mục data/.
+
+# Đột biến nhỏ (mutate_l2.py): mỗi đột biến một bản sao git archive HEAD + 4 file đang sửa, chạy
+# file test liên quan; chỉ «failed» tính là bắt. Bản gốc: 91 passed || 6 passed.
+#   G1 bỏ bọc _open                   → 16 failed
+#   G2 bỏ «from None»                 → 10 failed (câu cũ lọt vào dấu vết lỗi)
+#   G3 bỏ giữ câu Pillow cũ           → 2 failed
+#   G4 bỏ kiểm cấu hình trước         → 8 failed
+#   G5 bỏ bọc make_web_image          → 3 failed
+#   G6 bỏ nhận câu «quá lớn»          → 5 failed
+#   G7 bỏ nhận câu «không phải ảnh»   → 10 failed
+#   G8 bỏ nhận câu «không nén được»   → 2 failed
+#   C1 hàm mẫu không bỏ khối [tasks.image] đang bật của file đã commit → 2 failed
+#   C2 hàm mẫu không đổi hãng (như lượt 1)                            → 6 failed (cả 2 ca của
+#      Soi Lỗi)
+#   → 10/10 bị bắt.
+
+# Lô mọi nơi gọi: 89 file trong worktree (mọi file test nhắc load_ai_config, AIRouter,
+# make_provider, IMAGE_*, WRITING_TASKS, provider_label, ai_registry, ENV_VARS, load_settings,
+# blind_test, .env.example, cloudflare, generated, hay quét cả gói bằng rglob/os.walk; cộng test
+# của T-137, T-138 vừa gộp, test_t101_settings_google, test_settings_images):
+uv run pytest -q -p no:randomly -p no:cacheprovider -rfEx <89 file>
+  8716 passed, 22 skipped, 7 xfailed, 1 warning in 4886.97s (1:21:26)
+#   7 xfailed, đều có từ trước: R4-3 ×2, SL-T026-3 ×2, SL-T028-1 ×2, SL-T036-10 ×1.
+#   1 warning: Pydantic, ở ca T-028 cố ý đưa luồng trả lời hỏng (có từ trước).
+#   Máy khởi động lại giữa lượt đầu (10:4x); lượt này chạy lại từ đầu, 10:56 → 12:18.
+# Sau lượt chạy: worktree không có thư mục data/; git status chỉ có 5 file của lượt 2.
+
+uv run ruff check .                                       → All checks passed!
+uv run ruff format --check <4 file .py của lượt 2>        → already formatted
+# detect-secrets (PYTHONUTF8=1, bản sao 5 file của lượt 2 + file mồi tiếng Việt, chạy trong thư
+# mục bản sao, scan --all-files .): 0 kết quả ở file của lượt 2; file mồi bị bắt (2 mục).
+# Ký tự ẩn (Cf), CR, NFC ở 5 file: 0, 0, NFC.
+```

@@ -3,6 +3,9 @@
 - ``make_generated_web_image``: byte ảnh Cloudflare trả về → WebP sạch.
   - Mở có kiểm (``process._open``: chỉ JPEG, PNG, WebP; giới hạn cỡ file, số điểm ảnh); ảnh tĩnh;
     cạnh 256–2048 px; từ chối ảnh gần một màu (bộ lọc an toàn chặn thì thường ra ảnh đen).
+  - Câu báo luôn là câu của ảnh AI (``MSG_*`` dưới đây; SL-T142-2): câu của ``process`` viết cho
+    ảnh trong thư mục («Google Drive chưa đồng bộ?», «đổi đuôi», «HEIC của iPhone», «thu nhỏ
+    ảnh») được đổi ở ``_ai_image_error``.
   - **Dựng lại từ điểm ảnh** (ảnh mới, không ``info``: không EXIF, XMP, ICC, chú thích, chunk chữ),
     rồi qua ``make_web_image`` (không phóng to, cạnh dài ≤ 1600 px).
   - Byte WebP ra phải qua bộ kiểm ``_check_webp`` của lớp AI (chỉ ``VP8``/``VP8L``/``VP8X``/
@@ -43,6 +46,7 @@ from PIL import Image
 
 from seo_app.ai.base import _check_webp
 from seo_app.config import PROJECT_ROOT
+from seo_app.images import process
 from seo_app.images.data_dir import MSG_DATA_DIR_LINK, dir_has_link, is_link
 from seo_app.images.naming import image_file_name
 from seo_app.images.process import (
@@ -51,6 +55,8 @@ from seo_app.images.process import (
     ImageProcessError,
     WebImage,
     _cache_dir_is_ignored,
+    _check_edge,
+    _check_quality,
     _open,
     make_web_image,
 )
@@ -76,6 +82,11 @@ MSG_SIZE = (
 )
 MSG_BLANK = "Cloudflare trả về ảnh trống (prompt có thể bị chặn). Sửa prompt rồi tạo lại."
 MSG_BROKEN = "Ảnh Cloudflare trả về bị hỏng, app không đọc được. Tạo lại."
+MSG_FORMAT = (
+    "Ảnh Cloudflare trả về không phải ảnh JPEG, PNG hay WebP đọc được nên app không dùng. Tạo lại."
+)
+MSG_TOO_BIG = "Ảnh Cloudflare trả về quá lớn nên app không dùng. Tạo lại."
+MSG_ENCODE = "Không nén được ảnh Cloudflare trả về sang WebP. Tạo lại."
 MSG_NOT_CLEAN = "Ảnh WebP dựng lại vẫn chưa sạch (còn dữ liệu lạ) nên app không dùng. Tạo lại."
 MSG_STORE_BAD = "Ảnh AI không đúng dạng để lưu vào máy."
 MSG_STORE_NOT_IGNORED = (
@@ -106,6 +117,36 @@ class GeneratedWebImage:
 
 # ------------------------------------------------------------------ ảnh về → WebP sạch
 
+# Câu của ``process`` (viết cho ảnh trong thư mục) → câu của ảnh AI (SL-T142-2). So với chính hằng
+# của ``process``: đổi chữ ở đó thì ở đây theo. Hai câu có số (cỡ file, số điểm ảnh) so đầu câu.
+_PHOTO_FORMAT_MESSAGES = frozenset(
+    {
+        process._MSG_NOT_IMAGE,
+        process._MSG_HEIC_OFF,
+        process._MSG_HEIF_GRID,
+        process._MSG_HEIF_ALPHA,
+    }
+)
+_PHOTO_TOO_BIG_PREFIXES = ("Ảnh quá lớn (", "Ảnh có quá nhiều điểm ảnh")
+
+
+def _ai_image_error(exc: ImageProcessError) -> ImageProcessError:
+    """Lỗi của ``process`` khi xử lý ảnh Cloudflare trả về → lỗi mang câu của ảnh AI.
+
+    Câu Pillow cũ (không nói về ảnh, sửa bằng cách mở lại app) giữ nguyên. Câu khác, kể cả câu
+    ``process`` thêm sau này, thành ``MSG_BROKEN``: không bao giờ để lọt câu của ảnh trong thư mục.
+    """
+    text = str(exc)
+    if text == process._MSG_OLD_PILLOW:
+        return exc
+    if text in _PHOTO_FORMAT_MESSAGES:
+        return ImageProcessError(MSG_FORMAT)
+    if text.startswith(_PHOTO_TOO_BIG_PREFIXES):
+        return ImageProcessError(MSG_TOO_BIG)
+    if text == process._MSG_ENCODE:
+        return ImageProcessError(MSG_ENCODE)
+    return ImageProcessError(MSG_BROKEN)
+
 
 def make_generated_web_image(
     data: bytes,
@@ -113,11 +154,18 @@ def make_generated_web_image(
     max_edge_px: int = WEB_MAX_EDGE_PX,
     webp_quality: int = WEB_WEBP_QUALITY,
 ) -> WebImage:
-    """Byte ảnh Cloudflare trả về → WebP sạch (LC-T140-5). Lỗi: ``ImageProcessError`` câu cố định.
+    """Byte ảnh Cloudflare trả về → WebP sạch (LC-T140-5). Lỗi: ``ImageProcessError`` câu cố định
+    của ảnh AI (``MSG_*``; SL-T142-2), trừ câu Pillow cũ và câu cấu hình ảnh sai.
 
     ``max_edge_px``, ``webp_quality``: từ ``load_image_settings()`` (điều kiện 6 của Lá Chắn T-049);
-    mặc định như ảnh thật."""
-    image = _open(data, formats=GENERATED_FORMATS)
+    mặc định như ảnh thật. Kiểm trước khi mở ảnh: câu cấu hình sai giữ nguyên, không thành «Tạo
+    lại» (tạo lại không sửa được cấu hình)."""
+    max_edge_px = _check_edge(max_edge_px, "max_edge_px")
+    webp_quality = _check_quality(webp_quality)
+    try:
+        image = _open(data, formats=GENERATED_FORMATS)
+    except ImageProcessError as exc:
+        raise _ai_image_error(exc) from None
     try:
         if getattr(image, "n_frames", 1) != 1 or getattr(image, "is_animated", False):
             raise ImageProcessError(MSG_ANIMATED)
@@ -144,7 +192,10 @@ def make_generated_web_image(
         raise ImageProcessError(MSG_BROKEN) from None
     finally:
         clean.close()
-    web = make_web_image(buffer.getvalue(), max_edge_px=max_edge_px, webp_quality=webp_quality)
+    try:
+        web = make_web_image(buffer.getvalue(), max_edge_px=max_edge_px, webp_quality=webp_quality)
+    except ImageProcessError as exc:
+        raise _ai_image_error(exc) from None
     if web.gps is not None or _check_webp(web.data) is not None:
         raise ImageProcessError(MSG_NOT_CLEAN)
     return web

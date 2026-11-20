@@ -9,15 +9,18 @@ import os
 import struct
 import sys
 import time
+import traceback
 import zlib
 from pathlib import Path
 
+import PIL
 import pytest
 from PIL import ExifTags, Image, ImageCms, PngImagePlugin
 
 from seo_app.ai.base import _check_webp
 from seo_app.config import PROJECT_ROOT
 from seo_app.images import generated as gen
+from seo_app.images import process
 from seo_app.images.data_dir import MSG_DATA_DIR_LINK
 from seo_app.images.process import ImageProcessError, webp_chunks
 from seo_app.images.tags import SOURCE_AI, ImageTags
@@ -163,14 +166,155 @@ def test_image_with_some_contrast_is_not_blank():
     assert _check_webp(web.data) is None
 
 
-@pytest.mark.parametrize(
-    "data",
-    [b"", b"khong phai anh", _save(_noise((300, 300)), "GIF"), _save(_noise((300, 300)), "BMP")],
-    ids=["rong", "chu", "gif", "bmp"],
-)
-def test_not_an_allowed_image_is_refused(data):
-    with pytest.raises(ImageProcessError):
+# ------------------------------------------------------------------ câu báo của ảnh AI (SL-T142-2)
+
+# Chữ chỉ có trong câu của ảnh trong thư mục (``process``): ảnh Cloudflare không được báo các câu
+# này (người dùng sẽ đi kiểm nhầm Google Drive, đuôi file, iPhone).
+PHOTO_HINTS = ("Google Drive", "đổi đuôi", "iPhone", "HEIC", "thu nhỏ", "File này", "File ảnh")
+AI_MESSAGES = (gen.MSG_BROKEN, gen.MSG_FORMAT, gen.MSG_TOO_BIG, gen.MSG_ENCODE)
+
+
+def _png_header(width: int, height: int) -> bytes:
+    """PNG chỉ có phần đầu khai cỡ ảnh (không có điểm ảnh)."""
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    chunks = [(b"IHDR", ihdr), (b"IEND", b"")]
+    return b"\x89PNG\r\n\x1a\n" + b"".join(
+        struct.pack(">I", len(body)) + name + body + struct.pack(">I", zlib.crc32(name + body))
+        for name, body in chunks
+    )
+
+
+def _photo_hints(error: BaseException) -> list[str]:
+    """Chữ của ảnh trong thư mục có trong câu báo hay dấu vết lỗi đầy đủ."""
+    text = "".join(traceback.format_exception(error))
+    return [hint for hint in PHOTO_HINTS if hint in text]
+
+
+_JPEG = _save(_noise((300, 300)), "JPEG")
+NOT_USABLE = {
+    "rong": (b"", gen.MSG_BROKEN),
+    "png-hong": (b"\x89PNG\r\n\x1a\n" + b"rac" * 200, gen.MSG_BROKEN),
+    "jpeg-cut": (_JPEG[: len(_JPEG) // 2], gen.MSG_BROKEN),
+    "chu": (b"khong phai anh", gen.MSG_FORMAT),
+    "khong-byte": ("khong phai byte", gen.MSG_FORMAT),
+    "gif": (_save(_noise((300, 300)), "GIF"), gen.MSG_FORMAT),
+    "bmp": (_save(_noise((300, 300)), "BMP"), gen.MSG_FORMAT),
+    "heic": (b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + b"\x00" * 64, gen.MSG_FORMAT),
+    "svg": (b'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"/>', gen.MSG_FORMAT),
+    "81-trieu": (_png_header(9000, 9000), gen.MSG_TOO_BIG),
+    "900-trieu": (_png_header(30000, 30000), gen.MSG_TOO_BIG),
+}
+
+
+@pytest.mark.parametrize("data, message", list(NOT_USABLE.values()), ids=list(NOT_USABLE))
+def test_not_an_allowed_image_is_refused(data, message):
+    with pytest.raises(ImageProcessError) as info:
         gen.make_generated_web_image(data)
+    assert str(info.value) == message
+    assert not _photo_hints(info.value)  # cả câu cũ cũng không nằm trong dấu vết lỗi
+
+
+def test_file_too_large_gets_the_ai_message(monkeypatch):
+    data = _save(_noise((300, 300)), "PNG")
+    monkeypatch.setattr(process, "MAX_IMAGE_BYTES", len(data) - 1)
+    with pytest.raises(ImageProcessError) as info:
+        gen.make_generated_web_image(data)
+    assert str(info.value) == gen.MSG_TOO_BIG
+    assert not _photo_hints(info.value)
+
+
+def _process_messages() -> dict[str, str]:
+    """Mọi câu lỗi cố định của ``process`` (``_MSG_*``, kể cả câu thêm sau này) cộng hai câu số
+    điểm ảnh. Câu cỡ file: ``test_file_too_large_gets_the_ai_message``."""
+    found = {
+        name: value
+        for name, value in vars(process).items()
+        if name.startswith("_MSG_") and isinstance(value, str)
+    }
+    found["nhieu-diem-anh"] = str(process._too_many_pixels())
+    found["nhieu-diem-anh-so"] = str(process._too_many_pixels(81_000_000))
+    return found
+
+
+PROCESS_MESSAGES = _process_messages()
+EXPECTED = {
+    "_MSG_NOT_IMAGE": gen.MSG_FORMAT,
+    "_MSG_HEIC_OFF": gen.MSG_FORMAT,
+    "_MSG_HEIF_GRID": gen.MSG_FORMAT,
+    "_MSG_HEIF_ALPHA": gen.MSG_FORMAT,
+    "_MSG_BROKEN": gen.MSG_BROKEN,
+    "_MSG_EMPTY": gen.MSG_BROKEN,
+    "_MSG_GPS_LOST": gen.MSG_BROKEN,
+    "_MSG_ENCODE": gen.MSG_ENCODE,
+    "nhieu-diem-anh": gen.MSG_TOO_BIG,
+    "nhieu-diem-anh-so": gen.MSG_TOO_BIG,
+}
+
+
+def test_expected_table_matches_process_messages():
+    assert set(EXPECTED) | {"_MSG_OLD_PILLOW"} <= set(PROCESS_MESSAGES)
+
+
+@pytest.mark.parametrize("name", list(PROCESS_MESSAGES))
+def test_process_messages_become_ai_image_messages(name):
+    original = ImageProcessError(PROCESS_MESSAGES[name])
+    converted = gen._ai_image_error(original)
+    if name == "_MSG_OLD_PILLOW":  # không nói về ảnh: mở lại app bằng run.bat mới sửa được
+        assert converted is original
+        return
+    assert str(converted) == EXPECTED.get(name, gen.MSG_BROKEN)
+    assert str(converted) in AI_MESSAGES
+    assert not _photo_hints(converted)
+
+
+def test_unknown_process_message_never_leaks():
+    converted = gen._ai_image_error(ImageProcessError("Câu mới của ảnh trong thư mục Google Drive"))
+    assert str(converted) == gen.MSG_BROKEN
+
+
+def test_old_pillow_message_is_kept(monkeypatch):
+    monkeypatch.setattr(PIL, "__version__", "12.3.0")
+    with pytest.raises(ImageProcessError) as info:
+        gen.make_generated_web_image(_save(_noise((300, 300)), "PNG"))
+    assert str(info.value) == process._MSG_OLD_PILLOW
+
+
+@pytest.mark.parametrize(
+    "raised, message",
+    [
+        (process._MSG_BROKEN, gen.MSG_BROKEN),
+        (process._MSG_ENCODE, gen.MSG_ENCODE),
+        (process._MSG_GPS_LOST, gen.MSG_BROKEN),
+    ],
+    ids=["hong", "nen", "gps"],
+)
+def test_web_step_errors_get_ai_messages(monkeypatch, raised, message):
+    def broken_web(_data: bytes, **_kwargs) -> process.WebImage:
+        raise ImageProcessError(raised)
+
+    monkeypatch.setattr(gen, "make_web_image", broken_web)
+    with pytest.raises(ImageProcessError) as info:
+        gen.make_generated_web_image(_save(_noise((300, 300)), "PNG"))
+    assert str(info.value) == message
+    assert not _photo_hints(info.value)
+
+
+@pytest.mark.parametrize(
+    "kwargs, name",
+    [
+        ({"max_edge_px": 10}, "max_edge_px"),
+        ({"max_edge_px": True}, "max_edge_px"),
+        ({"webp_quality": 0}, "webp_quality"),
+        ({"webp_quality": "80"}, "webp_quality"),
+    ],
+    ids=["canh-nho", "canh-bool", "chat-0", "chat-chu"],
+)
+@pytest.mark.parametrize("data", [_JPEG, b"rac"], ids=["anh", "rac"])
+def test_bad_image_settings_keep_their_own_message(kwargs, name, data):
+    """Cấu hình sai: câu cấu hình (tạo lại không sửa được), báo trước khi mở ảnh."""
+    with pytest.raises(ImageProcessError) as info:
+        gen.make_generated_web_image(data, **kwargs)
+    assert str(info.value).startswith(f"Cấu hình ảnh không hợp lệ: {name}")
 
 
 def test_wrap_generated_tags_are_set_by_code():

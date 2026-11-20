@@ -2,6 +2,9 @@
 
 Hãng ``cloudflare`` chỉ cho việc ``image`` và không nằm trong ``PROVIDERS`` (thử mù, «Kiểm tra
 khóa» chỉ duyệt hãng viết bài). Thiếu khóa Cloudflare không làm trang Soạn bài đòi khóa (T-062).
+
+Cấu hình thử là bản mẫu trong ``tmp_path`` (``_real_with_cloudflare``), không phụ thuộc hãng ghi
+trong ``config/ai.toml`` đã commit (SL-T142-1; cách làm của T-138).
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ import re
 from pathlib import Path
 
 import pytest
+from ai_config_samples import ENV_KEYS, ai_text_on
 
 import seo_app.ai.registry as ai_registry
 from seo_app.ai import cloudflare_images as cf
@@ -40,10 +44,24 @@ def _toml(tmp_path, body: str) -> Path:
     return path
 
 
-def _real_with_cloudflare(tmp_path) -> Path:
-    """Bản sao ``config/ai.toml`` thật, thêm một khối ``[tasks.image]`` Cloudflare đang bật."""
-    text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
-    return _toml(tmp_path, text + IMAGE_BLOCK)
+def _without_image_block(text: str) -> str:
+    """Bỏ khối ``[tasks.image]`` đang bật (không có dấu # đầu dòng), nếu có, tới mục kế tiếp."""
+    rows = text.split("\n")
+    head = next((i for i, row in enumerate(rows) if row.startswith("[tasks.image]")), None)
+    if head is None:
+        return text
+    end = next((i for i in range(head + 1, len(rows)) if rows[i].startswith("[")), len(rows))
+    return "\n".join(rows[:head] + rows[end:])
+
+
+def _real_with_cloudflare(tmp_path, writing_on: str = "anthropic") -> Path:
+    """Bản mẫu ``tmp_path/ai.toml`` từ ``config/ai.toml`` thật: mọi việc đang bật chuyển sang hãng
+    ``writing_on`` (mặc định Claude, ``ai_text_on`` của T-138), khối ``[tasks.image]`` là Cloudflare
+    đang bật (thay khối ``[tasks.image]`` của file đã commit, nếu file đó có bật).
+
+    SL-T142-1: không phụ thuộc hãng trong file đã commit (T-138 đổi mọi việc sang Gemini)."""
+    text = _without_image_block(ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8"))
+    return _toml(tmp_path, ai_text_on(writing_on, text) + IMAGE_BLOCK)
 
 
 # ------------------------------------------------------------------ registry
@@ -62,6 +80,22 @@ def test_cloudflare_image_block_loads(tmp_path):
     tasks = load_ai_config(_real_with_cloudflare(tmp_path))
     assert tasks[IMAGE_TASK].provider == "cloudflare"
     assert tasks[IMAGE_TASK].model == cf.FLUX_SCHNELL
+    assert {task.provider for name, task in tasks.items() if name != IMAGE_TASK} == {"anthropic"}
+
+
+@pytest.mark.parametrize("committed", ["gemini", "openai"])
+def test_template_does_not_depend_on_the_committed_file(tmp_path, monkeypatch, committed):
+    """File đã commit dùng hãng khác, đã bật ``[tasks.image]``: bản mẫu vẫn như nhau (SL-T142-1)."""
+    rows = ai_text_on(committed).split("\n")
+    at = next(i for i, row in enumerate(rows) if row.startswith("[tasks.write]"))  # giữa file
+    image = ["[tasks.image]  # tạo ảnh", f'provider = "{committed}"', 'model = "anh-x"', ""]
+    committed_file = tmp_path / "da-commit.toml"
+    committed_file.write_text("\n".join(rows[:at] + image + rows[at:]), encoding="utf-8")
+    assert load_ai_config(committed_file)[IMAGE_TASK].provider == committed  # bật thật
+    monkeypatch.setattr(ai_registry, "AI_CONFIG_FILE", committed_file)
+    tasks = load_ai_config(_real_with_cloudflare(tmp_path))
+    assert tasks[IMAGE_TASK].provider == "cloudflare"
+    assert {task.provider for name, task in tasks.items() if name != IMAGE_TASK} == {"anthropic"}
 
 
 @pytest.mark.parametrize("task", ["write", "alt", "meta", "research"])
@@ -112,12 +146,17 @@ def test_make_provider_refuses_cloudflare_cleanly():
 
 
 def test_router_never_asks_for_cloudflare_when_writing(tmp_path):
-    tasks = load_ai_config(_real_with_cloudflare(tmp_path))
-    router = AIRouter(tasks, Settings(anthropic_api_key=KHOA_GIA))  # không khóa Cloudflare
-    for name in (*WRITING_TASKS, "meta", "alt"):
-        router.get(name)
-    with pytest.raises(AIError, match="chỉ dùng để tạo ảnh"):
-        router.get(IMAGE_TASK)
+    """Viết bằng hãng nào cũng chỉ cần khóa của hãng đó, không cần khóa Cloudflare."""
+    for provider in ENV_KEYS:
+        folder = tmp_path / provider
+        folder.mkdir()
+        tasks = load_ai_config(_real_with_cloudflare(folder, provider))
+        # Chỉ khóa của hãng viết bài; không khóa Cloudflare.
+        router = AIRouter(tasks, Settings(**{f"{provider}_api_key": KHOA_GIA}))
+        for name in (*WRITING_TASKS, "meta", "alt"):
+            router.get(name)
+        with pytest.raises(AIError, match="chỉ dùng để tạo ảnh"):
+            router.get(IMAGE_TASK)
 
 
 def test_blind_test_table_shows_cloudflare_row_and_skips_it_in_suggestions(tmp_path):

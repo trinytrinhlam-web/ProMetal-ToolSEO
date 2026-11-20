@@ -448,10 +448,6 @@ BROKEN = {
 PHOTO_HINTS = ("Google Drive", "đổi đuôi", "iPhone", "thu nhỏ ảnh")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="SL-T142-2: ảnh Cloudflare hỏng báo câu của ảnh trong thư mục (Google Drive, đổi đuôi…)",
-)
 @pytest.mark.parametrize("data", list(BROKEN.values()), ids=list(BROKEN))
 def test_anh_cloudflare_hong_bao_cau_cua_anh_ai(data):
     with pytest.raises(ImageProcessError) as info:
@@ -481,7 +477,6 @@ GOP_T138 = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason=GOP_T138)
 def test_ca_router_t142_van_qua_khi_cau_hinh_la_gemini(tmp_path, monkeypatch):
     import test_t142_config_registry as t142
 
@@ -489,7 +484,6 @@ def test_ca_router_t142_van_qua_khi_cau_hinh_la_gemini(tmp_path, monkeypatch):
     t142.test_router_never_asks_for_cloudflare_when_writing(tmp_path)
 
 
-@pytest.mark.xfail(strict=True, reason=GOP_T138)
 def test_ca_trang_t142_van_qua_khi_cau_hinh_la_gemini(project_root, tmp_path, monkeypatch):
     import test_t142_config_registry as t142
 
