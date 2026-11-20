@@ -26,6 +26,7 @@ from urllib.parse import urlsplit
 import pytest
 import streamlit as st
 import test_app_pages as pages
+from ai_config_samples import ENV_KEYS
 from fake_ai import ALT, RESEARCH, FakeProvider
 from fake_wordpress import BASE_URL, make_session
 from PIL import ExifTags, Image
@@ -613,7 +614,9 @@ def test_alt_ai_errors_shown_as_message(project_root, root, monkeypatch):
     at, pid = open_article(project_root)
     choose_real(at, pid)
     write_alt(at, pid)
-    assert any(escape_markdown("ANTHROPIC_API_KEY") in e.value for e in at.error)
+    # Câu báo nêu khóa của hãng đang cấu hình cho việc alt (T-138: không ghim hãng trong file).
+    key = ENV_KEYS[ai_registry.load_ai_config()["alt"].provider]
+    assert any(escape_markdown(key) in e.value for e in at.error)
     assert not at.exception
 
     class Failing(FakeProvider):

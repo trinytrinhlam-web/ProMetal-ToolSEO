@@ -8,6 +8,7 @@ Không gọi mạng, khóa API là chuỗi giả.
 """
 
 import pytest
+from ai_config_samples import ai_text_on
 
 from seo_app.ai import AIError, AIRouter, TaskConfig, load_ai_config
 from seo_app.ai import registry as ai_registry
@@ -213,9 +214,12 @@ def test_blind_test_keeps_model_shared_with_a_writing_task(tmp_path):
 # ------------------------------------------------------- bật [tasks.image] trong file thật
 
 
-def _enabled_real_ai_toml(tmp_path, provider: str = "gemini"):
-    """Bản sao config/ai.toml với khối [tasks.image] đã bỏ dấu # (như chú thích trong file)."""
-    rows = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8").split("\n")
+def _enabled_real_ai_toml(tmp_path, provider: str = "gemini", writing_on: str | None = None):
+    """Bản sao config/ai.toml với khối [tasks.image] đã bỏ dấu # (như chú thích trong file).
+    ``writing_on``: mọi việc khác chuyển sang hãng này trước (T-138: bản mẫu «viết bằng Claude,
+    ảnh bằng Gemini», không phụ thuộc hãng trong file đã commit)."""
+    text = ai_registry.AI_CONFIG_FILE.read_text(encoding="utf-8")
+    rows = (text if writing_on is None else ai_text_on(writing_on, text)).split("\n")
     start = next(i for i, row in enumerate(rows) if row.lstrip("# ").startswith("[tasks.image]"))
     for i in range(start, start + 4):
         rows[i] = rows[i].lstrip("# ")
@@ -225,7 +229,7 @@ def _enabled_real_ai_toml(tmp_path, provider: str = "gemini"):
 
 
 def test_enabling_real_image_block_needs_gemini_key_only_for_images(tmp_path):
-    tasks = load_ai_config(_enabled_real_ai_toml(tmp_path))
+    tasks = load_ai_config(_enabled_real_ai_toml(tmp_path, writing_on="anthropic"))
     assert tasks[IMAGE_TASK].provider == "gemini"
     router = AIRouter(tasks, Settings(anthropic_api_key=FAKE_KEY))
     for name in (*WRITING_TASKS, "meta", "alt"):
@@ -244,9 +248,8 @@ def test_write_page_with_image_enabled_and_only_claude_key(project_root, tmp_pat
     from streamlit.testing.v1 import AppTest
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
-    monkeypatch.setattr(
-        ai_registry.load_ai_config, "__defaults__", (_enabled_real_ai_toml(tmp_path),)
-    )
+    enabled = _enabled_real_ai_toml(tmp_path, writing_on="anthropic")  # viết bằng Claude (T-138)
+    monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (enabled,))
     at = AppTest.from_file(str(project_root / "app" / "main.py"), default_timeout=30)
     at.session_state["authenticated"] = True
     at.switch_page("views/write.py").run()

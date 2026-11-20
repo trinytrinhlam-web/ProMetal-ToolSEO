@@ -156,6 +156,16 @@ Trang **Soạn bài** dùng AI thật cho 3 bước đầu: **Chuẩn bị** (ng
 
 App dùng được 3 hãng AI: **Claude** (Anthropic), **ChatGPT** (OpenAI) và **Gemini** (Google). **Không có hãng mặc định**: bạn có khóa của hãng nào thì dùng hãng đó, và đổi hãng cho từng việc khi cần (xem "Đổi hãng hoặc mô hình" bên dưới). Việc nào trong `config/ai.toml` đang ghi hãng nào thì hãng đó phải có khóa.
 
+> **Đang dùng Gemini Flash miễn phí (từ 18/11/2026).** Mọi việc AI tạm dùng mô hình `gemini-3.8-flash`, chỉ cần khóa Gemini (`GEMINI_API_KEY`). Khóa Gemini ở gói miễn phí nên có hai giới hạn:
+>
+> - **Không tìm Google**: bước Chuẩn bị chỉ phân tích ý định tìm kiếm, góc mới, câu hỏi từ hiểu biết chung của AI, **không đọc bài đối thủ**. Trang Soạn bài ghi một dòng «Đang tắt tìm Google: AI không đọc bài đối thủ».
+> - **Có lúc báo bận** (lỗi 503, Google quá tải): đợi vài phút rồi bấm lại.
+>
+> Muốn bài tốt hơn thì làm một trong hai cách, rồi sửa `config/ai.toml` (mục 7.2):
+>
+> - **Quay lại Claude**: nhập khóa Claude ở **Cài đặt → 🔌 Kết nối**, rồi ở từng việc ghi `provider = "anthropic"`, `model = "claude-opus-5-5"` (việc `alt`: `"claude-sonnet-5-5"`), và ở mục `[tasks.research]` đổi lại `web_search = true` để bước Chuẩn bị đọc lại bài đứng đầu Google. Ghi chú đầu file `config/ai.toml` có sẵn cách làm.
+> - **Bật thanh toán cho khóa Gemini** (trên trang Google AI Studio) để dùng mô hình Pro (ví dụ `gemini-3.1-pro-preview`) và bật lại tìm Google (`web_search = true` ở mục `[tasks.research]`).
+
 ### 7.1. Lấy khóa API và nhập vào app
 
 Khóa API là một dãy chữ-số riêng của bạn, để app gọi AI thay bạn. Chỉ cần khóa của hãng bạn định dùng.
@@ -194,10 +204,10 @@ max_tokens = 32000
 - `effort` là mức "suy nghĩ" của AI (`low`, `medium`, `high`, `xhigh`, `max`): càng cao càng kỹ nhưng chậm và tốn tiền hơn. Claude và ChatGPT dùng đúng mức bạn ghi. Gemini chỉ có 3 mức (`low`, `medium`, `high`): `xhigh` và `max` được tính là `high`. Mô hình không có chế độ suy nghĩ thì app tự bỏ qua `effort`.
 - Việc đang dùng hãng nào thì hãng đó phải có khóa. Thiếu khóa thì ngay khi mở **Soạn bài**, app báo màu vàng và khóa tạm các bước dùng AI.
 
-**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (đang ghi Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. App chỉ gửi ảnh cho hãng AI khi bạn bấm **✨ AI viết alt** (hay **🔄 AI viết lại alt**) ở một ảnh đã chọn (mục 9), mỗi lần một ảnh. Vì vậy:
+**Việc viết alt cho ảnh (`[tasks.alt]`) gửi ảnh công trình cho hãng AI.** Alt là dòng chữ mô tả ảnh cho Google và người khiếm thị. Để viết alt, app gửi ảnh công trình cho hãng ghi ở `[tasks.alt]` (từ 18/11/2026 đang ghi Gemini Flash, khóa miễn phí; trước đó là Claude Sonnet). Ảnh gửi đi là bản sao đã bỏ GPS, EXIF, không kèm tên file hay đường dẫn; chữ gửi kèm chỉ gồm quy tắc viết alt (mục `[alt]` trong `config/content.toml`), từ khóa của bài và hạng mục, khu vực, trước/sau đọc từ tên thư mục (mục 8). Nhưng hãng AI vẫn thấy mọi thứ **trong** ảnh: nhà khách, số nhà, người trong ảnh. App chỉ gửi ảnh cho hãng AI khi bạn bấm **✨ AI viết alt** (hay **🔄 AI viết lại alt**) ở một ảnh đã chọn (mục 9), mỗi lần một ảnh. Vì vậy:
 
-- Nên dùng Claude (đang ghi sẵn) hoặc khóa **trả phí** của OpenAI / Gemini.
-- Khóa Gemini **miễn phí**: Google được dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Muốn dùng khóa miễn phí cho việc viết alt thì báo Chỉ Huy để ghi vào sổ rủi ro trước.
+- Nên dùng Claude hoặc khóa **trả phí** của OpenAI / Gemini.
+- Khóa Gemini **miễn phí** (đang dùng): Google có thể dùng ảnh gửi lên để cải tiến sản phẩm, và người duyệt của Google có thể xem ảnh. Chủ dự án đã chấp nhận điều này ngày 18/11/2026 (sổ rủi ro `docs/team/security.md` mục 6, dòng 2026-11-18). Ảnh có mặt người, số nhà, biển hiệu của khách thì đừng bấm **✨ AI viết alt**: tự gõ alt vào ô **Alt** (mục 9). Quay lại Claude hay bật thanh toán cho khóa Gemini thì không còn điều này.
 
 ### 7.3. Thử mù: chọn mô hình viết hay nhất
 
@@ -524,6 +534,7 @@ App ghi «đang gửi» vào bài nháp trên máy ngay trước khi gửi, và 
 - **Lỡ bấm nút khác, bấm đúp, hay sang trang khác rồi quay lại lúc đang gửi:** app không gửi thêm. Lần gửi chưa xong thì trang hiện ô «⏳ Lần gửi nháp vừa bấm vẫn đang chạy, đợi gửi xong rồi mới hiện kết quả…»; xong thì hiện kết quả (có thể kèm dòng «Lần gửi này bị ngắt giữa chừng…»). Nút gửi vẫn khóa, phải tick xác nhận mới gửi tiếp được. Website chậm quá 60 giây thì app báo «Lần gửi nháp trước vẫn đang chạy (website chậm?)…»: đợi thêm rồi bấm lại hoặc tải lại trang.
 - **Cùng một bài mở ở hai tab (hay hai cửa sổ), bấm 📤 Gửi nháp ở cả hai:** chỉ ra **một** bài nháp. Tab bấm sau không gửi gì, báo «Chưa gửi gì lên website: trạng thái gửi của bài này vừa thay đổi (thường do bài vừa được gửi, hoặc đang gửi, ở một tab khác của app)…», và nút gửi khóa theo lời nhắc phía trên nút.
 - **Đã tick xác nhận rồi gửi, mà lần gửi đó hỏng trước khi tạo được bài** (ví dụ mất mạng lúc tải ảnh): bài giữ nguyên khóa như trước lúc gửi (vẫn «chưa có kết quả», hay vẫn «đã gửi» bài cũ). Muốn gửi tiếp thì kiểm trang quản trị rồi tick lại.
+- **File nháp bị cất sang một bên** (app báo «File nháp cũ bị hỏng nên đã được cất sang một bên…»; file cũ nằm trong thư mục `data`, tên dạng `drafts.hong-…sqlite`): dấu «đã gửi» của các bài gửi trước lúc đó nằm trong file cũ, app không đọc lại được. Chừng nào file đó còn trong thư mục `data`, trang **Bài viết** (cột «Đã gửi WordPress») luôn nhắc điều này, và ở bước **Xuất bản** mọi bài chưa có dấu «đã gửi» phải tick **Tôi đã xem trên WordPress: bài này chưa có trên website** mới gửi được. Trước khi tick, mở trang quản trị WordPress (**Bài viết**) xem bài đã có chưa. Đối chiếu xong mọi bài, muốn tắt lời nhắc thì tự dời file đó ra khỏi thư mục `data` (hay xóa nếu không cần giữ): app không tự xóa.
 
 **Lần gửi thật đầu tiên**
 

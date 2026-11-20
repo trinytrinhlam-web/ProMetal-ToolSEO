@@ -188,6 +188,9 @@ COMPOSE_KEYS = (
     "_wp_confirm",
     "_wp_confirmed",
     "_wp_shown",
+    # Ô «Tôi đã xem trên WordPress…» khi có file nháp đã cất (T-137) và mã băm lúc tick
+    "_wp_moved_ok",
+    "_wp_moved_digest",
     # Dòng kế hoạch của bài (T-102): ``DraftPlanRef``, trang dịch vụ đích, loại bài, tiêu đề dự kiến
     "_plan_ref",
     "_plan_required",
@@ -342,6 +345,19 @@ MSG_CONFIRM_CHANGED = (
 )
 MSG_CONFIRM_RESET = (
     "Bài đã thay đổi sau lần bạn tick «Tôi đã đọc lại…» nên app đã bỏ tick: xem lại rồi tick lại."
+)
+# File nháp cũ đã bị cất sang một bên (T-137, SL-T136-1): dấu «đã gửi» của bài có thể nằm ở đó.
+MSG_MOVED_GATE = (
+    "File nháp cũ đã bị cất sang một bên (tên «{name}»{more}, cùng thư mục): dấu «đã gửi» của các "
+    "bài gửi trước lúc đó nằm trong file ấy, nên app không biết bài này đã có trên website chưa. "
+    "Mở trang quản trị WordPress (**Bài viết**) xem bài này đã có chưa rồi mới gửi.{plan}"
+)
+MSG_MOVED_MORE = " và {count} file cũ hơn"
+MSG_MOVED_PLAN = " Dòng kế hoạch của bài ghi Mã bài WordPress {post_id}: xem đúng bài đó."
+MOVED_CHECK_LABEL = "Tôi đã xem trên WordPress: bài này chưa có trên website"
+MSG_MOVED_RESET = (
+    "Bài đã thay đổi sau lần bạn tick «Tôi đã xem trên WordPress…» nên app đã bỏ tick: xem lại rồi "
+    "tick lại."
 )
 MSG_NO_LISTING = (
     "Chưa tải được danh sách bài đã đăng để kiểm link nội bộ ({reason}). Chưa gửi gì lên website: "
@@ -2082,6 +2098,20 @@ def build_writer() -> ContentWriter:
     return ContentWriter(AIRouter(load_ai_config(), load_settings()), load_rules())
 
 
+MSG_NO_WEB_SEARCH = "Đang tắt tìm Google: AI không đọc bài đối thủ."
+
+
+def research_searches_web() -> bool:
+    """Việc nghiên cứu có được tìm web (``[tasks.research]`` ``web_search``; T-138). Chỉ đọc file
+    cấu hình, không tạo AI, không cần khóa. Cấu hình lỗi: coi như có (câu báo lỗi cấu hình đã hiện ở
+    chỗ khác, không thêm câu nhắc có thể sai)."""
+    try:
+        task = load_ai_config().get("research")
+    except AIError:
+        return True
+    return task is None or task.web_search
+
+
 def ai_call(spinner: str, fn, *args, **kwargs):
     """Chạy một bước AI, hiện vòng quay; lỗi thì báo bằng tiếng Việt và trả về None."""
     try:
@@ -2171,12 +2201,17 @@ def step_prepare(writer: ContentWriter | None) -> None:
     kw_col, btn_col = st.columns([4, 1.4], vertical_alignment="bottom")
     kw_col.text_input("Từ khóa chính", key="keyword", placeholder="ví dụ: so sánh inox 201 và 304")
     research: Research | None = S.research
+    searches_web = research_searches_web()
+    if not searches_web:
+        st.caption(MSG_NO_WEB_SEARCH)
     label = "🔄 Phân tích lại" if research else "🔎 Phân tích từ khóa"
     if btn_col.button(
         label, type="primary", width="stretch", disabled=writer is None or not keyword()
     ):
         result = ai_call(
-            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)",
+            "AI đang tìm và đọc các bài đứng đầu Google… (thường mất 1–2 phút)"
+            if searches_web
+            else "AI đang phân tích từ khóa…",
             writer.research,
             keyword(),
         )
@@ -2189,6 +2224,9 @@ def step_prepare(writer: ContentWriter | None) -> None:
         st.info(
             "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì và đọc các "
             "bài đứng đầu Google để tìm chỗ họ còn thiếu."
+            if searches_web
+            else "Nhập từ khóa rồi bấm **Phân tích**: AI xác định người tìm muốn gì, bài của "
+            "mình nên có thêm gì và người đọc hay hỏi gì."
         )
     else:
         if S.research_keyword != keyword():
@@ -2196,17 +2234,28 @@ def step_prepare(writer: ContentWriter | None) -> None:
                 f"Kết quả dưới đây là của từ khóa «{S.research_keyword}». "
                 "Bấm Phân tích lại cho từ khóa mới."
             )
-        left, right = st.columns(2, gap="medium")
-        with left, st.container(border=True, height="stretch"):
+        # Tắt tìm Google thì không có bài đối thủ (code đã bỏ): không hiện khung đối thủ trống,
+        # khung ý định chiếm cả hàng (T-138, SL-T138-3). Kết quả cũ còn bài đối thủ thật (phân
+        # tích lúc còn tìm Google) thì vẫn hiện, vì dàn ý vẫn dùng các bài đó.
+        if searches_web or research.competitors:
+            left, right = st.columns(2, gap="medium")
+            intent_box = left.container(border=True, height="stretch")
+        else:
+            right = None
+            intent_box = st.container(border=True)
+        with intent_box:
             st.markdown("#### 🎯 Người tìm từ khóa này muốn gì?")
             for line in research.intent:
                 st.markdown(f"- {line}")
             st.markdown(f"**Dạng bài hợp nhất:** {research.article_type}")
-        with right, st.container(border=True, height="stretch"):
-            st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
-            for c in research.competitors:
-                title = markdown_link(c.title, c.url)
-                st.markdown(f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]")
+        if right is not None:
+            with right.container(border=True, height="stretch"):
+                st.markdown("#### 🔎 Các bài đứng đầu Google còn thiếu gì?")
+                for c in research.competitors:
+                    title = markdown_link(c.title, c.url)
+                    st.markdown(
+                        f"**{title}**  \n:gray[Đã có: {c.covers}]  \n:gray[Thiếu: {c.missing}]"
+                    )
         with st.container(border=True):
             st.markdown("#### ✨ Bài của mình phải có thêm")
             for angle in research.new_angles:
@@ -3343,6 +3392,31 @@ def confirm_box(digest: str) -> bool:
     )
 
 
+def remember_moved() -> None:
+    """Tick «Tôi đã xem trên WordPress…»: nhớ mã băm của đúng màn hình người dùng vừa xem, như
+    ``remember_confirm``."""
+    S._wp_moved_digest = S.get("_wp_shown") if S.get("_wp_moved_ok") else None
+
+
+def moved_box(moved: tuple[str, ...], digest: str | None) -> bool:
+    """Cổng thêm của T-137 (SL-T136-1): file nháp cũ đã bị cất sang một bên (``moved_aside_names``)
+    mà bài chưa có dấu «đã gửi» trong kho hiện tại, ở mọi hình thức. Dấu đó có thể nằm trong file
+    đã cất (app không mở file đó), nên phải tick «Tôi đã xem trên WordPress…» mới gửi được. Ô không
+    tick sẵn, gắn mã băm bài lúc tick như ``confirm_box``: bài đổi thì bỏ tick; đổi bài, sau mỗi
+    lần bấm gửi thì bỏ (``COMPOSE_KEYS``, ``_wp_reset_guards``). Bài có Mã bài WordPress từ dòng kế
+    hoạch thì nêu mã đó. Chữ cố định, tên file qua ``escape_markdown`` (U1)."""
+    if S.get("_wp_moved_ok") and S.get("_wp_moved_digest") != digest:
+        S._wp_moved_ok = False
+        S._wp_moved_digest = None
+        st.warning(MSG_MOVED_RESET)
+    more = MSG_MOVED_MORE.format(count=len(moved) - 1) if len(moved) > 1 else ""
+    ref = S.get("_plan_ref")
+    post_id = getattr(ref, "wp_post_id", None)
+    plan = MSG_MOVED_PLAN.format(post_id=post_id) if isinstance(post_id, int) else ""
+    st.warning(MSG_MOVED_GATE.format(name=escape_markdown(moved[0]), more=more, plan=plan))
+    return st.checkbox(MOVED_CHECK_LABEL, key="_wp_moved_ok", on_change=remember_moved)
+
+
 LINK_KINDS = {
     LinkKind.INTERNAL: "Nội bộ",
     LinkKind.EXTERNAL: "Ra ngoài website",
@@ -4321,7 +4395,14 @@ def publish_panel(mode: str) -> None:
     trần), đầy đủ với Hẹn giờ, Đăng ngay kèm ô tick gắn mã băm (LC-T094-37, -38). Còn dòng Chặn
     thì nút khóa."""
     if S.get("_wp_reset_guards"):  # bỏ tick trước, bỏ cờ sau (LC-T056-1 b)
-        for key in ("_wp_checked", "_wp_again", "_wp_confirm", "_wp_confirmed"):
+        for key in (
+            "_wp_checked",
+            "_wp_again",
+            "_wp_confirm",
+            "_wp_confirmed",
+            "_wp_moved_ok",
+            "_wp_moved_digest",
+        ):
             S.pop(key, None)
         S.pop("_wp_reset_guards", None)
     if mode != "draft" and not release_enabled():
@@ -4408,6 +4489,9 @@ def publish_panel(mode: str) -> None:
             st.link_button("Mở bài nháp trong WordPress", client.edit_link(post_id))
         again = st.checkbox(AGAIN_LABELS.get(mode, AGAIN_LABELS["draft"]), key="_wp_again")
         allowed = allowed and again
+    elif moved := draft_storage.moved_aside_names():
+        # T-137: bài chưa có dấu «đã gửi» trong kho hiện tại mà có file nháp đã cất. Chỉ thêm cổng.
+        allowed = allowed and moved_box(moved, built.digest if built is not None else None)
     seo_toggle()  # T-041: «Ghi SEO lên website», mặc định tắt (Lá Chắn T-042)
     # Mã băm của đúng màn hình đang hiện (LC-T094-38): ô tick nhớ mã này, lúc bấm dựng lại và so.
     S._wp_shown = built.digest if built is not None else None

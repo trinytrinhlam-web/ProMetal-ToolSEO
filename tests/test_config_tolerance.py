@@ -1,6 +1,7 @@
 """T-010: file cấu hình chịu lỗi và các lỗi Thấp còn lại. Không gọi mạng, không đọc .env thật."""
 
 import pytest
+from ai_config_samples import research_web_search_toml
 from fake_ai import DRAFT, RESEARCH, FakeProvider
 from streamlit.testing.v1 import AppTest
 
@@ -218,7 +219,12 @@ def test_escape_markdown_keeps_vietnamese_and_neutralizes_syntax():
     assert escape_markdown(":red[x]") == r"\:red\[x\]"
 
 
-def test_research_page_shows_competitor_title_escaped(project_root, monkeypatch):
+def test_research_page_shows_competitor_title_escaped(project_root, tmp_path, monkeypatch):
+    # Bài đối thủ chỉ hiện khi bước nghiên cứu được tìm web (tắt thì code bỏ hết, T-138): dùng bản
+    # mẫu bật tìm web để vẫn kiểm tiêu đề được thoát, dù config/ai.toml đã commit đang tắt.
+    monkeypatch.setattr(
+        ai_registry.load_ai_config, "__defaults__", (research_web_search_toml(tmp_path, True),)
+    )
     evil = Competitor(
         title="Bài ![x](https://evil.example/p.png)",
         url="https://doithu.vn/a",

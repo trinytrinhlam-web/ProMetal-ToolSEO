@@ -19,6 +19,7 @@ import unicodedata
 from collections import Counter
 
 import pytest
+from ai_config_samples import ai_text_on, set_configured_keys
 from streamlit.testing.v1 import AppTest
 
 import seo_app.content.rules as rules_module
@@ -86,19 +87,25 @@ def _write(tmp_path, name: str, text: str):
     return path
 
 
-def _enabled_ai_toml(tmp_path):
-    return _write(tmp_path, "ai.toml", enable_image_block(_ai_text()))
+def _enabled_ai_toml(tmp_path, writing_on: str | None = None):
+    """Bản sao config/ai.toml, khối [tasks.image] đã bật. ``writing_on``: mọi việc khác chuyển sang
+    hãng này trước (T-138: điều bảo vệ «khóa Gemini chỉ bị đòi khi gọi việc ảnh» chỉ thử được khi
+    các việc viết dùng hãng khác Gemini, dù file đã commit đang dùng hãng nào)."""
+    text = _ai_text() if writing_on is None else ai_text_on(writing_on)
+    return _write(tmp_path, "ai.toml", enable_image_block(text))
 
 
 # ------------------------------------------------------------------ config/ai.toml
 
 
-def test_alt_task_is_claude_sonnet_with_small_budget():
-    # Quyết định 4A: alt viết bằng Claude Sonnet; việc ngắn nên effort thấp, không tìm web.
+def test_alt_task_follows_owner_decision_with_small_budget():
+    # Quyết định 4A (2026-10-19): alt viết bằng Claude Sonnet. Chủ dự án 18/11 tạm Gemini Flash cho
+    # mọi việc (T-138); có khóa Claude thì quay lại 4A (ghi chú đầu config/ai.toml). Việc ngắn nên
+    # effort thấp, không tìm web.
     alt = load_ai_config()["alt"]
     assert (alt.provider, alt.model, alt.effort, alt.max_tokens, alt.web_search) == (
-        "anthropic",
-        "claude-sonnet-5-5",
+        "gemini",
+        "gemini-3.8-flash",
         "low",
         2000,
         False,
@@ -108,8 +115,10 @@ def test_alt_task_is_claude_sonnet_with_small_budget():
 def test_old_tasks_still_load_next_to_alt():
     tasks = load_ai_config()
     assert {*WRITING_TASKS, "meta", "alt"} <= set(tasks)
-    assert tasks["research"].web_search is True
-    assert [n for n, t in tasks.items() if t.web_search] == ["research"]
+    # Điều bảo vệ: chỉ việc nghiên cứu được tìm web (links, plan thì không: Lá Chắn T-039, T-094).
+    assert {n for n, t in tasks.items() if t.web_search} <= {"research"}
+    # Chủ dự án 18/11 tạm tắt cả tìm web ở nghiên cứu (gói Gemini miễn phí hết hạn mức; T-138).
+    assert tasks["research"].web_search is False
 
 
 def test_ai_toml_header_names_three_providers_and_no_default():
@@ -170,7 +179,9 @@ def test_half_enabled_image_block_gives_vietnamese_error(tmp_path):
 
 
 def test_sl_t051_1_enabled_image_needs_gemini_key_only_when_called(tmp_path):
-    tasks = load_ai_config(_enabled_ai_toml(tmp_path))
+    # Bản mẫu: các việc viết bằng Claude, việc ảnh bằng Gemini (T-138: không phụ thuộc hãng
+    # đã commit).
+    tasks = load_ai_config(_enabled_ai_toml(tmp_path, writing_on="anthropic"))
     try:
         router = AIRouter(tasks, Settings(anthropic_api_key=FAKE_KEY))
     except AIError as exc:
@@ -214,8 +225,9 @@ def test_real_ai_toml_broken_on_disk_is_handled_like_t010(tmp_path, broken):
         path = tmp_path / "ai.toml"
         path.write_bytes(text.encode("cp1258", errors="replace"))
         match = "UTF-8"
-    else:  # file lưu dở giữa mục [tasks.alt]
-        path = _write(tmp_path, "ai.toml", text[: text.index('model = "claude-sonnet-5-5"') + 12])
+    else:  # file lưu dở giữa dòng model của mục [tasks.alt] (hãng nào cũng vậy: T-138)
+        cut = text.index('model = "', text.index("[tasks.alt]")) + 12
+        path = _write(tmp_path, "ai.toml", text[:cut])
         match = "cú pháp"
     with pytest.raises(AIError, match=match):
         load_ai_config(path)
@@ -484,8 +496,10 @@ def _analyze_button(at: AppTest):
     return next(b for b in at.button if b.label == "🔎 Phân tích từ khóa")
 
 
-def test_write_page_with_committed_config_needs_only_claude_key(project_root, monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
+def test_write_page_with_committed_config_needs_only_configured_keys(project_root, monkeypatch):
+    # Chỉ khóa của các hãng đang ghi trong config/ai.toml (18/11: Gemini; trước đó: Claude) là đủ.
+    names = set_configured_keys(monkeypatch, FAKE_KEY)
+    assert names and len(names) < 3
     at = _open_write_page(project_root)
     assert not [w.value for w in at.warning if "API_KEY" in w.value]
     at.text_input(key="keyword").input("sửa cửa cuốn bị kẹt").run()
@@ -496,8 +510,11 @@ def test_write_page_with_committed_config_needs_only_claude_key(project_root, mo
 def test_sl_t051_1_write_page_with_image_enabled_does_not_ask_for_gemini_key(
     project_root, tmp_path, monkeypatch
 ):
+    # Bản mẫu viết bằng Claude, ảnh bằng Gemini, chỉ có khóa Claude (T-138: không phụ thuộc hãng
+    # đã commit).
     monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
-    monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (_enabled_ai_toml(tmp_path),))
+    enabled = _enabled_ai_toml(tmp_path, writing_on="anthropic")
+    monkeypatch.setattr(ai_registry.load_ai_config, "__defaults__", (enabled,))
     at = _open_write_page(project_root)
     warnings = [w.value for w in at.warning]
     assert not any("GEMINI_API_KEY" in w for w in warnings), warnings
@@ -531,7 +548,7 @@ def test_write_page_survives_broken_real_content_toml(project_root, tmp_path, mo
         path.write_text(text[: text.index('anh = "Ảnh thật') + 12], encoding="utf-8")
     else:
         path.write_text(text.replace("max_chars = 125", 'max_chars = "125"'), encoding="utf-8")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", FAKE_KEY)
+    set_configured_keys(monkeypatch, FAKE_KEY)  # khóa của hãng đang được cấu hình (T-138)
     monkeypatch.setattr(rules_module.load_rules, "__defaults__", (path, tmp_path / NO_PROFILE))
     at = _open_write_page(project_root)
     if broken != "alt-sai-dang":

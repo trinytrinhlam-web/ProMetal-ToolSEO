@@ -20,6 +20,7 @@ from seo_app.storage.site_index import (
 from seo_app.wordpress import PublishedItem, WordPressClient, WordPressError
 
 TZ = ZoneInfo("Asia/Ho_Chi_Minh")
+REAL_DEFAULT_FILE = site_index.DEFAULT_SITE_INDEX_FILE  # trước khi conftest trỏ sang thư mục tạm
 
 
 def published(id_, kind="post", **extra):
@@ -65,7 +66,9 @@ def raw_sql(path, sql, params=()):
 
 
 def test_default_file_sits_next_to_drafts():
-    assert site_index.DEFAULT_SITE_INDEX_FILE == PROJECT_ROOT / "data" / "site_index.sqlite"
+    # Giá trị thật lấy lúc nạp file test (T-138: conftest trỏ thuộc tính sang thư mục tạm trước
+    # mỗi test, như kho thẻ ảnh).
+    assert REAL_DEFAULT_FILE == PROJECT_ROOT / "data" / "site_index.sqlite"
     gitignore = (PROJECT_ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "data/" in gitignore and "*.sqlite" in gitignore
 
